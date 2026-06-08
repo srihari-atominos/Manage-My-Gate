@@ -1,0 +1,39 @@
+import { body, param } from 'express-validator';
+
+/**
+ * Validation rules for creating a role
+ */
+export const createRoleRules = [
+  body('name')
+    .notEmpty()
+    .withMessage('Role name is required')
+    .isString()
+    .withMessage('Role name must be a string')
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Role name must be between 2 and 50 characters'),
+  body('description')
+    .optional()
+    .isString()
+    .withMessage('Description must be a string')
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Description cannot exceed 200 characters'),
+];
+
+/**
+ * Validation rules for updating permissions of a role
+ */
+export const updateRolePermissionsRules = [
+  param('id')
+    .isMongoId()
+    .withMessage('Invalid Role ID format'),
+  body('permissionIds')
+    .exists()
+    .withMessage('permissionIds field is required')
+    .isArray()
+    .withMessage('permissionIds must be an array'),
+  body('permissionIds.*')
+    .isMongoId()
+    .withMessage('Each permission ID in the array must be a valid Mongo ID'),
+];

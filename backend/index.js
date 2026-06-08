@@ -55,11 +55,11 @@ app.use(responseHandler);
 // Static public folder
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
-// Mount Swagger UI at root
-app.use('/', swaggerRouter);
-
 // Mount API routes at /api
 app.use('/api', apiRouter);
+
+// Mount Swagger UI at root
+app.use('/', swaggerRouter);
 
 // Error handling middlewares
 app.use(pageNotFound);

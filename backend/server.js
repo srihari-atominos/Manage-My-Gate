@@ -3,11 +3,15 @@ import config from './src/config/config.js';
 import connectToDb from './src/config/db/mongodbConnectToDb.config.js';
 import initializePassport from './src/features/auth/passport/passport.init.js';
 import logger from './src/utils/logger.utils.js';
+import { syncPermissions } from './src/utils/permissionSync.util.js';
 
 const startServer = async () => {
   try {
     // 1. Connect the database FIRST
     await connectToDb();
+
+    // Run permission synchronization & Super Admin bootstrapping
+    await syncPermissions();
 
     // 2. Initialize Passport/SSO
     initializePassport(app);

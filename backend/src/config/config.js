@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables from backend root directory
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+// Load environment variables from backend local directory
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET', 'SESSION_SECRET'];
 

@@ -20,6 +20,8 @@
  */
 
 import React from 'react'
+import { Navigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { AppContent, AppSidebar, AppFooter, AppHeader } from '../components/index'
 
 /**
@@ -36,6 +38,13 @@ import { AppContent, AppSidebar, AppFooter, AppHeader } from '../components/inde
  * @returns {React.ReactElement} Complete application layout
  */
 const DefaultLayout = () => {
+  const { token } = useSelector((state) => state.auth)
+
+  // Redirect to login if not authenticated
+  if (!token) {
+    return <Navigate to="/login" replace />
+  }
+
   return (
     <div>
       <AppSidebar />
