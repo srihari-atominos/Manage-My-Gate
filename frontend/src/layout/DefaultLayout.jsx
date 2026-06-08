@@ -22,7 +22,7 @@
 import React from 'react'
 import { Navigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { AppContent, AppSidebar, AppFooter, AppHeader } from '../components/index'
+import { AppContent, AppSidebar, AppHeader } from '../components/index'
 
 /**
  * DefaultLayout functional component
@@ -53,7 +53,6 @@ const DefaultLayout = () => {
         <div className="body flex-grow-1">
           <AppContent />
         </div>
-        <AppFooter />
       </div>
     </div>
   )

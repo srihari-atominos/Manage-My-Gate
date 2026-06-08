@@ -3,6 +3,7 @@
 );
 @use "@coreui/chartjs/scss/coreui-chartjs";
 @use "vendors/simplebar";
+@use "../features/userManagement/styles/userManagement";
 
 body {
   background-color: var(--cui-tertiary-bg);
@@ -64,4 +65,17 @@ body {
   .footer {
     --cui-footer-bg: var(--cui-body-bg);
   }
+}
+
+/* User Management Action Button Utilities */
+.um-action-btn {
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  flex-shrink: 0;
+  border: none !important;
 }
