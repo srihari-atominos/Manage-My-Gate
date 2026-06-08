@@ -1,0 +1,19 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Environment Variables
+.env
+.env.*.local
+
+# Build Outputs
+dist/
+build/
+/frontend/dist/
+
+# Logs
+logs/
+*.log
+
+# OS Files
+.DS_Store

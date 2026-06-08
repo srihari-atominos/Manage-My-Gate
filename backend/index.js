@@ -1,0 +1,68 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+import config from './src/config/config.js';
+import swaggerRouter from './src/routes/swagger.routes.js';
+import apiRouter from './src/routes/api.routes.js';
+import { pageNotFound, errorHandler } from './src/middlewares/error.middleware.js';
+import responseHandler from './src/middlewares/responseHandler.middleware.js';
+import correlationIdMiddleware from './src/middlewares/correlationId.middleware.js';
+import httpLoggerMiddleware from './src/middlewares/httpLogger.middleware.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+
+// Set up Correlation ID tracking and HTTP logging first
+app.use(correlationIdMiddleware);
+app.use(httpLoggerMiddleware);
+
+// Set up CORS
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+    
+    if (config.cors.allowedOrigins.indexOf(origin) !== -1 || config.cors.allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
+// Set up Helmet with CSP disabled for frontend integrations
+app.use(helmet({
+  contentSecurityPolicy: false
+}));
+
+// Standard body-parsers
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Cookie parser
+app.use(cookieParser());
+
+// Attach standard response helper
+app.use(responseHandler);
+
+// Static public folder
+app.use('/public', express.static(path.join(__dirname, 'public')));
+
+// Mount Swagger UI at root
+app.use('/', swaggerRouter);
+
+// Mount API routes at /api
+app.use('/api', apiRouter);
+
+// Error handling middlewares
+app.use(pageNotFound);
+app.use(errorHandler);
+
+export default app;
