@@ -11,6 +11,7 @@ import {
   CTableDataCell,
   CPagination,
   CPaginationItem,
+  CSpinner,
 } from '@coreui/react'
 
 /**
@@ -33,6 +34,7 @@ const DataTable = ({
   rowsPerPageOptions = [10, 20, 50],
   onPageChange = () => {},
   onRowsPerPageChange = () => {},
+  loading = false,
 }) => {
   return (
     <CCard className="mb-4 border-0 shadow-sm">
@@ -95,7 +97,17 @@ const DataTable = ({
               </CTableRow>
             </CTableHead>
             <CTableBody>
-              {data.length === 0 ? (
+              {loading ? (
+                <CTableRow align="middle">
+                  <CTableDataCell
+                    colSpan={columns.length + (renderRowActions ? 1 : 0)}
+                    className="text-center py-5"
+                  >
+                    <CSpinner color="primary" size="sm" className="me-2" />
+                    <span style={{ fontSize: '0.9rem', color: 'var(--cui-text-muted, #768192)' }}>Loading users...</span>
+                  </CTableDataCell>
+                </CTableRow>
+              ) : data.length === 0 ? (
                 <CTableRow align="middle">
                   <CTableDataCell
                     colSpan={columns.length + (renderRowActions ? 1 : 0)}
@@ -209,6 +221,7 @@ DataTable.propTypes = {
   rowsPerPageOptions: PropTypes.arrayOf(PropTypes.number),
   onPageChange: PropTypes.func,
   onRowsPerPageChange: PropTypes.func,
+  loading: PropTypes.bool,
 }
 
 export default DataTable

@@ -3,7 +3,7 @@ import React from 'react';
 // Lazy-loaded Components
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'));
 const SampleFeature = React.lazy(() => import('./features/sampleFeature/SampleFeatureView'));
-const RoleBuilder = React.lazy(() => import('./features/roleAdmin/RoleBuilderDashboard'));
+const RoleBuilder = React.lazy(() => import('./features/roleBuilder/RoleBuilderList'));
 const UserList = React.lazy(() => import('./features/userManagement/UserList'));
 
 /**

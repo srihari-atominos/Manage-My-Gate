@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   setSearchQuery,
@@ -7,11 +7,13 @@ import {
   clearRoleFilter,
   setCurrentPage,
   setRowsPerPage,
-  deleteUser,
-  addInvitedUser,
-  ROLES,
+  fetchUsersAsync,
+  inviteUserAsync,
+  deleteUserAsync,
+  updateUserRolesAsync,
   STATUS_OPTIONS,
 } from '../userSlice'
+import { fetchRolesAsync } from '../../roleBuilder/roleSlice'
 
 /**
  * useUserList Custom Hook
@@ -30,7 +32,24 @@ export const useUserList = () => {
     statusFilter,
     currentPage,
     rowsPerPage,
+    loading,
+    error,
   } = useSelector((state) => state.userManagement)
+
+  const { roles } = useSelector((state) => state.roleBuilder)
+
+  // Load users & roles on mount
+  useEffect(() => {
+    dispatch(fetchUsersAsync())
+    if (!roles || roles.length === 0) {
+      dispatch(fetchRolesAsync())
+    }
+  }, [dispatch, roles])
+
+  // Memoized Dynamic Roles List from Database
+  const ROLES = useMemo(() => {
+    return roles ? roles.map((r) => r.name) : []
+  }, [roles])
 
   // Memoized Filtered Rows
   const filteredUsers = useMemo(() => {
@@ -75,8 +94,24 @@ export const useUserList = () => {
   const handleClearRoleFilter = () => dispatch(clearRoleFilter())
   const changePage = (page) => dispatch(setCurrentPage(page))
   const changeRowsPerPage = (rows) => dispatch(setRowsPerPage(rows))
-  const removeUser = (id) => dispatch(deleteUser(id))
-  const inviteUser = (email) => dispatch(addInvitedUser(email))
+  const removeUser = (id) => dispatch(deleteUserAsync(id))
+  const inviteUser = (email) => dispatch(inviteUserAsync(email))
+
+  // Modal State & Handlers
+  const [selectedUserForRoles, setSelectedUserForRoles] = useState(null)
+
+  const openManageRolesModal = (user) => {
+    setSelectedUserForRoles(user)
+  }
+
+  const closeManageRolesModal = () => {
+    setSelectedUserForRoles(null)
+  }
+
+  const handleSaveRoles = (userId, newRoles) => {
+    dispatch(updateUserRolesAsync({ userId, newRoles }))
+    closeManageRolesModal()
+  }
 
   return {
     // State
@@ -90,6 +125,9 @@ export const useUserList = () => {
     paginatedUsers,
     ROLES,
     STATUS_OPTIONS,
+    selectedUserForRoles,
+    isLoading: loading,
+    error,
 
     // Callbacks/Actions
     setSearchQuery: changeSearchQuery,
@@ -100,6 +138,9 @@ export const useUserList = () => {
     setRowsPerPage: changeRowsPerPage,
     deleteUser: removeUser,
     inviteUser,
+    openManageRolesModal,
+    closeManageRolesModal,
+    handleSaveRoles,
   }
 }
 

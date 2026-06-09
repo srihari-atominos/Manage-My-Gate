@@ -24,6 +24,7 @@ trigger: always_on
 ## IV. Component Architecture (Strict Modularity)
 * **One Component Per File:** You must NEVER define multiple React components within a single file. Sub-components, Modals, and Toolbars must be abstracted into their own files.
 * **Directory Structure:** Feature-specific UI components belong in `src/features/[featureName]/components/`. Generic components belong in `src/components/common/`.
+* **Feature Styling Architecture:** All custom SCSS specific to a feature MUST be centralized into a single feature-level partial file. This file must reside in a dedicated `styles/` directory within that feature's module and must be named with an underscore followed by the exact feature folder name (e.g., `src/features/userManagement/styles/_userManagement.scss` or `src/features/roleBuilder/styles/_roleBuilder.scss`). You MUST NOT place `.scss` files directly inside the `components/` directory or alongside the view files. Components within the feature will import this single, centralized partial (e.g., `import '../styles/_roleBuilder.scss';`).
 * **No Inline Styles:** Avoid dumping large `<style>` blocks or heavy inline `style={{}}` objects into components. Use standard utility classes.
 
 ## V. State & Logic Architecture (The "Thin View" Pattern)
@@ -46,6 +47,4 @@ trigger: always_on
 * **No Hardcoded Strings:** UI components MUST NEVER contain hardcoded English text. All user-facing strings must be routed through an i18n library (e.g., `react-i18next`).
 * **Logical CSS Properties:** Because the application must support Arabic (RTL), you MUST use logical utility classes (e.g., `ms-3` for margin-start, `pe-2` for padding-end) instead of directional physical classes (`ml-3`, `pr-2`).
 
-## X. Testing & Quality Assurance
-* **Test the Engine, Not the Paint:** Focus unit testing (Jest/Vitest) on the Custom Hooks, Redux Reducers, and Utility functions. 
-* **Component Testing:** Use React Testing Library to ensure components render correctly and that accessibility (ARIA) attributes are present. Do not test implementation details (like whether a specific `div` is present), test user behaviors (like whether the "Invite" button fires the click handler).
+## X. Testing & Quality

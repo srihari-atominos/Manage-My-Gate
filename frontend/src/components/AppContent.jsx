@@ -21,6 +21,7 @@
 import React, { Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { CContainer, CSpinner } from '@coreui/react'
+import AuthGuard from '../features/auth/components/AuthGuard'
 
 // routes config
 import { routes } from '../routes'
@@ -43,6 +44,15 @@ const AppContent = () => {
       <Suspense fallback={<CSpinner color="primary" />}>
         <Routes>
           {routes.map((route, idx) => {
+            const isProtected = ['/users', '/roles', '/role-builder'].includes(route.path)
+            const routeElement = isProtected ? (
+              <AuthGuard>
+                <route.element />
+              </AuthGuard>
+            ) : (
+              <route.element />
+            )
+
             return (
               route.element && (
                 <Route
@@ -50,7 +60,7 @@ const AppContent = () => {
                   path={route.path}
                   exact={route.exact}
                   name={route.name}
-                  element={<route.element />}
+                  element={routeElement}
                 />
               )
             )
