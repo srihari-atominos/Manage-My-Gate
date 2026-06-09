@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import roleController from './role.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
-import { createRoleRules, updateRolePermissionsRules } from './role.validateRules.js';
+import { createRoleRules, updateRolePermissionsRules, updateRoleRules } from './role.validateRules.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import { authorizePermission } from '../../middlewares/rbac.middleware.js';
 
@@ -61,6 +61,13 @@ router.get(
  * /roles/{id}/permissions:
  *   get:
  *     summary: Get permissions mapped to a specific role
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Role ID
  *     responses:
  *       200:
  *         description: List of mapped permissions.
@@ -76,6 +83,24 @@ router.get(
  * /roles/{id}/permissions:
  *   put:
  *     summary: Update permissions mapped to a specific role
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Role ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               permissionIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
  *     responses:
  *       200:
  *         description: Permissions updated.
@@ -85,6 +110,66 @@ router.put(
   authorizePermission('roles', 'update'), 
   validate(updateRolePermissionsRules), 
   roleController.updateRolePermissions
+);
+
+/**
+ * @swagger
+ * /roles/{id}:
+ *   put:
+ *     summary: Update an existing role
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Role ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               permissions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Role updated successfully.
+ */
+router.put(
+  '/:id',
+  authorizePermission('roles', 'update'),
+  validate(updateRoleRules),
+  roleController.updateRole
+);
+
+/**
+ * @swagger
+ * /roles/{id}:
+ *   delete:
+ *     summary: Delete a role
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Role ID
+ *     responses:
+ *       200:
+ *         description: Role deleted successfully.
+ */
+router.delete(
+  '/:id',
+  authorizePermission('roles', 'delete'),
+  roleController.deleteRole
 );
 
 export default router;

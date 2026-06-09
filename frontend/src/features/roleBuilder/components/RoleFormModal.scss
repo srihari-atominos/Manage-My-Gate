@@ -1,0 +1,11 @@
+.permissions-scroll-container {
+  overflow-y: auto !important;
+
+  // Mobile (Default)
+  max-height: 45vh;
+
+  // Desktop
+  @media (min-width: 768px) {
+    max-height: 55vh;
+  }
+}
