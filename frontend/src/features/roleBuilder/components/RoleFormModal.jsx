@@ -19,7 +19,7 @@ import {
   CSpinner,
 } from '@coreui/react'
 import useRoles from '../hooks/useRoles'
-import './RoleFormModal.scss'
+import '../styles/_roleBuilder.scss'
 
 const schema = yup.object().shape({
   name: yup.string().trim().required('Role name is required'),
