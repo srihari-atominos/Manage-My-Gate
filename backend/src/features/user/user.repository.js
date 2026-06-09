@@ -17,6 +17,18 @@ export class UserRepository {
     const user = new User(userData);
     return await user.save();
   }
+
+  async findAll() {
+    return await User.find({}).populate('roleId').sort({ createdAt: -1 });
+  }
+
+  async update(id, updateData) {
+    return await User.findByIdAndUpdate(id, updateData, { new: true, runValidators: true }).populate('roleId');
+  }
+
+  async delete(id) {
+    return await User.findByIdAndDelete(id);
+  }
 }
 
 export default new UserRepository();

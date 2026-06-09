@@ -47,6 +47,39 @@ export class UserService {
 
     return await userRepository.create(userData);
   }
+
+  async getAllUsers() {
+    return await userRepository.findAll();
+  }
+
+  async updateUser(id, updateData) {
+    await this.getUserById(id); // Throws if user doesn't exist
+    return await userRepository.update(id, updateData);
+  }
+
+  async deleteUser(id) {
+    await this.getUserById(id); // Throws if user doesn't exist
+    return await userRepository.delete(id);
+  }
+
+  async inviteUser(email) {
+    const trimmedEmail = email.trim().toLowerCase();
+    const existing = await userRepository.findByEmail(trimmedEmail);
+    if (existing) {
+      throw new HttpError(400, `User with email '${trimmedEmail}' already exists.`);
+    }
+
+    // Generate a default password
+    const hashedPassword = await hashPassword('TemporaryPassword123!');
+
+    const userData = {
+      email: trimmedEmail,
+      username: trimmedEmail.split('@')[0],
+      password: hashedPassword,
+    };
+
+    return await userRepository.create(userData);
+  }
 }
 
 export default new UserService();

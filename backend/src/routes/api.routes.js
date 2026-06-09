@@ -2,6 +2,7 @@ import { Router } from 'express';
 import sampleFeatureRouter from '../features/sampleFeature/sampleFeature.router.js';
 import authRouter from '../features/auth/auth.router.js';
 import roleRouter from '../features/role/role.router.js';
+import userRouter from '../features/user/user.router.js';
 
 const router = Router();
 
@@ -9,5 +10,6 @@ const router = Router();
 router.use('/sample', sampleFeatureRouter);
 router.use('/auth', authRouter);
 router.use('/roles', roleRouter);
+router.use('/users', userRouter);
 
 export default router;
