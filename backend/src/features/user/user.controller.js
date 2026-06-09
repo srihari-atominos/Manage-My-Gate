@@ -7,17 +7,19 @@ export class UserController {
    */
   async getAllUsers(req, res, next) {
     try {
-      const users = await userService.getAllUsers()
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+      const { data: users, pagination } = await userService.getAllUsers(page, limit);
       const formatted = users.map((u) => ({
         id: u._id,
         name: u.username,
         email: u.email,
         role: u.roleId?.name || '',
         status: 'Active',
-      }))
-      res.success(formatted, 'Users retrieved successfully')
+      }));
+      res.success({ data: formatted, pagination }, 'Users retrieved successfully');
     } catch (error) {
-      next(error)
+      next(error);
     }
   }
 

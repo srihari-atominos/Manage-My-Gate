@@ -6,8 +6,7 @@ trigger: always_on
 
 ## I. Architectural Boundaries & Feature Isolation
 * **One Model, One Feature:** Every database entity or model must be its own independent feature module inside `src/features/`. Do not pack multiple models into a single feature folder.
-* **The "Scope of Use" Rule (Encapsulation):** 
-  * If a middleware or utility is *only* used by one feature, it MUST be placed inside that feature's directory (e.g., `src/features/simahReport/middlewares/`).
+* **The "Scope of Use" Rule (Encapsulation):** * If a middleware or utility is *only* used by one feature, it MUST be placed inside that feature's directory (e.g., `src/features/simahReport/middlewares/`).
   * If a middleware or utility is used by *two or more* features, it must be promoted to the global `src/middlewares/` or `src/utils/` directory.
 * **Public API Request Flow:** `Router → Controller → Service → Repository → Database`.
 * **Internal Domain Flow:** If a feature does not expose an API (e.g., background workers, audit logs), omit the Router, Controller, and Validator. The flow is strictly: `Other Feature Service → Target Feature Service → Target Feature Repository → Database`.
@@ -23,9 +22,11 @@ trigger: always_on
   * May call their own feature's repository.
   * May call *other* feature services.
   * **MUST NEVER** call a repository belonging to another feature.
-* **Repositories (The Vaults):**
+* **Repositories (The Vaults & Database Optimization):**
   * Responsible for all database and ORM operations.
   * Strictly private to their feature—never imported by other features.
+  * **Aggregation Pipelines:** For list/table queries requiring pagination and total counts, use Mongoose Aggregation Pipelines (e.g., `$facet`) to execute them efficiently in a single database round-trip.
+  * **Database Transactions:** All database write operations (or read-writes) that require strict data consistency MUST accept a `ClientSession` and be wrapped in Mongoose Transactions (`session.startTransaction()`, `commitTransaction()`, `abortTransaction()`).
 
 ## III. Observability & Error Handling
 * **Correlation ID:** Every request must be tagged with an `X-Request-ID`. This ID must be injected into all subsequent logs, service calls, and error traces.

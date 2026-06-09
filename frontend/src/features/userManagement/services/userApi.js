@@ -10,8 +10,8 @@ import apiClient from '../../../services/apiClient'
  * Fetches all users from the backend.
  * @returns {Promise<Array>}
  */
-export const fetchUsers = async () => {
-  const response = await apiClient.get('/users')
+export const fetchUsers = async ({ page = 1, limit = 10 } = {}) => {
+  const response = await apiClient.get(`/users?page=${page}&limit=${limit}`)
   return response.data
 }
 

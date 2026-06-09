@@ -29,6 +29,7 @@ trigger: always_on
 
 ## V. State & Logic Architecture (The "Thin View" Pattern)
 * **Redux First for Data:** Do not use `useState` for data arrays or persistent filters. All feature-level data MUST live in the Redux store.
+* **Server-Side Pagination:** Do not perform in-memory array splitting for data grids. Always rely on backend database-level pagination, passing `page` and `limit` via thunks, and storing the resulting pagination metadata (`currentPage`, `totalPages`, `totalRecords`) in the Redux slice.
 * **Custom Hooks as Controllers:** UI Components must remain purely visual. All interaction logic, `useDispatch` calls, and `useSelector` mapping MUST be extracted into a custom hook (e.g., `useUserFeature.js`). This hook acts as the sole bridge between the UI and Redux.
 * **Data Utilities:** Complex data transformations or heavy formatting must be offloaded to isolated utility files in the feature's `/utils` directory.
 
@@ -47,4 +48,6 @@ trigger: always_on
 * **No Hardcoded Strings:** UI components MUST NEVER contain hardcoded English text. All user-facing strings must be routed through an i18n library (e.g., `react-i18next`).
 * **Logical CSS Properties:** Because the application must support Arabic (RTL), you MUST use logical utility classes (e.g., `ms-3` for margin-start, `pe-2` for padding-end) instead of directional physical classes (`ml-3`, `pr-2`).
 
-## X. Testing & Quality
+## X. Testing & Quality Assurance
+* **Test the Engine, Not the Paint:** Focus unit testing (Jest/Vitest) on the Custom Hooks, Redux Reducers, and Utility functions. 
+* **Component Testing:** Use React Testing Library to ensure components render correctly and that accessibility (ARIA) attributes are present. Do not test implementation details (like whether a specific `div` is present), test user behaviors (like whether the "Invite" button fires the click handler).

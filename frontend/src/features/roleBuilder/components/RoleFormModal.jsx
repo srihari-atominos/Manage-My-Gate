@@ -30,8 +30,8 @@ const schema = yup.object().shape({
 /**
  * Formats a raw permission string for user-friendly display next to checkboxes.
  * E.g., 'roles:create' -> 'Create', 'assign_roles' -> 'Assign roles'
- * 
- * @param {string} permissionString 
+ *
+ * @param {string} permissionString
  * @returns {string} Formatted label
  */
 const formatPermissionLabel = (permissionString) => {
@@ -47,14 +47,22 @@ const formatPermissionLabel = (permissionString) => {
 
 /**
  * RoleFormModal Component
- * 
+ *
  * Form modal for creating or editing roles.
  * Displays role details and a visual checkbox grid grouped by permissions category.
  */
 const RoleFormModal = ({ visible, role, onClose, onSave }) => {
   const { permissionsList, isPermissionsLoading, loadPermissions } = useRoles()
 
-  const { register, handleSubmit, reset, control, watch, setValue, formState: { errors } } = useForm({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
       name: '',
@@ -104,7 +112,9 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
   }, [permissionsList])
 
   const handleSelectAllGroup = (category, checked) => {
-    const groupCodes = groupedPermissions[category].map((perm) => perm.name || perm.code || perm._id)
+    const groupCodes = groupedPermissions[category].map(
+      (perm) => perm.name || perm.code || perm._id,
+    )
     let newValue
     if (checked) {
       newValue = Array.from(new Set([...selectedPermissions, ...groupCodes]))
@@ -119,13 +129,7 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
   }
 
   return (
-    <CModal
-      visible={visible}
-      onClose={onClose}
-      id="role-form-modal"
-      alignment="center"
-      size="lg"
-    >
+    <CModal visible={visible} onClose={onClose} id="role-form-modal" alignment="center" size="lg">
       <CModalHeader>
         <CModalTitle style={{ fontSize: '1rem', fontWeight: 700 }}>
           {role ? `Edit Role - ${role.name}` : 'Create New Role'}
@@ -186,12 +190,23 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
             ) : (
               <div className="d-flex flex-column gap-3">
                 {Object.keys(groupedPermissions).map((category) => {
-                  const groupCodes = groupedPermissions[category].map((perm) => perm.name || perm.code || perm._id)
-                  const isAllGroupSelected = groupCodes.length > 0 && groupCodes.every((code) => selectedPermissions.includes(code))
+                  const groupCodes = groupedPermissions[category].map(
+                    (perm) => perm.name || perm.code || perm._id,
+                  )
+                  const isAllGroupSelected =
+                    groupCodes.length > 0 &&
+                    groupCodes.every((code) => selectedPermissions.includes(code))
                   return (
                     <div key={category} className="p-3 border rounded bg-light-subtle">
                       <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
-                        <h6 className="mb-0" style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--cui-primary, #4f46e5)' }}>
+                        <h6
+                          className="mb-0"
+                          style={{
+                            fontSize: '0.9rem',
+                            fontWeight: 700,
+                            color: 'var(--cui-primary, #4f46e5)',
+                          }}
+                        >
                           {category} Permissions
                         </h6>
                         <CFormCheck
@@ -212,7 +227,8 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
                                 name="permissions"
                                 control={control}
                                 render={({ field }) => {
-                                  const isChecked = Array.isArray(field.value) && field.value.includes(permValue)
+                                  const isChecked =
+                                    Array.isArray(field.value) && field.value.includes(permValue)
                                   return (
                                     <CFormCheck
                                       id={`perm-check-${idSafe}`}
@@ -246,12 +262,7 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
           )}
         </CModalBody>
         <CModalFooter className="border-0 pt-0">
-          <CButton
-            id="close-role-form-btn"
-            color="light"
-            size="sm"
-            onClick={onClose}
-          >
+          <CButton id="close-role-form-btn" color="light" size="sm" onClick={onClose}>
             Cancel
           </CButton>
           <CButton

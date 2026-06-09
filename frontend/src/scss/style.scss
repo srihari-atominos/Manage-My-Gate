@@ -79,3 +79,53 @@ body {
   flex-shrink: 0;
   border: none !important;
 }
+
+/* DataTable Custom Styles to avoid inline styles */
+.datatable-sizer-text {
+  font-size: 0.82rem;
+  color: var(--cui-text-muted, #768192);
+}
+
+.datatable-sizer-select {
+  width: 70px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.datatable-page-item {
+  cursor: pointer;
+  
+  &.disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* Header Avatar Dropdown Custom Styles to avoid inline styles */
+.header-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--cui-primary, #4f46e5);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.header-dropdown-menu {
+  min-width: 180px;
+}
+
+.header-dropdown-role-header {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--cui-text-muted, #768192);
+  background: transparent;
+}
+
+

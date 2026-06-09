@@ -5,14 +5,14 @@ import apiClient from '../../services/apiClient'
 // Async Thunks
 export const fetchRolesAsync = createAsyncThunk(
   'roleBuilder/fetchRoles',
-  async (_, { rejectWithValue }) => {
+  async ({ page, limit }, { rejectWithValue }) => {
     try {
-      const response = await roleApi.fetchRoles()
+      const response = await roleApi.fetchRoles({ page, limit })
       return response
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch roles')
     }
-  }
+  },
 )
 
 export const fetchPermissions = createAsyncThunk(
@@ -24,7 +24,7 @@ export const fetchPermissions = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch permissions')
     }
-  }
+  },
 )
 
 export const createRoleAsync = createAsyncThunk(
@@ -36,7 +36,7 @@ export const createRoleAsync = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to create role')
     }
-  }
+  },
 )
 
 export const updateRoleAsync = createAsyncThunk(
@@ -48,7 +48,7 @@ export const updateRoleAsync = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to update role')
     }
-  }
+  },
 )
 
 export const deleteRoleAsync = createAsyncThunk(
@@ -60,7 +60,7 @@ export const deleteRoleAsync = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to delete role')
     }
-  }
+  },
 )
 
 const initialState = {
@@ -69,12 +69,23 @@ const initialState = {
   error: null,
   permissionsList: [],
   isPermissionsLoading: false,
+  totalRecords: 0,
+  currentPage: 1,
+  totalPages: 1,
+  rowsPerPage: 10,
 }
 
 const roleSlice = createSlice({
   name: 'roleBuilder',
   initialState,
-  reducers: {},
+  reducers: {
+    setCurrentPage: (state, action) => {
+      state.currentPage = action.payload
+    },
+    setRowsPerPage: (state, action) => {
+      state.rowsPerPage = action.payload
+    },
+  },
   extraReducers: (builder) => {
     builder
       // Fetch Roles
@@ -84,7 +95,10 @@ const roleSlice = createSlice({
       })
       .addCase(fetchRolesAsync.fulfilled, (state, action) => {
         state.isLoading = false
-        state.roles = action.payload
+        state.roles = action.payload.data
+        state.totalRecords = action.payload.pagination.totalRecords
+        state.currentPage = action.payload.pagination.currentPage
+        state.totalPages = action.payload.pagination.totalPages
       })
       .addCase(fetchRolesAsync.rejected, (state, action) => {
         state.isLoading = false
@@ -111,6 +125,7 @@ const roleSlice = createSlice({
       .addCase(createRoleAsync.fulfilled, (state, action) => {
         state.isLoading = false
         state.roles.push(action.payload)
+        state.totalRecords += 1
       })
       .addCase(createRoleAsync.rejected, (state, action) => {
         state.isLoading = false
@@ -137,7 +152,10 @@ const roleSlice = createSlice({
       })
       .addCase(deleteRoleAsync.fulfilled, (state, action) => {
         state.isLoading = false
+        const initialLength = state.roles.length
         state.roles = state.roles.filter((r) => r.id !== action.payload)
+        const diff = initialLength - state.roles.length
+        state.totalRecords = Math.max(0, state.totalRecords - diff)
       })
       .addCase(deleteRoleAsync.rejected, (state, action) => {
         state.isLoading = false
@@ -145,5 +163,7 @@ const roleSlice = createSlice({
       })
   },
 })
+
+export const { setCurrentPage, setRowsPerPage } = roleSlice.actions
 
 export default roleSlice.reducer

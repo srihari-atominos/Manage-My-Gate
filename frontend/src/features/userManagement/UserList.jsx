@@ -37,7 +37,7 @@ const UserList = () => {
     currentPage,
     rowsPerPage,
     totalPages,
-    paginatedUsers,
+    filteredUsers,
     ROLES,
     STATUS_OPTIONS,
     setSearchQuery,
@@ -212,7 +212,7 @@ const UserList = () => {
       {/* Data Table */}
       <DataTable
         columns={columns}
-        data={paginatedUsers}
+        data={filteredUsers}
         toolbar={toolbar}
         renderRowActions={renderRowActions}
         currentPage={currentPage}

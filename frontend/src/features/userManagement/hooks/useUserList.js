@@ -32,15 +32,21 @@ export const useUserList = () => {
     statusFilter,
     currentPage,
     rowsPerPage,
+    totalRecords,
+    totalPages,
     loading,
     error,
   } = useSelector((state) => state.userManagement)
 
   const { roles } = useSelector((state) => state.roleBuilder)
 
-  // Load users & roles on mount
+  // Fetch users when pagination states change
   useEffect(() => {
-    dispatch(fetchUsersAsync())
+    dispatch(fetchUsersAsync({ page: currentPage, limit: rowsPerPage }))
+  }, [dispatch, currentPage, rowsPerPage])
+
+  // Load roles on mount if not loaded
+  useEffect(() => {
     if (!roles || roles.length === 0) {
       dispatch(fetchRolesAsync())
     }
@@ -51,7 +57,7 @@ export const useUserList = () => {
     return roles ? roles.map((r) => r.name) : []
   }, [roles])
 
-  // Memoized Filtered Rows
+  // Memoized Filtered Rows (applied on the currently paginated chunk)
   const filteredUsers = useMemo(() => {
     const term = searchQuery.toLowerCase()
     return users.filter((u) => {
@@ -70,30 +76,22 @@ export const useUserList = () => {
     })
   }, [users, searchQuery, selectedRoles, statusFilter])
 
-  // Memoized Paginated Rows
-  const totalPages = useMemo(() => {
-    return Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage))
-  }, [filteredUsers.length, rowsPerPage])
-
-  const paginatedUsers = useMemo(() => {
-    const start = (currentPage - 1) * rowsPerPage
-    return filteredUsers.slice(start, start + rowsPerPage)
-  }, [filteredUsers, currentPage, rowsPerPage])
-
-  // Reset page offset automatically if dataset shrinks below current offset
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      dispatch(setCurrentPage(1))
-    }
-  }, [totalPages, currentPage, dispatch])
-
   // Action Dispatchers
   const changeSearchQuery = (query) => dispatch(setSearchQuery(query))
   const changeRoleToggle = (role) => dispatch(toggleRole(role))
   const changeStatusToggle = (status) => dispatch(toggleStatus(status))
   const handleClearRoleFilter = () => dispatch(clearRoleFilter())
-  const changePage = (page) => dispatch(setCurrentPage(page))
-  const changeRowsPerPage = (rows) => dispatch(setRowsPerPage(rows))
+  
+  // Handlers for page and limit changes
+  const handlePageChange = (newPage) => {
+    dispatch(setCurrentPage(newPage))
+  }
+  
+  const handleRowsPerPageChange = (newLimit) => {
+    dispatch(setRowsPerPage(newLimit))
+    dispatch(setCurrentPage(1))
+  }
+
   const removeUser = (id) => dispatch(deleteUserAsync(id))
   const inviteUser = (email) => dispatch(inviteUserAsync(email))
 
@@ -121,8 +119,9 @@ export const useUserList = () => {
     currentPage,
     rowsPerPage,
     totalPages,
+    totalRecords,
+    users,
     filteredUsers,
-    paginatedUsers,
     ROLES,
     STATUS_OPTIONS,
     selectedUserForRoles,
@@ -134,8 +133,8 @@ export const useUserList = () => {
     toggleRole: changeRoleToggle,
     toggleStatus: changeStatusToggle,
     clearRoleFilter: handleClearRoleFilter,
-    setCurrentPage: changePage,
-    setRowsPerPage: changeRowsPerPage,
+    setCurrentPage: handlePageChange,
+    setRowsPerPage: handleRowsPerPageChange,
     deleteUser: removeUser,
     inviteUser,
     openManageRolesModal,

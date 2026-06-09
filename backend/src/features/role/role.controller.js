@@ -6,18 +6,16 @@ import HttpError from '../../utils/httpError.utils.js';
 export class RoleController {
   async getAllRoles(req, res, next) {
     try {
-      const roles = await roleService.getAllRoles();
-      const formatted = await Promise.all(roles.map(async (role) => {
-        const permissionsList = await rolePermissionService.getPermissionsByRoleId(role._id);
-        const permissions = permissionsList.map((p) => p.name);
-        return {
-          id: role._id,
-          name: role.name,
-          description: role.description,
-          permissions,
-        };
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+      const { data: roles, pagination } = await roleService.getAllRoles(page, limit);
+      const formatted = roles.map((role) => ({
+        id: role._id,
+        name: role.name,
+        description: role.description,
+        permissions: role.permissions || [],
       }));
-      res.success(formatted, 'Roles retrieved successfully');
+      res.success({ data: formatted, pagination }, 'Roles retrieved successfully');
     } catch (error) {
       next(error);
     }

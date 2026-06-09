@@ -6,25 +6,37 @@ import {
   updateRoleAsync,
   deleteRoleAsync,
   fetchPermissions,
+  setCurrentPage,
+  setRowsPerPage,
 } from '../roleSlice'
 
 /**
  * useRoles Custom Hook
- * 
+ *
  * Reusable controller hook encapsulating all Redux selectors and actions
  * for the Role Builder feature. Follows the "Thin View" architectural pattern.
  */
 export const useRoles = () => {
   const dispatch = useDispatch()
-  const { roles, isLoading, error, permissionsList, isPermissionsLoading } = useSelector((state) => state.roleBuilder)
+  const {
+    roles,
+    isLoading,
+    error,
+    permissionsList,
+    isPermissionsLoading,
+    totalRecords,
+    currentPage,
+    totalPages,
+    rowsPerPage,
+  } = useSelector((state) => state.roleBuilder)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedRoleForEdit, setSelectedRoleForEdit] = useState(null)
 
-  // Fetch roles on mount
+  // Fetch roles when pagination states change
   useEffect(() => {
-    dispatch(fetchRolesAsync())
-  }, [dispatch])
+    dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage }))
+  }, [dispatch, currentPage, rowsPerPage])
 
   const loadPermissions = useCallback(() => {
     dispatch(fetchPermissions())
@@ -60,6 +72,15 @@ export const useRoles = () => {
     dispatch(deleteRoleAsync(id))
   }
 
+  const handlePageChange = (newPage) => {
+    dispatch(setCurrentPage(newPage))
+  }
+
+  const handleRowsPerPageChange = (newLimit) => {
+    dispatch(setRowsPerPage(newLimit))
+    dispatch(setCurrentPage(1))
+  }
+
   return {
     roles,
     isLoading,
@@ -68,12 +89,18 @@ export const useRoles = () => {
     isPermissionsLoading,
     isModalOpen,
     selectedRoleForEdit,
+    totalRecords,
+    currentPage,
+    totalPages,
+    rowsPerPage,
     openCreateModal,
     openEditModal,
     closeModal,
     handleSaveRole,
     handleDeleteRole,
     loadPermissions,
+    handlePageChange,
+    handleRowsPerPageChange,
   }
 }
 

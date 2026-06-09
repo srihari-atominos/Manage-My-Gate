@@ -10,8 +10,8 @@ export const AVAILABLE_PERMISSIONS = {
  * Fetch all roles from backend.
  * @returns {Promise<Array>}
  */
-export const fetchRoles = async () => {
-  const response = await apiClient.get('/roles')
+export const fetchRoles = async ({ page = 1, limit = 10 } = {}) => {
+  const response = await apiClient.get(`/roles?page=${page}&limit=${limit}`)
   return response.data
 }
 
@@ -27,8 +27,8 @@ export const createRole = async (roleData) => {
 
 /**
  * Update an existing role.
- * @param {number} roleId 
- * @param {Object} roleData 
+ * @param {number} roleId
+ * @param {Object} roleData
  * @returns {Promise<Object>}
  */
 export const updateRole = async (roleId, roleData) => {
@@ -38,7 +38,7 @@ export const updateRole = async (roleId, roleData) => {
 
 /**
  * Delete a role.
- * @param {number} roleId 
+ * @param {number} roleId
  * @returns {Promise<number>}
  */
 export const deleteRole = async (roleId) => {

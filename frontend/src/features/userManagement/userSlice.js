@@ -7,9 +7,9 @@ export const STATUS_OPTIONS = ['Active', 'Inactive', 'Pending']
 // Async Thunks
 export const fetchUsersAsync = createAsyncThunk(
   'userManagement/fetchUsers',
-  async (_, { rejectWithValue }) => {
+  async ({ page, limit }, { rejectWithValue }) => {
     try {
-      const response = await userApi.fetchUsers()
+      const response = await userApi.fetchUsers({ page, limit })
       return response
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch users')
@@ -60,6 +60,8 @@ const initialState = {
   statusFilter: ['Active', 'Inactive'],
   currentPage: 1,
   rowsPerPage: 10,
+  totalRecords: 0,
+  totalPages: 1,
   loading: false,
   error: null,
 }
@@ -106,7 +108,10 @@ const userSlice = createSlice({
       })
       .addCase(fetchUsersAsync.fulfilled, (state, action) => {
         state.loading = false
-        state.users = action.payload
+        state.users = action.payload.data
+        state.totalRecords = action.payload.pagination.totalRecords
+        state.currentPage = action.payload.pagination.currentPage
+        state.totalPages = action.payload.pagination.totalPages
       })
       .addCase(fetchUsersAsync.rejected, (state, action) => {
         state.loading = false

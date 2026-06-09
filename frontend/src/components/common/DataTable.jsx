@@ -16,7 +16,7 @@ import {
 
 /**
  * DataTable Component
- * 
+ *
  * Reusable enterprise data table with:
  * - Card containment (reduced padding)
  * - Sticky headers & vertical scrolling limit
@@ -40,14 +40,17 @@ const DataTable = ({
     <CCard className="mb-4 border-0 shadow-sm">
       <CCardBody className="p-3">
         {/* Responsive Toolbar */}
-        {toolbar && (
-          <div className="d-flex flex-wrap gap-3 align-items-center mb-3">
-            {toolbar}
-          </div>
-        )}
+        {toolbar && <div className="d-flex flex-wrap gap-3 align-items-center mb-3">{toolbar}</div>}
 
         {/* Scrollable Container with sticky header support */}
-        <div style={{ maxHeight: '50vh', overflowY: 'auto', border: '1px solid var(--cui-border-color, #dee2e6)', borderRadius: '6px' }}>
+        <div
+          style={{
+            maxHeight: '50vh',
+            overflowY: 'auto',
+            border: '1px solid var(--cui-border-color, #dee2e6)',
+            borderRadius: '6px',
+          }}
+        >
           <CTable className="um-table m-0" hover responsive bordered={false} align="middle">
             <CTableHead>
               <CTableRow align="middle">
@@ -104,7 +107,9 @@ const DataTable = ({
                     className="text-center py-5"
                   >
                     <CSpinner color="primary" size="sm" className="me-2" />
-                    <span style={{ fontSize: '0.9rem', color: 'var(--cui-text-muted, #768192)' }}>Loading users...</span>
+                    <span style={{ fontSize: '0.9rem', color: 'var(--cui-text-muted, #768192)' }}>
+                      Loading users...
+                    </span>
                   </CTableDataCell>
                 </CTableRow>
               ) : data.length === 0 ? (
@@ -154,12 +159,11 @@ const DataTable = ({
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 mt-3 pt-2 border-top">
           {/* Left: Rows Per Page Sizer */}
           <div className="d-flex align-items-center gap-2">
-            <span style={{ fontSize: '0.82rem', color: 'var(--cui-text-muted, #768192)' }}>Rows per page:</span>
+            <span className="datatable-sizer-text">Rows per page:</span>
             <select
               value={rowsPerPage}
               onChange={(e) => onRowsPerPageChange(Number(e.target.value))}
-              className="form-select form-select-sm"
-              style={{ width: '70px', fontSize: '0.82rem', cursor: 'pointer' }}
+              className="form-select form-select-sm datatable-sizer-select"
             >
               {rowsPerPageOptions.map((opt) => (
                 <option key={opt} value={opt}>
@@ -170,12 +174,12 @@ const DataTable = ({
           </div>
 
           {/* Right: Pagination Navigation */}
-          {totalPages > 1 && (
+          {totalPages >= 1 && (
             <CPagination className="mb-0" size="sm" aria-label="Page navigation">
               <CPaginationItem
                 disabled={currentPage === 1}
                 onClick={() => onPageChange(currentPage - 1)}
-                style={{ cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                className={`datatable-page-item ${currentPage === 1 ? 'disabled' : ''}`}
               >
                 Previous
               </CPaginationItem>
@@ -184,7 +188,7 @@ const DataTable = ({
                   key={page}
                   active={page === currentPage}
                   onClick={() => onPageChange(page)}
-                  style={{ cursor: 'pointer' }}
+                  className="datatable-page-item"
                 >
                   {page}
                 </CPaginationItem>
@@ -192,7 +196,7 @@ const DataTable = ({
               <CPaginationItem
                 disabled={currentPage === totalPages}
                 onClick={() => onPageChange(currentPage + 1)}
-                style={{ cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                className={`datatable-page-item ${currentPage === totalPages ? 'disabled' : ''}`}
               >
                 Next
               </CPaginationItem>
@@ -210,7 +214,7 @@ DataTable.propTypes = {
       key: PropTypes.string.isRequired,
       label: PropTypes.string.isRequired,
       render: PropTypes.func,
-    })
+    }),
   ).isRequired,
   data: PropTypes.array.isRequired,
   toolbar: PropTypes.node,
