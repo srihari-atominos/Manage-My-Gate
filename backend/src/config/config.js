@@ -30,7 +30,19 @@ export const config = {
     secret: process.env.SESSION_SECRET,
   },
   cors: {
-    allowedOrigins: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8000', 'http://localhost:8080']
+    allowedOrigins: (() => {
+      const origins = process.env.ALLOWED_ORIGINS
+        ? process.env.ALLOWED_ORIGINS.split(',')
+        : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8000', 'http://localhost:8080'];
+      const host = process.env.HOST || 'localhost';
+      const port = parseInt(process.env.PORT || '5000', 10);
+      origins.push(`http://${host}:${port}`);
+      origins.push(`http://127.0.0.1:${port}`);
+      if (host !== 'localhost') {
+        origins.push(`http://localhost:${port}`);
+      }
+      return [...new Set(origins)];
+    })()
   },
   nodeEnv: process.env.NODE_ENV || 'development',
   avatarUploadPath: process.env.AVATAR_UPLOAD_PATH || 'uploads/avatars',

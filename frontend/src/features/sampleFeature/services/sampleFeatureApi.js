@@ -1,4 +1,4 @@
-import apiClient from '../../utils/apiClient.js';
+import apiClient from '../../../utils/apiClient.js';
 
 export const sampleFeatureApi = {
   fetchSamples: async () => {

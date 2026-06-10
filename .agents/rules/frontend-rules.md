@@ -6,6 +6,12 @@ trigger: always_on
 
 ## I. Architectural Boundaries & Encapsulation
 * **Feature-Based Structure:** Group code by feature inside `src/features/` rather than by type (e.g., keep the API, Slice, and UI components for a feature together).
+* **Strict Feature Anatomy:** Every feature folder MUST strictly adhere to this internal subfolder structure. Files MUST NOT float in the root of the feature folder (except for an `index.js` export file or a top-level View container):
+  * `/services/` (for Axios API calls)
+  * `/components/` (for dumb `.jsx` UI files)
+  * `/hooks/` (for custom logic and Redux mapping)
+  * `/store/` (for the Redux slice and thunks)
+  * `/styles/` (for the single `_[featureName].scss` file)
 * **The "Scope of Use" Rule:**
   * Feature-specific hooks, utilities, and generic components MUST live inside that feature's directory.
   * Only utilities or components shared across *multiple* features belong in the global `src/utils/` or `src/components/` directories.
@@ -13,7 +19,7 @@ trigger: always_on
 
 ## II. Layer Responsibilities
 * **Components (The Canvas):** Strictly for UI rendering and capturing user events. **MUST NEVER** call Axios or Fetch directly.
-* **Redux Feature Slices (The Engine):** * **Individual State:** EVERY feature MUST possess its own isolated Redux Toolkit slice (e.g., `src/features/userManagement/userSlice.js`). Feature data, default states, and mock data reside exclusively here.
+* **Redux Feature Slices (The Engine):** * **Individual State:** EVERY feature MUST possess its own isolated Redux Toolkit slice (e.g., `src/features/userManagement/store/userSlice.js`). Feature data, default states, and mock data reside exclusively here.
   * **Global Registration:** Every feature slice MUST be explicitly registered in the global Redux store (e.g., `src/store/store.js`) under a dedicated key matching the feature name.
 
 ## III. Observability & Error Handling
@@ -21,7 +27,9 @@ trigger: always_on
 * **Client Logging:** Use a custom logger utility to suppress `info` and `debug` logs in `production`.
 * **Resilience:** Wrap all major feature modules in React Error Boundaries.
 
-## IV. Component Architecture (Strict Modularity)
+## IV. Component & View Architecture (Strict Modularity)
+* **Views vs. Components:** * **Views (The Containers):** The top-level starting pages or routing entry points for a feature (e.g., `RoleBuilderList.jsx` or `NotificationList.jsx`) act as orchestrators. They MUST be placed either at the root of the feature folder or inside a dedicated `src/features/[featureName]/views/` directory.
+  * **Components (The Canvas):** Smaller, feature-specific UI elements (e.g., `RoleFormModal.jsx`, `NotificationBell.jsx`) MUST strictly reside inside `src/features/[featureName]/components/`.
 * **One Component Per File:** You must NEVER define multiple React components within a single file. Sub-components, Modals, and Toolbars must be abstracted into their own files.
 * **Directory Structure:** Feature-specific UI components belong in `src/features/[featureName]/components/`. Generic components belong in `src/components/common/`.
 * **Feature Styling Architecture:** All custom SCSS specific to a feature MUST be centralized into a single feature-level partial file. This file must reside in a dedicated `styles/` directory within that feature's module and must be named with an underscore followed by the exact feature folder name (e.g., `src/features/userManagement/styles/_userManagement.scss` or `src/features/roleBuilder/styles/_roleBuilder.scss`). You MUST NOT place `.scss` files directly inside the `components/` directory or alongside the view files. Components within the feature will import this single, centralized partial (e.g., `import '../styles/_roleBuilder.scss';`).
@@ -51,3 +59,9 @@ trigger: always_on
 ## X. Testing & Quality Assurance
 * **Test the Engine, Not the Paint:** Focus unit testing (Jest/Vitest) on the Custom Hooks, Redux Reducers, and Utility functions. 
 * **Component Testing:** Use React Testing Library to ensure components render correctly and that accessibility (ARIA) attributes are present. Do not test implementation details (like whether a specific `div` is present), test user behaviors (like whether the "Invite" button fires the click handler).
+
+## XI. Real-Time Communication (WebSockets)
+* **No Component-Level Instantiation:** You MUST NEVER instantiate `socket.io-client` directly inside a React visual component or View. 
+* **Hook-Based Management:** WebSocket connections and event listeners MUST be encapsulated within a custom hook (e.g., `use[Feature]Socket.js`). 
+* **State Synchronization:** The socket hook must act as a silent background listener. When it receives a payload, it MUST immediately `dispatch` a Redux action to update the global store. 
+* **Lifecycle Cleanup:** Every socket hook MUST explicitly disconnect or remove listeners in a `useEffect` cleanup function.

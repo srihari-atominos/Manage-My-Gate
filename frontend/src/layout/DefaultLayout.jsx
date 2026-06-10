@@ -23,6 +23,7 @@ import React from 'react'
 import { Navigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { AppContent, AppSidebar, AppHeader } from '../components/index'
+import useNotificationSocket from '../features/notification/hooks/useNotificationSocket.js'
 
 /**
  * DefaultLayout functional component
@@ -38,7 +39,10 @@ import { AppContent, AppSidebar, AppHeader } from '../components/index'
  * @returns {React.ReactElement} Complete application layout
  */
 const DefaultLayout = () => {
-  const { token } = useSelector((state) => state.auth)
+  const { token, user } = useSelector((state) => state.auth)
+
+  // Initialize real-time notification socket listener
+  useNotificationSocket(user?.id || user?._id)
 
   // Redirect to login if not authenticated
   if (!token) {

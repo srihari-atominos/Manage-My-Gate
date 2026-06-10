@@ -3,6 +3,7 @@ import sampleFeatureRouter from '../features/sampleFeature/sampleFeature.router.
 import authRouter from '../features/auth/auth.router.js';
 import roleRouter from '../features/role/role.router.js';
 import userRouter from '../features/user/user.router.js';
+import notificationRouter from '../features/notification/notification.router.js';
 
 const router = Router();
 
@@ -11,5 +12,6 @@ router.use('/sample', sampleFeatureRouter);
 router.use('/auth', authRouter);
 router.use('/roles', roleRouter);
 router.use('/users', userRouter);
+router.use('/notifications', notificationRouter);
 
 export default router;

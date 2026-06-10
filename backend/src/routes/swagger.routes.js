@@ -22,6 +22,21 @@ const swaggerOptions = {
         description: 'Development Server',
       },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Input your JWT token in the format: Bearer <token>',
+        },
+      },
+    },
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
   },
   apis: ['./src/features/**/*.router.js', './src/features/**/*.js'], // Paths to API definitions
 };

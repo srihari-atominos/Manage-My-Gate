@@ -1,9 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
 import uiReducer from './uiSlice.js';
-import sampleFeatureReducer from '../features/sampleFeature/sampleFeatureSlice.js';
-import authReducer from '../features/auth/authSlice.js';
-import userReducer from '../features/userManagement/userSlice.js';
-import roleReducer from '../features/roleBuilder/roleSlice.js';
+import sampleFeatureReducer from '../features/sampleFeature/store/sampleFeatureSlice.js';
+import authReducer from '../features/auth/store/authSlice.js';
+import userReducer from '../features/userManagement/store/userSlice.js';
+import roleReducer from '../features/roleBuilder/store/roleSlice.js';
+import notificationsReducer from '../features/notification/store/notificationSlice.js';
 
 // Custom lightweight state logger middleware for development mode
 const stateLoggerMiddleware = (store) => (next) => (action) => {
@@ -25,6 +26,7 @@ export const store = configureStore({
     auth: authReducer,
     userManagement: userReducer,
     roleBuilder: roleReducer,
+    notifications: notificationsReducer,
   },
   middleware: (getDefaultMiddleware) => {
     const middlewares = getDefaultMiddleware();

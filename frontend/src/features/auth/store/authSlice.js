@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import apiClient from '../../utils/apiClient.js'
+import apiClient from '../../../utils/apiClient.js'
 
 // Async Thunks as consumed by LoginForm and RegisterForm
 export const loginUser = createAsyncThunk(

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
-import { registerUser, clearStatus } from './authSlice.js';
+import { registerUser, clearStatus } from './store/authSlice.js';
 import apiClient from '../../utils/apiClient.js';
 import {
   CButton,

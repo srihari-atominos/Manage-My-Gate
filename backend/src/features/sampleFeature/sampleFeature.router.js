@@ -12,6 +12,7 @@ const router = Router();
  * /sample:
  *   get:
  *     summary: Retrieve all sample records
+ *     security: []
  *     responses:
  *       200:
  *         description: A list of samples.
@@ -23,6 +24,7 @@ router.get('/', sampleController.getAll);
  * /sample/{id}:
  *   get:
  *     summary: Retrieve a single sample record by ID
+ *     security: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -40,6 +42,7 @@ router.get('/:id', sampleController.getById);
  * /sample:
  *   post:
  *     summary: Create a new sample record
+ *     security: []
  *     requestBody:
  *       required: true
  *       content:
@@ -71,6 +74,7 @@ router.post(
  * /sample/{id}:
  *   put:
  *     summary: Update an existing sample record
+ *     security: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -103,6 +107,7 @@ router.put(
  * /sample/{id}:
  *   delete:
  *     summary: Delete a sample record
+ *     security: []
  *     parameters:
  *       - in: path
  *         name: id

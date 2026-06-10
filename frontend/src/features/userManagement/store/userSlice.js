@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import * as userApi from './services/userApi'
+import * as userApi from '../services/userApi'
 
 export const ROLES = ['Super Admin', 'Branch Manager', 'System Auditor']
 export const STATUS_OPTIONS = ['Active', 'Inactive', 'Pending']

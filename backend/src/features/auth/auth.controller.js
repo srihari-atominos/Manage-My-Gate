@@ -1,4 +1,5 @@
 import authService from './auth.services.js';
+import config from '../../config/config.js';
 
 export class AuthController {
   async register(req, res, next) {
@@ -16,7 +17,7 @@ export class AuthController {
       // Optional: Set cookie
       res.cookie('token', data.token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: config.nodeEnv === 'production',
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
       });
       res.success(data, 'Login successful');

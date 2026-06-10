@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import sampleFeatureApi from './sampleFeatureApi.js';
+import sampleFeatureApi from '../services/sampleFeatureApi.js';
 
 // Async Thunks
 export const getSamples = createAsyncThunk(

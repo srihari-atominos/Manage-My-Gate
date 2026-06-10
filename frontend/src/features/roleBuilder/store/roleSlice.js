@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import * as roleApi from './services/roleApi'
-import apiClient from '../../services/apiClient'
+import * as roleApi from '../services/roleApi'
+import apiClient from '../../../services/apiClient'
 
 // Async Thunks
 export const fetchRolesAsync = createAsyncThunk(

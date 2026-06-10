@@ -30,9 +30,29 @@ router.get(
  * /roles:
  *   post:
  *     summary: Create a new role
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 50
+ *                 example: "Auditor"
+ *               description:
+ *                 type: string
+ *                 maxLength: 200
+ *                 example: "Responsible for reviewing system audit logs"
  *     responses:
  *       201:
  *         description: Role created.
+ *       400:
+ *         description: Validation error.
  */
 router.post(
   '/', 

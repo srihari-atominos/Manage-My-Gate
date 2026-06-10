@@ -8,7 +8,7 @@ import {
   fetchPermissions,
   setCurrentPage,
   setRowsPerPage,
-} from '../roleSlice'
+} from '../store/roleSlice'
 
 /**
  * useRoles Custom Hook

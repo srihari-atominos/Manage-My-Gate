@@ -15,7 +15,7 @@ import {
   editSample,
   removeSample,
   clearStatus,
-} from './sampleFeatureSlice.js';
+} from './store/sampleFeatureSlice.js';
 import SampleList from './components/SampleList.jsx';
 import SampleForm from './components/SampleForm.jsx';
 

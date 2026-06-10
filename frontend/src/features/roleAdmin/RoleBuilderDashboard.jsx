@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import roleApi from './roleApi.js';
+import roleApi from './services/roleApi.js';
 import usePermission from '../../hooks/usePermission.js';
 import {
   CRow,

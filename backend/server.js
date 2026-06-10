@@ -1,6 +1,8 @@
+import http from 'http';
 import app from './index.js';
 import config from './src/config/config.js';
 import connectToDb from './src/config/db/mongodbConnectToDb.config.js';
+import { initSocket } from './src/config/socket.js';
 import initializePassport from './src/features/auth/passport/passport.init.js';
 import logger from './src/utils/logger.utils.js';
 import { syncPermissions } from './src/utils/permissionSync.util.js';
@@ -16,10 +18,16 @@ const startServer = async () => {
     // 2. Initialize Passport/SSO
     initializePassport(app);
 
-    // 3. Start the app on the designated port
+    // 3. Create HTTP Server wrapping the express app
+    const server = http.createServer(app);
+
+    // 4. Initialize Socket.io server
+    initSocket(server);
+
+    // 5. Start the app on the designated port
     const port = config.port;
     const host = config.host;
-    app.listen(port, () => {
+    server.listen(port, () => {
       logger.info(`🚀 Server is running on http://${host}:${port}`);
     });
   } catch (error) {

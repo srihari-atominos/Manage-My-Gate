@@ -40,6 +40,7 @@ import {
 } from '@coreui/icons'
 
 import { AppHeaderDropdown } from './header/index'
+import NotificationBell from '../features/notification/components/NotificationBell.jsx'
 
 /**
  * AppHeader functional component
@@ -79,6 +80,9 @@ const AppHeader = () => {
           <CIcon icon={cilMenu} size="lg" />
         </CHeaderToggler>
         <CHeaderNav className="ms-auto align-items-center">
+          <div className="me-3">
+            <NotificationBell />
+          </div>
           <CDropdown variant="nav-item" placement="bottom-end">
             <CDropdownToggle caret={false} className="py-0 nav-link">
               {colorMode === 'dark' ? (

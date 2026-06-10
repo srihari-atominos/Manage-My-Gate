@@ -7,7 +7,7 @@ import {
   updateProfile as updateProfileAction,
   clearStatus as clearStatusAction,
   acceptInvitation,
-} from '../authSlice'
+} from '../store/authSlice'
 
 /**
   * useAuth Custom Hook

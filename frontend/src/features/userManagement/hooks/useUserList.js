@@ -12,8 +12,8 @@ import {
   deleteUserAsync,
   updateUserRolesAsync,
   STATUS_OPTIONS,
-} from '../userSlice'
-import { fetchRolesAsync } from '../../roleBuilder/roleSlice'
+} from '../store/userSlice'
+import { fetchRolesAsync } from '../../roleBuilder/store/roleSlice'
 
 /**
  * useUserList Custom Hook

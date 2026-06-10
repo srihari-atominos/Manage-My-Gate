@@ -39,7 +39,7 @@ apiClient.interceptors.response.use(
       try {
         // Dynamic import to prevent circular dependency at compile/load time
         const { store } = await import('../store/store.js')
-        const { logout } = await import('../features/auth/authSlice.js')
+        const { logout } = await import('../features/auth/store/authSlice.js')
         store.dispatch(logout())
       } catch (dispatchErr) {
         console.error('Failed to trigger automatic logout on 401', dispatchErr)
