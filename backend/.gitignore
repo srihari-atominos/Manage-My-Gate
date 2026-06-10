@@ -1,0 +1,3 @@
+# Ignore user-generated uploads
+public/uploads/*
+!public/uploads/.gitkeep

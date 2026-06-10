@@ -26,7 +26,35 @@ export const registerUser = createAsyncThunk(
   }
 )
 
+export const updateProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (formData, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.put('/users/profile', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+      return response
+    } catch (error) {
+      return rejectWithValue(error.message || 'Profile update failed')
+    }
+  }
+)
+
 // Initial authentication setup from localStorage persistent cache
+export const acceptInvitation = createAsyncThunk(
+  'auth/acceptInvitation',
+  async ({ token, password }, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.post('/auth/accept-invite', { token, password })
+      return response
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to accept invitation')
+    }
+  }
+)
+
 const token = localStorage.getItem('token')
 const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null
 
@@ -97,6 +125,42 @@ const authSlice = createSlice({
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload || 'Registration failed'
+      })
+      // Update Profile
+      .addCase(updateProfile.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.loading = false
+        state.user = {
+          ...state.user,
+          ...action.payload.data,
+        }
+        state.successMsg = action.payload.message || 'Profile updated successfully!'
+        
+        if (state.user) {
+          localStorage.setItem('user', JSON.stringify(state.user))
+        }
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Profile update failed'
+      })
+      // Accept Invitation
+      .addCase(acceptInvitation.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(acceptInvitation.fulfilled, (state, action) => {
+        state.loading = false
+        state.successMsg = action.payload.message || 'Password set successfully. Please log in.'
+      })
+      .addCase(acceptInvitation.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Failed to accept invitation'
       })
   },
 })

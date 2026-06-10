@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import authController from './auth.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
-import { loginRules, registerRules } from './auth.validateRules.js';
+import { loginRules, registerRules, acceptInviteRules } from './auth.validateRules.js';
 
 const router = Router();
 
@@ -26,6 +26,17 @@ router.post('/register', validate(registerRules), authController.register);
  *         description: Logged in.
  */
 router.post('/login', validate(loginRules), authController.login);
+
+/**
+ * @swagger
+ * /auth/accept-invite:
+ *   post:
+ *     summary: Accept user invitation and set password
+ *     responses:
+ *       200:
+ *         description: Invitation accepted.
+ */
+router.post('/accept-invite', validate(acceptInviteRules), authController.acceptInvite);
 
 /**
  * @swagger

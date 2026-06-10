@@ -33,6 +33,7 @@ export const config = {
     allowedOrigins: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8000', 'http://localhost:8080']
   },
   nodeEnv: process.env.NODE_ENV || 'development',
+  avatarUploadPath: process.env.AVATAR_UPLOAD_PATH || 'uploads/avatars',
 };
 
 export default config;

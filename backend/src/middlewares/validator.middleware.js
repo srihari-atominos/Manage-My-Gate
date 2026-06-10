@@ -1,5 +1,6 @@
 import { validationResult } from 'express-validator';
 import HttpError from '../utils/httpError.utils.js';
+import fs from 'fs';
 
 /**
  * Middleware wrapper to run validation rules and catch errors.
@@ -14,6 +15,13 @@ export const validate = (validationRules) => {
     const errors = validationResult(req);
     if (errors.isEmpty()) {
       return next();
+    }
+
+    // Clean up uploaded file if validation failed
+    if (req.file && req.file.path) {
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error('Error deleting file after validation failure:', err);
+      });
     }
 
     // 3. Compile errors

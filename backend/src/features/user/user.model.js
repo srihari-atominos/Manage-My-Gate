@@ -17,11 +17,30 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: function() {
+        return this.status === 'Active';
+      },
     },
     roleId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Role',
+    },
+    status: {
+      type: String,
+      enum: ['Pending', 'Active', 'Inactive'],
+      default: 'Pending',
+    },
+    name: {
+      type: String,
+      trim: true,
+    },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    avatar: {
+      type: String,
+      trim: true,
     },
   },
   {

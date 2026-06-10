@@ -17,3 +17,6 @@ logs/
 
 # OS Files
 .DS_Store
+
+# Uploaded Files
+/uploads/

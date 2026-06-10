@@ -25,3 +25,17 @@ export const updateUserRolesRules = [
     .isArray()
     .withMessage('roles must be an array'),
 ];
+
+/**
+ * Validation rules for updating user profile.
+ */
+export const updateProfileRules = [
+  body('name')
+    .optional()
+    .trim()
+    .escape(),
+  body('phone')
+    .optional()
+    .trim()
+    .escape(),
+];

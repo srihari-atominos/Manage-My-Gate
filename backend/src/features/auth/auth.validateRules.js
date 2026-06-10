@@ -41,3 +41,18 @@ export const loginRules = [
     .notEmpty()
     .withMessage('Password is required'),
 ];
+
+/**
+ * Validation rules for accepting an invitation endpoint
+ */
+export const acceptInviteRules = [
+  body('token')
+    .notEmpty()
+    .withMessage('Invitation token is required')
+    .trim(),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long'),
+];

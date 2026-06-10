@@ -33,6 +33,16 @@ export class AuthController {
       next(error);
     }
   }
+
+  async acceptInvite(req, res, next) {
+    try {
+      const { token, password } = req.body;
+      await authService.acceptInvitation(token, password);
+      res.success(null, 'Invitation accepted and account activated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new AuthController();

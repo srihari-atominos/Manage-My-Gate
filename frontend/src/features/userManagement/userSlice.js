@@ -57,7 +57,7 @@ const initialState = {
   users: [],
   searchQuery: '',
   selectedRoles: [],
-  statusFilter: ['Active', 'Inactive'],
+  statusFilter: ['Active', 'Inactive', 'Pending'],
   currentPage: 1,
   rowsPerPage: 10,
   totalRecords: 0,

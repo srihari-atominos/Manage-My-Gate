@@ -1,16 +1,4 @@
-/**
- * AppHeaderDropdown Component
- *
- * User avatar dropdown with:
- * - Dynamic text-based character avatar (first letter of username from useAuth)
- * - Profile menu item
- * - Dynamic role switcher section based on user's actual assigned roles
- * - Functional Logout button
- *
- * @component
- */
-
-import React from 'react'
+import React, { useState } from 'react'
 import {
   CDropdown,
   CDropdownDivider,
@@ -20,9 +8,11 @@ import {
   CDropdownToggle,
 } from '@coreui/react'
 import useAuth from '../../features/auth/hooks/useAuth'
+import UserProfileModal from '../../features/auth/components/UserProfileModal'
 
 const AppHeaderDropdown = () => {
   const { currentUser, logout } = useAuth()
+  const [profileModalVisible, setProfileModalVisible] = useState(false)
 
   // Derive avatar letter: first char of username, fallback to 'A'
   const avatarLetter = currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'A'
@@ -30,9 +20,14 @@ const AppHeaderDropdown = () => {
   // Derive roles list from currentUser
   const roles = currentUser?.roles || (currentUser?.role ? [currentUser.role] : [])
 
+  // Derive dynamic backend static base URL
+  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  const backendHost = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase
+  const avatarUrl = currentUser?.avatar ? `${backendHost}/${currentUser.avatar.startsWith('/') ? currentUser.avatar.substring(1) : currentUser.avatar}` : null
+
   return (
     <CDropdown variant="nav-item" alignment="end">
-      {/* ── Text-based character avatar toggle ── */}
+      {/* ── Text-based/Image-based avatar toggle ── */}
       <CDropdownToggle
         placement="bottom-end"
         className="py-0 pe-0"
@@ -43,14 +38,23 @@ const AppHeaderDropdown = () => {
           className="header-avatar"
           aria-label={`User avatar for ${currentUser?.username || 'Admin'}`}
         >
-          {avatarLetter}
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Avatar" className="header-avatar-img" />
+          ) : (
+            avatarLetter
+          )}
         </div>
       </CDropdownToggle>
 
       {/* ── Dropdown Menu ── */}
       <CDropdownMenu className="pt-0 header-dropdown-menu" placement="bottom-end">
         {/* Profile */}
-        <CDropdownItem href="#" id="dropdown-profile">
+        <CDropdownItem
+          component="button"
+          id="dropdown-profile"
+          className="py-1 px-3 w-100 text-start"
+          onClick={() => setProfileModalVisible(true)}
+        >
           Profile
         </CDropdownItem>
 
@@ -109,6 +113,8 @@ const AppHeaderDropdown = () => {
           Logout
         </CDropdownItem>
       </CDropdownMenu>
+
+      <UserProfileModal visible={profileModalVisible} onClose={() => setProfileModalVisible(false)} />
     </CDropdown>
   )
 }

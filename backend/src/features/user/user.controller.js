@@ -1,5 +1,6 @@
 import userService from './user.services.js'
 import HttpError from '../../utils/httpError.utils.js'
+import fs from 'fs'
 
 export class UserController {
   /**
@@ -15,7 +16,7 @@ export class UserController {
         name: u.username,
         email: u.email,
         role: u.roleId?.name || '',
-        status: 'Active',
+        status: u.status || 'Pending',
       }));
       res.success({ data: formatted, pagination }, 'Users retrieved successfully');
     } catch (error) {
@@ -29,13 +30,14 @@ export class UserController {
   async inviteUser(req, res, next) {
     try {
       const { email } = req.body
-      const user = await userService.inviteUser(email)
+      const { user, invitationToken } = await userService.inviteUser(email)
       const formatted = {
         id: user._id,
         name: user.username,
         email: user.email,
         role: '',
-        status: 'Pending',
+        status: user.status || 'Pending',
+        invitationToken,
       }
       res.success(formatted, 'User invited successfully', 201)
     } catch (error) {
@@ -76,6 +78,35 @@ export class UserController {
       res.success({ id: updatedUser._id, role: role.name }, 'User roles updated successfully')
     } catch (error) {
       next(error)
+    }
+  }
+
+  /**
+   * Updates current user's profile and avatar.
+   */
+  async updateProfile(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const { name, phone } = req.body;
+      const avatarFilename = req.file ? req.file.filename : undefined;
+
+      const updatedUser = await userService.updateProfile(userId, { name, phone, avatarFilename });
+      
+      res.success({
+        id: updatedUser._id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        phone: updatedUser.phone,
+        avatar: updatedUser.avatar,
+      }, 'Profile updated successfully');
+    } catch (error) {
+      if (req.file && req.file.path) {
+        fs.unlink(req.file.path, (err) => {
+          if (err) console.error('Error deleting file on profile update error:', err);
+        });
+      }
+      next(error);
     }
   }
 }

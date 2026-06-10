@@ -2,6 +2,15 @@ import mongoose from 'mongoose';
 import userRepository from './user.repository.js';
 import { hashPassword } from '../../utils/crypto.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import config from '../../config/config.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.resolve(__dirname, '../../../');
+const uploadDir = path.resolve(projectRoot, config.avatarUploadPath);
 
 export class UserService {
   async getUserById(id, session) {
@@ -127,18 +136,59 @@ export class UserService {
         throw new HttpError(400, `User with email '${trimmedEmail}' already exists.`);
       }
 
-      // Generate a default password
-      const hashedPassword = await hashPassword('TemporaryPassword123!');
-
       const userData = {
         email: trimmedEmail,
         username: trimmedEmail.split('@')[0],
-        password: hashedPassword,
+        status: 'Pending',
       };
 
       const newUser = await userRepository.create(userData, session);
+
+      // Dynamically import tokenService to follow clean cross-feature flow
+      const tokenService = (await import('../token/token.services.js')).default;
+      const { invitationToken } = await tokenService.generateInvitationToken(newUser._id, session);
+
       await session.commitTransaction();
-      return newUser;
+      return { user: newUser, invitationToken };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async activateUser(id, hashedPassword, session) {
+    return await userRepository.update(id, { password: hashedPassword, status: 'Active' }, session);
+  }
+
+  async updateProfile(id, { name, phone, avatarFilename }) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const user = await this.getUserById(id, session);
+
+      const payload = {};
+      if (name !== undefined) payload.name = name;
+      if (phone !== undefined) payload.phone = phone;
+      if (avatarFilename !== undefined) {
+        payload.avatar = `public/uploads/avatars/${avatarFilename}`;
+
+        // Delete old avatar from disk if it exists
+        if (user.avatar) {
+          const oldFilename = path.basename(user.avatar);
+          const oldFilePath = path.join(uploadDir, oldFilename);
+          if (fs.existsSync(oldFilePath)) {
+            fs.unlink(oldFilePath, (err) => {
+              if (err) console.error('Error deleting old avatar file:', err);
+            });
+          }
+        }
+      }
+
+      const updatedUser = await userRepository.update(id, payload, session);
+      await session.commitTransaction();
+      return updatedUser;
     } catch (error) {
       await session.abortTransaction();
       throw error;

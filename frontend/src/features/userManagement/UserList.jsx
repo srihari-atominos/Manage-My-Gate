@@ -125,6 +125,8 @@ const UserList = () => {
           badgeColor = 'success'
         } else if (val === 'Pending') {
           badgeColor = 'warning'
+        } else if (val === 'Inactive') {
+          badgeColor = 'danger'
         }
         return (
           <CBadge

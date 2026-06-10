@@ -73,7 +73,7 @@ export class UserRepository {
       new: true,
       runValidators: true,
       ...(session ? { session } : {}),
-    }).populate('roleId');
+    }).select('-password').populate('roleId');
   }
 
   /**
