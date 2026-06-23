@@ -3,6 +3,7 @@ import CIcon from '@coreui/icons-react';
 import {
   cilLockLocked,
   cilPeople,
+  cilApps,
 } from '@coreui/icons';
 import { CNavItem, CNavTitle } from '@coreui/react';
 
@@ -26,6 +27,12 @@ const _nav = [
     name: 'Role Builder',
     to: '/role-builder',
     icon: <CIcon icon={cilLockLocked} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'Integration Hub',
+    to: '/integrations',
+    icon: <CIcon icon={cilApps} customClassName="nav-icon" />,
   },
 ];
 

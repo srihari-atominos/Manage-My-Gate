@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Role from './role.model.js';
 
 export class RoleRepository {
@@ -52,6 +53,7 @@ export class RoleRepository {
                 createdAt: 1,
                 updatedAt: 1,
                 permissions: '$permissionsList.name',
+                integrationMappings: 1,
               },
             },
           ],
@@ -86,6 +88,34 @@ export class RoleRepository {
 
   async delete(id, session) {
     return await Role.findByIdAndDelete(id, session ? { session } : undefined);
+  }
+
+  /**
+   * Check if any role is using a specific connection ID in its integrationMappings.
+   * @param {string|mongoose.Types.ObjectId} connectionId - The integration connection ID.
+   * @param {import('mongoose').ClientSession} [session] - Optional session.
+   * @returns {Promise<boolean>} True if in use, false otherwise.
+   */
+  async isConnectionInUse(connectionId, session) {
+    const connId = typeof connectionId === 'string' ? new mongoose.Types.ObjectId(connectionId) : connectionId;
+    const count = await Role.countDocuments(
+      {
+        $expr: {
+          $in: [
+            connId,
+            {
+              $map: {
+                input: { $objectToArray: { $ifNull: [ "$integrationMappings", {} ] } },
+                as: "kv",
+                in: "$$kv.v"
+              }
+            }
+          ]
+        }
+      },
+      session ? { session } : undefined
+    );
+    return count > 0;
   }
 }
 

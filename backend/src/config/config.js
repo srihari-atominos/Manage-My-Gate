@@ -29,6 +29,7 @@ export const config = {
   session: {
     secret: process.env.SESSION_SECRET,
   },
+  encryptionKey: process.env.ENCRYPTION_KEY || '12345678901234567890123456789012',
   cors: {
     allowedOrigins: (() => {
       const origins = process.env.ALLOWED_ORIGINS

@@ -5,6 +5,7 @@ import authReducer from '../features/auth/store/authSlice.js';
 import userReducer from '../features/userManagement/store/userSlice.js';
 import roleReducer from '../features/roleBuilder/store/roleSlice.js';
 import notificationsReducer from '../features/notification/store/notificationSlice.js';
+import integrationHubReducer from '../features/integrationHub/store/integrationHubSlice.js';
 
 // Custom lightweight state logger middleware for development mode
 const stateLoggerMiddleware = (store) => (next) => (action) => {
@@ -27,6 +28,7 @@ export const store = configureStore({
     userManagement: userReducer,
     roleBuilder: roleReducer,
     notifications: notificationsReducer,
+    integrationHub: integrationHubReducer,
   },
   middleware: (getDefaultMiddleware) => {
     const middlewares = getDefaultMiddleware();

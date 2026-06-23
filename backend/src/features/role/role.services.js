@@ -100,6 +100,29 @@ export class RoleService {
       await session.endSession();
     }
   }
+
+  /**
+   * Check if an integration connection is mapped to any role.
+   * @param {string} connectionId - ID of the integration connection.
+   * @returns {Promise<boolean>}
+   */
+  async isConnectionInUse(connectionId) {
+    if (!connectionId) {
+      throw new HttpError(400, 'Connection ID is required.');
+    }
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const inUse = await roleRepository.isConnectionInUse(connectionId, session);
+      await session.commitTransaction();
+      return inUse;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
 }
 
 export default new RoleService();

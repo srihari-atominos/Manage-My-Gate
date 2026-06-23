@@ -14,6 +14,7 @@ export class RoleController {
         name: role.name,
         description: role.description,
         permissions: role.permissions || [],
+        integrationMappings: role.integrationMappings || {},
       }));
       res.success({ data: formatted, pagination }, 'Roles retrieved successfully');
     } catch (error) {
@@ -23,8 +24,8 @@ export class RoleController {
 
   async createRole(req, res, next) {
     try {
-      const { name, description, permissions } = req.body;
-      const role = await roleService.createRole({ name, description });
+      const { name, description, permissions, integrationMappings } = req.body;
+      const role = await roleService.createRole({ name, description, integrationMappings });
       
       let populatedPermissions = [];
       if (permissions && permissions.length > 0) {
@@ -40,7 +41,8 @@ export class RoleController {
         id: role._id,
         name: role.name,
         description: role.description,
-        permissions: populatedPermissions
+        permissions: populatedPermissions,
+        integrationMappings: role.integrationMappings || {},
       }, 'Role created successfully', 201);
     } catch (error) {
       next(error);
@@ -55,8 +57,8 @@ export class RoleController {
         throw new HttpError(403, 'The Super Admin role is a protected system role and cannot be modified.');
       }
       
-      const { name, description, permissions } = req.body;
-      const role = await roleService.updateRole(id, { name, description });
+      const { name, description, permissions, integrationMappings } = req.body;
+      const role = await roleService.updateRole(id, { name, description, integrationMappings });
       
       let populatedPermissions = [];
       if (permissions) {
@@ -75,7 +77,8 @@ export class RoleController {
         id: role._id,
         name: role.name,
         description: role.description,
-        permissions: populatedPermissions
+        permissions: populatedPermissions,
+        integrationMappings: role.integrationMappings || {},
       }, 'Role updated successfully');
     } catch (error) {
       next(error);

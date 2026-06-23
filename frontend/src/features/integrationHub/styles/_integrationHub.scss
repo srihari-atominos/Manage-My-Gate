@@ -1,0 +1,125 @@
+/* Integration Hub Feature SCSS */
+
+.provider-card {
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  border-radius: 12px;
+  background-color: var(--cui-body-bg);
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .provider-logo-container {
+    transition: transform 0.2s ease;
+  }
+
+  &:hover .provider-logo-container {
+    transform: scale(1.05);
+  }
+
+  .provider-name {
+    color: var(--cui-body-color);
+  }
+
+  .provider-card-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline-start: 1rem;
+    transition: transform 0.2s ease;
+  }
+
+  &:hover .provider-card-arrow {
+    transform: translateX(4px);
+    
+    [dir="rtl"] & {
+      transform: translateX(-4px);
+    }
+  }
+}
+
+.provider-details-modal {
+  .modal-dialog {
+    max-width: 92%;
+    margin-inline: auto;
+  }
+
+  &.modal-maximized {
+    .modal-dialog {
+      max-width: 100%;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+    }
+
+    .modal-content {
+      height: 100%;
+      border-radius: 0;
+    }
+
+    .modal-body {
+      overflow-y: auto;
+    }
+  }
+
+  &:not(.modal-maximized) {
+    .modal-dialog {
+      max-width: 1024px !important;
+      width: 100% !important;
+      height: 75vh !important;
+      min-height: 500px !important;
+      margin: 1.75rem auto !important;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-content {
+      height: 100% !important;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+  }
+}
+
+.connection-table-wrapper {
+  background-color: var(--cui-body-bg);
+}
+
+.connection-form {
+  background-color: var(--cui-body-bg);
+}
+
+/* Tailwind CSS utility fallbacks to guarantee the requested layout works */
+.w-full { width: 100%; }
+.max-w-5xl { max-width: 64rem; }
+.h-\[75vh\] { height: 75vh; }
+.min-h-\[500px\] { min-height: 500px; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-1 { flex: 1 1 0%; }
+.overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+.sticky { position: sticky; }
+.top-0 { top: 0; }
+.z-10 { z-index: 10; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.bg-slate-50 { background-color: var(--cui-tertiary-bg); }
+
+/* Dark mode support */
+[data-coreui-theme="dark"] {
+  .dark\:bg-slate-800 {
+    background-color: var(--cui-tertiary-bg) !important;
+    color: var(--cui-body-color) !important;
+  }
+}
+th.sticky {
+  background-color: var(--cui-tertiary-bg) !important;
+  color: var(--cui-body-color) !important;
+}
+

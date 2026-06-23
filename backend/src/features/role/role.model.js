@@ -14,6 +14,11 @@ const roleSchema = new mongoose.Schema(
       trim: true,
       maxlength: [200, 'Description cannot exceed 200 characters'],
     },
+    integrationMappings: {
+      type: Map,
+      of: mongoose.Schema.Types.ObjectId,
+      default: {},
+    },
   },
   {
     timestamps: true,

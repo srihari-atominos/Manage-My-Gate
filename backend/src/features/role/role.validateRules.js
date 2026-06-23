@@ -19,6 +19,14 @@ export const createRoleRules = [
     .trim()
     .isLength({ max: 200 })
     .withMessage('Description cannot exceed 200 characters'),
+  body('integrationMappings')
+    .optional()
+    .isObject()
+    .withMessage('integrationMappings must be an object'),
+  body('integrationMappings.*')
+    .optional()
+    .isMongoId()
+    .withMessage('Mapped integration values must be valid Mongo IDs'),
 ];
 
 /**
@@ -64,4 +72,12 @@ export const updateRoleRules = [
     .optional()
     .isArray()
     .withMessage('Permissions must be an array of strings'),
+  body('integrationMappings')
+    .optional()
+    .isObject()
+    .withMessage('integrationMappings must be an object'),
+  body('integrationMappings.*')
+    .optional()
+    .isMongoId()
+    .withMessage('Mapped integration values must be valid Mongo IDs'),
 ];
