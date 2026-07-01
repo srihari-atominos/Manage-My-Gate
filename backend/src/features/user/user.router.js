@@ -5,6 +5,7 @@ import { inviteUserRules, updateUserRolesRules, updateProfileRules } from './use
 import isAuthenticated from '../../middlewares/auth.middleware.js'
 import { authorizePermission } from '../../middlewares/rbac.middleware.js'
 import { upload, imageSignatureValidator } from '../../middlewares/upload.middleware.js'
+import tenantContext from '../../middlewares/tenant.middleware.js'
 
 const router = Router()
 
@@ -22,6 +23,7 @@ router.use(isAuthenticated)
  */
 router.get(
   '/',
+  tenantContext,
   authorizePermission('users', 'read'),
   userController.getAllUsers
 )
@@ -52,6 +54,7 @@ router.get(
  */
 router.post(
   '/invite',
+  tenantContext,
   authorizePermission('users', 'create'),
   validate(inviteUserRules),
   userController.inviteUser
@@ -113,6 +116,7 @@ router.put(
  */
 router.delete(
   '/:id',
+  tenantContext,
   authorizePermission('users', 'delete'),
   userController.deleteUser
 )
@@ -151,6 +155,7 @@ router.delete(
  */
 router.put(
   '/:id/roles',
+  tenantContext,
   authorizePermission('users', 'update'),
   validate(updateUserRolesRules),
   userController.updateUserRoles

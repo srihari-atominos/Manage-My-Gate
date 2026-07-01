@@ -21,10 +21,6 @@ const userSchema = new mongoose.Schema(
         return this.status === 'Active';
       },
     },
-    roleId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Role',
-    },
     status: {
       type: String,
       enum: ['Pending', 'Active', 'Inactive'],

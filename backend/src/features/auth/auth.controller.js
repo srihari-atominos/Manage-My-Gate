@@ -44,6 +44,24 @@ export class AuthController {
       next(error);
     }
   }
+
+  async switchContext(req, res, next) {
+    try {
+      const { targetOrgId, targetRole } = req.body;
+      const userId = req.user.id;
+      const data = await authService.switchContext(userId, targetOrgId, targetRole);
+
+      res.cookie('token', data.token, {
+        httpOnly: true,
+        secure: config.nodeEnv === 'production',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      });
+
+      res.success(data, 'Workspace context switched successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new AuthController();

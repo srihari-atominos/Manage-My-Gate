@@ -19,9 +19,11 @@
  */
 
 import React, { Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { CContainer, CSpinner } from '@coreui/react'
 import AuthGuard from '../features/auth/components/AuthGuard'
+import Page403 from '../views/pages/page403/Page403'
 
 // routes config
 import { routes } from '../routes'
@@ -39,12 +41,41 @@ import { routes } from '../routes'
  * @returns {React.ReactElement} Content container with routed views
  */
 const AppContent = () => {
+  const location = useLocation()
+  const activeWorkspace = useSelector((state) => state.workspace)
+  const allowedFeatures = activeWorkspace?.allowedFeatures || []
+  const isPlatform = activeWorkspace?.isPlatform || false
+
   return (
     <CContainer className="px-4" lg>
       <Suspense fallback={<CSpinner color="primary" />}>
         <Routes>
           {routes.map((route, idx) => {
-            const isProtected = ['/users', '/roles', '/role-builder'].includes(route.path)
+            // Exclude /workspace-setup route from rendering inside DefaultLayout
+            if (route.path === '/workspace-setup') return null;
+
+            // Route-level authorization checks
+            if (route.requirePlatform && !isPlatform) {
+              return (
+                <Route
+                  key={idx}
+                  path={route.path}
+                  element={<Page403 />}
+                />
+              )
+            }
+
+            if (route.requiredPermission && !allowedFeatures.includes(route.requiredPermission)) {
+              return (
+                <Route
+                  key={idx}
+                  path={route.path}
+                  element={<Page403 />}
+                />
+              )
+            }
+
+            const isProtected = ['/users', '/roles', '/role-builder', '/super-admin/organizations', '/super-admin/audit-logs'].includes(route.path)
             const routeElement = isProtected ? (
               <AuthGuard>
                 <route.element />
@@ -66,6 +97,7 @@ const AppContent = () => {
             )
           })}
           <Route path="/" element={<Navigate to="dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>
       </Suspense>
     </CContainer>

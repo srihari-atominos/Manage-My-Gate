@@ -3,11 +3,13 @@ import integrationHubController from './integrationHub.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
 import { connectRules, deleteConnectionRules, updateLabelRules, listRules } from './integrationHub.validator.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
 
-// Protect all integration hub endpoints with authentication middleware
+// Protect all integration hub endpoints with authentication and tenant scope check
 router.use(isAuthenticated);
+router.use(tenantContext);
 
 /**
  * @swagger

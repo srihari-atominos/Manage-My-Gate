@@ -1,0 +1,33 @@
+/**
+ * Message Templates styles
+ */
+#template-editor-modal {
+  .modal-body {
+    background-color: var(--cui-body-bg, #f8f9fa);
+  }
+
+  code {
+    background-color: var(--cui-light, #e9ecef);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+
+  textarea.font-monospace {
+    font-family: var(--cui-font-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace) !important;
+    background-color: #ffffff;
+    border: 1px solid var(--cui-border-color, #ced4da);
+    
+    &:focus {
+      border-color: var(--cui-primary, #4f46e5);
+      box-shadow: 0 0 0 0.25rem rgba(79, 70, 229, 0.15);
+    }
+  }
+
+  .btn-xs {
+    padding: 0.125rem 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    border-radius: 0.15rem;
+  }
+}

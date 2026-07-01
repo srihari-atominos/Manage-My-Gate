@@ -22,11 +22,6 @@ export const registerRules = [
     .withMessage('Password is required')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long'),
-  body('roleId')
-    .notEmpty()
-    .withMessage('Role ID is required')
-    .isMongoId()
-    .withMessage('Invalid Role ID format'),
 ];
 
 /**
@@ -55,4 +50,21 @@ export const acceptInviteRules = [
     .withMessage('Password is required')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long'),
+];
+
+/**
+ * Validation rules for switching workspace context endpoint
+ */
+export const switchContextRules = [
+  body('targetOrgId')
+    .notEmpty()
+    .withMessage('targetOrgId is required')
+    .isMongoId()
+    .withMessage('targetOrgId must be a valid Mongo ID')
+    .trim(),
+  body('targetRole')
+    .optional()
+    .isString()
+    .withMessage('targetRole must be a string')
+    .trim(),
 ];

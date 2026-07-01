@@ -33,10 +33,16 @@ const integrationHubSchema = new mongoose.Schema(
       required: [true, 'User ID is required'],
       index: true,
     },
+    orgId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: [true, 'Organization ID is required'],
+      index: true,
+    },
     provider: {
       type: String,
       required: [true, 'Provider name is required'],
-      enum: ['openai', 'twilio', 'resend'],
+      enum: ['openai', 'twilio', 'resend', 'smtp'],
       trim: true,
     },
     accountLabel: {
@@ -65,8 +71,8 @@ const integrationHubSchema = new mongoose.Schema(
   }
 );
 
-// Enforce that a user can have at most one connection setup per provider and account label combination
-integrationHubSchema.index({ userId: 1, provider: 1, accountLabel: 1 }, { unique: true });
+// Enforce that an organization can have at most one connection setup per provider and account label combination
+integrationHubSchema.index({ orgId: 1, provider: 1, accountLabel: 1 }, { unique: true });
 
 export const IntegrationHub = mongoose.model('IntegrationHub', integrationHubSchema);
 export default IntegrationHub;

@@ -6,6 +6,10 @@ import userReducer from '../features/userManagement/store/userSlice.js';
 import roleReducer from '../features/roleBuilder/store/roleSlice.js';
 import notificationsReducer from '../features/notification/store/notificationSlice.js';
 import integrationHubReducer from '../features/integrationHub/store/integrationHubSlice.js';
+import workspaceReducer from '../features/workspace/store/workspaceSlice.js';
+import superAdminReducer from '../features/superAdmin/store/superAdminSlice.js';
+import auditLogReducer from '../features/auditLog/store/auditLogSlice.js';
+import messageTemplateReducer from '../features/messageTemplate/store/messageTemplateSlice.js';
 
 // Custom lightweight state logger middleware for development mode
 const stateLoggerMiddleware = (store) => (next) => (action) => {
@@ -29,6 +33,10 @@ export const store = configureStore({
     roleBuilder: roleReducer,
     notifications: notificationsReducer,
     integrationHub: integrationHubReducer,
+    workspace: workspaceReducer,
+    superAdmin: superAdminReducer,
+    auditLog: auditLogReducer,
+    messageTemplate: messageTemplateReducer,
   },
   middleware: (getDefaultMiddleware) => {
     const middlewares = getDefaultMiddleware();

@@ -8,22 +8,154 @@ import tokenService from '../token/token.services.js';
 
 export class AuthService {
   /**
-   * Registers a new user.
-   * @param {object} registerData - Payload containing email, username, password, and roleId
+   * Registers a new user with standard credentials.
+   * Decoupled from organization setup.
+   * @param {object} registerData - Payload containing email, username, and password
    */
   async register(registerData) {
-    // Resolve the role first to ensure it exists
-    await roleService.getRoleById(registerData.roleId);
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // Delegate creation to user feature service
-    const user = await userService.createUser(registerData);
-    
-    // Return sanitized user object
+    try {
+      const { email, username, password } = registerData;
+
+      // 1. Dynamically import services to adhere to encapsulation and prevent circular dependency
+      const userService = (await import('../user/user.services.js')).default;
+
+      // 2. Create the User (passing session)
+      const newUser = await userService.createUser({ email, username, password, status: 'Active' }, session);
+
+      await session.commitTransaction();
+
+      // Return standard user/token payload with null/empty tenant context
+      const tokenPayload = {
+        id: newUser._id,
+        email: newUser.email,
+        username: newUser.username,
+        role: null,
+        permissions: [],
+        orgId: null,
+        isPlatform: false,
+      };
+
+      const token = signToken(tokenPayload);
+
+      return {
+        token,
+        user: {
+          id: newUser._id,
+          email: newUser.email,
+          username: newUser.username,
+          role: null,
+          permissions: [],
+          orgId: null,
+          isPlatform: false,
+          organizations: [],
+        },
+        availableWorkspaces: [],
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Helper to fetch active user memberships and construct the token payload and available workspaces.
+   * @param {object} user - User document
+   * @param {string} [targetOrgId=null] - Optional target organization ID to scope the context to
+   * @returns {Promise<{tokenPayload: object, availableWorkspaces: Array}>}
+   */
+  async getScopedTokenPayload(user, targetOrgId = null, targetRole = null) {
+    const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+    const memberships = await orgMembershipService.getUserMemberships(user._id);
+
+    // Active memberships only (where organization status is Active)
+    const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active');
+
+    let selectedMembership = null;
+
+    if (targetOrgId) {
+      selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgId);
+      if (!selectedMembership) {
+        throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
+      }
+    } else {
+      // Primary context selection:
+      // 1. Try to find the platform workspace
+      selectedMembership = activeMemberships.find((m) => m.orgId.isPlatform === true);
+      // 2. Fall back to the first active workspace
+      if (!selectedMembership && activeMemberships.length > 0) {
+        selectedMembership = activeMemberships[0];
+      }
+    }
+
+    let roleName = null;
+    let permissions = [];
+    let orgId = null;
+    let isPlatform = false;
+
+    if (selectedMembership) {
+      orgId = selectedMembership.orgId._id.toString();
+      isPlatform = selectedMembership.orgId.isPlatform || false;
+
+      const roles = [];
+      if (selectedMembership.roleIds && selectedMembership.roleIds.length > 0) {
+        roles.push(...selectedMembership.roleIds);
+      } else if (selectedMembership.roleId) {
+        roles.push(selectedMembership.roleId);
+      }
+
+      const roleNames = roles.map(r => r.name);
+
+      if (targetRole) {
+        if (!roleNames.includes(targetRole)) {
+          throw new HttpError(400, `User does not have role '${targetRole}' in this organization.`);
+        }
+        roleName = targetRole;
+      } else {
+        roleName = roleNames.length > 0 ? roleNames[0] : null;
+      }
+
+      if (roleName) {
+        const activeRoleObj = roles.find(r => r.name === roleName);
+        if (activeRoleObj) {
+          const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+          permissions = permissionsList.map((permission) => permission.name);
+        }
+      }
+    }
+
+    const availableWorkspaces = activeMemberships.map((m) => {
+      const roles = [];
+      if (m.roleIds && m.roleIds.length > 0) {
+        roles.push(...m.roleIds);
+      } else if (m.roleId) {
+        roles.push(m.roleId);
+      }
+      return {
+        orgId: m.orgId._id.toString(),
+        name: m.orgId.name,
+        isPlatform: m.orgId.isPlatform || false,
+        roleName: roles.map(r => r.name).join(', ') || null,
+      };
+    });
+
     return {
-      id: user._id,
-      email: user.email,
-      username: user.username,
-      roleId: user.roleId,
+      tokenPayload: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: roleName,
+        roles: selectedMembership ? (selectedMembership.roleIds && selectedMembership.roleIds.length > 0 ? selectedMembership.roleIds.map(r => r.name) : (selectedMembership.roleId ? [selectedMembership.roleId.name] : [])) : [],
+        permissions,
+        orgId,
+        isPlatform,
+      },
+      availableWorkspaces,
     };
   }
 
@@ -46,35 +178,54 @@ export class AuthService {
       throw new HttpError(401, 'Invalid credentials. Incorrect password.');
     }
 
-    // 3. Resolve role details via role service
-    const role = await roleService.getRoleById(user.roleId);
+    // 3. Resolve context and available workspaces
+    const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
 
-    // 4. Retrieve and flatten permissions mapped to this role
-    const permissionsList = await rolePermissionService.getPermissionsByRoleId(user.roleId);
-    
-    // Flatten permissions list into a string array (e.g. ['users:read', 'samples:create'])
-    const permissions = permissionsList.map((permission) => permission.name);
-
-    // 5. Generate environment-secure JWT token with embedded role and permission list
-    const tokenPayload = {
-      id: user._id,
-      email: user.email,
-      username: user.username,
-      role: role.name,
-      permissions,
-    };
-
+    // 4. Generate JWT token
     const token = signToken(tokenPayload);
 
-    // 6. Return response payload including token and parsed user info
+    // 5. Return response payload matching new structure
     return {
       token,
       user: {
         id: user._id,
         email: user.email,
         username: user.username,
-        role: role.name,
-        permissions,
+        role: tokenPayload.role,
+        permissions: tokenPayload.permissions,
+        orgId: tokenPayload.orgId,
+        isPlatform: tokenPayload.isPlatform,
+      },
+      availableWorkspaces,
+    };
+  }
+
+  /**
+   * Switches the active workspace context for the user and returns a newly scoped token.
+   * @param {string} userId - User ID
+   * @param {string} targetOrgId - Target organization ID
+   */
+  async switchContext(userId, targetOrgId, targetRole = null) {
+    // Fetch user details for the token payload
+    const user = await userService.getUserById(userId);
+
+    // Resolve context for the target organization
+    const { tokenPayload } = await this.getScopedTokenPayload(user, targetOrgId, targetRole);
+
+    // Generate fresh JWT token
+    const token = signToken(tokenPayload);
+
+    return {
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: tokenPayload.role,
+        roles: tokenPayload.roles,
+        permissions: tokenPayload.permissions,
+        orgId: tokenPayload.orgId,
+        isPlatform: tokenPayload.isPlatform,
       },
     };
   }
@@ -86,7 +237,6 @@ export class AuthService {
     return await roleService.getAllRoles();
   }
 
-  /**
   /**
    * Finds the invitation token, updates the user password/status, and cleans up the token.
    * @param {string} rawToken - Unhashed token from client
@@ -119,6 +269,20 @@ export class AuthService {
     } finally {
       await session.endSession();
     }
+  }
+
+  async getUserById(id, session) {
+    return await userService.getUserById(id, session);
+  }
+
+  /**
+   * Generates a token for a user, dynamically selecting the primary context.
+   * @param {object} user - User document
+   * @param {string} [targetOrgId=null] - Optional target organization ID to scope the token to
+   */
+  async generateToken(user, targetOrgId = null) {
+    const { tokenPayload } = await this.getScopedTokenPayload(user, targetOrgId);
+    return signToken(tokenPayload);
   }
 }
 

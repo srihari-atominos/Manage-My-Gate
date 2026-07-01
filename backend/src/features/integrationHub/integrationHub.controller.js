@@ -10,9 +10,10 @@ export class IntegrationHubController {
   async connectIntegration(req, res, next) {
     try {
       const userId = req.user.id;
+      const orgId = req.tenant.orgId;
       const { provider, accountLabel, credentials } = req.body;
 
-      const data = await integrationHubService.connect(userId, provider, accountLabel, credentials);
+      const data = await integrationHubService.connect(userId, orgId, provider, accountLabel, credentials);
       res.success(data, 'Integration connected successfully', 200);
     } catch (error) {
       next(error);
@@ -24,12 +25,12 @@ export class IntegrationHubController {
    */
   async getIntegrations(req, res, next) {
     try {
-      const userId = req.user.id;
+      const orgId = req.tenant.orgId;
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
       const { provider } = req.query;
 
-      const data = await integrationHubService.getList(userId, provider, page, limit);
+      const data = await integrationHubService.getList(orgId, provider, page, limit);
       res.success(data, 'Integrations retrieved successfully', 200);
     } catch (error) {
       next(error);
@@ -41,10 +42,10 @@ export class IntegrationHubController {
    */
   async disconnectIntegration(req, res, next) {
     try {
-      const userId = req.user.id;
+      const orgId = req.tenant.orgId;
       const { id } = req.params;
 
-      const data = await integrationHubService.deleteConnection(id, userId);
+      const data = await integrationHubService.deleteConnection(id, orgId);
       res.success(data, 'Integration disconnected successfully', 200);
     } catch (error) {
       next(error);
@@ -56,11 +57,11 @@ export class IntegrationHubController {
    */
   async updateConnection(req, res, next) {
     try {
-      const userId = req.user.id;
+      const orgId = req.tenant.orgId;
       const { id } = req.params;
       const { accountLabel } = req.body;
 
-      const data = await integrationHubService.updateConnectionLabel(id, userId, accountLabel);
+      const data = await integrationHubService.updateConnectionLabel(id, orgId, accountLabel);
       res.success(data, 'Integration connection label updated successfully', 200);
     } catch (error) {
       next(error);
@@ -93,6 +94,16 @@ export class IntegrationHubController {
           name: 'Resend',
           fields: [
             { name: 'apiKey', label: 'API Key', type: 'password' },
+          ],
+        },
+        {
+          id: 'smtp',
+          name: 'SMTP Email Server',
+          fields: [
+            { name: 'host', label: 'SMTP Host', type: 'text' },
+            { name: 'port', label: 'Port (e.g., 587, 465)', type: 'text' },
+            { name: 'authUsername', label: 'Username / Email', type: 'text' },
+            { name: 'authPassword', label: 'Password', type: 'password' },
           ],
         },
       ];

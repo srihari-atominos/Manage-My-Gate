@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import authController from './auth.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
-import { loginRules, registerRules, acceptInviteRules } from './auth.validateRules.js';
+import { loginRules, registerRules, acceptInviteRules, switchContextRules } from './auth.validateRules.js';
+import { isAuthenticated } from '../../middlewares/auth.middleware.js';
 
 const router = Router();
 
@@ -121,5 +122,35 @@ router.post('/accept-invite', validate(acceptInviteRules), authController.accept
  *         description: List of roles available.
  */
 router.get('/roles', authController.getRoles);
+
+/**
+ * @swagger
+ * /auth/switch-context:
+ *   post:
+ *     summary: Switch active workspace context
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - targetOrgId
+ *             properties:
+ *               targetOrgId:
+ *                 type: string
+ *                 description: Valid Mongo ID of the target organization
+ *                 example: 60d21b4667d0d8992e610c85
+ *     responses:
+ *       200:
+ *         description: Context switched successfully.
+ *       400:
+ *         description: Validation error.
+ *       403:
+ *         description: Access denied.
+ */
+router.post('/switch-context', isAuthenticated, validate(switchContextRules), authController.switchContext);
 
 export default router;

@@ -8,7 +8,8 @@ export class IntegrationHubRepository {
   /**
    * Upsert an integration connection.
    * Creates the connection if not existing, otherwise updates credentials and status.
-   * @param {string} userId - ID of the owning user
+   * @param {string} userId - ID of the user configuring the connection
+   * @param {string} orgId - ID of the owning organization
    * @param {string} provider - Provider key (openai, twilio, resend)
    * @param {string} accountLabel - Distinct label for the account
    * @param {Array<object>} credentials - Array of encrypted credential subdocuments
@@ -16,10 +17,10 @@ export class IntegrationHubRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional transaction session
    * @returns {Promise<object>} The updated or created document
    */
-  async upsertConnection(userId, provider, accountLabel, credentials, status, session) {
+  async upsertConnection(userId, orgId, provider, accountLabel, credentials, status, session) {
     return await IntegrationHub.findOneAndUpdate(
-      { userId, provider, accountLabel },
-      { credentials, status },
+      { orgId, provider, accountLabel },
+      { userId, credentials, status },
       {
         new: true,
         upsert: true,
@@ -31,15 +32,15 @@ export class IntegrationHubRepository {
 
   /**
    * Paginated fetch for integration connections with secret exclusion.
-   * @param {string} userId - ID of the user owning connections
+   * @param {string} orgId - ID of the organization owning connections
    * @param {string} [provider] - Optional provider key
    * @param {number} skip - Number of documents to skip
    * @param {number} limit - Max documents to return
    * @param {import('mongoose').ClientSession} [session] - Optional transaction session
    * @returns {Promise<{ data: Array, totalRecords: number }>}
    */
-  async getConnectionsPaginated(userId, provider, skip, limit, session) {
-    const match = { userId: typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId };
+  async getConnectionsPaginated(orgId, provider, skip, limit, session) {
+    const match = { orgId: typeof orgId === 'string' ? new mongoose.Types.ObjectId(orgId) : orgId };
     if (provider) {
       match.provider = provider.toLowerCase();
     }
@@ -84,14 +85,14 @@ export class IntegrationHubRepository {
   /**
    * Update the connection's account label.
    * @param {string} connectionId - ID of the connection
-   * @param {string} userId - Owner user ID
+   * @param {string} orgId - Owner Organization ID
    * @param {string} newLabel - The new account label
    * @param {import('mongoose').ClientSession} [session] - Optional session
    * @returns {Promise<object|null>} The updated document
    */
-  async updateConnectionLabel(connectionId, userId, newLabel, session) {
+  async updateConnectionLabel(connectionId, orgId, newLabel, session) {
     return await IntegrationHub.findOneAndUpdate(
-      { _id: connectionId, userId },
+      { _id: connectionId, orgId },
       { accountLabel: newLabel },
       {
         new: true,
@@ -102,15 +103,15 @@ export class IntegrationHubRepository {
   }
 
   /**
-   * Delete a connection by its ID and user ID.
+   * Delete a connection by its ID and Organization ID.
    * @param {string} connectionId - ID of the connection
-   * @param {string} userId - Owner user ID
+   * @param {string} orgId - Owner Organization ID
    * @param {import('mongoose').ClientSession} [session] - Optional session
    * @returns {Promise<object|null>} The deleted document
    */
-  async deleteConnectionById(connectionId, userId, session) {
+  async deleteConnectionById(connectionId, orgId, session) {
     return await IntegrationHub.findOneAndDelete(
-      { _id: connectionId, userId },
+      { _id: connectionId, orgId },
       { session: session || null }
     );
   }

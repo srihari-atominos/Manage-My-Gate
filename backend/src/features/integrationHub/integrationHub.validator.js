@@ -10,8 +10,8 @@ export const connectRules = [
     .notEmpty()
     .withMessage('Provider is required')
     .toLowerCase()
-    .isIn(['openai', 'twilio', 'resend'])
-    .withMessage('Invalid provider. Allowed values: openai, twilio, resend'),
+    .isIn(['openai', 'twilio', 'resend', 'smtp'])
+    .withMessage('Invalid provider. Allowed values: openai, twilio, resend, smtp'),
 
   body('accountLabel')
     .trim()
@@ -51,6 +51,42 @@ export const connectRules = [
     .withMessage('Auth Token (authToken) is required for Twilio integration')
     .isString()
     .withMessage('Auth Token must be a valid string'),
+
+  // SMTP validation rules
+  body('credentials.host')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'smtp')
+    .trim()
+    .notEmpty()
+    .withMessage('SMTP Host (host) is required')
+    .isString()
+    .withMessage('SMTP Host must be a valid string'),
+
+  body('credentials.port')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'smtp')
+    .trim()
+    .notEmpty()
+    .withMessage('SMTP Port (port) is required')
+    .custom((val) => {
+      const p = parseInt(val, 10);
+      return !isNaN(p) && p > 0 && p < 65536;
+    })
+    .withMessage('SMTP Port must be a valid port number between 1 and 65535'),
+
+  body('credentials.authUsername')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'smtp')
+    .trim()
+    .notEmpty()
+    .withMessage('SMTP Username (authUsername) is required')
+    .isString()
+    .withMessage('SMTP Username must be a valid string'),
+
+  body('credentials.authPassword')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'smtp')
+    .trim()
+    .notEmpty()
+    .withMessage('SMTP Password (authPassword) is required')
+    .isString()
+    .withMessage('SMTP Password must be a valid string'),
 ];
 
 /**
@@ -95,7 +131,7 @@ export const listRules = [
     .optional()
     .trim()
     .toLowerCase()
-    .isIn(['openai', 'twilio', 'resend'])
+    .isIn(['openai', 'twilio', 'resend', 'smtp'])
     .withMessage('Invalid provider filter'),
 ];
 

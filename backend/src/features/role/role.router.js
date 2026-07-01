@@ -4,6 +4,7 @@ import { validate } from '../../middlewares/validator.middleware.js';
 import { createRoleRules, updateRolePermissionsRules, updateRoleRules } from './role.validateRules.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import { authorizePermission } from '../../middlewares/rbac.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
 
@@ -21,6 +22,7 @@ router.use(isAuthenticated);
  */
 router.get(
   '/', 
+  tenantContext,
   authorizePermission('roles', 'read'), 
   roleController.getAllRoles
 );
@@ -56,6 +58,7 @@ router.get(
  */
 router.post(
   '/', 
+  tenantContext,
   authorizePermission('roles', 'create'), 
   validate(createRoleRules), 
   roleController.createRole
@@ -94,6 +97,7 @@ router.get(
  */
 router.get(
   '/:id/permissions', 
+  tenantContext,
   authorizePermission('roles', 'read'), 
   roleController.getRolePermissions
 );
@@ -127,6 +131,7 @@ router.get(
  */
 router.put(
   '/:id/permissions', 
+  tenantContext,
   authorizePermission('roles', 'update'), 
   validate(updateRolePermissionsRules), 
   roleController.updateRolePermissions
@@ -165,6 +170,7 @@ router.put(
  */
 router.put(
   '/:id',
+  tenantContext,
   authorizePermission('roles', 'update'),
   validate(updateRoleRules),
   roleController.updateRole
@@ -188,6 +194,7 @@ router.put(
  */
 router.delete(
   '/:id',
+  tenantContext,
   authorizePermission('roles', 'delete'),
   roleController.deleteRole
 );

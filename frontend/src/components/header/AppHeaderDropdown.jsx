@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useDispatch } from 'react-redux'
 import {
   CDropdown,
   CDropdownDivider,
@@ -8,17 +9,36 @@ import {
   CDropdownToggle,
 } from '@coreui/react'
 import useAuth from '../../features/auth/hooks/useAuth'
+import { switchWorkspaceContext } from '../../features/auth/store/authSlice'
 import UserProfileModal from '../../features/auth/components/UserProfileModal'
+import useWorkspace from '../../features/workspace/hooks/useWorkspace.js'
+import { useTranslation } from 'react-i18next'
 
 const AppHeaderDropdown = () => {
+  const { t } = useTranslation()
   const { currentUser, logout } = useAuth()
+  const dispatch = useDispatch()
+  const { organizationName, activeOrganizationId, switchWorkspace, isPlatform } = useWorkspace()
   const [profileModalVisible, setProfileModalVisible] = useState(false)
 
   // Derive avatar letter: first char of username, fallback to 'A'
   const avatarLetter = currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'A'
 
   // Derive roles list from currentUser
-  const roles = currentUser?.roles || (currentUser?.role ? [currentUser.role] : [])
+  const roles = currentUser?.roles && currentUser.roles.length > 0
+    ? currentUser.roles
+    : (currentUser?.role ? currentUser.role.split(',').map(r => r.trim()).filter(Boolean) : [])
+  const activeRole = currentUser?.role || ''
+
+  const handleSwitchRole = async (roleName) => {
+    if (roleName === activeRole) return
+    try {
+      await dispatch(switchWorkspaceContext({ targetOrgId: activeOrganizationId, targetRole: roleName })).unwrap()
+      window.location.reload()
+    } catch (err) {
+      console.error('Failed to switch role context:', err)
+    }
+  }
 
   // Derive dynamic backend static base URL
   const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
@@ -55,14 +75,14 @@ const AppHeaderDropdown = () => {
           className="py-1 px-3 w-100 text-start"
           onClick={() => setProfileModalVisible(true)}
         >
-          Profile
+          {t('header.dropdown.profile', { defaultValue: 'Profile' })}
         </CDropdownItem>
 
         <CDropdownDivider />
 
         {/* Role Switcher Section */}
         <CDropdownHeader className="fw-semibold text-uppercase py-1 px-3 header-dropdown-role-header">
-          Switch Role
+          {t('header.dropdown.switchRole', { defaultValue: 'Switch Role' })}
         </CDropdownHeader>
 
         {roles.length === 0 ? (
@@ -70,14 +90,15 @@ const AppHeaderDropdown = () => {
             No roles assigned
           </CDropdownItem>
         ) : (
-          roles.map((roleName, index) => {
-            const isActive = index === 0 // Default the first role in the array to active/checked
+          roles.map((roleName) => {
+            const isActive = roleName === activeRole
             return (
               <CDropdownItem
                 key={roleName}
-                href="#"
+                component="button"
                 id={`dropdown-role-${roleName.toLowerCase().replace(/\s+/g, '-')}`}
                 className={`d-flex align-items-center justify-content-between py-1 px-3 ${isActive ? 'fw-semibold' : ''}`}
+                onClick={() => handleSwitchRole(roleName)}
               >
                 {roleName}
                 {isActive && (
@@ -103,6 +124,44 @@ const AppHeaderDropdown = () => {
 
         <CDropdownDivider />
 
+        {/* Organization Switcher Section */}
+        <CDropdownHeader className="fw-semibold text-uppercase py-1 px-3 header-dropdown-org-header">
+          {t('header.dropdown.switchOrg', { defaultValue: 'Switch Organization' })}
+        </CDropdownHeader>
+
+        {organizationName || activeOrganizationId ? (
+          <CDropdownItem
+            href="#"
+            id={`dropdown-org-${activeOrganizationId}`}
+            className="d-flex align-items-center justify-content-between py-1 px-3 fw-semibold"
+            onClick={() => switchWorkspace({ activeOrganizationId, organizationName })}
+          >
+            {organizationName || activeOrganizationId}
+            <svg
+              viewBox="0 0 24 24"
+              width="13"
+              height="13"
+              stroke="var(--cui-primary, #321fdb)"
+              strokeWidth="2.5"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-label="Active workspace"
+              className="flex-shrink-0"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </CDropdownItem>
+        ) : (
+          <CDropdownItem disabled className="text-body-secondary small py-1 px-3">
+            {isPlatform
+              ? t('header.dropdown.globalPlatform', { defaultValue: 'Global Platform' })
+              : t('header.dropdown.noActiveWorkspace', { defaultValue: 'No active workspace' })}
+          </CDropdownItem>
+        )}
+
+        <CDropdownDivider />
+
         {/* Logout */}
         <CDropdownItem
           component="button"
@@ -110,7 +169,7 @@ const AppHeaderDropdown = () => {
           id="dropdown-logout"
           className="text-danger py-1 px-3 w-100 text-start"
         >
-          Logout
+          {t('header.dropdown.logout', { defaultValue: 'Logout' })}
         </CDropdownItem>
       </CDropdownMenu>
 

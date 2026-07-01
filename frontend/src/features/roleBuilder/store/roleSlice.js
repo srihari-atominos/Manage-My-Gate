@@ -5,8 +5,9 @@ import apiClient from '../../../services/apiClient'
 // Async Thunks
 export const fetchRolesAsync = createAsyncThunk(
   'roleBuilder/fetchRoles',
-  async ({ page, limit }, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
+      const { page, limit } = params
       const response = await roleApi.fetchRoles({ page, limit })
       return response
     } catch (error) {

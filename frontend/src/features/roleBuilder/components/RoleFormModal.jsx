@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import { useForm, Controller } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
@@ -19,12 +19,14 @@ import {
   CSpinner,
 } from '@coreui/react'
 import useRoles from '../hooks/useRoles'
+import RoleIntegrationConfigurator from './RoleIntegrationConfigurator'
 import '../styles/_roleBuilder.scss'
 
 const schema = yup.object().shape({
   name: yup.string().trim().required('Role name is required'),
   description: yup.string().trim().optional(),
   permissions: yup.array().of(yup.string().required()).required('Permissions array is required'),
+  integrationMappings: yup.object().optional().default({}),
 })
 
 /**
@@ -53,6 +55,7 @@ const formatPermissionLabel = (permissionString) => {
  */
 const RoleFormModal = ({ visible, role, onClose, onSave }) => {
   const { permissionsList, isPermissionsLoading, loadPermissions } = useRoles()
+  const [isConfiguratorOpen, setIsConfiguratorOpen] = useState(false)
 
   const {
     register,
@@ -68,10 +71,13 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
       name: '',
       description: '',
       permissions: [],
+      integrationMappings: {},
     },
   })
 
   const selectedPermissions = watch('permissions') || []
+  const integrationMappings = watch('integrationMappings') || {}
+  const activeMappingsCount = Object.keys(integrationMappings).length
 
   // Populates form if editing or clears it on open/close transitions
   useEffect(() => {
@@ -80,13 +86,16 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
         name: role.name || '',
         description: role.description || '',
         permissions: role.permissions || [],
+        integrationMappings: role.integrationMappings || {},
       })
     } else if (!visible) {
       reset({
         name: '',
         description: '',
         permissions: [],
+        integrationMappings: {},
       })
+      setIsConfiguratorOpen(false)
     }
   }, [role, visible, reset])
 
@@ -171,6 +180,39 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
                 {errors.description.message}
               </div>
             )}
+          </div>
+
+          {/* Role Integration Configuration Segment */}
+          <div className="mb-3">
+            <CFormLabel style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+              Role Integrations
+            </CFormLabel>
+            <div className="d-flex align-items-center gap-3 p-2 border rounded bg-light-subtle">
+              <CButton
+                type="button"
+                color="info"
+                variant="outline"
+                size="sm"
+                className="fw-semibold"
+                onClick={() => setIsConfiguratorOpen(!isConfiguratorOpen)}
+              >
+                {isConfiguratorOpen ? 'Hide Configurator' : '🔗 Configure Integrations'}
+              </CButton>
+              <span className="small text-body-secondary">
+                {activeMappingsCount > 0
+                  ? `Mapped: ${activeMappingsCount} active provider${activeMappingsCount > 1 ? 's' : ''}`
+                  : 'No mapped integrations.'}
+              </span>
+            </div>
+
+            <RoleIntegrationConfigurator
+              isOpen={isConfiguratorOpen}
+              onClose={() => setIsConfiguratorOpen(false)}
+              mappings={integrationMappings}
+              onApply={(newMappings) => {
+                setValue('integrationMappings', newMappings, { shouldDirty: true, shouldValidate: true })
+              }}
+            />
           </div>
 
           <div className="mb-2" style={{ fontSize: '0.85rem', fontWeight: 600 }}>

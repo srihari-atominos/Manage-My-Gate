@@ -10,7 +10,8 @@
 
 import React, { useState, useMemo } from 'react'
 import { useSelector } from 'react-redux'
-import { CBadge, CAlert } from '@coreui/react'
+import { CBadge, CAlert, CButton } from '@coreui/react'
+import { toast } from 'react-hot-toast'
 
 // Import generic layout components
 import PageHeader from '../../components/common/PageHeader'
@@ -22,6 +23,7 @@ import UserToolbar from './components/UserToolbar'
 import InviteUserModal from './components/InviteUserModal'
 import InviteUserButton from './components/InviteUserButton'
 import ManageRolesModal from './components/ManageRolesModal'
+import TemplateEditorCanvasModal from '../messageTemplate/components/TemplateEditorCanvasModal'
 import { useUserList } from './hooks/useUserList'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -58,11 +60,40 @@ const UserList = () => {
 
   // ── Local UI State ──
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
 
   // ── Handlers ──
 
-  const handleSendInvite = (emailAddress) => {
-    inviteUser(emailAddress)
+  const handleSendInvite = async (emailAddress) => {
+    try {
+      const response = await inviteUser(emailAddress)
+      const token = response.invitationToken
+      if (token) {
+        const clientUrl = window.location.origin + window.location.pathname
+        const inviteLink = `${clientUrl}#/accept-invite/${token}`
+        toast((t) => (
+          <div className="d-flex align-items-center gap-2">
+            <span style={{ fontSize: '0.8rem' }}>
+              User invited! Link: <a href={inviteLink} target="_blank" rel="noreferrer" className="text-decoration-underline fw-bold">{inviteLink.substring(0, 30)}...</a>
+            </span>
+            <CButton
+              size="sm"
+              color="primary"
+              onClick={() => {
+                navigator.clipboard.writeText(inviteLink)
+                toast.success('Copied link!')
+              }}
+            >
+              Copy
+            </CButton>
+          </div>
+        ), { duration: 8000 })
+      } else {
+        toast.success('User invited successfully!')
+      }
+    } catch (err) {
+      toast.error(err || 'Failed to invite user')
+    }
     setShowInviteModal(false)
   }
 
@@ -202,7 +233,21 @@ const UserList = () => {
       <PageHeader
         title="User Management"
         subtitle="Manage organization users and allocate access roles."
-        actionButtons={<InviteUserButton onClick={() => setShowInviteModal(true)} />}
+        actionButtons={
+          <div className="d-flex gap-2">
+            <CButton
+              id="configure-invitation-tmpl-btn"
+              color="secondary"
+              variant="outline"
+              size="sm"
+              className="fw-semibold d-flex align-items-center gap-1"
+              onClick={() => setShowTemplateModal(true)}
+            >
+              ✉️ Configure Invitation Mail
+            </CButton>
+            <InviteUserButton onClick={() => setShowInviteModal(true)} />
+          </div>
+        }
       />
 
       {error && (
@@ -230,6 +275,12 @@ const UserList = () => {
         visible={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         onSendInvite={handleSendInvite}
+      />
+
+      {/* Template Editor Canvas Modal */}
+      <TemplateEditorCanvasModal
+        visible={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
       />
 
       {/* Manage Roles Modal */}

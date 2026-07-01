@@ -1,14 +1,29 @@
 [
   {
     "feature": "users",
-    "actions": ["create", "read", "update", "delete"]
+    "actions": [
+      "create",
+      "read",
+      "update",
+      "delete"
+    ]
   },
   {
     "feature": "roles",
-    "actions": ["create", "read", "update", "delete"]
+    "actions": [
+      "create",
+      "read",
+      "update",
+      "delete"
+    ]
   },
   {
-    "feature": "samples",
-    "actions": ["create", "read", "update", "delete"]
+    "feature": "integrations",
+    "actions": [
+      "create",
+      "read",
+      "update",
+      "delete"
+    ]
   }
 ]

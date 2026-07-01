@@ -1,12 +1,30 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import apiClient from '../../../utils/apiClient.js'
+import apiClient from '../../../services/apiClient.js'
+import authService from '../services/authService.js'
+import { setActiveWorkspace } from '../../workspace/store/workspaceSlice.js'
 
-// Async Thunks as consumed by LoginForm and RegisterForm
+// Async Thunks
 export const loginUser = createAsyncThunk(
   'auth/loginUser',
-  async (credentials, { rejectWithValue }) => {
+  async (credentials, { dispatch, rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/auth/login', credentials)
+      const response = await authService.login(credentials)
+      
+      const user = response.data?.user
+      const availableWorkspaces = response.data?.availableWorkspaces || []
+      
+      if (user) {
+        dispatch(
+          setActiveWorkspace({
+            activeOrganizationId: user.orgId,
+            activeRole: user.role,
+            allowedFeatures: user.permissions || [],
+            isPlatform: user.isPlatform || false,
+            availableWorkspaces: availableWorkspaces,
+          })
+        )
+      }
+      
       return response
     } catch (error) {
       return rejectWithValue(error.message || 'Login failed')
@@ -16,9 +34,25 @@ export const loginUser = createAsyncThunk(
 
 export const registerUser = createAsyncThunk(
   'auth/registerUser',
-  async (userData, { rejectWithValue }) => {
+  async (userData, { dispatch, rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/auth/register', userData)
+      const response = await authService.register(userData)
+      
+      const user = response.data?.user
+      const availableWorkspaces = response.data?.availableWorkspaces || []
+      
+      if (user) {
+        dispatch(
+          setActiveWorkspace({
+            activeOrganizationId: user.orgId,
+            activeRole: user.role,
+            allowedFeatures: user.permissions || [],
+            isPlatform: user.isPlatform || false,
+            availableWorkspaces: availableWorkspaces,
+          })
+        )
+      }
+      
       return response
     } catch (error) {
       return rejectWithValue(error.message || 'Registration failed')
@@ -42,15 +76,75 @@ export const updateProfile = createAsyncThunk(
   }
 )
 
-// Initial authentication setup from localStorage persistent cache
 export const acceptInvitation = createAsyncThunk(
   'auth/acceptInvitation',
   async ({ token, password }, { rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/auth/accept-invite', { token, password })
+      const response = await authService.acceptInvite({ token, password })
       return response
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to accept invitation')
+    }
+  }
+)
+
+export const switchWorkspaceContext = createAsyncThunk(
+  'auth/switchWorkspaceContext',
+  async (arg, { dispatch, rejectWithValue }) => {
+    try {
+      const payload = typeof arg === 'string' ? { targetOrgId: arg } : arg
+      const response = await apiClient.post('/auth/switch-context', payload)
+      
+      const token = response.data?.token
+      const user = response.data?.user
+      
+      dispatch(updateTokenAndUser({ token, user }))
+      
+      if (user) {
+        dispatch(
+          setActiveWorkspace({
+            activeOrganizationId: user.orgId,
+            activeRole: user.role,
+            allowedFeatures: user.permissions || [],
+            isPlatform: user.isPlatform || false,
+          })
+        )
+      }
+      
+      return response
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to switch workspace context')
+    }
+  }
+)
+
+export const createWorkspace = createAsyncThunk(
+  'auth/createWorkspace',
+  async ({ name }, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await authService.createWorkspace({ name })
+      
+      const token = response.data?.token
+      const user = response.data?.user
+      const availableWorkspaces = response.data?.availableWorkspaces || []
+      
+      dispatch(updateTokenAndUser({ token, user }))
+      
+      if (user) {
+        dispatch(
+          setActiveWorkspace({
+            activeOrganizationId: user.orgId,
+            activeRole: user.role,
+            allowedFeatures: user.permissions || [],
+            isPlatform: user.isPlatform || false,
+            availableWorkspaces: availableWorkspaces,
+          })
+        )
+      }
+      
+      return response
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to create workspace')
     }
   }
 )
@@ -74,6 +168,7 @@ const authSlice = createSlice({
     logout: (state) => {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      localStorage.removeItem('availableWorkspaces')
       state.isAuthenticated = false
       state.user = null
       state.token = null
@@ -84,6 +179,17 @@ const authSlice = createSlice({
       state.error = null
       state.successMsg = null
       state.loading = false
+    },
+    updateTokenAndUser: (state, action) => {
+      const { token, user } = action.payload || {};
+      if (token) {
+        state.token = token;
+        localStorage.setItem('token', token);
+      }
+      if (user) {
+        state.user = user;
+        localStorage.setItem('user', JSON.stringify(user));
+      }
     },
   },
   extraReducers: (builder) => {
@@ -107,6 +213,9 @@ const authSlice = createSlice({
         if (action.payload.data?.user) {
           localStorage.setItem('user', JSON.stringify(action.payload.data.user))
         }
+        if (action.payload.data?.availableWorkspaces) {
+          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+        }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false
@@ -120,7 +229,20 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false
+        state.isAuthenticated = true
+        state.token = action.payload.data?.token
+        state.user = action.payload.data?.user
         state.successMsg = action.payload.message || 'Registration successful!'
+        
+        if (action.payload.data?.token) {
+          localStorage.setItem('token', action.payload.data.token)
+        }
+        if (action.payload.data?.user) {
+          localStorage.setItem('user', JSON.stringify(action.payload.data.user))
+        }
+        if (action.payload.data?.availableWorkspaces) {
+          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+        }
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false
@@ -162,8 +284,48 @@ const authSlice = createSlice({
         state.loading = false
         state.error = action.payload || 'Failed to accept invitation'
       })
+      // Switch Workspace Context
+      .addCase(switchWorkspaceContext.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(switchWorkspaceContext.fulfilled, (state, action) => {
+        state.loading = false
+        state.successMsg = action.payload.message || 'Switched workspace context successfully!'
+      })
+      .addCase(switchWorkspaceContext.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Workspace context switch failed'
+      })
+      // Create Workspace
+      .addCase(createWorkspace.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(createWorkspace.fulfilled, (state, action) => {
+        state.loading = false
+        state.token = action.payload.data?.token
+        state.user = action.payload.data?.user
+        state.successMsg = action.payload.message || 'Workspace created successfully!'
+        
+        if (action.payload.data?.token) {
+          localStorage.setItem('token', action.payload.data.token)
+        }
+        if (action.payload.data?.user) {
+          localStorage.setItem('user', JSON.stringify(action.payload.data.user))
+        }
+        if (action.payload.data?.availableWorkspaces) {
+          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+        }
+      })
+      .addCase(createWorkspace.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Workspace creation failed'
+      })
   },
 })
 
-export const { logout, clearStatus } = authSlice.actions
+export const { logout, clearStatus, updateTokenAndUser } = authSlice.actions
 export default authSlice.reducer

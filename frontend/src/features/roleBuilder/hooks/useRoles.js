@@ -58,18 +58,28 @@ export const useRoles = () => {
   }
 
   const handleSaveRole = async (data) => {
-    if (selectedRoleForEdit) {
-      // Edit mode
-      await dispatch(updateRoleAsync({ roleId: selectedRoleForEdit.id, roleData: data }))
-    } else {
-      // Create mode
-      await dispatch(createRoleAsync(data))
+    try {
+      if (selectedRoleForEdit) {
+        // Edit mode
+        await dispatch(updateRoleAsync({ roleId: selectedRoleForEdit.id, roleData: data })).unwrap()
+      } else {
+        // Create mode
+        await dispatch(createRoleAsync(data)).unwrap()
+      }
+      closeModal()
+      window.location.reload()
+    } catch (err) {
+      console.error('Failed to save role:', err)
     }
-    closeModal()
   }
 
-  const handleDeleteRole = (id) => {
-    dispatch(deleteRoleAsync(id))
+  const handleDeleteRole = async (id) => {
+    try {
+      await dispatch(deleteRoleAsync(id)).unwrap()
+      window.location.reload()
+    } catch (err) {
+      console.error('Failed to delete role:', err)
+    }
   }
 
   const handlePageChange = (newPage) => {

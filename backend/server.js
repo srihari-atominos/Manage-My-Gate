@@ -1,6 +1,8 @@
 import http from 'http';
 import app from './index.js';
 import config from './src/config/config.js';
+import './src/features/auditLog/auditLog.listeners.js';
+import './src/features/user/user.listeners.js';
 import connectToDb from './src/config/db/mongodbConnectToDb.config.js';
 import { initSocket } from './src/config/socket.js';
 import initializePassport from './src/features/auth/passport/passport.init.js';

@@ -41,6 +41,7 @@ import {
 
 import { AppHeaderDropdown } from './header/index'
 import NotificationBell from '../features/notification/components/NotificationBell.jsx'
+import WorkspaceSwitcher from './common/WorkspaceSwitcher.jsx'
 
 /**
  * AppHeader functional component
@@ -80,6 +81,9 @@ const AppHeader = () => {
           <CIcon icon={cilMenu} size="lg" />
         </CHeaderToggler>
         <CHeaderNav className="ms-auto align-items-center">
+          <div className="me-3">
+            <WorkspaceSwitcher />
+          </div>
           <div className="me-3">
             <NotificationBell />
           </div>

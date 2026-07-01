@@ -1,3 +1,4 @@
+
 import rolePermissionRepository from './rolePermission.repository.js';
 import HttpError from '../../utils/httpError.utils.js';
 
@@ -29,16 +30,16 @@ export class RolePermissionService {
     return deleted;
   }
 
-  async updateRolePermissions(roleId, permissionIds) {
+  async updateRolePermissions(roleId, permissionIds, session = null) {
     // Start transactional behavior (clear existing and map new ones)
-    await rolePermissionRepository.deleteByRoleId(roleId);
-    
+    await rolePermissionRepository.deleteByRoleId(roleId, session);
+
     if (permissionIds && permissionIds.length > 0) {
       const records = permissionIds.map((permissionId) => ({
         roleId,
         permissionId,
       }));
-      return await rolePermissionRepository.bulkCreate(records);
+      return await rolePermissionRepository.bulkCreate(records, session);
     }
     return [];
   }

@@ -10,12 +10,15 @@ export class UserController {
     try {
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
-      const { data: users, pagination } = await userService.getAllUsers(page, limit);
+      const orgId = req.tenant.orgId;
+
+      const { data: users, pagination } = await userService.getAllUsersInOrg(orgId, page, limit);
+
       const formatted = users.map((u) => ({
-        id: u._id,
+        id: u.id,
         name: u.username,
         email: u.email,
-        role: u.roleId?.name || '',
+        role: u.role || '',
         status: u.status || 'Pending',
       }));
       res.success({ data: formatted, pagination }, 'Users retrieved successfully');
@@ -29,8 +32,9 @@ export class UserController {
    */
   async inviteUser(req, res, next) {
     try {
-      const { email } = req.body
-      const { user, invitationToken } = await userService.inviteUser(email)
+      const { email } = req.body;
+      const orgId = req.tenant.orgId;
+      const { user, invitationToken } = await userService.inviteUser(email, orgId);
       const formatted = {
         id: user._id,
         name: user.username,
@@ -63,19 +67,12 @@ export class UserController {
    */
   async updateUserRoles(req, res, next) {
     try {
-      const { id } = req.params
-      const { roles } = req.body // Array of role names, e.g. ["Super Admin"]
-      
-      const Role = (await import('../role/role.model.js')).default
-      const firstRoleName = Array.isArray(roles) && roles.length > 0 ? roles[0] : 'Branch Manager'
-      
-      const role = await Role.findOne({ name: firstRoleName })
-      if (!role) {
-        throw new HttpError(400, `Role '${firstRoleName}' not found`)
-      }
+      const { id } = req.params;
+      const { roles } = req.body;
+      const orgId = req.tenant.orgId;
 
-      const updatedUser = await userService.updateUser(id, { roleId: role._id })
-      res.success({ id: updatedUser._id, role: role.name }, 'User roles updated successfully')
+      const result = await userService.updateUserRoles(id, orgId, roles);
+      res.success(result, 'User roles updated successfully')
     } catch (error) {
       next(error)
     }

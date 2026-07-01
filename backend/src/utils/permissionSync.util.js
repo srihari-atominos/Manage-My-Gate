@@ -60,20 +60,22 @@ export const syncPermissions = async () => {
     }
 
     let superAdminUser = await userService.getUserByEmail(adminEmail);
-    if (!superAdminUser) {
-      superAdminUser = await userService.getUserByUsername(adminUsername);
-    }
 
     if (!superAdminUser) {
       superAdminUser = await userService.createUser({
         email: adminEmail,
         username: adminUsername,
         password: adminPassword,
-        roleId: superAdminRole._id.toString(),
+        isPlatformAdmin: true,
       });
       logger.info(`Successfully bootstrapped default Super Admin user: email="${adminEmail}", username="${adminUsername}"`);
     } else {
-      logger.info('Super Admin user already bootstrapped.');
+      if (!superAdminUser.isPlatformAdmin) {
+        await userService.updateUser(superAdminUser._id.toString(), { isPlatformAdmin: true });
+        logger.info('Super Admin user role updated to platform administrator.');
+      } else {
+        logger.info('Super Admin user already bootstrapped.');
+      }
     }
 
     logger.info('Permission synchronization and Super Admin bootstrapping finished successfully.');

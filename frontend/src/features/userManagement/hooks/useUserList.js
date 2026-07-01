@@ -48,7 +48,7 @@ export const useUserList = () => {
   // Load roles on mount if not loaded
   useEffect(() => {
     if (!roles || roles.length === 0) {
-      dispatch(fetchRolesAsync())
+      dispatch(fetchRolesAsync({ page: 1, limit: 100 }))
     }
   }, [dispatch, roles])
 
@@ -68,7 +68,7 @@ export const useUserList = () => {
 
       const matchesRole =
         selectedRoles.length === 0 ||
-        selectedRoles.some((role) => u.role.includes(role))
+        selectedRoles.some((role) => (u.role || '').includes(role))
 
       const matchesStatus = statusFilter.includes(u.status)
 
@@ -93,7 +93,15 @@ export const useUserList = () => {
   }
 
   const removeUser = (id) => dispatch(deleteUserAsync(id))
-  const inviteUser = (email) => dispatch(inviteUserAsync(email))
+  
+  const inviteUser = async (email) => {
+    const resultAction = await dispatch(inviteUserAsync(email))
+    if (inviteUserAsync.fulfilled.match(resultAction)) {
+      return resultAction.payload
+    } else {
+      throw resultAction.payload || resultAction.error?.message || 'Failed to invite user'
+    }
+  }
 
   // Modal State & Handlers
   const [selectedUserForRoles, setSelectedUserForRoles] = useState(null)
@@ -106,9 +114,13 @@ export const useUserList = () => {
     setSelectedUserForRoles(null)
   }
 
-  const handleSaveRoles = (userId, newRoles) => {
-    dispatch(updateUserRolesAsync({ userId, newRoles }))
-    closeManageRolesModal()
+  const handleSaveRoles = async (userId, newRoles) => {
+    try {
+      await dispatch(updateUserRolesAsync({ userId, newRoles })).unwrap()
+      closeManageRolesModal()
+    } catch (err) {
+      console.error('Failed to update user roles:', err)
+    }
   }
 
   return {

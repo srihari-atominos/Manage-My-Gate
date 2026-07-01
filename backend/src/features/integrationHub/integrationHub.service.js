@@ -10,14 +10,15 @@ import HttpError from '../../utils/httpError.utils.js';
 export class IntegrationHubService {
   /**
    * Connect an integration by validating the connection and saving the credentials.
-   * @param {string} userId - User identifier
+   * @param {string} userId - User identifier (who configured the integration)
+   * @param {string} orgId - Organization identifier (which owns the integration)
    * @param {string} provider - Provider key (openai, twilio, resend)
    * @param {object} credentials - Key-value pair of raw credentials
    * @returns {Promise<object>} Sanitized integration record details
    */
-  async connect(userId, provider, accountLabel, credentials) {
-    if (!userId || !provider || !accountLabel || !credentials) {
-      throw new HttpError(400, 'User ID, provider, accountLabel, and credentials are required.');
+  async connect(userId, orgId, provider, accountLabel, credentials) {
+    if (!userId || !orgId || !provider || !accountLabel || !credentials) {
+      throw new HttpError(400, 'User ID, Organization ID, provider, accountLabel, and credentials are required.');
     }
 
     // 1. Verify connection against the provider API
@@ -46,6 +47,7 @@ export class IntegrationHubService {
     try {
       const connection = await integrationHubRepository.upsertConnection(
         userId,
+        orgId,
         provider.toLowerCase(),
         accountLabel,
         encryptedCredentials,
@@ -71,16 +73,16 @@ export class IntegrationHubService {
   }
 
   /**
-   * Get paginated connections for a user, omitting secrets.
-   * @param {string} userId - User identifier
+   * Get paginated connections for an organization, omitting secrets.
+   * @param {string} orgId - Organization identifier
    * @param {string} [provider] - Optional provider filter
    * @param {number} [page=1] - Current page number
    * @param {number} [limit=10] - Records per page
    * @returns {Promise<object>} Paginated data payload
    */
-  async getList(userId, provider, page = 1, limit = 10) {
-    if (!userId) {
-      throw new HttpError(400, 'User ID is required.');
+  async getList(orgId, provider, page = 1, limit = 10) {
+    if (!orgId) {
+      throw new HttpError(400, 'Organization ID is required.');
     }
 
     const session = await mongoose.startSession();
@@ -88,7 +90,7 @@ export class IntegrationHubService {
     try {
       const skip = (page - 1) * limit;
       const { data, totalRecords } = await integrationHubRepository.getConnectionsPaginated(
-        userId,
+        orgId,
         provider,
         skip,
         limit,
@@ -127,12 +129,12 @@ export class IntegrationHubService {
   /**
    * Delete an integration connection after checking it is not in use by any role.
    * @param {string} connectionId - ID of connection to delete
-   * @param {string} userId - User identifier of owner
+   * @param {string} orgId - Organization identifier of owner
    * @returns {Promise<object>} Deletion metadata
    */
-  async deleteConnection(connectionId, userId) {
-    if (!connectionId || !userId) {
-      throw new HttpError(400, 'Connection ID and User ID are required.');
+  async deleteConnection(connectionId, orgId) {
+    if (!connectionId || !orgId) {
+      throw new HttpError(400, 'Connection ID and Organization ID are required.');
     }
 
     // Dynamic import to prevent circular dependency
@@ -147,7 +149,7 @@ export class IntegrationHubService {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      const connection = await integrationHubRepository.deleteConnectionById(connectionId, userId, session);
+      const connection = await integrationHubRepository.deleteConnectionById(connectionId, orgId, session);
       if (!connection) {
         throw new HttpError(404, `No connection found for ID: ${connectionId}`);
       }
@@ -169,13 +171,13 @@ export class IntegrationHubService {
   /**
    * Update the account label of a connection.
    * @param {string} connectionId - ID of the connection
-   * @param {string} userId - Owner user ID
+   * @param {string} orgId - Owner Organization ID
    * @param {string} newLabel - The new account label
    * @returns {Promise<object>} Updated connection metadata
    */
-  async updateConnectionLabel(connectionId, userId, newLabel) {
-    if (!connectionId || !userId || !newLabel) {
-      throw new HttpError(400, 'Connection ID, User ID, and new label are required.');
+  async updateConnectionLabel(connectionId, orgId, newLabel) {
+    if (!connectionId || !orgId || !newLabel) {
+      throw new HttpError(400, 'Connection ID, Organization ID, and new label are required.');
     }
 
     const session = await mongoose.startSession();
@@ -183,7 +185,7 @@ export class IntegrationHubService {
     try {
       const connection = await integrationHubRepository.updateConnectionLabel(
         connectionId,
-        userId,
+        orgId,
         newLabel,
         session
       );

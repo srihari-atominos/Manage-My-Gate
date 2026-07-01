@@ -18,6 +18,7 @@ import React, { Suspense, useEffect } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { Toaster } from 'react-hot-toast'
+import AuthGuard from './features/auth/components/AuthGuard'
 
 import { CSpinner, useColorModes } from '@coreui/react'
 import './scss/style.scss'
@@ -34,6 +35,8 @@ const Register = React.lazy(() => import('./views/pages/register/Register'))
 const AcceptInvitePage = React.lazy(() => import('./views/pages/acceptInvite/AcceptInvitePage'))
 const Page404 = React.lazy(() => import('./views/pages/page404/Page404'))
 const Page500 = React.lazy(() => import('./views/pages/page500/Page500'))
+const GetStarted = React.lazy(() => import('./views/pages/getStarted/GetStarted'))
+const FeatureConfigWizard = React.lazy(() => import('./features/workspace/views/FeatureConfigWizard'))
 
 /**
  * Main Application Component
@@ -89,10 +92,22 @@ const App = () => {
           <Routes>
             <Route exact path="/login" name="Login Page" element={<Login />} />
             <Route exact path="/register" name="Register Page" element={<Register />} />
+            <Route exact path="/login-createOrg" name="Login Create Org Page" element={<Register />} />
+            <Route exact path="/start" name="Get Started Page" element={<GetStarted />} />
             <Route exact path="/accept-invite/:token" name="Accept Invitation Page" element={<AcceptInvitePage />} />
             <Route exact path="/accept-invite" name="Accept Invitation Page" element={<AcceptInvitePage />} />
             <Route exact path="/404" name="Page 404" element={<Page404 />} />
             <Route exact path="/500" name="Page 500" element={<Page500 />} />
+            <Route
+              exact
+              path="/workspace-setup"
+              name="Workspace Setup Page"
+              element={
+                <AuthGuard>
+                  <FeatureConfigWizard />
+                </AuthGuard>
+              }
+            />
             <Route path="*" name="Home" element={<DefaultLayout />} />
           </Routes>
         </Suspense>

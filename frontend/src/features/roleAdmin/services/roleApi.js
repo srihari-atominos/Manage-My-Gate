@@ -1,4 +1,4 @@
-import apiClient from '../../utils/apiClient.js';
+import apiClient from '../../../services/apiClient.js';
 
 export const roleApi = {
   fetchRoles: async () => {

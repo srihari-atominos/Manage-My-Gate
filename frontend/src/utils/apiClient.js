@@ -15,11 +15,24 @@ export const apiClient = axios.create({
 
 // Request interceptor to attach bearer token and correlation ID (X-Request-ID)
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // Attach authorization token if stored in localStorage
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Dynamically import store to prevent circular dependency crashes during application bootstrap
+    try {
+      const { store } = await import('../store/store.js')
+      const state = store.getState()
+      const isPlatform = state.workspace?.isPlatform === true
+
+      if (!isPlatform && state.workspace && state.workspace.activeOrganizationId) {
+        config.headers['x-organization-id'] = state.workspace.activeOrganizationId
+      }
+    } catch (err) {
+      console.error('Failed to inject x-organization-id in request interceptor:', err)
     }
 
     // Generate and inject request Correlation ID

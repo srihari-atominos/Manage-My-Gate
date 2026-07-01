@@ -14,12 +14,12 @@ export class RolePermissionRepository {
     return await RolePermission.findOneAndDelete({ roleId, permissionId });
   }
 
-  async deleteByRoleId(roleId) {
-    return await RolePermission.deleteMany({ roleId });
+  async deleteByRoleId(roleId, session = null) {
+    return await RolePermission.deleteMany({ roleId }, session ? { session } : undefined);
   }
 
-  async bulkCreate(rolePermissions) {
-    return await RolePermission.insertMany(rolePermissions);
+  async bulkCreate(rolePermissions, session = null) {
+    return await RolePermission.insertMany(rolePermissions, session ? { session } : undefined);
   }
 }
 

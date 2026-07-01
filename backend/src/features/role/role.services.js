@@ -3,12 +3,12 @@ import roleRepository from './role.repository.js';
 import HttpError from '../../utils/httpError.utils.js';
 
 export class RoleService {
-  async getAllRoles(page = 1, limit = 10) {
+  async getAllRoles(orgId, page = 1, limit = 10) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
       const skip = (page - 1) * limit;
-      const { data, totalRecords } = await roleRepository.findAllPaginated(skip, limit, session);
+      const { data, totalRecords } = await roleRepository.findAllPaginated(orgId, skip, limit, session);
       await session.commitTransaction();
       const totalPages = Math.ceil(totalRecords / limit);
       return {
@@ -36,29 +36,59 @@ export class RoleService {
     return role;
   }
 
-  async getRoleByName(name, session) {
-    return await roleRepository.findByName(name, session);
+  async getRoleByName(name, orgId = null, session = null) {
+    return await roleRepository.findByName(name, orgId, session);
   }
 
-  async createRole(roleData) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+  async createRole(roleData, session = null) {
+    let localSession = null;
+    if (!session) {
+      localSession = await mongoose.startSession();
+      localSession.startTransaction();
+    }
+    const currentSession = session || localSession;
+
     try {
-      if (roleData.name) {
-        roleData.name = roleData.name.trim();
+      const { name, description, permissions, integrationMappings, orgId } = roleData;
+      const trimmedName = name ? name.trim() : '';
+      if (!trimmedName) {
+        throw new HttpError(400, 'Role name is required.');
       }
-      const existingRole = await roleRepository.findByName(roleData.name, session);
+      const existingRole = await roleRepository.findByName(trimmedName, orgId, currentSession);
       if (existingRole) {
-        throw new HttpError(400, `Role with name '${roleData.name}' already exists.`);
+        throw new HttpError(400, `Role with name '${trimmedName}' already exists.`);
       }
-      const newRole = await roleRepository.create(roleData, session);
-      await session.commitTransaction();
-      return newRole;
+      const newRole = await roleRepository.create({ name: trimmedName, description, integrationMappings, orgId }, currentSession);
+      
+      let populatedPermissions = [];
+      if (permissions && permissions.length > 0) {
+        const permissionService = (await import('../permission/permission.services.js')).default;
+        const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+        
+        const allPermissions = await permissionService.getAllPermissions();
+        const matchedPermissions = allPermissions.filter(p => permissions.includes(p.name));
+        const permissionIds = matchedPermissions.map(p => p._id);
+        
+        await rolePermissionService.updateRolePermissions(newRole._id.toString(), permissionIds, currentSession);
+        populatedPermissions = matchedPermissions.map(p => p.name);
+      }
+      
+      if (localSession) {
+        await localSession.commitTransaction();
+      }
+      return {
+        ...newRole.toObject(),
+        permissions: populatedPermissions
+      };
     } catch (error) {
-      await session.abortTransaction();
+      if (localSession) {
+        await localSession.abortTransaction();
+      }
       throw error;
     } finally {
-      await session.endSession();
+      if (localSession) {
+        await localSession.endSession();
+      }
     }
   }
 
@@ -67,16 +97,39 @@ export class RoleService {
     session.startTransaction();
     try {
       await this.getRoleById(id, session);
-      if (updateData.name) {
-        updateData.name = updateData.name.trim();
-        const existing = await roleRepository.findByName(updateData.name, session);
+      const { name, description, permissions, integrationMappings, orgId } = updateData;
+      
+      const roleUpdates = { description, integrationMappings };
+      if (name) {
+        const trimmedName = name.trim();
+        const existing = await roleRepository.findByName(trimmedName, orgId, session);
         if (existing && existing._id.toString() !== id) {
-          throw new HttpError(400, `Role with name '${updateData.name}' already exists.`);
+          throw new HttpError(400, `Role with name '${trimmedName}' already exists.`);
         }
+        roleUpdates.name = trimmedName;
       }
-      const updatedRole = await roleRepository.update(id, updateData, session);
+      const updatedRole = await roleRepository.update(id, roleUpdates, session);
+      
+      let populatedPermissions = [];
+      const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+      if (permissions !== undefined) {
+        const permissionService = (await import('../permission/permission.services.js')).default;
+        const allPermissions = await permissionService.getAllPermissions();
+        const matchedPermissions = allPermissions.filter(p => permissions.includes(p.name));
+        const permissionIds = matchedPermissions.map(p => p._id);
+        
+        await rolePermissionService.updateRolePermissions(id, permissionIds, session);
+        populatedPermissions = matchedPermissions.map(p => p.name);
+      } else {
+        const permissionsList = await rolePermissionService.getPermissionsByRoleId(id);
+        populatedPermissions = permissionsList.map(p => p.name);
+      }
+      
       await session.commitTransaction();
-      return updatedRole;
+      return {
+        ...updatedRole.toObject(),
+        permissions: populatedPermissions
+      };
     } catch (error) {
       await session.abortTransaction();
       throw error;
@@ -91,6 +144,13 @@ export class RoleService {
     try {
       await this.getRoleById(id, session);
       const deletedRole = await roleRepository.delete(id, session);
+      
+      const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+      await rolePermissionService.updateRolePermissions(id, [], session);
+      
+      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+      await orgMembershipService.clearRoleFromMemberships(id, session);
+      
       await session.commitTransaction();
       return deletedRole;
     } catch (error) {
@@ -101,11 +161,6 @@ export class RoleService {
     }
   }
 
-  /**
-   * Check if an integration connection is mapped to any role.
-   * @param {string} connectionId - ID of the integration connection.
-   * @returns {Promise<boolean>}
-   */
   async isConnectionInUse(connectionId) {
     if (!connectionId) {
       throw new HttpError(400, 'Connection ID is required.');
@@ -122,6 +177,27 @@ export class RoleService {
     } finally {
       await session.endSession();
     }
+  }
+
+  async getAllPermissions() {
+    const permissionService = (await import('../permission/permission.services.js')).default;
+    return await permissionService.getAllPermissions();
+  }
+
+  async getRolePermissions(roleId) {
+    await this.getRoleById(roleId);
+    const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+    return await rolePermissionService.getPermissionsByRoleId(roleId);
+  }
+
+  async updateRolePermissions(roleId, permissionIds) {
+    await this.getRoleById(roleId);
+    const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+    return await rolePermissionService.updateRolePermissions(roleId, permissionIds);
+  }
+
+  async getRoleByName(name, orgId = null, session = null) {
+    return await roleRepository.findByName(name, orgId, session);
   }
 }
 

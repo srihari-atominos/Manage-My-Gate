@@ -17,10 +17,21 @@ const apiClient = axios.create({
 
 // Request Interceptor: Inject Token and Correlation ID
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+    
+    // Dynamically import store to prevent circular dependency crashes during application bootstrap
+    try {
+      const { store } = await import('../store/store.js')
+      const state = store.getState()
+      if (state.workspace && state.workspace.activeOrganizationId) {
+        config.headers['x-organization-id'] = state.workspace.activeOrganizationId
+      }
+    } catch (err) {
+      console.error('Failed to inject x-organization-id in request interceptor:', err)
     }
     
     // Generate and inject a unique Request Correlation ID

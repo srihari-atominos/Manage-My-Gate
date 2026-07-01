@@ -2,15 +2,15 @@ import User from './user.model.js';
 
 export class UserRepository {
   async findById(id, session) {
-    return await User.findById(id).session(session || null).populate('roleId');
+    return await User.findById(id).session(session || null);
   }
 
   async findByEmail(email, session) {
-    return await User.findOne({ email }).session(session || null).populate('roleId');
+    return await User.findOne({ email }).session(session || null);
   }
 
   async findByUsername(username, session) {
-    return await User.findOne({ username }).session(session || null).populate('roleId');
+    return await User.findOne({ username }).session(session || null);
   }
 
   /**
@@ -29,20 +29,7 @@ export class UserRepository {
           data: [
             { $skip: skip },
             { $limit: limit },
-            {
-              $lookup: {
-                from: 'roles',
-                localField: 'roleId',
-                foreignField: '_id',
-                as: 'roleData',
-              },
-            },
-            {
-              $addFields: {
-                roleId: { $arrayElemAt: ['$roleData', 0] },
-              },
-            },
-            { $project: { roleData: 0, password: 0 } },
+            { $project: { password: 0 } },
           ],
           metadata: [{ $count: 'totalRecords' }],
         },
@@ -73,7 +60,7 @@ export class UserRepository {
       new: true,
       runValidators: true,
       ...(session ? { session } : {}),
-    }).select('-password').populate('roleId');
+    }).select('-password');
   }
 
   /**

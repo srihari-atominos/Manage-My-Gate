@@ -1,109 +1,141 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, Link } from 'react-router-dom';
-import { registerUser, clearStatus } from './store/authSlice.js';
-import apiClient from '../../utils/apiClient.js';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useForm } from 'react-hook-form';
+import { registerUser, loginUser, clearStatus } from './store/authSlice.js';
+import useAuthRouting from './hooks/useAuthRouting.js';
 import {
   CButton,
   CCard,
   CCardBody,
-  CCol,
   CForm,
   CFormInput,
   CInputGroup,
   CInputGroupText,
   CRow,
+  CCol,
   CAlert,
   CSpinner,
-  CFormSelect,
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilLockLocked, cilUser } from '@coreui/icons';
-import logger from '../../utils/logger.js';
 
+/**
+ * RegisterForm Component
+ * Refactored to support a toggleable "Get Started" view (Login vs Register)
+ * Adheres to the "Thin View" architectural pattern.
+ */
 export const RegisterForm = () => {
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [roleId, setRoleId] = useState('');
-  const [roles, setRoles] = useState([]);
-  const [validationError, setValidationError] = useState('');
-  const [rolesLoading, setRolesLoading] = useState(false);
-
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const [isLoginMode, setIsLoginMode] = useState(location.pathname === '/login-createOrg');
+
   const { loading, error, successMsg } = useSelector((state) => state.auth);
+  const { handlePostAuthRedirect, isAuthenticated } = useAuthRouting();
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    clearErrors,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
 
   useEffect(() => {
     dispatch(clearStatus());
-    
-    // Fetch available roles publicly for dropdown
-    const fetchRoles = async () => {
-      setRolesLoading(true);
-      try {
-        const response = await apiClient.get('/auth/roles');
-        if (response.data) {
-          setRoles(response.data);
-          if (response.data.length > 0) {
-            setRoleId(response.data[0]._id);
-          }
+  }, [dispatch, isLoginMode]);
+
+  // Sync mode and form state with the active URL path
+  useEffect(() => {
+    setIsLoginMode(location.pathname === '/login-createOrg');
+    setValue('password', '');
+    setValue('confirmPassword', '');
+    clearErrors();
+  }, [location.pathname]);
+
+  // When changing mode, navigate to the correct onboarding route
+  const toggleMode = () => {
+    if (isLoginMode) {
+      navigate('/register');
+    } else {
+      navigate('/login-createOrg');
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      handlePostAuthRedirect();
+    }
+  }, [isAuthenticated]);
+
+  const onSubmit = (data) => {
+    if (isLoginMode) {
+      dispatch(loginUser({ login: data.email.trim(), password: data.password }));
+    } else {
+      // Generate valid alphanumeric username from email prefix to satisfy backend validator
+      const emailPrefix = data.email.trim().split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
+      let derivedUsername = emailPrefix;
+      if (derivedUsername.length < 3) {
+        derivedUsername = 'user' + Math.floor(100 + Math.random() * 900);
+      } else if (derivedUsername.length > 30) {
+        derivedUsername = derivedUsername.substring(0, 30);
+      }
+
+      dispatch(
+        registerUser({
+          name: data.name.trim(),
+          username: derivedUsername,
+          email: data.email.trim().toLowerCase(),
+          password: data.password,
+        })
+      ).then((action) => {
+        if (action.meta.requestStatus === 'fulfilled') {
+          setTimeout(() => {
+            navigate('/workspace-setup?intent=create');
+          }, 1500);
         }
-      } catch (err) {
-        logger.error('Failed to fetch roles for signup dropdown', err);
-      } finally {
-        setRolesLoading(false);
-      }
-    };
-
-    fetchRoles();
-  }, [dispatch]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setValidationError('');
-
-    if (!username.trim() || !email.trim() || !password || !confirmPassword || !roleId) {
-      setValidationError('All fields are required.');
-      return;
+      });
     }
-    if (password !== confirmPassword) {
-      setValidationError('Passwords do not match.');
-      return;
-    }
-    if (password.length < 6) {
-      setValidationError('Password must be at least 6 characters long.');
-      return;
-    }
-
-    dispatch(
-      registerUser({
-        username: username.trim(),
-        email: email.trim().toLowerCase(),
-        password,
-        roleId,
-      })
-    ).then((action) => {
-      if (action.meta.requestStatus === 'fulfilled') {
-        setTimeout(() => {
-          navigate('/login');
-        }, 1500);
-      }
-    });
   };
 
   return (
     <CCard style={styles.card}>
       <CCardBody style={styles.cardBody}>
-        <CForm onSubmit={handleSubmit}>
-          <h1 style={styles.title}>Register</h1>
-          <p style={styles.subtitle}>Create your enterprise account</p>
+        {/* Top Section Info Alert */}
+        <CAlert color="info" style={styles.alertHeader}>
+          <h5 className="alert-heading fw-semibold">
+            {t('auth.register.alertTitle', { defaultValue: 'Why do we need this login?' })}
+          </h5>
+          <p className="mb-0">
+            {t('auth.register.alertText', {
+              defaultValue:
+                'This login gives you access to the Enterprise Workspace Platform, where you can create and manage your organization securely.',
+            })}
+          </p>
+        </CAlert>
 
-          {validationError && (
-            <CAlert color="danger" style={styles.alert}>
-              {validationError}
-            </CAlert>
-          )}
+        <CForm onSubmit={handleSubmit(onSubmit)}>
+          <h1 style={styles.title}>
+            {isLoginMode
+              ? t('auth.register.loginTitle', { defaultValue: 'Log In to Your Account' })
+              : t('auth.register.title', { defaultValue: 'Create Your Account' })}
+          </h1>
+          <p style={styles.subtitle}>
+            {isLoginMode
+              ? t('auth.register.loginSubtitle', { defaultValue: 'Access the platform securely' })
+              : t('auth.register.subtitle', { defaultValue: 'Create your credentials to get started' })}
+          </p>
 
           {error && (
             <CAlert color="danger" style={styles.alert}>
@@ -117,93 +149,123 @@ export const RegisterForm = () => {
             </CAlert>
           )}
 
-          <CInputGroup className="mb-3">
-            <CInputGroupText style={styles.inputIconText}>
-              <CIcon icon={cilUser} style={styles.icon} />
-            </CInputGroupText>
-            <CFormInput
-              style={styles.input}
-              placeholder="Username"
-              autoComplete="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={loading}
-            />
-          </CInputGroup>
-
-          <CInputGroup className="mb-3">
-            <CInputGroupText style={styles.inputIconText}>@</CInputGroupText>
-            <CFormInput
-              style={styles.input}
-              type="email"
-              placeholder="Email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-            />
-          </CInputGroup>
-
-          <CInputGroup className="mb-3">
-            <CInputGroupText style={styles.inputIconText}>
-              <CIcon icon={cilLockLocked} style={styles.icon} />
-            </CInputGroupText>
-            <CFormInput
-              style={styles.input}
-              type="password"
-              placeholder="Password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-            />
-          </CInputGroup>
-
-          <CInputGroup className="mb-3">
-            <CInputGroupText style={styles.inputIconText}>
-              <CIcon icon={cilLockLocked} style={styles.icon} />
-            </CInputGroupText>
-            <CFormInput
-              style={styles.input}
-              type="password"
-              placeholder="Repeat password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={loading}
-            />
-          </CInputGroup>
-
-          <CInputGroup className="mb-4">
-            <CInputGroupText style={styles.inputIconText}>Role</CInputGroupText>
-            <CFormSelect
-              style={styles.select}
-              value={roleId}
-              onChange={(e) => setRoleId(e.target.value)}
-              disabled={loading || rolesLoading}
-            >
-              {rolesLoading ? (
-                <option>Loading roles...</option>
-              ) : (
-                roles.map((r) => (
-                  <option key={r._id} value={r._id}>
-                    {r.name}
-                  </option>
-                ))
+          {/* Full Name */}
+          {!isLoginMode && (
+            <div className="mb-3">
+              <CInputGroup>
+                <CInputGroupText style={styles.inputIconText}>
+                  <CIcon icon={cilUser} style={styles.icon} />
+                </CInputGroupText>
+                <CFormInput
+                  style={styles.input}
+                  placeholder={t('auth.register.fullNamePlaceholder', { defaultValue: 'Full Name' })}
+                  autoComplete="name"
+                  disabled={loading}
+                  {...register('name', {
+                    required: !isLoginMode && t('auth.register.nameRequired', { defaultValue: 'Full Name is required.' }),
+                  })}
+                />
+              </CInputGroup>
+              {errors.name && (
+                <div className="text-danger small mt-1 ms-1">{errors.name.message}</div>
               )}
-            </CFormSelect>
-          </CInputGroup>
+            </div>
+          )}
+
+          {/* Email */}
+          <div className="mb-3">
+            <CInputGroup>
+              <CInputGroupText style={styles.inputIconText}>@</CInputGroupText>
+              <CFormInput
+                style={styles.input}
+                type="email"
+                placeholder={t('auth.register.emailPlaceholder', { defaultValue: 'Email' })}
+                autoComplete="email"
+                disabled={loading}
+                {...register('email', {
+                  required: t('auth.register.emailRequired', { defaultValue: 'Email address is required.' }),
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: t('auth.register.emailInvalid', { defaultValue: 'Invalid email address.' }),
+                  },
+                })}
+              />
+            </CInputGroup>
+            {errors.email && (
+              <div className="text-danger small mt-1 ms-1">{errors.email.message}</div>
+            )}
+          </div>
+
+          {/* Password */}
+          <div className="mb-3">
+            <CInputGroup>
+              <CInputGroupText style={styles.inputIconText}>
+                <CIcon icon={cilLockLocked} style={styles.icon} />
+              </CInputGroupText>
+              <CFormInput
+                style={styles.input}
+                type="password"
+                placeholder={t('auth.register.passwordPlaceholder', { defaultValue: 'Password' })}
+                autoComplete="new-password"
+                disabled={loading}
+                {...register('password', {
+                  required: t('auth.register.passwordRequired', { defaultValue: 'Password is required.' }),
+                  minLength: {
+                    value: 6,
+                    message: t('auth.register.passwordLength', { defaultValue: 'Password must be at least 6 characters long.' }),
+                  },
+                })}
+              />
+            </CInputGroup>
+            {errors.password && (
+              <div className="text-danger small mt-1 ms-1">{errors.password.message}</div>
+            )}
+          </div>
+
+          {/* Confirm Password */}
+          {!isLoginMode && (
+            <div className="mb-4">
+              <CInputGroup>
+                <CInputGroupText style={styles.inputIconText}>
+                  <CIcon icon={cilLockLocked} style={styles.icon} />
+                </CInputGroupText>
+                <CFormInput
+                  style={styles.input}
+                  type="password"
+                  placeholder={t('auth.register.confirmPasswordPlaceholder', { defaultValue: 'Repeat password' })}
+                  autoComplete="new-password"
+                  disabled={loading}
+                  {...register('confirmPassword', {
+                    required: !isLoginMode && t('auth.register.confirmPasswordRequired', { defaultValue: 'Please repeat your password.' }),
+                    validate: (value, formValues) =>
+                      isLoginMode || value === formValues.password || t('auth.register.passwordsMustMatch', { defaultValue: 'Passwords do not match.' }),
+                  })}
+                />
+              </CInputGroup>
+              {errors.confirmPassword && (
+                <div className="text-danger small mt-1 ms-1">{errors.confirmPassword.message}</div>
+              )}
+            </div>
+          )}
 
           <CRow>
             <CCol xs={12} className="d-grid mb-3">
               <CButton type="submit" color="success" style={styles.submitButton} disabled={loading}>
-                {loading ? <CSpinner size="sm" variant="grow" /> : 'Create Account'}
+                {loading ? (
+                  <CSpinner size="sm" variant="grow" />
+                ) : isLoginMode ? (
+                  t('auth.register.loginSubmit', { defaultValue: 'Log In' })
+                ) : (
+                  t('auth.register.submit', { defaultValue: 'Create Account' })
+                )}
               </CButton>
             </CCol>
             <CCol xs={12} className="text-center">
-              <Link to="/login" style={styles.loginLink}>
-                Already have an account? Log In
-              </Link>
+              <CButton color="link" onClick={toggleMode} style={styles.toggleLink} className="p-0">
+                {isLoginMode
+                  ? t('auth.register.signUpLink', { defaultValue: "Don't have an account? Sign Up" })
+                  : t('auth.register.loginLink', { defaultValue: 'Already have an account? Login' })}
+              </CButton>
             </CCol>
           </CRow>
         </CForm>
@@ -223,10 +285,19 @@ const styles = {
     backdropFilter: 'blur(10px)',
     border: '1px solid rgba(255,255,255,0.06)',
     padding: '24px 16px',
+    color: '#ffffff',
   },
   cardBody: {
     display: 'flex',
     flexDirection: 'column',
+  },
+  alertHeader: {
+    borderRadius: '12px',
+    background: 'rgba(59, 130, 246, 0.1)',
+    border: '1px solid rgba(59, 130, 246, 0.2)',
+    color: '#bfdbfe',
+    marginBottom: '28px',
+    padding: '16px',
   },
   title: {
     fontSize: '32px',
@@ -242,7 +313,7 @@ const styles = {
   },
   inputIconText: {
     background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
     color: '#a1a1aa',
     minWidth: '50px',
     justifyContent: 'center',
@@ -253,13 +324,7 @@ const styles = {
   },
   input: {
     background: 'rgba(255, 255, 255, 0.02)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    color: '#ffffff',
-    padding: '12px',
-  },
-  select: {
-    background: 'rgba(255, 255, 255, 0.02)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
     color: '#ffffff',
     padding: '12px',
   },
@@ -278,10 +343,11 @@ const styles = {
     boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
     transition: 'all 0.2s',
   },
-  loginLink: {
+  toggleLink: {
     color: '#34d399',
     fontSize: '14px',
     textDecoration: 'none',
+    fontWeight: '500',
   },
 };
 

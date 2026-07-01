@@ -1,11 +1,13 @@
 import { verify as verifyOpenAI } from './openai.handler.js';
 import { verify as verifyTwilio } from './twilio.handler.js';
 import { verify as verifyResend } from './resend.handler.js';
+import { verify as verifySMTP } from './smtp.handler.js';
 
 const providerHandlers = {
   openai: verifyOpenAI,
   twilio: verifyTwilio,
   resend: verifyResend,
+  smtp: verifySMTP,
 };
 
 /**

@@ -10,20 +10,30 @@ export class RoleRepository {
     return await Role.findById(id).session(session || null);
   }
 
-  async findByName(name, session) {
-    return await Role.findOne({ name }).session(session || null);
+  async findByName(name, orgId = null, session = null) {
+    const query = { name };
+    if (orgId !== undefined) {
+      query.orgId = orgId;
+    }
+    return await Role.findOne(query).session(session || null);
   }
 
   /**
    * Paginated fetch using $facet aggregation for roles and permissions.
+   * @param {string} orgId - Organization ID.
    * @param {number} skip - Number of documents to skip.
    * @param {number} limit - Max documents to return.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<{ data: Array, totalRecords: number }>}
    */
-  async findAllPaginated(skip, limit, session) {
+  async findAllPaginated(orgId, skip, limit, session) {
     const opts = session ? { session } : {};
+    const matchQuery = orgId 
+      ? { orgId: new mongoose.Types.ObjectId(orgId) }
+      : { orgId: null };
+
     const result = await Role.aggregate([
+      { $match: matchQuery },
       { $sort: { name: 1 } },
       {
         $facet: {

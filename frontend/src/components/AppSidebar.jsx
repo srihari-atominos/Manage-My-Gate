@@ -30,6 +30,7 @@ import {
   CSidebarFooter,
   CSidebarHeader,
   CSidebarToggler,
+  CNavTitle,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 
@@ -57,6 +58,50 @@ const AppSidebar = () => {
   const dispatch = useDispatch()
   const unfoldable = useSelector((state) => state.ui.sidebarUnfoldable)
   const sidebarShow = useSelector((state) => state.ui.sidebarShow)
+  const activeWorkspace = useSelector((state) => state.workspace)
+  const allowedFeatures = useSelector((state) => state.workspace?.allowedFeatures || [])
+  const isPlatform = useSelector((state) => state.workspace?.isPlatform || false)
+  console.log('--- DEBUG AppSidebar allowedFeatures:', allowedFeatures)
+
+  const PORTAL_CATEGORIES = navigation.filter((item) => 
+    item.to === '/users' || 
+    item.to === '/role-builder' || 
+    item.to === '/integrations' || 
+    !item.to
+  )
+
+  const SUPER_ADMIN_CATEGORIES = navigation.filter((item) => 
+    item.to === '/super-admin/organizations' || 
+    item.to === '/super-admin/audit-logs'
+  )
+
+  let navigationItems = []
+  if (activeWorkspace && activeWorkspace.isPlatform === true) {
+    navigationItems = [...SUPER_ADMIN_CATEGORIES, ...PORTAL_CATEGORIES]
+  } else {
+    navigationItems = [...PORTAL_CATEGORIES]
+  }
+
+  // Filter based on required permissions, also cleaning up any empty titles
+  const filteredNavigationItems = navigationItems.filter((item, index, arr) => {
+    if (item.component === CNavTitle || !item.to) {
+      // Check if there is any permitted CNavItem following this title
+      const nextItems = arr.slice(index + 1)
+      const hasFollowingItems = nextItems.some((nextItem) => {
+        if (nextItem.component === CNavTitle || !nextItem.to) return false
+        if (nextItem.requiredPermission) {
+          return allowedFeatures.includes(nextItem.requiredPermission)
+        }
+        return true
+      })
+      return hasFollowingItems
+    }
+
+    if (item.requiredPermission) {
+      return allowedFeatures.includes(item.requiredPermission)
+    }
+    return true
+  })
 
   return (
     <CSidebar
@@ -80,7 +125,7 @@ const AppSidebar = () => {
           onClick={() => dispatch({ type: 'set', sidebarShow: false })}
         />
       </CSidebarHeader>
-      <AppSidebarNav items={navigation} />
+      <AppSidebarNav items={filteredNavigationItems} />
       <CSidebarFooter className="border-top d-none d-lg-flex">
         <CSidebarToggler
           onClick={() => dispatch({ type: 'set', sidebarUnfoldable: !unfoldable })}

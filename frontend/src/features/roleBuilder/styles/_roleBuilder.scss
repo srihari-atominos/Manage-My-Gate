@@ -15,3 +15,93 @@
   margin: 0 auto;
 }
 
+// Role Integration Configurator UI classes
+.role-integration-configurator {
+  animation: slideDown 0.25s ease-out;
+
+  .carousel-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    .carousel-nav-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: bold;
+      z-index: 5;
+      color: var(--cui-secondary, #6b7280);
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background-color: var(--cui-primary, #4f46e5) !important;
+        color: #ffffff;
+      }
+
+      &.carousel-nav-left {
+        left: -8px;
+      }
+
+      &.carousel-nav-right {
+        right: -8px;
+      }
+    }
+  }
+
+  .carousel-container {
+    scrollbar-width: none; // Firefox
+    -ms-overflow-style: none; // IE 10+
+    
+    &::-webkit-scrollbar {
+      display: none; // Chrome/Safari
+    }
+
+    .carousel-card {
+      transition: all 0.2s ease-in-out;
+      border: 1px solid var(--cui-border-color, #e4e7eb);
+
+      &:hover {
+        transform: translateY(-1px);
+        border-color: var(--cui-primary, #4f46e5);
+      }
+
+      &.border-primary {
+        border-color: var(--cui-primary, #4f46e5) !important;
+      }
+    }
+  }
+
+  .connections-table-wrapper {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+    .table {
+      th {
+        font-weight: 600;
+        color: var(--cui-slate-700, #4b5563);
+      }
+
+      td {
+        padding: 0.65rem 0.75rem;
+      }
+    }
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
