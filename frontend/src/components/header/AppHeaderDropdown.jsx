@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import {
   CDropdown,
   CDropdownDivider,
@@ -37,6 +37,19 @@ const AppHeaderDropdown = () => {
       window.location.reload()
     } catch (err) {
       console.error('Failed to switch role context:', err)
+    }
+  }
+
+  const availableWorkspaces = useSelector((state) => state.workspace.availableWorkspaces) || []
+
+  const handleSwitchWorkspace = async (targetOrgId) => {
+    if (targetOrgId === activeOrganizationId) return
+    try {
+      await dispatch(switchWorkspaceContext(targetOrgId)).unwrap()
+      window.location.hash = '#/dashboard'
+      window.location.reload()
+    } catch (err) {
+      console.error('Failed to switch workspace context:', err)
     }
   }
 
@@ -129,35 +142,43 @@ const AppHeaderDropdown = () => {
           {t('header.dropdown.switchOrg', { defaultValue: 'Switch Organization' })}
         </CDropdownHeader>
 
-        {organizationName || activeOrganizationId ? (
-          <CDropdownItem
-            href="#"
-            id={`dropdown-org-${activeOrganizationId}`}
-            className="d-flex align-items-center justify-content-between py-1 px-3 fw-semibold"
-            onClick={() => switchWorkspace({ activeOrganizationId, organizationName })}
-          >
-            {organizationName || activeOrganizationId}
-            <svg
-              viewBox="0 0 24 24"
-              width="13"
-              height="13"
-              stroke="var(--cui-primary, #321fdb)"
-              strokeWidth="2.5"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-label="Active workspace"
-              className="flex-shrink-0"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </CDropdownItem>
-        ) : (
+        {availableWorkspaces.length === 0 ? (
           <CDropdownItem disabled className="text-body-secondary small py-1 px-3">
             {isPlatform
               ? t('header.dropdown.globalPlatform', { defaultValue: 'Global Platform' })
               : t('header.dropdown.noActiveWorkspace', { defaultValue: 'No active workspace' })}
           </CDropdownItem>
+        ) : (
+          availableWorkspaces.map((ws) => {
+            const isActive = ws.orgId === activeOrganizationId
+            return (
+              <CDropdownItem
+                key={ws.orgId}
+                component="button"
+                id={`dropdown-org-${ws.orgId}`}
+                className={`d-flex align-items-center justify-content-between py-1 px-3 ${isActive ? 'fw-semibold' : ''}`}
+                onClick={() => handleSwitchWorkspace(ws.orgId)}
+              >
+                {ws.name}
+                {isActive && (
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="13"
+                    height="13"
+                    stroke="var(--cui-primary, #321fdb)"
+                    strokeWidth="2.5"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-label="Active workspace"
+                    className="flex-shrink-0"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </CDropdownItem>
+            )
+          })
         )}
 
         <CDropdownDivider />

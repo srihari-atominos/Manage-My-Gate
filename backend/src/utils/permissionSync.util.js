@@ -34,22 +34,38 @@ export const syncPermissions = async () => {
     }
     logger.info(`Synced ${upsertedPermissions.length} permissions successfully in database.`);
 
-    // 3. Upsert default 'Super Admin' role
-    let superAdminRole = await roleService.getRoleByName('Super Admin');
-    if (!superAdminRole) {
-      superAdminRole = await roleService.createRole({
-        name: 'Super Admin',
-        description: 'System-wide Super Administrator role with full access permissions.',
+    // 3. Ensure default Platform Organization exists
+    const Organization = (await import('../features/organization/organization.model.js')).default;
+    let platformOrg = await Organization.findOne({ isPlatform: true });
+    if (!platformOrg) {
+      platformOrg = await Organization.create({
+        name: 'System Platform',
+        isPlatform: true,
+        status: 'Active',
       });
-      logger.info('Created "Super Admin" role.');
+      logger.info(`Bootstrapped platform Organization: "System Platform" with ID: ${platformOrg._id}`);
     }
 
-    // 4. Map all system permissions to Super Admin role
+    // 4. Ensure Platform Super Admin Role exists for the platform workspace
+    let superAdminRole = await roleService.getRoleByName('Platform Super Admin', platformOrg._id);
+    if (!superAdminRole) {
+      superAdminRole = await roleService.getRoleByName('Super Admin', platformOrg._id);
+      if (!superAdminRole) {
+        superAdminRole = await roleService.createRole({
+          name: 'Platform Super Admin',
+          description: 'System-wide Super Administrator role with full access permissions.',
+          orgId: platformOrg._id,
+        });
+        logger.info('Created "Platform Super Admin" role.');
+      }
+    }
+
+    // 5. Map all system permissions to Platform Super Admin role
     const permissionIds = upsertedPermissions.map((p) => p._id.toString());
     await rolePermissionService.updateRolePermissions(superAdminRole._id.toString(), permissionIds);
-    logger.info('Mapped all system permissions to the "Super Admin" role.');
+    logger.info('Mapped all system permissions to the "Platform Super Admin" role.');
 
-    // 5. Bootstrap default Super Admin user using env credentials
+    // 6. Bootstrap default Super Admin user using env credentials
     const adminEmail = process.env.SUPER_ADMIN_EMAIL;
     const adminUsername = process.env.SUPER_ADMIN_USERNAME;
     const adminPassword = process.env.SUPER_ADMIN_PASSWORD;
@@ -66,16 +82,23 @@ export const syncPermissions = async () => {
         email: adminEmail,
         username: adminUsername,
         password: adminPassword,
-        isPlatformAdmin: true,
       });
       logger.info(`Successfully bootstrapped default Super Admin user: email="${adminEmail}", username="${adminUsername}"`);
     } else {
-      if (!superAdminUser.isPlatformAdmin) {
-        await userService.updateUser(superAdminUser._id.toString(), { isPlatformAdmin: true });
-        logger.info('Super Admin user role updated to platform administrator.');
-      } else {
-        logger.info('Super Admin user already bootstrapped.');
-      }
+      logger.info('Super Admin user already bootstrapped.');
+    }
+
+    // 7. Link Super Admin user to the Platform organization
+    const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
+    let membership = await OrgMembership.findOne({ userId: superAdminUser._id, orgId: platformOrg._id });
+    if (!membership) {
+      await OrgMembership.create({
+        userId: superAdminUser._id,
+        orgId: platformOrg._id,
+        roleIds: [superAdminRole._id],
+        roleId: superAdminRole._id,
+      });
+      logger.info('Linked Super Admin user to the Platform organization with Platform Super Admin role.');
     }
 
     logger.info('Permission synchronization and Super Admin bootstrapping finished successfully.');

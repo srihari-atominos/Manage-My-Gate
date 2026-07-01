@@ -192,6 +192,7 @@ export class AuthService {
         email: user.email,
         username: user.username,
         role: tokenPayload.role,
+        roles: tokenPayload.roles,
         permissions: tokenPayload.permissions,
         orgId: tokenPayload.orgId,
         isPlatform: tokenPayload.isPlatform,
