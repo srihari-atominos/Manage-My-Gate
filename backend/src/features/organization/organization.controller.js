@@ -8,8 +8,9 @@ export class OrganizationController {
       const requestingOrgId = req.tenant.orgId;
       const { features } = req.body;
       const userId = req.user.id;
+      const isPlatformUser = req.tenant.isPlatform;
 
-      const result = await organizationService.updateFeatures(orgId, requestingOrgId, features, userId);
+      const result = await organizationService.updateFeatures(orgId, requestingOrgId, features, userId, isPlatformUser);
 
       res.success(result, 'Organization features updated successfully');
     } catch (error) {

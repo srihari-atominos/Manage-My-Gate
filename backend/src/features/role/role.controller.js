@@ -100,6 +100,10 @@ export class RoleController {
   async updateRolePermissions(req, res, next) {
     try {
       const { id } = req.params;
+      const existingRole = await roleService.getRoleById(id);
+      if (existingRole.name === 'Super Admin') {
+        throw new HttpError(403, 'The Super Admin role is a protected system role and cannot have its permissions modified.');
+      }
       const { permissionIds } = req.body;
       const updated = await roleService.updateRolePermissions(id, permissionIds);
       res.success(updated, 'Role permissions updated successfully');

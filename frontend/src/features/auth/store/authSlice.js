@@ -27,7 +27,7 @@ export const loginUser = createAsyncThunk(
       
       return response
     } catch (error) {
-      return rejectWithValue(error.message || 'Login failed')
+      return rejectWithValue(error.response?.data?.message || error.message || 'Login failed')
     }
   }
 )
@@ -55,7 +55,7 @@ export const loginWithGoogle = createAsyncThunk(
       
       return response
     } catch (error) {
-      return rejectWithValue(error.message || 'Google login failed')
+      return rejectWithValue(error.response?.data?.message || error.message || 'Google login failed')
     }
   }
 )
@@ -83,7 +83,7 @@ export const loginWithMicrosoft = createAsyncThunk(
       
       return response
     } catch (error) {
-      return rejectWithValue(error.message || 'Microsoft login failed')
+      return rejectWithValue(error.response?.data?.message || error.message || 'Microsoft login failed')
     }
   }
 )
@@ -111,7 +111,7 @@ export const registerUser = createAsyncThunk(
       
       return response
     } catch (error) {
-      return rejectWithValue(error.message || 'Registration failed')
+      return rejectWithValue(error.response?.data?.message || error.message || 'Registration failed')
     }
   }
 )
@@ -127,7 +127,7 @@ export const updateProfile = createAsyncThunk(
       })
       return response
     } catch (error) {
-      return rejectWithValue(error.message || 'Profile update failed')
+      return rejectWithValue(error.response?.data?.message || error.message || 'Profile update failed')
     }
   }
 )
@@ -139,7 +139,7 @@ export const acceptInvitation = createAsyncThunk(
       const response = await authService.acceptInvite({ token, password })
       return response
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to accept invitation')
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to accept invitation')
     }
   }
 )
@@ -169,7 +169,7 @@ export const switchWorkspaceContext = createAsyncThunk(
       
       return response
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to switch workspace context')
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to switch workspace context')
     }
   }
 )
@@ -200,7 +200,7 @@ export const createWorkspace = createAsyncThunk(
       
       return response
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to create workspace')
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to create workspace')
     }
   }
 )

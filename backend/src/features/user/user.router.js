@@ -4,7 +4,7 @@ import { validate } from '../../middlewares/validator.middleware.js'
 import { inviteUserRules, updateUserRolesRules, updateProfileRules } from './user.validateRules.js'
 import isAuthenticated from '../../middlewares/auth.middleware.js'
 import { authorizePermission } from '../../middlewares/rbac.middleware.js'
-import { upload, imageSignatureValidator } from '../../middlewares/upload.middleware.js'
+import { upload, imageSignatureValidator } from './middlewares/upload.middleware.js'
 import tenantContext from '../../middlewares/tenant.middleware.js'
 
 const router = Router()

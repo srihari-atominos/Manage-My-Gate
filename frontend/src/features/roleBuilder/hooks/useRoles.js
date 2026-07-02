@@ -67,7 +67,7 @@ export const useRoles = () => {
         await dispatch(createRoleAsync(data)).unwrap()
       }
       closeModal()
-      window.location.reload()
+      dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage }))
     } catch (err) {
       console.error('Failed to save role:', err)
     }
@@ -76,7 +76,7 @@ export const useRoles = () => {
   const handleDeleteRole = async (id) => {
     try {
       await dispatch(deleteRoleAsync(id)).unwrap()
-      window.location.reload()
+      dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage }))
     } catch (err) {
       console.error('Failed to delete role:', err)
     }

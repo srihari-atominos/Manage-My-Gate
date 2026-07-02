@@ -23,10 +23,8 @@ export const useOrganizationManager = () => {
     dispatch(toggleOrgStatus({ orgId, currentStatus }));
   };
 
-  const displayOrganizations = organizations.filter(org => !org.isPlatform);
-
   return {
-    organizations: displayOrganizations,
+    organizations,
     total,
     page,
     limit,

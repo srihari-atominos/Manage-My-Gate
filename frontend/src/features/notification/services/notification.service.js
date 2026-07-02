@@ -1,4 +1,4 @@
-import apiClient from '../../../utils/axios.client.js';
+import apiClient from '../../../services/apiClient.js';
 
 /**
  * Service to interface with the Notifications API endpoints.

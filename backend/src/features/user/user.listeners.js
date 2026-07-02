@@ -1,7 +1,6 @@
 import userEvents from './user.events.js';
-import IntegrationHub from '../integrationHub/integrationHub.model.js';
 import integrationHubService from '../integrationHub/integrationHub.service.js';
-import MessageTemplate from '../messageTemplate/messageTemplate.model.js';
+import messageTemplateService from '../messageTemplate/messageTemplate.service.js';
 import logger from '../../utils/logger.utils.js';
 import nodemailer from 'nodemailer';
 import { generateInviteLink } from './utils/invite.utils.js';
@@ -29,11 +28,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken }) => {
     const inviteLink = generateInviteLink(invitationToken);
 
     // 1. Check if SMTP integration is connected for this organization
-    const smtpConnection = await IntegrationHub.findOne({
-      orgId,
-      provider: 'smtp',
-      status: 'connected',
-    });
+    const smtpConnection = await integrationHubService.findSmtpConnection(orgId);
 
     if (!smtpConnection) {
       logger.warn(
@@ -43,11 +38,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken }) => {
     }
 
     // 2. Fetch organization's customized user_invitation email template
-    const template = await MessageTemplate.findOne({
-      orgId,
-      type: 'email',
-      purpose: 'user_invitation',
-    });
+    const template = await messageTemplateService.getTemplateByPurpose(orgId, 'email', 'user_invitation');
 
     const subject = template?.subject || 'You are invited to join the Workspace';
     const bodyTemplate = template?.body || DEFAULT_INVITE_BODY;

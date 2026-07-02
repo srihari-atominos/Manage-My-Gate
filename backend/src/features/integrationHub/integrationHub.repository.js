@@ -115,6 +115,20 @@ export class IntegrationHubRepository {
       { session: session || null }
     );
   }
+
+  /**
+   * Find an active SMTP connection for an organization.
+   * @param {string} orgId - Organization ID
+   * @param {import('mongoose').ClientSession} [session] - Optional session
+   * @returns {Promise<object|null>}
+   */
+  async findSmtpConnection(orgId, session = null) {
+    return await IntegrationHub.findOne({
+      orgId,
+      provider: 'smtp',
+      status: 'connected',
+    }).session(session || null);
+  }
 }
 
 export default new IntegrationHubRepository();

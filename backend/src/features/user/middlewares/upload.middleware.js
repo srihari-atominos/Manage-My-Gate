@@ -2,14 +2,14 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import config from '../config/config.js';
-import HttpError from '../utils/httpError.utils.js';
+import config from '../../../config/config.js';
+import HttpError from '../../../utils/httpError.utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Resolve target upload directory relative to project root
-const projectRoot = path.resolve(__dirname, '../..');
+// Resolve target upload directory relative to project root (4 levels up from features/user/middlewares)
+const projectRoot = path.resolve(__dirname, '../../../..');
 const uploadDir = path.resolve(projectRoot, config.avatarUploadPath);
 
 // Ensure directory exists

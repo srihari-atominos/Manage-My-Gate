@@ -45,7 +45,7 @@ const createValidationSchema = (t) =>
  */
 export const AcceptInviteForm = () => {
   const { t } = useTranslation()
-  const { loading, handleAcceptInvitation } = useAuth()
+  const { loading, error, handleAcceptInvitation } = useAuth()
   const { token: routeToken } = useParams()
   const [searchParams] = useSearchParams()
 
@@ -93,6 +93,12 @@ export const AcceptInviteForm = () => {
         <CForm onSubmit={handleSubmit(onSubmit)}>
           <h1 className="accept-invite-title">{t('auth.invite.title')}</h1>
           <p className="accept-invite-subtitle">{t('auth.invite.subtitle')}</p>
+
+          {error && (
+            <CAlert color="danger" className="mb-4">
+              {error}
+            </CAlert>
+          )}
 
           <CInputGroup className="mb-3">
             <CInputGroupText className="accept-invite-input-icon border-0">
