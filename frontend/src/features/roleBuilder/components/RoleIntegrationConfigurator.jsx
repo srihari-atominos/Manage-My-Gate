@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useRef } from 'react'
 import PropTypes from 'prop-types'
-import { useSelector, useDispatch } from 'react-redux'
 import {
   CRow,
   CCol,
@@ -16,7 +15,7 @@ import {
   CButton,
   CSpinner,
 } from '@coreui/react'
-import { getConnections } from '../../integrationHub/store/integrationHubSlice'
+import useRoleIntegrationConfigurator from '../hooks/useRoleIntegrationConfigurator.js'
 
 // Providers metadata matching the backend catalog list
 const PROVIDERS = [
@@ -34,36 +33,19 @@ const PROVIDERS = [
  * and a radio selection table on the bottom for picking the connection.
  */
 export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply }) => {
-  const dispatch = useDispatch()
   const carouselRef = useRef(null)
 
-  // Fetch connections from the Integration Hub slice
-  const { connections, isLoading } = useSelector((state) => state.integrationHub)
-
-  // Local state
-  const [selectedProvider, setSelectedProvider] = useState('smtp')
-  const [tempMappings, setTempMappings] = useState({})
-
-  // Fetch all connections (up to 100 to ensure we get all configured ones) on mount
-  useEffect(() => {
-    if (isOpen) {
-      dispatch(getConnections({ limit: 100 }))
-    }
-  }, [dispatch, isOpen])
-
-  // Initialize/Reset local temporary mappings when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setTempMappings(mappings || {})
-    }
-  }, [mappings, isOpen])
+  const {
+    isLoading,
+    filteredConnections,
+    selectedProvider,
+    setSelectedProvider,
+    tempMappings,
+    handleSelectConnection,
+    handleApply,
+  } = useRoleIntegrationConfigurator(isOpen, mappings, onApply, onClose)
 
   if (!isOpen) return null
-
-  // Filter connections by currently selected provider
-  const filteredConnections = connections.filter(
-    (conn) => conn.provider === selectedProvider
-  )
 
   // Carousel scrolling helpers
   const scrollLeft = () => {
@@ -76,25 +58,6 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
     if (carouselRef.current) {
       carouselRef.current.scrollBy({ left: 200, behavior: 'smooth' })
     }
-  }
-
-  // Handle connection selection change
-  const handleSelectConnection = (connectionId) => {
-    setTempMappings((prev) => ({
-      ...prev,
-      [selectedProvider]: connectionId || undefined,
-    }))
-  }
-
-  // Save changes back to the parent form
-  const handleApply = () => {
-    // Clean up empty fields
-    const cleaned = {}
-    Object.entries(tempMappings).forEach(([key, val]) => {
-      if (val) cleaned[key] = val
-    })
-    onApply(cleaned)
-    onClose()
   }
 
   return (

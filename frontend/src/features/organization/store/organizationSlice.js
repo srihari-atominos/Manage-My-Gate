@@ -1,13 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import superAdminApi from '../services/superAdminApi.js';
+import organizationApi from '../services/organizationApi.js';
 
 export const loadOrganizations = createAsyncThunk(
-  'superAdmin/loadOrganizations',
+  'organization/loadOrganizations',
   async ({ page, limit }, { rejectWithValue }) => {
     try {
-      const response = await superAdminApi.fetchOrganizations(page, limit);
-      // The API response interceptor returns response.data directly.
-      // The backend returns: { success: true, message: "...", data: { organizations, total, page, limit, totalPages } }
+      const response = await organizationApi.fetchOrganizations(page, limit);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch organizations');
@@ -16,11 +14,11 @@ export const loadOrganizations = createAsyncThunk(
 );
 
 export const toggleOrgStatus = createAsyncThunk(
-  'superAdmin/toggleOrgStatus',
+  'organization/toggleOrgStatus',
   async ({ orgId, currentStatus }, { rejectWithValue }) => {
     try {
       const nextStatus = currentStatus === 'Active' ? 'Rejected' : 'Active';
-      const response = await superAdminApi.updateOrganizationStatus(orgId, nextStatus);
+      const response = await organizationApi.updateOrganizationStatus(orgId, nextStatus);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to toggle organization status');
@@ -38,11 +36,11 @@ const initialState = {
   error: null,
 };
 
-export const superAdminSlice = createSlice({
-  name: 'superAdmin',
+export const organizationSlice = createSlice({
+  name: 'organization',
   initialState,
   reducers: {
-    clearSuperAdminError: (state) => {
+    clearOrganizationError: (state) => {
       state.error = null;
     },
   },
@@ -86,5 +84,5 @@ export const superAdminSlice = createSlice({
   },
 });
 
-export const { clearSuperAdminError } = superAdminSlice.actions;
-export default superAdminSlice.reducer;
+export const { clearOrganizationError } = organizationSlice.actions;
+export default organizationSlice.reducer;

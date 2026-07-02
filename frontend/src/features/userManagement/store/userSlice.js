@@ -7,9 +7,16 @@ export const STATUS_OPTIONS = ['Active', 'Inactive', 'Pending']
 // Async Thunks
 export const fetchUsersAsync = createAsyncThunk(
   'userManagement/fetchUsers',
-  async ({ page, limit }, { rejectWithValue }) => {
+  async ({ page, limit }, { getState, rejectWithValue }) => {
     try {
-      const response = await userApi.fetchUsers({ page, limit })
+      const { searchQuery, selectedRoles, statusFilter } = getState().userManagement;
+      const response = await userApi.fetchUsers({
+        page,
+        limit,
+        search: searchQuery,
+        roles: selectedRoles,
+        status: statusFilter,
+      })
       return response
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch users')

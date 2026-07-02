@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
-import { registerUser, loginUser, clearStatus } from './store/authSlice.js';
-import useAuthRouting from './hooks/useAuthRouting.js';
+import useAuthRouting from '../hooks/useAuthRouting.js';
+import useAuth from '../hooks/useAuth.js';
 import {
   CButton,
   CCard,
@@ -28,13 +27,12 @@ import { cilLockLocked, cilUser } from '@coreui/icons';
  */
 export const RegisterForm = () => {
   const { t } = useTranslation();
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [isLoginMode, setIsLoginMode] = useState(location.pathname === '/login-createOrg');
 
-  const { loading, error, successMsg } = useSelector((state) => state.auth);
+  const { loading, error, successMsg, login, register: authRegister, clearStatus } = useAuth();
   const { handlePostAuthRedirect, isAuthenticated } = useAuthRouting();
 
   const {
@@ -53,8 +51,8 @@ export const RegisterForm = () => {
   });
 
   useEffect(() => {
-    dispatch(clearStatus());
-  }, [dispatch, isLoginMode]);
+    clearStatus();
+  }, [isLoginMode]);
 
   // Sync mode and form state with the active URL path
   useEffect(() => {
@@ -81,7 +79,7 @@ export const RegisterForm = () => {
 
   const onSubmit = (data) => {
     if (isLoginMode) {
-      dispatch(loginUser({ login: data.email.trim(), password: data.password }));
+      login({ login: data.email.trim(), password: data.password });
     } else {
       // Generate valid alphanumeric username from email prefix to satisfy backend validator
       const emailPrefix = data.email.trim().split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
@@ -92,14 +90,12 @@ export const RegisterForm = () => {
         derivedUsername = derivedUsername.substring(0, 30);
       }
 
-      dispatch(
-        registerUser({
-          name: data.name.trim(),
-          username: derivedUsername,
-          email: data.email.trim().toLowerCase(),
-          password: data.password,
-        })
-      ).then((action) => {
+      authRegister({
+        name: data.name.trim(),
+        username: derivedUsername,
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+      }).then((action) => {
         if (action.meta.requestStatus === 'fulfilled') {
           setTimeout(() => {
             navigate('/workspace-setup?intent=create');

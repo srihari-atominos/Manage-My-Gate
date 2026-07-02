@@ -12,7 +12,17 @@ export class UserController {
       const limit = parseInt(req.query.limit, 10) || 10;
       const orgId = req.tenant.orgId;
 
-      const { data: users, pagination } = await userService.getAllUsersInOrg(orgId, page, limit);
+      const search = req.query.search || '';
+      let roles = req.query.roles || [];
+      if (typeof roles === 'string') {
+        roles = roles.split(',').map(r => r.trim()).filter(Boolean);
+      }
+      let status = req.query.status || [];
+      if (typeof status === 'string') {
+        status = status.split(',').map(s => s.trim()).filter(Boolean);
+      }
+
+      const { data: users, pagination } = await userService.getAllUsersInOrg(orgId, page, limit, { search, roles, status });
 
       const formatted = users.map((u) => ({
         id: u.id,

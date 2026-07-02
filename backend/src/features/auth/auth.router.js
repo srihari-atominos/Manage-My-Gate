@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import authController from './auth.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
-import { loginRules, registerRules, acceptInviteRules, switchContextRules } from './auth.validateRules.js';
+import { loginRules, registerRules, acceptInviteRules, switchContextRules, ssoVerifyRules } from './auth.validateRules.js';
 import { isAuthenticated } from '../../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -152,5 +152,8 @@ router.get('/roles', authController.getRoles);
  *         description: Access denied.
  */
 router.post('/switch-context', isAuthenticated, validate(switchContextRules), authController.switchContext);
+
+router.post('/google/verify', validate(ssoVerifyRules), authController.verifyGoogle);
+router.post('/microsoft/verify', validate(ssoVerifyRules), authController.verifyMicrosoft);
 
 export default router;

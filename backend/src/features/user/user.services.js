@@ -107,19 +107,29 @@ export class UserService {
     }
   }
 
-  async updateUser(id, updateData) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+  async updateUser(id, updateData, session = null) {
+    let localSession = null;
+    if (!session) {
+      localSession = await mongoose.startSession();
+      localSession.startTransaction();
+    }
+    const currentSession = session || localSession;
     try {
-      await this.getUserById(id, session); // Throws if user doesn't exist
-      const updatedUser = await userRepository.update(id, updateData, session);
-      await session.commitTransaction();
+      await this.getUserById(id, currentSession); // Throws if user doesn't exist
+      const updatedUser = await userRepository.update(id, updateData, currentSession);
+      if (localSession) {
+        await localSession.commitTransaction();
+      }
       return updatedUser;
     } catch (error) {
-      await session.abortTransaction();
+      if (localSession) {
+        await localSession.abortTransaction();
+      }
       throw error;
     } finally {
-      await session.endSession();
+      if (localSession) {
+        await localSession.endSession();
+      }
     }
   }
 
@@ -225,9 +235,9 @@ export class UserService {
     }
   }
 
-  async getAllUsersInOrg(orgId, page = 1, limit = 10) {
+  async getAllUsersInOrg(orgId, page = 1, limit = 10, filters = {}) {
     const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-    return await orgMembershipService.getPaginatedUsersForOrg(orgId, page, limit);
+    return await orgMembershipService.getPaginatedUsersForOrg(orgId, page, limit, filters);
   }
 
   async activateUser(id, hashedPassword, session) {

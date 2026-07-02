@@ -5,6 +5,8 @@ import { comparePassword } from '../../utils/crypto.utils.js';
 import { signToken } from '../../utils/jwt.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
 import tokenService from '../token/token.services.js';
+import { verifyGoogleIdToken, verifyMicrosoftIdToken } from './utils/sso.utils.js';
+import config from '../../config/config.js';
 
 export class AuthService {
   /**
@@ -284,6 +286,162 @@ export class AuthService {
   async generateToken(user, targetOrgId = null) {
     const { tokenPayload } = await this.getScopedTokenPayload(user, targetOrgId);
     return signToken(tokenPayload);
+  }
+
+  /**
+   * Verifies Google token, finds or registers the user, and logs them in.
+   * @param {string} googleToken - The Google ID token
+   */
+  async loginOrRegisterWithGoogle(googleToken) {
+    let googlePayload;
+    try {
+      googlePayload = await verifyGoogleIdToken(googleToken);
+    } catch (err) {
+      throw new HttpError(401, `Invalid Google Token: ${err.message}`);
+    }
+
+    const { sub: googleId, email, name } = googlePayload;
+    if (!email) {
+      throw new HttpError(400, 'Email is required from Google profile but was not provided.');
+    }
+
+    return await this._handleSsoAuthentication({
+      email: email.trim().toLowerCase(),
+      name,
+      provider: 'google',
+      providerId: googleId,
+    });
+  }
+
+  /**
+   * Verifies Microsoft token, finds or registers the user, and logs them in.
+   * @param {string} microsoftToken - The Microsoft ID token (JWT)
+   */
+  async loginOrRegisterWithMicrosoft(microsoftToken) {
+    let microsoftPayload;
+    try {
+      microsoftPayload = await verifyMicrosoftIdToken(microsoftToken);
+    } catch (err) {
+      throw new HttpError(401, `Invalid Microsoft Token: ${err.message}`);
+    }
+
+    const { sub: microsoftId, email, preferred_username, name } = microsoftPayload;
+    const resolvedEmail = email || preferred_username;
+    if (!resolvedEmail) {
+      throw new HttpError(400, 'Email is required from Microsoft profile but was not provided.');
+    }
+
+    return await this._handleSsoAuthentication({
+      email: resolvedEmail.trim().toLowerCase(),
+      name,
+      provider: 'microsoft',
+      providerId: microsoftId,
+    });
+  }
+
+  /**
+   * Registers a new user via SSO.
+   * @private
+   */
+  async _registerSsoUser({ email, name, provider, providerId }, session) {
+    const { v4: uuidv4 } = await import('uuid');
+    const emailPrefix = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
+    let derivedUsername = emailPrefix;
+    if (derivedUsername.length < 3) {
+      derivedUsername = 'user' + Math.floor(100 + Math.random() * 900);
+    } else if (derivedUsername.length > 30) {
+      derivedUsername = derivedUsername.substring(0, 30);
+    }
+
+    const randomPassword = uuidv4();
+    const userData = {
+      email,
+      username: derivedUsername,
+      password: randomPassword,
+      status: 'Active',
+      name: name || '',
+      ssoProvider: provider,
+      ssoId: providerId,
+    };
+
+    return await userService.createUser(userData, session);
+  }
+
+  /**
+   * Updates an existing user's details upon successful SSO login.
+   * Handles activating pending invitation users and linking SSO provider.
+   * @private
+   */
+  async _updateExistingSsoUser(user, { provider, providerId }, session) {
+    const updateData = {};
+    const { v4: uuidv4 } = await import('uuid');
+
+    if (user.status === 'Pending') {
+      updateData.status = 'Active';
+      if (!user.password) {
+        const randomPassword = uuidv4();
+        const { hashPassword } = await import('../../utils/crypto.utils.js');
+        updateData.password = await hashPassword(randomPassword);
+      }
+    }
+
+    if (user.ssoProvider === 'none') {
+      updateData.ssoProvider = provider;
+      updateData.ssoId = providerId;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      return await userService.updateUser(user._id, updateData, session);
+    }
+
+    return user;
+  }
+
+  /**
+   * Internal helper to find/register SSO users, activate pending invitations, and scope sessions.
+   * @private
+   */
+  async _handleSsoAuthentication({ email, name, provider, providerId }) {
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // 1. Find user by email
+      let user = await userService.getUserByEmail(email, session);
+
+      if (!user) {
+        user = await this._registerSsoUser({ email, name, provider, providerId }, session);
+      } else {
+        user = await this._updateExistingSsoUser(user, { provider, providerId }, session);
+      }
+
+      await session.commitTransaction();
+
+      // Resolve scoped token and workspaces
+      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
+      const token = signToken(tokenPayload);
+
+      return {
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          role: tokenPayload.role,
+          roles: tokenPayload.roles,
+          permissions: tokenPayload.permissions,
+          orgId: tokenPayload.orgId,
+          isPlatform: tokenPayload.isPlatform,
+        },
+        availableWorkspaces,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
   }
 }
 

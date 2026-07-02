@@ -39,11 +39,12 @@ export const useUserList = () => {
   } = useSelector((state) => state.userManagement)
 
   const { roles } = useSelector((state) => state.roleBuilder)
+  const currentUserId = useSelector((state) => state.auth.user?.id)
 
   // Fetch users when pagination states change
   useEffect(() => {
     dispatch(fetchUsersAsync({ page: currentPage, limit: rowsPerPage }))
-  }, [dispatch, currentPage, rowsPerPage])
+  }, [dispatch, currentPage, rowsPerPage, searchQuery, selectedRoles, statusFilter])
 
   // Load roles on mount if not loaded
   useEffect(() => {
@@ -57,30 +58,26 @@ export const useUserList = () => {
     return roles ? roles.map((r) => r.name) : []
   }, [roles])
 
-  // Memoized Filtered Rows (applied on the currently paginated chunk)
-  const filteredUsers = useMemo(() => {
-    const term = searchQuery.toLowerCase()
-    return users.filter((u) => {
-      const matchesSearch =
-        !term ||
-        u.name.toLowerCase().includes(term) ||
-        u.email.toLowerCase().includes(term)
-
-      const matchesRole =
-        selectedRoles.length === 0 ||
-        selectedRoles.some((role) => (u.role || '').includes(role))
-
-      const matchesStatus = statusFilter.includes(u.status)
-
-      return matchesSearch && matchesRole && matchesStatus
-    })
-  }, [users, searchQuery, selectedRoles, statusFilter])
+  // Under server-side pagination, filtered users is the raw users array returned from backend
+  const filteredUsers = users;
 
   // Action Dispatchers
-  const changeSearchQuery = (query) => dispatch(setSearchQuery(query))
-  const changeRoleToggle = (role) => dispatch(toggleRole(role))
-  const changeStatusToggle = (status) => dispatch(toggleStatus(status))
-  const handleClearRoleFilter = () => dispatch(clearRoleFilter())
+  const changeSearchQuery = (query) => {
+    dispatch(setSearchQuery(query))
+    dispatch(setCurrentPage(1))
+  }
+  const changeRoleToggle = (role) => {
+    dispatch(toggleRole(role))
+    dispatch(setCurrentPage(1))
+  }
+  const changeStatusToggle = (status) => {
+    dispatch(toggleStatus(status))
+    dispatch(setCurrentPage(1))
+  }
+  const handleClearRoleFilter = () => {
+    dispatch(clearRoleFilter())
+    dispatch(setCurrentPage(1))
+  }
   
   // Handlers for page and limit changes
   const handlePageChange = (newPage) => {
@@ -125,6 +122,7 @@ export const useUserList = () => {
 
   return {
     // State
+    currentUserId,
     searchQuery,
     selectedRoles,
     statusFilter,

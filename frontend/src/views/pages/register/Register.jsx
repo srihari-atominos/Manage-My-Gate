@@ -1,6 +1,6 @@
 import React from 'react';
 import { CContainer, CRow, CCol } from '@coreui/react';
-import RegisterForm from '../../../features/auth/RegisterForm.jsx';
+import RegisterForm from '../../../features/auth/components/RegisterForm.jsx';
 
 const Register = () => {
   return (

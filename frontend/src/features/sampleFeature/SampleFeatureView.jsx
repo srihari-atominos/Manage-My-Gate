@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React from 'react';
 import {
   CCard,
   CCardBody,
@@ -9,58 +8,22 @@ import {
   CAlert,
   CSpinner,
 } from '@coreui/react';
-import {
-  getSamples,
-  addSample,
-  editSample,
-  removeSample,
-  clearStatus,
-} from './store/sampleFeatureSlice.js';
 import SampleList from './components/SampleList.jsx';
 import SampleForm from './components/SampleForm.jsx';
+import useSampleFeature from './hooks/useSampleFeature.js';
 
 export const SampleFeatureView = () => {
-  const dispatch = useDispatch();
-  const { items, loading, error, successMsg } = useSelector((state) => state.sampleFeature);
-  
-  const [editingItem, setEditingItem] = useState(null);
-
-  useEffect(() => {
-    dispatch(getSamples());
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (successMsg || error) {
-      const timer = setTimeout(() => {
-        dispatch(clearStatus());
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [successMsg, error, dispatch]);
-
-  const handleFormSubmit = (data) => {
-    if (editingItem) {
-      dispatch(editSample({ id: editingItem._id, sampleData: data }))
-        .unwrap()
-        .then(() => setEditingItem(null));
-    } else {
-      dispatch(addSample(data));
-    }
-  };
-
-  const handleEditSelect = (item) => {
-    setEditingItem(item);
-  };
-
-  const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to delete this sample record?')) {
-      dispatch(removeSample(id));
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingItem(null);
-  };
+  const {
+    items,
+    loading,
+    error,
+    successMsg,
+    editingItem,
+    handleFormSubmit,
+    handleEditSelect,
+    handleDelete,
+    handleCancelEdit,
+  } = useSampleFeature();
 
   return (
     <CRow>

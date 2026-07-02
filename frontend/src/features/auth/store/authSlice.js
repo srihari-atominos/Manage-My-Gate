@@ -32,6 +32,62 @@ export const loginUser = createAsyncThunk(
   }
 )
 
+export const loginWithGoogle = createAsyncThunk(
+  'auth/loginWithGoogle',
+  async (token, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await authService.verifyGoogleToken(token)
+      
+      const user = response.data?.user
+      const availableWorkspaces = response.data?.availableWorkspaces || []
+      
+      if (user) {
+        dispatch(
+          setActiveWorkspace({
+            activeOrganizationId: user.orgId,
+            activeRole: user.role,
+            allowedFeatures: user.permissions || [],
+            isPlatform: user.isPlatform || false,
+            availableWorkspaces: availableWorkspaces,
+          })
+        )
+      }
+      
+      return response
+    } catch (error) {
+      return rejectWithValue(error.message || 'Google login failed')
+    }
+  }
+)
+
+export const loginWithMicrosoft = createAsyncThunk(
+  'auth/loginWithMicrosoft',
+  async (token, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await authService.verifyMicrosoftToken(token)
+      
+      const user = response.data?.user
+      const availableWorkspaces = response.data?.availableWorkspaces || []
+      
+      if (user) {
+        dispatch(
+          setActiveWorkspace({
+            activeOrganizationId: user.orgId,
+            activeRole: user.role,
+            allowedFeatures: user.permissions || [],
+            isPlatform: user.isPlatform || false,
+            availableWorkspaces: availableWorkspaces,
+          })
+        )
+      }
+      
+      return response
+    } catch (error) {
+      return rejectWithValue(error.message || 'Microsoft login failed')
+    }
+  }
+)
+
 export const registerUser = createAsyncThunk(
   'auth/registerUser',
   async (userData, { dispatch, rejectWithValue }) => {
@@ -220,6 +276,60 @@ const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload || 'Login failed'
+      })
+      // Google Login
+      .addCase(loginWithGoogle.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(loginWithGoogle.fulfilled, (state, action) => {
+        state.loading = false
+        state.isAuthenticated = true
+        state.token = action.payload.data?.token
+        state.user = action.payload.data?.user
+        state.successMsg = action.payload.message || 'Google login successful!'
+        
+        if (action.payload.data?.token) {
+          localStorage.setItem('token', action.payload.data.token)
+        }
+        if (action.payload.data?.user) {
+          localStorage.setItem('user', JSON.stringify(action.payload.data.user))
+        }
+        if (action.payload.data?.availableWorkspaces) {
+          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+        }
+      })
+      .addCase(loginWithGoogle.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Google login failed'
+      })
+      // Microsoft Login
+      .addCase(loginWithMicrosoft.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(loginWithMicrosoft.fulfilled, (state, action) => {
+        state.loading = false
+        state.isAuthenticated = true
+        state.token = action.payload.data?.token
+        state.user = action.payload.data?.user
+        state.successMsg = action.payload.message || 'Microsoft login successful!'
+        
+        if (action.payload.data?.token) {
+          localStorage.setItem('token', action.payload.data.token)
+        }
+        if (action.payload.data?.user) {
+          localStorage.setItem('user', JSON.stringify(action.payload.data.user))
+        }
+        if (action.payload.data?.availableWorkspaces) {
+          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+        }
+      })
+      .addCase(loginWithMicrosoft.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Microsoft login failed'
       })
       // Register
       .addCase(registerUser.pending, (state) => {

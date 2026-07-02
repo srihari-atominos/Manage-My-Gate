@@ -9,6 +9,20 @@ export const updateOrganizationFeatures = async (orgId, featuresArray) => {
   });
 };
 
+export const fetchOrganizations = async (page = 1, limit = 10) => {
+  return await apiClient.get(`/organizations`, {
+    params: { page, limit },
+  });
+};
+
+export const updateOrganizationStatus = async (orgId, status) => {
+  return await apiClient.patch(`/organizations/${orgId}/status`, {
+    status,
+  });
+};
+
 export default {
   updateOrganizationFeatures,
+  fetchOrganizations,
+  updateOrganizationStatus,
 };

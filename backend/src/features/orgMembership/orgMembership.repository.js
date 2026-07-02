@@ -30,11 +30,25 @@ export class OrgMembershipRepository {
    * @param {number} limit - Items per page
    * @returns {Promise<{ data: Array, totalRecords: number }>}
    */
-  async findPaginatedUsersByOrg(orgId, page = 1, limit = 10) {
+  async findPaginatedUsersByOrg(orgId, page = 1, limit = 10, filters = {}) {
     const skip = (page - 1) * limit;
     const matchQuery = { orgId: new mongoose.Types.ObjectId(orgId) };
 
-    const result = await OrgMembership.aggregate([
+    const filterMatch = {};
+    if (filters.search) {
+      filterMatch.$or = [
+        { 'user.username': { $regex: filters.search, $options: 'i' } },
+        { 'user.email': { $regex: filters.search, $options: 'i' } },
+      ];
+    }
+    if (filters.roles && filters.roles.length > 0) {
+      filterMatch['rolesPopulated.name'] = { $in: filters.roles };
+    }
+    if (filters.status && filters.status.length > 0) {
+      filterMatch['user.status'] = { $in: filters.status };
+    }
+
+    const pipeline = [
       { $match: matchQuery },
       {
         $lookup: {
@@ -66,44 +80,51 @@ export class OrgMembershipRepository {
           preserveNullAndEmptyArrays: true,
         },
       },
-      {
-        $facet: {
-          metadata: [{ $count: 'totalRecords' }],
-          data: [
-            { $skip: skip },
-            { $limit: limit },
-            {
-              $project: {
-                _id: 0,
-                id: '$user._id',
-                username: '$user.username',
-                email: '$user.email',
-                role: {
-                  $cond: {
-                    if: { $gt: [{ $size: '$rolesPopulated' }, 0] },
-                    then: {
-                      $reduce: {
-                        input: '$rolesPopulated.name',
-                        initialValue: '',
-                        in: {
-                          $cond: [
-                            { $eq: ['$$value', ''] },
-                            '$$this',
-                            { $concat: ['$$value', ', ', '$$this'] }
-                          ]
-                        }
+    ];
+
+    if (Object.keys(filterMatch).length > 0) {
+      pipeline.push({ $match: filterMatch });
+    }
+
+    pipeline.push({
+      $facet: {
+        metadata: [{ $count: 'totalRecords' }],
+        data: [
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 0,
+              id: '$user._id',
+              username: '$user.username',
+              email: '$user.email',
+              role: {
+                $cond: {
+                  if: { $gt: [{ $size: '$rolesPopulated' }, 0] },
+                  then: {
+                    $reduce: {
+                      input: '$rolesPopulated.name',
+                      initialValue: '',
+                      in: {
+                        $cond: [
+                          { $eq: ['$$value', ''] },
+                          '$$this',
+                          { $concat: ['$$value', ', ', '$$this'] }
+                        ]
                       }
-                    },
-                    else: { $ifNull: [{ $arrayElemAt: ['$rolePopulatedFallback.name', 0] }, ''] }
-                  }
-                },
-                status: '$user.status',
+                    }
+                  },
+                  else: { $ifNull: [{ $arrayElemAt: ['$rolePopulatedFallback.name', 0] }, ''] }
+                }
               },
+              status: '$user.status',
             },
-          ],
-        },
+          },
+        ],
       },
-    ]);
+    });
+
+    const result = await OrgMembership.aggregate(pipeline);
 
     const totalRecords = result[0]?.metadata[0]?.totalRecords || 0;
     const data = result[0]?.data || [];

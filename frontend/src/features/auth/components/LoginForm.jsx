@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { loginUser } from './store/authSlice.js';
-import useAuthRouting from './hooks/useAuthRouting.js';
+import useAuthRouting from '../hooks/useAuthRouting.js';
+import useAuth from '../hooks/useAuth.js';
+import { GoogleLogin } from '@react-oauth/google';
+import { useMsal } from '@azure/msal-react';
 import {
   CButton,
   CCard,
@@ -29,9 +30,9 @@ import { cilLockLocked, cilUser } from '@coreui/icons';
  */
 export const LoginForm = () => {
   const { t } = useTranslation();
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const { handlePostAuthRedirect, isAuthenticated, loading, error } = useAuthRouting();
+  const { login, loginGoogle, loginMicrosoft } = useAuth();
 
   const {
     register,
@@ -51,8 +52,24 @@ export const LoginForm = () => {
     }
   }, [isAuthenticated]);
 
+  const { instance: msalInstance } = useMsal();
+
+  const handleMicrosoftLogin = () => {
+    msalInstance.loginPopup({
+      scopes: ['openid', 'profile', 'user.read'],
+    })
+    .then((response) => {
+      if (response && response.idToken) {
+        loginMicrosoft(response.idToken);
+      }
+    })
+    .catch((err) => {
+      console.error('Microsoft login failed:', err);
+    });
+  };
+
   const onSubmit = (data) => {
-    dispatch(loginUser({ login: data.login.trim(), password: data.password }));
+    login({ login: data.login.trim(), password: data.password });
   };
 
   return (
@@ -125,6 +142,44 @@ export const LoginForm = () => {
                 <CCol xs={6} className="text-end">
                   <CButton color="link" className="px-0" style={styles.forgotLink}>
                     {t('auth.login.forgotPassword', { defaultValue: 'Forgot password?' })}
+                  </CButton>
+                </CCol>
+              </CRow>
+
+              <div style={styles.dividerContainer}>
+                <div style={styles.dividerLine}></div>
+                <span style={styles.dividerText}>{t('auth.login.orSignInWith', { defaultValue: 'Or Sign In with' })}</span>
+                <div style={styles.dividerLine}></div>
+              </div>
+
+              <CRow className="mt-3 g-2 align-items-center justify-content-center">
+                <CCol xs={12} sm={6} className="d-flex justify-content-center">
+                  <div style={{ width: '100%', maxWidth: '210px' }}>
+                    <GoogleLogin
+                      onSuccess={credentialResponse => {
+                        loginGoogle(credentialResponse.credential);
+                      }}
+                      onError={() => {
+                        console.error('Google Sign-In failed');
+                      }}
+                      type="standard"
+                      theme="outline"
+                      size="large"
+                      text="signin_with"
+                      shape="pill"
+                      width="210px"
+                    />
+                  </div>
+                </CCol>
+                <CCol xs={12} sm={6} className="d-flex justify-content-center">
+                  <CButton 
+                    onClick={handleMicrosoftLogin}
+                    style={styles.msButton}
+                    disabled={loading}
+                    className="w-100"
+                  >
+                    <span style={styles.msIcon}>❖</span>
+                    {t('auth.login.microsoft', { defaultValue: 'Microsoft' })}
                   </CButton>
                 </CCol>
               </CRow>
@@ -268,6 +323,43 @@ const styles = {
     borderRadius: '8px',
     boxShadow: '0 4px 12px rgba(255, 255, 255, 0.1)',
     transition: 'all 0.2s',
+  },
+  dividerContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '24px 0 16px 0',
+  },
+  dividerLine: {
+    flex: 1,
+    height: '1px',
+    backgroundColor: '#e5e7eb',
+  },
+  dividerText: {
+    padding: '0 12px',
+    color: '#9ca3af',
+    fontSize: '13px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    fontWeight: '500',
+  },
+  msButton: {
+    background: '#2f2f2f',
+    color: '#ffffff',
+    border: 'none',
+    padding: '9px 16px',
+    fontSize: '14px',
+    fontWeight: '500',
+    borderRadius: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '40px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  },
+  msIcon: {
+    marginRight: '8px',
+    fontSize: '16px',
   },
 };
 

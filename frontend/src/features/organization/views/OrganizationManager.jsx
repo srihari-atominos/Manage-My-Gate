@@ -21,7 +21,7 @@ import {
   CPaginationItem,
 } from '@coreui/react';
 import useOrganizationManager from '../hooks/useOrganizationManager.js';
-import '../styles/_superAdmin.scss';
+import '../styles/_organization.scss';
 
 /**
  * Super Admin View container listing system organizations with Block/Unblock toggle triggers.

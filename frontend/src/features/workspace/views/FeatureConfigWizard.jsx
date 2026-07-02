@@ -1,11 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSelector } from 'react-redux';
-import { useLocation } from 'react-router-dom';
 import { CContainer, CRow, CCol, CCard, CCardBody, CButton, CAlert, CSpinner } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilUser, cilShieldAlt, cilLayers } from '@coreui/icons';
-import useFeatureConfig from '../hooks/useFeatureConfig.js';
+import useFeatureConfigWizard from '../hooks/useFeatureConfigWizard.js';
 import SetupWorkspace from '../components/SetupWorkspace.jsx';
 import '../styles/_workspace.scss';
 
@@ -14,22 +12,19 @@ import '../styles/_workspace.scss';
  */
 export const FeatureConfigWizard = () => {
   const { t } = useTranslation();
-  const activeOrganizationId = useSelector((state) => state.workspace.activeOrganizationId);
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const isCreateIntent = searchParams.get('intent') === 'create';
 
   const {
+    showWorkspaceSetup,
     selectedFeatures,
     loading,
     error,
     toggleFeature,
     submitFeatures,
-  } = useFeatureConfig();
+  } = useFeatureConfigWizard();
 
   // If user does not have an active organization, or if they explicitly intend to create a new one,
   // they must setup one first.
-  if (!activeOrganizationId || isCreateIntent) {
+  if (showWorkspaceSetup) {
     return <SetupWorkspace />;
   }
 

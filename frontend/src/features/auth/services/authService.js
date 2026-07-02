@@ -19,9 +19,19 @@ export const createWorkspace = async ({ name }) => {
   return await apiClient.post('/organizations/setup', { name });
 };
 
+export const verifyGoogleToken = async (token) => {
+  return await apiClient.post('/auth/google/verify', { token });
+};
+
+export const verifyMicrosoftToken = async (token) => {
+  return await apiClient.post('/auth/microsoft/verify', { token });
+};
+
 export default {
   login,
   register,
   acceptInvite,
   createWorkspace,
+  verifyGoogleToken,
+  verifyMicrosoftToken,
 };

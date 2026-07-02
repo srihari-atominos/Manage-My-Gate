@@ -38,6 +38,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    ssoProvider: {
+      type: String,
+      enum: ['google', 'microsoft', 'none'],
+      default: 'none',
+    },
+    ssoId: {
+      type: String,
+      sparse: true,
+    },
   },
   {
     timestamps: true,

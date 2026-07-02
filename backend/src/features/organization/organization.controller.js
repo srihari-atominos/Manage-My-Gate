@@ -1,4 +1,5 @@
 import organizationService from './organization.services.js';
+import { setAuthCookie } from '../../utils/cookie.utils.js';
 
 export class OrganizationController {
   async updateFeatures(req, res, next) {
@@ -58,11 +59,7 @@ export class OrganizationController {
       const result = await organizationService.setupWorkspace({ name, userId });
       
       // Set the newly scoped token cookie if needed, just like switchContext / login
-      res.cookie('token', result.token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-      });
+      setAuthCookie(res, result.token);
 
       res.success(result, 'Workspace created and initialized successfully', 201);
     } catch (error) {

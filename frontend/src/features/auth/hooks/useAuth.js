@@ -7,6 +7,10 @@ import {
   updateProfile as updateProfileAction,
   clearStatus as clearStatusAction,
   acceptInvitation,
+  loginUser,
+  loginWithGoogle,
+  loginWithMicrosoft,
+  registerUser,
 } from '../store/authSlice'
 
 /**
@@ -57,6 +61,22 @@ export const useAuth = () => {
     }
   }
 
+  const login = (credentials) => {
+    return dispatch(loginUser(credentials))
+  }
+
+  const loginGoogle = (credential) => {
+    return dispatch(loginWithGoogle(credential))
+  }
+
+  const loginMicrosoft = (idToken) => {
+    return dispatch(loginWithMicrosoft(idToken))
+  }
+
+  const register = (userData) => {
+    return dispatch(registerUser(userData))
+  }
+
   return {
     currentUser,
     isAuthenticated,
@@ -67,6 +87,10 @@ export const useAuth = () => {
     updateProfile,
     clearStatus,
     handleAcceptInvitation,
+    login,
+    loginGoogle,
+    loginMicrosoft,
+    register,
   }
 }
 

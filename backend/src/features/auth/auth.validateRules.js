@@ -68,3 +68,15 @@ export const switchContextRules = [
     .withMessage('targetRole must be a string')
     .trim(),
 ];
+
+/**
+ * Validation rules for SSO token verification
+ */
+export const ssoVerifyRules = [
+  body('token')
+    .notEmpty()
+    .withMessage('SSO provider token is required')
+    .isString()
+    .withMessage('Token must be a string')
+    .trim(),
+];

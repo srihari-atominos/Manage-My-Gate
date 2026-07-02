@@ -1,6 +1,6 @@
 import React from 'react';
 import { CContainer, CRow, CCol } from '@coreui/react';
-import LoginForm from '../../../features/auth/LoginForm.jsx';
+import LoginForm from '../../../features/auth/components/LoginForm.jsx';
 
 const Login = () => {
   return (

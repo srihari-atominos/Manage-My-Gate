@@ -17,8 +17,8 @@ export class OrgMembershipService {
     return await orgMembershipRepository.findByUserIdWithPopulate(userId, session);
   }
 
-  async getPaginatedUsersForOrg(orgId, page = 1, limit = 10) {
-    const { data, totalRecords } = await orgMembershipRepository.findPaginatedUsersByOrg(orgId, page, limit);
+  async getPaginatedUsersForOrg(orgId, page = 1, limit = 10, filters = {}) {
+    const { data, totalRecords } = await orgMembershipRepository.findPaginatedUsersByOrg(orgId, page, limit, filters);
     const totalPages = Math.ceil(totalRecords / limit);
     return {
       data,

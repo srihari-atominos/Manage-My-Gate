@@ -9,7 +9,6 @@
  */
 
 import React, { useState, useMemo } from 'react'
-import { useSelector } from 'react-redux'
 import { CBadge, CAlert, CButton } from '@coreui/react'
 import { toast } from 'react-hot-toast'
 
@@ -29,10 +28,9 @@ import { useUserList } from './hooks/useUserList'
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const UserList = () => {
-  const currentUserId = useSelector((state) => state.auth.user?.id)
-
   // ── Controller Hook ──
   const {
+    currentUserId,
     searchQuery,
     selectedRoles,
     statusFilter,

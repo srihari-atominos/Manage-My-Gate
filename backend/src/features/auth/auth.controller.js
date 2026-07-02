@@ -1,5 +1,6 @@
 import authService from './auth.services.js';
 import config from '../../config/config.js';
+import { setAuthCookie } from '../../utils/cookie.utils.js';
 
 export class AuthController {
   async register(req, res, next) {
@@ -14,12 +15,7 @@ export class AuthController {
   async login(req, res, next) {
     try {
       const data = await authService.login(req.body);
-      // Optional: Set cookie
-      res.cookie('token', data.token, {
-        httpOnly: true,
-        secure: config.nodeEnv === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-      });
+      setAuthCookie(res, data.token);
       res.success(data, 'Login successful');
     } catch (error) {
       next(error);
@@ -51,13 +47,31 @@ export class AuthController {
       const userId = req.user.id;
       const data = await authService.switchContext(userId, targetOrgId, targetRole);
 
-      res.cookie('token', data.token, {
-        httpOnly: true,
-        secure: config.nodeEnv === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-      });
+      setAuthCookie(res, data.token);
 
       res.success(data, 'Workspace context switched successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyGoogle(req, res, next) {
+    try {
+      const { token } = req.body;
+      const data = await authService.loginOrRegisterWithGoogle(token);
+      setAuthCookie(res, data.token);
+      res.success(data, 'Google login successful');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyMicrosoft(req, res, next) {
+    try {
+      const { token } = req.body;
+      const data = await authService.loginOrRegisterWithMicrosoft(token);
+      setAuthCookie(res, data.token);
+      res.success(data, 'Microsoft login successful');
     } catch (error) {
       next(error);
     }

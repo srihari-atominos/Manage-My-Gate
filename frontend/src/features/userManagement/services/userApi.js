@@ -10,8 +10,15 @@ import apiClient from '../../../services/apiClient'
  * Fetches all users from the backend.
  * @returns {Promise<Array>}
  */
-export const fetchUsers = async ({ page = 1, limit = 10 } = {}) => {
-  const response = await apiClient.get(`/users?page=${page}&limit=${limit}`)
+export const fetchUsers = async ({ page = 1, limit = 10, search = '', roles = [], status = [] } = {}) => {
+  const params = new URLSearchParams()
+  params.append('page', page)
+  params.append('limit', limit)
+  if (search) params.append('search', search)
+  if (roles && roles.length > 0) params.append('roles', roles.join(','))
+  if (status && status.length > 0) params.append('status', status.join(','))
+  
+  const response = await apiClient.get(`/users?${params.toString()}`)
   return response.data
 }
 

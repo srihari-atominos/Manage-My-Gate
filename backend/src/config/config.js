@@ -47,6 +47,11 @@ export const config = {
   },
   nodeEnv: process.env.NODE_ENV || 'development',
   avatarUploadPath: process.env.AVATAR_UPLOAD_PATH || 'uploads/avatars',
+  sso: {
+    googleClientId: process.env.GOOGLE_CLIENT_ID,
+    microsoftClientId: process.env.MICROSOFT_CLIENT_ID,
+    microsoftTenantId: process.env.MICROSOFT_TENANT_ID || 'common',
+  },
 };
 
 export default config;
