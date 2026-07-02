@@ -231,6 +231,19 @@ export class IntegrationHubService {
 
     return decryptedCredentials;
   }
+
+  /**
+   * Find SMTP connection for an organization.
+   * @param {string} orgId - Organization ID
+   * @param {import('mongoose').ClientSession} [session] - Optional session
+   * @returns {Promise<object|null>}
+   */
+  async findSmtpConnection(orgId, session = null) {
+    if (!orgId) {
+      throw new HttpError(400, 'Organization ID is required.');
+    }
+    return await integrationHubRepository.findSmtpConnection(orgId, session);
+  }
 }
 
 export default new IntegrationHubService();

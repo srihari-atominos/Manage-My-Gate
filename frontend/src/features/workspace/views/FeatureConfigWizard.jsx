@@ -85,21 +85,14 @@ export const FeatureConfigWizard = () => {
                         >
                           <CCardBody className="d-flex flex-column align-items-center text-center p-2">
                             <div
-                              className={`rounded-circle d-flex align-items-center justify-content-center mb-3`}
-                              style={{
-                                width: '60px',
-                                height: '60px',
-                                backgroundColor: isSelected ? '#321fdb' : '#f8f9fa',
-                                transition: 'all 0.25s ease-in-out',
-                              }}
+                              className={`rounded-circle d-flex align-items-center justify-content-center mb-3 feature-card-icon-container ${
+                                isSelected ? 'selected' : ''
+                              }`}
                             >
                               <CIcon 
                                 icon={feature.icon} 
                                 size="xl" 
-                                style={{
-                                  color: isSelected ? '#ffffff' : '#321fdb',
-                                  transition: 'all 0.25s ease-in-out',
-                                }} 
+                                className="feature-card-icon"
                               />
                             </div>
                             <h5 className="fw-semibold text-dark mb-2">
@@ -119,8 +112,7 @@ export const FeatureConfigWizard = () => {
                   <CButton
                     color="primary"
                     size="lg"
-                    className="py-3 fw-semibold rounded-3 text-white border-0"
-                    style={{ backgroundColor: '#321fdb' }}
+                    className="py-3 fw-semibold rounded-3 text-white border-0 btn-wizard-submit"
                     onClick={submitFeatures}
                     disabled={loading || selectedFeatures.length === 0}
                     id="submit-features-wizard"

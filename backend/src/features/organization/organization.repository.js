@@ -26,7 +26,9 @@ export class OrganizationRepository {
 
   async findAllPaginated(page = 1, limit = 10) {
     const skip = (page - 1) * limit;
+    const matchQuery = { isPlatform: { $ne: true } };
     const result = await Organization.aggregate([
+      { $match: matchQuery },
       {
         $facet: {
           metadata: [{ $count: 'total' }],

@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 // Load environment variables from backend local directory
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET', 'SESSION_SECRET'];
+const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET', 'SESSION_SECRET', 'ENCRYPTION_KEY'];
 
 // Validate required environment variables
 for (const envVar of requiredEnvVars) {
@@ -29,7 +29,7 @@ export const config = {
   session: {
     secret: process.env.SESSION_SECRET,
   },
-  encryptionKey: process.env.ENCRYPTION_KEY || '12345678901234567890123456789012',
+  encryptionKey: process.env.ENCRYPTION_KEY,
   cors: {
     allowedOrigins: (() => {
       const origins = process.env.ALLOWED_ORIGINS

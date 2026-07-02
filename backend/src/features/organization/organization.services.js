@@ -16,8 +16,8 @@ export class OrganizationService {
     return org;
   }
 
-  async updateFeatures(orgId, requestingOrgId, featuresArray, userId = null, session = null) {
-    if (orgId !== requestingOrgId) {
+  async updateFeatures(orgId, requestingOrgId, featuresArray, userId = null, isPlatformUser = false, session = null) {
+    if (orgId !== requestingOrgId && !isPlatformUser) {
       throw new HttpError(403, 'Forbidden. You do not have permission to access another organization.');
     }
 

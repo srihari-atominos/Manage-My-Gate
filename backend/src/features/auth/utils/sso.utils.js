@@ -12,7 +12,7 @@ const getMsSigningKey = (header, callback) => {
     if (err) {
       callback(err);
     } else {
-      const signingKey = key.getPublicKey || key.rsaPublicKey;
+      const signingKey = (typeof key.getPublicKey === 'function') ? key.getPublicKey() : key.rsaPublicKey;
       callback(null, signingKey);
     }
   });

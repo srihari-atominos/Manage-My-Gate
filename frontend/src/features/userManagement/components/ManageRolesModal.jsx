@@ -13,7 +13,7 @@ import {
   CButton,
   CAlert,
 } from '@coreui/react'
-import usePermissions from '../../../hooks/usePermissions'
+import usePermission from '../../../hooks/usePermission'
 
 const schema = yup.object().shape({
   selectedRoles: yup.array().of(yup.string().required()).required('Roles selection is required'),
@@ -26,7 +26,7 @@ const schema = yup.object().shape({
  * Validates with yup schema and enforces read-only state if user lacks permission.
  */
 const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] }) => {
-  const hasPermission = usePermissions('assign_roles')
+  const hasPermission = usePermission('users', 'update')
 
   const { reset, watch, setValue, handleSubmit, formState: { errors } } = useForm({
     resolver: yupResolver(schema),

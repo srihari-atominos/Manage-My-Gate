@@ -22,3 +22,26 @@
     background-color: rgba(50, 31, 219, 0.04) !important;
   }
 }
+
+.feature-card-icon-container {
+  width: 60px;
+  height: 60px;
+  background-color: #f8f9fa;
+  transition: all 0.25s ease-in-out;
+  color: #321fdb;
+
+  &.selected {
+    background-color: #321fdb;
+    color: #ffffff;
+  }
+}
+
+.feature-card-icon {
+  color: inherit;
+  transition: all 0.25s ease-in-out;
+}
+
+.btn-wizard-submit {
+  background-color: #321fdb !important;
+  border-color: #321fdb !important;
+}
