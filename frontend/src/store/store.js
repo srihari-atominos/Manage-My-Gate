@@ -10,6 +10,8 @@ import workspaceReducer from '../features/workspace/store/workspaceSlice.js';
 import organizationReducer from '../features/organization/store/organizationSlice.js';
 import auditLogReducer from '../features/auditLog/store/auditLogSlice.js';
 import messageTemplateReducer from '../features/messageTemplate/store/messageTemplateSlice.js';
+import amenityReducer from '../features/amenities/store/amenitySlice.js';
+import bookingReducer from '../features/bookings/store/bookingSlice.js';
 
 // Custom lightweight state logger middleware for development mode
 const stateLoggerMiddleware = (store) => (next) => (action) => {
@@ -37,6 +39,8 @@ export const store = configureStore({
     organization: organizationReducer,
     auditLog: auditLogReducer,
     messageTemplate: messageTemplateReducer,
+    amenities: amenityReducer,
+    bookings: bookingReducer,
   },
   middleware: (getDefaultMiddleware) => {
     const middlewares = getDefaultMiddleware();

@@ -10,6 +10,10 @@ const IntegrationHubView = React.lazy(() => import('./features/integrationHub/vi
 const FeatureConfigWizard = React.lazy(() => import('./features/workspace/views/FeatureConfigWizard'));
 const OrganizationManager = React.lazy(() => import('./features/organization/views/OrganizationManager'));
 const AuditLogViewer = React.lazy(() => import('./features/auditLog/views/AuditLogViewer'));
+const AmenityMaster = React.lazy(() => import('./features/amenities/views/AmenityMaster'));
+const BookingLedger = React.lazy(() => import('./features/bookings/views/BookingLedger'));
+const ResidentDiscover = React.lazy(() => import('./features/amenities/views/ResidentDiscover'));
+const SecurityScanner = React.lazy(() => import('./features/bookings/views/SecurityScanner'));
 
 /**
  * Application Routes configuration mapping paths to lazy-loaded components.
@@ -25,6 +29,11 @@ export const routes = [
   { path: '/workspace-setup', name: 'Workspace Setup', element: FeatureConfigWizard },
   { path: '/super-admin/organizations', name: 'Organization Manager', element: OrganizationManager, requirePlatform: true },
   { path: '/super-admin/audit-logs', name: 'Audit Logs', element: AuditLogViewer, requirePlatform: true },
+  { path: '/admin/amenities', name: 'Amenity Master', element: AmenityMaster, requiredPermission: 'amenities:manage' },
+  { path: '/admin/bookings', name: 'Booking Ledger', element: BookingLedger, requiredPermission: 'bookings:manage' },
+  { path: '/resident/discover', name: 'Discover Amenities', element: ResidentDiscover },
+  { path: '/resident/calendar', name: 'My Calendar', element: ResidentDiscover },
+  { path: '/security/scanner', name: 'QR Scanner', element: SecurityScanner },
 ];
 
 export default routes;
