@@ -1,49 +1,13 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import { CCard, CCardBody, CRow, CCol } from '@coreui/react'
+import { useSelector } from 'react-redux'
 import useDashboard from './hooks/useDashboard'
-
-/**
- * Dashboard - Al Jazirah Vehicles Portal Hub
- *
- * Dynamically rendered feature categories and shortcut cards,
- * consuming the exact same configuration as the sidebar navigation.
- */
-
-const SectionHeader = ({ labelKey, defaultLabel }) => {
-  const { t } = useTranslation()
-  return (
-    <div className="portal-section-header">
-      <span className="portal-pipe" aria-hidden="true" />
-      <span className="portal-section-label">
-        {t(labelKey, { defaultValue: defaultLabel })}
-      </span>
-    </div>
-  )
-}
-
-const PortalCard = ({ card }) => {
-  const { t } = useTranslation()
-  return (
-    <Link to={card.to} className="portal-card-link" id={`portal-card-${card.id}`}>
-      <CCard className="portal-card border-0">
-        <CCardBody className="portal-card-body d-flex flex-column align-items-center justify-content-center p-0">
-          <div className="portal-card-icon-wrapper">
-            {card.icon}
-          </div>
-          <span className="portal-card-title">
-            {t(card.titleKey, { defaultValue: card.name })}
-          </span>
-        </CCardBody>
-      </CCard>
-    </Link>
-  )
-}
+import AdminDashboard from './components/AdminDashboard'
+import ResidentDashboard from './components/ResidentDashboard'
+import GuardDashboard from './components/GuardDashboard'
 
 const Dashboard = () => {
-  const { t } = useTranslation()
-  const { groups, appName } = useDashboard()
+  const activeRole = useSelector((state) => state.workspace?.activeRole);
+  const { groups, appName } = useDashboard();
 
   return (
     <div className="portal-hub">
@@ -54,7 +18,7 @@ const Dashboard = () => {
           max-width: 1100px;
           margin: 0 auto;
         }
- 
+  
         /* ── Main Title ── */
         .portal-main-title {
           font-size: 1.55rem;
@@ -64,12 +28,12 @@ const Dashboard = () => {
           color: var(--cui-body-color);
           margin-bottom: 2.75rem;
         }
- 
+  
         /* ── Category Section ── */
         .portal-category {
           margin-bottom: 2.5rem;
         }
- 
+  
         /* ── Section Header: | LABEL ── */
         .portal-section-header {
           display: flex;
@@ -92,14 +56,14 @@ const Dashboard = () => {
           text-transform: uppercase;
           color: var(--cui-text-muted, #768192);
         }
- 
+  
         /* ── Card Link Reset ── */
         .portal-card-link {
           text-decoration: none;
           color: inherit;
           display: block;
         }
- 
+  
         /* ── Individual Card ── */
         .portal-card {
           border-radius: 14px;
@@ -127,7 +91,7 @@ const Dashboard = () => {
           background: rgba(50, 31, 219, 0.08) !important;
           box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
         }
- 
+  
         /* ── Icon Wrapper ── */
         .portal-card-icon-wrapper {
           width: 42px;
@@ -152,7 +116,7 @@ const Dashboard = () => {
           background: var(--cui-primary, #321fdb);
           color: #ffffff;
         }
- 
+  
         /* ── Card Title ── */
         .portal-card-title {
           font-size: 0.72rem;
@@ -163,7 +127,7 @@ const Dashboard = () => {
           line-height: 1.2;
           padding: 0 8px;
         }
- 
+  
         /* ── Responsive ── */
         @media (max-width: 576px) {
           .portal-hub {
@@ -178,27 +142,15 @@ const Dashboard = () => {
           }
         }
       `}</style>
-  
-      {/* Main Portal Title */}
-      <h1 className="portal-main-title">
-        {t('dashboard.welcome', { defaultValue: 'Welcome to Portal', appName })}
-      </h1>
-  
-      {/* Category Sections */}
-      <CRow className="g-4">
-        {groups.map((category) => (
-          <CCol xs={12} key={category.id} className="portal-category" aria-labelledby={`section-${category.id}`}>
-            <SectionHeader labelKey={category.titleKey} defaultLabel={category.title} />
-            <CRow className="g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6" id={`section-${category.id}`}>
-              {category.cards.map((card) => (
-                <CCol key={card.id}>
-                  <PortalCard card={card} />
-                </CCol>
-              ))}
-            </CRow>
-          </CCol>
-        ))}
-      </CRow>
+
+      {/* Dynamic Dashboard Selector based on Role */}
+      {activeRole === 'Resident Owner' || activeRole === 'Resident Tenant' || activeRole === 'Family Member' ? (
+        <ResidentDashboard />
+      ) : activeRole === 'Security Guard' ? (
+        <GuardDashboard />
+      ) : (
+        <AdminDashboard groups={groups} appName={appName} />
+      )}
     </div>
   )
 }

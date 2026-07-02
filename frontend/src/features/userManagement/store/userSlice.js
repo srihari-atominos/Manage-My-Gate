@@ -26,12 +26,24 @@ export const fetchUsersAsync = createAsyncThunk(
 
 export const inviteUserAsync = createAsyncThunk(
   'userManagement/inviteUser',
-  async (email, { rejectWithValue }) => {
+  async (inviteData, { rejectWithValue }) => {
     try {
-      const response = await userApi.inviteUser(email)
+      const response = await userApi.inviteUser(inviteData)
       return response
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to invite user')
+    }
+  }
+)
+
+export const bulkInviteUsersAsync = createAsyncThunk(
+  'userManagement/bulkInviteUsers',
+  async (invitations, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await userApi.bulkInviteUsers(invitations)
+      return response
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to bulk invite users')
     }
   }
 )
@@ -136,6 +148,18 @@ const userSlice = createSlice({
       .addCase(inviteUserAsync.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload || 'Failed to invite user'
+      })
+      // Bulk Invite Users
+      .addCase(bulkInviteUsersAsync.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(bulkInviteUsersAsync.fulfilled, (state, action) => {
+        state.loading = false
+      })
+      .addCase(bulkInviteUsersAsync.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Failed to bulk invite users'
       })
       // Delete User
       .addCase(deleteUserAsync.pending, (state) => {

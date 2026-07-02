@@ -20,6 +20,7 @@ import ActionIconButton from '../../components/common/ActionIconButton'
 // Import feature sub-components and controller hook
 import UserToolbar from './components/UserToolbar'
 import InviteUserModal from './components/InviteUserModal'
+import BulkInviteModal from './components/BulkInviteModal'
 import InviteUserButton from './components/InviteUserButton'
 import ManageRolesModal from './components/ManageRolesModal'
 import TemplateEditorCanvasModal from '../messageTemplate/components/TemplateEditorCanvasModal'
@@ -48,6 +49,7 @@ const UserList = () => {
     setRowsPerPage,
     deleteUser,
     inviteUser,
+    bulkInviteUsers,
     selectedUserForRoles,
     openManageRolesModal,
     closeManageRolesModal,
@@ -58,13 +60,14 @@ const UserList = () => {
 
   // ── Local UI State ──
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const [showBulkInviteModal, setShowBulkInviteModal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
 
   // ── Handlers ──
 
-  const handleSendInvite = async (emailAddress) => {
+  const handleSendInvite = async (inviteData) => {
     try {
-      const response = await inviteUser(emailAddress)
+      const response = await inviteUser(inviteData)
       const token = response.invitationToken
       if (token) {
         const clientUrl = window.location.origin + window.location.pathname
@@ -116,6 +119,24 @@ const UserList = () => {
       key: 'email',
       label: 'Email',
       render: (val) => <span className="text-body-secondary">{val}</span>,
+    },
+    {
+      key: 'villaNumber',
+      label: 'Villa / Unit',
+      render: (val, row) => {
+        if (!val) return <span className="text-muted small">—</span>;
+        return (
+          <div>
+            <span className="fw-bold small text-primary">{val}</span>
+            {row.villaBlock && <span className="text-muted small ms-1">({row.villaBlock})</span>}
+            {row.residentType && row.residentType !== 'None' && (
+              <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                Residency: <span className="fw-semibold">{row.residentType}</span>
+              </div>
+            )}
+          </div>
+        );
+      }
     },
     {
       key: 'role',
@@ -243,6 +264,16 @@ const UserList = () => {
             >
               ✉️ Configure Invitation Mail
             </CButton>
+            <CButton
+              id="bulk-invite-users-btn"
+              color="primary"
+              variant="outline"
+              size="sm"
+              className="fw-semibold d-flex align-items-center gap-1"
+              onClick={() => setShowBulkInviteModal(true)}
+            >
+              👥 Bulk Invite
+            </CButton>
             <InviteUserButton onClick={() => setShowInviteModal(true)} />
           </div>
         }
@@ -273,6 +304,13 @@ const UserList = () => {
         visible={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         onSendInvite={handleSendInvite}
+      />
+
+      {/* Bulk Invite Modal */}
+      <BulkInviteModal
+        visible={showBulkInviteModal}
+        onClose={() => setShowBulkInviteModal(false)}
+        onBulkInvite={bulkInviteUsers}
       />
 
       {/* Template Editor Canvas Modal */}

@@ -36,7 +36,7 @@ export const authorizePermission = (feature, action) => {
       }
 
       // Super Admin bypasses all checks
-      if (req.user.role === 'Super Admin') {
+      if (req.user.role === 'Super Admin' || req.user.role === 'Platform Super Admin') {
         return next();
       }
 

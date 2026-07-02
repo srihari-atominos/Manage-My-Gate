@@ -25,5 +25,14 @@
       "update",
       "delete"
     ]
+  },
+  {
+    "feature": "villas",
+    "actions": [
+      "create",
+      "read",
+      "update",
+      "delete"
+    ]
   }
 ]

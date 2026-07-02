@@ -5,6 +5,7 @@
 @use "vendors/simplebar";
 @use "../features/userManagement/styles/userManagement";
 @use "../features/integrationHub/styles/integrationHub";
+@use "../features/villa/styles/villa";
 
 body {
   background-color: var(--cui-tertiary-bg);

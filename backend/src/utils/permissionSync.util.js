@@ -82,9 +82,16 @@ export const syncPermissions = async () => {
         email: adminEmail,
         username: adminUsername,
         password: adminPassword,
+        status: 'Active',
       });
       logger.info(`Successfully bootstrapped default Super Admin user: email="${adminEmail}", username="${adminUsername}"`);
     } else {
+      if (superAdminUser.status !== 'Active') {
+        const User = (await import('../features/user/user.model.js')).default;
+        await User.updateOne({ _id: superAdminUser._id }, { status: 'Active' });
+        superAdminUser.status = 'Active';
+        logger.info('Updated existing Super Admin user status to "Active".');
+      }
       logger.info('Super Admin user already bootstrapped.');
     }
 

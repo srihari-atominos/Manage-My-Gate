@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { updateOrganizationFeatures } from '../../organization/services/organizationApi.js';
@@ -14,9 +14,35 @@ export const useFeatureConfig = () => {
 
   const activeOrganizationId = useSelector((state) => state.workspace.activeOrganizationId);
   const activeRole = useSelector((state) => state.workspace.activeRole);
+  const allowedFeatures = useSelector((state) => state.workspace.allowedFeatures) || [];
   const currentUser = useSelector((state) => state.auth.user);
 
-  const [selectedFeatures, setSelectedFeatures] = useState([]);
+  const [selectedFeatures, setSelectedFeatures] = useState(() => {
+    if (allowedFeatures.length === 0) {
+      return ['users', 'roles', 'integrations', 'villas'];
+    }
+    const initial = [];
+    if (allowedFeatures.includes('users') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('users:'))) initial.push('users');
+    if (allowedFeatures.includes('roles') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('roles:'))) initial.push('roles');
+    if (allowedFeatures.includes('integrations') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('integrations:'))) initial.push('integrations');
+    if (allowedFeatures.includes('villas') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('villas:'))) initial.push('villas');
+    return initial;
+  });
+
+  // Keep selectedFeatures in sync if allowedFeatures updates or resolves
+  useEffect(() => {
+    if (allowedFeatures.length > 0) {
+      const initial = [];
+      if (allowedFeatures.includes('users') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('users:'))) initial.push('users');
+      if (allowedFeatures.includes('roles') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('roles:'))) initial.push('roles');
+      if (allowedFeatures.includes('integrations') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('integrations:'))) initial.push('integrations');
+      if (allowedFeatures.includes('villas') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('villas:'))) initial.push('villas');
+      setSelectedFeatures(initial);
+    } else {
+      setSelectedFeatures(['users', 'roles', 'integrations', 'villas']);
+    }
+  }, [allowedFeatures]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 

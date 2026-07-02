@@ -20,6 +20,7 @@ export class OrgMembershipRepository {
       .populate({ path: 'orgId', select: 'name allowedFeatures status isPlatform' })
       .populate({ path: 'roleId', select: 'name' })
       .populate({ path: 'roleIds', select: 'name' })
+      .populate({ path: 'villaId' })
       .session(session || null);
   }
 
@@ -75,8 +76,22 @@ export class OrgMembershipRepository {
         },
       },
       {
+        $lookup: {
+          from: 'villas',
+          localField: 'villaId',
+          foreignField: '_id',
+          as: 'villa',
+        },
+      },
+      {
         $unwind: {
           path: '$user',
+          preserveNullAndEmptyArrays: false,
+        },
+      },
+      {
+        $unwind: {
+          path: '$villa',
           preserveNullAndEmptyArrays: true,
         },
       },
@@ -118,6 +133,10 @@ export class OrgMembershipRepository {
                 }
               },
               status: '$user.status',
+              villaId: '$villa._id',
+              villaNumber: '$villa.villaNumber',
+              villaBlock: '$villa.block',
+              residentType: '$residentType',
             },
           },
         ],
@@ -159,6 +178,18 @@ export class OrgMembershipRepository {
       },
       { session: session || null }
     );
+  }
+
+  async findResidentsByVillaId(villaId, session = null) {
+    return await OrgMembership.find({ villaId })
+      .populate({ path: 'userId', select: 'name email phone status' })
+      .session(session);
+  }
+
+  async findByUserIdAndOrgIdWithPopulate(userId, orgId, session = null) {
+    return await OrgMembership.findOne({ userId, orgId })
+      .populate({ path: 'villaId' })
+      .session(session);
   }
 }
 

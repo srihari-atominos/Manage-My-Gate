@@ -146,6 +146,14 @@ export class AuthService {
       };
     });
 
+    const villaInfo = selectedMembership?.villaId ? {
+      id: selectedMembership.villaId._id.toString(),
+      villaNumber: selectedMembership.villaId.villaNumber,
+      block: selectedMembership.villaId.block,
+      intercom: selectedMembership.villaId.intercom,
+      occupancyStatus: selectedMembership.villaId.occupancyStatus,
+    } : null;
+
     return {
       tokenPayload: {
         id: user._id,
@@ -156,6 +164,10 @@ export class AuthService {
         permissions,
         orgId,
         isPlatform,
+        villaId: villaInfo ? villaInfo.id : null,
+        villaNumber: villaInfo ? villaInfo.villaNumber : '',
+        villaBlock: villaInfo ? villaInfo.block : '',
+        residentType: selectedMembership?.residentType || 'None',
       },
       availableWorkspaces,
     };
@@ -198,6 +210,10 @@ export class AuthService {
         permissions: tokenPayload.permissions,
         orgId: tokenPayload.orgId,
         isPlatform: tokenPayload.isPlatform,
+        villaId: tokenPayload.villaId,
+        villaNumber: tokenPayload.villaNumber,
+        villaBlock: tokenPayload.villaBlock,
+        residentType: tokenPayload.residentType,
       },
       availableWorkspaces,
     };
@@ -229,6 +245,10 @@ export class AuthService {
         permissions: tokenPayload.permissions,
         orgId: tokenPayload.orgId,
         isPlatform: tokenPayload.isPlatform,
+        villaId: tokenPayload.villaId,
+        villaNumber: tokenPayload.villaNumber,
+        villaBlock: tokenPayload.villaBlock,
+        residentType: tokenPayload.residentType,
       },
     };
   }

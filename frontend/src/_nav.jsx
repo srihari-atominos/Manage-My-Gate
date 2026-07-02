@@ -6,6 +6,7 @@ import {
   cilApps,
   cilShieldAlt,
   cilList,
+  cilHome,
 } from '@coreui/icons';
 import { CNavItem, CNavTitle } from '@coreui/react';
 
@@ -17,6 +18,13 @@ const _nav = [
   {
     component: CNavTitle,
     name: 'Features',
+  },
+  {
+    component: CNavItem,
+    name: 'Villa Management',
+    to: '/villas',
+    icon: <CIcon icon={cilHome} customClassName="nav-icon" />,
+    requiredPermission: 'villas:read',
   },
   {
     component: CNavItem,

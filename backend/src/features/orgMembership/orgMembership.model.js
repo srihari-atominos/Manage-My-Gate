@@ -23,6 +23,17 @@ const orgMembershipSchema = new mongoose.Schema(
         ref: 'Role',
       }
     ],
+    villaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Villa',
+      required: false,
+      default: null,
+    },
+    residentType: {
+      type: String,
+      enum: ['Owner', 'Tenant', 'Family', 'Guest', 'None'],
+      default: 'None',
+    },
   },
   {
     timestamps: true,

@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CContainer, CRow, CCol, CCard, CCardBody, CButton, CAlert, CSpinner } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
-import { cilUser, cilShieldAlt, cilLayers } from '@coreui/icons';
+import { cilUser, cilShieldAlt, cilLayers, cilHome } from '@coreui/icons';
 import useFeatureConfigWizard from '../hooks/useFeatureConfigWizard.js';
 import SetupWorkspace from '../components/SetupWorkspace.jsx';
 import '../styles/_workspace.scss';
@@ -47,6 +47,12 @@ export const FeatureConfigWizard = () => {
       descKey: 'workspace.wizard.integrations.desc',
       icon: cilLayers,
     },
+    {
+      id: 'villas',
+      titleKey: 'workspace.wizard.villas.title',
+      descKey: 'workspace.wizard.villas.desc',
+      icon: cilHome,
+    },
   ];
 
   return (
@@ -71,11 +77,11 @@ export const FeatureConfigWizard = () => {
                   </CAlert>
                 )}
 
-                <CRow className="gap-3 gap-md-0 mb-5">
+                <CRow className="g-3 mb-5">
                   {features.map((feature) => {
                     const isSelected = selectedFeatures.includes(feature.id);
                     return (
-                      <CCol key={feature.id} md={4} className="mb-3 mb-md-0">
+                      <CCol key={feature.id} xs={12} sm={6} lg={3}>
                         <CCard
                           className={`feature-card h-100 border rounded-3 p-3 ${
                             isSelected ? 'selected' : ''

@@ -83,6 +83,10 @@ const resources = {
             title: 'Integration Hub',
             desc: 'Connect and manage external API integrations and third-party tools',
           },
+          villas: {
+            title: 'Villa Management',
+            desc: 'Manage community villas, blocks, intercoms, and occupancy status',
+          },
           submit: 'Confirm & Initialize Workspace',
           loading: 'Initializing...',
           error: 'Failed to configure features. Please try again.',
@@ -123,6 +127,7 @@ const resources = {
         },
         cards: {
           userManagement: 'User Management',
+          villaManagement: 'Villa Management',
           roleBuilder: 'Role Builder',
           integrationHub: 'Integration Hub',
           organizationManager: 'Organization Manager',

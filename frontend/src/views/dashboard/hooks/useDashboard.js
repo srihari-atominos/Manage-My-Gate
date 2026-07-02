@@ -7,6 +7,10 @@ const nameToKeyMap = {
     titleKey: 'dashboard.cards.userManagement',
     id: 'user-management'
   },
+  'Villa Management': {
+    titleKey: 'dashboard.cards.villaManagement',
+    id: 'villa-management'
+  },
   'Role Builder': {
     titleKey: 'dashboard.cards.roleBuilder',
     id: 'role-builder'
@@ -60,6 +64,7 @@ export const useDashboard = () => {
   // Exact same filtering logic as AppSidebar.jsx
   const PORTAL_CATEGORIES = navigation.filter((item) => 
     item.to === '/users' || 
+    item.to === '/villas' || 
     item.to === '/role-builder' || 
     item.to === '/integrations' || 
     !item.to

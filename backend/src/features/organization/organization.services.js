@@ -41,10 +41,10 @@ export class OrganizationService {
       const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
       const permissionService = (await import('../permission/permission.services.js')).default;
 
-      // 4. Fetch the 'Workspace Admin' role for this orgId
-      const adminRole = await roleService.getRoleByName('Workspace Admin', orgId, currentSession);
+      // 4. Fetch the 'Community Admin' role for this orgId
+      const adminRole = await roleService.getRoleByName('Community Admin', orgId, currentSession);
       if (!adminRole) {
-        throw new HttpError(404, 'Workspace Admin role not found for this organization.');
+        throw new HttpError(404, 'Community Admin role not found for this organization.');
       }
 
       // 5. Get all system permissions and filter them by features in the featuresArray
@@ -162,19 +162,67 @@ export class OrganizationService {
 
     try {
       // 1. Create Organization
-      const newOrg = await organizationRepository.create({ name: trimmedName, status: 'Active', allowedFeatures: [] }, session);
+      const newOrg = await organizationRepository.create({ name: trimmedName, status: 'Active', allowedFeatures: ['users', 'roles', 'integrations', 'villas'] }, session);
 
-      // 2. Create the Workspace Admin Role for the Org
+      // 2. Create the default Roles and assign Permissions
       const roleService = (await import('../role/role.services.js')).default;
-      const newRole = await roleService.createRole(
-        { name: 'Workspace Admin', orgId: newOrg._id },
+      const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+      const permissionService = (await import('../permission/permission.services.js')).default;
+
+      const allPermissions = await permissionService.getAllPermissions();
+
+      // Helper function to get IDs by name list
+      const getPermissionIds = (names) => {
+        return allPermissions
+          .filter(p => names.includes(p.name))
+          .map(p => p._id.toString());
+      };
+
+      // Create Community Admin Role
+      const adminRole = await roleService.createRole(
+        { name: 'Community Admin', description: 'Gated community administrator with full access privileges.', orgId: newOrg._id },
         session
       );
+      // Admin gets all permissions
+      const allPermissionIds = allPermissions.map(p => p._id.toString());
+      await rolePermissionService.updateRolePermissions(adminRole._id.toString(), allPermissionIds, session);
+
+      // Create Resident Owner Role
+      const ownerRole = await roleService.createRole(
+        { name: 'Resident Owner', description: 'Villa Owner residing in the community.', orgId: newOrg._id },
+        session
+      );
+      const ownerPerms = getPermissionIds(['villas:read', 'users:read']);
+      await rolePermissionService.updateRolePermissions(ownerRole._id.toString(), ownerPerms, session);
+
+      // Create Resident Tenant Role
+      const tenantRole = await roleService.createRole(
+        { name: 'Resident Tenant', description: 'Villa Tenant residing in the community.', orgId: newOrg._id },
+        session
+      );
+      const tenantPerms = getPermissionIds(['villas:read', 'users:read']);
+      await rolePermissionService.updateRolePermissions(tenantRole._id.toString(), tenantPerms, session);
+
+      // Create Family Member Role
+      const familyRole = await roleService.createRole(
+        { name: 'Family Member', description: 'Family member of a resident.', orgId: newOrg._id },
+        session
+      );
+      const familyPerms = getPermissionIds(['villas:read']);
+      await rolePermissionService.updateRolePermissions(familyRole._id.toString(), familyPerms, session);
+
+      // Create Security Guard Role
+      const guardRole = await roleService.createRole(
+        { name: 'Security Guard', description: 'Security gate staff.', orgId: newOrg._id },
+        session
+      );
+      const guardPerms = getPermissionIds(['villas:read', 'users:read']);
+      await rolePermissionService.updateRolePermissions(guardRole._id.toString(), guardPerms, session);
 
       // 3. Create the Organization Membership linking user, org, and role
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       await orgMembershipService.createMembership(
-        { userId, orgId: newOrg._id, roleIds: [newRole._id] },
+        { userId, orgId: newOrg._id, roleIds: [adminRole._id] },
         session
       );
 

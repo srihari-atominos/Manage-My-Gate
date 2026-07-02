@@ -27,8 +27,9 @@ export const fetchUsers = async ({ page = 1, limit = 10, search = '', roles = []
  * @param {string} email 
  * @returns {Promise<Object>} The newly created user object.
  */
-export const inviteUser = async (email) => {
-  const response = await apiClient.post('/users/invite', { email })
+export const inviteUser = async (inviteData) => {
+  const payload = typeof inviteData === 'string' ? { email: inviteData } : inviteData;
+  const response = await apiClient.post('/users/invite', payload)
   return response.data
 }
 
@@ -51,4 +52,14 @@ export const deleteUser = async (userId) => {
 export const updateUserRoles = async (userId, roles) => {
   await apiClient.put(`/users/${userId}/roles`, { roles })
   return { userId, roles }
+}
+
+/**
+ * Bulk invites multiple users.
+ * @param {Array<Object>} invitations 
+ * @returns {Promise<Object>}
+ */
+export const bulkInviteUsers = async (invitations) => {
+  const response = await apiClient.post('/users/bulk-invite', { invitations });
+  return response.data;
 }

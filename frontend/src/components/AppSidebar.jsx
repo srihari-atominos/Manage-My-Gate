@@ -65,6 +65,7 @@ const AppSidebar = () => {
 
   const PORTAL_CATEGORIES = navigation.filter((item) => 
     item.to === '/users' || 
+    item.to === '/villas' || 
     item.to === '/role-builder' || 
     item.to === '/integrations' || 
     !item.to

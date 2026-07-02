@@ -30,6 +30,10 @@ export class UserController {
         email: u.email,
         role: u.role || '',
         status: u.status || 'Pending',
+        villaId: u.villaId || null,
+        villaNumber: u.villaNumber || '',
+        villaBlock: u.villaBlock || '',
+        residentType: u.residentType || 'None',
       }));
       res.success({ data: formatted, pagination }, 'Users retrieved successfully');
     } catch (error) {
@@ -42,15 +46,17 @@ export class UserController {
    */
   async inviteUser(req, res, next) {
     try {
-      const { email } = req.body;
+      const { email, villaId, residentType, roleName } = req.body;
       const orgId = req.tenant.orgId;
-      const { user, invitationToken } = await userService.inviteUser(email, orgId);
+      const { user, invitationToken } = await userService.inviteUser(email, orgId, villaId, residentType, roleName);
       const formatted = {
         id: user._id,
         name: user.username,
         email: user.email,
-        role: '',
+        role: roleName || '',
         status: user.status || 'Pending',
+        villaId: villaId || null,
+        residentType: residentType || 'None',
         invitationToken,
       }
       res.success(formatted, 'User invited successfully', 201)
@@ -113,6 +119,20 @@ export class UserController {
           if (err) console.error('Error deleting file on profile update error:', err);
         });
       }
+      next(error);
+    }
+  }
+
+  /**
+   * Bulk invites multiple users.
+   */
+  async bulkInviteUsers(req, res, next) {
+    try {
+      const { invitations } = req.body;
+      const orgId = req.tenant.orgId;
+      const result = await userService.bulkInviteUsers(invitations, orgId);
+      res.success(result, 'Bulk invitation process completed');
+    } catch (error) {
       next(error);
     }
   }

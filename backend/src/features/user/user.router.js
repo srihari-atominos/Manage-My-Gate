@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import userController from './user.controller.js'
 import { validate } from '../../middlewares/validator.middleware.js'
-import { inviteUserRules, updateUserRolesRules, updateProfileRules } from './user.validateRules.js'
+import { inviteUserRules, bulkInviteUserRules, updateUserRolesRules, updateProfileRules } from './user.validateRules.js'
 import isAuthenticated from '../../middlewares/auth.middleware.js'
 import { authorizePermission } from '../../middlewares/rbac.middleware.js'
 import { upload, imageSignatureValidator } from './middlewares/upload.middleware.js'
@@ -58,6 +58,38 @@ router.post(
   authorizePermission('users', 'create'),
   validate(inviteUserRules),
   userController.inviteUser
+)
+
+/**
+ * @swagger
+ * /users/bulk-invite:
+ *   post:
+ *     summary: Bulk invite new users
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - invitations
+ *             properties:
+ *               invitations:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *     responses:
+ *       200:
+ *         description: Bulk invitation processed successfully.
+ *       400:
+ *         description: Validation error.
+ */
+router.post(
+  '/bulk-invite',
+  tenantContext,
+  authorizePermission('users', 'create'),
+  validate(bulkInviteUserRules),
+  userController.bulkInviteUsers
 )
 
 /**

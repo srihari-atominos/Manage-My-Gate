@@ -151,7 +151,7 @@ export class UserService {
     }
   }
 
-  async inviteUser(email, orgId) {
+  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -172,14 +172,37 @@ export class UserService {
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       const existingMembership = await orgMembershipService.getMembership(user._id, orgId, session);
       if (existingMembership) {
-        throw new HttpError(400, 'User is already a member of this organization.');
+        throw new HttpError(400, 'User is already a member of this community.');
       }
 
-      // Create membership with no role initially (unassigned)
+      // Resolve roles if roleName is provided
+      let roleIds = [];
+      if (roleName) {
+        const roleService = (await import('../role/role.services.js')).default;
+        const role = await roleService.getRoleByName(roleName, orgId, session);
+        if (role) {
+          roleIds.push(role._id);
+        } else {
+          throw new HttpError(400, `Role '${roleName}' not found in this community.`);
+        }
+      }
+
+      // Create membership with villa association and roles
       await orgMembershipService.createMembership({
         userId: user._id,
         orgId,
+        roleIds,
+        roleId: roleIds[0] || null,
+        villaId: villaId || null,
+        residentType
       }, session);
+
+      // Update Villa occupancy status if linking a resident owner/tenant
+      if (villaId && (residentType === 'Owner' || residentType === 'Tenant')) {
+        const villaService = (await import('../villa/villa.services.js')).default;
+        const occupancyStatus = residentType === 'Owner' ? 'Owner Occupied' : 'Tenant Occupied';
+        await villaService.updateVillaOccupancy(villaId, occupancyStatus, session);
+      }
 
       // Dynamically import tokenService to follow clean cross-feature flow
       const tokenService = (await import('../token/token.services.js')).default;
@@ -277,6 +300,64 @@ export class UserService {
     } finally {
       await session.endSession();
     }
+  }
+
+  async bulkInviteUsers(invitations, orgId) {
+    const successes = [];
+    const failures = [];
+
+    const villaService = (await import('../villa/villa.services.js')).default;
+
+    for (const invite of invitations) {
+      const { email, residentType = 'None', roleName, villaNumber } = invite;
+      const trimmedEmail = email ? email.trim().toLowerCase() : '';
+
+      try {
+        if (!trimmedEmail) {
+          throw new HttpError(400, 'Email address is required.');
+        }
+
+        let villaId = null;
+
+        // If villa number is provided, resolve it
+        if (villaNumber && villaNumber.trim()) {
+          const trimmedVillaNo = villaNumber.trim();
+          const villa = await villaService.getVillaByNumber(trimmedVillaNo, orgId);
+          if (!villa) {
+            throw new HttpError(404, `Villa number '${trimmedVillaNo}' not found in this community.`);
+          }
+          villaId = villa._id;
+        } else if (['Owner', 'Tenant', 'Family'].includes(residentType)) {
+          // Residents must have a villa number
+          throw new HttpError(400, `Villa number is required for resident type '${residentType}'.`);
+        }
+
+        // Call the single inviteUser logic
+        await this.inviteUser(trimmedEmail, orgId, villaId, residentType, roleName);
+
+        successes.push({
+          email: trimmedEmail,
+          status: 'Invited',
+          role: roleName,
+          villaNumber: villaNumber || '',
+        });
+      } catch (error) {
+        failures.push({
+          email: trimmedEmail || 'Unknown',
+          error: error.message || 'Invitation failed',
+          role: roleName || '',
+          villaNumber: villaNumber || '',
+        });
+      }
+    }
+
+    return {
+      total: invitations.length,
+      successCount: successes.length,
+      failureCount: failures.length,
+      successes,
+      failures,
+    };
   }
 }
 

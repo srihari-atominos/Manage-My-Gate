@@ -10,6 +10,7 @@ const IntegrationHubView = React.lazy(() => import('./features/integrationHub/vi
 const FeatureConfigWizard = React.lazy(() => import('./features/workspace/views/FeatureConfigWizard'));
 const OrganizationManager = React.lazy(() => import('./features/organization/views/OrganizationManager'));
 const AuditLogViewer = React.lazy(() => import('./features/auditLog/views/AuditLogViewer'));
+const VillaManager = React.lazy(() => import('./features/villa/views/VillaManager'));
 
 /**
  * Application Routes configuration mapping paths to lazy-loaded components.
@@ -18,6 +19,7 @@ export const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
   { path: '/users', name: 'User Management', element: UserList, requiredPermission: 'users:read' },
+  { path: '/villas', name: 'Villa Management', element: VillaManager, requiredPermission: 'villas:read' },
   { path: '/sample', name: 'Sample Feature', element: SampleFeature },
   { path: '/role-builder', name: 'Role Builder', element: RoleBuilder, requiredPermission: 'roles:read' },
   { path: '/notifications', name: 'Notifications', element: NotificationView },

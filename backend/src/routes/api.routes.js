@@ -8,6 +8,7 @@ import integrationHubRouter from '../features/integrationHub/integrationHub.rout
 import organizationRouter from '../features/organization/organization.router.js';
 import auditLogRouter from '../features/auditLog/auditLog.router.js';
 import messageTemplateRouter from '../features/messageTemplate/messageTemplate.router.js';
+import villaRouter from '../features/villa/villa.router.js';
 
 const router = Router();
 
@@ -21,5 +22,6 @@ router.use('/integrations', integrationHubRouter);
 router.use('/organizations', organizationRouter);
 router.use('/audit-logs', auditLogRouter);
 router.use('/templates', messageTemplateRouter);
+router.use('/villas', villaRouter);
 
 export default router;

@@ -9,6 +9,7 @@ import {
   setRowsPerPage,
   fetchUsersAsync,
   inviteUserAsync,
+  bulkInviteUsersAsync,
   deleteUserAsync,
   updateUserRolesAsync,
   STATUS_OPTIONS,
@@ -91,12 +92,21 @@ export const useUserList = () => {
 
   const removeUser = (id) => dispatch(deleteUserAsync(id))
   
-  const inviteUser = async (email) => {
-    const resultAction = await dispatch(inviteUserAsync(email))
+  const inviteUser = async (inviteData) => {
+    const resultAction = await dispatch(inviteUserAsync(inviteData))
     if (inviteUserAsync.fulfilled.match(resultAction)) {
       return resultAction.payload
     } else {
       throw resultAction.payload || resultAction.error?.message || 'Failed to invite user'
+    }
+  }
+
+  const bulkInviteUsers = async (invitations) => {
+    const resultAction = await dispatch(bulkInviteUsersAsync(invitations))
+    if (bulkInviteUsersAsync.fulfilled.match(resultAction)) {
+      return resultAction.payload
+    } else {
+      throw resultAction.payload || resultAction.error?.message || 'Failed to bulk invite users'
     }
   }
 
@@ -147,6 +157,7 @@ export const useUserList = () => {
     setRowsPerPage: handleRowsPerPageChange,
     deleteUser: removeUser,
     inviteUser,
+    bulkInviteUsers,
     openManageRolesModal,
     closeManageRolesModal,
     handleSaveRoles,

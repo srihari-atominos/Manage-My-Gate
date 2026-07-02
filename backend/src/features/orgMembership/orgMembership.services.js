@@ -42,6 +42,14 @@ export class OrgMembershipService {
   async clearRoleFromMemberships(roleId, session = null) {
     return await orgMembershipRepository.clearRoleFromMemberships(roleId, session);
   }
+
+  async getResidentsForVilla(villaId, session = null) {
+    return await orgMembershipRepository.findResidentsByVillaId(villaId, session);
+  }
+
+  async getMembershipWithVilla(userId, orgId, session = null) {
+    return await orgMembershipRepository.findByUserIdAndOrgIdWithPopulate(userId, orgId, session);
+  }
 }
 
 export default new OrgMembershipService();
