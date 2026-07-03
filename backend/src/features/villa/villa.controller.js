@@ -94,6 +94,17 @@ export class VillaController {
       next(error);
     }
   }
+
+  async bulkUpload(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const { villas } = req.body;
+      const result = await villaService.bulkUploadVillasAndResidents(villas, orgId);
+      res.success(result, 'Bulk villa upload process completed');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new VillaController();

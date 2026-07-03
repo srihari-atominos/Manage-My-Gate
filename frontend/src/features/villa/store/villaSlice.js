@@ -97,6 +97,19 @@ export const fetchVillaStatsAsync = createAsyncThunk(
   }
 );
 
+export const bulkUploadVillasAsync = createAsyncThunk(
+  'villa/bulkUploadVillas',
+  async (villas, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await villaApi.bulkUploadVillas(villas);
+      dispatch(fetchVillaStatsAsync());
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to bulk upload villas');
+    }
+  }
+);
+
 const initialState = {
   villas: [],
   selectedVilla: null, // Holds { villa, residents }
@@ -195,6 +208,18 @@ const villaSlice = createSlice({
       .addCase(batchGenerateVillasAsync.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || 'Failed to batch generate villas';
+      })
+      // Bulk Upload Villas
+      .addCase(bulkUploadVillasAsync.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(bulkUploadVillasAsync.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(bulkUploadVillasAsync.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Failed to bulk upload villas';
       });
   },
 });

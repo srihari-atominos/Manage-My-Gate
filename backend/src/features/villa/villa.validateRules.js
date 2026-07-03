@@ -92,3 +92,42 @@ export const batchGenerateRules = [
     .isObject()
     .withMessage('Config must be an object'),
 ];
+
+export const bulkUploadVillasRules = [
+  body('villas')
+    .isArray({ min: 1 })
+    .withMessage('villas must be a non-empty array'),
+  body('villas.*.villaNumber')
+    .notEmpty()
+    .withMessage('Villa number is required')
+    .isString()
+    .trim(),
+  body('villas.*.block')
+    .optional()
+    .isString()
+    .trim(),
+  body('villas.*.intercom')
+    .optional()
+    .isString()
+    .trim(),
+  body('villas.*.configuration')
+    .optional()
+    .isString()
+    .trim(),
+  body('villas.*.email')
+    .optional()
+    .custom((val) => {
+      if (val === undefined || val === null || val === '') return true;
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+    })
+    .withMessage('Please provide a valid email address')
+    .trim(),
+  body('villas.*.residentType')
+    .optional()
+    .isIn(['Owner', 'Tenant', 'Family', 'Guest', 'None'])
+    .withMessage('Resident type must be one of: Owner, Tenant, Family, Guest, None'),
+  body('villas.*.roleName')
+    .optional()
+    .isString()
+    .trim(),
+];

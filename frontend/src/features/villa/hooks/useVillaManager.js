@@ -8,7 +8,8 @@ import {
   setBlockFilter,
   setStatusFilter,
   setCurrentPage,
-  clearSelectedVilla
+  clearSelectedVilla,
+  bulkUploadVillasAsync
 } from '../store/villaSlice';
 
 /**
@@ -47,6 +48,7 @@ export const useVillaManager = () => {
   const [detailsVisible, setDetailsVisible] = useState(false);
   const [selectedVillaId, setSelectedVillaId] = useState(null);
   const [batchVisible, setBatchVisible] = useState(false);
+  const [bulkUploadVisible, setBulkUploadVisible] = useState(false);
 
   const openDetails = useCallback((villa) => {
     setSelectedVillaId(villa._id);
@@ -65,6 +67,14 @@ export const useVillaManager = () => {
 
   const closeBatch = useCallback(() => {
     setBatchVisible(false);
+  }, []);
+
+  const openBulkUpload = useCallback(() => {
+    setBulkUploadVisible(true);
+  }, []);
+
+  const closeBulkUpload = useCallback(() => {
+    setBulkUploadVisible(false);
   }, []);
 
   // Filter modifiers
@@ -91,6 +101,15 @@ export const useVillaManager = () => {
     await dispatch(deleteVillaAsync(id));
   }, [dispatch]);
 
+  const bulkUploadVillas = useCallback(async (villas) => {
+    const resultAction = await dispatch(bulkUploadVillasAsync(villas));
+    if (bulkUploadVillasAsync.fulfilled.match(resultAction)) {
+      return resultAction.payload;
+    } else {
+      throw resultAction.payload || resultAction.error?.message || 'Failed to bulk upload villas';
+    }
+  }, [dispatch]);
+
   return {
     // State
     villas,
@@ -108,17 +127,21 @@ export const useVillaManager = () => {
     detailsVisible,
     selectedVillaId,
     batchVisible,
+    bulkUploadVisible,
 
     // Handlers
     openDetails,
     closeDetails,
     openBatch,
     closeBatch,
+    openBulkUpload,
+    closeBulkUpload,
     handleSearch,
     handleBlockChange,
     handleStatusChange,
     handlePageChange,
     removeVilla,
+    bulkUploadVillas,
   };
 };
 

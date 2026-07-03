@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Villa from './villa.model.js';
 
 export class VillaRepository {
@@ -18,7 +19,10 @@ export class VillaRepository {
    * Retrieves paginated list of villas along with total count in a single database round-trip.
    */
   async findAllPaginated(orgId, skip, limit, filters = {}, session) {
-    const matchQuery = { orgId, ...filters };
+    const matchQuery = { 
+      orgId: typeof orgId === 'string' ? new mongoose.Types.ObjectId(orgId) : orgId, 
+      ...filters 
+    };
 
     // Build Mongoose aggregation pipeline using $facet
     const pipeline = [
@@ -60,7 +64,11 @@ export class VillaRepository {
 
   async getOccupancyStats(orgId, session) {
     const pipeline = [
-      { $match: { orgId } },
+      { 
+        $match: { 
+          orgId: typeof orgId === 'string' ? new mongoose.Types.ObjectId(orgId) : orgId 
+        } 
+      },
       {
         $group: {
           _id: null,

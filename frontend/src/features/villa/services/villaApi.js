@@ -62,3 +62,11 @@ export const fetchVillaStats = async () => {
   const response = await apiClient.get('/villas/stats');
   return response.data;
 };
+
+/**
+ * Bulk uploads villas and resident invitations.
+ */
+export const bulkUploadVillas = async (villas) => {
+  const response = await apiClient.post('/villas/bulk-upload', { villas });
+  return response.data;
+};

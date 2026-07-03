@@ -19,6 +19,7 @@ import useVillaManager from '../hooks/useVillaManager';
 import VillaCard from '../components/VillaCard';
 import VillaDetailsModal from '../components/VillaDetailsModal';
 import BatchGenerateModal from '../components/BatchGenerateModal';
+import BulkUploadVillasModal from '../components/BulkUploadVillasModal';
 import '../styles/_villa.scss';
 
 export const VillaManager = () => {
@@ -37,16 +38,20 @@ export const VillaManager = () => {
     detailsVisible,
     selectedVillaId,
     batchVisible,
+    bulkUploadVisible,
 
     // Actions
     openDetails,
     closeDetails,
     openBatch,
     closeBatch,
+    openBulkUpload,
+    closeBulkUpload,
     handleSearch,
     handleBlockChange,
     handleStatusChange,
     handlePageChange,
+    bulkUploadVillas,
   } = useVillaManager();
 
   return (
@@ -98,7 +103,7 @@ export const VillaManager = () => {
                   size="sm"
                 />
               </CCol>
-              <CCol md={3} sm={3} xs={6}>
+              <CCol md={2} sm={3} xs={6}>
                 <CFormSelect
                   value={blockFilter}
                   onChange={(e) => handleBlockChange(e.target.value)}
@@ -110,7 +115,7 @@ export const VillaManager = () => {
                   <option value="Block C">Block C</option>
                 </CFormSelect>
               </CCol>
-              <CCol md={3} sm={3} xs={6}>
+              <CCol md={2} sm={3} xs={6}>
                 <CFormSelect
                   value={statusFilter}
                   onChange={(e) => handleStatusChange(e.target.value)}
@@ -122,7 +127,17 @@ export const VillaManager = () => {
                   <option value="Tenant Occupied">Tenant Occupied</option>
                 </CFormSelect>
               </CCol>
-              <CCol md={2} sm={12} xs={12} className="text-md-end text-center">
+              <CCol md={4} sm={12} xs={12} className="text-md-end text-center d-flex gap-2">
+                <CButton
+                  color="secondary"
+                  variant="outline"
+                  size="sm"
+                  onClick={openBulkUpload}
+                  className="w-100 fw-semibold d-flex align-items-center justify-content-center gap-1"
+                >
+                  <CIcon icon={cilPlus} size="sm" />
+                  <span>Bulk Upload</span>
+                </CButton>
                 <CButton
                   color="primary"
                   size="sm"
@@ -218,6 +233,13 @@ export const VillaManager = () => {
       <BatchGenerateModal
         visible={batchVisible}
         onClose={closeBatch}
+      />
+
+      {/* Bulk Upload Villas Modal */}
+      <BulkUploadVillasModal
+        visible={bulkUploadVisible}
+        onClose={closeBulkUpload}
+        onBulkUpload={bulkUploadVillas}
       />
     </div>
   );

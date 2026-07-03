@@ -154,6 +154,86 @@ export class VillaService {
   async getVillaByNumber(villaNumber, orgId, session = null) {
     return await villaRepository.findByVillaNumber(villaNumber, orgId, session);
   }
+
+  async bulkUploadVillasAndResidents(villasArray, orgId) {
+    const successes = [];
+    const failures = [];
+
+    const userService = (await import('../user/user.services.js')).default;
+
+    for (const item of villasArray) {
+      const { villaNumber, block = '', intercom = '', configuration = '', email, residentType = 'None', roleName } = item;
+      const trimmedNumber = villaNumber.trim();
+      const trimmedEmail = email ? email.trim().toLowerCase() : '';
+
+      try {
+        let villa = await villaRepository.findByVillaNumber(trimmedNumber, orgId);
+        let action = 'Created';
+
+        if (villa) {
+          const updateData = {};
+          if (block) updateData.block = block;
+          if (intercom) updateData.intercom = intercom;
+          if (configuration) updateData.configuration = configuration;
+          
+          villa = await villaRepository.update(villa._id, updateData);
+          action = 'Updated';
+        } else {
+          villa = await villaRepository.create({
+            villaNumber: trimmedNumber,
+            orgId,
+            block,
+            intercom,
+            configuration,
+            occupancyStatus: 'Vacant'
+          });
+        }
+
+        let userInvited = false;
+        let inviteError = null;
+
+        if (trimmedEmail) {
+          try {
+            if (!['Owner', 'Tenant', 'Family'].includes(residentType)) {
+              throw new Error(`Invalid resident type '${residentType}' for user invitation.`);
+            }
+            if (!roleName) {
+              throw new Error('Role name is required to invite user.');
+            }
+
+            await userService.inviteUser(trimmedEmail, orgId, villa._id, residentType, roleName);
+            userInvited = true;
+          } catch (err) {
+            inviteError = err.message || 'User invitation failed';
+          }
+        }
+
+        successes.push({
+          villaNumber: trimmedNumber,
+          action,
+          email: trimmedEmail || null,
+          userInvited,
+          inviteError
+        });
+      } catch (error) {
+        failures.push({
+          villaNumber: trimmedNumber,
+          email: trimmedEmail || null,
+          error: error.message || 'Villa operations failed'
+        });
+      }
+    }
+
+    villaEvents.emit('VILLAS_BULK_UPLOADED', { orgId, total: villasArray.length });
+
+    return {
+      total: villasArray.length,
+      successCount: successes.length,
+      failureCount: failures.length,
+      successes,
+      failures
+    };
+  }
 }
 
 export default new VillaService();
