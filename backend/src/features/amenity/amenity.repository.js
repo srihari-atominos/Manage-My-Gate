@@ -1,7 +1,7 @@
 import Amenity from './amenity.model.js';
 
 export class AmenityRepository {
-  async findAll(orgId, filter = {}) {
+  async findAllByOrg(orgId, filter = {}) {
     return await Amenity.find({ orgId, isDeleted: false, ...filter }).sort({ createdAt: -1 });
   }
 
@@ -19,7 +19,7 @@ export class AmenityRepository {
   }
 
   async softDelete(id, orgId) {
-    return await Amenity.findOneAndUpdate({ _id: id, orgId }, { isDeleted: true, status: 'Inactive' }, { new: true });
+    return await Amenity.findOneAndUpdate({ _id: id, orgId }, { isDeleted: true, status: 'inactive' }, { new: true });
   }
 }
 

@@ -37,9 +37,20 @@ export const removeAmenity = createAsyncThunk('amenities/removeAmenity', async (
   }
 });
 
+export const fetchAmenitySlots = createAsyncThunk('amenities/fetchSlots', async ({ id, date }, { rejectWithValue }) => {
+  try {
+    const response = await amenityApi.fetchSlots(id, date);
+    return response.data;
+  } catch (error) {
+    return rejectWithValue(error.message || 'Failed to fetch slots');
+  }
+});
+
 const initialState = {
   items: [],
+  availableSlots: [],
   loading: false,
+  slotsLoading: false,
   error: null,
   successMsg: null,
 };
@@ -78,7 +89,11 @@ export const amenitySlice = createSlice({
         state.items = state.items.filter(item => item._id !== action.payload);
         state.successMsg = 'Amenity deleted successfully!'; 
       })
-      .addCase(removeAmenity.rejected, (state, action) => { state.loading = false; state.error = action.payload; });
+      .addCase(removeAmenity.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
+      
+      .addCase(fetchAmenitySlots.pending, (state) => { state.slotsLoading = true; state.error = null; })
+      .addCase(fetchAmenitySlots.fulfilled, (state, action) => { state.slotsLoading = false; state.availableSlots = action.payload || []; })
+      .addCase(fetchAmenitySlots.rejected, (state, action) => { state.slotsLoading = false; state.error = action.payload; });
   }
 });
 

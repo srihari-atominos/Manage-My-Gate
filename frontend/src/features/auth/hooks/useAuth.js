@@ -77,6 +77,12 @@ export const useAuth = () => {
     return dispatch(registerUser(userData))
   }
 
+  const checkPermission = (permissionName) => {
+    if (!currentUser) return false
+    if (currentUser.role === 'Super Admin' || currentUser.role === 'Platform Super Admin') return true
+    return !!(currentUser.permissions && currentUser.permissions.includes(permissionName))
+  }
+
   return {
     currentUser,
     isAuthenticated,
@@ -91,6 +97,7 @@ export const useAuth = () => {
     loginGoogle,
     loginMicrosoft,
     register,
+    checkPermission,
   }
 }
 

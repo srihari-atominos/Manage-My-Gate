@@ -7,11 +7,11 @@ import roleReducer from '../features/roleBuilder/store/roleSlice.js';
 import notificationsReducer from '../features/notification/store/notificationSlice.js';
 import integrationHubReducer from '../features/integrationHub/store/integrationHubSlice.js';
 import workspaceReducer from '../features/workspace/store/workspaceSlice.js';
-import organizationReducer from '../features/organization/store/organizationSlice.js';
-import auditLogReducer from '../features/auditLog/store/auditLogSlice.js';
+
 import messageTemplateReducer from '../features/messageTemplate/store/messageTemplateSlice.js';
 import amenityReducer from '../features/amenities/store/amenitySlice.js';
-import bookingReducer from '../features/bookings/store/bookingSlice.js';
+import dashboardReducer from '../features/amenities/store/dashboardSlice.js';
+
 
 // Custom lightweight state logger middleware for development mode
 const stateLoggerMiddleware = (store) => (next) => (action) => {
@@ -36,11 +36,10 @@ export const store = configureStore({
     notifications: notificationsReducer,
     integrationHub: integrationHubReducer,
     workspace: workspaceReducer,
-    organization: organizationReducer,
-    auditLog: auditLogReducer,
+
     messageTemplate: messageTemplateReducer,
     amenities: amenityReducer,
-    bookings: bookingReducer,
+    amenitiesDashboard: dashboardReducer,
   },
   middleware: (getDefaultMiddleware) => {
     const middlewares = getDefaultMiddleware();

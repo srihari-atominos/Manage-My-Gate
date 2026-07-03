@@ -1,4 +1,4 @@
-import apiClient from '../../../utils/apiClient.js';
+import apiClient from '../../../services/apiClient.js';
 
 export const amenityApi = {
   fetchAmenities: async () => {
@@ -16,6 +16,9 @@ export const amenityApi = {
   deleteAmenity: async (id) => {
     return await apiClient.delete(`/amenities/${id}`);
   },
+  fetchSlots: async (id, date) => {
+    return await apiClient.get(`/amenities/${id}/slots?date=${date}`);
+  }
 };
 
 export default amenityApi;

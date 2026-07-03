@@ -64,11 +64,23 @@ export const deleteRoleAsync = createAsyncThunk(
   },
 )
 
+export const syncRolePermissionsAsync = createAsyncThunk(
+  'roleBuilder/syncRolePermissions',
+  async ({ roleId, permissionIds }, { rejectWithValue }) => {
+    try {
+      const response = await roleApi.syncRolePermissions(roleId, permissionIds)
+      return response
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to sync permissions')
+    }
+  },
+)
+
 const initialState = {
   roles: [],
   isLoading: false,
   error: null,
-  permissionsList: [],
+  permissionsList: {},
   isPermissionsLoading: false,
   totalRecords: 0,
   currentPage: 1,

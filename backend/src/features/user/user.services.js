@@ -160,9 +160,19 @@ export class UserService {
       
       let user = existing;
       if (!existing) {
+        let baseUsername = trimmedEmail.split('@')[0];
+        let username = baseUsername;
+        let usernameExists = await userRepository.findByUsername(username, session);
+        
+        // Auto-generate a unique username if the base one is taken
+        while (usernameExists) {
+          username = `${baseUsername}${Math.floor(1000 + Math.random() * 9000)}`;
+          usernameExists = await userRepository.findByUsername(username, session);
+        }
+
         const userData = {
           email: trimmedEmail,
-          username: trimmedEmail.split('@')[0],
+          username: username,
           status: 'Pending',
         };
         user = await userRepository.create(userData, session);

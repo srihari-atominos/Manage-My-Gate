@@ -25,5 +25,21 @@
       "update",
       "delete"
     ]
+  },
+  {
+    "feature": "amenities",
+    "actions": [
+      "view_dashboard",
+      "view_admin_calendar",
+      "manage_ledgers",
+      "manage_master",
+      "manage_maintenance",
+      "manage_settings",
+      "discover_amenities",
+      "view_my_bookings",
+      "manage_wallet",
+      "view_history",
+      "manage_scanner"
+    ]
   }
 ]

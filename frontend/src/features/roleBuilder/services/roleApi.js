@@ -1,10 +1,6 @@
 import apiClient from '../../../services/apiClient'
 
-export const AVAILABLE_PERMISSIONS = {
-  Roles: ['roles:create', 'roles:read', 'roles:update', 'roles:delete'],
-  Users: ['users:create', 'users:read', 'users:update', 'users:delete'],
-  Samples: ['samples:create', 'samples:read', 'samples:update', 'samples:delete'],
-}
+
 
 /**
  * Fetch all roles from backend.
@@ -44,4 +40,15 @@ export const updateRole = async (roleId, roleData) => {
 export const deleteRole = async (roleId) => {
   await apiClient.delete(`/roles/${roleId}`)
   return roleId
+}
+
+/**
+ * Sync role permissions.
+ * @param {string} roleId
+ * @param {Array<string>} permissionIds
+ * @returns {Promise<Object>}
+ */
+export const syncRolePermissions = async (roleId, permissionIds) => {
+  const response = await apiClient.put(`/roles/${roleId}/permissions`, { permissionIds })
+  return response.data
 }

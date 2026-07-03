@@ -80,8 +80,8 @@ export class RoleController {
 
   async getAllPermissions(req, res, next) {
     try {
-      const permissions = await roleService.getAllPermissions();
-      res.success(permissions, 'Permissions retrieved successfully');
+      const groupedPermissions = await roleService.getGroupedPermissions();
+      res.success(groupedPermissions, 'Permissions retrieved successfully');
     } catch (error) {
       next(error);
     }
@@ -97,7 +97,7 @@ export class RoleController {
     }
   }
 
-  async updateRolePermissions(req, res, next) {
+  async syncRolePermissions(req, res, next) {
     try {
       const { id } = req.params;
       const existingRole = await roleService.getRoleById(id);
@@ -105,8 +105,8 @@ export class RoleController {
         throw new HttpError(403, 'The Super Admin role is a protected system role and cannot have its permissions modified.');
       }
       const { permissionIds } = req.body;
-      const updated = await roleService.updateRolePermissions(id, permissionIds);
-      res.success(updated, 'Role permissions updated successfully');
+      const updated = await roleService.syncRolePermissions(id, permissionIds);
+      res.success(updated, 'Role permissions synced successfully');
     } catch (error) {
       next(error);
     }

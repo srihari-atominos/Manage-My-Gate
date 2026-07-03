@@ -1,5 +1,5 @@
 /**
- * AppContent Component
+ * AppContent Component - Forced HMR refresh
  *
  * Main content area that renders routes defined in routes.js.
  * Handles lazy loading with Suspense and provides a loading spinner
@@ -65,7 +65,7 @@ const AppContent = () => {
               )
             }
 
-            if (route.requiredPermission && !allowedFeatures.includes(route.requiredPermission)) {
+            if (route.requiredPermission && !isPlatform && !allowedFeatures.includes(route.requiredPermission)) {
               return (
                 <Route
                   key={idx}

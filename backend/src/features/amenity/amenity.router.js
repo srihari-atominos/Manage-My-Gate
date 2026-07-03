@@ -2,25 +2,31 @@ import { Router } from 'express';
 import amenityController from './amenity.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
 import { createAmenityRules, updateAmenityRules } from './amenity.validateRules.js';
-// Note: isAuthenticated and authorizeRoles will be used for route protection
-// import isAuthenticated from '../../middlewares/auth.middleware.js';
-// import authorizeRoles from '../../middlewares/rbac.middleware.js';
+import isAuthenticated from '../../middlewares/auth.middleware.js';
+import { authorizePermission } from '../../middlewares/rbac.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
 
-// GET / - Retrieve all amenities (All roles)
-router.get('/', amenityController.getAll);
+// Protect all routes
+router.use(isAuthenticated, tenantContext);
+
+// GET / - Retrieve all amenities (requires read permission)
+router.get('/', authorizePermission('amenities', 'read'), amenityController.getAll);
 
 // GET /:id - Retrieve single amenity
-router.get('/:id', amenityController.getById);
+router.get('/:id', authorizePermission('amenities', 'read'), amenityController.getById);
 
-// POST / - Create amenity (Admin only)
-router.post('/', validate(createAmenityRules), amenityController.create);
+// GET /:id/slots - Retrieve available slots for a given date
+router.get('/:id/slots', authorizePermission('amenities', 'read'), amenityController.getSlots);
 
-// PUT /:id - Update amenity (Admin only)
-router.put('/:id', validate(updateAmenityRules), amenityController.update);
+// POST / - Create amenity
+router.post('/', authorizePermission('amenities', 'create'), validate(createAmenityRules), amenityController.create);
 
-// DELETE /:id - Soft delete amenity (Admin only)
-router.delete('/:id', amenityController.delete);
+// PUT /:id - Update amenity
+router.put('/:id', authorizePermission('amenities', 'update'), validate(updateAmenityRules), amenityController.update);
+
+// DELETE /:id - Soft delete amenity
+router.delete('/:id', authorizePermission('amenities', 'delete'), amenityController.delete);
 
 export default router;

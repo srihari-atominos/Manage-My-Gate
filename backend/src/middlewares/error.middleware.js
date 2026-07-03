@@ -14,9 +14,19 @@ export const pageNotFound = (req, res, next) => {
  * Global error handler middleware.
  */
 export const errorHandler = (err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
+  let statusCode = err.statusCode || 500;
+  let message = err.message || 'Internal Server Error';
   const details = err.details || null;
+
+  // Handle CORS errors specifically
+  if (err.message === 'Not allowed by CORS') {
+    statusCode = 403;
+    message = 'Not allowed by CORS';
+    
+    // Set CORS headers so browser lets the client read the 403 response
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
 
   // Log error using Winston logger
   logger.error(`HTTP ${statusCode} - ${message}`, {

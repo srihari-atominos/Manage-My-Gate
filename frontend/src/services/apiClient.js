@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { v4 as uuidv4 } from 'uuid'
+import { toast } from 'react-hot-toast'
 
 /**
  * Global API Client
@@ -9,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid'
  * and intercepts 401 Unauthorized responses to perform automatic logout.
  */
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -45,6 +46,19 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response.data,
   async (error) => {
+    // Check if error is due to CORS (or network error where response is undefined)
+    if (
+      error.message === 'Network Error' ||
+      (error.response && error.response.data && error.response.data.message === 'Not allowed by CORS')
+    ) {
+      toast.error('Not allowed by CORS')
+    }
+
+    // Handle 502 Bad Gateway
+    if (error.response && error.response.status === 502) {
+      toast.error('Request failed with status code 502')
+    }
+
     // Handle 401 Unauthorized globally
     if (error.response && error.response.status === 401) {
       try {

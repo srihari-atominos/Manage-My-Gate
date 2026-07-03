@@ -1,71 +1,129 @@
 import mongoose from 'mongoose';
 
-const operatingHoursSchema = new mongoose.Schema({
-  start: {
+const pricingSchema = new mongoose.Schema({
+  baseRate: { type: Number, default: 0 },
+  pricingType: { type: String, enum: ['hourly', 'daily', 'session', 'fixed'], default: 'hourly' },
+  peakRateMultiplier: { type: Number, default: 1.0 }, // e.g. 1.5x for peak hours
+  weekendRateMultiplier: { type: Number, default: 1.0 },
+  holidayRateMultiplier: { type: Number, default: 1.0 },
+  securityDeposit: { type: Number, default: 0 },
+  taxPercentage: { type: Number, default: 0 },
+  cancellationChargePercentage: { type: Number, default: 0 }, // % to deduct on cancellation
+  dynamicPricingEnabled: { type: Boolean, default: false }
+}, { _id: false });
+
+const maintenanceSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String },
+  startDate: { type: String, required: true }, // YYYY-MM-DD
+  endDate: { type: String, required: true },   // YYYY-MM-DD
+  startTime: { type: String }, // optional, for partial day maintenance
+  endTime: { type: String },   // optional
+  status: { type: String, enum: ['scheduled', 'in_progress', 'completed', 'cancelled'], default: 'scheduled' }
+});
+
+const bookingRulesSchema = new mongoose.Schema({
+  slotDurationMinutes: {
+    type: Number,
+    required: true,
+    default: 60
+  },
+  bufferTimeMinutes: {
+    type: Number,
+    default: 0 // Buffer time between slots for cleaning, etc.
+  },
+  openTime: {
     type: String,
-    required: [true, 'Operating hours start time is required'],
+    required: true,
     match: [/^([01]\d|2[0-3]):?([0-5]\d)$/, 'Please provide a valid time format (HH:MM)']
   },
-  end: {
+  closeTime: {
     type: String,
-    required: [true, 'Operating hours end time is required'],
+    required: true,
     match: [/^([01]\d|2[0-3]):?([0-5]\d)$/, 'Please provide a valid time format (HH:MM)']
+  },
+  maxBookingsPerUserPerDay: {
+    type: Number,
+    required: true,
+    default: 1
+  },
+  advanceBookingDays: {
+    type: Number,
+    required: true,
+    default: 7
+  },
+  minAdvanceBookingHours: {
+    type: Number,
+    default: 0 // Minimum hours in advance a booking must be made
+  },
+  holidayCalendarIds: {
+    type: [mongoose.Schema.Types.ObjectId], // Ref to a future Holiday model if needed
+    default: []
+  },
+  weeklyOffDays: {
+    type: [Number], // 0=Sun, 1=Mon... days the amenity is closed entirely
+    default: []
   }
 }, { _id: false });
 
 const amenitySchema = new mongoose.Schema({
+  orgId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: [true, 'Organization ID is required'],
+    index: true
+  },
   name: {
     type: String,
     required: [true, 'Amenity name is required'],
     trim: true,
   },
-  location: {
+  description: {
     type: String,
-    required: [true, 'Amenity location is required'],
     trim: true,
   },
-  category: {
+  type: {
     type: String,
-    required: [true, 'Amenity category is required'],
-    enum: ['Event Space', 'Fitness', 'Sports', 'Workspace', 'Wellness'],
+    required: [true, 'Amenity type is required'],
+    enum: ['clubhouse', 'pool', 'gym', 'court', 'hall', 'other', 'Event Space', 'Fitness', 'Sports', 'Workspace', 'Wellness'],
+  },
+  images: {
+    type: [String],
+    default: []
+  },
+  location: {
+    type: String,
+    default: 'General Location'
+  },
+  pricing: {
+    type: pricingSchema,
+    default: () => ({})
+  },
+  openDays: {
+    type: [Number],
+    default: [0, 1, 2, 3, 4, 5, 6]
   },
   capacity: {
     type: Number,
     required: [true, 'Amenity capacity is required'],
     min: [1, 'Capacity must be at least 1'],
   },
-  ratePerHour: {
-    type: Number,
-    default: 0,
-    min: [0, 'Rate cannot be negative'],
+  requiresApproval: {
+    type: Boolean,
+    default: true
   },
-  operatingHours: {
-    type: operatingHoursSchema,
-    required: [true, 'Operating hours are required']
+  bookingRules: {
+    type: bookingRulesSchema,
+    required: [true, 'Booking rules are required']
   },
-  openDays: {
-    type: [Number],
-    required: [true, 'Open days are required'],
-    validate: {
-      validator: function(v) {
-        return v.every(day => day >= 0 && day <= 6);
-      },
-      message: 'Open days must be an array of numbers between 0 and 6 (Sunday=0)'
-    }
-  },
-  imageUrl: {
-    type: String,
-    default: null
+  maintenanceSchedules: {
+    type: [maintenanceSchema],
+    default: []
   },
   status: {
     type: String,
-    enum: ['Active', 'Inactive', 'Maintenance'],
-    default: 'Active'
-  },
-  orgId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Organization',
-    required: [true, 'Organization ID is required']
+    enum: ['active', 'inactive', 'maintenance'],
+    default: 'active'
   },
   isDeleted: {
     type: Boolean,
