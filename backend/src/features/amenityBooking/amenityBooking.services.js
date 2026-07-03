@@ -417,6 +417,10 @@ export class AmenityBookingService {
     amenityBookingEventEmitter.emit(AMENITY_BOOKING_CHECKED_IN, updated);
     return updated;
   }
+
+  async getCalendarIndicators(orgId, year, month) {
+    return await amenityBookingRepository.getMonthlyIndicators(orgId, year, month);
+  }
 }
 
 export default new AmenityBookingService();

@@ -1,29 +1,26 @@
 import amenityService from '../amenity/amenity.services.js';
-import bookingService from '../booking/booking.services.js';
+import amenityBookingService from '../amenityBooking/amenityBooking.services.js';
 import paymentService from '../payment/payment.service.js';
 
 class AmenityDashboardService {
   async getKpis(orgId) {
-    const [amenityStats, maintenanceStats, bookingStats, paymentStats] = await Promise.all([
+    const [amenityStats, maintenanceStats, bookingStats] = await Promise.all([
       amenityService.getAmenityStats(orgId),
       amenityService.getMaintenanceStats(orgId),
-      bookingService.getBookingStats(orgId),
-      paymentService.getPaymentStats(orgId)
+      amenityBookingService.getKpiStats(orgId)
     ]);
 
+    // calculate occupancy based on check-ins over today's total bookings
+    const occupancy = bookingStats.totalBookings > 0
+      ? Math.round((bookingStats.checkIns / bookingStats.totalBookings) * 100)
+      : 0;
+
     return {
-      amenities: {
-        ...amenityStats,
-        ...maintenanceStats
-      },
-      bookings: bookingStats,
-      payments: paymentStats,
-      // Mapping frontend expected properties
-      checkIns: bookingStats.todayCheckIns,
-      revenue: paymentStats.todayRevenue,
-      occupancy: bookingStats.total > 0 ? Math.round((bookingStats.confirmed / bookingStats.total) * 100) : 0,
-      activeMaintenance: maintenanceStats.in_progress,
-      maintenanceTasks: `${maintenanceStats.in_progress} In Progress, ${maintenanceStats.scheduled} Scheduled`
+      checkIns: bookingStats.checkIns || 0,
+      revenue: bookingStats.revenue || 0,
+      occupancy,
+      activeMaintenance: maintenanceStats.in_progress || 0,
+      maintenanceTasks: `${maintenanceStats.in_progress || 0} In Progress, ${maintenanceStats.scheduled || 0} Scheduled`
     };
   }
 
@@ -33,36 +30,33 @@ class AmenityDashboardService {
   }
 
   async getOccupancy(orgId) {
-    const stats = await bookingService.getOccupancyStats(orgId);
-    return stats;
+    return await amenityBookingService.getOccupancyStats(orgId);
   }
 
   async getTrends(orgId) {
-    // For trends, we can return revenue trend and maybe booking trend.
-    const revenueTrend = await paymentService.getRevenueTrend(orgId);
-    return { revenueTrend };
+    // Returns popular amenities array directly
+    return await amenityBookingService.getTrendsStats(orgId);
   }
 
   async getRecentActivity(orgId) {
-    // Aggregate activities from booking and payment
     const [recentBookings, recentPayments] = await Promise.all([
-      bookingService.getRecentActivity(orgId, 5),
+      amenityBookingService.getRecentActivity(orgId),
       paymentService.getRecentActivity(orgId, 5)
     ]);
 
     const activity = [];
-    recentBookings.forEach(b => {
+    (recentBookings || []).forEach(b => {
       activity.push({
         id: b._id,
         type: 'booking',
-        title: `Booking ${b.bookingStatus}`,
-        subtitle: `${b.amenityId?.name || 'Amenity'} • ${b.date ? b.date.toISOString().split('T')[0] : ''}`,
+        title: `Booking ${b.status}`,
+        subtitle: `${b.amenityId?.name || 'Amenity'} • ${b.bookingDate || ''}`,
         timestamp: b.updatedAt,
-        status: b.bookingStatus
+        status: b.status
       });
     });
 
-    recentPayments.forEach(p => {
+    (recentPayments || []).forEach(p => {
       activity.push({
         id: p._id,
         type: 'payment',
@@ -78,11 +72,8 @@ class AmenityDashboardService {
   }
 
   async getCalendarEvents(orgId, dateStr) {
-    const amenityService = (await import('../amenity/amenity.services.js')).default;
     const amenities = await amenityService.getAllAmenities(orgId);
-    
-    const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
-    const { data: bookings } = await amenityBookingRepository.findByOrgPaginated(orgId, { bookingDate: dateStr }, 0, 1000);
+    const { data: bookings } = await amenityBookingService.getBookingsQueue(orgId, 1, 1000, { bookingDate: dateStr });
     
     const events = [];
 
@@ -127,7 +118,7 @@ class AmenityDashboardService {
     });
 
     // Bookings
-    bookings.forEach(b => {
+    (bookings || []).forEach(b => {
       events.push({
         id: b._id,
         type: 'booking',
@@ -146,9 +137,7 @@ class AmenityDashboardService {
   }
 
   async getCalendarIndicators(orgId, year, month) {
-    const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
-    const dates = await amenityBookingRepository.getMonthlyIndicators(orgId, year, month);
-    return dates;
+    return await amenityBookingService.getCalendarIndicators(orgId, year, month);
   }
 }
 

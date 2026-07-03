@@ -2,7 +2,7 @@ import React from 'react';
 import { useDashboard } from '../../hooks/useDashboard.js';
 
 const RevenueChart = () => {
-  const { trends, loading } = useDashboard();
+  const { revenue, loading } = useDashboard();
   
   if (loading) {
     return (
@@ -13,7 +13,7 @@ const RevenueChart = () => {
     );
   }
 
-  const revenueTrend = trends?.revenueTrend || [];
+  const revenueTrend = revenue || [];
 
   // Determine max value to calculate percentage heights
   const maxRevenue = Math.max(...revenueTrend.map(t => t.revenue), 1); // Avoid division by zero
