@@ -8,8 +8,6 @@ const UserList = React.lazy(() => import('./features/userManagement/UserList'));
 const NotificationView = React.lazy(() => import('./features/notification/views/NotificationView'));
 const IntegrationHubView = React.lazy(() => import('./features/integrationHub/views/IntegrationHubView'));
 const FeatureConfigWizard = React.lazy(() => import('./features/workspace/views/FeatureConfigWizard'));
-const OrganizationManager = React.lazy(() => import('./features/organization/views/OrganizationManager'));
-const AuditLogViewer = React.lazy(() => import('./features/auditLog/views/AuditLogViewer'));
 const VillaManager = React.lazy(() => import('./features/villa/views/VillaManager'));
 
 // Amenities Views (New)
