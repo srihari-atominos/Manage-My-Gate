@@ -87,6 +87,10 @@ const resources = {
             title: 'Villa Management',
             desc: 'Manage community villas, blocks, intercoms, and occupancy status',
           },
+          amenities: {
+            title: 'Amenities Management',
+            desc: 'Manage and book community amenities, settings, and digital wallet transactions',
+          },
           submit: 'Confirm & Initialize Workspace',
           loading: 'Initializing...',
           error: 'Failed to configure features. Please try again.',

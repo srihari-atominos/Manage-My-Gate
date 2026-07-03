@@ -116,7 +116,7 @@ export class OrganizationService {
 
     try {
       // 1. Create Organization
-      const newOrg = await organizationRepository.create({ name: trimmedName, status: 'Active', allowedFeatures: ['users', 'roles', 'integrations', 'villas'] }, session);
+      const newOrg = await organizationRepository.create({ name: trimmedName, status: 'Active', allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities'] }, session);
 
       // 2. Create the default Roles and assign Permissions
       const roleService = (await import('../role/role.services.js')).default;

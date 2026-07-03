@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-const updateOrganizationFeatures = async (id, features) => ({ data: { organization: { allowedFeatures: features } } });
+import apiClient from '../../../services/apiClient.js';
+const updateOrganizationFeatures = async (id, features) => {
+  return await apiClient.patch(`/organizations/${id}/features`, { features });
+};
 import { setActiveWorkspace } from '../store/workspaceSlice.js';
 import { updateTokenAndUser } from '../../auth/store/authSlice.js';
 
@@ -19,13 +22,14 @@ export const useFeatureConfig = () => {
 
   const [selectedFeatures, setSelectedFeatures] = useState(() => {
     if (allowedFeatures.length === 0) {
-      return ['users', 'roles', 'integrations', 'villas'];
+      return ['users', 'roles', 'integrations', 'villas', 'amenities'];
     }
     const initial = [];
     if (allowedFeatures.includes('users') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('users:'))) initial.push('users');
     if (allowedFeatures.includes('roles') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('roles:'))) initial.push('roles');
     if (allowedFeatures.includes('integrations') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('integrations:'))) initial.push('integrations');
     if (allowedFeatures.includes('villas') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('villas:'))) initial.push('villas');
+    if (allowedFeatures.includes('amenities') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('amenities:'))) initial.push('amenities');
     return initial;
   });
 
@@ -37,9 +41,10 @@ export const useFeatureConfig = () => {
       if (allowedFeatures.includes('roles') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('roles:'))) initial.push('roles');
       if (allowedFeatures.includes('integrations') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('integrations:'))) initial.push('integrations');
       if (allowedFeatures.includes('villas') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('villas:'))) initial.push('villas');
+      if (allowedFeatures.includes('amenities') || allowedFeatures.some(f => typeof f === 'string' && f.startsWith('amenities:'))) initial.push('amenities');
       setSelectedFeatures(initial);
     } else {
-      setSelectedFeatures(['users', 'roles', 'integrations', 'villas']);
+      setSelectedFeatures(['users', 'roles', 'integrations', 'villas', 'amenities']);
     }
   }, [allowedFeatures]);
 
