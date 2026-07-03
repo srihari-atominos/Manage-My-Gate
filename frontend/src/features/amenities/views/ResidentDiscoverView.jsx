@@ -3,6 +3,7 @@ import { CSpinner } from '@coreui/react';
 import useResidentDiscover from '../hooks/useResidentDiscover.js';
 import SearchBarApp from '../components/common/SearchBarApp.jsx';
 import AmenityCardHorizontal from '../components/common/AmenityCardHorizontal.jsx';
+import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
 import '../styles/_amenities.scss';
 
 const ResidentDiscoverView = () => {
@@ -15,6 +16,14 @@ const ResidentDiscoverView = () => {
     setSearch,
     selectedCategory,
     setSelectedCategory,
+    filterDate,
+    setFilterDate,
+    filterStartTime,
+    setFilterStartTime,
+    filterEndTime,
+    setFilterEndTime,
+    searchAvailableSlots,
+    clearFilters,
     loadAmenities,
     navigateToBooking
   } = useResidentDiscover();
@@ -25,6 +34,7 @@ const ResidentDiscoverView = () => {
 
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
+      <AmenitiesTopNav />
       <div className="view-container">
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>Find your perfect space</h1>
@@ -41,6 +51,45 @@ const ResidentDiscoverView = () => {
           />
           <button className="search-btn"><i className="fa-solid fa-search"></i> Search</button>
         </SearchBarApp>
+
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', fontWeight: '500' }}>Date</label>
+            <input 
+              type="date" 
+              className="form-control" 
+              value={filterDate} 
+              onChange={(e) => setFilterDate(e.target.value)} 
+              style={{ width: '200px' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', fontWeight: '500' }}>Start Time</label>
+            <input 
+              type="time" 
+              className="form-control" 
+              value={filterStartTime} 
+              onChange={(e) => setFilterStartTime(e.target.value)} 
+              style={{ width: '150px' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', fontWeight: '500' }}>End Time</label>
+            <input 
+              type="time" 
+              className="form-control" 
+              value={filterEndTime} 
+              onChange={(e) => setFilterEndTime(e.target.value)} 
+              style={{ width: '150px' }}
+            />
+          </div>
+          <button className="btn btn-primary" onClick={searchAvailableSlots} style={{ padding: '8px 24px' }}>
+            Check Availability
+          </button>
+          {(filterDate || filterStartTime || filterEndTime) && (
+            <button className="btn btn-outline" onClick={clearFilters}>Clear</button>
+          )}
+        </div>
 
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '32px' }}>
           {categories.map(cat => (

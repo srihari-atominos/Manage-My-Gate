@@ -96,28 +96,9 @@ export class AmenityBookingService {
     }
 
     // 13. Pricing Calculation
-    const durationHours = (bookingDateTimeEnd - bookingDateTimeStart) / (1000 * 60 * 60);
-    const baseRate = amenity.pricing?.baseRate || amenity.ratePerHour || 0;
-    
-    // Simulate peak/weekend rules
-    let multiplier = 1.0;
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      multiplier = amenity.pricing?.weekendRateMultiplier || 1.0;
-    }
-    const baseAmount = baseRate * durationHours * multiplier;
-    const taxAmount = baseAmount * ((amenity.pricing?.taxPercentage || 0) / 100);
-    const deposit = amenity.pricing?.securityDeposit || 0;
-    const totalAmount = baseAmount + taxAmount + deposit;
-
-    const pricingDetails = {
-      baseAmount,
-      taxAmount,
-      discountAmount: 0,
-      securityDeposit: deposit,
-      totalAmount,
-      refundAmount: 0,
-      cancellationCharge: 0
-    };
+    const pricingDetails = this._calculatePricing(amenity, bookingDateTimeStart, bookingDateTimeEnd);
+    const totalAmount = pricingDetails.totalAmount;
+    const deposit = pricingDetails.securityDeposit;
 
     // 14. Create Pending Booking
     let finalStatus = 'pending';
@@ -159,6 +140,75 @@ export class AmenityBookingService {
       booking,
       paymentIntent: paymentResult
     };
+  }
+
+  _calculatePricing(amenity, startDateTime, endDateTime) {
+    const durationHours = (endDateTime - startDateTime) / (1000 * 60 * 60);
+    const baseRate = amenity.pricing?.baseRate || amenity.ratePerHour || 0;
+    
+    const dayOfWeek = startDateTime.getDay();
+    let multiplier = 1.0;
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      multiplier = amenity.pricing?.weekendRateMultiplier || 1.0;
+    }
+    
+    const baseAmount = baseRate * durationHours * multiplier;
+    const taxAmount = baseAmount * ((amenity.pricing?.taxPercentage || 0) / 100);
+    const securityDeposit = amenity.pricing?.securityDeposit || 0;
+    const totalAmount = baseAmount + taxAmount + securityDeposit;
+
+    return {
+      baseAmount,
+      taxAmount,
+      discountAmount: 0,
+      securityDeposit,
+      totalAmount,
+      refundAmount: 0,
+      cancellationCharge: 0
+    };
+  }
+
+  async createManualBooking(bookingData) {
+    const { orgId, amenityId, userId, bookingDate, startTime, endTime, paymentStatus = 'paid' } = bookingData;
+    
+    // Resident membership check
+    const userService = (await import('../userManagement/user.services.js')).default;
+    const user = await userService.getUserById(userId);
+    if (!user || user.orgId.toString() !== orgId.toString()) {
+      throw new HttpError(400, 'Resident not found in this organization');
+    }
+    
+    const amenityService = (await import('../amenity/amenity.services.js')).default;
+    const amenity = await amenityService.getAmenityById(amenityId, orgId);
+    if (!amenity) throw new HttpError(404, 'Amenity not found');
+    
+    const bookingDateTimeStart = new Date(`${bookingDate}T${startTime}`);
+    const bookingDateTimeEnd = new Date(`${bookingDate}T${endTime}`);
+    
+    // Amenity availability check
+    const conflicts = await amenityBookingRepository.findConflicts(amenityId, bookingDate, startTime, endTime);
+    if (conflicts.length >= amenity.capacity) {
+      throw new HttpError(400, 'The amenity is at full capacity for the selected time slot.');
+    }
+    
+    const pricingDetails = this._calculatePricing(amenity, bookingDateTimeStart, bookingDateTimeEnd);
+    
+    const newBookingData = {
+      ...bookingData,
+      status: 'confirmed',
+      paymentStatus: paymentStatus,
+      pricingDetails,
+      totalPrice: pricingDetails.totalAmount,
+      deposit: pricingDetails.securityDeposit,
+      isManual: true
+    };
+
+    const booking = await amenityBookingRepository.create(newBookingData);
+    
+    // Generate QR automatically since it's confirmed
+    amenityBookingEventEmitter.emit(AMENITY_BOOKING_CREATED, booking);
+    
+    return booking;
   }
 
   async reviewBooking(bookingId, orgId, decision, reviewerId, rejectionReason = '') {
@@ -215,6 +265,130 @@ export class AmenityBookingService {
   async getOccupancyStats(orgId) { return await amenityBookingRepository.getOccupancyStats(orgId); }
   async getTrendsStats(orgId) { return await amenityBookingRepository.getTrendsStats(orgId); }
   async getRecentActivity(orgId) { return await amenityBookingRepository.getRecentActivity(orgId); }
+
+  /**
+   * Consolidated dashboard aggregation.
+   * Calls: own repository for booking metrics, amenityService for amenity counts, Payment model for payment stats.
+   * Returns a single DTO with all dashboard data.
+   */
+  async getDashboardData(orgId) {
+    // 1. Get all booking metrics in one $facet pipeline
+    const bookingAgg = await amenityBookingRepository.getDashboardAggregation(orgId);
+
+    // 2. Get amenity counts by status (cross-feature service call)
+    const amenityService = (await import('../amenity/amenity.services.js')).default;
+    const allAmenities = await amenityService.getAllAmenities(orgId);
+    
+    const amenityKpis = {
+      totalAmenities: allAmenities.length,
+      activeAmenities: allAmenities.filter(a => a.status === 'active').length,
+      inactiveAmenities: allAmenities.filter(a => a.status === 'inactive').length,
+      underMaintenance: allAmenities.filter(a => a.status === 'maintenance').length,
+    };
+
+    // 3. Maintenance summary from amenity data
+    const maintenanceSummary = [];
+    for (const amenity of allAmenities) {
+      if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
+        for (const maint of amenity.maintenanceSchedules) {
+          if (['scheduled', 'in_progress'].includes(maint.status)) {
+            maintenanceSummary.push({
+              amenityName: amenity.name,
+              title: maint.title,
+              description: maint.description,
+              startDate: maint.startDate,
+              endDate: maint.endDate,
+              status: maint.status
+            });
+          }
+        }
+      }
+    }
+
+    // 4. Payment stats from Payment model (single aggregation)
+    const Payment = (await import('../payment/payment.model.js')).default;
+    const mongoose = (await import('mongoose')).default;
+    const paymentAgg = await Payment.aggregate([
+      { $match: { orgId: new mongoose.Types.ObjectId(orgId) } },
+      { $group: {
+        _id: '$status',
+        count: { $sum: 1 },
+        total: { $sum: '$amount' }
+      }}
+    ]);
+
+    const paymentStats = { pending: 0, success: 0, failed: 0, refunded: 0 };
+    const paymentAmounts = { pending: 0, success: 0, failed: 0, refunded: 0 };
+    for (const p of paymentAgg) {
+      if (paymentStats.hasOwnProperty(p._id)) {
+        paymentStats[p._id] = p.count;
+        paymentAmounts[p._id] = p.total;
+      }
+    }
+
+    // 5. Flatten booking status counts
+    const statusMap = {};
+    for (const s of (bookingAgg.statusCounts || [])) {
+      statusMap[s._id] = s.count;
+    }
+
+    const todayData = bookingAgg.todayStats?.[0] || { totalBookings: 0, revenue: 0, checkIns: 0, checkOuts: 0, confirmed: 0, pending: 0 };
+
+    // 6. Calculate total capacity and occupancy
+    const totalCapacity = allAmenities.reduce((sum, a) => sum + (a.status === 'active' ? (a.capacity || 0) : 0), 0);
+    const occupancyPercentage = totalCapacity > 0 ? Math.round((todayData.totalBookings / totalCapacity) * 100) : 0;
+
+    // 7. Build the consolidated response
+    return {
+      amenityKpis,
+
+      bookingKpis: {
+        totalBookings: Object.values(statusMap).reduce((s, v) => s + v, 0),
+        todayBookings: todayData.totalBookings,
+        upcomingBookings: bookingAgg.upcomingCount?.[0]?.count || 0,
+        completedBookings: statusMap['completed'] || 0,
+        cancelledBookings: statusMap['cancelled'] || 0,
+        pendingBookings: statusMap['pending'] || 0,
+        confirmedBookings: statusMap['confirmed'] || 0,
+        checkedInBookings: statusMap['checked-in'] || 0,
+        approvedBookings: statusMap['approved'] || 0,
+        rejectedBookings: statusMap['rejected'] || 0,
+      },
+
+      revenue: {
+        dailyRevenue: bookingAgg.dailyRevenue?.[0]?.total || 0,
+        weeklyRevenue: bookingAgg.weeklyRevenue?.[0]?.total || 0,
+        monthlyRevenue: bookingAgg.monthlyRevenue?.[0]?.total || 0,
+      },
+
+      occupancy: {
+        occupancyPercentage,
+        capacityUtilization: totalCapacity,
+        todayCheckIns: todayData.checkIns,
+        todayCheckOuts: todayData.checkOuts,
+      },
+
+      paymentStats,
+      paymentAmounts,
+
+      charts: {
+        revenueTrend: (bookingAgg.revenueTrend || []).reverse(),
+        bookingTrend: (bookingAgg.bookingTrend || []).reverse(),
+        bookingStatusDist: bookingAgg.statusCounts || [],
+        paymentStatusDist: bookingAgg.paymentStatusDist || [],
+        peakHours: bookingAgg.peakHours || [],
+        amenityUsage: bookingAgg.amenityUsage || [],
+        monthlyComparison: {
+          current: bookingAgg.currentMonthBookings?.[0] || { count: 0, revenue: 0 },
+          previous: bookingAgg.previousMonthBookings?.[0] || { count: 0, revenue: 0 },
+        },
+      },
+
+      maintenanceSummary,
+
+      recentActivity: bookingAgg.recentActivity || [],
+    };
+  }
 
   async checkInBooking(bookingId, orgId, userId) {
     const booking = await amenityBookingRepository.findById(bookingId, orgId);

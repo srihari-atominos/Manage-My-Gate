@@ -20,6 +20,14 @@ export class AmenityService {
     if (amenityData.name) amenityData.name = amenityData.name.trim();
     if (amenityData.description) amenityData.description = amenityData.description.trim();
     
+    // Duplicate Name Validation
+    if (amenityData.name) {
+      const existing = await amenityRepository.findByName(amenityData.name, orgId);
+      if (existing) {
+        throw new HttpError(400, 'An amenity with this name already exists.');
+      }
+    }
+    
     amenityData.orgId = orgId; // override/set just to be safe
     const created = await amenityRepository.create(amenityData);
     
@@ -44,6 +52,22 @@ export class AmenityService {
     }
 
     const updated = await amenityRepository.update(id, orgId, updateData);
+    amenityEventEmitter.emit(AMENITY_UPDATED, updated);
+    return updated;
+  }
+
+  async updateStatus(id, orgId, status) {
+    await this.getAmenityById(id, orgId); // Verify existence
+
+    if (status === 'inactive') {
+      const amenityBookingService = (await import('../amenityBooking/amenityBooking.services.js')).default;
+      const hasPendingBookings = await amenityBookingService.hasPendingOrApprovedFutureBookings(id, orgId);
+      if (hasPendingBookings) {
+        throw new HttpError(400, 'Cannot deactivate amenity: there are pending or approved future bookings.');
+      }
+    }
+
+    const updated = await amenityRepository.update(id, orgId, { status });
     amenityEventEmitter.emit(AMENITY_UPDATED, updated);
     return updated;
   }
@@ -192,6 +216,63 @@ export class AmenityService {
       endTime: s.endTime,
       price: price
     }));
+  }
+
+  async searchAvailableAmenities(orgId, dateStr, startTime, endTime) {
+    const amenities = await amenityRepository.findAllByOrg(orgId, { status: 'active' });
+    const availableAmenities = [];
+
+    for (const amenity of amenities) {
+      // 1. Weekly Off Check
+      const targetDate = new Date(dateStr);
+      if (amenity.bookingRules?.weeklyOffDays?.includes(targetDate.getDay())) {
+        continue;
+      }
+
+      const slotStart = new Date(`${dateStr}T${startTime}`);
+      const slotEnd = new Date(`${dateStr}T${endTime}`);
+
+      // 2. Operating hours check
+      const openTimeParsed = new Date(`${dateStr}T${amenity.bookingRules?.openTime || '00:00'}`);
+      const closeTimeParsed = new Date(`${dateStr}T${amenity.bookingRules?.closeTime || '23:59'}`);
+      if (slotStart < openTimeParsed || slotEnd > closeTimeParsed) {
+        continue;
+      }
+
+      // 3. Maintenance check
+      let inMaintenance = false;
+      if (amenity.maintenanceSchedules) {
+        for (const maint of amenity.maintenanceSchedules) {
+          const mStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
+          const mEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
+          if (slotStart < mEnd && slotEnd > mStart) {
+            inMaintenance = true;
+            break;
+          }
+        }
+      }
+      if (inMaintenance) continue;
+
+      // 4. Booking conflicts check
+      const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
+      const conflicts = await amenityBookingRepository.findConflicts(amenity._id, dateStr, startTime, endTime);
+      
+      if (conflicts.length < amenity.capacity) {
+        availableAmenities.push(amenity);
+      }
+    }
+
+    return availableAmenities;
+  }
+
+  async getAmenityStats(orgId) {
+    if (!orgId) throw new HttpError(400, 'Organization ID is required');
+    return await amenityRepository.getAmenityStats(orgId);
+  }
+
+  async getMaintenanceStats(orgId) {
+    if (!orgId) throw new HttpError(400, 'Organization ID is required');
+    return await amenityRepository.getMaintenanceStats(orgId);
   }
 }
 

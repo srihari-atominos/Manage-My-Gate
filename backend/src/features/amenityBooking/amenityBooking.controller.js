@@ -45,6 +45,19 @@ export class AmenityBookingController {
     }
   }
 
+  async createManualBooking(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      // Admins pass residentId explicitly in the body
+      const bookingData = { ...req.body, orgId, userId: req.body.residentId, isManual: true };
+      
+      const created = await amenityBookingService.createManualBooking(bookingData);
+      res.success(created, 'Manual booking created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async reviewBooking(req, res, next) {
     try {
       const { id } = req.params;
@@ -104,6 +117,13 @@ export class AmenityBookingController {
     try {
       const activity = await amenityBookingService.getRecentActivity(req.tenant.orgId);
       res.success(activity, 'Recent activity retrieved successfully');
+    } catch (error) { next(error); }
+  }
+
+  async getDashboardData(req, res, next) {
+    try {
+      const data = await amenityBookingService.getDashboardData(req.tenant.orgId);
+      res.success(data, 'Dashboard data retrieved successfully');
     } catch (error) { next(error); }
   }
 

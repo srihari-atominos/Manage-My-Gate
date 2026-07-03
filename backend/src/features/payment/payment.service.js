@@ -1,4 +1,5 @@
 import Payment from './payment.model.js';
+import paymentRepository from './payment.repository.js';
 import { paymentEventEmitter, PAYMENT_INITIATED, PAYMENT_SUCCESS, PAYMENT_FAILED, PAYMENT_REFUNDED } from './payment.events.js';
 import HttpError from '../../utils/httpError.utils.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -91,6 +92,24 @@ class MockPaymentProvider {
       logger.error('Error processing refund', error);
       throw error;
     }
+  }
+
+  /**
+   * Dashboard aggregation methods
+   */
+  async getPaymentStats(orgId) {
+    if (!orgId) throw new HttpError(400, 'Organization ID is required');
+    return await paymentRepository.getPaymentStats(orgId);
+  }
+
+  async getRevenueTrend(orgId) {
+    if (!orgId) throw new HttpError(400, 'Organization ID is required');
+    return await paymentRepository.getRevenueTrend(orgId);
+  }
+
+  async getRecentActivity(orgId, limit = 10) {
+    if (!orgId) throw new HttpError(400, 'Organization ID is required');
+    return await paymentRepository.getRecentActivity(orgId, limit);
   }
 }
 

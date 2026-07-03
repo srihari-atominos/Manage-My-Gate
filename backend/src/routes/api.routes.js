@@ -13,6 +13,7 @@ import amenitySettingsRouter from '../features/amenitySettings/amenitySettings.r
 import bookingRouter from '../features/booking/booking.router.js';
 import amenityBookingRouter from '../features/amenityBooking/amenityBooking.router.js';
 import paymentRouter from '../features/payment/payment.router.js';
+import amenityDashboardRouter from '../features/amenityDashboard/amenityDashboard.router.js';
 
 const router = Router();
 
@@ -31,5 +32,6 @@ router.use('/amenities', amenityRouter);
 router.use('/bookings', bookingRouter);
 router.use('/amenity-bookings', amenityBookingRouter);
 router.use('/payments', paymentRouter);
+router.use('/amenity-dashboard', amenityDashboardRouter);
 
 export default router;

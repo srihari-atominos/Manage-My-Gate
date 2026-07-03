@@ -7,6 +7,7 @@ import CalendarGrid from '../components/calendar/CalendarGrid.jsx';
 import ResidentEventDrawer from '../components/residentCalendar/ResidentEventDrawer.jsx';
 import UpcomingBookingsWidget from '../components/residentCalendar/UpcomingBookingsWidget.jsx';
 import usePermission from '../../../hooks/usePermission.js';
+import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
 import '../styles/_amenities.scss';
 
 const ResidentCalendarView = () => {
@@ -40,6 +41,7 @@ const ResidentCalendarView = () => {
 
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
+      <AmenitiesTopNav />
       <div className="view-container">
         <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>

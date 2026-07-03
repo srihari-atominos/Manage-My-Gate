@@ -8,6 +8,7 @@ import TimeSlotSelector from '../components/booking/TimeSlotSelector.jsx';
 import BookingSummary from '../components/booking/BookingSummary.jsx';
 import BookingConfirmationModal from '../components/booking/BookingConfirmationModal.jsx';
 import BookingSuccess from '../components/booking/BookingSuccess.jsx';
+import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
 import '../styles/_amenities.scss';
 
 const ResidentBookingView = () => {
@@ -55,6 +56,7 @@ const ResidentBookingView = () => {
 
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
+      <AmenitiesTopNav />
       <div className="view-container" style={{ maxWidth: '800px', margin: '0 auto' }}>
         
         <div style={{ marginBottom: '24px' }}>

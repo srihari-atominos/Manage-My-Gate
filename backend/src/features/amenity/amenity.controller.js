@@ -12,6 +12,20 @@ export class AmenityController {
     }
   }
 
+  async getAvailableAmenities(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const { date, startTime, endTime } = req.query;
+      if (!date || !startTime || !endTime) {
+        throw new HttpError(400, 'date, startTime, and endTime are required query parameters');
+      }
+      const available = await amenityService.searchAvailableAmenities(orgId, date, startTime, endTime);
+      res.success(available, 'Available amenities retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getById(req, res, next) {
     try {
       const { id } = req.params;
@@ -39,6 +53,18 @@ export class AmenityController {
       const orgId = req.tenant.orgId;
       const updated = await amenityService.updateAmenity(id, orgId, req.body);
       res.success(updated, 'Amenity updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateStatus(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const orgId = req.tenant.orgId;
+      const updated = await amenityService.updateStatus(id, orgId, status);
+      res.success(updated, 'Amenity status updated successfully');
     } catch (error) {
       next(error);
     }

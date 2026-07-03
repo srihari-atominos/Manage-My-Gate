@@ -6,6 +6,7 @@ import CalendarGrid from '../components/calendar/CalendarGrid.jsx';
 import CalendarFilters from '../components/calendar/CalendarFilters.jsx';
 import CalendarEventDrawer from '../components/calendar/CalendarEventDrawer.jsx';
 import CalendarAnalytics from '../components/calendar/CalendarAnalytics.jsx';
+import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
 import '../styles/_amenities.scss';
 
 const AdminCalendarView = () => {
@@ -17,11 +18,13 @@ const AdminCalendarView = () => {
     viewMode,
     setViewMode,
     currentDate,
+    setCurrentDate,
     navigateDate,
     setToday,
     filters,
     updateFilters,
-    loadEvents
+    loadEvents,
+    monthIndicators
   } = useAdminCalendar();
 
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -36,8 +39,16 @@ const AdminCalendarView = () => {
     setDrawerVisible(true);
   };
 
+  const handleDateSelect = (dateStr) => {
+    // Make sure we convert back to Date correctly (UTC vs Local issues)
+    // The dateStr is YYYY-MM-DD
+    setCurrentDate(new Date(`${dateStr}T00:00:00`));
+    setViewMode('day');
+  };
+
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
+      <AmenitiesTopNav />
       <div className="view-container">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
           <div>
@@ -74,6 +85,8 @@ const AdminCalendarView = () => {
                 currentDate={currentDate}
                 events={visibleEvents}
                 onEventClick={handleEventClick}
+                monthIndicators={monthIndicators}
+                onDateSelect={handleDateSelect}
               />
             )}
           </div>

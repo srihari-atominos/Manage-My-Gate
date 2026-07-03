@@ -28,6 +28,15 @@ export const editAmenity = createAsyncThunk('amenities/editAmenity', async ({ id
   }
 });
 
+export const changeAmenityStatus = createAsyncThunk('amenities/changeStatus', async ({ id, status }, { rejectWithValue }) => {
+  try {
+    const response = await amenityApi.updateAmenityStatus(id, status);
+    return response.data;
+  } catch (error) {
+    return rejectWithValue(error.message || 'Failed to update amenity status');
+  }
+});
+
 export const removeAmenity = createAsyncThunk('amenities/removeAmenity', async (id, { rejectWithValue }) => {
   try {
     await amenityApi.deleteAmenity(id);
@@ -82,6 +91,15 @@ export const amenitySlice = createSlice({
         state.successMsg = 'Amenity updated successfully!'; 
       })
       .addCase(editAmenity.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
+      
+      .addCase(changeAmenityStatus.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(changeAmenityStatus.fulfilled, (state, action) => { 
+        state.loading = false; 
+        const index = state.items.findIndex(item => item._id === action.payload._id);
+        if (index !== -1) state.items[index] = action.payload;
+        state.successMsg = 'Amenity status updated successfully!'; 
+      })
+      .addCase(changeAmenityStatus.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
       
       .addCase(removeAmenity.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(removeAmenity.fulfilled, (state, action) => { 
