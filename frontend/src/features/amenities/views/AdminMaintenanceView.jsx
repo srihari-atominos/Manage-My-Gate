@@ -1,9 +1,11 @@
 import React from 'react';
+import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
 import '../styles/_amenities.scss';
 
 const AdminMaintenanceView = () => {
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
+      <AmenitiesTopNav />
       <div className="view-container">
         <div className="view active" id="view-admin-maintenance">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>

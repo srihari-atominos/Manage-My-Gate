@@ -1,9 +1,11 @@
 import React from 'react';
+import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
 import '../styles/_amenities.scss';
 
 const ResidentHistoryView = () => {
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
+      <AmenitiesTopNav />
       <div className="view-container">
         <div className="view active" id="view-resident-history">
           <h2 style={{ marginBottom: '32px', fontSize: '28px', marginTop: 0 }}>Booking History</h2>

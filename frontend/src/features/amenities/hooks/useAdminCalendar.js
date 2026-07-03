@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { fetchBookingQueue } from '../services/amenityBookingApi.js';
+import dashboardApi from '../services/dashboardApi.js';
 import toast from 'react-hot-toast';
 
 export const useAdminCalendar = () => {
   const [bookingQueue, setBookingQueue] = useState([]);
+  const [monthIndicators, setMonthIndicators] = useState([]);
   const [isQueueLoading, setIsQueueLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -20,42 +21,48 @@ export const useAdminCalendar = () => {
   });
 
   const loadEvents = useCallback(async () => {
-    // In a real app, pass date range (start of month to end of month) to avoid over-fetching
-    // For now we fetch all/paginated queue
     setIsQueueLoading(true);
     setError(null);
     try {
-      const response = await fetchBookingQueue({ limit: 500 });
-      setBookingQueue(response.data || []);
+      if (viewMode === 'month') {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth() + 1;
+        const response = await dashboardApi.getCalendarIndicators(year, month);
+        setMonthIndicators(response.data || []);
+        setBookingQueue([]); // clear day events
+      } else {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const response = await dashboardApi.getCalendarEvents(dateStr);
+        setBookingQueue(response.data || []);
+      }
     } catch (err) {
       setError(err.message || 'Failed to load calendar events');
       toast.error('Failed to load calendar events');
     } finally {
       setIsQueueLoading(false);
     }
-  }, []);
+  }, [currentDate, viewMode]);
 
   // Transform Raw API response to Unified Event Interface
   const rawEvents = useMemo(() => {
     if (!bookingQueue) return [];
     
-    return bookingQueue.map(booking => ({
-      id: booking._id,
-      type: 'booking',
-      title: `${booking.amenity?.name || 'Unknown Amenity'} Booking`,
-      subtitle: booking.user?.name || 'Unknown Resident',
-      amenityId: booking.amenity?._id,
-      amenityName: booking.amenity?.name || 'Unknown',
-      residentId: booking.user?._id,
-      residentName: booking.user?.name || 'Unknown Resident',
-      date: booking.date, // "YYYY-MM-DD"
-      start: booking.startTime, // "HH:MM"
-      end: booking.endTime,
-      status: booking.status || 'pending',
-      paymentStatus: booking.paymentStatus || 'pending',
-      checkInStatus: booking.checkInStatus || 'pending',
-      colorKey: booking.status || 'pending',
-      metadata: booking // store raw for details drawer
+    return bookingQueue.map(event => ({
+      id: event.id,
+      type: event.type, // 'booking', 'maintenance', 'operating_hours', 'holiday'
+      title: event.title,
+      subtitle: event.subtitle,
+      amenityName: event.amenityName || 'Unknown',
+      residentName: event.residentName || '',
+      date: event.date,
+      start: event.start,
+      end: event.end,
+      status: event.status,
+      colorKey: event.type === 'maintenance' ? 'rejected' 
+              : event.type === 'operating_hours' ? 'default' 
+              : event.type === 'holiday' ? 'checked_in' 
+              : event.status, // Can be mapped to specific colors in CalendarEventCard based on status
+      metadata: event // store raw for details drawer
     }));
   }, [bookingQueue]);
 
@@ -111,12 +118,14 @@ export const useAdminCalendar = () => {
     rawEvents,
     filteredEvents,
     visibleEvents,
+    monthIndicators,
     analytics,
     loading: isQueueLoading,
     error,
     viewMode,
     setViewMode,
     currentDate,
+    setCurrentDate,
     navigateDate,
     setToday,
     filters,

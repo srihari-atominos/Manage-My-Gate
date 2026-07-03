@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { getAmenities, addAmenity, editAmenity, removeAmenity } from '../store/amenitySlice.js';
+import { getAmenities, addAmenity, editAmenity, changeAmenityStatus, removeAmenity } from '../store/amenitySlice.js';
 import { useAuth } from '../../auth/hooks/useAuth.js';
 
 export const useAmenityMaster = () => {
@@ -16,9 +16,9 @@ export const useAmenityMaster = () => {
   const [sortField, setSortField] = useState('newest');
 
   // Granular permission checks — each action is individually gated
-  const canCreate = checkPermission('amenities:create');
-  const canUpdate = checkPermission('amenities:update');
-  const canDelete = checkPermission('amenities:delete');
+  const canCreate = checkPermission('amenities:manage_master');
+  const canUpdate = checkPermission('amenities:manage_master');
+  const canDelete = checkPermission('amenities:manage_master');
   const canManageBookings = checkPermission('amenities:manage_bookings');
   // Legacy alias kept for components that still use canManage
   const canManage = canCreate || canUpdate || canDelete || canManageBookings;
@@ -33,6 +33,10 @@ export const useAmenityMaster = () => {
 
   const updateAmenity = async (id, data) => {
     return await dispatch(editAmenity({ id, data })).unwrap();
+  };
+
+  const updateAmenityStatus = async (id, status) => {
+    return await dispatch(changeAmenityStatus({ id, status })).unwrap();
   };
 
   const deleteAmenity = async (id) => {
@@ -93,6 +97,7 @@ export const useAmenityMaster = () => {
     loadAmenities,
     createAmenity,
     updateAmenity,
+    updateAmenityStatus,
     deleteAmenity
   };
 };

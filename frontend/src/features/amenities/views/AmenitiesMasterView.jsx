@@ -5,13 +5,15 @@ import AmenityGrid from '../components/master/AmenityGrid.jsx';
 import AmenityFormModal from '../components/master/AmenityFormModal.jsx';
 import AmenityDetailsDrawer from '../components/master/AmenityDetailsDrawer.jsx';
 import DeleteConfirmationModal from '../components/common/DeleteConfirmationModal.jsx';
+import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
+import toast from 'react-hot-toast';
 import '../styles/_amenities.scss';
 
 const AmenitiesMasterView = () => {
   const {
     items, loading, error, canManage, canCreate, canUpdate, canDelete,
     search, setSearch,
-    loadAmenities, createAmenity, updateAmenity, deleteAmenity
+    loadAmenities, createAmenity, updateAmenity, updateAmenityStatus, deleteAmenity
   } = useAmenityMaster();
 
   const [formModalVisible, setFormModalVisible] = useState(false);
@@ -19,6 +21,7 @@ const AmenitiesMasterView = () => {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedAmenity, setSelectedAmenity] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deactivateModalVisible, setDeactivateModalVisible] = useState(false);
 
   useEffect(() => {
     loadAmenities();
@@ -40,24 +43,34 @@ const AmenitiesMasterView = () => {
   };
 
   const handleSave = async (data) => {
-    if (selectedAmenity) {
-      await updateAmenity(selectedAmenity._id, data);
-    } else {
-      await createAmenity(data);
+    try {
+      if (selectedAmenity) {
+        await updateAmenity(selectedAmenity._id, data);
+        toast.success('Amenity updated successfully!');
+      } else {
+        await createAmenity(data);
+        toast.success('Amenity created successfully!');
+      }
+      setFormModalVisible(false);
+    } catch (err) {
+      toast.error(err.message || 'Failed to save amenity');
     }
   };
 
-  const handleDeleteClick = (amenity) => {
+  const handleDeactivateClick = (amenity) => {
     setSelectedAmenity(amenity);
-    setDeleteModalVisible(true);
+    setDeactivateModalVisible(true);
   };
 
-  const confirmDelete = async () => {
+  const confirmDeactivate = async () => {
     if (selectedAmenity) {
       setIsDeleting(true);
       try {
-        await deleteAmenity(selectedAmenity._id);
-        setDeleteModalVisible(false);
+        await updateAmenityStatus(selectedAmenity._id, 'inactive');
+        setDeactivateModalVisible(false);
+        toast.success(`${selectedAmenity.name} deactivated successfully`);
+      } catch (err) {
+        toast.error(err.message || 'Failed to deactivate amenity');
       } finally {
         setIsDeleting(false);
       }
@@ -66,6 +79,7 @@ const AmenitiesMasterView = () => {
 
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
+      <AmenitiesTopNav />
       <div className="view-container">
         <div className="view active" id="view-admin-amenities">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
@@ -102,7 +116,7 @@ const AmenitiesMasterView = () => {
               canUpdate={canUpdate}
               canDelete={canDelete}
               onEdit={handleEditClick} 
-              onDelete={handleDeleteClick}
+              onDeactivate={handleDeactivateClick}
               onViewDetails={handleViewDetails}
             />
           )}
@@ -123,11 +137,11 @@ const AmenitiesMasterView = () => {
         />
 
         <DeleteConfirmationModal 
-          visible={deleteModalVisible} 
-          onClose={() => setDeleteModalVisible(false)} 
-          onConfirm={confirmDelete}
+          visible={deactivateModalVisible} 
+          onClose={() => setDeactivateModalVisible(false)} 
+          onConfirm={confirmDeactivate}
           isDeleting={isDeleting}
-          message={selectedAmenity ? `Are you sure you want to delete ${selectedAmenity.name}?` : ''}
+          message={selectedAmenity ? `Are you sure you want to deactivate ${selectedAmenity.name}? It will no longer be available for booking.` : ''}
         />
       </div>
     </div>

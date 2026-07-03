@@ -1,7 +1,7 @@
 import React from 'react';
 import { memo } from 'react';
 
-const AmenityGrid = memo(({ amenities, canManage, canUpdate, canDelete, onEdit, onDelete, onViewDetails }) => {
+const AmenityGrid = memo(({ amenities, canManage, canUpdate, canDelete, onEdit, onDeactivate, onViewDetails }) => {
   if (!amenities || amenities.length === 0) {
     return <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No amenities match your criteria.</div>;
   }
@@ -13,7 +13,7 @@ const AmenityGrid = memo(({ amenities, canManage, canUpdate, canDelete, onEdit, 
           <div 
             style={{ 
               height: '180px', 
-              background: `url('${item.imageUrl || 'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=800&q=80'}') center/cover` 
+              background: `url('${(item.images && item.images.length > 0) ? item.images[0] : 'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=800&q=80'}') center/cover` 
             }}
           ></div>
           <div style={{ padding: '24px' }}>
@@ -41,7 +41,7 @@ const AmenityGrid = memo(({ amenities, canManage, canUpdate, canDelete, onEdit, 
               <button 
                 className="btn btn-outline" 
                 style={{ flex: 1 }} 
-                onClick={() => onDelete(item)}
+                onClick={() => onDeactivate(item)}
                 disabled={!(canDelete ?? canManage)}
               >
                 Deactivate

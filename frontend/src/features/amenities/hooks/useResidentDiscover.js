@@ -2,28 +2,63 @@ import { useState, useMemo, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { getAmenities } from '../store/amenitySlice.js';
 import { useNavigate } from 'react-router-dom';
+import amenityApi from '../services/amenityApi.js';
 
 export const useResidentDiscover = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   
-  const { items, loading, error } = useSelector(state => state.amenities);
+  const { items, loading: reduxLoading, error: reduxError } = useSelector(state => state.amenities);
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  
+  const [filterDate, setFilterDate] = useState('');
+  const [filterStartTime, setFilterStartTime] = useState('');
+  const [filterEndTime, setFilterEndTime] = useState('');
+  
+  const [availableItems, setAvailableItems] = useState(null);
+  const [localLoading, setLocalLoading] = useState(false);
+  const [localError, setLocalError] = useState(null);
 
   const loadAmenities = useCallback(() => {
     dispatch(getAmenities());
   }, [dispatch]);
+  
+  const searchAvailableSlots = useCallback(async () => {
+    if (!filterDate || !filterStartTime || !filterEndTime) {
+      setAvailableItems(null);
+      return;
+    }
+    setLocalLoading(true);
+    setLocalError(null);
+    try {
+      const response = await amenityApi.fetchAvailableAmenities(filterDate, filterStartTime, filterEndTime);
+      setAvailableItems(response.data);
+    } catch (err) {
+      setLocalError(err.message || 'Failed to search available slots');
+    } finally {
+      setLocalLoading(false);
+    }
+  }, [filterDate, filterStartTime, filterEndTime]);
+
+  const clearFilters = useCallback(() => {
+    setFilterDate('');
+    setFilterStartTime('');
+    setFilterEndTime('');
+    setAvailableItems(null);
+  }, []);
 
   const categories = useMemo(() => {
-    const activeItems = items.filter(i => i.status?.toLowerCase() === 'active');
+    const sourceItems = availableItems || items;
+    const activeItems = sourceItems.filter(i => i.status?.toLowerCase() === 'active');
     const cats = new Set(activeItems.map(i => i.type));
     return ['All', ...Array.from(cats)];
-  }, [items]);
+  }, [items, availableItems]);
 
   const filteredItems = useMemo(() => {
-    let result = items.filter(i => i.status?.toLowerCase() === 'active');
+    const sourceItems = availableItems || items;
+    let result = sourceItems.filter(i => i.status?.toLowerCase() === 'active');
 
     if (search) {
       const lowerSearch = search.toLowerCase();
@@ -38,7 +73,7 @@ export const useResidentDiscover = () => {
     }
 
     return result;
-  }, [items, search, selectedCategory]);
+  }, [items, availableItems, search, selectedCategory]);
 
   const navigateToBooking = (id) => {
     navigate(`/resident/amenities/book/${id}`);
@@ -47,12 +82,20 @@ export const useResidentDiscover = () => {
   return {
     items: filteredItems,
     categories,
-    loading,
-    error,
+    loading: reduxLoading || localLoading,
+    error: reduxError || localError,
     search,
     setSearch,
     selectedCategory,
     setSelectedCategory,
+    filterDate,
+    setFilterDate,
+    filterStartTime,
+    setFilterStartTime,
+    filterEndTime,
+    setFilterEndTime,
+    searchAvailableSlots,
+    clearFilters,
     loadAmenities,
     navigateToBooking
   };

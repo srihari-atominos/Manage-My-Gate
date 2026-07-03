@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import DataTable from '../../../components/common/DataTable.jsx';
 import useSecurityLogs from '../hooks/useSecurityLogs.js';
 import AmenityStatusBadge from '../components/AmenityStatusBadge.jsx';
+import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
 import '../styles/_amenities.scss';
 
 const SecurityLogsView = () => {
@@ -65,6 +66,7 @@ const SecurityLogsView = () => {
 
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
+      <AmenitiesTopNav />
       <div className="view-container">
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>Security Logs</h1>

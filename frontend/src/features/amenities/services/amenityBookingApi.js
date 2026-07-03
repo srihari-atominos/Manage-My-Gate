@@ -10,6 +10,11 @@ export const createBooking = async (bookingData) => {
   return response.data;
 };
 
+export const createManualBooking = async (bookingData) => {
+  const response = await apiClient.post('/amenity-bookings/manual', bookingData);
+  return response.data;
+};
+
 export const cancelBooking = async (id) => {
   const response = await apiClient.put(`/amenity-bookings/${id}/cancel`);
   return response.data;

@@ -5,6 +5,7 @@ import QrPassCard from '../components/wallet/QrPassCard.jsx';
 import BookingDetailsCard from '../components/wallet/BookingDetailsCard.jsx';
 import WalletEmptyState from '../components/wallet/WalletEmptyState.jsx';
 import { WalletLoading, WalletError } from '../components/wallet/WalletStates.jsx';
+import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
 import '../styles/_amenities.scss';
 
 const ResidentWalletView = () => {
@@ -17,6 +18,7 @@ const ResidentWalletView = () => {
 
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
+      <AmenitiesTopNav />
       <div className="view-container" style={{ maxWidth: '600px', margin: '0 auto' }}>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>

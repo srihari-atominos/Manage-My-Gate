@@ -1,7 +1,6 @@
 import React, { memo } from 'react';
-import CalendarEventCard from './CalendarEventCard.jsx';
 
-const MonthRenderer = memo(({ currentDate, events, onEventClick }) => {
+const MonthRenderer = memo(({ currentDate, monthIndicators = [], onDateSelect }) => {
   const getDaysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   };
@@ -36,13 +35,16 @@ const MonthRenderer = memo(({ currentDate, events, onEventClick }) => {
            currentDate.getFullYear() === today.getFullYear();
   };
 
-  const getEventsForDay = (day) => {
-    if (!day) return [];
-    // Format YYYY-MM-DD
+  const hasIndicator = (day) => {
+    if (!day) return false;
     const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    // In our event model, date is already YYYY-MM-DD
-    // If raw date is an ISO string, we'd slice it. Let's assume it's just prefix-matched.
-    return events.filter(e => e.date && e.date.startsWith(dateStr));
+    return monthIndicators.includes(dateStr);
+  };
+
+  const handleCellClick = (day) => {
+    if (!day) return;
+    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    onDateSelect(dateStr);
   };
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -61,14 +63,15 @@ const MonthRenderer = memo(({ currentDate, events, onEventClick }) => {
       {/* Days Grid */}
       <div className="d-flex flex-wrap">
         {days.map((day, index) => {
-          const dayEvents = getEventsForDay(day);
+          const showDot = hasIndicator(day);
           const todayMarker = day && isToday(day) ? 'bg-primary text-white rounded-circle' : '';
           
           return (
             <div 
               key={index} 
-              className={`border-end border-bottom p-1 p-md-2 d-flex flex-column ${day ? 'bg-white' : 'bg-light bg-opacity-50'}`}
-              style={{ width: '14.28%', minHeight: '120px' }}
+              className={`border-end border-bottom p-1 p-md-2 d-flex flex-column ${day ? 'bg-white cursor-pointer' : 'bg-light bg-opacity-50'}`}
+              style={{ width: '14.28%', minHeight: '120px', cursor: day ? 'pointer' : 'default' }}
+              onClick={() => handleCellClick(day)}
             >
               {day && (
                 <>
@@ -77,10 +80,10 @@ const MonthRenderer = memo(({ currentDate, events, onEventClick }) => {
                       {day}
                     </span>
                   </div>
-                  <div className="flex-grow-1 overflow-auto" style={{ maxHeight: '80px' }}>
-                    {dayEvents.map(event => (
-                      <CalendarEventCard key={event.id} event={event} onClick={onEventClick} isCompact={true} />
-                    ))}
+                  <div className="flex-grow-1 d-flex justify-content-center align-items-center">
+                    {showDot && (
+                      <div className="bg-primary rounded-circle" style={{ width: '8px', height: '8px' }}></div>
+                    )}
                   </div>
                 </>
               )}

@@ -1,9 +1,22 @@
 import React from 'react';
+import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import '../styles/_amenities.scss';
 
 const AdminLedgersView = () => {
+  const handleExport = () => {
+    const table = document.getElementById('bookings-ledger');
+    if (table) {
+      const wb = XLSX.utils.table_to_book(table);
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, "bookings_ledger.xlsx");
+    }
+  };
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
+      <AmenitiesTopNav />
       <div className="view-container">
         <div className="view active" id="view-admin-bookings">
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -12,13 +25,14 @@ const AdminLedgersView = () => {
                 <h3 style={{ fontSize: '24px', marginBottom: '8px' }}>Booking Master Ledger</h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: '500' }}>Bookings are auto-confirmed via payment gateway. No manual approval required.</p>
               </div>
-              <div style={{ display: 'flex', gap: '16px' }}>
-                <div className="search-bar-app" style={{ margin: 0, padding: '4px 16px', boxShadow: 'none' }}>
-                  <i className="fa-solid fa-magnifying-glass" style={{ fontSize: '14px' }}></i>
-                  <input type="text" id="booking-search" placeholder="Search ID..." style={{ width: '150px' }} />
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <div className="search-bar-app" style={{ margin: 0, padding: '8px 16px', boxShadow: 'none', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)', borderRadius: '24px', backgroundColor: 'var(--bg-light)' }}>
+                  <i className="fa-solid fa-magnifying-glass" style={{ fontSize: '14px', color: 'var(--text-muted)' }}></i>
+                  <input type="text" id="booking-search" placeholder="Search ID..." style={{ width: '150px', border: 'none', outline: 'none', backgroundColor: 'transparent' }} />
                 </div>
-                <button className="btn btn-outline" style={{ borderRadius: 'var(--radius-pill)' }}><i className="fa-solid fa-filter"></i> Filters</button>
-                <button className="btn btn-primary"><i className="fa-solid fa-download"></i> Export</button>
+                <button className="btn btn-primary" onClick={handleExport} style={{ borderRadius: '24px', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+                  <i className="fa-solid fa-download"></i> Export
+                </button>
               </div>
             </div>
             

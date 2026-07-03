@@ -175,4 +175,76 @@
   .ent-table tr:hover td { background: var(--primary-light); }
 
   @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Booking Ledger Filter Panel */
+  .filter-panel {
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+    background: var(--surface-bg);
+    padding: 20px;
+    border-radius: var(--radius-md);
+    margin-bottom: 24px;
+    animation: fadeIn 0.3s ease;
+  }
+  .filter-panel.active {
+    display: flex;
+  }
+
+  /* Scanner UI */
+  .scanner-ui {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: #000;
+  }
+  .scanner-frame {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 250px;
+    height: 250px;
+    border: 2px solid var(--primary);
+    border-radius: 20px;
+    box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.5);
+    z-index: 1;
+  }
+  .scanner-line {
+    position: absolute;
+    width: 100%;
+    height: 3px;
+    background: var(--primary);
+    top: 0;
+    left: 0;
+    animation: scan 2s infinite linear;
+    box-shadow: 0 0 10px var(--primary);
+  }
+  @keyframes scan {
+    0% { top: 0; }
+    50% { top: 100%; }
+    100% { top: 0; }
+  }
+
+  /* Notification Items */
+  .notif-item {
+    padding: 16px;
+    border-radius: var(--radius-md);
+    background: var(--surface-bg);
+    margin-bottom: 12px;
+    transition: 0.2s;
+    cursor: pointer;
+    border-left: 4px solid transparent;
+  }
+  .notif-item:hover {
+    background: var(--primary-light);
+  }
+  .notif-item.unread {
+    border-left-color: var(--primary);
+    background: white;
+    box-shadow: var(--shadow-sm);
+  }
 }

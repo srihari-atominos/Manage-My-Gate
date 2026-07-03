@@ -22,7 +22,7 @@ export class BookingService {
 
     // 1. Verify amenity exists and belongs to the org
     const amenity = await amenityService.getAmenityById(amenityId, orgId);
-    if (amenity.status !== 'Active') {
+    if (amenity.status !== 'active') {
       throw new HttpError(400, `Amenity is currently ${amenity.status} and cannot be booked.`);
     }
 
@@ -30,10 +30,6 @@ export class BookingService {
     const bookingDay = new Date(date).getDay();
     if (!amenity.openDays.includes(bookingDay)) {
       throw new HttpError(400, 'Amenity is closed on the selected day.');
-    }
-
-    if (startTime < amenity.operatingHours.start || endTime > amenity.operatingHours.end) {
-      throw new HttpError(400, `Booking must be within operating hours (${amenity.operatingHours.start} - ${amenity.operatingHours.end}).`);
     }
 
     // 3. Collision detection: Ensure no overlapping confirmed bookings
@@ -48,11 +44,30 @@ export class BookingService {
     return created;
   }
 
-  async updateBookingStatus(id, orgId, bookingStatus) {
-    await this.getBookingById(id, orgId); // Verify existence
-    const updated = await bookingRepository.updateStatus(id, orgId, bookingStatus);
+  async updateBookingStatus(id, orgId, status) {
+    const updated = await bookingRepository.updateStatus(id, orgId, status);
+    if (!updated) {
+      throw new HttpError(404, `Booking with ID ${id} not found or doesn't belong to this organization.`);
+    }
+
     bookingEventEmitter.emit(BOOKING_STATUS_UPDATED, updated);
+
     return updated;
+  }
+
+  async getBookingStats(orgId) {
+    if (!orgId) throw new HttpError(400, 'Organization ID is required');
+    return await bookingRepository.getBookingStats(orgId);
+  }
+
+  async getRecentActivity(orgId, limit = 10) {
+    if (!orgId) throw new HttpError(400, 'Organization ID is required');
+    return await bookingRepository.getRecentActivity(orgId, limit);
+  }
+
+  async getOccupancyStats(orgId) {
+    if (!orgId) throw new HttpError(400, 'Organization ID is required');
+    return await bookingRepository.getOccupancyStats(orgId);
   }
 }
 

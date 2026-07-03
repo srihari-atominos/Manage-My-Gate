@@ -74,6 +74,11 @@ apiClient.interceptors.response.use(
       window.location.hash = '#/login'
     }
     
+    // Extract backend error message if available to prevent raw Axios error strings
+    if (error.response && error.response.data && error.response.data.message) {
+      error.message = error.response.data.message;
+    }
+    
     return Promise.reject(error)
   }
 )

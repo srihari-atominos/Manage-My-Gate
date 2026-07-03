@@ -5,6 +5,7 @@ import ScannerCamera from '../components/scanner/ScannerCamera.jsx';
 import ScannerFallback from '../components/scanner/ScannerFallback.jsx';
 import ScanResultCard from '../components/scanner/ScanResultCard.jsx';
 import { ScannerLoading } from '../components/scanner/ScannerStates.jsx';
+import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
 import '../styles/_amenities.scss';
 
 const SecurityScannerView = () => {
@@ -19,6 +20,7 @@ const SecurityScannerView = () => {
 
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
+      <AmenitiesTopNav />
       <div className="view-container" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
         <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>Security Scanner</h1>
         <p style={{ color: 'var(--text-muted)', marginBottom: '32px' }}>Verify resident bookings via QR pass</p>
