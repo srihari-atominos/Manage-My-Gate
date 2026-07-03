@@ -9,6 +9,8 @@ const NotificationView = React.lazy(() => import('./features/notification/views/
 const IntegrationHubView = React.lazy(() => import('./features/integrationHub/views/IntegrationHubView'));
 const FeatureConfigWizard = React.lazy(() => import('./features/workspace/views/FeatureConfigWizard'));
 const VillaManager = React.lazy(() => import('./features/villa/views/VillaManager'));
+const OrganizationManager = React.lazy(() => import('./features/organization/views/OrganizationManager'));
+const AuditLogViewer = React.lazy(() => import('./features/auditLog/views/AuditLogViewer'));
 
 // Amenities Views (New)
 const DashboardView = React.lazy(() => import('./features/amenities/views/DashboardView'));
@@ -38,6 +40,8 @@ export const routes = [
   { path: '/notifications', name: 'Notifications', element: NotificationView },
   { path: '/integrations', name: 'Integration Hub', element: IntegrationHubView, requiredPermission: 'integrations:read' },
   { path: '/workspace-setup', name: 'Workspace Setup', element: FeatureConfigWizard },
+  { path: '/super-admin/organizations', name: 'Organization Manager', element: OrganizationManager, requirePlatform: true },
+  { path: '/super-admin/audit-logs', name: 'Audit Logs', element: AuditLogViewer, requirePlatform: true },
 
   
   // New Unified Amenities Routes

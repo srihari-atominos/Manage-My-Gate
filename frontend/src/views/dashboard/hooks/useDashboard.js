@@ -63,7 +63,16 @@ export const useDashboard = () => {
     !item.to
   );
 
-  let navigationItems = [...PORTAL_CATEGORIES];
+  const SUPER_ADMIN_CATEGORIES = navigation.filter((item) =>
+    item.to === '/super-admin/organizations' ||
+    item.to === '/super-admin/audit-logs'
+  );
+
+  let navigationItems = isPlatform ? [...SUPER_ADMIN_CATEGORIES, ...PORTAL_CATEGORIES] : [...PORTAL_CATEGORIES];
+
+  if (isPlatform) {
+    navigationItems = navigationItems.filter((item) => item.to !== '/villas' && item.to !== '/admin/amenities/dashboard');
+  }
 
   // Filter based on required permissions, also cleaning up any empty titles
   const filteredNavigationItems = navigationItems.filter((item, index, arr) => {

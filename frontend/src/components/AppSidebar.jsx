@@ -93,6 +93,10 @@ const AppSidebar = () => {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
 
+      if (isPlatform && (item.to === '/villas' || item.to === '/admin/amenities/dashboard')) {
+        continue;
+      }
+
       // Section titles: include only if something below them is visible
       if (!item.to && !item.items) {
         const remaining = items.slice(i + 1);

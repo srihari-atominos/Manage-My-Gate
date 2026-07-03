@@ -1,6 +1,7 @@
 import organizationRepository from './organization.repository.js';
 import HttpError from '../../utils/httpError.utils.js';
 import mongoose from 'mongoose';
+import orgEventEmitter from './organization.events.js';
 
 
 export class OrganizationService {
@@ -93,7 +94,53 @@ export class OrganizationService {
     }
   }
 
+  async getAllOrganizations(page = 1, limit = 10) {
+    return await organizationRepository.findAllPaginated(Number(page), Number(limit));
+  }
 
+  async changeOrganizationStatus(orgId, status, requestingUserId = null) {
+    const validStatuses = ['Active', 'Pending', 'Rejected'];
+    if (!validStatuses.includes(status)) {
+      throw new HttpError(400, `Invalid status. Must be one of ${validStatuses.join(', ')}.`);
+    }
+
+    const localSession = await mongoose.startSession();
+    localSession.startTransaction();
+
+    try {
+      // 1. Verify organization exists
+      const org = await organizationRepository.findById(orgId, localSession);
+      if (!org) {
+        throw new HttpError(404, `Organization with ID ${orgId} not found.`);
+      }
+
+      if (org.isPlatform === true) {
+        throw new HttpError(403, 'Critical System Restriction: The System Platform cannot be blocked or modified.');
+      }
+
+      const oldStatus = org.status;
+
+      // 2. Update status
+      const updatedOrg = await organizationRepository.updateStatus(orgId, status, localSession);
+
+      await localSession.commitTransaction();
+
+      // Emit decoupled status changed event outside transaction lifecycle
+      orgEventEmitter.emit('ORG_STATUS_CHANGED', {
+        actorId: requestingUserId,
+        targetId: orgId,
+        oldStatus,
+        newStatus: status,
+      });
+
+      return updatedOrg;
+    } catch (error) {
+      await localSession.abortTransaction();
+      throw error;
+    } finally {
+      await localSession.endSession();
+    }
+  }
 
   async checkNameAvailability(name) {
     if (!name || !name.trim()) {

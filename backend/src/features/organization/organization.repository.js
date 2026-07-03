@@ -30,6 +30,41 @@ export class OrganizationRepository {
     const result = await Organization.aggregate([
       { $match: matchQuery },
       {
+        $lookup: {
+          from: 'villas',
+          localField: '_id',
+          foreignField: 'orgId',
+          as: 'villasList',
+        },
+      },
+      {
+        $lookup: {
+          from: 'orgmemberships',
+          localField: '_id',
+          foreignField: 'orgId',
+          as: 'membershipsList',
+        },
+      },
+      {
+        $addFields: {
+          villaCount: { $size: '$villasList' },
+          userCount: { $size: '$membershipsList' },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          status: 1,
+          allowedFeatures: 1,
+          isPlatform: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          villaCount: 1,
+          userCount: 1,
+        },
+      },
+      {
         $facet: {
           metadata: [{ $count: 'total' }],
           data: [{ $skip: skip }, { $limit: limit }],

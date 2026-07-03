@@ -67,6 +67,18 @@ const _nav = [
     icon: <CIcon icon={cilBuilding} customClassName="nav-icon" />,
     requiredPermission: 'amenities:view_dashboard',
   },
+  {
+    component: CNavItem,
+    name: 'Organization Manager',
+    to: '/super-admin/organizations',
+    icon: <CIcon icon={cilBuilding} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'Audit Logs',
+    to: '/super-admin/audit-logs',
+    icon: <CIcon icon={cilList} customClassName="nav-icon" />,
+  },
 ];
 
 export default _nav;
