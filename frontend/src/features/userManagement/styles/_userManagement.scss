@@ -4,3 +4,37 @@
  * All custom styling overrides and feature-specific rules for 
  * the user management module reside in this file.
  */
+
+/* Bulk Onboarding Styles */
+.bulk-modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.bulk-dropzone {
+  border-style: dashed;
+  border-width: 2px;
+  cursor: pointer;
+}
+
+.bulk-table-container {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.bulk-text-truncate-email {
+  max-width: 160px;
+}
+
+.bulk-text-truncate-role {
+  max-width: 120px;
+}
+
+.bulk-list-container {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.bulk-text-xxs {
+  font-size: 0.72rem;
+}

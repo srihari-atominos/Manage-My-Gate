@@ -207,7 +207,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
       size="lg"
     >
       <CModalHeader className="border-bottom">
-        <CModalTitle style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+        <CModalTitle className="bulk-modal-title">
           Bulk Upload Villas & Residents
         </CModalTitle>
       </CModalHeader>
@@ -247,11 +247,10 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
               {fileName ? 'Uploaded File' : '2. Upload CSV File'}
             </h5>
             <div
-              className="p-4 border border-dashed rounded-3 text-center cursor-pointer bg-light"
+              className="p-4 border rounded-3 text-center bg-light bulk-dropzone"
               onClick={() => fileInputRef.current?.click()}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              style={{ borderStyle: 'dashed', borderWidth: '2px', cursor: 'pointer' }}
             >
               <input
                 type="file"
@@ -287,7 +286,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
               </div>
             </div>
 
-            <div className="table-responsive border rounded-3" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+            <div className="table-responsive border rounded-3 bulk-table-container">
               <table className="table table-hover align-middle mb-0 small">
                 <thead className="table-light sticky-top">
                   <tr>
@@ -342,15 +341,15 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
             {/* Success List */}
             {results.successes.length > 0 && (
               <div className="mb-4">
-                <h6 className="fw-semibold text-success mb-2" style={{ fontSize: '0.88rem' }}>Successfully Processed:</h6>
-                <div className="list-group rounded-3 max-vh-25 overflow-auto" style={{ maxHeight: '180px' }}>
+                <h6 className="fw-semibold text-success mb-2 fs-smaller">Successfully Processed:</h6>
+                <div className="list-group rounded-3 bulk-list-container-lg">
                   {results.successes.map((s, idx) => (
                     <div key={idx} className="list-group-item d-flex justify-content-between align-items-center py-2 small">
                       <div>
                         <span className="fw-bold text-primary">{s.villaNumber}</span>
                         <span className="text-muted ms-2">({s.action})</span>
                         {s.email && (
-                          <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                          <div className="text-muted bulk-text-xxs">
                             Resident: <span className="fw-semibold">{s.email}</span> 
                             {s.userInvited ? (
                               <span className="text-success ms-1">✓ Invited</span>
@@ -371,12 +370,12 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
             {results.failures.length > 0 && (
               <div>
                 <h6 className="fw-semibold text-danger mb-2" style={{ fontSize: '0.88rem' }}>Failed to Process:</h6>
-                <div className="list-group rounded-3 max-vh-25 overflow-auto" style={{ maxHeight: '150px' }}>
+                <div className="list-group rounded-3 max-vh-25 bulk-list-container">
                   {results.failures.map((f, idx) => (
                     <div key={idx} className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-light-danger">
                       <div className="ms-2 me-auto">
                         <div className="fw-semibold text-dark">{f.villaNumber}</div>
-                        <span className="text-muted" style={{ fontSize: '0.72rem' }}>Reason: {f.error}</span>
+                        <span className="text-muted bulk-text-xxs">Reason: {f.error}</span>
                       </div>
                       <CBadge color="danger">Failed</CBadge>
                     </div>

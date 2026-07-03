@@ -25,6 +25,7 @@ import InviteUserButton from './components/InviteUserButton'
 import ManageRolesModal from './components/ManageRolesModal'
 import TemplateEditorCanvasModal from '../messageTemplate/components/TemplateEditorCanvasModal'
 import { useUserList } from './hooks/useUserList'
+import './styles/_userManagement.scss'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 

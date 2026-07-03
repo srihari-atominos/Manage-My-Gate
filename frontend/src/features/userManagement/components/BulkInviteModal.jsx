@@ -209,7 +209,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
       size="lg"
     >
       <CModalHeader className="border-bottom">
-        <CModalTitle style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+        <CModalTitle className="bulk-modal-title">
           Bulk Invite Members & Staff
         </CModalTitle>
       </CModalHeader>
@@ -249,11 +249,10 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
               {fileName ? 'Uploaded File' : '2. Upload Filled CSV'}
             </h5>
             <div
-              className="dropzone-area p-4 border border-dashed rounded-3 text-center cursor-pointer bg-light"
+              className="dropzone-area p-4 border rounded-3 text-center bg-light bulk-dropzone"
               onClick={() => fileInputRef.current?.click()}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              style={{ borderStyle: 'dashed', borderWidth: '2px', cursor: 'pointer' }}
             >
               <input
                 type="file"
@@ -289,7 +288,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
               </div>
             </div>
 
-            <div className="table-responsive border rounded-3" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+            <div className="table-responsive border rounded-3 bulk-table-container">
               <table className="table table-hover align-middle mb-0 small">
                 <thead className="table-light sticky-top">
                   <tr>
@@ -304,7 +303,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                 <tbody>
                   {parsedRows.map((row, idx) => (
                     <tr key={idx} className={row.isValid ? '' : 'table-warning-row'} style={{ opacity: row.isValid ? 1 : 0.8 }}>
-                      <td className="ps-3 fw-semibold text-truncate" style={{ maxWidth: '160px' }}>
+                      <td className="ps-3 fw-semibold text-truncate bulk-text-truncate-email">
                         {row.email || <span className="text-danger">Missing</span>}
                       </td>
                       <td>
@@ -314,7 +313,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                       </td>
                       <td>{row.villaNumber || <span className="text-muted">—</span>}</td>
                       <td>{row.residentType || <span className="text-muted">—</span>}</td>
-                      <td className="text-truncate" style={{ maxWidth: '120px' }}>{row.roleName || <span className="text-danger">Missing</span>}</td>
+                      <td className="text-truncate bulk-text-truncate-role">{row.roleName || <span className="text-danger">Missing</span>}</td>
                       <td className="pe-3 text-center">
                         {row.isValid ? (
                           <CBadge color="success">Valid</CBadge>
@@ -354,7 +353,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
             {results.successes.length > 0 && (
               <div className="mb-4">
                 <h6 className="fw-semibold text-success mb-2" style={{ fontSize: '0.88rem' }}>Successfully Invited:</h6>
-                <div className="list-group rounded-3 max-vh-25 overflow-auto" style={{ maxHeight: '150px' }}>
+                <div className="list-group rounded-3 max-vh-25 bulk-list-container">
                   {results.successes.map((s, idx) => (
                     <div key={idx} className="list-group-item d-flex justify-content-between align-items-center py-2 small">
                       <span className="fw-semibold">{s.email}</span>
@@ -369,12 +368,12 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
             {results.failures.length > 0 && (
               <div>
                 <h6 className="fw-semibold text-danger mb-2" style={{ fontSize: '0.88rem' }}>Failed to Invite:</h6>
-                <div className="list-group rounded-3 max-vh-25 overflow-auto" style={{ maxHeight: '150px' }}>
+                <div className="list-group rounded-3 max-vh-25 bulk-list-container">
                   {results.failures.map((f, idx) => (
                     <div key={idx} className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-light-danger">
                       <div className="ms-2 me-auto">
                         <div className="fw-semibold text-dark">{f.email}</div>
-                        <span className="text-muted" style={{ fontSize: '0.72rem' }}>Reason: {f.error}</span>
+                        <span className="text-muted bulk-text-xxs">Reason: {f.error}</span>
                       </div>
                       <CBadge color="danger">Failed</CBadge>
                     </div>

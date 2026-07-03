@@ -212,3 +212,34 @@
     }
   }
 }
+
+/* Bulk Upload Villas Styles */
+.bulk-modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.bulk-dropzone {
+  border-style: dashed;
+  border-width: 2px;
+  cursor: pointer;
+}
+
+.bulk-table-container {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.bulk-list-container {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.bulk-list-container-lg {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.bulk-text-xxs {
+  font-size: 0.72rem;
+}
