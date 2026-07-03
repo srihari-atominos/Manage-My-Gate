@@ -146,7 +146,12 @@ export class OrganizationService {
         { name: 'Resident Owner', description: 'Villa Owner residing in the community.', orgId: newOrg._id },
         session
       );
-      const ownerPerms = getPermissionIds(['villas:read', 'users:read']);
+      const ownerPerms = getPermissionIds([
+        'villas:read', 'users:read', 
+        'amenities:read', 'amenities:book', 'amenities:cancel_booking', 
+        'amenities:discover_amenities', 'amenities:view_my_bookings', 
+        'amenities:manage_wallet', 'amenities:view_history'
+      ]);
       await rolePermissionService.updateRolePermissions(ownerRole._id.toString(), ownerPerms, session);
 
       // Create Resident Tenant Role
@@ -154,7 +159,12 @@ export class OrganizationService {
         { name: 'Resident Tenant', description: 'Villa Tenant residing in the community.', orgId: newOrg._id },
         session
       );
-      const tenantPerms = getPermissionIds(['villas:read', 'users:read']);
+      const tenantPerms = getPermissionIds([
+        'villas:read', 'users:read', 
+        'amenities:read', 'amenities:book', 'amenities:cancel_booking', 
+        'amenities:discover_amenities', 'amenities:view_my_bookings', 
+        'amenities:manage_wallet', 'amenities:view_history'
+      ]);
       await rolePermissionService.updateRolePermissions(tenantRole._id.toString(), tenantPerms, session);
 
       // Create Family Member Role
@@ -162,7 +172,11 @@ export class OrganizationService {
         { name: 'Family Member', description: 'Family member of a resident.', orgId: newOrg._id },
         session
       );
-      const familyPerms = getPermissionIds(['villas:read']);
+      const familyPerms = getPermissionIds([
+        'villas:read', 
+        'amenities:read', 'amenities:discover_amenities', 
+        'amenities:view_my_bookings', 'amenities:view_history'
+      ]);
       await rolePermissionService.updateRolePermissions(familyRole._id.toString(), familyPerms, session);
 
       // Create Security Guard Role
@@ -170,7 +184,10 @@ export class OrganizationService {
         { name: 'Security Guard', description: 'Security gate staff.', orgId: newOrg._id },
         session
       );
-      const guardPerms = getPermissionIds(['villas:read', 'users:read']);
+      const guardPerms = getPermissionIds([
+        'villas:read', 'users:read', 
+        'amenities:read', 'amenities:manage_scanner'
+      ]);
       await rolePermissionService.updateRolePermissions(guardRole._id.toString(), guardPerms, session);
 
       // 3. Create the Organization Membership linking user, org, and role

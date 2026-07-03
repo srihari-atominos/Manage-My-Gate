@@ -1,4 +1,4 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 import Amenity from './src/features/amenity/amenity.model.js';
 import AmenityBooking from './src/features/amenityBooking/amenityBooking.model.js';
 import amenityBookingRepo from './src/features/amenityBooking/amenityBooking.repository.js';
@@ -28,7 +28,10 @@ async function run() {
       bookingDate: new Date().toISOString().split('T')[0],
       startTime: '10:00',
       endTime: '11:00',
-      totalPrice: 100,
+      pricingDetails: {
+        baseAmount: 100,
+        totalAmount: 100
+      },
       status: 'confirmed'
     });
     await booking.save();

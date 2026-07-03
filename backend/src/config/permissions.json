@@ -38,6 +38,13 @@
   {
     "feature": "amenities",
     "actions": [
+      "create",
+      "read",
+      "update",
+      "delete",
+      "book",
+      "cancel_booking",
+      "manage_bookings",
       "view_dashboard",
       "view_admin_calendar",
       "manage_ledgers",

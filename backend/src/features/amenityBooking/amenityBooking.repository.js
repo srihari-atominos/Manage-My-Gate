@@ -64,8 +64,8 @@ export class AmenityBookingRepository {
                 startTime: 1,
                 endTime: 1,
                 status: 1,
-                totalPrice: 1,
-                deposit: 1,
+                totalPrice: '$pricingDetails.totalAmount',
+                deposit: '$pricingDetails.securityDeposit',
                 paymentMethod: 1,
                 rejectionReason: 1,
                 createdAt: 1,
@@ -130,7 +130,7 @@ export class AmenityBookingRepository {
       { $group: {
           _id: null,
           checkIns: { $sum: { $cond: [ { $in: ['$status', ['checked-in', 'completed']] }, 1, 0 ] } },
-          revenue: { $sum: '$totalPrice' },
+          revenue: { $sum: '$pricingDetails.totalAmount' },
           totalBookings: { $sum: 1 }
       }}
     ]);
@@ -140,7 +140,7 @@ export class AmenityBookingRepository {
   async getRevenueStats(orgId) {
     return await AmenityBooking.aggregate([
       { $match: { orgId: new mongoose.Types.ObjectId(orgId), status: { $ne: 'cancelled' } } },
-      { $group: { _id: '$bookingDate', revenue: { $sum: '$totalPrice' } } },
+      { $group: { _id: '$bookingDate', revenue: { $sum: '$pricingDetails.totalAmount' } } },
       { $sort: { _id: -1 } },
       { $limit: 7 }
     ]);
