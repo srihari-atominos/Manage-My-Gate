@@ -19,14 +19,7 @@ const nameToKeyMap = {
     titleKey: 'dashboard.cards.integrationHub',
     id: 'integration-hub'
   },
-  'Organization Manager': {
-    titleKey: 'dashboard.cards.organizationManager',
-    id: 'organization-manager'
-  },
-  'Audit Logs': {
-    titleKey: 'dashboard.cards.auditLogs',
-    id: 'audit-logs'
-  }
+
 };
 
 const categoryToKeyMap = {
@@ -70,17 +63,7 @@ export const useDashboard = () => {
     !item.to
   );
 
-  const SUPER_ADMIN_CATEGORIES = navigation.filter((item) => 
-    item.to === '/super-admin/organizations' || 
-    item.to === '/super-admin/audit-logs'
-  );
-
-  let navigationItems = [];
-  if (activeWorkspace && activeWorkspace.isPlatform === true) {
-    navigationItems = [...SUPER_ADMIN_CATEGORIES, ...PORTAL_CATEGORIES];
-  } else {
-    navigationItems = [...PORTAL_CATEGORIES];
-  }
+  let navigationItems = [...PORTAL_CATEGORIES];
 
   // Filter based on required permissions, also cleaning up any empty titles
   const filteredNavigationItems = navigationItems.filter((item, index, arr) => {

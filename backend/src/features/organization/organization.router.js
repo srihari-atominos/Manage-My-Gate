@@ -29,14 +29,7 @@ const updateFeaturesRules = [
     }),
 ];
 
-const updateStatusRules = [
-  body('status')
-    .isString()
-    .withMessage('status must be a string')
-    .bail()
-    .isIn(['Active', 'Pending', 'Rejected'])
-    .withMessage('status must be one of Active, Pending, or Rejected'),
-];
+
 
 const setupWorkspaceRules = [
   body('name')
@@ -63,21 +56,7 @@ router.post(
   organizationController.setupWorkspace
 );
 
-// Super Admin Management routes
-router.get(
-  '/',
-  isAuthenticated,
-  tenantContext({ requirePlatformContext: true }),
-  organizationController.getAll
-);
 
-router.patch(
-  '/:id/status',
-  isAuthenticated,
-  tenantContext({ requirePlatformContext: true }),
-  validate(updateStatusRules),
-  organizationController.updateStatus
-);
 
 // Feature onboarding route (tenant context)
 router.patch(

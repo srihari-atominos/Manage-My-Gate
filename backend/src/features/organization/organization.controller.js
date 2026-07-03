@@ -18,30 +18,6 @@ export class OrganizationController {
     }
   }
 
-  async getAll(req, res, next) {
-    try {
-      const page = parseInt(req.query.page, 10) || 1;
-      const limit = parseInt(req.query.limit, 10) || 10;
-
-      const data = await organizationService.getAllOrganizations(page, limit);
-      res.success(data, 'Organizations retrieved successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async updateStatus(req, res, next) {
-    try {
-      const orgId = req.params.id;
-      const { status } = req.body;
-      const requestingUserId = req.user.id;
-
-      const updatedOrg = await organizationService.changeOrganizationStatus(orgId, status, requestingUserId);
-      res.success(updatedOrg, 'Organization status updated successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
 
   async checkName(req, res, next) {
     try {

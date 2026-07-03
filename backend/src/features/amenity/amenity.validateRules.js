@@ -1,0 +1,41 @@
+import { body } from 'express-validator';
+
+export const createAmenityRules = [
+  body('name').notEmpty().withMessage('Amenity name is required').trim(),
+  body('description').optional().isString().trim(),
+  body('type').isIn(['clubhouse', 'pool', 'gym', 'court', 'hall', 'other', 'Event Space', 'Fitness', 'Sports', 'Workspace', 'Wellness']).withMessage('Invalid amenity type'),
+  body('images').optional().isArray().withMessage('Images must be an array of strings'),
+  body('images.*').optional().isString().withMessage('Image URL must be a string'),
+  body('location').optional().isString().trim(),
+  body('ratePerHour').optional().isNumeric().withMessage('Rate must be a number'),
+  body('openDays').optional().isArray().withMessage('openDays must be an array of integers'),
+  body('openDays.*').optional().isInt({ min: 0, max: 6 }).withMessage('openDays must be 0-6'),
+  body('capacity').isInt({ min: 1 }).withMessage('Capacity must be a positive integer'),
+  body('requiresApproval').optional().isBoolean(),
+  body('bookingRules.slotDurationMinutes').isInt({ min: 1 }).withMessage('Slot duration must be a positive integer'),
+  body('bookingRules.openTime').matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid open time format (HH:MM)'),
+  body('bookingRules.closeTime').matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid close time format (HH:MM)'),
+  body('bookingRules.maxBookingsPerUserPerDay').isInt({ min: 1 }).withMessage('Max bookings must be a positive integer'),
+  body('bookingRules.advanceBookingDays').isInt({ min: 0 }).withMessage('Advance booking days cannot be negative'),
+  body('status').optional().isIn(['active', 'inactive']).withMessage('Invalid status'),
+];
+
+export const updateAmenityRules = [
+  body('name').optional().notEmpty().withMessage('Amenity name cannot be empty').trim(),
+  body('description').optional().isString().trim(),
+  body('type').optional().isIn(['clubhouse', 'pool', 'gym', 'court', 'hall', 'other', 'Event Space', 'Fitness', 'Sports', 'Workspace', 'Wellness']).withMessage('Invalid amenity type'),
+  body('images').optional().isArray().withMessage('Images must be an array of strings'),
+  body('images.*').optional().isString().withMessage('Image URL must be a string'),
+  body('location').optional().isString().trim(),
+  body('ratePerHour').optional().isNumeric().withMessage('Rate must be a number'),
+  body('openDays').optional().isArray().withMessage('openDays must be an array of integers'),
+  body('openDays.*').optional().isInt({ min: 0, max: 6 }).withMessage('openDays must be 0-6'),
+  body('capacity').optional().isInt({ min: 1 }).withMessage('Capacity must be a positive integer'),
+  body('requiresApproval').optional().isBoolean(),
+  body('bookingRules.slotDurationMinutes').optional().isInt({ min: 1 }).withMessage('Slot duration must be a positive integer'),
+  body('bookingRules.openTime').optional().matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid open time format (HH:MM)'),
+  body('bookingRules.closeTime').optional().matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid close time format (HH:MM)'),
+  body('bookingRules.maxBookingsPerUserPerDay').optional().isInt({ min: 1 }).withMessage('Max bookings must be a positive integer'),
+  body('bookingRules.advanceBookingDays').optional().isInt({ min: 0 }).withMessage('Advance booking days cannot be negative'),
+  body('status').optional().isIn(['active', 'inactive']).withMessage('Invalid status'),
+];

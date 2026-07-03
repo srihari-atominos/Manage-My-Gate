@@ -59,17 +59,20 @@ export const useRoles = () => {
 
   const handleSaveRole = async (data) => {
     try {
+      let result
       if (selectedRoleForEdit) {
         // Edit mode
-        await dispatch(updateRoleAsync({ roleId: selectedRoleForEdit.id, roleData: data })).unwrap()
+        result = await dispatch(updateRoleAsync({ roleId: selectedRoleForEdit.id, roleData: data })).unwrap()
       } else {
         // Create mode
-        await dispatch(createRoleAsync(data)).unwrap()
+        result = await dispatch(createRoleAsync(data)).unwrap()
       }
       closeModal()
       dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage }))
+      return result
     } catch (err) {
       console.error('Failed to save role:', err)
+      throw err
     }
   }
 

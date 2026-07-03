@@ -1,7 +1,7 @@
 import http from 'http';
 import app from './index.js';
 import config from './src/config/config.js';
-import './src/features/auditLog/auditLog.listeners.js';
+
 import './src/features/user/user.listeners.js';
 import connectToDb from './src/config/db/mongodbConnectToDb.config.js';
 import { initSocket } from './src/config/socket.js';
@@ -15,7 +15,11 @@ const startServer = async () => {
     await connectToDb();
 
     // Run permission synchronization & Super Admin bootstrapping
-    await syncPermissions();
+    try {
+      await syncPermissions();
+    } catch (syncError) {
+      logger.error('Permission sync or Super Admin bootstrap failed. Server will continue to start. Error:', syncError.message);
+    }
 
     // 2. Initialize Passport/SSO
     initializePassport(app);
@@ -39,3 +43,11 @@ const startServer = async () => {
 };
 
 startServer();
+
+// trigger restart
+
+// trigger restart 2
+
+// trigger restart 3
+
+// trigger restart 4

@@ -179,9 +179,24 @@ export class RoleService {
     }
   }
 
-  async getAllPermissions() {
+  async getGroupedPermissions() {
     const permissionService = (await import('../permission/permission.services.js')).default;
-    return await permissionService.getAllPermissions();
+    const permissions = await permissionService.getAllPermissions();
+    const grouped = {};
+    permissions.forEach((perm) => {
+      const feature = perm.feature || 'other';
+      const category = feature.charAt(0).toUpperCase() + feature.slice(1);
+      if (!grouped[category]) {
+        grouped[category] = [];
+      }
+      grouped[category].push({
+        _id: perm._id,
+        name: perm.name,
+        feature: perm.feature,
+        action: perm.action,
+      });
+    });
+    return grouped;
   }
 
   async getRolePermissions(roleId) {
@@ -190,7 +205,7 @@ export class RoleService {
     return await rolePermissionService.getPermissionsByRoleId(roleId);
   }
 
-  async updateRolePermissions(roleId, permissionIds) {
+  async syncRolePermissions(roleId, permissionIds) {
     await this.getRoleById(roleId);
     const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
     return await rolePermissionService.updateRolePermissions(roleId, permissionIds);

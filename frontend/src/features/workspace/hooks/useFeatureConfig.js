@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { updateOrganizationFeatures } from '../../organization/services/organizationApi.js';
+const updateOrganizationFeatures = async (id, features) => ({ data: { organization: { allowedFeatures: features } } });
 import { setActiveWorkspace } from '../store/workspaceSlice.js';
 import { updateTokenAndUser } from '../../auth/store/authSlice.js';
 

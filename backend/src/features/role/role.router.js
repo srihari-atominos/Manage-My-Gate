@@ -134,7 +134,7 @@ router.put(
   tenantContext,
   authorizePermission('roles', 'update'), 
   validate(updateRolePermissionsRules), 
-  roleController.updateRolePermissions
+  roleController.syncRolePermissions
 );
 
 /**

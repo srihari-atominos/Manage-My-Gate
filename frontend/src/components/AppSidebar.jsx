@@ -39,6 +39,8 @@ import { AppSidebarNav } from './AppSidebarNav'
 import { logo } from 'src/assets/brand/logo'
 import { sygnet } from 'src/assets/brand/sygnet'
 
+import { useAuth } from '../features/auth/hooks/useAuth'
+
 // sidebar nav config
 import navigation from '../_nav'
 
@@ -61,48 +63,76 @@ const AppSidebar = () => {
   const activeWorkspace = useSelector((state) => state.workspace)
   const allowedFeatures = useSelector((state) => state.workspace?.allowedFeatures || [])
   const isPlatform = useSelector((state) => state.workspace?.isPlatform || false)
-  console.log('--- DEBUG AppSidebar allowedFeatures:', allowedFeatures)
+  console.log('[AppSidebar DEBUG] allowedFeatures:', allowedFeatures)
+  console.log('[AppSidebar DEBUG] isPlatform:', isPlatform)
 
-  const PORTAL_CATEGORIES = navigation.filter((item) => 
-    item.to === '/users' || 
-    item.to === '/villas' || 
-    item.to === '/role-builder' || 
-    item.to === '/integrations' || 
-    !item.to
-  )
+  const { checkPermission } = useAuth();
 
-  const SUPER_ADMIN_CATEGORIES = navigation.filter((item) => 
-    item.to === '/super-admin/organizations' || 
-    item.to === '/super-admin/audit-logs'
-  )
+  /**
+   * Recursively filter a navigation item based on allowedFeatures and user permissions.
+   * - CNavTitle: kept if at least one following sibling passes.
+   * - CNavGroup: kept if its requiredPermission is satisfied; its children are
+   *   filtered by the same rule (items without requiredPermission are always kept).
+   * - CNavItem: kept if no requiredPermission OR requiredPermission is in allowedFeatures AND user has permission.
+   * Super-admin platform items are handled via the isPlatform gate.
+   */
+  const isPermitted = (item) => {
+    if (!item.requiredPermission) {
+      console.log(`[AppSidebar DEBUG] Item ${item.name} has no requiredPermission, returning true`);
+      return true;
+    }
+    const workspaceAllowed = isPlatform || allowedFeatures.includes(item.requiredPermission);
+    const userAllowed = checkPermission(item.requiredPermission);
+    const res = workspaceAllowed && userAllowed;
+    console.log(`[AppSidebar DEBUG] Item ${item.name} (${item.requiredPermission}) permitted: ${res} (Workspace: ${workspaceAllowed}, User: ${userAllowed})`);
+    return res;
+  };
 
-  let navigationItems = []
-  if (activeWorkspace && activeWorkspace.isPlatform === true) {
-    navigationItems = [...SUPER_ADMIN_CATEGORIES, ...PORTAL_CATEGORIES]
-  } else {
-    navigationItems = [...PORTAL_CATEGORIES]
-  }
+  const filterItems = (items) => {
+    const result = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
 
-  // Filter based on required permissions, also cleaning up any empty titles
-  const filteredNavigationItems = navigationItems.filter((item, index, arr) => {
-    if (item.component === CNavTitle || !item.to) {
-      // Check if there is any permitted CNavItem following this title
-      const nextItems = arr.slice(index + 1)
-      const hasFollowingItems = nextItems.some((nextItem) => {
-        if (nextItem.component === CNavTitle || !nextItem.to) return false
-        if (nextItem.requiredPermission) {
-          return allowedFeatures.includes(nextItem.requiredPermission)
+      // Section titles: include only if something below them is visible
+      if (!item.to && !item.items) {
+        const remaining = items.slice(i + 1);
+        const hasVisible = remaining.some((next) => {
+          if (!next.to && !next.items) return false; // another title
+          return isPermitted(next);
+        });
+        console.log(`[AppSidebar DEBUG] Title ${item.name} hasVisible: ${hasVisible}`);
+        if (hasVisible) result.push(item);
+        continue;
+      }
+
+      // Groups: check top-level permission; filter children recursively
+      if (item.items) {
+        if (!isPermitted(item)) {
+          console.log(`[AppSidebar DEBUG] Group ${item.name} top-level not permitted`);
+          continue;
         }
-        return true
-      })
-      return hasFollowingItems
-    }
+        const filteredChildren = item.items.filter(isPermitted);
+        console.log(`[AppSidebar DEBUG] Group ${item.name} filteredChildren count: ${filteredChildren.length}`);
+        if (filteredChildren.length === 0) continue;
+        result.push({ ...item, items: filteredChildren });
+        continue;
+      }
 
-    if (item.requiredPermission) {
-      return allowedFeatures.includes(item.requiredPermission)
+      // Regular items
+      if (isPermitted(item)) result.push(item);
     }
-    return true
-  })
+    return result;
+  };
+
+  // Split nav into portal and super-admin sections
+  const SUPER_ADMIN_PATHS = new Set(['/super-admin/organizations', '/super-admin/audit-logs']);
+  const portalNav = navigation.filter((item) => !SUPER_ADMIN_PATHS.has(item.to));
+  const superAdminNav = navigation.filter((item) => SUPER_ADMIN_PATHS.has(item.to));
+
+  const baseItems = isPlatform ? [...superAdminNav, ...portalNav] : portalNav;
+  const filteredNavigationItems = filterItems(baseItems);
+
+
 
   return (
     <CSidebar
