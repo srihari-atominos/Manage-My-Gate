@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import CalendarEventCard from './CalendarEventCard.jsx';
 
-const AgendaRenderer = memo(({ events, onEventClick }) => {
+const AgendaRenderer = memo(({ events, onEventClick, onDateSelect }) => {
   if (!events || events.length === 0) {
     return (
       <div className="text-center p-5 border rounded bg-light">
@@ -25,7 +25,11 @@ const AgendaRenderer = memo(({ events, onEventClick }) => {
     <div className="calendar-agenda-view">
       {sortedDates.map(dateStr => (
         <div key={dateStr} className="mb-4">
-          <h6 className="fw-bold mb-3 pb-2 border-bottom text-primary">
+          <h6 
+            className="fw-bold mb-3 pb-2 border-bottom text-primary cursor-pointer" 
+            onClick={() => onDateSelect && onDateSelect(dateStr)}
+            style={{ cursor: 'pointer' }}
+          >
             {new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </h6>
           <div className="d-flex flex-column gap-2">

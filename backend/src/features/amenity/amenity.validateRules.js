@@ -39,3 +39,24 @@ export const updateAmenityRules = [
   body('bookingRules.advanceBookingDays').optional().isInt({ min: 0 }).withMessage('Advance booking days cannot be negative'),
   body('status').optional().isIn(['active', 'inactive']).withMessage('Invalid status'),
 ];
+
+export const createMaintenanceRules = [
+  body('title').notEmpty().withMessage('Maintenance title is required').trim(),
+  body('type').optional().isIn(['preventive', 'corrective', 'emergency']).withMessage('Invalid maintenance type'),
+  body('priority').optional().isIn(['low', 'medium', 'high', 'critical']).withMessage('Invalid priority'),
+  body('startDate').matches(/^\d{4}-\d{2}-\d{2}$/).withMessage('Start date must be in YYYY-MM-DD format'),
+  body('endDate').matches(/^\d{4}-\d{2}-\d{2}$/).withMessage('End date must be in YYYY-MM-DD format'),
+  body('startTime').optional({ checkFalsy: true }).matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid start time format (HH:MM)'),
+  body('endTime').optional({ checkFalsy: true }).matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid end time format (HH:MM)'),
+  body('endDate').custom((value, { req }) => {
+    if (new Date(value) < new Date(req.body.startDate)) {
+      throw new Error('End date must be after or equal to start date');
+    }
+    if (value === req.body.startDate && req.body.startTime && req.body.endTime) {
+      if (req.body.endTime <= req.body.startTime) {
+        throw new Error('End time must be after start time on the same day');
+      }
+    }
+    return true;
+  })
+];

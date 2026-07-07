@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CSpinner } from '@coreui/react';
 import useAdminCalendar from '../hooks/useAdminCalendar.js';
+import useAdminBookingSocket from '../hooks/useAdminBookingSocket.js';
 import CalendarHeader from '../components/calendar/CalendarHeader.jsx';
 import CalendarGrid from '../components/calendar/CalendarGrid.jsx';
 import CalendarFilters from '../components/calendar/CalendarFilters.jsx';
@@ -23,9 +24,10 @@ const AdminCalendarView = () => {
     setToday,
     filters,
     updateFilters,
-    loadEvents,
-    monthIndicators
+    loadEvents
   } = useAdminCalendar();
+
+  useAdminBookingSocket(loadEvents);
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -85,7 +87,6 @@ const AdminCalendarView = () => {
                 currentDate={currentDate}
                 events={visibleEvents}
                 onEventClick={handleEventClick}
-                monthIndicators={monthIndicators}
                 onDateSelect={handleDateSelect}
               />
             )}

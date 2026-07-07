@@ -2,9 +2,13 @@ import React from 'react';
 import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { useAdminLedgers } from '../hooks/useAdminLedgers.js';
 import '../styles/_amenities.scss';
 
+
 const AdminLedgersView = () => {
+  const { bookings, loading, search, handleSearchChange } = useAdminLedgers();
+
   const handleExport = () => {
     const table = document.getElementById('bookings-ledger');
     if (table) {
@@ -14,6 +18,18 @@ const AdminLedgersView = () => {
       saveAs(blob, "bookings_ledger.xlsx");
     }
   };
+  
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'confirmed': return <span className="badge badge-success" style={{ textTransform: 'capitalize' }}><i className="fa-solid fa-check-circle"></i> Confirmed</span>;
+      case 'pending': return <span className="badge badge-warning" style={{ textTransform: 'capitalize' }}><i className="fa-solid fa-clock"></i> Pending</span>;
+      case 'cancelled': return <span className="badge badge-danger" style={{ textTransform: 'capitalize' }}><i className="fa-solid fa-times-circle"></i> Cancelled</span>;
+      case 'checked-in': return <span className="badge badge-info" style={{ textTransform: 'capitalize' }}><i className="fa-solid fa-sign-in-alt"></i> Checked In</span>;
+      case 'completed': return <span className="badge badge-secondary" style={{ textTransform: 'capitalize' }}><i className="fa-solid fa-flag-checkered"></i> Completed</span>;
+      default: return <span className="badge badge-secondary" style={{ textTransform: 'capitalize' }}>{status}</span>;
+    }
+  };
+
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
       <AmenitiesTopNav />
@@ -28,7 +44,7 @@ const AdminLedgersView = () => {
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                 <div className="search-bar-app" style={{ margin: 0, padding: '8px 16px', boxShadow: 'none', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)', borderRadius: '24px', backgroundColor: 'var(--bg-light)' }}>
                   <i className="fa-solid fa-magnifying-glass" style={{ fontSize: '14px', color: 'var(--text-muted)' }}></i>
-                  <input type="text" id="booking-search" placeholder="Search ID..." style={{ width: '150px', border: 'none', outline: 'none', backgroundColor: 'transparent' }} />
+                  <input type="text" id="booking-search" placeholder="Search ID..." value={search} onChange={handleSearchChange} style={{ width: '150px', border: 'none', outline: 'none', backgroundColor: 'transparent' }} />
                 </div>
                 <button className="btn btn-primary" onClick={handleExport} style={{ borderRadius: '24px', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
                   <i className="fa-solid fa-download"></i> Export
@@ -40,34 +56,51 @@ const AdminLedgersView = () => {
               <table className="ent-table" id="bookings-ledger">
                 <thead>
                   <tr>
-                    <th>Booking ID</th>
-                    <th>Resident</th>
-                    <th>Amenity & Slot</th>
-                    <th>Financials</th>
-                    <th>Status</th>
+                    <th>BOOKING ID</th>
+                    <th>RESIDENT</th>
+                    <th>AMENITY & SLOT</th>
+                    <th>FINANCIALS</th>
+                    <th>STATUS</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr data-status="Confirmed">
-                    <td style={{ fontWeight: '800', color: 'var(--primary)' }}>#BK-9988</td>
-                    <td>
-                      <div style={{ fontWeight: '700', fontSize: '15px' }}>Justin Mason</div>
-                      <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Flat 4B, Block A</div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: '700', fontSize: '15px' }}>Grand Banquet Hall</div>
-                      <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Oct 24 • 18:00 - 23:00</div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: '700', fontSize: '15px' }}>₹5,000</div>
-                      <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}><i className="fa-brands fa-cc-visa"></i> Paid</div>
-                    </td>
-                    <td><span className="badge badge-success"><i className="fa-solid fa-check-circle"></i> Confirmed</span></td>
-                    <td>
-                      <button className="btn btn-outline" style={{ padding: '8px 16px', borderRadius: 'var(--radius-pill)' }}><i className="fa-solid fa-ellipsis"></i></button>
-                    </td>
-                  </tr>
+                  {loading ? (
+                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '24px' }}>Loading bookings...</td></tr>
+                  ) : bookings.length === 0 ? (
+                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '24px' }}>No bookings found</td></tr>
+                  ) : (
+                    bookings.map(b => (
+                      <tr key={b._id} data-status={b.status}>
+                        <td style={{ fontWeight: '800', color: 'var(--primary)' }}>#{b.bookingId || b._id.substring(b._id.length - 4).toUpperCase()}</td>
+                        <td>
+                          <div style={{ fontWeight: '700', fontSize: '15px' }}>{b.userId?.name || 'Unknown Resident'}</div>
+                          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>
+                            {b.userId?.flatNumber ? `Flat ${b.userId.flatNumber}` : ''}{b.userId?.building ? `, ${b.userId.building}` : ''}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: '700', fontSize: '15px' }}>{b.amenityId?.name || 'Unknown Amenity'}</div>
+                          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>
+                            {b.bookingDate ? new Date(b.bookingDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) : ''} • {b.startTime} - {b.endTime}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: '700', fontSize: '15px' }}>₹{b.pricingDetails?.totalAmount || b.totalPrice || 0}</div>
+                          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>
+                            {b.paymentStatus === 'success' || b.paymentStatus === 'completed' || b.paymentStatus === 'paid' ? 'Paid' : (b.paymentStatus || 'Pending')}
+                          </div>
+                        </td>
+                        <td>{getStatusBadge(b.status)}</td>
+                        <td>
+                          <button className="btn btn-outline" style={{ padding: '8px 16px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-light)' }}>
+                             {/* Empty circle outline matching mockup */}
+                             <span style={{ display: 'inline-block', width: '24px', height: '12px' }}></span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

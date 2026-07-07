@@ -25,7 +25,11 @@ export class AmenityBookingController {
     try {
       const orgId = req.tenant.orgId;
       const userId = req.user.id;
-      const bookings = await amenityBookingService.getMyBookings(userId, orgId);
+      const filters = {};
+      if (req.query.startDate) filters.startDate = req.query.startDate;
+      if (req.query.endDate) filters.endDate = req.query.endDate;
+
+      const bookings = await amenityBookingService.getMyBookings(userId, orgId, filters);
       res.success(bookings, 'My bookings retrieved successfully');
     } catch (error) {
       next(error);
@@ -77,8 +81,9 @@ export class AmenityBookingController {
       const { id } = req.params;
       const orgId = req.tenant.orgId;
       const userId = req.user.id;
+      const { reason } = req.body;
       
-      const cancelled = await amenityBookingService.cancelBooking(id, userId, orgId);
+      const cancelled = await amenityBookingService.cancelBooking(id, userId, orgId, reason);
       res.success(cancelled, 'Booking cancelled successfully');
     } catch (error) {
       next(error);
@@ -133,7 +138,15 @@ export class AmenityBookingController {
       const orgId = req.tenant.orgId;
       const userId = req.user.id;
       const checkedIn = await amenityBookingService.checkInBooking(id, orgId, userId);
-      res.success(checkedIn, 'Checked in successfully');
+      // It returns either message Access Granted or Exit Recorded
+      res.success(checkedIn, checkedIn.message || 'Checked in successfully');
+    } catch (error) { next(error); }
+  }
+
+  async getRecentScans(req, res, next) {
+    try {
+      const scans = await amenityBookingService.getRecentScans(req.tenant.orgId);
+      res.success(scans, 'Recent scans retrieved successfully');
     } catch (error) { next(error); }
   }
 }

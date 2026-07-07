@@ -1,8 +1,81 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
+import { getAmenitySettings, updateAmenitySettings } from '../services/amenitySettingsApi.js';
+import toast from 'react-hot-toast';
 import '../styles/_amenities.scss';
 
 const AdminSettingsView = () => {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState({
+    paymentConfig: {
+      provider: 'None',
+      publicKey: '',
+      secretKey: ''
+    },
+    bookingRules: {
+      maxBookingsPerResident: 2,
+      advanceBookingDays: 7,
+      cancellationWindowHours: 24,
+      autoConfirmation: false,
+      approvalRequired: true
+    }
+  });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await getAmenitySettings();
+        if (res && res.data) {
+          setSettings(prev => ({
+            ...prev,
+            ...res.data,
+            paymentConfig: res.data.paymentConfig || prev.paymentConfig,
+            bookingRules: res.data.bookingRules || prev.bookingRules
+          }));
+        }
+      } catch (err) {
+        toast.error('Failed to load settings');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const handleChange = (section, field, value) => {
+    setSettings(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: value
+      }
+    }));
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      await updateAmenitySettings({
+        paymentConfig: settings.paymentConfig,
+        bookingRules: settings.bookingRules
+      });
+      toast.success('Settings saved successfully');
+    } catch (err) {
+      toast.error('Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="amenities-module-wrapper amenity-os-theme d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+        <div className="spinner-border text-primary" role="status"><span className="visually-hidden">Loading...</span></div>
+      </div>
+    );
+  }
+
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
       <AmenitiesTopNav />
@@ -13,48 +86,55 @@ const AdminSettingsView = () => {
               <h2 style={{ fontSize: '28px', margin: 0 }}>Amenity Settings</h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Configure global rules, payments, and workflows for your community.</p>
             </div>
-            <button className="btn btn-primary"><i className="fa-solid fa-save" style={{ marginRight: '8px' }}></i> Save Changes</button>
+            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+              {saving ? <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> : <i className="fa-solid fa-save" style={{ marginRight: '8px' }}></i>}
+              Save Changes
+            </button>
           </div>
           
           <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}>
             
-            <div className="card card-hover" style={{ borderTop: '4px solid var(--primary)' }}>
-              <h3 style={{ fontSize: '18px', marginBottom: '24px' }}>
-                <i className="fa-solid fa-building" style={{ color: 'var(--primary)', marginRight: '8px' }}></i> Organization Details
-              </h3>
-              <div className="form-group">
-                <label className="form-label">Community Name</label>
-                <input type="text" className="form-control" defaultValue="Prestige Falcon City" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Support Email</label>
-                <input type="email" className="form-control" defaultValue="amenities@prestige.com" />
-              </div>
-            </div>
-
             <div className="card card-hover">
               <h3 style={{ fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center' }}>
                 <i className="fa-solid fa-credit-card" style={{ color: 'var(--primary)', marginRight: '8px' }}></i> Payment Configuration
               </h3>
               <div className="form-group">
                 <label className="form-label" style={{ textTransform: 'uppercase' }}>Payment Gateway Provider</label>
-                <select className="form-control" defaultValue="Stripe Payments">
+                <select 
+                  className="form-control" 
+                  value={settings.paymentConfig.provider}
+                  onChange={(e) => handleChange('paymentConfig', 'provider', e.target.value)}
+                >
+                  <option value="None">None</option>
                   <option value="Stripe Payments">Stripe Payments</option>
                   <option value="Razorpay">Razorpay</option>
                   <option value="PayU">PayU</option>
                 </select>
               </div>
-              <div className="form-group">
-                <label className="form-label" style={{ textTransform: 'uppercase' }}>API Public Key</label>
-                <input type="text" className="form-control" defaultValue="pk_test_abcdef1234567890" />
-              </div>
-              <div className="form-group">
-                <label className="form-label" style={{ textTransform: 'uppercase' }}>API Secret Key</label>
-                <input type="password" className="form-control" defaultValue="12345678901234" />
-              </div>
-              <button className="btn btn-primary" style={{ borderRadius: 'var(--radius-pill)', marginTop: '8px', padding: '10px 24px' }}>
-                Update Gateway
-              </button>
+              {settings.paymentConfig.provider !== 'None' && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label" style={{ textTransform: 'uppercase' }}>API Public Key</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      value={settings.paymentConfig.publicKey}
+                      onChange={(e) => handleChange('paymentConfig', 'publicKey', e.target.value)}
+                      placeholder="e.g., pk_test_..."
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ textTransform: 'uppercase' }}>API Secret Key</label>
+                    <input 
+                      type="password" 
+                      className="form-control" 
+                      value={settings.paymentConfig.secretKey}
+                      onChange={(e) => handleChange('paymentConfig', 'secretKey', e.target.value)}
+                      placeholder="e.g., sk_test_..."
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="card card-hover" style={{ borderTop: '4px solid var(--info)' }}>
@@ -63,15 +143,41 @@ const AdminSettingsView = () => {
               </h3>
               <div className="form-group">
                 <label className="form-label">Max Advance Booking (Days)</label>
-                <input type="number" className="form-control" defaultValue="30" />
+                <input 
+                  type="number" 
+                  className="form-control" 
+                  value={settings.bookingRules.advanceBookingDays}
+                  onChange={(e) => handleChange('bookingRules', 'advanceBookingDays', Number(e.target.value))}
+                  min="1"
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Cancellation Window (Hours)</label>
-                <input type="number" className="form-control" defaultValue="24" />
+                <input 
+                  type="number" 
+                  className="form-control" 
+                  value={settings.bookingRules.cancellationWindowHours}
+                  onChange={(e) => handleChange('bookingRules', 'cancellationWindowHours', Number(e.target.value))}
+                  min="0"
+                />
               </div>
-              <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-                <input type="checkbox" defaultChecked style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
-                <label style={{ fontSize: '14px', color: 'var(--text-main)', fontWeight: '500' }}>Enable automated refunds on cancellation</label>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'center' }}>
+                <input 
+                  type="checkbox" 
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }} 
+                  checked={settings.bookingRules.autoConfirmation}
+                  onChange={(e) => handleChange('bookingRules', 'autoConfirmation', e.target.checked)}
+                />
+                <label style={{ fontSize: '14px', color: 'var(--text-main)', fontWeight: '500', marginBottom: 0 }}>Enable auto confirmation</label>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'center' }}>
+                <input 
+                  type="checkbox" 
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }} 
+                  checked={settings.bookingRules.approvalRequired}
+                  onChange={(e) => handleChange('bookingRules', 'approvalRequired', e.target.checked)}
+                />
+                <label style={{ fontSize: '14px', color: 'var(--text-main)', fontWeight: '500', marginBottom: 0 }}>Approval Required</label>
               </div>
             </div>
 

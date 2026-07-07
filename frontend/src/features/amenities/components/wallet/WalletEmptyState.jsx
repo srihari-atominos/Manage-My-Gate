@@ -17,9 +17,6 @@ const WalletEmptyState = memo(() => {
         <p className="text-muted mb-4 max-w-md mx-auto">
           You don't have any upcoming confirmed bookings. Book an amenity to generate a digital access pass.
         </p>
-        <CButton color="primary" className="px-4 rounded-pill shadow-sm" onClick={() => navigate('/resident/amenities/discover')}>
-          Discover Amenities
-        </CButton>
       </CCardBody>
     </CCard>
   );

@@ -30,6 +30,11 @@ const amenitySettingsSchema = new mongoose.Schema({
     bookingCancellation: { type: Boolean, default: true },
     bookingReminder: { type: Boolean, default: true },
     bookingCheckIn: { type: Boolean, default: true }
+  },
+  paymentConfig: {
+    provider: { type: String, enum: ['Stripe Payments', 'Razorpay', 'PayU', 'None'], default: 'None' },
+    publicKey: { type: String, default: '' },
+    secretKey: { type: String, default: '' }
   }
 }, { timestamps: true });
 

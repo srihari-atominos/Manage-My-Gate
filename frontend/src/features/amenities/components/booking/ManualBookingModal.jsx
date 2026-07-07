@@ -54,9 +54,9 @@ const ManualBookingModal = ({ visible, onClose, onSuccess }) => {
       setLoadingAmenities(true);
       setLoadingUsers(true);
       const amRes = await apiClient.get('/amenities?status=active');
-      setAmenities(amRes.data.data || []);
+      setAmenities(amRes.data || []);
       const usersRes = await apiClient.get('/users?role=Resident');
-      setUsers(usersRes.data.data || []);
+      setUsers(usersRes.data?.data || []);
     } catch (err) {
       console.error('Failed to load dependencies', err);
     } finally {

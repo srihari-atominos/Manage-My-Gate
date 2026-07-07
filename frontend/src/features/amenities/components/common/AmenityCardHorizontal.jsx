@@ -1,54 +1,132 @@
 import React from 'react';
 
-const AmenityCardHorizontal = ({ image, title, description, location, rate, status, onEdit, onDeactivate, onClick, onToggleFavorite, isFavorite }) => {
+const AmenityCardHorizontal = ({
+  image, title, category, description, location, capacity,
+  operatingHours, rate, status, onEdit, onDeactivate, onClick,
+  onToggleFavorite, isFavorite
+}) => {
+  const statusColor =
+    status?.toLowerCase() === 'active' || status?.toLowerCase() === 'available'
+      ? { bg: '#d1fae5', color: '#059669' }
+      : status?.toLowerCase() === 'maintenance' || status?.toLowerCase() === 'under maintenance'
+      ? { bg: '#fef3c7', color: '#d97706' }
+      : { bg: '#f1f5f9', color: '#64748b' };
+
   return (
-    <div className={`card card-hover amenity-item-card ${onClick ? 'app-card-h' : ''}`} style={{ padding: 0, overflow: 'hidden' }} onClick={onClick}>
-      <div style={{ height: '180px', background: `url('${image}') center/cover` }}>
+    <div
+      className={`amenity-discover-card ${onClick ? 'clickable' : ''}`}
+      onClick={onClick}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
+    >
+      {/* ── Image Panel ── */}
+      <div className="amenity-discover-card__image">
+        <img
+          src={image && image !== 'https://via.placeholder.com/400x200'
+            ? image
+            : `https://source.unsplash.com/400x300/?${encodeURIComponent(title || 'amenity')},facility`}
+          alt={title}
+          onError={(e) => {
+            e.target.src = `https://source.unsplash.com/400x300/?facility,building`;
+          }}
+        />
+        {/* Status badge on image */}
+        <span
+          className="amenity-discover-card__status-badge"
+          style={{ background: statusColor.bg, color: statusColor.color }}
+        >
+          <span className="status-dot" style={{ background: statusColor.color }}></span>
+          {status || 'Active'}
+        </span>
+        {/* Favorite button */}
         {onToggleFavorite && (
-          <div 
-            className="app-card-h-bookmark" 
-            style={isFavorite ? { color: 'var(--primary)' } : {}}
+          <button
+            className="amenity-discover-card__fav-btn"
             onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
           >
-            <i className={`fa-bookmark ${isFavorite ? 'fa-solid' : 'fa-regular'}`}></i>
-          </div>
+            <i className={`fa-bookmark ${isFavorite ? 'fa-solid' : 'fa-regular'}`}
+              style={{ color: isFavorite ? '#0084FF' : '#94a3b8' }} />
+          </button>
         )}
       </div>
-      <div style={{ padding: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-          <h4 style={{ fontSize: '20px' }} className="amenity-title-text">{title}</h4>
-          {status && <span className={`badge badge-${status === 'Active' ? 'success' : 'warning'}`}>{status}</span>}
-        </div>
-        
-        {description && (
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px', lineHeight: 1.6, fontWeight: 500 }}>
-            {description}
-          </p>
-        )}
 
-        <div className="app-card-h-footer" style={!description ? { marginTop: '16px' } : {}}>
-          <span className="app-card-h-loc">
-            <i className="fa-solid fa-location-dot"></i> {location}
-          </span>
-          <span className="app-card-h-price">
-            ₹{rate}<span>/hr</span>
-          </span>
-        </div>
-
-        {(onEdit || onDeactivate) && (
-          <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-            {onEdit && (
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-                Edit
-              </button>
+      {/* ── Content Panel ── */}
+      <div className="amenity-discover-card__body">
+        {/* Title row */}
+        <div className="amenity-discover-card__title-row">
+          <div>
+            {category && (
+              <span className="amenity-discover-card__category">
+                <i className="fa-solid fa-layer-group"></i> {category}
+              </span>
             )}
-            {onDeactivate && (
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onDeactivate(); }}>
-                Deactivate
-              </button>
-            )}
+            <h3 className="amenity-discover-card__title">{title}</h3>
           </div>
+          <div className="amenity-discover-card__rate">
+            <span className="rate-amount">₹{rate}</span>
+            <span className="rate-per">/hr</span>
+          </div>
+        </div>
+
+        {/* Description */}
+        {description && (
+          <p className="amenity-discover-card__desc">{description}</p>
         )}
+
+        {/* Meta chips */}
+        <div className="amenity-discover-card__meta">
+          {location && (
+            <span className="meta-chip">
+              <i className="fa-solid fa-location-dot"></i> {location}
+            </span>
+          )}
+          {capacity !== undefined && (
+            <span className="meta-chip">
+              <i className="fa-solid fa-users"></i> {capacity} people
+            </span>
+          )}
+          {operatingHours && (
+            <span className="meta-chip">
+              <i className="fa-regular fa-clock"></i> {operatingHours}
+            </span>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        <div className="amenity-discover-card__footer">
+          {onClick && status?.toLowerCase() !== 'maintenance' && status?.toLowerCase() !== 'under maintenance' ? (
+            <button
+              className="amenity-discover-card__book-btn"
+              onClick={(e) => { e.stopPropagation(); onClick(); }}
+            >
+              <i className="fa-solid fa-calendar-plus"></i> Book Now
+            </button>
+          ) : onClick && (status?.toLowerCase() === 'maintenance' || status?.toLowerCase() === 'under maintenance') ? (
+            <span className="amenity-discover-card__unavailable">
+              <i className="fa-solid fa-wrench me-1"></i> Under Maintenance
+            </span>
+          ) : null}
+
+          {(onEdit || onDeactivate) && (
+            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+              {onEdit && (
+                <button
+                  className="amenity-discover-card__action-btn"
+                  onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                >
+                  <i className="fa-solid fa-pen-to-square"></i> Edit
+                </button>
+              )}
+              {onDeactivate && (
+                <button
+                  className="amenity-discover-card__action-btn danger"
+                  onClick={(e) => { e.stopPropagation(); onDeactivate(); }}
+                >
+                  <i className="fa-solid fa-ban"></i> Deactivate
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

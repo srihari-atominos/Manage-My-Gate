@@ -46,22 +46,19 @@ export const authorizePermission = (feature, action) => {
         return next();
       }
 
-      // Build canonical required permission string
-      const requiredPermission = mapPermission(`${feature}:${action}`);
-
       // Normalise all user permissions through the mapper before comparing
       const userPermissions = (req.user.permissions || []).map(mapPermission);
-      const hasPermission = userPermissions.includes(requiredPermission);
 
-      console.log(`[RBAC DEBUG] User: ${req.user.username}, Role: ${req.user.role}`);
-      console.log(`[RBAC DEBUG] Checking: ${feature}:${action} (mapped: ${requiredPermission})`);
-      console.log(`[RBAC DEBUG] User Permissions (mapped):`, userPermissions);
-      console.log(`[RBAC DEBUG] Result: ${hasPermission ? 'GRANTED' : 'DENIED'}`);
+      const actions = Array.isArray(action) ? action : [action];
+      const hasPermission = actions.some(act => {
+        const requiredPermission = mapPermission(`${feature}:${act}`);
+        return userPermissions.includes(requiredPermission);
+      });
 
       if (!hasPermission) {
         throw new HttpError(
           403,
-          `Forbidden. You do not have permission '${requiredPermission}' to access this resource.`,
+          `Forbidden. You do not have permission to access this resource.`
         );
       }
 

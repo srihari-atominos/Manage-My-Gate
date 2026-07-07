@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types'
 import React from 'react'
 
-import ComponentsImg from 'src/assets/images/components.webp'
+import ComponentsImg from '../assets/images/components.webp'
 
 const DocsComponents = (props) => (
   <div className="bg-primary bg-opacity-10 border border-2 border-primary rounded mb-4">

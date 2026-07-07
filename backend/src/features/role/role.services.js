@@ -205,8 +205,17 @@ export class RoleService {
     return await rolePermissionService.getPermissionsByRoleId(roleId);
   }
 
-  async syncRolePermissions(roleId, permissionIds) {
+  async syncRolePermissions(roleId, permissionNames) {
     await this.getRoleById(roleId);
+    
+    let permissionIds = [];
+    if (permissionNames && permissionNames.length > 0) {
+      const permissionService = (await import('../permission/permission.services.js')).default;
+      const allPermissions = await permissionService.getAllPermissions();
+      const matchedPermissions = allPermissions.filter(p => permissionNames.includes(p.name) || permissionNames.includes(p._id.toString()));
+      permissionIds = matchedPermissions.map(p => p._id);
+    }
+    
     const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
     return await rolePermissionService.updateRolePermissions(roleId, permissionIds);
   }

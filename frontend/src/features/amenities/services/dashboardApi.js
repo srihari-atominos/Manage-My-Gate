@@ -6,8 +6,9 @@ export const dashboardApi = {
   getOccupancy: () => apiClient.get('/amenity-dashboard/occupancy'),
   getTrends: () => apiClient.get('/amenity-dashboard/trends'),
   getRecentActivity: () => apiClient.get('/amenity-dashboard/recent-activity'),
-  getCalendarEvents: (date) => apiClient.get('/amenity-dashboard/calendar-events', { params: { date } }),
+  getCalendarEvents: (startDate, endDate) => apiClient.get('/amenity-dashboard/calendar-events', { params: { startDate, endDate } }),
   getCalendarIndicators: (year, month) => apiClient.get('/amenity-dashboard/calendar-indicators', { params: { year, month } }),
+  getDashboardData: () => apiClient.get('/amenity-bookings/stats/dashboard'),
 };
 
 export default dashboardApi;

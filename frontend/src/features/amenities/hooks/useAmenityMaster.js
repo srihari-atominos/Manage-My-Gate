@@ -16,10 +16,10 @@ export const useAmenityMaster = () => {
   const [sortField, setSortField] = useState('newest');
 
   // Granular permission checks — each action is individually gated
-  const canCreate = checkPermission('amenities:manage_master');
-  const canUpdate = checkPermission('amenities:manage_master');
-  const canDelete = checkPermission('amenities:manage_master');
-  const canManageBookings = checkPermission('amenities:manage_bookings');
+  const canCreate = checkPermission('amenities:amenities');
+  const canUpdate = checkPermission('amenities:amenities');
+  const canDelete = checkPermission('amenities:amenities');
+  const canManageBookings = checkPermission('amenities:amenities'); // Or keep manage_bookings if it exists, but amenities is the master permission
   // Legacy alias kept for components that still use canManage
   const canManage = canCreate || canUpdate || canDelete || canManageBookings;
 

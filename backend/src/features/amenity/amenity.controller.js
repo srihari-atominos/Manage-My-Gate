@@ -15,11 +15,11 @@ export class AmenityController {
   async getAvailableAmenities(req, res, next) {
     try {
       const orgId = req.tenant.orgId;
-      const { date, startTime, endTime } = req.query;
+      const { date, startTime, endTime, ...filters } = req.query;
       if (!date || !startTime || !endTime) {
         throw new HttpError(400, 'date, startTime, and endTime are required query parameters');
       }
-      const available = await amenityService.searchAvailableAmenities(orgId, date, startTime, endTime);
+      const available = await amenityService.searchAvailableAmenities(orgId, date, startTime, endTime, filters);
       res.success(available, 'Available amenities retrieved successfully');
     } catch (error) {
       next(error);
@@ -90,6 +90,64 @@ export class AmenityController {
       
       const slots = await amenityService.getAvailableSlots(id, orgId, date);
       res.success(slots, 'Slots retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAllSlots(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { date } = req.query; // YYYY-MM-DD
+      const orgId = req.tenant.orgId;
+      const userId = req.user.id;
+      if (!date) throw new HttpError(400, 'Date query parameter is required (YYYY-MM-DD)');
+      
+      const slots = await amenityService.getAllSlots(id, orgId, date, userId);
+      res.success(slots, 'All slots retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAllMaintenance(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const maintenance = await amenityService.getAllMaintenance(orgId);
+      res.success(maintenance, 'Maintenance schedules retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async scheduleMaintenance(req, res, next) {
+    try {
+      const { id } = req.params;
+      const orgId = req.tenant.orgId;
+      const updated = await amenityService.scheduleMaintenance(id, orgId, req.body);
+      res.success(updated, 'Maintenance scheduled successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateMaintenance(req, res, next) {
+    try {
+      const { id, maintenanceId } = req.params;
+      const orgId = req.tenant.orgId;
+      const updated = await amenityService.updateMaintenance(id, maintenanceId, orgId, req.body);
+      res.success(updated, 'Maintenance updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteMaintenance(req, res, next) {
+    try {
+      const { id, maintenanceId } = req.params;
+      const orgId = req.tenant.orgId;
+      const updated = await amenityService.deleteMaintenance(id, maintenanceId, orgId);
+      res.success(updated, 'Maintenance deleted successfully');
     } catch (error) {
       next(error);
     }

@@ -1,20 +1,26 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { fetchMyBookings } from '../services/amenityBookingApi.js';
+import { fetchMyWallet, addMoneyToWallet } from '../services/walletApi.js';
 import toast from 'react-hot-toast';
+import io from 'socket.io-client'; // Assuming standard setup or adjust if there's a custom hook
 
 export const useResidentWallet = () => {
-  const [myBookings, setMyBookings] = useState([]);
+  const [walletData, setWalletData] = useState({ balance: 0, activePasses: [], transactionHistory: [] });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const user = useSelector(state => state.auth?.user || { name: 'Resident', email: '' });
+  const token = useSelector(state => state.auth?.token); // Assuming token for socket if needed
 
   const loadWallet = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetchMyBookings();
-      setMyBookings(response.data || []);
+      const response = await fetchMyWallet();
+      setWalletData({
+        balance: response?.balance || 0,
+        activePasses: response?.activePasses || [],
+        transactionHistory: response?.transactionHistory || []
+      });
     } catch (err) {
       setError(err.message || 'Failed to load wallet');
       toast.error('Failed to load wallet');
@@ -23,51 +29,80 @@ export const useResidentWallet = () => {
     }
   }, []);
 
-  // Find the single most relevant active booking to display as the QR pass
-  const activeBooking = useMemo(() => {
-    if (!myBookings || myBookings.length === 0) return null;
+  const addMoney = async (amount, method) => {
+    setIsLoading(true);
+    try {
+      await addMoneyToWallet(amount, method);
+      toast.success(`Successfully added $${amount} via ${method}`);
+      await loadWallet();
+      return true;
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to add money');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const cancelPass = async (bookingId, reason) => {
+    setIsLoading(true);
+    try {
+      const { cancelBooking } = await import('../services/amenityBookingApi.js');
+      await cancelBooking(bookingId, reason);
+      toast.success('Booking cancelled successfully.');
+      await loadWallet();
+      return true;
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err.message || 'Failed to cancel booking');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    // Filter to confirmed/approved/checked_in bookings that are today or in the future
-    const validBookings = myBookings.filter(b => {
-      const isStatusValid = b.status === 'confirmed' || b.status === 'approved' || b.status === 'checked_in';
-      const isFutureOrToday = new Date(b.date) >= today;
-      return isStatusValid && isFutureOrToday;
+  // Set up socket listener for real-time updates
+  useEffect(() => {
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    // Using a generic connection for demo, in real app use the central socket context if available
+    const socket = io(backendUrl, {
+      auth: { token }
     });
 
-    if (validBookings.length === 0) return null;
+    socket.on('connect', () => {
+      const userId = user.id || user._id;
+      if (userId) {
+        socket.emit('join_room', `user:${userId}`);
+      }
+    });
 
-    // Sort by nearest date and time
-    validBookings.sort((a, b) => new Date(`${a.date}T${a.startTime}`) - new Date(`${b.date}T${b.startTime}`));
-
-    const booking = validBookings[0];
-    
-    return {
-      id: booking._id,
-      amenityName: booking.amenity?.name || 'Unknown Amenity',
-      residentName: user.name,
-      date: booking.date,
-      startTime: booking.startTime,
-      endTime: booking.endTime,
-      status: booking.status,
-      checkInStatus: booking.checkInStatus || 'pending',
-      location: booking.amenity?.location || 'Main Clubhouse',
-      // Generate a payload string for the QR code
-      qrPayload: JSON.stringify({
-        bookingId: booking._id,
-        amenityId: booking.amenity?._id,
-        timestamp: new Date().getTime()
-      })
+    const handleUpdate = () => {
+      loadWallet();
     };
-  }, [myBookings, user]);
+
+    socket.on('bookingUpdated', handleUpdate);
+    socket.on('paymentSuccess', handleUpdate);
+    socket.on('paymentRefunded', handleUpdate);
+    socket.on('walletUpdated', handleUpdate);
+
+    return () => {
+      socket.off('bookingUpdated', handleUpdate);
+      socket.off('paymentSuccess', handleUpdate);
+      socket.off('paymentRefunded', handleUpdate);
+      socket.off('walletUpdated', handleUpdate);
+      socket.disconnect();
+    };
+  }, [loadWallet, token]);
 
   return {
-    activeBooking,
+    walletData,
+    activePasses: walletData.activePasses,
+    transactionHistory: walletData.transactionHistory,
+    balance: walletData.balance,
     loading: isLoading,
     error,
-    loadWallet
+    loadWallet,
+    addMoney,
+    cancelPass
   };
 };
 

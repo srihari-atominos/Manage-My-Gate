@@ -126,9 +126,9 @@ export const OrganizationManager = () => {
                                   <span className="badge bg-secondary">{org.userCount ?? 0} Users</span>
                                 </CTableDataCell>
                                 <CTableDataCell>
-                                  <CBadge color={getStatusBadgeColor(org.status)} className="org-badge">
-                                    {t(`superAdmin.orgManager.status.${org.status.toLowerCase()}`, { defaultValue: org.status })}
-                                  </CBadge>
+                                   <CBadge color={getStatusBadgeColor(org.status)} className="org-badge">
+                                     {org.status ? t(`superAdmin.orgManager.status.${org.status.toLowerCase()}`, { defaultValue: org.status }) : 'Unknown'}
+                                   </CBadge>
                                 </CTableDataCell>
                                 <CTableDataCell className="text-end">
                                   <CButton

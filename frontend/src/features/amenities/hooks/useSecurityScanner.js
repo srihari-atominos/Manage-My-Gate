@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { checkInBooking } from '../services/amenityBookingApi.js';
+import io from 'socket.io-client';
 
 export const useSecurityScanner = () => {
   const [scanResult, setScanResult] = useState(null);
@@ -59,10 +60,44 @@ export const useSecurityScanner = () => {
     setError(null);
   }, []);
 
+  const [recentScans, setRecentScans] = useState([]);
+
+  const loadRecentScans = useCallback(async () => {
+    try {
+      const { fetchRecentScans } = await import('../services/amenityBookingApi.js');
+      const data = await fetchRecentScans();
+      setRecentScans(data);
+    } catch (err) {
+      console.error('Failed to fetch recent scans:', err);
+    }
+  }, []);
+
+  // Fetch initially and set up socket listener for real-time updates
+  useEffect(() => {
+    loadRecentScans();
+    
+    // In a real app we'd use the centralized socket, for now just a quick setup
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const socket = io(backendUrl);
+    
+    socket.on('bookingUpdated', () => {
+      loadRecentScans();
+    });
+    
+    socket.on('bookingCompleted', () => {
+      loadRecentScans();
+    });
+    
+    return () => {
+      socket.disconnect();
+    };
+  }, [loadRecentScans]);
+
   return {
     scanResult,
     loading,
     error,
+    recentScans,
     handleScan,
     handleManualEntry,
     resetScanner

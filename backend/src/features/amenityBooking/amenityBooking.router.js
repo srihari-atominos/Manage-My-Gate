@@ -13,24 +13,25 @@ const router = Router();
 router.use(isAuthenticated, tenantContext);
 
 // Resident facing routes
-router.get('/my-bookings', authorizePermission('amenities', 'book'), amenityBookingController.getMyBookings);
-router.post('/', authorizePermission('amenities', 'book'), validate(createBookingRules), amenityBookingController.createBooking);
-router.put('/:id/cancel', authorizePermission('amenities', 'cancel_booking'), amenityBookingController.cancelBooking);
+router.get('/my-bookings', authorizePermission('amenities', 'my_booking'), amenityBookingController.getMyBookings);
+router.post('/', authorizePermission('amenities', 'my_booking'), validate(createBookingRules), amenityBookingController.createBooking);
+router.put('/:id/cancel', authorizePermission('amenities', 'my_booking'), amenityBookingController.cancelBooking);
 
 // Admin facing routes (Approval queue & manual booking)
-router.post('/manual', authorizePermission('amenities', 'manage_bookings'), validate(manualBookingRules), amenityBookingController.createManualBooking);
-router.get('/queue', authorizePermission('amenities', 'manage_bookings'), amenityBookingController.getQueue);
-router.put('/:id/review', authorizePermission('amenities', 'manage_bookings'), validate(reviewBookingRules), amenityBookingController.reviewBooking);
+router.post('/manual', authorizePermission('amenities', 'dashboard'), validate(manualBookingRules), amenityBookingController.createManualBooking);
+router.get('/queue', authorizePermission('amenities', 'dashboard'), amenityBookingController.getQueue);
+router.put('/:id/review', authorizePermission('amenities', 'dashboard'), validate(reviewBookingRules), amenityBookingController.reviewBooking);
 
 // Analytics routes
-router.get('/stats/dashboard', authorizePermission('amenities', 'manage_bookings'), amenityBookingController.getDashboardData);
-router.get('/stats/kpi', authorizePermission('amenities', 'manage_bookings'), amenityBookingController.getKpiStats);
-router.get('/stats/revenue', authorizePermission('amenities', 'manage_bookings'), amenityBookingController.getRevenueStats);
-router.get('/stats/occupancy', authorizePermission('amenities', 'manage_bookings'), amenityBookingController.getOccupancyStats);
-router.get('/stats/trends', authorizePermission('amenities', 'manage_bookings'), amenityBookingController.getTrendsStats);
-router.get('/stats/recent-activity', authorizePermission('amenities', 'manage_bookings'), amenityBookingController.getRecentActivity);
+router.get('/stats/dashboard', authorizePermission('amenities', 'dashboard'), amenityBookingController.getDashboardData);
+router.get('/stats/kpi', authorizePermission('amenities', 'dashboard'), amenityBookingController.getKpiStats);
+router.get('/stats/revenue', authorizePermission('amenities', 'dashboard'), amenityBookingController.getRevenueStats);
+router.get('/stats/occupancy', authorizePermission('amenities', 'dashboard'), amenityBookingController.getOccupancyStats);
+router.get('/stats/trends', authorizePermission('amenities', 'dashboard'), amenityBookingController.getTrendsStats);
+router.get('/stats/recent-activity', authorizePermission('amenities', 'dashboard'), amenityBookingController.getRecentActivity);
 
-// Check-in route (Resident or Admin can check in)
-router.post('/:id/checkin', authorizePermission('amenities', 'book'), amenityBookingController.checkInBooking);
+// Scanner routes
+router.get('/scans/recent', authorizePermission('amenities', 'scanner'), amenityBookingController.getRecentScans);
+router.post('/:id/checkin', authorizePermission('amenities', 'scanner'), amenityBookingController.checkInBooking);
 
 export default router;

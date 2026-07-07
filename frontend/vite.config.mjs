@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import path from 'node:path'
 import autoprefixer from 'autoprefixer'
 
+import { fileURLToPath, URL } from 'node:url'
+
 export default defineConfig(() => {
   return {
     base: './',
@@ -18,12 +20,9 @@ export default defineConfig(() => {
     },
     plugins: [react()],
     resolve: {
-      alias: [
-        {
-          find: 'src/',
-          replacement: `${path.resolve(__dirname, 'src')}/`,
-        },
-      ],
+      alias: {
+        'src/': `${fileURLToPath(new URL('./src', import.meta.url)).replace(/\\/g, '/')}/`
+      },
       extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.scss'],
     },
     server: {

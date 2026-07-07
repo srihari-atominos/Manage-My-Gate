@@ -10,7 +10,7 @@ import {
   CListGroupItem,
   CRow,
 } from '@coreui/react'
-import { DocsComponents, DocsExample } from 'src/components'
+import { DocsComponents, DocsExample } from '../../../components'
 
 const ListGroups = () => {
   return (

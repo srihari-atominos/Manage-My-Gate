@@ -4,37 +4,68 @@ import toast from 'react-hot-toast';
 
 export const useAdminCalendar = () => {
   const [bookingQueue, setBookingQueue] = useState([]);
-  const [monthIndicators, setMonthIndicators] = useState([]);
   const [isQueueLoading, setIsQueueLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Dashboard Analytics Data
+  const [dashboardData, setDashboardData] = useState(null);
 
   // View & Date State
-  const [viewMode, setViewMode] = useState('month'); // 'month' | 'week' | 'day' | 'agenda'
+  const [viewMode, setViewMode] = useState('month'); // 'month' | 'week' | 'day'
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // Filters State
   const [filters, setFilters] = useState({
     amenityId: '',
     status: '',
-    residentId: '', // For future or if resident search is added
-    search: '' // search by resident name or title
+    residentId: '', 
+    search: '',
+    paymentStatus: ''
   });
 
   const loadEvents = useCallback(async () => {
     setIsQueueLoading(true);
     setError(null);
     try {
+      let startDate, endDate;
+      
+      const curr = new Date(currentDate);
+      
       if (viewMode === 'month') {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth() + 1;
-        const response = await dashboardApi.getCalendarIndicators(year, month);
-        setMonthIndicators(response.data || []);
-        setBookingQueue([]); // clear day events
+        const year = curr.getFullYear();
+        const month = curr.getMonth();
+        // start of month
+        const start = new Date(year, month, 1);
+        // end of month
+        const end = new Date(year, month + 1, 0);
+        startDate = start.toISOString().split('T')[0];
+        endDate = end.toISOString().split('T')[0];
+      } else if (viewMode === 'week') {
+        const day = curr.getDay();
+        const start = new Date(curr);
+        start.setDate(curr.getDate() - day);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        startDate = start.toISOString().split('T')[0];
+        endDate = end.toISOString().split('T')[0];
       } else {
-        const dateStr = currentDate.toISOString().split('T')[0];
-        const response = await dashboardApi.getCalendarEvents(dateStr);
-        setBookingQueue(response.data || []);
+        // Day view
+        startDate = curr.toISOString().split('T')[0];
+        endDate = startDate;
       }
+
+      // Fetch Events
+      const response = await dashboardApi.getCalendarEvents(startDate, endDate);
+      setBookingQueue(response.data || []);
+      
+      // Fetch KPIs
+      try {
+        const dashResponse = await dashboardApi.getDashboardData();
+        setDashboardData(dashResponse.data);
+      } catch(e) {
+        console.error("Failed to load dashboard KPIs", e);
+      }
+      
     } catch (err) {
       setError(err.message || 'Failed to load calendar events');
       toast.error('Failed to load calendar events');
@@ -48,21 +79,14 @@ export const useAdminCalendar = () => {
     if (!bookingQueue) return [];
     
     return bookingQueue.map(event => ({
-      id: event.id,
-      type: event.type, // 'booking', 'maintenance', 'operating_hours', 'holiday'
+      ...event,
       title: event.title,
       subtitle: event.subtitle,
-      amenityName: event.amenityName || 'Unknown',
-      residentName: event.residentName || '',
-      date: event.date,
-      start: event.start,
-      end: event.end,
-      status: event.status,
       colorKey: event.type === 'maintenance' ? 'rejected' 
               : event.type === 'operating_hours' ? 'default' 
               : event.type === 'holiday' ? 'checked_in' 
-              : event.status, // Can be mapped to specific colors in CalendarEventCard based on status
-      metadata: event // store raw for details drawer
+              : event.status,
+      metadata: event
     }));
   }, [bookingQueue]);
 
@@ -71,30 +95,28 @@ export const useAdminCalendar = () => {
     return rawEvents.filter(event => {
       if (filters.amenityId && event.amenityId !== filters.amenityId) return false;
       if (filters.status && event.status !== filters.status) return false;
+      if (filters.paymentStatus && event.paymentStatus !== filters.paymentStatus) return false;
       if (filters.search) {
         const query = filters.search.toLowerCase();
-        const matchTitle = event.title.toLowerCase().includes(query);
-        const matchSubtitle = event.subtitle.toLowerCase().includes(query);
-        if (!matchTitle && !matchSubtitle) return false;
+        const matchTitle = (event.title || '').toLowerCase().includes(query);
+        const matchSubtitle = (event.subtitle || '').toLowerCase().includes(query);
+        const matchResident = (event.residentName || '').toLowerCase().includes(query);
+        const matchFlat = (event.flatNumber || '').toLowerCase().includes(query);
+        if (!matchTitle && !matchSubtitle && !matchResident && !matchFlat) return false;
       }
       return true;
     });
   }, [rawEvents, filters]);
 
-  // Get currently visible events based on current view/date
-  // Simplified logic for MVP: just pass all filtered to month renderer, which will handle grid placement
   const visibleEvents = filteredEvents;
 
-  // Analytics derived from filtered events
-  const analytics = useMemo(() => {
-    return {
-      total: visibleEvents.length,
-      confirmed: visibleEvents.filter(e => e.status === 'approved' || e.status === 'confirmed').length,
-      pending: visibleEvents.filter(e => e.status === 'pending').length,
-      checkedIn: visibleEvents.filter(e => e.checkInStatus === 'checked_in').length,
-      cancelled: visibleEvents.filter(e => e.status === 'cancelled' || e.status === 'rejected').length
-    };
-  }, [visibleEvents]);
+  // We can pass dashboardData to analytics. We'll map it in the component.
+  const analytics = dashboardData || {
+    bookingKpis: {},
+    revenue: {},
+    occupancy: {},
+    amenityKpis: {}
+  };
 
   const navigateDate = (direction) => {
     const newDate = new Date(currentDate);
@@ -118,7 +140,6 @@ export const useAdminCalendar = () => {
     rawEvents,
     filteredEvents,
     visibleEvents,
-    monthIndicators,
     analytics,
     loading: isQueueLoading,
     error,

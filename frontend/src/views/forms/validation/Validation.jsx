@@ -16,7 +16,7 @@ import {
   CInputGroupText,
   CRow,
 } from '@coreui/react'
-import { DocsComponents, DocsExample } from 'src/components'
+import { DocsComponents, DocsExample } from '../../../components'
 
 const CustomStyles = () => {
   const [validated, setValidated] = useState(false)

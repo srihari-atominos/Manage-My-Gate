@@ -1,77 +1,111 @@
-import { useState, useCallback, useEffect } from 'react';
-import { fetchBookingQueue } from '../services/amenityBookingApi.js';
+import { useEffect, useCallback, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { io } from 'socket.io-client';
+import { getSecurityLogs, getDashboardStats, setFilters, setPage, addLogRealTime } from '../store/securityLogSlice.js';
+import { createManualVerification } from '../services/securityLogApi.js';
 import toast from 'react-hot-toast';
 
 export const useSecurityLogs = () => {
-  const [logs, setLogs] = useState([]);
-  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalRecords: 0, limit: 10 });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+  const { logs, dashboard, pagination, filters, loading, error } = useSelector(state => state.securityLogs);
+  const { user } = useSelector(state => state.auth || {});
 
-  // Filters state
-  const [filters, setFilters] = useState({
-    status: '',
-    date: '',
-    amenityId: '',
-    userId: '',
-    checkedInBy: ''
-  });
+  const fetchLogs = useCallback(() => {
+    const params = {
+      ...filters,
+      page: pagination.page,
+      limit: pagination.limit
+    };
+    // Remove empty strings so backend doesn't see them as filters
+    Object.keys(params).forEach(k => { if (!params[k]) delete params[k]; });
+    dispatch(getSecurityLogs(params));
+  }, [dispatch, filters, pagination.page, pagination.limit]);
 
-  const loadLogs = useCallback(async (page = 1, currentFilters = filters) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Cleanup empty filters
-      const activeFilters = Object.entries(currentFilters).reduce((acc, [key, value]) => {
-        if (value) acc[key] = value;
-        return acc;
-      }, {});
+  const fetchStats = useCallback(() => {
+    dispatch(getDashboardStats());
+  }, [dispatch]);
 
-      const response = await fetchBookingQueue({ page, limit: pagination.limit, ...activeFilters });
-      
-      setLogs(response.data?.data || []);
-      setPagination(response.data?.pagination || { currentPage: 1, totalPages: 1, totalRecords: 0, limit: 10 });
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to load security logs');
-      toast.error('Failed to load security logs');
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.limit, filters]);
-
-  // Initial load
   useEffect(() => {
-    loadLogs(1, filters);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchLogs();
+    fetchStats();
+  }, [fetchLogs, fetchStats]);
 
-  const handlePageChange = useCallback((newPage) => {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
-      loadLogs(newPage, filters);
+  // Real-time Socket.IO listener
+  useEffect(() => {
+    if (!user) return;
+
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    const socket = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true
+    });
+
+    socket.on('connect', () => {
+      socket.emit('join_room', `org:${user.orgId}`);
+    });
+
+    socket.on('SECURITY_LOG_CREATED', (logData) => {
+      dispatch(addLogRealTime(logData));
+
+      if (logData.scanType === 'Entry' && logData.status === 'Success') {
+        toast.success('✅ Resident entered successfully.');
+      } else if (logData.scanType === 'Exit' && logData.status === 'Success') {
+        toast.success('✅ Resident exited successfully.');
+      } else if (logData.status === 'Denied') {
+        toast.error(`❌ Access denied: ${logData.reason || 'Invalid scan'}`);
+      } else if (logData.scanType === 'Refund') {
+        toast.success('✅ Refund processed successfully.');
+      } else if (logData.scanType === 'Booking Cancelled') {
+        toast('⚠ Booking cancelled.', { icon: '⚠️' });
+      } else if (logData.scanType === 'QR Expired') {
+        toast('⚠ QR Code expired.', { icon: '⚠️' });
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [dispatch, user]);
+
+  const handleFilterChange = (key, value) => {
+    dispatch(setFilters({ [key]: value }));
+  };
+
+  const handlePageChange = (newPage) => {
+    dispatch(setPage(newPage));
+  };
+
+  const handleManualVerification = async (payload) => {
+    try {
+      await createManualVerification(payload);
+      toast.success('Manual verification logged successfully.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to log manual verification');
     }
-  }, [pagination.totalPages, filters, loadLogs]);
+  };
 
-  const handleFilterChange = useCallback((key, value) => {
-    const newFilters = { ...filters, [key]: value };
-    setFilters(newFilters);
-    loadLogs(1, newFilters);
-  }, [filters, loadLogs]);
-
-  const clearFilters = useCallback(() => {
-    const emptyFilters = { status: '', date: '', amenityId: '', userId: '', checkedInBy: '' };
-    setFilters(emptyFilters);
-    loadLogs(1, emptyFilters);
-  }, [loadLogs]);
+  const clearFilters = () => {
+    dispatch(setFilters({
+      search: '',
+      status: '',
+      scanType: '',
+      amenityId: '',
+      dateRange: 'today'
+    }));
+  };
 
   return {
     logs,
+    dashboard,
     pagination,
+    filters,
     loading,
     error,
-    filters,
-    handlePageChange,
     handleFilterChange,
+    handlePageChange,
+    handleManualVerification,
     clearFilters,
-    refresh: () => loadLogs(pagination.currentPage, filters)
+    refresh: () => { fetchLogs(); fetchStats(); }
   };
 };
 

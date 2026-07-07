@@ -11,10 +11,10 @@ const router = Router();
 // Protect all routes
 router.use(isAuthenticated, tenantContext);
 
-// GET /settings
-router.get('/', authorizePermission('amenities', 'manage_bookings'), amenitySettingsController.getSettings);
+// Retrieve global amenity settings
+router.get('/', authorizePermission('amenities', 'settings'), amenitySettingsController.getSettings);
 
-// PUT /settings
-router.put('/', authorizePermission('amenities', 'manage_bookings'), validate(updateSettingsRules), amenitySettingsController.updateSettings);
+// Update global amenity settings
+router.put('/', authorizePermission('amenities', 'settings'), validate(updateSettingsRules), amenitySettingsController.updateSettings);
 
 export default router;

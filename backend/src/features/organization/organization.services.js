@@ -195,9 +195,8 @@ export class OrganizationService {
       );
       const ownerPerms = getPermissionIds([
         'villas:read', 'users:read', 
-        'amenities:read', 'amenities:book', 'amenities:cancel_booking', 
-        'amenities:discover_amenities', 'amenities:view_my_bookings', 
-        'amenities:manage_wallet', 'amenities:view_history'
+        'amenities:discover', 'amenities:my_booking', 
+        'amenities:wallet', 'amenities:history', 'amenities:amenities'
       ]);
       await rolePermissionService.updateRolePermissions(ownerRole._id.toString(), ownerPerms, session);
 
@@ -208,9 +207,8 @@ export class OrganizationService {
       );
       const tenantPerms = getPermissionIds([
         'villas:read', 'users:read', 
-        'amenities:read', 'amenities:book', 'amenities:cancel_booking', 
-        'amenities:discover_amenities', 'amenities:view_my_bookings', 
-        'amenities:manage_wallet', 'amenities:view_history'
+        'amenities:discover', 'amenities:my_booking', 
+        'amenities:wallet', 'amenities:history', 'amenities:amenities'
       ]);
       await rolePermissionService.updateRolePermissions(tenantRole._id.toString(), tenantPerms, session);
 
@@ -221,8 +219,7 @@ export class OrganizationService {
       );
       const familyPerms = getPermissionIds([
         'villas:read', 
-        'amenities:read', 'amenities:discover_amenities', 
-        'amenities:view_my_bookings', 'amenities:view_history'
+        'amenities:discover', 'amenities:my_booking', 'amenities:history'
       ]);
       await rolePermissionService.updateRolePermissions(familyRole._id.toString(), familyPerms, session);
 
@@ -233,7 +230,7 @@ export class OrganizationService {
       );
       const guardPerms = getPermissionIds([
         'villas:read', 'users:read', 
-        'amenities:read', 'amenities:manage_scanner'
+        'amenities:scanner', 'amenities:security_logs'
       ]);
       await rolePermissionService.updateRolePermissions(guardRole._id.toString(), guardPerms, session);
 

@@ -19,8 +19,12 @@ export class AmenityRepository {
     return await amenity.save();
   }
 
-  async update(id, orgId, updateData) {
-    return await Amenity.findOneAndUpdate({ _id: id, orgId, isDeleted: false }, updateData, { new: true, runValidators: true });
+  async update(id, orgId, updateData, options = {}) {
+    return await Amenity.findOneAndUpdate(
+      { _id: id, orgId, isDeleted: false }, 
+      updateData, 
+      { new: true, runValidators: true, ...options }
+    );
   }
 
   async softDelete(id, orgId) {
@@ -66,6 +70,27 @@ export class AmenityRepository {
       in_progress: stats[0].in_progress[0]?.count || 0,
       completed: stats[0].completed[0]?.count || 0
     };
+  }
+
+  async getAllMaintenance(orgId) {
+    const amenities = await Amenity.find({ orgId, isDeleted: false }, 'name location type maintenanceSchedules');
+    let maintenanceList = [];
+    amenities.forEach(amenity => {
+      if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
+        amenity.maintenanceSchedules.forEach(schedule => {
+          maintenanceList.push({
+            ...schedule.toObject(),
+            amenityId: amenity._id,
+            amenityName: amenity.name,
+            amenityLocation: amenity.location,
+            amenityType: amenity.type
+          });
+        });
+      }
+    });
+    // Sort by startDate descending
+    maintenanceList.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+    return maintenanceList;
   }
 }
 

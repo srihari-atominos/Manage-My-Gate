@@ -1,8 +1,8 @@
 import { CCard, CCardBody, CCardHeader, CChip, CCol, CRow } from '@coreui/react'
-import { DocsComponents, DocsExample } from 'src/components'
+import { DocsComponents, DocsExample } from '../../../components'
 
-import avatar1 from 'src/assets/images/avatars/1.jpg'
-import avatar4 from 'src/assets/images/avatars/4.jpg'
+import avatar1 from '../../../assets/images/avatars/1.jpg'
+import avatar4 from '../../../assets/images/avatars/4.jpg'
 
 const Chip = () => {
   return (

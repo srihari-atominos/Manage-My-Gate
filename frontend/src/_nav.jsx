@@ -63,9 +63,21 @@ const _nav = [
   {
     component: CNavItem,
     name: 'Amenities & Bookings',
-    to: '/admin/amenities/dashboard',
+    to: '/amenities',
     icon: <CIcon icon={cilBuilding} customClassName="nav-icon" />,
-    requiredPermission: 'amenities:view_dashboard',
+    requiredPermission: [
+      'amenities:dashboard', 
+      'amenities:amenities', 
+      'amenities:admin_calander', 
+      'amenities:ledgers', 
+      'amenities:maintenance', 
+      'amenities:settings',
+      'amenities:scanner', 
+      'amenities:security_logs',
+      'amenities:discover',
+      'amenities:my_booking',
+      'amenities:wallet'
+    ],
   },
   {
     component: CNavItem,

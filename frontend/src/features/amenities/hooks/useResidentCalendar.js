@@ -14,7 +14,16 @@ export const useResidentCalendar = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetchMyBookings();
+      // Calculate month boundaries (fetch a slightly wider window to cover grid overlap)
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const start = new Date(year, month, -6);
+      const end = new Date(year, month + 1, 7);
+      
+      const startDate = start.toISOString().split('T')[0];
+      const endDate = end.toISOString().split('T')[0];
+
+      const response = await fetchMyBookings({ startDate, endDate });
       setMyBookings(response.data || []);
     } catch (err) {
       setError(err.message || 'Failed to load bookings');
@@ -22,29 +31,41 @@ export const useResidentCalendar = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentDate]);
 
   const rawEvents = useMemo(() => {
     if (!myBookings) return [];
     
-    return myBookings.map(booking => ({
-      id: booking._id,
-      type: 'booking',
-      title: `${booking.amenity?.name || 'Unknown Amenity'} Booking`,
-      subtitle: `${booking.startTime} - ${booking.endTime}`,
-      amenityId: booking.amenity?._id,
-      amenityName: booking.amenity?.name || 'Unknown',
-      date: booking.bookingDate, 
-      start: booking.startTime, 
-      end: booking.endTime,
-      status: booking.status || 'pending',
-      paymentStatus: booking.paymentStatus || 'pending',
-      checkInStatus: booking.status === 'checked-in' ? 'checked-in' : 'pending',
-      colorKey: booking.status || 'pending',
-      price: booking.pricingDetails?.totalAmount || booking.totalPrice || 0,
-      qrCode: booking.qrCode || null,
-      metadata: booking // store raw for details drawer
-    }));
+    // Sort bookings by latest first (descending date/createdAt)
+    const sortedBookings = [...myBookings].sort((a, b) => {
+      return new Date(b.createdAt || b.bookingDate) - new Date(a.createdAt || a.bookingDate);
+    });
+    
+    return sortedBookings.map(booking => {
+      // Repository uses .populate('amenityId') which keeps the field name amenityId 
+      const amenity = booking.amenity || booking.amenityId || {};
+      return {
+        id: booking._id,
+        bookingId: booking.bookingId || booking._id,
+        type: 'booking',
+        title: `${amenity?.name || 'Unknown Amenity'} Booking`,
+        subtitle: `${booking.startTime} - ${booking.endTime}`,
+        amenityId: amenity?._id,
+        amenityName: amenity?.name || 'Unknown',
+        image: amenity?.images?.[0] || amenity?.imageUrl || 'https://via.placeholder.com/400x200',
+        date: booking.bookingDate, 
+        start: booking.startTime, 
+        end: booking.endTime,
+        duration: booking.pricingDetails?.duration || booking.duration || 1,
+        status: booking.status || 'pending',
+        paymentStatus: booking.paymentStatus || 'pending',
+        checkInStatus: booking.status === 'checked-in' ? 'checked-in' : 'pending',
+        colorKey: booking.status || 'pending',
+        price: booking.pricingDetails?.totalAmount || booking.totalPrice || 0,
+        qrCode: booking.qrCode || null,
+        metadata: booking
+      };
+    });
   }, [myBookings]);
 
   // Upcoming Bookings Logic

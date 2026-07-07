@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 
@@ -21,7 +21,12 @@ const schema = yup.object().shape({
     slotDurationMinutes: yup.number().typeError('Must be a number').min(15, 'Min 15 min').required('Required'),
     bufferTimeMinutes: yup.number().typeError('Must be a number').min(0, 'Min 0'),
     maxBookingsPerUserPerDay: yup.number().typeError('Must be a number').min(1, 'Min 1').required('Required'),
-    advanceBookingDays: yup.number().typeError('Must be a number').min(0, 'Min 0')
+    advanceBookingDays: yup.number().typeError('Must be a number').min(0, 'Min 0'),
+    isCancellationEnabled: yup.boolean().default(false),
+    cancellationRefundRules: yup.array().of(yup.object().shape({
+      cancelBeforeHours: yup.number().typeError('Must be a number').min(0, 'Min 0').required('Required'),
+      refundPercentage: yup.number().typeError('Must be a number').min(0, 'Min 0').max(100, 'Max 100').required('Required')
+    }))
   }),
   openDays: yup.array().of(yup.number()).min(1, 'Select at least one day'),
   images: yup.array().of(yup.string()),
@@ -32,16 +37,23 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
   const [imagePreview, setImagePreview] = useState(null);
 
-  const { control, handleSubmit, reset, setValue, formState: { isSubmitting, isDirty } } = useForm({
+  const { control, handleSubmit, reset, setValue, watch, formState: { isSubmitting, isDirty, errors } } = useForm({
     resolver: yupResolver(schema),
     defaultValues: initialData || {
       name: '', type: 'Event Space', location: '', description: '', capacity: 50, status: 'active',
       pricing: { pricingType: 'hourly', baseRate: 500, securityDeposit: 0 },
-      bookingRules: { openTime: '08:00', closeTime: '21:00', slotDurationMinutes: 60, bufferTimeMinutes: 0, maxBookingsPerUserPerDay: 1, advanceBookingDays: 7 },
+      bookingRules: { openTime: '08:00', closeTime: '21:00', slotDurationMinutes: 60, bufferTimeMinutes: 0, maxBookingsPerUserPerDay: 1, advanceBookingDays: 7, isCancellationEnabled: false, cancellationRefundRules: [] },
       openDays: [0, 1, 2, 3, 4, 5, 6],
       images: []
     }
   });
+
+  const { fields: rulesFields, append: appendRule, remove: removeRule } = useFieldArray({
+    control,
+    name: 'bookingRules.cancellationRefundRules'
+  });
+
+  const isCancellationEnabled = watch('bookingRules.isCancellationEnabled');
 
   useEffect(() => {
     if (visible) {
@@ -52,7 +64,7 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
         reset({ 
           name: '', type: 'Event Space', location: '', description: '', capacity: 50, status: 'active',
           pricing: { pricingType: 'hourly', baseRate: 500, securityDeposit: 0 },
-          bookingRules: { openTime: '08:00', closeTime: '21:00', slotDurationMinutes: 60, bufferTimeMinutes: 0, maxBookingsPerUserPerDay: 1, advanceBookingDays: 7 },
+          bookingRules: { openTime: '08:00', closeTime: '21:00', slotDurationMinutes: 60, bufferTimeMinutes: 0, maxBookingsPerUserPerDay: 1, advanceBookingDays: 7, isCancellationEnabled: false, cancellationRefundRules: [] },
           openDays: [0, 1, 2, 3, 4, 5, 6],
           images: []
         });
@@ -62,17 +74,16 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
   }, [visible, initialData, reset]);
 
   const onSubmit = async (data) => {
+    if (data.bookingRules?.cancellationRefundRules) {
+      data.bookingRules.cancellationRefundRules.sort((a, b) => b.cancelBeforeHours - a.cancelBeforeHours);
+    }
     await onSave(data);
   };
 
   const handleClose = () => {
-    if (isDirty) {
-      if (window.confirm('You have unsaved changes. Are you sure you want to close?')) {
-        onClose();
-      }
-    } else {
-      onClose();
-    }
+    reset();
+    setImagePreview(null);
+    onClose();
   };
 
   const handleFileUpload = (e) => {
@@ -91,8 +102,8 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
   if (!visible) return null;
 
   return (
-    <div className="modal-overlay active amenity-os-theme">
-      <div className="modal-box">
+    <div className="modal-overlay active amenity-os-theme" onClick={handleClose}>
+      <div className="modal-box" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h4 style={{ fontSize: '20px', margin: 0 }}>{initialData ? 'Edit Amenity' : 'Add New Amenity'}</h4>
           <button type="button" className="modal-close" onClick={handleClose}>
@@ -122,8 +133,8 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
               )} />
             </div>
 
-            <div style={{ display: 'flex', gap: '20px' }}>
-              <div className="form-group" style={{ flex: 1 }}>
+            <div className="form-row-grid">
+              <div className="form-group">
                 <label className="form-label">Location *</label>
                 <Controller name="location" control={control} render={({ field, fieldState }) => (
                   <>
@@ -132,7 +143,7 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                   </>
                 )} />
               </div>
-              <div className="form-group" style={{ flex: 1 }}>
+              <div className="form-group">
                 <label className="form-label">Category *</label>
                 <Controller name="type" control={control} render={({ field, fieldState }) => (
                   <>
@@ -149,8 +160,8 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '20px' }}>
-              <div className="form-group" style={{ flex: 1 }}>
+            <div className="form-row-grid">
+              <div className="form-group">
                 <label className="form-label">Capacity *</label>
                 <Controller name="capacity" control={control} render={({ field, fieldState }) => (
                   <>
@@ -159,7 +170,7 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                   </>
                 )} />
               </div>
-              <div className="form-group" style={{ flex: 1 }}>
+              <div className="form-group">
                 <label className="form-label">Max Bookings/User/Day *</label>
                 <Controller name="bookingRules.maxBookingsPerUserPerDay" control={control} render={({ field, fieldState }) => (
                   <>
@@ -170,8 +181,8 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '20px' }}>
-              <div className="form-group" style={{ flex: 1 }}>
+            <div className="form-row-grid form-row-grid-3">
+              <div className="form-group">
                 <label className="form-label">Pricing Type *</label>
                 <Controller name="pricing.pricingType" control={control} render={({ field, fieldState }) => (
                   <>
@@ -185,7 +196,7 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                   </>
                 )} />
               </div>
-              <div className="form-group" style={{ flex: 1 }}>
+              <div className="form-group">
                 <label className="form-label">Base Rate (₹) *</label>
                 <Controller name="pricing.baseRate" control={control} render={({ field, fieldState }) => (
                   <>
@@ -194,7 +205,7 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                   </>
                 )} />
               </div>
-              <div className="form-group" style={{ flex: 1 }}>
+              <div className="form-group">
                 <label className="form-label">Security Deposit (₹)</label>
                 <Controller name="pricing.securityDeposit" control={control} render={({ field, fieldState }) => (
                   <>
@@ -242,26 +253,27 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '20px' }}>
-              <div className="form-group" style={{ flex: 2 }}>
-                <label className="form-label">Operating Hours *</label>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                  <Controller name="bookingRules.openTime" control={control} render={({ field, fieldState }) => (
-                    <div>
-                      <input type="time" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} {...field} />
-                      {fieldState.error && <div className="text-danger small">{fieldState.error.message}</div>}
-                    </div>
-                  )} />
-                  <span style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: '600' }}>to</span>
-                  <Controller name="bookingRules.closeTime" control={control} render={({ field, fieldState }) => (
-                    <div>
-                      <input type="time" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} {...field} />
-                      {fieldState.error && <div className="text-danger small">{fieldState.error.message}</div>}
-                    </div>
-                  )} />
-                </div>
+            <div className="form-group">
+              <label className="form-label">Operating Hours *</label>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <Controller name="bookingRules.openTime" control={control} render={({ field, fieldState }) => (
+                  <div style={{ flex: 1 }}>
+                    <input type="time" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} {...field} />
+                    {fieldState.error && <div className="text-danger small">{fieldState.error.message}</div>}
+                  </div>
+                )} />
+                <span style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: '600', flexShrink: 0 }}>to</span>
+                <Controller name="bookingRules.closeTime" control={control} render={({ field, fieldState }) => (
+                  <div style={{ flex: 1 }}>
+                    <input type="time" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} {...field} />
+                    {fieldState.error && <div className="text-danger small">{fieldState.error.message}</div>}
+                  </div>
+                )} />
               </div>
-              <div className="form-group" style={{ flex: 1 }}>
+            </div>
+
+            <div className="form-row-grid">
+              <div className="form-group">
                 <label className="form-label">Slot Duration (Mins) *</label>
                 <Controller name="bookingRules.slotDurationMinutes" control={control} render={({ field, fieldState }) => (
                   <>
@@ -270,7 +282,7 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                   </>
                 )} />
               </div>
-              <div className="form-group" style={{ flex: 1 }}>
+              <div className="form-group">
                 <label className="form-label">Buffer (Mins)</label>
                 <Controller name="bookingRules.bufferTimeMinutes" control={control} render={({ field, fieldState }) => (
                   <>
@@ -279,6 +291,74 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                   </>
                 )} />
               </div>
+            </div>
+
+            <div className="form-section mt-4 mb-3 border-top pt-3">
+              <h5 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>Cancellation & Refund Policy</h5>
+              
+              <div className="form-group">
+                <div className="form-check form-switch" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Controller name="bookingRules.isCancellationEnabled" control={control} render={({ field }) => (
+                    <input className="form-check-input" type="checkbox" role="switch" id="cancelToggle" style={{ cursor: 'pointer', transform: 'scale(1.2)' }} checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
+                  )} />
+                  <label className="form-check-label mb-0" htmlFor="cancelToggle" style={{ cursor: 'pointer', fontWeight: '500' }}>
+                    Enable Cancellation
+                  </label>
+                </div>
+              </div>
+
+              {isCancellationEnabled && (
+                <div className="cancellation-rules-container p-3 bg-light rounded border mb-3">
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h6 className="mb-0">Refund Rules</h6>
+                    <button type="button" className="btn btn-sm btn-primary" onClick={() => appendRule({ cancelBeforeHours: 24, refundPercentage: 100 })}>
+                      <i className="fa-solid fa-plus me-1"></i> Add Rule
+                    </button>
+                  </div>
+                  
+                  {rulesFields.length === 0 ? (
+                    <div className="text-center p-3 text-muted" style={{ backgroundColor: '#fff', borderRadius: '4px', border: '1px dashed #ccc' }}>
+                      No rules configured. Users will not get any refund if they cancel.
+                    </div>
+                  ) : (
+                    <div className="rules-table">
+                      <div className="row fw-bold mb-2 pb-2 border-bottom text-muted" style={{ fontSize: '13px' }}>
+                        <div className="col-5">Cancel Before (Hours)</div>
+                        <div className="col-5">Refund Percentage (%)</div>
+                        <div className="col-2 text-center">Action</div>
+                      </div>
+                      {rulesFields.map((item, index) => (
+                        <div className="row align-items-center mb-2" key={item.id}>
+                          <div className="col-5">
+                            <Controller name={`bookingRules.cancellationRefundRules.${index}.cancelBeforeHours`} control={control} render={({ field, fieldState }) => (
+                              <>
+                                <input type="number" className={`form-control form-control-sm ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. 24" {...field} />
+                                {fieldState.error && <span className="text-danger small">{fieldState.error.message}</span>}
+                              </>
+                            )} />
+                          </div>
+                          <div className="col-5">
+                            <Controller name={`bookingRules.cancellationRefundRules.${index}.refundPercentage`} control={control} render={({ field, fieldState }) => (
+                              <>
+                                <input type="number" className={`form-control form-control-sm ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. 100" {...field} />
+                                {fieldState.error && <span className="text-danger small">{fieldState.error.message}</span>}
+                              </>
+                            )} />
+                          </div>
+                          <div className="col-2 text-center">
+                            <button type="button" className="btn btn-sm btn-danger text-white" onClick={() => removeRule(index)}>
+                              <i className="fa-solid fa-trash"></i>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="mt-2 text-muted" style={{ fontSize: '12px' }}>
+                    <i className="fa-solid fa-circle-info me-1"></i> Rules are automatically sorted by hours (Highest → Lowest) when saved.
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
@@ -312,10 +392,10 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
           </form>
         </div>
         <div className="modal-footer">
-          <button type="button" className="btn btn-outline" style={{ borderRadius: 'var(--radius-pill)' }} onClick={handleClose} disabled={isSubmitting}>
+          <button type="button" className="btn btn-outline" onClick={handleClose} disabled={isSubmitting}>
             Cancel
           </button>
-          <button type="submit" form="amenity-form" className="btn btn-primary" style={{ borderRadius: 'var(--radius-pill)' }} disabled={isSubmitting}>
+          <button type="submit" form="amenity-form" className="btn btn-primary" disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : (initialData ? 'Update Amenity' : 'Create Amenity')}
           </button>
         </div>

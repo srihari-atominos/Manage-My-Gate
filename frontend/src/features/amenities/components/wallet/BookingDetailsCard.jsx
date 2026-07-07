@@ -12,10 +12,14 @@ const BookingDetailsCard = memo(({ booking }) => {
         
         <CRow className="g-4 mb-4">
           <CCol xs={6}>
+            <div className="small text-muted text-uppercase fw-bold mb-1">Booking ID</div>
+            <div className="fw-semibold text-truncate">{booking.bookingId || booking.id}</div>
+          </CCol>
+          <CCol xs={6}>
             <div className="small text-muted text-uppercase fw-bold mb-1">Resident</div>
             <div className="fw-semibold">{booking.residentName}</div>
           </CCol>
-          <CCol xs={6}>
+          <CCol xs={12}>
             <div className="small text-muted text-uppercase fw-bold mb-1">Location</div>
             <div className="fw-semibold text-truncate">{booking.location}</div>
           </CCol>
@@ -35,7 +39,11 @@ const BookingDetailsCard = memo(({ booking }) => {
           </CCol>
         </CRow>
 
-        <div className="d-flex justify-content-between align-items-center pt-3 border-top">
+        <div className="d-flex justify-content-between align-items-center pt-3 border-top mb-2">
+          <span className="small text-muted fw-bold text-uppercase">Payment Status</span>
+          <span className="fw-bold text-success text-capitalize">{booking.paymentStatus || 'Success'}</span>
+        </div>
+        <div className="d-flex justify-content-between align-items-center pt-2">
           <span className="small text-muted fw-bold text-uppercase">Pass Status</span>
           <AmenityStatusBadge status={booking.status} />
         </div>

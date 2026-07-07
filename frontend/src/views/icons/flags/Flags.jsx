@@ -2,7 +2,7 @@ import React from 'react'
 import { CCard, CCardBody, CCardHeader, CRow } from '@coreui/react'
 import { getIconsView } from '../brands/Brands.jsx'
 import { flagSet } from '@coreui/icons'
-import { DocsIcons } from 'src/components'
+import { DocsIcons } from '../../../components'
 
 const CoreUIIcons = () => {
   return (

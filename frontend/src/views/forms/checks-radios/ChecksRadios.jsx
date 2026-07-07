@@ -1,6 +1,6 @@
 import React from 'react'
 import { CCard, CCardBody, CCardHeader, CCol, CFormCheck, CFormSwitch, CRow } from '@coreui/react'
-import { DocsComponents, DocsExample } from 'src/components'
+import { DocsComponents, DocsExample } from '../../../components'
 
 const ChecksRadios = () => {
   return (

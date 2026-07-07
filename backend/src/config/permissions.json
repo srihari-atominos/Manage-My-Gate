@@ -38,24 +38,17 @@
   {
     "feature": "amenities",
     "actions": [
-      "create",
-      "read",
-      "update",
-      "delete",
-      "book",
-      "cancel_booking",
-      "manage_bookings",
-      "view_dashboard",
-      "view_admin_calendar",
-      "manage_ledgers",
-      "manage_master",
-      "manage_maintenance",
-      "manage_settings",
-      "discover_amenities",
-      "view_my_bookings",
-      "manage_wallet",
-      "view_history",
-      "manage_scanner"
+      "dashboard",
+      "admin_calander",
+      "ledgers",
+      "amenities",
+      "maintenance",
+      "settings",
+      "discover",
+      "my_booking",
+      "wallet",
+      "scanner",
+      "security_logs"
     ]
   }
 ]

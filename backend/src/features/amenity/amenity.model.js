@@ -15,6 +15,10 @@ const pricingSchema = new mongoose.Schema({
 const maintenanceSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
+  type: { type: String, enum: ['preventive', 'corrective', 'emergency'], default: 'preventive' },
+  priority: { type: String, enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
+  assignedStaff: { type: String },
+  remarks: { type: String },
   startDate: { type: String, required: true }, // YYYY-MM-DD
   endDate: { type: String, required: true },   // YYYY-MM-DD
   startTime: { type: String }, // optional, for partial day maintenance
@@ -55,6 +59,17 @@ const bookingRulesSchema = new mongoose.Schema({
   minAdvanceBookingHours: {
     type: Number,
     default: 0 // Minimum hours in advance a booking must be made
+  },
+  isCancellationEnabled: {
+    type: Boolean,
+    default: false
+  },
+  cancellationRefundRules: {
+    type: [{
+      cancelBeforeHours: { type: Number, required: true },
+      refundPercentage: { type: Number, required: true, min: 0, max: 100 }
+    }],
+    default: []
   },
   holidayCalendarIds: {
     type: [mongoose.Schema.Types.ObjectId], // Ref to a future Holiday model if needed
@@ -130,5 +145,7 @@ const amenitySchema = new mongoose.Schema({
     default: false
   }
 }, { timestamps: true });
+
+amenitySchema.index({ orgId: 1, name: 1 }, { unique: true, partialFilterExpression: { isDeleted: false } });
 
 export default mongoose.model('Amenity', amenitySchema);

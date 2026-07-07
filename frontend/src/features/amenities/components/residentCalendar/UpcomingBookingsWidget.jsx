@@ -27,18 +27,36 @@ const UpcomingBookingsWidget = memo(({ upcomingEvents, onEventClick }) => {
           {displayEvents.map((event, index) => (
             <div 
               key={event.id} 
-              className={`p-3 cursor-pointer hover-bg-light ${index !== displayEvents.length - 1 ? 'border-bottom' : ''}`}
+              className={`p-3 cursor-pointer hover-bg-light d-flex align-items-center gap-3 ${index !== displayEvents.length - 1 ? 'border-bottom' : ''}`}
               onClick={() => onEventClick(event)}
               role="button"
               tabIndex="0"
               onKeyDown={(e) => { if (e.key === 'Enter') onEventClick(event); }}
             >
-              <div className="fw-bold text-truncate mb-1">{event.amenityName}</div>
-              <div className="small text-muted mb-2">
-                <i className="fa-regular fa-calendar me-2"></i>
-                {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} | {event.start}
+              <div 
+                style={{ 
+                  width: '60px', 
+                  height: '60px', 
+                  borderRadius: '8px', 
+                  backgroundImage: `url(${event.image})`, 
+                  backgroundSize: 'cover', 
+                  backgroundPosition: 'center',
+                  flexShrink: 0
+                }} 
+              />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="fw-bold text-truncate mb-1">{event.amenityName}</div>
+                <div className="small text-muted mb-2">
+                  <i className="fa-regular fa-calendar me-1"></i>
+                  {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} | {event.start}
+                </div>
+                <div className="d-flex gap-2 flex-wrap">
+                  <AmenityStatusBadge status={event.status} />
+                  <span className={`badge bg-${event.paymentStatus === 'paid' ? 'success' : event.paymentStatus === 'failed' ? 'danger' : 'warning'} text-white`}>
+                    {event.paymentStatus.toUpperCase()}
+                  </span>
+                </div>
               </div>
-              <AmenityStatusBadge status={event.status} />
             </div>
           ))}
         </div>

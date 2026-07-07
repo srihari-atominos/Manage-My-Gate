@@ -21,7 +21,7 @@ const AmenitiesMasterView = () => {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedAmenity, setSelectedAmenity] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deactivateModalVisible, setDeactivateModalVisible] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
 
   useEffect(() => {
     loadAmenities();
@@ -57,20 +57,21 @@ const AmenitiesMasterView = () => {
     }
   };
 
-  const handleDeactivateClick = (amenity) => {
+  const handleToggleStatusClick = (amenity) => {
     setSelectedAmenity(amenity);
-    setDeactivateModalVisible(true);
+    setStatusModalVisible(true);
   };
 
-  const confirmDeactivate = async () => {
+  const confirmStatusChange = async () => {
     if (selectedAmenity) {
       setIsDeleting(true);
       try {
-        await updateAmenityStatus(selectedAmenity._id, 'inactive');
-        setDeactivateModalVisible(false);
-        toast.success(`${selectedAmenity.name} deactivated successfully`);
+        const newStatus = selectedAmenity.status === 'active' ? 'inactive' : 'active';
+        await updateAmenityStatus(selectedAmenity._id, newStatus);
+        setStatusModalVisible(false);
+        toast.success(`${selectedAmenity.name} ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
       } catch (err) {
-        toast.error(err.message || 'Failed to deactivate amenity');
+        toast.error(err.message || 'Failed to update amenity status');
       } finally {
         setIsDeleting(false);
       }
@@ -82,27 +83,29 @@ const AmenitiesMasterView = () => {
       <AmenitiesTopNav />
       <div className="view-container">
         <div className="view active" id="view-admin-amenities">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <h2 style={{ fontSize: '28px', margin: 0 }}>Amenity Master</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Manage every bookable facility in your community.</p>
+              <h2 style={{ fontSize: '26px', margin: 0, lineHeight: 1.3 }}>Amenity Master</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: '500', margin: '4px 0 0' }}>Manage every bookable facility in your community.</p>
             </div>
             
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <div className="search-bar-app" style={{ margin: 0, padding: '4px 16px', boxShadow: 'none' }}>
-                <i className="fa-solid fa-magnifying-glass" style={{ fontSize: '14px' }}></i>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '14px', color: '#6c757d', fontSize: '14px', pointerEvents: 'none' }}></i>
                 <input 
                   type="text" 
-                  id="amenity-search-input" 
+                  className="form-control"
                   placeholder="Search amenities..." 
-                  style={{ width: '200px' }} 
+                  style={{ paddingLeft: '38px', width: '260px', borderRadius: '6px', height: '42px', border: '1px solid #ced4da', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} 
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <button className="btn btn-primary" onClick={handleAddClick}>
-                <i className="fa-solid fa-plus" style={{ marginRight: '8px' }}></i> Add New
-              </button>
+              {canCreate && (
+                <button className="btn btn-primary" onClick={handleAddClick} style={{ whiteSpace: 'nowrap' }}>
+                  <i className="fa-solid fa-plus"></i> Add New
+                </button>
+              )}
             </div>
           </div>
 
@@ -116,7 +119,7 @@ const AmenitiesMasterView = () => {
               canUpdate={canUpdate}
               canDelete={canDelete}
               onEdit={handleEditClick} 
-              onDeactivate={handleDeactivateClick}
+              onToggleStatus={handleToggleStatusClick}
               onViewDetails={handleViewDetails}
             />
           )}
@@ -137,11 +140,15 @@ const AmenitiesMasterView = () => {
         />
 
         <DeleteConfirmationModal 
-          visible={deactivateModalVisible} 
-          onClose={() => setDeactivateModalVisible(false)} 
-          onConfirm={confirmDeactivate}
+          visible={statusModalVisible} 
+          onClose={() => setStatusModalVisible(false)} 
+          onConfirm={confirmStatusChange}
           isDeleting={isDeleting}
-          message={selectedAmenity ? `Are you sure you want to deactivate ${selectedAmenity.name}? It will no longer be available for booking.` : ''}
+          title={selectedAmenity?.status === 'active' ? 'Confirm Deactivate' : 'Confirm Activate'}
+          confirmText={selectedAmenity?.status === 'active' ? 'Deactivate' : 'Activate'}
+          loadingText={selectedAmenity?.status === 'active' ? 'Deactivating...' : 'Activating...'}
+          confirmColor={selectedAmenity?.status === 'active' ? 'var(--warning)' : 'var(--success)'}
+          message={selectedAmenity ? `Are you sure you want to ${selectedAmenity.status === 'active' ? 'deactivate' : 'activate'} ${selectedAmenity.name}? ${selectedAmenity.status === 'active' ? 'It will no longer be available for booking.' : 'It will become available for booking.'}` : ''}
         />
       </div>
     </div>

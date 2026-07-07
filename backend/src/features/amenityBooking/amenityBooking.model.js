@@ -55,7 +55,7 @@ const amenityBookingSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ['pending', 'processing', 'success', 'failed', 'cancelled', 'refunded'],
+    enum: ['pending', 'processing', 'success', 'failed', 'cancelled', 'refunded', 'partial_refund'],
     default: 'pending'
   },
   paymentId: {
@@ -67,6 +67,11 @@ const amenityBookingSchema = new mongoose.Schema({
     default: 'None'
   },
 
+  bookingId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   // QR Access
   qrCode: {
     type: String, // The encrypted payload or URL to the QR image
@@ -76,6 +81,14 @@ const amenityBookingSchema = new mongoose.Schema({
     type: String,
     enum: ['active', 'expired', 'revoked'],
     default: 'active'
+  },
+  qrGeneratedAt: {
+    type: Date,
+    default: null
+  },
+  qrExpiresAt: {
+    type: Date,
+    default: null
   },
 
   // Lifecycle
@@ -87,6 +100,25 @@ const amenityBookingSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  cancellationReason: {
+    type: String,
+    default: null
+  },
+  refundPercentage: {
+    type: Number,
+    default: 0
+  },
+  cancelledAt: {
+    type: Date,
+    default: null
+  },
+  cancelledBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  
+  // Review/Approval
   reviewedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

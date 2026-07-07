@@ -36,8 +36,8 @@ import CIcon from '@coreui/icons-react'
 
 import { AppSidebarNav } from './AppSidebarNav'
 
-import { logo } from 'src/assets/brand/logo'
-import { sygnet } from 'src/assets/brand/sygnet'
+import { logo } from '../assets/brand/logo'
+import { sygnet } from '../assets/brand/sygnet'
 
 import { useAuth } from '../features/auth/hooks/useAuth'
 
@@ -78,14 +78,18 @@ const AppSidebar = () => {
    */
   const isPermitted = (item) => {
     if (!item.requiredPermission) {
-      console.log(`[AppSidebar DEBUG] Item ${item.name} has no requiredPermission, returning true`);
       return true;
     }
+    
+    if (Array.isArray(item.requiredPermission)) {
+      const workspaceAllowed = isPlatform || item.requiredPermission.some(perm => allowedFeatures.includes(perm));
+      const userAllowed = item.requiredPermission.some(perm => checkPermission(perm));
+      return workspaceAllowed && userAllowed;
+    }
+
     const workspaceAllowed = isPlatform || allowedFeatures.includes(item.requiredPermission);
     const userAllowed = checkPermission(item.requiredPermission);
-    const res = workspaceAllowed && userAllowed;
-    console.log(`[AppSidebar DEBUG] Item ${item.name} (${item.requiredPermission}) permitted: ${res} (Workspace: ${workspaceAllowed}, User: ${userAllowed})`);
-    return res;
+    return workspaceAllowed && userAllowed;
   };
 
   const filterItems = (items) => {

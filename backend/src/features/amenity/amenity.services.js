@@ -5,7 +5,87 @@ import HttpError from '../../utils/httpError.utils.js';
 export class AmenityService {
   async getAllAmenities(orgId, filters = {}) {
     if (!orgId) throw new HttpError(400, 'Organization ID is required to fetch amenities.');
-    return await amenityRepository.findAllByOrg(orgId, filters);
+    
+    const dbFilter = { isDeleted: false };
+    if (filters.status) dbFilter.status = filters.status;
+    if (filters.category && filters.category !== 'All') dbFilter.type = filters.category;
+    if (filters.capacity) {
+      const cap = parseInt(filters.capacity, 10);
+      if (!isNaN(cap)) dbFilter.capacity = { $gte: cap };
+    }
+    if (filters.search) {
+      dbFilter.$or = [
+        { name: { $regex: new RegExp(filters.search, 'i') } },
+        { location: { $regex: new RegExp(filters.search, 'i') } },
+        { type: { $regex: new RegExp(filters.search, 'i') } }
+      ];
+    }
+    
+    let amenities = await amenityRepository.findAllByOrg(orgId, dbFilter);
+    
+    if (filters.priceRange) {
+      const [min, max] = filters.priceRange.split('-').map(Number);
+      amenities = amenities.filter(a => {
+        const rate = a.ratePerHour || a.pricing?.baseRate || 0;
+        if (max) return rate >= min && rate <= max;
+        return rate >= min;
+      });
+    }
+
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().substring(0, 5);
+    const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
+    
+    amenities = await Promise.all(amenities.map(async (amenity) => {
+      const a = amenity.toObject ? amenity.toObject() : amenity;
+      
+      if (a.status === 'active') {
+        a.currentStatus = 'Available';
+        const dayOfWeek = now.getDay();
+        if (a.bookingRules?.weeklyOffDays?.includes(dayOfWeek)) {
+          a.currentStatus = 'Closed';
+        } else {
+          const openTime = a.bookingRules?.openTime || '00:00';
+          const closeTime = a.bookingRules?.closeTime || '23:59';
+          if (currentTime < openTime || currentTime > closeTime) {
+            a.currentStatus = 'Closed';
+          }
+        }
+        
+        if (a.maintenanceSchedules && a.maintenanceSchedules.length > 0) {
+          const hasActiveOrFutureMaintenance = a.maintenanceSchedules.some(maint => {
+            const mEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
+            return mEnd >= now;
+          });
+          if (hasActiveOrFutureMaintenance) {
+            a.currentStatus = 'Under Maintenance';
+          }
+        }
+        
+        if (a.currentStatus === 'Available') {
+          const conflicts = await amenityBookingRepository.findConflicts(a._id, today, currentTime, currentTime);
+          if (conflicts.length >= a.capacity) {
+            a.currentStatus = 'Fully Booked';
+          }
+        }
+      } else {
+        a.currentStatus = 'Unavailable';
+      }
+      return a;
+    }));
+
+    if (filters.sort) {
+      amenities.sort((a, b) => {
+        if (filters.sort === 'name') return a.name.localeCompare(b.name);
+        if (filters.sort === 'price') return (a.ratePerHour || a.pricing?.baseRate || 0) - (b.ratePerHour || b.pricing?.baseRate || 0);
+        if (filters.sort === 'capacity') return b.capacity - a.capacity;
+        if (filters.sort === 'availability') return a.currentStatus.localeCompare(b.currentStatus);
+        return 0;
+      });
+    }
+
+    return amenities;
   }
 
   async getAmenityById(id, orgId) {
@@ -218,9 +298,147 @@ export class AmenityService {
     }));
   }
 
-  async searchAvailableAmenities(orgId, dateStr, startTime, endTime) {
-    const amenities = await amenityRepository.findAllByOrg(orgId, { status: 'active' });
+  async getAllSlots(id, orgId, dateStr, userId) {
+    const amenity = await this.getAmenityById(id, orgId);
+    
+    const targetDate = new Date(dateStr);
+    const dayOfWeek = targetDate.getDay();
+    const isWeeklyOff = amenity.bookingRules?.weeklyOffDays?.includes(dayOfWeek);
+
+    const openTime = amenity.bookingRules?.openTime || '06:00';
+    const closeTime = amenity.bookingRules?.closeTime || '22:00';
+    const durationMins = amenity.bookingRules?.slotDurationMinutes || 60;
+    const bufferMins = amenity.bookingRules?.bufferTimeMinutes || 0;
+
+    const startMs = new Date(`${dateStr}T${openTime}`).getTime();
+    const endMs = new Date(`${dateStr}T${closeTime}`).getTime();
+    
+    let currentMs = startMs;
+    const allSlots = [];
+    
+    while (currentMs + (durationMins * 60000) <= endMs) {
+      const slotEndMs = currentMs + (durationMins * 60000);
+      const sDate = new Date(currentMs);
+      const eDate = new Date(slotEndMs);
+      const formatTime = (d) => d.toTimeString().substring(0, 5);
+      
+      allSlots.push({
+        startTime: formatTime(sDate),
+        endTime: formatTime(eDate),
+        startMs,
+        endMs: slotEndMs
+      });
+      
+      currentMs = slotEndMs + (bufferMins * 60000);
+    }
+
+    const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
+    const existingBookings = await amenityBookingRepository.findByOrgPaginated(orgId, {
+      amenityId: id,
+      bookingDate: dateStr,
+      status: { $in: ['pending', 'approved', 'confirmed', 'checked-in'] }
+    }, 0, 1000);
+    const bookings = existingBookings.data;
+
+    let multiplier = 1.0;
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      multiplier = amenity.pricing?.weekendRateMultiplier || 1.0;
+    }
+    const baseRate = amenity.pricing?.baseRate || amenity.ratePerHour || 0;
+    const durationHours = durationMins / 60;
+    const price = baseRate * durationHours * multiplier;
+
+    return allSlots.map(slot => {
+      const slotStart = new Date(`${dateStr}T${slot.startTime}`);
+      const slotEnd = new Date(`${dateStr}T${slot.endTime}`);
+      
+      let status = 'Available';
+      let bookedByMe = false;
+      let bookingId = null;
+      let bookingStatus = null;
+
+      if (slotStart < new Date()) {
+        status = 'Closed';
+      }
+
+      if (amenity.maintenanceSchedules) {
+        for (const maint of amenity.maintenanceSchedules) {
+          const mStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
+          const mEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
+          if (slotStart < mEnd && slotEnd > mStart) {
+            status = 'Maintenance';
+            break;
+          }
+        }
+      }
+
+      if (status !== 'Maintenance' && (isWeeklyOff || amenity.status !== 'active')) {
+        status = 'Closed';
+      }
+
+      if (status === 'Available') {
+        let overlappingBookings = 0;
+        for (const b of bookings) {
+          const bStart = new Date(`${dateStr}T${b.startTime}`);
+          const bEnd = new Date(`${dateStr}T${b.endTime}`);
+          if (slotStart < bEnd && slotEnd > bStart) {
+            overlappingBookings++;
+            if (userId && b.user && b.user._id && b.user._id.toString() === userId.toString()) {
+              bookedByMe = true;
+              bookingId = b.bookingId || b._id;
+              bookingStatus = b.status;
+            } else if (userId && b.userId && b.userId.toString() === userId.toString()) {
+              bookedByMe = true;
+              bookingId = b.bookingId || b._id;
+              bookingStatus = b.status;
+            }
+          }
+        }
+        if (overlappingBookings >= amenity.capacity) {
+          status = 'Booked';
+        }
+      }
+
+      return {
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        duration: durationMins,
+        price: price,
+        status: status,
+        bookedByMe,
+        bookingId,
+        bookingStatus
+      };
+    });
+  }
+
+  async searchAvailableAmenities(orgId, dateStr, startTime, endTime, filters = {}) {
+    const dbFilter = { status: 'active' };
+    if (filters.category && filters.category !== 'All') dbFilter.type = filters.category;
+    if (filters.capacity) {
+      const cap = parseInt(filters.capacity, 10);
+      if (!isNaN(cap)) dbFilter.capacity = { $gte: cap };
+    }
+    if (filters.search) {
+      dbFilter.$or = [
+        { name: { $regex: new RegExp(filters.search, 'i') } },
+        { location: { $regex: new RegExp(filters.search, 'i') } }
+      ];
+    }
+    
+    let amenities = await amenityRepository.findAllByOrg(orgId, dbFilter);
+
+    if (filters.priceRange) {
+      const [min, max] = filters.priceRange.split('-').map(Number);
+      amenities = amenities.filter(a => {
+        const rate = a.ratePerHour || a.pricing?.baseRate || 0;
+        if (max) return rate >= min && rate <= max;
+        return rate >= min;
+      });
+    }
+
     const availableAmenities = [];
+    const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
 
     for (const amenity of amenities) {
       // 1. Weekly Off Check
@@ -254,12 +472,24 @@ export class AmenityService {
       if (inMaintenance) continue;
 
       // 4. Booking conflicts check
-      const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
       const conflicts = await amenityBookingRepository.findConflicts(amenity._id, dateStr, startTime, endTime);
       
       if (conflicts.length < amenity.capacity) {
-        availableAmenities.push(amenity);
+        const a = amenity.toObject ? amenity.toObject() : amenity;
+        a.currentStatus = 'Available';
+        availableAmenities.push(a);
       }
+    }
+
+    // Sorting
+    if (filters.sort) {
+      availableAmenities.sort((a, b) => {
+        if (filters.sort === 'name') return a.name.localeCompare(b.name);
+        if (filters.sort === 'price') return (a.ratePerHour || a.pricing?.baseRate || 0) - (b.ratePerHour || b.pricing?.baseRate || 0);
+        if (filters.sort === 'capacity') return b.capacity - a.capacity;
+        if (filters.sort === 'availability') return a.currentStatus.localeCompare(b.currentStatus);
+        return 0;
+      });
     }
 
     return availableAmenities;
@@ -273,6 +503,96 @@ export class AmenityService {
   async getMaintenanceStats(orgId) {
     if (!orgId) throw new HttpError(400, 'Organization ID is required');
     return await amenityRepository.getMaintenanceStats(orgId);
+  }
+
+  async getAllMaintenance(orgId) {
+    if (!orgId) throw new HttpError(400, 'Organization ID is required');
+    return await amenityRepository.getAllMaintenance(orgId);
+  }
+
+  async scheduleMaintenance(amenityId, orgId, maintenanceData) {
+    const amenity = await this.getAmenityById(amenityId, orgId);
+    if (!amenity) throw new HttpError(404, 'Amenity not found');
+
+    const mStart = new Date(`${maintenanceData.startDate}T${maintenanceData.startTime || '00:00'}`);
+    const mEnd = new Date(`${maintenanceData.endDate}T${maintenanceData.endTime || '23:59'}`);
+
+    if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
+      for (const maint of amenity.maintenanceSchedules) {
+        const existingStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
+        const existingEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
+        if (mStart < existingEnd && mEnd > existingStart) {
+          throw new HttpError(400, 'A maintenance schedule already exists that overlaps with the requested time.');
+        }
+      }
+    }
+
+    const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
+    const activeBookings = await amenityBookingRepository.findActiveBookingsByAmenity(amenityId, orgId);
+    
+    for (const booking of activeBookings) {
+      const bStart = new Date(`${booking.bookingDate}T${booking.startTime}`);
+      const bEnd = new Date(`${booking.bookingDate}T${booking.endTime}`);
+      if (mStart < bEnd && mEnd > bStart) {
+        throw new HttpError(400, `Cannot schedule maintenance. An active booking exists on ${booking.bookingDate} (${booking.startTime} - ${booking.endTime}).`);
+      }
+    }
+
+    const updated = await amenityRepository.update(amenityId, orgId, {
+      $push: { maintenanceSchedules: maintenanceData }
+    });
+    
+    amenityEventEmitter.emit(AMENITY_UPDATED, updated);
+    return updated;
+  }
+
+  async updateMaintenance(amenityId, maintenanceId, orgId, maintenanceData) {
+    const amenity = await this.getAmenityById(amenityId, orgId);
+    if (!amenity) throw new HttpError(404, 'Amenity not found');
+
+    const mStart = new Date(`${maintenanceData.startDate}T${maintenanceData.startTime || '00:00'}`);
+    const mEnd = new Date(`${maintenanceData.endDate}T${maintenanceData.endTime || '23:59'}`);
+
+    if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
+      for (const maint of amenity.maintenanceSchedules) {
+        if (maint._id.toString() === maintenanceId.toString()) continue;
+        const existingStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
+        const existingEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
+        if (mStart < existingEnd && mEnd > existingStart) {
+          throw new HttpError(400, 'A maintenance schedule already exists that overlaps with the requested time.');
+        }
+      }
+    }
+
+    const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
+    const activeBookings = await amenityBookingRepository.findActiveBookingsByAmenity(amenityId, orgId);
+    
+    for (const booking of activeBookings) {
+      const bStart = new Date(`${booking.bookingDate}T${booking.startTime}`);
+      const bEnd = new Date(`${booking.bookingDate}T${booking.endTime}`);
+      if (mStart < bEnd && mEnd > bStart) {
+        throw new HttpError(400, `Cannot schedule maintenance. An active booking exists on ${booking.bookingDate} (${booking.startTime} - ${booking.endTime}).`);
+      }
+    }
+
+    const updated = await amenityRepository.update(amenityId, orgId, {
+      $set: { "maintenanceSchedules.$[elem]": { ...maintenanceData, _id: maintenanceId } }
+    }, { arrayFilters: [{ "elem._id": maintenanceId }] });
+    
+    amenityEventEmitter.emit(AMENITY_UPDATED, updated);
+    return updated;
+  }
+
+  async deleteMaintenance(amenityId, maintenanceId, orgId) {
+    const amenity = await this.getAmenityById(amenityId, orgId);
+    if (!amenity) throw new HttpError(404, 'Amenity not found');
+
+    const updated = await amenityRepository.update(amenityId, orgId, {
+      $pull: { maintenanceSchedules: { _id: maintenanceId } }
+    });
+    
+    amenityEventEmitter.emit(AMENITY_UPDATED, updated);
+    return updated;
   }
 }
 

@@ -4,10 +4,10 @@ import HttpError from '../../utils/httpError.utils.js';
 class PaymentController {
   async simulateCallback(req, res, next) {
     try {
-      const { paymentId, isSuccess, errorReason } = req.body;
+      const { paymentId, isSuccess, errorReason, paymentMethod } = req.body;
       if (!paymentId) throw new HttpError(400, 'paymentId is required');
 
-      const payment = await paymentService.simulatePaymentCallback(paymentId, isSuccess, errorReason);
+      const payment = await paymentService.simulatePaymentCallback(paymentId, isSuccess, errorReason, paymentMethod);
       
       res.status(200).json({
         success: true,

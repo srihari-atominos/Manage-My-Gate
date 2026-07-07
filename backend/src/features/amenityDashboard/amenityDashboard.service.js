@@ -71,65 +71,66 @@ class AmenityDashboardService {
     return activity.slice(0, 10);
   }
 
-  async getCalendarEvents(orgId, dateStr) {
+  async getCalendarEvents(orgId, startDate, endDate) {
     const amenities = await amenityService.getAllAmenities(orgId);
-    const { data: bookings } = await amenityBookingService.getBookingsQueue(orgId, 1, 1000, { bookingDate: dateStr });
+    
+    // Pass startDate and endDate directly to repository to get all events in range without pagination
+    // Because we just added findEventsForCalendar
+    let bookings = [];
+    if (amenityBookingService.findEventsForCalendar) {
+      bookings = await amenityBookingService.findEventsForCalendar(orgId, startDate, endDate);
+    } else {
+      // Direct repo call if service method isn't mapped
+      const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
+      bookings = await amenityBookingRepository.findEventsForCalendar(orgId, startDate, endDate);
+    }
     
     const events = [];
 
-    amenities.forEach(amenity => {
-      // Operating Hours (if active and open today)
-      if (amenity.status === 'active' && amenity.bookingRules?.openTime && amenity.bookingRules?.closeTime) {
-        const targetDate = new Date(dateStr);
-        const dayOfWeek = targetDate.getDay();
-        if (!amenity.bookingRules?.weeklyOffDays?.includes(dayOfWeek)) {
-          events.push({
-            id: `op_${amenity._id}_${dateStr}`,
-            type: 'operating_hours',
-            title: 'Operating Hours',
-            subtitle: amenity.name,
-            date: dateStr,
-            start: amenity.bookingRules.openTime,
-            end: amenity.bookingRules.closeTime,
-            amenityName: amenity.name,
-            status: 'open'
-          });
-        }
-      }
-
-      // Maintenance
-      if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
-        amenity.maintenanceSchedules.forEach(maint => {
-          if (dateStr >= maint.startDate && dateStr <= maint.endDate) {
-            events.push({
-              id: `maint_${maint._id}`,
-              type: 'maintenance',
-              title: maint.title || 'Maintenance',
-              subtitle: amenity.name,
-              date: dateStr,
-              start: maint.startTime || '00:00',
-              end: maint.endTime || '23:59',
-              amenityName: amenity.name,
-              status: maint.status || 'in_progress'
-            });
-          }
-        });
-      }
-    });
-
     // Bookings
     (bookings || []).forEach(b => {
+      // Calculate duration in minutes if needed, or we just pass start/end
+      const startDateTime = new Date(`${b.bookingDate}T${b.startTime}`);
+      const endDateTime = new Date(`${b.bookingDate}T${b.endTime}`);
+      const durationMins = (endDateTime - startDateTime) / (1000 * 60);
+
       events.push({
         id: b._id,
+        bookingId: b.bookingId || b._id,
         type: 'booking',
-        title: `${b.amenity?.name || 'Amenity'} Booking`,
-        subtitle: b.user?.name || 'Resident',
+        title: `${b.amenityId?.name || 'Amenity'} Booking`,
+        subtitle: b.userId?.name || 'Resident',
         date: b.bookingDate,
         start: b.startTime,
         end: b.endTime,
-        amenityName: b.amenity?.name,
-        residentName: b.user?.name,
-        status: b.status
+        duration: durationMins,
+        
+        // Amenity info
+        amenityId: b.amenityId?._id,
+        amenityName: b.amenityId?.name,
+        amenityImage: b.amenityId?.images?.[0] || null,
+        
+        // Resident info
+        residentId: b.userId?._id,
+        residentName: b.userId?.name,
+        residentPhoto: b.userId?.profilePicture,
+        flatNumber: b.userId?.flatNumber,
+        building: b.userId?.building,
+        tower: b.userId?.tower,
+        phoneNumber: b.userId?.phoneNumber,
+        
+        // Booking & Payment Info
+        status: b.status,
+        paymentStatus: b.paymentStatus,
+        paymentMethod: b.paymentMethod,
+        bookingAmount: b.pricingDetails?.totalAmount || b.totalPrice || 0,
+        refundAmount: b.refundAmount || 0,
+        
+        // Security Info
+        qrStatus: b.qrStatus,
+        checkInStatus: b.status === 'checked-in' || b.status === 'completed' ? 'entered' : 'pending',
+        checkInTime: b.checkInTime,
+        checkOutTime: b.checkOutTime
       });
     });
 

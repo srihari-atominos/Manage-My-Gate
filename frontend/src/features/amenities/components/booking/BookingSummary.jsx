@@ -1,4 +1,4 @@
-﻿import React, { memo } from 'react';
+import React, { memo } from 'react';
 import { CCard, CCardBody, CRow, CCol, CButton } from '@coreui/react';
 import BookingPricing from './BookingPricing.jsx';
 
@@ -25,6 +25,23 @@ const BookingSummary = memo(({ amenity, draft, onConfirm, onBack }) => {
               <div>
                 <p className="text-uppercase text-muted small fw-bold mb-1">Time</p>
                 <p className="fs-5">{draft.startTime} - {draft.endTime}</p>
+                <p className="text-muted small mt-1">Duration: {(() => {
+                  if (!draft.startTime || !draft.endTime) return '';
+                  const parseTime = (timeStr) => {
+                    const [time, modifier] = timeStr.split(' ');
+                    let [hours, minutes] = time.split(':').map(Number);
+                    if (modifier === 'PM' && hours < 12) hours += 12;
+                    if (modifier === 'AM' && hours === 12) hours = 0;
+                    return hours * 60 + minutes;
+                  };
+                  try {
+                    const startMins = parseTime(draft.startTime);
+                    const endMins = parseTime(draft.endTime);
+                    let diff = endMins - startMins;
+                    if (diff < 0) diff += 24 * 60;
+                    return `${diff} Minutes`;
+                  } catch(e) { return ''; }
+                })()}</p>
               </div>
             </div>
 
@@ -43,12 +60,9 @@ const BookingSummary = memo(({ amenity, draft, onConfirm, onBack }) => {
           </CCol>
         </CRow>
         
-        <div className="d-flex justify-content-between pt-4 mt-2 border-top">
-          <CButton color="secondary" variant="ghost" onClick={onBack} className="px-4 rounded-pill">
-            <i className="fa-solid fa-arrow-left me-2"></i> Edit Details
-          </CButton>
+        <div className="d-flex justify-content-end pt-4 mt-2 border-top">
           <CButton color="primary" onClick={onConfirm} className="px-5 rounded-pill shadow-sm">
-            Confirm Booking <i className="fa-solid fa-check ms-2"></i>
+            Book Now <i className="fa-solid fa-check ms-2"></i>
           </CButton>
         </div>
       </CCardBody>

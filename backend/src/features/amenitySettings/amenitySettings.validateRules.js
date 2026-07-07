@@ -22,5 +22,10 @@ export const updateSettingsRules = [
   body('notifications.bookingConfirmation').optional().isBoolean(),
   body('notifications.bookingCancellation').optional().isBoolean(),
   body('notifications.bookingReminder').optional().isBoolean(),
-  body('notifications.bookingCheckIn').optional().isBoolean()
+  body('notifications.bookingCheckIn').optional().isBoolean(),
+
+  body('paymentConfig').optional().isObject(),
+  body('paymentConfig.provider').optional().isIn(['Stripe Payments', 'Razorpay', 'PayU', 'None']),
+  body('paymentConfig.publicKey').optional().isString(),
+  body('paymentConfig.secretKey').optional().isString()
 ];

@@ -1,5 +1,5 @@
 import amenityBookingRepository from './amenityBooking.repository.js';
-import { amenityBookingEventEmitter, AMENITY_BOOKING_CREATED, AMENITY_BOOKING_REVIEWED, AMENITY_BOOKING_CANCELLED, AMENITY_BOOKING_CHECKED_IN } from './amenityBooking.events.js';
+import { amenityBookingEventEmitter, AMENITY_BOOKING_CREATED, AMENITY_BOOKING_REVIEWED, AMENITY_BOOKING_CANCELLED, AMENITY_BOOKING_CHECKED_IN, AMENITY_BOOKING_DENIED } from './amenityBooking.events.js';
 import HttpError from '../../utils/httpError.utils.js';
 import paymentService from '../payment/payment.service.js';
 
@@ -19,8 +19,34 @@ export class AmenityBookingService {
     };
   }
 
-  async getMyBookings(userId, orgId) {
-    return await amenityBookingRepository.findByUser(userId, orgId);
+  async getMyBookings(userId, orgId, filters = {}) {
+    return await amenityBookingRepository.findByUser(userId, orgId, filters);
+  }
+
+  async findEventsForCalendar(orgId, startDate, endDate) {
+    return await amenityBookingRepository.findEventsForCalendar(orgId, startDate, endDate);
+  }
+
+  async getActivePasses(userId, orgId) {
+    const activeBookings = await amenityBookingRepository.getActivePasses(userId, orgId);
+    
+    // Lazy expiration logic
+    const now = new Date();
+    const validPasses = [];
+    
+    for (const booking of activeBookings) {
+      if (booking.bookingDate && booking.endTime) {
+        const bookingEnd = new Date(`${booking.bookingDate}T${booking.endTime}`);
+        if (now > bookingEnd) {
+          // Expire it
+          await amenityBookingRepository.updateStatus(booking._id, orgId, booking.status, { qrStatus: 'expired' });
+          continue; // skip returning it
+        }
+      }
+      validPasses.push(booking);
+    }
+    
+    return validPasses;
   }
 
   async createBooking(bookingData) {
@@ -172,7 +198,7 @@ export class AmenityBookingService {
     const { orgId, amenityId, userId, bookingDate, startTime, endTime, paymentStatus = 'paid' } = bookingData;
     
     // Resident membership check
-    const userService = (await import('../userManagement/user.services.js')).default;
+    const userService = (await import('../user/user.services.js')).default;
     const user = await userService.getUserById(userId);
     if (!user || user.orgId.toString() !== orgId.toString()) {
       throw new HttpError(400, 'Resident not found in this organization');
@@ -232,7 +258,7 @@ export class AmenityBookingService {
     return updated;
   }
 
-  async cancelBooking(bookingId, userId, orgId) {
+  async cancelBooking(bookingId, userId, orgId, reason = '') {
     const booking = await amenityBookingRepository.findById(bookingId, orgId);
     if (!booking) throw new HttpError(404, 'Booking not found');
     
@@ -244,13 +270,60 @@ export class AmenityBookingService {
       throw new HttpError(400, 'Booking cannot be cancelled in its current state');
     }
 
-    // Process Refund logic if payment was success
-    if (booking.paymentStatus === 'success' && booking.paymentId) {
-      await paymentService.processRefund(booking.paymentId, booking.pricingDetails.totalAmount);
-      booking.paymentStatus = 'refunded';
+    // 1. Load the Amenity bookingRules
+    const amenityService = (await import('../amenity/amenity.services.js')).default;
+    const amenity = await amenityService.getAmenityById(booking.amenityId, orgId);
+    
+    let refundPercentage = 100; // default to full refund if no rules
+    let refundAmount = booking.pricingDetails?.totalAmount || booking.totalPrice || 0;
+
+    // 2. Read cancellationRefundRules
+    if (amenity?.bookingRules?.isCancellationEnabled && amenity.bookingRules.cancellationRefundRules?.length > 0) {
+      const rules = [...amenity.bookingRules.cancellationRefundRules].sort((a, b) => b.cancelBeforeHours - a.cancelBeforeHours);
+      
+      const bookingStartDateTime = new Date(`${booking.bookingDate}T${booking.startTime}`);
+      const now = new Date();
+      const remainingHours = (bookingStartDateTime - now) / (1000 * 60 * 60);
+
+      // Find the applicable rule
+      const applicableRule = rules.find(rule => remainingHours >= rule.cancelBeforeHours);
+      
+      if (applicableRule) {
+        refundPercentage = applicableRule.refundPercentage;
+      } else {
+        // If remaining hours is less than the smallest rule, refund is 0%
+        refundPercentage = 0;
+      }
+      
+      refundAmount = (refundAmount * refundPercentage) / 100;
     }
 
-    const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, 'cancelled');
+    // 3. Process Refund logic if payment was success
+    let newPaymentStatus = booking.paymentStatus;
+    if (booking.paymentStatus === 'success' && booking.paymentId) {
+      const paymentService = (await import('../payment/payment.service.js')).default;
+      if (refundAmount > 0) {
+        await paymentService.processRefund(booking.paymentId, refundAmount);
+        newPaymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
+      }
+      // If refundAmount is 0, we do not call processRefund, but we update the paymentStatus manually
+      if (refundAmount === 0) {
+        newPaymentStatus = 'success'; // Kept as success, or maybe 'no_refund' ? Wait, the requirement says "Payment Status Updated".
+      }
+    }
+
+    const cancelUpdateData = {
+      status: 'cancelled',
+      paymentStatus: newPaymentStatus,
+      qrStatus: 'expired',
+      cancellationReason: reason,
+      cancelledAt: new Date(),
+      cancelledBy: userId,
+      refundPercentage,
+      refundAmount
+    };
+
+    const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, 'cancelled', cancelUpdateData);
     amenityBookingEventEmitter.emit(AMENITY_BOOKING_CANCELLED, updated);
     return updated;
   }
@@ -392,34 +465,140 @@ export class AmenityBookingService {
 
   async checkInBooking(bookingId, orgId, userId) {
     const booking = await amenityBookingRepository.findById(bookingId, orgId);
-    if (!booking) throw new HttpError(404, 'Booking not found');
     
-    if (booking.userId.toString() !== userId.toString()) {
-      throw new HttpError(403, 'You do not have permission to check-in this booking');
+    const emitDenied = (reason) => {
+      amenityBookingEventEmitter.emit(AMENITY_BOOKING_DENIED, {
+        orgId,
+        bookingId,
+        userId, // The guard scanning it
+        booking,
+        reason
+      });
+      return new HttpError(400, reason);
+    };
+    
+    // 1 & 2. Booking Exists
+    if (!booking) {
+      amenityBookingEventEmitter.emit(AMENITY_BOOKING_DENIED, { orgId, bookingId, userId, reason: 'Invalid QR Code' });
+      throw new HttpError(404, 'Booking not found.');
     }
 
-    if (booking.status === 'cancelled' || booking.status === 'rejected') {
-      throw new HttpError(400, 'Cannot check in a cancelled or rejected booking');
-    }
-    if (booking.status === 'checked-in' || booking.status === 'completed') {
-      throw new HttpError(400, 'Booking has already been checked in or completed');
-    }
-    
     const today = new Date().toISOString().split('T')[0];
-    if (booking.bookingDate !== today) {
-      throw new HttpError(400, 'You can only check in on the day of the booking');
+    
+    // 4. Booking Status Cancelled
+    if (booking.status === 'cancelled') {
+      throw emitDenied('Booking has been cancelled.');
+    }
+    
+    // 5. Payment Status
+    if (booking.paymentStatus === 'pending') {
+      throw emitDenied('Payment is pending.');
     }
 
+    // 6. QR Status
+    if (booking.qrStatus === 'expired') {
+      throw emitDenied('QR Code has expired.');
+    }
+
+    // 9. Duplicate Entry (Already Completed)
+    if (booking.status === 'completed') {
+      throw emitDenied('Booking already completed.');
+    }
+
+    // Exit Workflow
+    if (booking.status === 'checked-in') {
+      const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, 'completed');
+      updated.checkOutTime = new Date();
+      await updated.save();
+      
+      const { AMENITY_BOOKING_COMPLETED } = await import('./amenityBooking.events.js');
+      amenityBookingEventEmitter.emit(AMENITY_BOOKING_COMPLETED, updated);
+      
+      return Object.assign(updated.toObject(), {
+        isExit: true,
+        message: 'Exit Recorded'
+      });
+    }
+
+    // Entry Workflow Validations
+    // 3. Booking Date
+    if (booking.bookingDate !== today) {
+      const formattedDate = new Date(booking.bookingDate).toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+      });
+      throw emitDenied(`Access Denied: Booking is scheduled for ${formattedDate}.`);
+    }
+    const parseTimeStr = (timeStr) => {
+      // Assuming HH:MM in 24hr format based on regex ^([01]\d|2[0-3]):?([0-5]\d)$
+      const [h, m] = timeStr.split(':').map(Number);
+      return h * 60 + m;
+    };
+    
+    // 7. Booking Time (Start Time <= Current Time <= End Time)
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    
+    const startMins = parseTimeStr(booking.startTime);
+    const endMins = parseTimeStr(booking.endTime);
+    
+    if (currentMins < startMins) {
+      throw emitDenied('Resident is too early for this booking.');
+    }
+    if (currentMins > endMins) {
+      throw emitDenied('Booking time has expired.');
+    }
+
+    // 8. Amenity Status
+    const amenityService = (await import('../amenity/amenity.services.js')).default;
+    const amenity = await amenityService.getAmenityById(booking.amenityId, orgId);
+    if (!amenity || amenity.status === 'inactive') {
+      throw emitDenied('Amenity is currently unavailable.');
+    }
+
+    // Entry Workflow
     const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, 'checked-in');
     updated.checkInTime = new Date();
+    updated.checkedInBy = userId; // Log who scanned it (Security Guard)
     await updated.save();
 
     amenityBookingEventEmitter.emit(AMENITY_BOOKING_CHECKED_IN, updated);
-    return updated;
+    
+    return Object.assign(updated.toObject(), {
+      isExit: false,
+      message: 'Access Granted'
+    });
   }
 
   async getCalendarIndicators(orgId, year, month) {
     return await amenityBookingRepository.getMonthlyIndicators(orgId, year, month);
+  }
+
+  async getRecentScans(orgId) {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const scans = await amenityBookingRepository.getRecentScans(orgId, startOfDay);
+
+    return scans.map(scan => {
+      // Determine if it was entry or exit that was most recent
+      // Or just return the record and let frontend decide based on status
+      const scanType = scan.status === 'completed' ? 'Exit' : 'Entry';
+      const scanTime = scan.status === 'completed' ? scan.checkOutTime : scan.checkInTime;
+
+      return {
+        _id: scan._id,
+        bookingId: scan.bookingId || scan._id,
+        residentName: scan.userId?.name || 'Unknown',
+        residentPhoto: scan.userId?.profilePicture,
+        amenityName: scan.amenityId?.name || 'Unknown',
+        scanType: scanType,
+        entryTime: scan.checkInTime,
+        exitTime: scan.checkOutTime,
+        scanTime: scanTime,
+        result: 'Success',
+        guardName: scan.checkedInBy?.name || 'Security'
+      };
+    }).sort((a, b) => b.scanTime - a.scanTime);
   }
 }
 

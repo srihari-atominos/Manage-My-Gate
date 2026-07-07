@@ -42,7 +42,7 @@ class MockPaymentProvider {
    * Simulates a webhook or a direct call to process the payment
    * Typically, the frontend calls this to simulate "Payment Success" or "Payment Failed"
    */
-  async simulatePaymentCallback(paymentId, isSuccess, errorReason = null) {
+  async simulatePaymentCallback(paymentId, isSuccess, errorReason = null, paymentMethod = 'wallet') {
     try {
       const payment = await Payment.findById(paymentId);
       if (!payment) throw new HttpError(404, 'Payment not found');
@@ -53,6 +53,7 @@ class MockPaymentProvider {
 
       payment.status = isSuccess ? 'success' : 'failed';
       payment.gatewayTransactionId = `txn_${uuidv4()}`;
+      payment.paymentMethod = paymentMethod;
       if (!isSuccess) {
         payment.errorReason = errorReason || 'Payment declined by mock bank';
       }

@@ -1,9 +1,12 @@
-import { amenityBookingEventEmitter, AMENITY_BOOKING_CREATED, AMENITY_BOOKING_REVIEWED, AMENITY_BOOKING_CANCELLED, AMENITY_BOOKING_CHECKED_IN, AMENITY_BOOKING_COMPLETED } from './amenityBooking.events.js';
+import { amenityBookingEventEmitter, AMENITY_BOOKING_CREATED, AMENITY_BOOKING_REVIEWED, AMENITY_BOOKING_CANCELLED, AMENITY_BOOKING_CHECKED_IN, AMENITY_BOOKING_COMPLETED, AMENITY_BOOKING_CONFIRMED } from './amenityBooking.events.js';
 import { paymentEventEmitter, PAYMENT_SUCCESS, PAYMENT_FAILED, PAYMENT_REFUNDED } from '../payment/payment.events.js';
 import amenityBookingRepository from './amenityBooking.repository.js';
 import notificationService from '../notification/notification.service.js';
 import logger from '../../utils/logger.utils.js';
 import QRCode from 'qrcode';
+import walletRepository from '../wallet/wallet.repository.js';
+
+const generateBookingId = () => `BKG-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
 const logBookingEvent = async (action, eventData) => {
   try {
@@ -36,9 +39,22 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_CREATED, async (booking) => {
   if (booking.status === 'confirmed') {
     // Generate QR if it bypassed payment
     try {
-      const qrData = JSON.stringify({ bookingId: booking._id, userId: booking.userId, amenityId: booking.amenityId });
+      const bookingIdStr = booking.bookingId || generateBookingId();
+      const qrData = JSON.stringify({ bookingId: booking._id, displayId: bookingIdStr, userId: booking.userId, amenityId: booking.amenityId?._id || booking.amenityId });
       const qrCodeUrl = await QRCode.toDataURL(qrData);
-      await amenityBookingRepository.updateStatus(booking._id, booking.orgId, 'confirmed', { qrCode: qrCodeUrl });
+      const qrExpiresAt = new Date(`${booking.bookingDate}T${booking.endTime}`);
+      
+      await amenityBookingRepository.updateStatus(booking._id, booking.orgId, 'confirmed', { 
+        bookingId: bookingIdStr,
+        qrCode: qrCodeUrl,
+        qrStatus: 'active',
+        qrGeneratedAt: new Date(),
+        qrExpiresAt
+      });
+      
+      const updatedBooking = await amenityBookingRepository.findById(booking._id, booking.orgId);
+      amenityBookingEventEmitter.emit(AMENITY_BOOKING_CONFIRMED, { booking: updatedBooking, paymentMethod: 'system' });
+      
       await sendBookingNotification(booking, 'alert', 'Booking Confirmed', 'Your amenity booking is confirmed!');
     } catch (e) {
       logger.error('Failed to generate QR for auto-confirmed booking', e);
@@ -61,7 +77,36 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_REVIEWED, async (booking) => {
 
 amenityBookingEventEmitter.on(AMENITY_BOOKING_CANCELLED, async (booking) => {
   logBookingEvent('AMENITY_BOOKING_CANCELLED', booking);
-  await sendBookingNotification(booking, 'alert', 'Booking Cancelled', 'Your booking has been cancelled successfully.');
+  
+  let msg = 'Your booking has been cancelled successfully.';
+  if (booking.refundPercentage === 100 && booking.refundAmount > 0) {
+    msg = `Booking cancelled successfully. ₹${booking.refundAmount} has been credited to your wallet.`;
+  } else if (booking.refundPercentage > 0 && booking.refundPercentage < 100 && booking.refundAmount > 0) {
+    msg = `Booking cancelled successfully. ${booking.refundPercentage}% refund has been credited to your wallet.`;
+  } else if (booking.refundAmount === 0 && booking.paymentStatus === 'success') {
+    msg = 'Booking cancelled successfully. No refund is applicable because the cancellation occurred within the configured refund window.';
+    // Update debit transaction
+    try {
+      await walletRepository.updateTransactionDescription(booking._id, 'Debit', '(Cancelled within the configured refund window. No refund issued.)');
+    } catch (e) {
+      logger.error('Failed to update debit transaction description', e);
+    }
+  }
+
+  await sendBookingNotification(booking, booking.refundAmount === 0 && booking.paymentStatus === 'success' ? 'alert' : 'info', 'Booking Cancelled', msg);
+  
+  try {
+    const { getIO } = await import('../../config/socket.js');
+    const io = getIO();
+    if (io) {
+      io.to(`user:${booking.userId}`).emit('bookingUpdated');
+      if (booking.refundAmount === 0 && booking.paymentStatus === 'success') {
+        io.to(`user:${booking.userId}`).emit('walletUpdated');
+      }
+    }
+  } catch (e) {
+    logger.error('Failed to emit socket event for booking cancellation', e);
+  }
 });
 
 amenityBookingEventEmitter.on(AMENITY_BOOKING_CHECKED_IN, async (booking) => {
@@ -84,18 +129,26 @@ paymentEventEmitter.on(PAYMENT_SUCCESS, async (payment) => {
     const booking = await amenityBookingRepository.findById(payment.referenceId, payment.orgId);
     if (booking) {
       // 1. Generate QR Code
-      const qrData = JSON.stringify({ bookingId: booking._id, userId: booking.userId, amenityId: booking.amenityId });
+      const bookingIdStr = booking.bookingId || generateBookingId();
+      const qrData = JSON.stringify({ bookingId: booking._id, displayId: bookingIdStr, userId: booking.userId, amenityId: booking.amenityId?._id || booking.amenityId });
       const qrCodeUrl = await QRCode.toDataURL(qrData);
+      const qrExpiresAt = new Date(`${booking.bookingDate}T${booking.endTime}`);
 
       // 2. Update booking status
       await amenityBookingRepository.updateStatus(booking._id, booking.orgId, 'confirmed', {
         paymentStatus: 'success',
+        bookingId: bookingIdStr,
         qrCode: qrCodeUrl,
-        qrStatus: 'active'
+        qrStatus: 'active',
+        qrGeneratedAt: new Date(),
+        qrExpiresAt
       });
 
+      const updatedBooking = await amenityBookingRepository.findById(booking._id, booking.orgId);
+      amenityBookingEventEmitter.emit(AMENITY_BOOKING_CONFIRMED, { booking: updatedBooking, paymentMethod: payment.paymentMethod || 'wallet', amount: payment.amount });
+
       // 3. Send Notification
-      await sendBookingNotification(booking, 'alert', 'Payment Successful', 'Your booking is now confirmed. View your QR code in your bookings.');
+      await sendBookingNotification(booking, 'alert', 'Payment Successful', 'Your booking is now confirmed. View your QR code in your Wallet.');
       logger.info(`Successfully processed payment and confirmed booking ${booking._id}`);
     }
   } catch (err) {
@@ -126,6 +179,24 @@ paymentEventEmitter.on(PAYMENT_REFUNDED, async (payment) => {
   try {
     const booking = await amenityBookingRepository.findById(payment.referenceId, payment.orgId);
     if (booking) {
+      const amenityName = booking.amenityId?.name || 'Amenity Booking';
+      await walletRepository.createTransaction({
+        orgId: booking.orgId,
+        userId: booking.userId,
+        bookingId: booking.bookingId,
+        type: 'Credit',
+        amount: payment.amount || booking.totalPrice || 0,
+        paymentMethod: payment.method || 'system',
+        paymentStatus: 'refunded',
+        referenceType: 'Refund',
+        referenceId: booking._id,
+        amenityName,
+        description: 'Booking cancelled and refunded'
+      });
+      if (payment.method === 'wallet' || booking.paymentMethod === 'wallet') {
+        await walletRepository.updateBalance(booking.userId, booking.orgId, (payment.amount || booking.totalPrice));
+      }
+      
       await sendBookingNotification(booking, 'info', 'Refund Processed', 'Your refund for the cancelled booking has been processed.');
     }
   } catch (err) {

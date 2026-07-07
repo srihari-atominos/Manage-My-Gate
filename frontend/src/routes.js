@@ -13,6 +13,7 @@ const OrganizationManager = React.lazy(() => import('./features/organization/vie
 const AuditLogViewer = React.lazy(() => import('./features/auditLog/views/AuditLogViewer'));
 
 // Amenities Views (New)
+const AmenitiesRedirector = React.lazy(() => import('./features/amenities/views/AmenitiesRedirector'));
 const DashboardView = React.lazy(() => import('./features/amenities/views/DashboardView'));
 const AmenitiesMasterView = React.lazy(() => import('./features/amenities/views/AmenitiesMasterView'));
 const ResidentDiscoverView = React.lazy(() => import('./features/amenities/views/ResidentDiscoverView'));
@@ -43,31 +44,32 @@ export const routes = [
   { path: '/super-admin/organizations', name: 'Organization Manager', element: OrganizationManager, requirePlatform: true },
   { path: '/super-admin/audit-logs', name: 'Audit Logs', element: AuditLogViewer, requirePlatform: true },
 
+  // Amenities Dynamic Redirector
+  { path: '/amenities', name: 'Amenities & Bookings', element: AmenitiesRedirector },
   
   // New Unified Amenities Routes
   // Dashboard – manage_bookings required (admin analytics)
-  { path: '/admin/amenities/dashboard', name: 'Amenities Dashboard', element: DashboardView, requiredPermission: 'amenities:view_dashboard' },
+  { path: '/admin/amenities/dashboard', name: 'Amenities Dashboard', element: DashboardView, requiredPermission: 'amenities:dashboard' },
   // Master – read required; create/update/delete enforced at component level
-  { path: '/admin/amenities/master', name: 'Amenity Master', element: AmenitiesMasterView, requiredPermission: 'amenities:manage_master' },
+  { path: '/admin/amenities/master', name: 'Amenity Master', element: AmenitiesMasterView, requiredPermission: 'amenities:amenities' },
   // Calendar – manage_bookings (admin-only view of all bookings)
-  { path: '/admin/amenities/calendar', name: 'Admin Calendar', element: AdminCalendarView, requiredPermission: 'amenities:view_admin_calendar' },
+  { path: '/admin/amenities/calendar', name: 'Admin Calendar', element: AdminCalendarView, requiredPermission: 'amenities:admin_calander' },
   // Ledgers & Maintenance
-  { path: '/admin/amenities/ledgers', name: 'Admin Ledgers', element: AdminLedgersView, requiredPermission: 'amenities:manage_ledgers' },
-  { path: '/admin/amenities/maintenance', name: 'Admin Maintenance', element: AdminMaintenanceView, requiredPermission: 'amenities:manage_maintenance' },
+  { path: '/admin/amenities/ledgers', name: 'Admin Ledgers', element: AdminLedgersView, requiredPermission: 'amenities:ledgers' },
+  { path: '/admin/amenities/maintenance', name: 'Admin Maintenance', element: AdminMaintenanceView, requiredPermission: 'amenities:maintenance' },
   // Scanner / Settings / Logs – manage_bookings
-  { path: '/admin/amenities/scanner', name: 'Security Scanner', element: SecurityScannerView, requiredPermission: 'amenities:manage_scanner' },
-  { path: '/admin/amenities/settings', name: 'Amenity Settings', element: AdminSettingsView, requiredPermission: 'amenities:manage_settings' },
-  { path: '/admin/amenities/security-logs', name: 'Security Logs', element: SecurityLogsView, requiredPermission: 'amenities:view_security_logs' },
+  { path: '/admin/amenities/scanner', name: 'Security Scanner', element: SecurityScannerView, requiredPermission: 'amenities:scanner' },
+  { path: '/admin/amenities/settings', name: 'Amenity Settings', element: AdminSettingsView, requiredPermission: 'amenities:settings' },
+  { path: '/admin/amenities/security-logs', name: 'Security Logs', element: SecurityLogsView, requiredPermission: 'amenities:security_logs' },
   // Resident – read lets them discover; book/wallet require amenities:book
-  { path: '/resident/amenities/discover', name: 'Discover Amenities', element: ResidentDiscoverView, requiredPermission: 'amenities:discover_amenities' },
-  { path: '/resident/amenities/calendar', name: 'My Bookings', element: ResidentCalendarView, requiredPermission: 'amenities:view_my_bookings' },
-  { path: '/resident/amenities/wallet', name: 'Digital Wallet', element: ResidentWalletView, requiredPermission: 'amenities:manage_wallet' },
-  { path: '/resident/amenities/history', name: 'Booking History', element: ResidentHistoryView, requiredPermission: 'amenities:view_history' },
+  { path: '/resident/amenities/discover', name: 'Discover Amenities', element: ResidentDiscoverView, requiredPermission: 'amenities:discover' },
+  { path: '/resident/amenities/calendar', name: 'My Bookings', element: ResidentCalendarView, requiredPermission: 'amenities:my_booking' },
+  { path: '/resident/amenities/wallet', name: 'Digital Wallet', element: ResidentWalletView, requiredPermission: 'amenities:wallet' },
 
   // Legacy Routes (Kept for backward compatibility during migration)
-  { path: '/admin/amenities', name: 'Amenity Management', element: AmenitiesMasterView, requiredPermission: 'amenities:read' },
-  { path: '/resident/amenities', name: 'Book Amenities', element: ResidentDiscoverView, requiredPermission: 'amenities:read' },
-  { path: '/resident/amenities/book/:id', name: 'Book Amenity Form', element: ResidentBookingView, requiredPermission: 'amenities:book' },
+  { path: '/admin/amenities', name: 'Amenity Management', element: AmenitiesMasterView, requiredPermission: 'amenities:amenities' },
+  { path: '/resident/amenities', name: 'Book Amenities', element: ResidentDiscoverView, requiredPermission: 'amenities:discover' },
+  { path: '/resident/amenities/book/:id', name: 'Book Amenity Form', element: ResidentBookingView, requiredPermission: 'amenities:my_booking' },
 ];
 
 export default routes;

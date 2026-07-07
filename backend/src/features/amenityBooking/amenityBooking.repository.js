@@ -88,15 +88,78 @@ export class AmenityBookingRepository {
     return { data, totalRecords };
   }
 
-  async findByUser(userId, orgId) {
-    return await AmenityBooking.find({ userId, orgId })
+  async findByUser(userId, orgId, filters = {}) {
+    const query = { userId, orgId };
+    if (filters.startDate && filters.endDate) {
+      query.bookingDate = { $gte: filters.startDate, $lte: filters.endDate };
+    } else if (filters.startDate) {
+      query.bookingDate = { $gte: filters.startDate };
+    } else if (filters.endDate) {
+      query.bookingDate = { $lte: filters.endDate };
+    }
+
+    return await AmenityBooking.find(query)
       .sort({ bookingDate: -1, startTime: -1 })
       .populate('amenityId', 'name type images')
       .exec();
   }
 
+  async findEventsForCalendar(orgId, startDate, endDate) {
+    return await AmenityBooking.find({
+      orgId: new mongoose.Types.ObjectId(orgId),
+      bookingDate: { $gte: startDate, $lte: endDate }
+    })
+    .populate('userId', 'name email profilePicture flatNumber building tower phoneNumber')
+    .populate('amenityId', 'name type images')
+    .sort({ bookingDate: 1, startTime: 1 })
+    .lean();
+  }
+
+  async countAllUpcomingBookings(orgId) {
+    return await AmenityBooking.countDocuments({
+      orgId: new mongoose.Types.ObjectId(orgId),
+      status: { $in: ['confirmed', 'checked-in'] },
+      bookingDate: { $gte: new Date().toISOString().split('T')[0] }
+    });
+  }
+
+  async getRecentScans(orgId, startOfDay) {
+    return await AmenityBooking.find({
+      orgId: new mongoose.Types.ObjectId(orgId),
+      status: { $in: ['checked-in', 'completed'] },
+      $or: [
+        { checkInTime: { $gte: startOfDay } },
+        { checkOutTime: { $gte: startOfDay } }
+      ]
+    })
+    .sort({ checkInTime: -1 })
+    .populate('userId', 'name email profilePicture')
+    .populate('amenityId', 'name images')
+    .populate('checkedInBy', 'name')
+    .limit(20)
+    .lean();
+  }
+
+  async getActivePasses(userId, orgId) {
+    return await AmenityBooking.find({
+      userId,
+      orgId,
+      status: { $in: ['confirmed', 'checked-in'] },
+      qrStatus: 'active'
+    })
+    .populate('amenityId', 'name type images location')
+    .populate('userId', 'name')
+    .sort({ bookingDate: 1, startTime: 1 });
+  }
+
   async findById(id, orgId) {
-    return await AmenityBooking.findOne({ _id: id, orgId }).populate('amenityId');
+    const query = { orgId };
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query.$or = [{ _id: id }, { bookingId: id }];
+    } else {
+      query.bookingId = id;
+    }
+    return await AmenityBooking.findOne(query).populate('amenityId');
   }
 
   async create(bookingData) {
@@ -105,11 +168,17 @@ export class AmenityBookingRepository {
   }
 
   async updateStatus(id, orgId, status, reviewData = {}) {
+    const query = { orgId };
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query.$or = [{ _id: id }, { bookingId: id }];
+    } else {
+      query.bookingId = id;
+    }
     return await AmenityBooking.findOneAndUpdate(
-      { _id: id, orgId },
-      { status, ...reviewData },
+      query,
+      { $set: { status, ...reviewData } },
       { new: true }
-    ).populate('amenityId user');
+    ).populate('amenityId userId');
   }
 
   async findActiveBookingsByAmenity(amenityId, orgId) {
