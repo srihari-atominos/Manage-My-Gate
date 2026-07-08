@@ -18,8 +18,6 @@ import paymentRouter from '../features/payment/payment.router.js';
 import amenityDashboardRouter from '../features/amenityDashboard/amenityDashboard.router.js';
 import walletRouter from '../features/wallet/wallet.router.js';
 import securityLogRouter from '../features/securityLog/securityLog.routes.js';
-import visitorPassRouter from '../features/visitorPass/visitorPass.router.js';
-import visitorLogRouter from '../features/visitorLog/visitorLog.router.js';
 
 const router = Router();
 
@@ -43,7 +41,5 @@ router.use('/payments', paymentRouter);
 router.use('/amenity-dashboard', amenityDashboardRouter);
 router.use('/wallet', walletRouter);
 router.use('/security-logs', securityLogRouter);
-router.use('/visitor-pass', visitorPassRouter);
-router.use('/visitor-log', visitorLogRouter);
 
 export default router;
