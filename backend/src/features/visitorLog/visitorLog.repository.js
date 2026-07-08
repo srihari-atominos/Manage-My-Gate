@@ -48,6 +48,31 @@ export class VisitorLogRepository {
     .session(session || null)
     .exec();
   }
+
+  /**
+   * Find a VisitorLog by its ID.
+   * @param {string} id - The ID of the log.
+   * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
+   * @returns {Promise<Object|null>} The log document, or null if not found.
+   */
+  async findById(id, session = null) {
+    return await VisitorLog.findById(id).session(session || null);
+  }
+
+  /**
+   * Update an existing VisitorLog.
+   * @param {string} id - The ID of the log.
+   * @param {Object} updateData - The update parameters.
+   * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
+   * @returns {Promise<Object|null>} The updated log document.
+   */
+  async update(id, updateData, session = null) {
+    return await VisitorLog.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true, ...(session ? { session } : {}) }
+    );
+  }
 }
 
 export default new VisitorLogRepository();

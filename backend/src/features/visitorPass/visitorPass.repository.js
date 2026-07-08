@@ -39,6 +39,21 @@ export class VisitorPassRepository {
   }
 
   /**
+   * Update VisitorPass properties.
+   * @param {string} id - The ID of the pass.
+   * @param {Object} updateData - The update parameters.
+   * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
+   * @returns {Promise<Object|null>} The updated pass document.
+   */
+  async update(id, updateData, session = null) {
+    return await VisitorPass.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true, ...(session ? { session } : {}) }
+    );
+  }
+
+  /**
    * Paginated aggregation to retrieve passes in an organization by their statuses.
    * @param {string} orgId - The organization ID.
    * @param {number} [skip=0] - Number of items to skip.

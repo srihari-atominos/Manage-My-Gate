@@ -31,7 +31,7 @@ const visitorLogSchema = new mongoose.Schema(
     },
     logStatus: {
       type: String,
-      enum: ['INSIDE', 'COMPLETED', 'REJECTED'],
+      enum: ['PENDING', 'INSIDE', 'COMPLETED', 'REJECTED'],
       required: true,
       index: true,
     },
