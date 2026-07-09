@@ -111,10 +111,31 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_CANCELLED, async (booking) => {
 
 amenityBookingEventEmitter.on(AMENITY_BOOKING_CHECKED_IN, async (booking) => {
   logBookingEvent('AMENITY_BOOKING_CHECKED_IN', booking);
+  try {
+    const { getIO } = await import('../../config/socket.js');
+    const io = getIO();
+    if (io) {
+      io.to(`org:${booking.orgId}`).emit('bookingUpdated');
+      io.to(`user:${booking.userId._id || booking.userId}`).emit('bookingUpdated');
+    }
+  } catch (e) {
+    logger.error('Failed to emit socket event for booking check-in', e);
+  }
 });
 
 amenityBookingEventEmitter.on(AMENITY_BOOKING_COMPLETED, async (booking) => {
   logBookingEvent('AMENITY_BOOKING_COMPLETED', booking);
+  try {
+    const { getIO } = await import('../../config/socket.js');
+    const io = getIO();
+    if (io) {
+      io.to(`org:${booking.orgId}`).emit('bookingUpdated');
+      io.to(`org:${booking.orgId}`).emit('bookingCompleted');
+      io.to(`user:${booking.userId._id || booking.userId}`).emit('bookingUpdated');
+    }
+  } catch (e) {
+    logger.error('Failed to emit socket event for booking completed', e);
+  }
 });
 
 

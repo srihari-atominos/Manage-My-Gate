@@ -1,5 +1,5 @@
 export const logo = [
-  '0 0 220 40',
+  '220 40',
   `<g>
     <!-- Icon (Shield + Gate) -->
     <g fill="none" stroke="#80d0ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

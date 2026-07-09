@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
-import { checkInBooking } from '../services/amenityBookingApi.js';
+import { useSelector } from 'react-redux';
+import { checkInBooking, fetchRecentScans } from '../services/amenityBookingApi.js';
 import io from 'socket.io-client';
 
 export const useSecurityScanner = () => {
+  const { user } = useSelector(state => state.auth || {});
   const [scanResult, setScanResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -12,11 +14,11 @@ export const useSecurityScanner = () => {
     setError(null);
     try {
       const response = await checkInBooking(bookingId);
-      // Assuming response.data contains the updated booking
+      // response contains the updated booking along with isExit and message flags
       setScanResult({
         success: true,
-        booking: response.data || { _id: bookingId },
-        message: 'Check-in successful.'
+        booking: response || { _id: bookingId },
+        message: response?.message || 'Check-in successful.'
       });
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || 'Failed to check in.';
@@ -64,9 +66,9 @@ export const useSecurityScanner = () => {
 
   const loadRecentScans = useCallback(async () => {
     try {
-      const { fetchRecentScans } = await import('../services/amenityBookingApi.js');
       const data = await fetchRecentScans();
-      setRecentScans(data);
+      console.log('Fetched recent scans:', data);
+      setRecentScans(data || []);
     } catch (err) {
       console.error('Failed to fetch recent scans:', err);
     }
@@ -76,10 +78,20 @@ export const useSecurityScanner = () => {
   useEffect(() => {
     loadRecentScans();
     
-    // In a real app we'd use the centralized socket, for now just a quick setup
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    const socket = io(backendUrl);
+    const backendUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    const socket = io(backendUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true
+    });
     
+    // Join the organization room to receive broadcasts
+    socket.on('connect', () => {
+      const orgId = user?.orgId;
+      if (orgId) {
+        socket.emit('join_room', `org:${orgId}`);
+      }
+    });
+
     socket.on('bookingUpdated', () => {
       loadRecentScans();
     });
@@ -91,7 +103,7 @@ export const useSecurityScanner = () => {
     return () => {
       socket.disconnect();
     };
-  }, [loadRecentScans]);
+  }, [loadRecentScans, user?.orgId]);
 
   return {
     scanResult,

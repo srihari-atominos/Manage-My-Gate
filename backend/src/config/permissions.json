@@ -50,5 +50,23 @@
       "scanner",
       "security_logs"
     ]
+  },
+  {
+    "feature": "complaints",
+    "actions": [
+      "view",
+      "create",
+      "update",
+      "delete",
+      "assign",
+      "dashboard",
+      "reports",
+      "calendar",
+      "settings",
+      "comments",
+      "timeline",
+      "export",
+      "analytics"
+    ]
   }
 ]

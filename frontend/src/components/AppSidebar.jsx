@@ -82,14 +82,12 @@ const AppSidebar = () => {
     }
     
     if (Array.isArray(item.requiredPermission)) {
-      const workspaceAllowed = isPlatform || item.requiredPermission.some(perm => allowedFeatures.includes(perm));
-      const userAllowed = item.requiredPermission.some(perm => checkPermission(perm));
-      return workspaceAllowed && userAllowed;
+      const isAllowed = isPlatform || item.requiredPermission.some(perm => checkPermission(perm));
+      return isAllowed;
     }
 
-    const workspaceAllowed = isPlatform || allowedFeatures.includes(item.requiredPermission);
-    const userAllowed = checkPermission(item.requiredPermission);
-    return workspaceAllowed && userAllowed;
+    const isAllowed = isPlatform || checkPermission(item.requiredPermission);
+    return isAllowed;
   };
 
   const filterItems = (items) => {

@@ -9,9 +9,11 @@ import { initSocket } from './src/config/socket.js';
 import initializePassport from './src/features/auth/passport/passport.init.js';
 import logger from './src/utils/logger.utils.js';
 import { syncPermissions } from './src/utils/permissionSync.util.js';
+import complaintCron from './src/features/complaint/complaint.cron.js';
 
 const startServer = async () => {
   try {
+    complaintCron.init();
     // 1. Connect the database FIRST
     await connectToDb();
 

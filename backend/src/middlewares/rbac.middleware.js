@@ -50,6 +50,10 @@ export const authorizePermission = (feature, action) => {
       const userPermissions = (req.user.permissions || []).map(mapPermission);
 
       const actions = Array.isArray(action) ? action : [action];
+      console.log(`[RBAC DEBUG] Checking ${feature}:${actions.join(',')} for user ${req.user.username} (Role: ${req.user.role}). Permissions count: ${userPermissions.length}`);
+      if (userPermissions.length < 50) {
+          console.log(`[RBAC DEBUG] User permissions: ${userPermissions.join(', ')}`);
+      }
       const hasPermission = actions.some(act => {
         const requiredPermission = mapPermission(`${feature}:${act}`);
         return userPermissions.includes(requiredPermission);

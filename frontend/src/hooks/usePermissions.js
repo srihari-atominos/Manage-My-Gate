@@ -7,11 +7,11 @@
  * @param {string} permissionName - The permission identifier to check (e.g., 'assign_roles')
  * @returns {boolean} Whether the current user possesses the requested permission
  */
-import { useSelector } from 'react-redux'
+import { useAuth } from '../features/auth/hooks/useAuth'
 
 export const usePermissions = (permissionName) => {
-  const allowedFeatures = useSelector((state) => state.workspace.allowedFeatures) || []
-  return allowedFeatures.includes(permissionName)
+  const { checkPermission } = useAuth()
+  return checkPermission(permissionName)
 }
 
 export default usePermissions

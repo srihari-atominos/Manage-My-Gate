@@ -25,7 +25,18 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
   return (
     <div className="d-flex flex-column gap-3">
       {Object.keys(groupedPermissions).map((category) => {
-        const perms = groupedPermissions[category] || []
+        let perms = groupedPermissions[category] || []
+        
+        // Filter complaints permissions as requested
+        if (category.toLowerCase() === 'complaints') {
+          const allowedComplaintsPerms = ['dashboard', 'raise_ticket', 'complaint_management', 'staff_vendors', 'assignee', 'track_requests'];
+          perms = perms.filter(p => {
+            const permName = p.name || p.code || p._id || '';
+            const action = permName.includes(':') ? permName.split(':')[1] : permName;
+            return allowedComplaintsPerms.includes(action.toLowerCase());
+          });
+        }
+        
         const groupCodes = perms.map((p) => p.name || p.code || p._id)
         const isAllGroupSelected = groupCodes.length > 0 && groupCodes.every((code) => selectedIds.includes(code))
 

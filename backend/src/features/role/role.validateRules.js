@@ -42,8 +42,8 @@ export const updateRolePermissionsRules = [
     .isArray()
     .withMessage('permissionIds must be an array'),
   body('permissionIds.*')
-    .isMongoId()
-    .withMessage('Each permission ID in the array must be a valid Mongo ID'),
+    .isString()
+    .withMessage('Each permission ID or name in the array must be a valid string'),
 ];
 
 /**

@@ -1,5 +1,6 @@
 import { useSelector } from 'react-redux';
 import { CNavTitle } from '@coreui/react';
+import { useAuth } from '../../../features/auth/hooks/useAuth';
 import navigation from '../../../_nav';
 
 const nameToKeyMap = {
@@ -50,6 +51,7 @@ const getCategoryKey = (name) => {
  */
 export const useDashboard = () => {
   const activeWorkspace = useSelector((state) => state.workspace);
+  const { checkPermission } = useAuth();
   const allowedFeatures = activeWorkspace?.allowedFeatures || [];
   const isPlatform = activeWorkspace?.isPlatform || false;
   console.log('--- DEBUG useDashboard allowedFeatures:', allowedFeatures);
@@ -75,25 +77,30 @@ export const useDashboard = () => {
   }
 
   // Filter based on required permissions, also cleaning up any empty titles
-  const filteredNavigationItems = navigationItems.filter((item, index, arr) => {
+  const filteredNavigationItems = navigationItems.reduce((result, item) => {
     if (item.component === CNavTitle || !item.to) {
-      // Check if there is any permitted CNavItem following this title
-      const nextItems = arr.slice(index + 1);
-      const hasFollowingItems = nextItems.some((nextItem) => {
-        if (nextItem.component === CNavTitle || !nextItem.to) return false;
-        if (nextItem.requiredPermission) {
-          return allowedFeatures.includes(nextItem.requiredPermission);
+      if (item.items) {
+        const permittedItems = item.items.filter(nextItem => {
+          if (!nextItem.requiredPermission) return true;
+          return checkPermission(nextItem.requiredPermission);
+        });
+
+        if (permittedItems.length > 0) {
+          result.push({ ...item, items: permittedItems });
         }
-        return true;
-      });
-      return hasFollowingItems;
+      } else {
+        result.push(item);
+      }
+    } else {
+      if (!item.requiredPermission) {
+        result.push(item);
+      } else if (checkPermission(item.requiredPermission)) {
+        result.push(item);
+      }
     }
 
-    if (item.requiredPermission) {
-      return allowedFeatures.includes(item.requiredPermission);
-    }
-    return true;
-  });
+    return result;
+  }, []);
 
   const groups = [];
   let currentGroup = null;
