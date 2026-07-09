@@ -47,13 +47,15 @@ export class VisitorLogRepository {
     .sort({ checkInTime: -1 })
     .populate({
       path: 'residentId',
-      select: 'username villaId',
+      select: 'username name'
+    })
+    .populate({
+      path: 'passId',
       populate: {
         path: 'villaId',
         select: 'villaNumber block'
       }
     })
-    .populate('passId')
     .session(session || null)
     .exec();
   }
