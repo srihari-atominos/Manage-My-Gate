@@ -45,6 +45,15 @@ export class VisitorLogRepository {
       logStatus: 'INSIDE'
     })
     .sort({ checkInTime: -1 })
+    .populate({
+      path: 'residentId',
+      select: 'username villaId',
+      populate: {
+        path: 'villaId',
+        select: 'villaNumber block'
+      }
+    })
+    .populate('passId')
     .session(session || null)
     .exec();
   }

@@ -62,9 +62,40 @@ export const getActiveVisitors = createAsyncThunk(
   }
 );
 
+export const fetchHistoryLogs = createAsyncThunk(
+  'visitorLog/fetchHistoryLogs',
+  async ({ orgId, params }, { rejectWithValue }) => {
+    try {
+      const response = await VisitorAPI.getHistoryLogs(orgId, params);
+      return {
+        data: response.data.data.data,
+        totalRecords: response.data.data.totalRecords,
+        page: params?.page || 1,
+        limit: params?.limit || 10
+      };
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch history logs');
+    }
+  }
+);
+
+export const fetchPendingApprovals = createAsyncThunk(
+  'visitorLog/fetchPendingApprovals',
+  async (orgId, { rejectWithValue }) => {
+    try {
+      const response = await VisitorAPI.getPendingApprovals(orgId);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch pending approvals');
+    }
+  }
+);
+
 const initialState = {
   activeVisitors: [],
   pendingApprovals: [],
+  historyLogs: [],
+  historyTotalRecords: 0,
   status: 'idle',
   actionStatus: 'idle',
   error: null
@@ -98,6 +129,35 @@ export const visitorLogSlice = createSlice({
         state.activeVisitors = action.payload || [];
       })
       .addCase(getActiveVisitors.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      })
+
+      // fetchHistoryLogs
+      .addCase(fetchHistoryLogs.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(fetchHistoryLogs.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.historyLogs = action.payload.data || [];
+        state.historyTotalRecords = action.payload.totalRecords || 0;
+      })
+      .addCase(fetchHistoryLogs.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      })
+
+      // fetchPendingApprovals
+      .addCase(fetchPendingApprovals.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(fetchPendingApprovals.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.pendingApprovals = action.payload || [];
+      })
+      .addCase(fetchPendingApprovals.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
       })

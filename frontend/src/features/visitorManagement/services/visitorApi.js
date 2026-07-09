@@ -1,4 +1,4 @@
-import axios from '@/services/apiClient';
+import axios from '../../../services/apiClient';
 
 /**
  * VisitorAPI
@@ -90,6 +90,25 @@ export const VisitorAPI = {
    */
   getActiveVisitors: async (orgId) => {
     return await axios.get(`/visitor-log/org/${orgId}/inside`);
+  },
+
+  /**
+   * Fetch paginated visitor logs history.
+   * @param {string} orgId - The organization ID.
+   * @param {Object} [params] - Query pagination options.
+   * @returns {Promise<Object>} The API response.
+   */
+  getHistoryLogs: async (orgId, params) => {
+    return await axios.get(`/visitor-log/org/${orgId}`, { params });
+  },
+
+  /**
+   * Fetch all pending walk-in log approvals.
+   * @param {string} orgId - The organization ID.
+   * @returns {Promise<Object>} The API response.
+   */
+  getPendingApprovals: async (orgId) => {
+    return await axios.get(`/visitor-log/org/${orgId}/pending`);
   }
 };
 

@@ -1,0 +1,510 @@
+// _visitorManagement.scss
+// Aesthetic variables and layout wrapper replicating the Amenities OS theme
+
+.visitor-os-theme {
+  /* Vibrant App Colors */
+  --primary: #0084FF;
+  --primary-hover: #006BCC;
+  --primary-light: #E5F3FF;
+  --surface-bg: #F4F7FB;
+  --surface-card: #FFFFFF;
+  --surface-glass: rgba(255, 255, 255, 0.85);
+
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --text-light: #94A3B8;
+
+  --border-light: #E2E8F0;
+  --border-focus: #CBD5E1;
+
+  /* Semantic Status Colors */
+  --success: #10B981;
+  --success-bg: #D1FAE5;
+  --warning: #F59E0B;
+  --warning-bg: #FEF3C7;
+  --danger: #EF4444;
+  --danger-bg: #FEE2E2;
+  --info: #0084FF;
+  --info-bg: #E5F3FF;
+
+  /* Modern App Shadows & Radii */
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 50px;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-md: 0 8px 24px -4px rgba(0,0,0,0.06), 0 4px 10px -4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 20px 25px -5px rgba(0,0,0,0.08), 0 10px 10px -5px rgba(0,0,0,0.04);
+  
+  /* Reset & Typography */
+  h1, h2, h3, h4, h5, h6 { 
+    font-weight: 700; 
+    color: var(--text-main); 
+    letter-spacing: -0.02em; 
+    margin: 0;
+  }
+
+  /* Layout */
+  .view-container { 
+    padding: 24px 32px; 
+    max-width: 1400px; 
+    margin: 0 auto; 
+  }
+
+  .view {
+    display: block;
+  }
+
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.25fr;
+    gap: 32px;
+    margin-top: 16px;
+
+    @media (max-width: 992px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Cards matching Amenities OS style */
+  .card {
+    background: var(--surface-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-light);
+    padding: 28px;
+    transition: all 0.3s ease;
+    text-align: start;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-light);
+  }
+
+  /* Form Elements */
+  .form-group {
+    margin-bottom: 20px;
+    text-align: start;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .form-control {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--text-main);
+    background-color: #F8FAFC;
+    background-clip: padding-box;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease-in-out;
+
+    &:focus {
+      background-color: #FFFFFF;
+      border-color: var(--primary);
+      outline: 0;
+      box-shadow: 0 0 0 4px var(--primary-light);
+    }
+
+    &::placeholder {
+      color: var(--text-light);
+    }
+  }
+
+  /* Pill Buttons */
+  .btn {
+    padding: 12px 24px;
+    border-radius: var(--radius-pill);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    letter-spacing: 0.2px;
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 132, 255, 0.25);
+
+    &:hover {
+      background: var(--primary-hover);
+    }
+  }
+
+  .btn-secondary {
+    background: #F1F5F9;
+    color: var(--text-muted);
+
+    &:hover {
+      background: #E2E8F0;
+    }
+  }
+
+  /* Table styling */
+  .custom-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 12px;
+
+    th {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      padding: 12px 16px;
+      border-bottom: 2px solid var(--border-light);
+      text-align: left;
+    }
+
+    td {
+      font-size: 14px;
+      padding: 16px;
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-main);
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+  }
+
+  /* Top Nav Bar Component styling */
+  .visitor-top-nav-bar {
+    margin-bottom: 24px;
+    background-color: #fff;
+    border-radius: var(--radius-sm);
+    padding: 12px 24px;
+    box-shadow: var(--shadow-sm);
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .visitor-top-nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 8px 16px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+
+    &.active {
+      color: var(--primary) !important;
+      font-weight: 600 !important;
+      border-bottom: 2px solid var(--primary) !important;
+    }
+
+    &:hover:not(.active) {
+      color: var(--text-main);
+    }
+  }
+
+  /* Live Entries Table layout */
+  .live-entries-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .live-entries-search {
+    max-width: 240px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .live-entries-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 260px;
+    color: var(--text-light);
+
+    i {
+      font-size: 42px;
+      margin-bottom: 12px;
+    }
+  }
+
+  .table-cell-bold {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-main);
+  }
+
+  .table-cell-sub {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-top: 2px;
+  }
+
+  .table-cell-muted {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .table-cell-right {
+    text-align: right;
+  }
+
+  .table-pagination-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24px;
+    border-top: 1px solid var(--border-light);
+    padding-top: 16px;
+  }
+
+  .table-pagination-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Villa Directory Listing */
+  .villa-directory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .villa-directory-card {
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    background-color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .villa-directory-badge-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .villa-directory-intercom-btn {
+    border-radius: var(--radius-pill);
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--success);
+    background-color: var(--success-bg);
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+
+    &:hover:not(:disabled) {
+      transform: scale(1.08);
+    }
+  }
+
+  /* Intercom Modal & Animations */
+  .intercom-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .intercom-modal-card {
+    background-color: #1E293B;
+    border-radius: 20px;
+    padding: 30px;
+    width: 320px;
+    text-align: center;
+    color: #fff;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid #334155;
+  }
+
+  .intercom-avatar-pulse {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: var(--success);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin-bottom: 30px;
+    animation: pulseAnimation 1.5s infinite ease-in-out;
+
+    i {
+      animation: shakeAnimation 0.5s infinite alternate;
+    }
+  }
+
+  /* Invite Form specific classes */
+  .invite-form-card {
+    border-top: 4px solid var(--primary);
+    padding: 24px;
+  }
+
+  .invite-form-title {
+    font-size: 18px;
+    margin-bottom: 20px;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .invite-host-sidebar {
+    border-left: 1px solid var(--border-light);
+    padding-left: 24px;
+  }
+
+  .invite-toggle-btns {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .selection-scroll-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+
+  .selection-radio-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    background-color: #fff;
+    font-size: 13px;
+    transition: background-color 0.2s ease;
+
+    &.selected {
+      background-color: var(--primary-light);
+      border-color: var(--primary);
+    }
+  }
+
+  .invite-form-footer {
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border-light);
+    padding-top: 16px;
+    margin-top: 20px;
+  }
+
+  /* Scanner Console specific classes */
+  .scanner-viewfinder-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+  }
+
+  .scanner-viewfinder {
+    width: 240px;
+    height: 240px;
+    border: 3px solid var(--primary);
+    border-radius: 24px;
+    position: relative;
+    background-color: #0F172A;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+  }
+
+  .scanner-glow-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background-color: #00FF66;
+    box-shadow: 0 0 10px #00FF66;
+    animation: scanLineAnimation 2.2s infinite ease-in-out;
+    z-index: 2;
+  }
+
+  .scanner-status-banner {
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+
+    &.inside {
+      background-color: var(--info-bg) !important;
+      border-color: #BFDBFE !important;
+      color: #1E40AF !important;
+    }
+
+    &.outside {
+      background-color: var(--success-bg) !important;
+      border-color: #A7F3D0 !important;
+      color: #065F46 !important;
+    }
+  }
+
+  /* Keyframe Animations */
+  @keyframes pulseAnimation {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+
+  @keyframes shakeAnimation {
+    0% { transform: rotate(-10deg); }
+    100% { transform: rotate(10deg); }
+  }
+
+  @keyframes scanLineAnimation {
+    0% { top: 0px; }
+    50% { top: 236px; }
+    100% { top: 0px; }
+  }
+}

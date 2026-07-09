@@ -12,6 +12,14 @@ export const createPassRules = [
     .withMessage('Creator ID (createdById) is required')
     .isMongoId()
     .withMessage('Creator ID must be a valid Mongo ID'),
+  body('villaId')
+    .optional()
+    .isMongoId()
+    .withMessage('Villa ID must be a valid Mongo ID'),
+  body('roleId')
+    .optional()
+    .isMongoId()
+    .withMessage('Role ID must be a valid Mongo ID'),
 
   body('passType')
     .notEmpty()

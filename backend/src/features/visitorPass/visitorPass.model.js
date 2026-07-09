@@ -14,6 +14,18 @@ const visitorPassSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    villaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Villa',
+      required: false,
+      index: true,
+    },
+    roleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Role',
+      required: false,
+      index: true,
+    },
     passType: {
       type: String,
       enum: ['GUEST', 'DELIVERY', 'CAB', 'SERVICE', 'ADMIN_GUEST'],

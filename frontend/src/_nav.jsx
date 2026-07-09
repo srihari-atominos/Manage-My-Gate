@@ -33,6 +33,28 @@ const _nav = [
     name: 'Features',
   },
   {
+    component: CNavGroup,
+    name: 'Visitor Management',
+    icon: <CIcon icon={cilQrCode} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Resident Pass',
+        to: '/visitor-management-resident',
+      },
+      {
+        component: CNavItem,
+        name: 'Visitor Admin',
+        to: '/visitor-management-admin',
+      },
+      {
+        component: CNavItem,
+        name: 'Gate Console',
+        to: '/visitor-management-guard',
+      },
+    ],
+  },
+  {
     component: CNavItem,
     name: 'Villa Management',
     to: '/villas',
