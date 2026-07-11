@@ -1,12 +1,13 @@
 import complaintService from './complaint.service.js';
 import HttpError from '../../utils/httpError.utils.js';
+import Technician from '../technician/technician.model.js';
 
 class ComplaintController {
   async create(req, res, next) {
     try {
       const orgId = req.tenant.orgId;
       const residentId = req.user.id || req.user._id;
-      const residentName = req.body.residentName || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'Resident';
+      const residentName = req.body.residentName || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'Resident';
       
       const complaint = await complaintService.createComplaint(orgId, residentId, residentName, req.body);
       res.success(complaint, 'Complaint created successfully', 201);
@@ -27,7 +28,11 @@ class ComplaintController {
       if (priority) filters.priority = priority;
 
       // RBAC: Residents only see their own complaints, assignees see their assigned/broadcast complaints
-      if (req.user.roleName === 'Resident' || !['Admin', 'FacilityManager', 'Manager'].includes(req.user.roleName)) {
+      const userRoles = req.user.roles || [];
+      const primaryRole = req.user.role || '';
+      const isAdmin = userRoles.some(r => ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager'].includes(r)) || ['Admin', 'Community Admin', 'FacilityManager', 'Manager', 'Facility Manager'].includes(primaryRole);
+      
+      if (!isAdmin) {
         const userId = req.user.id || req.user._id;
         filters.$or = [
           { residentId: userId },
@@ -69,7 +74,21 @@ class ComplaintController {
     try {
       const { id } = req.params;
       const orgId = req.tenant.orgId;
-      const complaint = await complaintService.getComplaintById(id, orgId);
+      let complaint = await complaintService.getComplaintById(id, orgId);
+      
+      // If technician has no phone in User model, fetch from Technician model
+      if (complaint && complaint.assignedTechnicianId && !complaint.assignedTechnicianId.phone) {
+        const tech = await Technician.findOne({ userId: complaint.assignedTechnicianId._id });
+        if (tech && tech.phone) {
+          // Convert to lean object if not already to allow modification
+          if (typeof complaint.toObject === 'function') {
+            complaint = complaint.toObject();
+          }
+          complaint.assignedTechnicianId.phone = tech.phone;
+          complaint.assignedTechnicianPhone = tech.phone;
+        }
+      }
+      
       res.success(complaint, 'Complaint retrieved successfully');
     } catch (error) {
       next(error);
@@ -170,28 +189,29 @@ class ComplaintController {
         return res.status(404).json({ success: false, message: 'No records found to export' });
       }
 
-      // Convert to CSV
-      const fields = ['Complaint No', 'Resident', 'Category', 'Priority', 'Status', 'SLA Status', 'Assigned To', 'Created At'];
-      const csvRows = [fields.join(',')];
+      // Convert to Excel
+      const xlsx = await import('xlsx');
       
-      complaints.data.forEach(c => {
-        const row = [
-          `"${c.complaintNumber || ''}"`,
-          `"${c.residentName || ''}"`,
-          `"${c.category || ''}"`,
-          `"${c.priority || ''}"`,
-          `"${c.status || ''}"`,
-          `"${c.slaStatus || ''}"`,
-          `"${c.assignedTechnicianName || c.vendor || 'Unassigned'}"`,
-          `"${new Date(c.createdAt).toLocaleString()}"`
-        ];
-        csvRows.push(row.join(','));
-      });
+      const excelData = complaints.data.map(c => ({
+        'Complaint No': c.complaintNumber || '',
+        'Resident': c.residentName || (c.residentId && c.residentId.username) || '',
+        'Category': c.category || '',
+        'Priority': c.priority || '',
+        'Status': c.status || '',
+        'SLA Status': c.slaStatus || '',
+        'Assigned To': c.assignedTechnicianName || c.vendor || 'Unassigned',
+        'Created At': new Date(c.createdAt).toLocaleString()
+      }));
 
-      const csvString = csvRows.join('\n');
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename="complaints_export.csv"');
-      res.status(200).send(csvString);
+      const worksheet = xlsx.utils.json_to_sheet(excelData);
+      const workbook = xlsx.utils.book_new();
+      xlsx.utils.book_append_sheet(workbook, worksheet, "Complaints");
+      
+      const excelBuffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="complaints_export.xlsx"');
+      res.status(200).send(excelBuffer);
     } catch (error) {
       next(error);
     }

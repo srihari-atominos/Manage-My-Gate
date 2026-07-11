@@ -11,7 +11,7 @@ router.use(isAuthenticated, tenantContext);
 
 router.get(
   '/',
-  authorizePermission('complaints', 'settings'),
+  authorizePermission('complaints', ['settings', 'create', 'raise_ticket', 'track_requests', 'complaint_management', 'dashboard', 'assignee']),
   complaintSettingsController.getSettings
 );
 

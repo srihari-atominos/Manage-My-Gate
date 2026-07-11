@@ -14,7 +14,8 @@ class ComplaintSettingsController {
   async updateSettings(req, res, next) {
     try {
       const orgId = req.tenant.orgId;
-      const updated = await complaintSettingsService.updateSettings(orgId, req.body);
+      const user = req.user;
+      const updated = await complaintSettingsService.updateSettings(orgId, req.body, user);
       res.success(updated, 'Complaint settings updated successfully');
     } catch (error) {
       next(error);

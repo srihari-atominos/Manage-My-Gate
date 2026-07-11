@@ -4,7 +4,7 @@ import validate from '../../middlewares/validator.middleware.js';
 export const createComplaintValidator = validate([
   body('category').notEmpty().withMessage('Category is required'),
   body('title').notEmpty().withMessage('Title is required'),
-  body('description').notEmpty().withMessage('Description is required'),
+  body('description').optional({ checkFalsy: true }).isString(),
   body('priority').optional().isIn(['Low', 'Medium', 'High', 'Critical']).withMessage('Invalid priority'),
   body('location').optional().isObject(),
   body('attachments').optional().isArray().custom((value) => {
@@ -16,16 +16,17 @@ export const createComplaintValidator = validate([
 ]);
 
 export const assignTechnicianValidator = validate([
-  body('technicianId').optional().isString(),
-  body('technicianIds').optional().isArray(),
-  body('assignmentType').optional().isString(),
-  body('technicianName').optional().isString(),
-  body('vendor').optional().isString(),
-  body('team').optional().isString(),
-  body('instructions').optional().isString(),
-  body('preferredVisitDate').optional(),
-  body('preferredVisitTime').optional(),
-  body('reassignmentReason').optional().isString()
+  body('technicianId').optional({ nullable: true }).isString(),
+  body('technicianIds').optional({ nullable: true }).isArray(),
+  body('assignmentType').optional({ nullable: true }).isString(),
+  body('technicianName').optional({ nullable: true }).isString(),
+  body('vendor').optional({ nullable: true }).isString(),
+  body('team').optional({ nullable: true }).isString(),
+  body('instructions').optional({ nullable: true }).isString(),
+  body('adminInstructions').optional({ nullable: true }).isString(),
+  body('preferredVisitDate').optional({ nullable: true }),
+  body('preferredVisitTime').optional({ nullable: true }),
+  body('reassignmentReason').optional({ nullable: true }).isString()
 ]);
 
 export const updateStatusValidator = validate([

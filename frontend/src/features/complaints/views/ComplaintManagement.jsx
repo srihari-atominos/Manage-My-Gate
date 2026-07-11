@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useComplaints } from '../hooks/useComplaints';
@@ -9,7 +9,30 @@ import '../styles/_complaints.scss';
 
 const ComplaintManagement = () => {
   const navigate = useNavigate();
-  const { complaints, isLoading } = useComplaints();
+  
+  const [filterParams, setFilterParams] = useState({
+    page: 1,
+    limit: 10,
+    search: '',
+    status: '',
+    priority: ''
+  });
+
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(filterParams.search);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [filterParams.search]);
+
+  const activeFilters = {
+    ...filterParams,
+    search: debouncedSearch
+  };
+
+  const { complaints, pagination, isLoading } = useComplaints(activeFilters);
   const authUser = useSelector((state) => state.auth?.user || {});
   const userRole = authUser.role || 'Resident';
   
@@ -20,15 +43,33 @@ const ComplaintManagement = () => {
   const [assigningComplaintId, setAssigningComplaintId] = useState(null);
   const [showRatingsModal, setShowRatingsModal] = useState(false);
   
-  const ratedComplaints = complaints?.filter(c => c.feedback?.rating || c.feedback?.overallRating) || [];
+  const ratedComplaints = complaints?.filter(c => c.feedback?.rating || c.feedback?.overallRating || c.category === 'Feedback') || [];
 
   const filteredComplaints = complaints?.filter(c => {
     if (c.status === 'Cancelled') return false;
-    if (filter !== 'All Statuses' && c.status !== filter) return false;
-    if (priorityFilter !== 'All Priorities' && c.priority !== priorityFilter) return false;
-    if (search && !c.complaintNumber.toLowerCase().includes(search.toLowerCase()) && !c.residentName?.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   }) || [];
+
+  const handleStatusFilter = (value) => {
+    setFilter(value);
+    setFilterParams(prev => ({ ...prev, page: 1, status: value === 'All Statuses' ? '' : value }));
+  };
+
+  const handlePriorityFilter = (value) => {
+    setPriorityFilter(value);
+    setFilterParams(prev => ({ ...prev, page: 1, priority: value === 'All Priorities' ? '' : value }));
+  };
+
+  const handleSearchChange = (value) => {
+    setSearch(value);
+    setFilterParams(prev => ({ ...prev, page: 1, search: value }));
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= (pagination?.totalPages || 1)) {
+      setFilterParams(prev => ({ ...prev, page: newPage }));
+    }
+  };
 
   return (
     <div className="complaints-module-wrapper complaints-os-theme">
@@ -36,37 +77,10 @@ const ComplaintManagement = () => {
       <div className="view-container">
         <div className="view active" id="management">
           
-          <div className="content">
-        <section className="screen active" id="management">
-          <div className="filter-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <div className="filter-group">
-              <div className="search-bar">
-                <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--ink-faint)' }}></i>
-                <input 
-                  type="text" 
-                  placeholder="Search ID, subject, or resident..." 
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-              </div>
-              <select className="filter-select" value={filter} onChange={e => setFilter(e.target.value)}>
-                <option>All Statuses</option>
-                <option>Submitted</option>
-                <option>Assigned</option>
-                <option>Waiting For Acceptance</option>
-                <option>In Progress</option>
-                <option>Waiting For Resident Confirmation</option>
-                <option>Resolved</option>
-                <option>Closed</option>
-                <option>Escalated</option>
-              </select>
-              <select className="filter-select" value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}>
-                <option>All Priorities</option>
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
-                <option>Critical</option>
-              </select>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+            <div>
+              <h2 style={{ fontSize: '28px', margin: 0 }}>Complaint Management</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Global view of all society service requests and maintenance tickets.</p>
             </div>
             <div className="actions-group" style={{ display: 'flex', gap: '8px' }}>
               <button className="btn btn-secondary" onClick={() => {
@@ -78,20 +92,45 @@ const ComplaintManagement = () => {
               </button>
               <button className="btn btn-secondary" onClick={() => setShowRatingsModal(true)}>
                 <i className="fa-solid fa-star" style={{ color: '#f59e0b', marginRight: '6px' }}></i>
-                View All Ratings
+                View All Feedback
               </button>
             </div>
           </div>
-          
+
+          <div className="filter-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+            <div className="search-bar" style={{ display: 'flex', alignItems: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0 12px', height: '40px', width: '350px', maxWidth: '100%' }}>
+              <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--ink-faint)', marginRight: '8px' }}></i>
+              <input 
+                type="text" 
+                placeholder="Search ID, subject, or resident..." 
+                value={search}
+                onChange={e => handleSearchChange(e.target.value)}
+                style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: 'var(--ink)' }}
+              />
+            </div>
+            <div className="filter-group" style={{ display: 'flex', gap: '12px' }}>
+              <select className="filter-select" style={{ height: '40px', borderRadius: '8px', border: '1px solid var(--border)', padding: '0 12px', background: 'var(--surface)', color: 'var(--ink)' }} value={filter} onChange={e => handleStatusFilter(e.target.value)}>
+                <option>All Statuses</option>
+                <option>Submitted</option>
+                <option>Assigned</option>
+                <option>Waiting For Acceptance</option>
+                <option>In Progress</option>
+                <option>Waiting For Resident Confirmation</option>
+                <option>Resolved</option>
+                <option>Closed</option>
+                <option>Escalated</option>
+              </select>
+              <select className="filter-select" style={{ height: '40px', borderRadius: '8px', border: '1px solid var(--border)', padding: '0 12px', background: 'var(--surface)', color: 'var(--ink)' }} value={priorityFilter} onChange={e => handlePriorityFilter(e.target.value)}>
+                <option>All Priorities</option>
+                <option>Low</option>
+                <option>Medium</option>
+                <option>High</option>
+                <option>Critical</option>
+              </select>
+            </div>
+          </div>
           
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '32px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '24px', marginBottom: '8px' }}>Complaint Management</h3>
-                <p style={{ color: 'var(--ink-soft)', fontSize: '14px', fontWeight: '500', margin: 0 }}>Global view of all society service requests</p>
-              </div>
-            </div>
-            
             <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
               <table className="ent-table">
                 <thead>
@@ -155,8 +194,8 @@ const ComplaintManagement = () => {
                           <button 
                             className="btn btn-primary btn-sm"
                             onClick={() => setAssigningComplaintId(c._id)}
-                            disabled={['Cancelled', 'Resolved', 'Closed'].includes(c.status)}
-                            style={['Cancelled', 'Resolved', 'Closed'].includes(c.status) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                            disabled={!['Submitted', 'Open', 'Waiting For Assignment'].includes(c.status)}
+                            style={!['Submitted', 'Open', 'Waiting For Assignment'].includes(c.status) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                           >
                             Assign
                           </button>
@@ -167,9 +206,42 @@ const ComplaintManagement = () => {
                 </tbody>
               </table>
             </div>
+
+            {pagination && pagination.totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', borderTop: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '14px', color: 'var(--ink-soft)' }}>
+                  Page <strong>{pagination.currentPage}</strong> of <strong>{pagination.totalPages}</strong> &mdash; {pagination.totalRecords} total records
+                </div>
+                <ul className="pagination pagination-sm mb-0" style={{ display: 'flex', listStyle: 'none', gap: '4px', margin: 0, padding: 0 }}>
+                  <li className={`page-item ${pagination.currentPage === 1 ? 'disabled' : ''}`}>
+                    <button className="page-link rounded-start-3" onClick={() => handlePageChange(pagination.currentPage - 1)} disabled={pagination.currentPage === 1} style={{ padding: '6px 12px', border: '1px solid var(--border)', background: 'var(--bg)', borderRadius: '4px', cursor: 'pointer' }}>
+                      Previous
+                    </button>
+                  </li>
+                  {Array.from({ length: Math.min(pagination.totalPages, 7) }, (_, i) => {
+                    let p = i + 1;
+                    if (pagination.totalPages > 7 && pagination.currentPage > 4) {
+                      p = pagination.currentPage - 3 + i;
+                      if (p > pagination.totalPages) return null;
+                    }
+                    return (
+                      <li key={p} className={`page-item ${pagination.currentPage === p ? 'active' : ''}`}>
+                        <button className="page-link" onClick={() => handlePageChange(p)} style={{ padding: '6px 12px', border: '1px solid var(--border)', background: pagination.currentPage === p ? 'var(--primary)' : 'var(--bg)', color: pagination.currentPage === p ? 'white' : 'var(--ink)', borderRadius: '4px', cursor: 'pointer' }}>
+                          {p}
+                        </button>
+                      </li>
+                    );
+                  })}
+                  <li className={`page-item ${pagination.currentPage === pagination.totalPages ? 'disabled' : ''}`}>
+                    <button className="page-link rounded-end-3" onClick={() => handlePageChange(pagination.currentPage + 1)} disabled={pagination.currentPage === pagination.totalPages} style={{ padding: '6px 12px', border: '1px solid var(--border)', background: 'var(--bg)', borderRadius: '4px', cursor: 'pointer' }}>
+                      Next
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
-        </section>
-      </div>
+
 
       {showRatingsModal && (
         <div className="complaint-modal-overlay" onClick={() => setShowRatingsModal(false)}>
@@ -185,21 +257,48 @@ const ComplaintManagement = () => {
                 </div>
               ) : (
                 ratedComplaints.map(c => (
-                  <div key={c._id} style={{ borderBottom: '1px solid var(--surface-2)', paddingBottom: '16px', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                      <div style={{ fontWeight: 600 }}>{c.complaintNumber} - {c.title}</div>
-                      <div style={{ display: 'flex', gap: '4px', color: '#f59e0b' }}>
-                        {[...Array(5)].map((_, i) => (
-                          <i key={i} className={i < (c.feedback?.overallRating || c.feedback?.rating || 0) ? 'fa-solid fa-star' : 'fa-regular fa-star'}></i>
-                        ))}
+                  <div key={c._id} style={{ 
+                    background: 'var(--surface)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '12px', 
+                    padding: '20px', 
+                    marginBottom: '16px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <span style={{ background: 'var(--primary-light, #e0f2fe)', color: 'var(--primary, #0284c7)', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>
+                            {c.complaintNumber}
+                          </span>
+                          <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{c.title}</span>
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
+                          <i className="fa-regular fa-user" style={{ marginRight: '6px' }}></i>
+                          {c.residentName || (c.residentId && c.residentId.username) || 'Unknown Resident'} 
+                          {c.location?.flat ? ` • Flat ${c.location.flat}` : ''}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '2px', color: '#f59e0b', fontSize: '14px' }}>
+                        {c.category !== 'Feedback' ? (
+                          [...Array(5)].map((_, i) => (
+                            <i key={i} className={i < (c.feedback?.overallRating || c.feedback?.rating || 0) ? 'fa-solid fa-star' : 'fa-regular fa-star'}></i>
+                          ))
+                        ) : (
+                          <span style={{fontSize: '12px', color: 'var(--ink-soft)', fontWeight: 600, background: 'var(--surface-2)', padding: '2px 8px', borderRadius: '12px'}}>General Feedback</span>
+                        )}
                       </div>
                     </div>
-                    <div style={{ fontSize: '13px', color: 'var(--ink-faint)', marginBottom: '8px' }}>
-                      By: {c.residentName} {c.location?.flat ? `(${c.location.flat})` : ''}
-                    </div>
-                    {c.feedback.remarks && (
-                      <div style={{ background: 'var(--surface-2)', padding: '12px', borderRadius: '6px', fontSize: '14px' }}>
-                        "{c.feedback.remarks}"
+                    {(c.feedback?.remarks || c.category === 'Feedback') && (
+                      <div style={{ 
+                        background: 'var(--surface-2)', 
+                        padding: '12px 16px', 
+                        borderRadius: '8px', 
+                        fontSize: '14px',
+                        color: 'var(--ink)',
+                        borderLeft: '3px solid var(--primary)'
+                      }}>
+                        "{c.feedback?.remarks || c.description}"
                       </div>
                     )}
                   </div>
@@ -209,9 +308,6 @@ const ComplaintManagement = () => {
           </div>
         </div>
       )}
-      
-      </div>
-    </div>
       
       {selectedComplaintId && (
         <ComplaintDetails 
@@ -227,6 +323,8 @@ const ComplaintManagement = () => {
           onAssigned={() => setAssigningComplaintId(null)}
         />
       )}
+        </div>
+      </div>
     </div>
   );
 };

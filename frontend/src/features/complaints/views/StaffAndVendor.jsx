@@ -49,13 +49,15 @@ const StaffAndVendor = () => {
       <ComplaintTopNav />
       <div className="view-container">
         <div className="view active" id="staff">
-          <div className="page-header">
-            <h1 id="pageTitle">Staff & Vendors Directory</h1>
-            <div className="sub" id="pageSub">Manage technicians and monitor active workloads</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h2 style={{ fontSize: '28px', margin: 0 }}>Staff & Vendors Directory</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Manage technicians and monitor active workloads</p>
+            </div>
+            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)} style={{ whiteSpace: 'nowrap' }}>
+              <i className="fa-solid fa-plus" style={{ marginRight: '8px' }}></i> Add New Staff/Vendor
+            </button>
           </div>
-      
-      <div className="content">
-        <section className="screen active" id="staff">
           
           {/* Summary Cards */}
           <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
@@ -79,7 +81,7 @@ const StaffAndVendor = () => {
 
           <div className="filter-row">
             <div className="filter-group">
-              <div className="search-bar">
+              <div className="search-bar" style={{ flex: '0 0 350px' }}>
                 <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--ink-faint)' }}></i>
                 <input 
                   type="text" 
@@ -98,9 +100,6 @@ const StaffAndVendor = () => {
                 <option>Others</option>
               </select>
             </div>
-            <button className="btn btn-primary" onClick={handleAddNew}>
-              <i className="fa-solid fa-plus"></i> Add New Staff/Vendor
-            </button>
           </div>
           
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -157,8 +156,6 @@ const StaffAndVendor = () => {
               </table>
             </div>
           </div>
-        </section>
-      </div>
         </div>
       </div>
       

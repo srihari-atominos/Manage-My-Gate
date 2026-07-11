@@ -39,10 +39,10 @@ class TechnicianRepository {
       {
         $lookup: {
           from: 'complaints',
-          let: { techId: '$_id' },
+          let: { userId: '$userId' },
           pipeline: [
             { $match: { 
-                $expr: { $eq: ['$assignedTechnicianId', '$$techId'] },
+                $expr: { $eq: ['$assignedTechnicianId', '$$userId'] },
                 orgId: new mongoose.Types.ObjectId(orgId)
             }}
           ],

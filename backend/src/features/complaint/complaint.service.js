@@ -5,6 +5,7 @@ import technicianRepository from '../technician/technician.repository.js';
 import { complaintEvents } from './complaint.events.js';
 import HttpError from '../../utils/httpError.utils.js';
 import mongoose from 'mongoose';
+import ComplaintSettings from '../complaintSettings/complaintSettings.model.js';
 
 class ComplaintService {
   async generateComplaintNumber(orgId) {
@@ -13,9 +14,15 @@ class ComplaintService {
     const includeYear = settings?.ticketFormat?.includeYear !== false;
     const seqLength = settings?.ticketFormat?.sequenceLength || 6;
     
-    // Simplistic generation (In production, use an atomic counter collection)
-    const count = await complaintRepository.findAll(orgId, {}, { skip: 0, limit: 1 }, {});
-    const nextNum = count.total + 1;
+    const lastComplaint = await complaintRepository.findAll(orgId, {}, { skip: 0, limit: 1 }, { createdAt: -1 });
+    let nextNum = 1;
+    if (lastComplaint.data.length > 0) {
+      const lastComplaintNumber = lastComplaint.data[0].complaintNumber;
+      const parts = lastComplaintNumber.split('-');
+      const lastNumStr = parts[parts.length - 1];
+      nextNum = parseInt(lastNumStr, 10) + 1;
+      if (isNaN(nextNum)) nextNum = lastComplaint.total + 1;
+    }
     
     const year = includeYear ? `-${new Date().getFullYear()}-` : '-';
     return `${prefix}${year}${String(nextNum).padStart(seqLength, '0')}`;
@@ -35,18 +42,19 @@ class ComplaintService {
     if (!orgId || !residentId) throw new HttpError(400, 'Missing required orgId or residentId');
 
     // Duplicate Prevention Engine
-    const duplicateWindowMs = 60 * 60 * 1000; // e.g., 1 hour
+    const duplicateWindowMs = 60 * 60 * 1000 * 24; // Check within last 24 hours
     const recentComplaints = await complaintRepository.findAll(orgId, {
       residentId,
       category: data.category,
+      title: data.title,
       'location.flat': data.location?.flat,
-      createdAt: { $gte: new Date(Date.now() - duplicateWindowMs) }
-    }, { skip: 0, limit: 10 }, {});
+      createdAt: { $gte: new Date(Date.now() - duplicateWindowMs) },
+      status: { $in: ['Open', 'In Progress', 'Assigned', 'Escalated'] } // Only active tickets
+    }, { skip: 0, limit: 1 }, {});
     
-    // Simplistic description similarity check
-    const isDuplicate = recentComplaints.data.some(c => c.description === data.description);
-    if (isDuplicate && !data.ignoreDuplicateWarning) {
-      throw new HttpError(409, 'Possible duplicate complaint found. Do you still want to continue?');
+    const duplicateTicket = recentComplaints.data[0];
+    if (duplicateTicket && !data.ignoreDuplicateWarning) {
+      throw new HttpError(409, 'Possible duplicate complaint found. Do you still want to continue?', { duplicateTicket });
     }
 
     const complaintNumber = await this.generateComplaintNumber(orgId);
@@ -116,7 +124,6 @@ class ComplaintService {
 
     const complaint = await complaintRepository.create(newComplaint);
     
-    // Audit Logging
     if (auditLogService && auditLogService.logAction) {
       await auditLogService.logAction({
         orgId,
@@ -131,6 +138,22 @@ class ComplaintService {
         device: metaData.device,
         details: { category: data.category, priority }
       }).catch(err => console.error('Audit Log failed:', err));
+    }
+    
+    // Increment usage count for suggested issues
+    if (data.category && data.title) {
+      try {
+        await ComplaintSettings.updateOne(
+          { orgId, 'categories.name': data.category, 'categories.suggestedIssues.name': data.title },
+          { 
+            $inc: { 'categories.$[cat].suggestedIssues.$[issue].usageCount': 1 },
+            $set: { 'categories.$[cat].suggestedIssues.$[issue].lastUsedDate': new Date() }
+          },
+          { arrayFilters: [{ 'cat.name': data.category }, { 'issue.name': data.title }] }
+        );
+      } catch (err) {
+        console.error('Failed to increment suggested issue usage count:', err);
+      }
     }
     
     complaintEvents.emit('complaint.created', { orgId, complaint });
@@ -228,7 +251,8 @@ class ComplaintService {
     }
 
     // Duplicate Protection: Prevent assigning the same technician twice without changes.
-    if (assignmentType !== 'broadcast' && technicianId && String(complaint.assignedTechnicianId) === String(technicianId)) {
+    const currentAssignedId = complaint.assignedTechnicianId?._id || complaint.assignedTechnicianId;
+    if (assignmentType !== 'broadcast' && technicianId && String(currentAssignedId) === String(technicianId)) {
       throw new HttpError(400, 'Complaint is already assigned to this technician');
     }
 
@@ -265,6 +289,8 @@ class ComplaintService {
     let targetUserId = null;
     let targetBroadcastUserIds = [];
 
+    let targetPhone = null;
+
     if (isBroadcast) {
       if (technicianIds && technicianIds.length > 0) {
         const technicians = await technicianRepository.findAll(orgId, { _id: { $in: technicianIds } });
@@ -275,11 +301,13 @@ class ComplaintService {
       if (!technician) throw new HttpError(404, 'Technician not found');
       if (technician.status !== 'Active') throw new HttpError(400, 'Technician is inactive');
       targetUserId = technician.userId || null;
+      targetPhone = technician.phone || null;
     }
 
     const updateFields = {
       assignedTechnicianId: isBroadcast ? null : targetUserId,
       assignedTechnicianName: isBroadcast ? null : (technicianName || null),
+      assignedTechnicianPhone: isBroadcast ? null : targetPhone,
       vendor: isBroadcast ? null : (vendor || null),
       team: team || null,
       assignedBy: adminId,
@@ -427,7 +455,11 @@ class ComplaintService {
 
   async rejectAssignment(id, orgId, userId, userName, userRole, reason, metaData = {}) {
     const complaint = await this.getComplaintById(id, orgId);
-    if (String(complaint.assignedTechnicianId) !== String(userId)) {
+    
+    const isDirectAssignee = complaint.assignedTechnicianId && String(complaint.assignedTechnicianId) === String(userId);
+    const isBroadcastAssignee = complaint.isBroadcast && complaint.broadcastTechnicianIds && complaint.broadcastTechnicianIds.some(tid => String(tid) === String(userId));
+
+    if (!isDirectAssignee && !isBroadcastAssignee) {
       throw new HttpError(403, 'You are not assigned to this complaint');
     }
 
@@ -439,13 +471,31 @@ class ComplaintService {
       date: new Date()
     };
 
-    const updated = await complaintRepository.update(id, orgId, {
-      status: 'Waiting For Assignment',
-      assignedTechnicianId: null,
-      assignedTechnicianName: null,
-      vendor: null,
-      $push: { timeline: timelineEvent }
-    });
+    let updated;
+
+    if (isBroadcastAssignee) {
+      // Remove from broadcast list
+      const updatedBroadcastList = complaint.broadcastTechnicianIds.filter(tid => String(tid) !== String(userId));
+      const isListEmpty = updatedBroadcastList.length === 0;
+      
+      if (isListEmpty) timelineEvent.remarks += ' (All broadcast assignees rejected)';
+
+      updated = await complaintRepository.update(id, orgId, {
+        status: isListEmpty ? 'Waiting For Assignment' : 'Waiting For Acceptance',
+        broadcastTechnicianIds: updatedBroadcastList,
+        isBroadcast: isListEmpty ? false : true,
+        $push: { timeline: timelineEvent }
+      });
+    } else {
+      // Direct rejection
+      updated = await complaintRepository.update(id, orgId, {
+        status: 'Waiting For Assignment',
+        assignedTechnicianId: null,
+        assignedTechnicianName: null,
+        vendor: null,
+        $push: { timeline: timelineEvent }
+      });
+    }
 
     if (auditLogService && auditLogService.logAction) {
       await auditLogService.logAction({
@@ -540,7 +590,7 @@ class ComplaintService {
     const complaint = await this.getComplaintById(id, orgId);
     
     const timelineEvent = {
-      status: 'Waiting For Resident Confirmation',
+      status: 'Closed',
       action: 'Work Completed',
       userId, userRole, userName,
       remarks: notes || 'Work has been marked as completed by the assignee.',
@@ -549,7 +599,7 @@ class ComplaintService {
     };
 
     const updated = await complaintRepository.update(id, orgId, {
-      status: 'Waiting For Resident Confirmation',
+      $set: { status: 'Closed', resolvedAt: new Date(), completionDate: new Date() },
       $push: { timeline: timelineEvent }
     });
 
@@ -557,7 +607,7 @@ class ComplaintService {
       await auditLogService.logAction({
         orgId, action: 'Complete Work', module: 'Complaints', targetId: id, targetName: complaint.complaintNumber,
         userId, userRole, ipAddress: metaData.ipAddress, browser: metaData.browser, device: metaData.device,
-        details: { notes, attachments, previousStatus: complaint.status, newStatus: 'Waiting For Resident Confirmation' }
+        details: { notes, attachments, previousStatus: complaint.status, newStatus: 'Closed' }
       }).catch(err => console.error('Audit Log failed:', err));
     }
 
@@ -670,9 +720,12 @@ class ComplaintService {
     const complaint = await this.getComplaintById(id, orgId);
     
     let extraData = {};
-    if (status === 'Resolved') {
+    const terminalStatuses = ['Resolved', 'Closed', 'Completed', 'Work Completed'];
+    if (terminalStatuses.includes(status)) {
       extraData.resolvedAt = new Date();
-    } else if (status === 'Closed' || status === 'Completed') {
+    }
+    
+    if (status === 'Closed' || status === 'Completed') {
       extraData.closedAt = new Date();
     }
 
@@ -751,7 +804,7 @@ class ComplaintService {
       throw new HttpError(400, 'Cannot rate an unresolved complaint');
     }
     const updated = await complaintRepository.update(id, orgId, {
-      feedback: { rating, remarks },
+      feedback: { overallRating: rating, remarks },
       status: 'Closed',
       closedAt: new Date()
     });

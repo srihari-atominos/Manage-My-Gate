@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
   const { assignComplaint, assignLoading, complaints, addComment } = useComplaints();
   
-  const [assignmentType, setAssignmentType] = useState('staff');
+  const [assignmentType, setAssignmentType] = useState('request');
   const [techniciansList, setTechniciansList] = useState([]);
   const [isFetchingTechs, setIsFetchingTechs] = useState(true);
   
@@ -103,7 +103,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
       const selectedTech = techniciansList.find(t => t._id === form.technicianId);
       payload.technicianName = selectedTech ? selectedTech.name : '';
       payload.vendor = selectedTech?.type === 'External' ? 'External Vendor' : 'In-House';
-      payload.adminInstructions = finalAdminInstructions;
+      payload.instructions = finalAdminInstructions;
     } else {
       if (!form.temporaryAssigneeName) {
         toast.error('Temporary Assignee Name is required');
@@ -117,6 +117,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
       payload.technicianId = null;
       payload.technicianName = form.temporaryAssigneeName;
       payload.vendor = 'Temporary Vendor';
+      payload.assignmentType = 'vendor';
       
       // Append extra info to adminInstructions
       const extraInfo = `\n[Temporary Vendor Details]\nPhone: ${form.phoneNumber}${form.companyName ? `\nCompany: ${form.companyName}` : ''}${form.specialization ? `\nSpecialization: ${form.specialization}` : ''}`;
@@ -173,16 +174,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                 />
                 Request Assignee
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: '#0f172a', cursor: 'pointer', margin: 0, fontWeight: 600 }}>
-                <input 
-                  type="radio" 
-                  name="assignmentType" 
-                  checked={assignmentType === 'staff'} 
-                  onChange={() => setAssignmentType('staff')} 
-                  style={{ cursor: 'pointer', accentColor: '#2563eb', width: '18px', height: '18px' }}
-                />
-                Assign Employee
-              </label>
+
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: '#0f172a', cursor: 'pointer', margin: 0, fontWeight: 600 }}>
                 <input 
                   type="radio" 

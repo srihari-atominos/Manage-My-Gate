@@ -17,6 +17,10 @@ export const isAuthenticated = (req, res, next) => {
     else if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
     }
+    // Check query params (for file downloads like export, pdf)
+    else if (req.query && req.query.auth_token) {
+      token = req.query.auth_token;
+    }
 
     if (!token) {
       throw new HttpError(401, 'Access denied. No authentication token provided.');

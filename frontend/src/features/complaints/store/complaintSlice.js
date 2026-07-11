@@ -117,7 +117,7 @@ export const createComplaint = createAsyncThunk(
       const response = await complaintService.create(data);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create complaint');
+      return rejectWithValue(error.response?.data || { message: 'Failed to create complaint' });
     }
   }
 );
@@ -279,6 +279,18 @@ export const confirmCompletion = createAsyncThunk(
   }
 );
 
+export const addFeedback = createAsyncThunk(
+  'complaints/addFeedback',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.addFeedback(id, data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to submit feedback');
+    }
+  }
+);
+
 const complaintSlice = createSlice({
   name: 'complaints',
   initialState: {
@@ -383,6 +395,46 @@ const complaintSlice = createSlice({
         state.status = 'failed';
         state.error = action.payload;
       })
+      .addCase(acceptAssignment.fulfilled, (state, action) => {
+        const index = state.list.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) { state.list[index] = action.payload; }
+        if (state.currentComplaint && state.currentComplaint._id === action.payload._id) { state.currentComplaint = action.payload; }
+      })
+      .addCase(rejectAssignment.fulfilled, (state, action) => {
+        const index = state.list.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) { state.list[index] = action.payload; }
+        if (state.currentComplaint && state.currentComplaint._id === action.payload._id) { state.currentComplaint = action.payload; }
+      })
+      .addCase(startWork.fulfilled, (state, action) => {
+        const index = state.list.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) { state.list[index] = action.payload; }
+        if (state.currentComplaint && state.currentComplaint._id === action.payload._id) { state.currentComplaint = action.payload; }
+      })
+      .addCase(pauseWork.fulfilled, (state, action) => {
+        const index = state.list.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) { state.list[index] = action.payload; }
+        if (state.currentComplaint && state.currentComplaint._id === action.payload._id) { state.currentComplaint = action.payload; }
+      })
+      .addCase(resumeWork.fulfilled, (state, action) => {
+        const index = state.list.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) { state.list[index] = action.payload; }
+        if (state.currentComplaint && state.currentComplaint._id === action.payload._id) { state.currentComplaint = action.payload; }
+      })
+      .addCase(markWorkCompleted.fulfilled, (state, action) => {
+        const index = state.list.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) { state.list[index] = action.payload; }
+        if (state.currentComplaint && state.currentComplaint._id === action.payload._id) { state.currentComplaint = action.payload; }
+      })
+      .addCase(uploadWorkAttachments.fulfilled, (state, action) => {
+        const index = state.list.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) { state.list[index] = action.payload; }
+        if (state.currentComplaint && state.currentComplaint._id === action.payload._id) { state.currentComplaint = action.payload; }
+      })
+      .addCase(addWorkNotes.fulfilled, (state, action) => {
+        const index = state.list.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) { state.list[index] = action.payload; }
+        if (state.currentComplaint && state.currentComplaint._id === action.payload._id) { state.currentComplaint = action.payload; }
+      })
       .addCase(fetchDashboardAnalytics.fulfilled, (state, action) => {
         state.dashboardAnalytics = action.payload;
       })
@@ -425,6 +477,15 @@ const complaintSlice = createSlice({
       })
       .addCase(deleteTechnician.fulfilled, (state, action) => {
         state.technicians = state.technicians.filter(t => t._id !== action.payload);
+      })
+      .addCase(addFeedback.fulfilled, (state, action) => {
+        const index = state.list.findIndex(c => c._id === action.payload._id);
+        if (index !== -1) {
+          state.list[index] = action.payload;
+        }
+        if (state.currentComplaint && state.currentComplaint._id === action.payload._id) {
+          state.currentComplaint = action.payload;
+        }
       });
   }
 });

@@ -22,7 +22,7 @@ const complaintSchema = new mongoose.Schema({
     required: [true, 'Organization ID is required'],
     index: true
   },
-  complaintNumber: { type: String, required: true, unique: true },
+  complaintNumber: { type: String, required: true },
   
   // Resident Details
   residentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -35,7 +35,13 @@ const complaintSchema = new mongoose.Schema({
   subCategory: { type: String },
   department: { type: String },
   title: { type: String, required: true },
-  description: { type: String, required: true },
+  description: { type: String },
+  aiAnalysisMetadata: {
+    aiStatus: { type: String, default: null },
+    aiCategory: { type: String, default: null },
+    aiConfidence: { type: Number, default: null },
+    aiTags: [{ type: String }]
+  },
   additionalNotes: { type: String },
   priority: { type: String, enum: ['Low', 'Medium', 'High', 'Critical'], default: 'Medium' },
   
@@ -63,7 +69,7 @@ const complaintSchema = new mongoose.Schema({
   status: { 
     type: String, 
     enum: [
-      'Submitted', 'Open', 'Waiting For Assignment', 'Waiting For Acceptance', 'Assigned', 'Accepted', 'In Progress', 
+      'Submitted', 'Open', 'Waiting For Assignment', 'Waiting For Acceptance', 'Assigned', 'Accepted', 'In Progress', 'On Hold',
       'Work Completed', 'Waiting For Resident Confirmation', 
       'Completed', 'Closed', 'Rejected', 'Cancelled', 'Reopened', 'Escalated'
     ],
@@ -77,6 +83,7 @@ const complaintSchema = new mongoose.Schema({
   // Assignment
   assignedTechnicianId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   assignedTechnicianName: { type: String },
+  assignedTechnicianPhone: { type: String },
   isBroadcast: { type: Boolean, default: false },
   broadcastTechnicianIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   vendor: { type: String },
@@ -127,4 +134,8 @@ complaintSchema.index({ orgId: 1, residentId: 1 });
 complaintSchema.index({ orgId: 1, assignedTechnicianId: 1 });
 complaintSchema.index({ orgId: 1, category: 1 });
 
-export default mongoose.model('Complaint', complaintSchema);
+complaintSchema.index({ orgId: 1, complaintNumber: 1 }, { unique: true });
+
+const Complaint = mongoose.model('Complaint', complaintSchema);
+
+export default Complaint;

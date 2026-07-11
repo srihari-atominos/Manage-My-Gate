@@ -145,6 +145,7 @@
   .grid { display: grid; gap: 24px; }
   .grid-4 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
   .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
   .grid-1-2 { grid-template-columns: 1fr 2fr; }
   .dashboard-grid {
     display: grid;
@@ -301,6 +302,17 @@
   td { padding: 20px; font-size: 14px; border-bottom: 1px solid var(--border); color: var(--ink); vertical-align: middle; font-weight: 500; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: var(--primary-light); }
+
+  .pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    .page-info { font-size: 14px; color: var(--ink-soft); font-weight: 500; }
+    .page-controls { display: flex; gap: 8px; }
+  }
+
 
   .search-bar {
     display: flex; align-items: center; gap: 10px; background: var(--bg);

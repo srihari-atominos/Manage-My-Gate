@@ -28,14 +28,18 @@ const PerformanceAnalytics = () => {
       <ComplaintTopNav />
       <div className="view-container">
         <div className="view active" id="analytics">
-          <div className="page-header">
-            <h1 id="pageTitle">Performance Analytics</h1>
-            <div className="sub" id="pageSub">Helpdesk efficiency metrics and feedback</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+            <div>
+              <h2 style={{ fontSize: '28px', margin: 0 }}>Performance Analytics</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Helpdesk efficiency metrics and feedback</p>
+            </div>
+            <button className="btn btn-secondary" onClick={() => {
+                const token = localStorage.getItem('token');
+                window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints/export?auth_token=${token}`, '_blank');
+              }}>
+              <i className="fa-solid fa-file-export" style={{ marginRight: '8px' }}></i> Export Report
+            </button>
           </div>
-      
-      <div className="content">
-        <section className="screen active" id="analytics">
-          
           <div className="section-title" style={{ marginTop: '0' }}><h3>Dashboard Summary</h3></div>
           <div className="grid grid-4" style={{ marginBottom: '16px' }}>
             <div className="card stat-card card-hover"><div className="icon-wrap" style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}><i className="fa-solid fa-ticket-simple"></i></div><div><div className="value">{isLoading ? '...' : kpis.total || 0}</div><div className="label">Total Complaints</div></div></div>
@@ -219,8 +223,7 @@ const PerformanceAnalytics = () => {
                <div style={{ textAlign: 'center', color: 'var(--ink-faint)' }}>No feedback available.</div>
             )}
           </div>
-        </section>
-      </div>
+          </div>
         </div>
       </div>
     </div>

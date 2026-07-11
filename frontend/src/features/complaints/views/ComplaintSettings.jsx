@@ -12,6 +12,7 @@ const ComplaintSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState(null);
+  const [activeCategoryIdx, setActiveCategoryIdx] = useState(null);
 
   useEffect(() => {
     dispatch(fetchComplaintSettings());
@@ -77,7 +78,7 @@ const ComplaintSettings = () => {
     if (!name) return;
     setSettings(prev => ({
       ...prev,
-      categories: [...(prev.categories || []), { name, description: '', isActive: true, order: 0 }]
+      categories: [...(prev.categories || []), { name, description: '', isActive: true, order: 0, suggestedIssues: [] }]
     }));
   };
 
@@ -87,7 +88,78 @@ const ComplaintSettings = () => {
       cats.splice(idx, 1);
       return { ...prev, categories: cats };
     });
+    if (activeCategoryIdx === idx) setActiveCategoryIdx(null);
   };
+
+  const addSuggestedIssue = (catIdx, issueName) => {
+    if (!issueName) return;
+    setSettings(prev => {
+      const cats = [...(prev.categories || [])];
+      if (!cats[catIdx].suggestedIssues) cats[catIdx].suggestedIssues = [];
+      const order = cats[catIdx].suggestedIssues.length;
+      cats[catIdx].suggestedIssues.push({ name: issueName, isActive: true, order, usageCount: 0 });
+      return { ...prev, categories: cats };
+    });
+  };
+
+  const removeSuggestedIssue = (catIdx, issueIdx) => {
+    setSettings(prev => {
+      const cats = [...(prev.categories || [])];
+      cats[catIdx].suggestedIssues.splice(issueIdx, 1);
+      return { ...prev, categories: cats };
+    });
+  };
+
+  const toggleSuggestedIssue = (catIdx, issueIdx) => {
+    setSettings(prev => {
+      const cats = [...(prev.categories || [])];
+      cats[catIdx].suggestedIssues[issueIdx].isActive = !cats[catIdx].suggestedIssues[issueIdx].isActive;
+      return { ...prev, categories: cats };
+    });
+  };
+
+  const archiveSuggestedIssue = (catIdx, issueIdx) => {
+    setSettings(prev => {
+      const cats = [...(prev.categories || [])];
+      cats[catIdx].suggestedIssues[issueIdx].isActive = false;
+      cats[catIdx].suggestedIssues[issueIdx].isArchived = true;
+      return { ...prev, categories: cats };
+    });
+  };
+  
+  const moveSuggestedIssue = (catIdx, issueIdx, dir) => {
+    setSettings(prev => {
+      const cats = [...(prev.categories || [])];
+      const issues = cats[catIdx].suggestedIssues;
+      if (dir === 'up' && issueIdx > 0) {
+        [issues[issueIdx - 1], issues[issueIdx]] = [issues[issueIdx], issues[issueIdx - 1]];
+      } else if (dir === 'down' && issueIdx < issues.length - 1) {
+        [issues[issueIdx + 1], issues[issueIdx]] = [issues[issueIdx], issues[issueIdx + 1]];
+      }
+      return { ...prev, categories: cats };
+    });
+  };
+
+  const activeCategoryData = activeCategoryIdx !== null && settings.categories?.[activeCategoryIdx] ? settings.categories[activeCategoryIdx] : null;
+
+  const issueAnalytics = React.useMemo(() => {
+    if (!activeCategoryData || !activeCategoryData.suggestedIssues) return null;
+    const issues = activeCategoryData.suggestedIssues;
+    const activeCount = issues.filter(i => i.isActive && !i.isArchived).length;
+    const disabledCount = issues.filter(i => !i.isActive && !i.isArchived).length;
+    const archivedCount = issues.filter(i => i.isArchived).length;
+    const neverUsedCount = issues.filter(i => i.usageCount === 0 && !i.isArchived).length;
+    const sortedByUsage = [...issues].filter(i => !i.isArchived).sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
+    
+    return {
+      activeCount,
+      disabledCount,
+      archivedCount,
+      neverUsedCount,
+      mostUsed: sortedByUsage[0] || null,
+      leastUsed: sortedByUsage[sortedByUsage.length - 1] || null
+    };
+  }, [activeCategoryData]);
 
   const addStatus = (name) => {
     if (!name) return;
@@ -140,10 +212,10 @@ const ComplaintSettings = () => {
       <ComplaintTopNav />
       <div className="view-container">
         <div className="view active" id="settings">
-          <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
             <div>
-              <h1 id="pageTitle">System Settings</h1>
-              <div className="sub" id="pageSub">Configure departments, priorities, SLAs, workflows and feedback</div>
+              <h2 style={{ fontSize: '28px', margin: 0 }}>System Settings</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Configure departments, priorities, SLAs, workflows and feedback</p>
             </div>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
               {saving ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="fa-solid fa-save" style={{ marginRight: '8px' }}></i>}
@@ -151,8 +223,6 @@ const ComplaintSettings = () => {
             </button>
           </div>
       
-          <div className="content">
-            <section className="screen active" id="settings">
               <div className="grid grid-2">
                 
                 {/* Departments & Categories */}
@@ -174,22 +244,104 @@ const ComplaintSettings = () => {
                     }}>Add</button>
                   </div>
 
-                  <h3 style={{ fontSize: '16px', marginBottom: '20px', color: 'var(--ink)' }}>Categories</h3>
+                  <h3 style={{ fontSize: '16px', marginBottom: '20px', color: 'var(--ink)' }}>Categories & Issues</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
                     {(settings.categories || []).map((cat, idx) => (
-                      <span key={idx} className="tag-chip">
-                        {cat.name} <i className="fa-solid fa-xmark" style={{ fontSize: '12px', cursor: 'pointer' }} onClick={() => removeCategory(idx)}></i>
+                      <span key={idx} className={`tag-chip ${activeCategoryIdx === idx ? 'selected' : ''}`} style={activeCategoryIdx === idx ? { backgroundColor: 'var(--primary)', color: 'white' } : { cursor: 'pointer' }} onClick={() => setActiveCategoryIdx(activeCategoryIdx === idx ? null : idx)}>
+                        {cat.name} <i className="fa-solid fa-xmark" style={{ fontSize: '12px', cursor: 'pointer', marginLeft: '6px' }} onClick={(e) => { e.stopPropagation(); removeCategory(idx); }}></i>
                       </span>
                     ))}
                   </div>
-                  <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
                     <input type="text" id="new-cat-input" placeholder="New category name" style={{ flex: 1, marginBottom: 0 }} className="form-control" />
                     <button className="btn btn-outline-primary" onClick={() => {
                       const input = document.getElementById('new-cat-input');
                       addCategory(input.value);
                       input.value = '';
-                    }}>Add</button>
+                    }}>Add Category</button>
                   </div>
+                  
+                  {activeCategoryData && (
+                    <div style={{ padding: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', marginTop: '16px' }}>
+                      <h4 style={{ fontSize: '14px', marginBottom: '16px', color: 'var(--ink)' }}>
+                        Suggested Issues for {activeCategoryData.name}
+                      </h4>
+                      
+                      {issueAnalytics && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                          <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Active vs Disabled</div>
+                            <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--ink)', marginTop: '4px' }}>{issueAnalytics.activeCount} / {issueAnalytics.disabledCount}</div>
+                          </div>
+                          <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Never Used</div>
+                            <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--warning)', marginTop: '4px' }}>{issueAnalytics.neverUsedCount}</div>
+                          </div>
+                          <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Most Used</div>
+                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--primary)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{issueAnalytics.mostUsed?.name || 'N/A'}</div>
+                          </div>
+                          <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Least Used</div>
+                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--danger)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{issueAnalytics.leastUsed?.name || 'N/A'}</div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                        <input type="text" id="new-issue-input" placeholder="E.g., Tap Leakage" style={{ flex: 1, marginBottom: 0 }} className="form-control form-control-sm" />
+                        <button className="btn btn-primary btn-sm" onClick={() => {
+                          const input = document.getElementById('new-issue-input');
+                          addSuggestedIssue(activeCategoryIdx, input.value);
+                          input.value = '';
+                        }}>Add Issue</button>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {!(activeCategoryData.suggestedIssues?.filter(i => !i.isArchived).length > 0) && (
+                          <div style={{ fontSize: '13px', color: 'var(--ink-faint)', fontStyle: 'italic' }}>No active suggested issues added yet.</div>
+                        )}
+                        {(activeCategoryData.suggestedIssues || []).map((issue, issueIdx) => {
+                          if (issue.isArchived) return null;
+                          return (
+                            <div key={issueIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                                <i className="fa-solid fa-grip-vertical" style={{ color: 'var(--ink-faint)', cursor: 'grab' }}></i>
+                                <span style={{ fontSize: '14px', color: issue.isActive ? 'var(--ink)' : 'var(--ink-faint)', textDecoration: issue.isActive ? 'none' : 'line-through' }}>{issue.name}</span>
+                                {issue.usageCount > 0 ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '11px', background: 'var(--surface-2)', padding: '2px 6px', borderRadius: '12px', color: 'var(--ink-soft)' }}>Used {issue.usageCount} times</span>
+                                    {issue.lastUsedDate && <span style={{ fontSize: '10px', color: 'var(--ink-faint)' }}>Last used: {new Date(issue.lastUsedDate).toLocaleDateString()}</span>}
+                                  </div>
+                                ) : (
+                                  <span style={{ fontSize: '11px', background: 'var(--warning-soft)', padding: '2px 6px', borderRadius: '12px', color: 'var(--warning)', border: '1px solid var(--warning)' }}>
+                                    <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '4px' }}></i> Never Used
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                {issue.usageCount === 0 && (
+                                  <div style={{ display: 'flex', gap: '4px' }}>
+                                    {issue.isActive && <button className="btn btn-sm btn-outline-warning" style={{ fontSize: '11px', padding: '2px 8px' }} onClick={() => toggleSuggestedIssue(activeCategoryIdx, issueIdx)}>Disable</button>}
+                                    <button className="btn btn-sm btn-outline-secondary" style={{ fontSize: '11px', padding: '2px 8px' }} onClick={() => { if(window.confirm('Archive this suggestion? It will no longer appear in the UI.')) archiveSuggestedIssue(activeCategoryIdx, issueIdx); }}>Archive</button>
+                                  </div>
+                                )}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <i className="fa-solid fa-caret-up" style={{ cursor: 'pointer', color: issueIdx === 0 ? 'var(--border)' : 'var(--ink-soft)' }} onClick={() => moveSuggestedIssue(activeCategoryIdx, issueIdx, 'up')}></i>
+                                  <i className="fa-solid fa-caret-down" style={{ cursor: 'pointer', color: issueIdx === activeCategoryData.suggestedIssues.length - 1 ? 'var(--border)' : 'var(--ink-soft)' }} onClick={() => moveSuggestedIssue(activeCategoryIdx, issueIdx, 'down')}></i>
+                                </div>
+                                <label className="switch" style={{ margin: 0 }}>
+                                  <input type="checkbox" checked={issue.isActive !== false} onChange={() => toggleSuggestedIssue(activeCategoryIdx, issueIdx)} />
+                                  <span className="slider round"></span>
+                                </label>
+                                <i className="fa-solid fa-trash" style={{ color: 'var(--danger)', cursor: 'pointer' }} onClick={() => { if(window.confirm('Permanently delete this suggestion?')) removeSuggestedIssue(activeCategoryIdx, issueIdx); }}></i>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* SLAs & Priorities */}
@@ -460,8 +612,6 @@ const ComplaintSettings = () => {
                 </div>
 
               </div>
-            </section>
-          </div>
         </div>
       </div>
     </div>

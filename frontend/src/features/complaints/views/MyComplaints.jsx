@@ -31,9 +31,14 @@ const MyComplaints = () => {
     search: debouncedSearch
   };
 
-  const { complaints, pagination, isLoading, cancelComplaint } = useComplaints(activeFilters);
+  const { complaints, pagination, isLoading, cancelComplaint, addFeedback } = useComplaints(activeFilters);
   
   const [selectedComplaintId, setSelectedComplaintId] = useState(null);
+  const [feedbackModalId, setFeedbackModalId] = useState(null);
+  const [feedbackForm, setFeedbackForm] = useState({
+    rating: 5,
+    remarks: ''
+  });
 
   const formatDate = (dateString) => {
     const d = new Date(dateString);
@@ -51,11 +56,15 @@ const MyComplaints = () => {
       <ComplaintTopNav />
       <div className="view-container">
         <div className="view active" id="my-complaints">
-          {/* Page header moved into card header */}
-      <div className="content">
-        <section className="screen active" id="my-complaints">
-          <div className="filter-row">
-            <div className="search-bar">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+            <div>
+              <h2 style={{ fontSize: '28px', margin: 0 }}>Track Requests</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Track and manage your submitted tickets</p>
+            </div>
+          </div>
+
+          <div className="filter-row" style={{ marginBottom: '24px', justifyContent: 'flex-start' }}>
+            <div className="search-bar" style={{ flex: '0 0 350px' }}>
               <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--ink-faint)' }}></i>
               <input 
                 type="text" 
@@ -76,12 +85,6 @@ const MyComplaints = () => {
           </div>
 
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '32px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '24px', marginBottom: '8px' }}>Track Requests</h3>
-                <p style={{ color: 'var(--ink-soft)', fontSize: '14px', fontWeight: '500', margin: 0 }}>Track and manage your submitted tickets</p>
-              </div>
-            </div>
 
             <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
               <table className="ent-table">
@@ -116,26 +119,29 @@ const MyComplaints = () => {
                         <td><span className={badgeClass}>{c.status}</span></td>
                         <td>{formatDate(c.createdAt)}</td>
                         <td>
-                          <button 
-                            className="btn btn-ghost btn-sm" 
-                            onClick={() => setSelectedComplaintId(c._id)}
-                          >
-                            View
-                          </button>
-                          {['Submitted', 'Open'].includes(c.status) && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
                             <button 
                               className="btn btn-ghost btn-sm" 
-                              style={{ color: '#DC2626', marginLeft: '8px' }}
-                              onClick={() => {
-                                const reason = prompt('Reason for cancellation:');
-                                if (reason) {
-                                  cancelComplaint(c._id, reason).then(() => toast.success('Complaint Cancelled'));
-                                }
-                              }}
+                              style={{ fontSize: '12px', padding: '4px 10px' }}
+                              onClick={() => setSelectedComplaintId(c._id)}
                             >
-                              Cancel Request
+                              View
                             </button>
-                          )}
+                            {['Submitted', 'Open'].includes(c.status) && (
+                              <button 
+                                className="btn btn-ghost btn-sm" 
+                                style={{ color: '#DC2626', borderColor: '#fecaca', fontSize: '12px', padding: '4px 10px', whiteSpace: 'nowrap' }}
+                                onClick={() => {
+                                  const reason = prompt('Reason for cancellation:');
+                                  if (reason) {
+                                    cancelComplaint(c._id, reason).then(() => toast.success('Complaint Cancelled'));
+                                  }
+                                }}
+                              >
+                                Cancel Request
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -178,8 +184,6 @@ const MyComplaints = () => {
               </div>
             )}
           </div>
-        </section>
-      </div>
         </div>
       </div>
       
@@ -187,7 +191,62 @@ const MyComplaints = () => {
         <ComplaintDetails 
           complaintId={selectedComplaintId} 
           onClose={() => setSelectedComplaintId(null)} 
+          onProvideFeedback={(id) => {
+            setSelectedComplaintId(null);
+            setFeedbackModalId(id);
+          }}
         />
+      )}
+
+      {feedbackModalId && (
+        <div className="modal-overlay active" style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.6)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, padding: '20px' }}>
+          <div className="modal-box" style={{ width: '100%', maxWidth: '500px', background: '#ffffff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+              <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0f172a' }}>Provide Feedback</h4>
+              <button onClick={() => setFeedbackModalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#64748b' }}>
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div className="modal-body" style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '15px', fontWeight: 500, color: '#334155' }}>Overall Rating</span>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <i 
+                        key={star} 
+                        className="fa-solid fa-star" 
+                        style={{ color: star <= feedbackForm.rating ? '#f59e0b' : '#cbd5e1', cursor: 'pointer', fontSize: '20px' }}
+                        onClick={() => setFeedbackForm({ ...feedbackForm, rating: star })}
+                      ></i>
+                    ))}
+                  </div>
+                </div>
+                
+                <div style={{ marginTop: '12px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Additional Remarks</label>
+                  <textarea 
+                    rows="3" 
+                    className="form-control" 
+                    value={feedbackForm.remarks}
+                    onChange={e => setFeedbackForm({ ...feedbackForm, remarks: e.target.value })}
+                    placeholder="Tell us about your experience..."
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', resize: 'vertical' }}
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button className="btn btn-ghost" onClick={() => setFeedbackModalId(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={() => {
+                addFeedback(feedbackModalId, feedbackForm).then(() => {
+                  toast.success('Feedback submitted successfully');
+                  setFeedbackModalId(null);
+                });
+              }}>Submit Feedback</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

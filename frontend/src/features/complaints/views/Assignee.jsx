@@ -45,7 +45,8 @@ const Assignee = () => {
     resumeWork, 
     markWorkCompleted,
     uploadWorkAttachments,
-    addWorkNotes
+    addWorkNotes,
+    uploadFiles
   } = useComplaints(activeFilters);
   
   // Filter for currently logged-in user
@@ -68,6 +69,7 @@ const Assignee = () => {
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [actionReason, setActionReason] = useState('');
   const [activeComplaint, setActiveComplaint] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
 
   const formatDate = (dateString) => {
     const d = new Date(dateString);
@@ -98,7 +100,6 @@ const Assignee = () => {
   };
 
   const submitReject = async () => {
-    if (!actionReason.trim()) return toast.error('Reason is required');
     try {
       await rejectAssignment(activeComplaint._id, actionReason);
       toast.success('Assignment rejected');
@@ -126,13 +127,13 @@ const Assignee = () => {
   };
 
   const submitPause = async () => {
-    if (!actionReason.trim()) return toast.error('Reason is required');
     try {
       await pauseWork(activeComplaint._id, actionReason);
       toast.success('Work paused');
       setShowPauseModal(false);
     } catch (err) {
-      toast.error('Failed to pause work');
+      console.error('[DEBUG] submitPause error:', err);
+      toast.error(err?.response?.data?.message || err?.message || err || 'Failed to pause work');
     }
   };
 
@@ -154,7 +155,6 @@ const Assignee = () => {
   };
 
   const submitComplete = async () => {
-    if (!actionReason.trim()) return toast.error('Completion notes are required');
     try {
       await markWorkCompleted(activeComplaint._id, { notes: actionReason, attachments: [] });
       toast.success('Work marked as completed');
@@ -165,20 +165,23 @@ const Assignee = () => {
   };
 
   const submitUpload = async () => {
-    // We would normally handle a file upload here.
-    // For now, assuming an array of URLs or simulating.
-    if (!actionReason.trim()) return toast.error('Attachment link required for demo');
+    if (selectedFiles.length === 0) return toast.error('Please select at least one photo');
+    
     try {
-      await uploadWorkAttachments(activeComplaint._id, [actionReason]);
+      const formData = new FormData();
+      Array.from(selectedFiles).forEach(file => formData.append('attachments', file));
+      
+      const fileUrls = await uploadFiles(formData);
+      await uploadWorkAttachments(activeComplaint._id, fileUrls);
       toast.success('Photos uploaded successfully');
       setShowUploadModal(false);
+      setSelectedFiles([]);
     } catch (err) {
       toast.error('Failed to upload photos');
     }
   };
 
   const submitNotes = async () => {
-    if (!actionReason.trim()) return toast.error('Notes are required');
     try {
       await addWorkNotes(activeComplaint._id, actionReason);
       toast.success('Notes added successfully');
@@ -205,34 +208,33 @@ const Assignee = () => {
             </div>
           )}
       
-          <div className="content">
-            <section className="screen active">
-              <div className="filter-row">
-                <div className="search-bar">
-                  <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--ink-faint)' }}></i>
-                  <input 
-                    type="text" 
-                    placeholder="Search by Ticket ID..." 
-                    value={filterParams.search}
-                    onChange={e => setFilterParams({ ...filterParams, search: e.target.value, page: 1 })}
-                  />
-                </div>
-                <select className="filter-select" value={filterParams.status} onChange={e => setFilterParams({ ...filterParams, status: e.target.value, page: 1 })}>
-                  <option value="">All Statuses</option>
-                  <option value="Waiting For Acceptance">Waiting For Acceptance</option>
-                  <option value="Assigned">Assigned / Accepted</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="On Hold">On Hold</option>
-                </select>
-              </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+            <div>
+              <h2 style={{ fontSize: '28px', margin: 0 }}>Assignee Portal</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Manage your assigned maintenance tasks and complaints</p>
+            </div>
+          </div>
 
-              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '32px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h3 style={{ fontSize: '24px', marginBottom: '8px' }}>Assignee Portal</h3>
-                    <p style={{ color: 'var(--ink-soft)', fontSize: '14px', fontWeight: '500', margin: 0 }}>Manage your assigned maintenance tasks and complaints</p>
-                  </div>
-                </div>
+          <div className="filter-row" style={{ marginBottom: '24px', justifyContent: 'flex-start' }}>
+            <div className="search-bar" style={{ flex: '0 0 350px' }}>
+              <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--ink-faint)' }}></i>
+              <input 
+                type="text" 
+                placeholder="Search by Ticket ID..." 
+                value={filterParams.search}
+                onChange={e => setFilterParams({ ...filterParams, search: e.target.value, page: 1 })}
+              />
+            </div>
+            <select className="filter-select" value={filterParams.status} onChange={e => setFilterParams({ ...filterParams, status: e.target.value, page: 1 })}>
+              <option value="">All Statuses</option>
+              <option value="Waiting For Acceptance">Waiting For Acceptance</option>
+              <option value="Assigned">Assigned / Accepted</option>
+              <option value="In Progress">In Progress</option>
+              <option value="On Hold">On Hold</option>
+            </select>
+          </div>
+
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
 
                 <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
                   <table className="ent-table">
@@ -271,7 +273,7 @@ const Assignee = () => {
                             </span>
                           </td>
                           <td>
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                               {c.status === 'Waiting For Acceptance' && (
                                 <>
                                   <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={(e) => onAccept(e, c._id)}>Accept</button>
@@ -308,8 +310,6 @@ const Assignee = () => {
                   </div>
                 </div>
               </div>
-            </section>
-          </div>
         </div>
       </div>
 
@@ -322,7 +322,7 @@ const Assignee = () => {
               <i className="fa-solid fa-xmark complaint-modal-close" onClick={() => setShowRejectModal(false)}></i>
             </div>
             <div className="form-group">
-              <label>Reason for rejection <span style={{ color: 'var(--critical)' }}>*</span></label>
+              <label>Reason for rejection</label>
               <textarea 
                 placeholder="Why are you rejecting this assignment?"
                 value={actionReason}
@@ -347,7 +347,7 @@ const Assignee = () => {
               <i className="fa-solid fa-xmark complaint-modal-close" onClick={() => setShowPauseModal(false)}></i>
             </div>
             <div className="form-group">
-              <label>Reason for pausing <span style={{ color: 'var(--critical)' }}>*</span></label>
+              <label>Reason for pausing</label>
               <textarea 
                 placeholder="E.g. Need to buy materials..."
                 value={actionReason}
@@ -372,7 +372,7 @@ const Assignee = () => {
               <i className="fa-solid fa-xmark complaint-modal-close" onClick={() => setShowCompleteModal(false)}></i>
             </div>
             <div className="form-group">
-              <label>Completion Notes <span style={{ color: 'var(--critical)' }}>*</span></label>
+              <label>Completion Notes</label>
               <textarea 
                 placeholder="What did you fix?"
                 value={actionReason}
@@ -398,14 +398,19 @@ const Assignee = () => {
               <i className="fa-solid fa-xmark complaint-modal-close" onClick={() => setShowUploadModal(false)}></i>
             </div>
             <div className="form-group">
-              <label>Photo URL / File Name <span style={{ color: 'var(--critical)' }}>*</span></label>
+              <label>Select Photos <span style={{ color: 'var(--critical)' }}>*</span></label>
               <input 
-                type="text"
-                placeholder="E.g. photo.jpg or https://image.url"
-                value={actionReason}
-                onChange={e => setActionReason(e.target.value)}
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={e => setSelectedFiles(e.target.files)}
                 style={{ width: '100%', border: '1px solid var(--border)', borderRadius: '6px', padding: '12px' }}
               />
+              {selectedFiles.length > 0 && (
+                <div style={{ marginTop: '12px', fontSize: '14px', color: 'var(--ink-soft)' }}>
+                  {selectedFiles.length} file(s) selected
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
               <button className="btn btn-ghost" onClick={() => setShowUploadModal(false)}>Cancel</button>
@@ -424,7 +429,7 @@ const Assignee = () => {
               <i className="fa-solid fa-xmark complaint-modal-close" onClick={() => setShowNotesModal(false)}></i>
             </div>
             <div className="form-group">
-              <label>Notes <span style={{ color: 'var(--critical)' }}>*</span></label>
+              <label>Notes</label>
               <textarea 
                 placeholder="Details about the work..."
                 value={actionReason}

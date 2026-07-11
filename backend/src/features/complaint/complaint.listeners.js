@@ -58,7 +58,7 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
           recipientId: techId,
           title: 'New Complaint Assignment Request',
           body: `You have a new assignment pending acceptance: ${complaint.complaintNumber}.`,
-          actionUrl: `/assignee`,
+          actionUrl: `/admin/complaints/assignee`,
           type: 'INFO'
         });
       } catch (err) { logger.error('Failed to notify broadcast assignee:', err); }
@@ -70,7 +70,7 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
         recipientId: complaint.assignedTechnicianId,
         title: 'New Complaint Assignment',
         body: `You have been directly assigned to complaint: ${complaint.complaintNumber}.`,
-        actionUrl: `/assignee`,
+        actionUrl: `/admin/complaints/assignee`,
         type: 'INFO'
       });
 

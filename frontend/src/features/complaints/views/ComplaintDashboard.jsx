@@ -1,8 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ComplaintTopNav from '../components/ComplaintTopNav';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { useAmenities } from '../../amenities/hooks/useAmenities';
+import { useComplaints } from '../hooks/useComplaints';
+import toast from 'react-hot-toast';
 import '../styles/_complaints.scss';
 
 const ComplaintDashboard = () => {
@@ -43,23 +45,56 @@ const ComplaintDashboard = () => {
     return notices.sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
   }, [amenities]);
 
+  const { createNewComplaint } = useComplaints();
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [generalFeedback, setGeneralFeedback] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+
+  const handleFeedbackSubmit = async () => {
+    if (!generalFeedback.trim()) {
+      toast.error('Please enter your feedback before submitting.');
+      return;
+    }
+    try {
+      setIsSubmittingFeedback(true);
+      await createNewComplaint({
+        title: 'Resident Feedback',
+        description: generalFeedback,
+        category: 'Feedback',
+        priority: 'Medium',
+        department: 'Management',
+        flat: user?.flat || '',
+        name: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Resident',
+        isEmergency: false,
+        location: {
+          building: user?.building || '',
+          tower: user?.tower || '',
+          floor: user?.floor || '',
+          flat: user?.flat || ''
+        }
+      });
+      toast.success('Thank you! Your feedback has been submitted successfully.');
+      setGeneralFeedback('');
+      setShowFeedbackModal(false);
+    } catch (error) {
+      toast.error('Failed to submit feedback. Please try again.');
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
   return (
     <div className="complaints-module-wrapper complaints-os-theme">
       <ComplaintTopNav />
       <div className="view-container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
         {/* HEADER */}
-        <div className="page-header" style={{ marginBottom: '40px' }}>
-          <h1 id="pageTitle" style={{ fontSize: '22px', fontWeight: 700, color: '#1E293B', marginBottom: '8px' }}>
-            Complaints Dashboard
-          </h1>
-          <div className="sub" id="pageSub" style={{ fontSize: '14px', color: '#64748B' }}>
-            Block {user?.block || 'A'}, Flat {user?.flat || '704'} &middot; {user?.tenantId?.name || 'Greenview Society'}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+          <div>
+            <h2 style={{ fontSize: '28px', margin: 0 }}>Complaints Dashboard</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Block {user?.block || 'A'}, Flat {user?.flat || '704'} &middot; {user?.tenantId?.name || 'Greenview Society'}</p>
           </div>
         </div>
-      
-        <div className="content">
-          <section className="screen active" id="dashboard">
             
             {/* WELCOME SECTION */}
             <div style={{ marginBottom: '32px' }}>
@@ -72,7 +107,7 @@ const ComplaintDashboard = () => {
             </div>
             
             {/* PRIMARY ACTIONS - Centered like image */}
-            <div className="grid grid-2" style={{ gap: '24px', marginBottom: '48px' }}>
+            <div className="grid grid-3" style={{ gap: '24px', marginBottom: '48px' }}>
               <div 
                 className="resident-action-centered" 
                 onClick={() => navigate('/admin/complaints/create')}
@@ -93,6 +128,17 @@ const ComplaintDashboard = () => {
                 </div>
                 <b className="action-title">Track Requests</b>
                 <span className="action-desc">Check the status of your reported issues.</span>
+              </div>
+
+              <div 
+                className="resident-action-centered" 
+                onClick={() => setShowFeedbackModal(true)}
+              >
+                <div className="action-icon-circle" style={{ background: '#FCE7F3', color: '#DB2777' }}>
+                  <i className="fa-solid fa-comment-dots"></i>
+                </div>
+                <b className="action-title">Provide Feedback</b>
+                <span className="action-desc">Share your suggestions or overall feedback.</span>
               </div>
             </div>
 
@@ -127,9 +173,42 @@ const ComplaintDashboard = () => {
               )}
             </div>
 
-          </section>
-        </div>
+
       </div>
+
+      {showFeedbackModal && (
+        <div className="modal-overlay active" style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.6)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, padding: '20px' }}>
+          <div className="modal-box" style={{ width: '100%', maxWidth: '500px', background: '#ffffff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+              <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0f172a' }}>General Feedback</h4>
+              <button onClick={() => setShowFeedbackModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#64748b' }}>
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div className="modal-body" style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Your Feedback</label>
+                  <textarea 
+                    rows="5" 
+                    className="form-control" 
+                    value={generalFeedback}
+                    onChange={e => setGeneralFeedback(e.target.value)}
+                    placeholder="Tell us what's on your mind... (e.g. maintenance team is doing a great job, or suggestions for improvement)"
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', resize: 'vertical' }}
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button className="btn btn-ghost" onClick={() => setShowFeedbackModal(false)} disabled={isSubmittingFeedback}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleFeedbackSubmit} disabled={isSubmittingFeedback}>
+                {isSubmittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

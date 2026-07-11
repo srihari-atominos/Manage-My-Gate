@@ -4,6 +4,14 @@ const categorySchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: { type: String },
   subCategories: [{ type: String }],
+  suggestedIssues: [{
+    name: { type: String, required: true },
+    isActive: { type: Boolean, default: true },
+    isArchived: { type: Boolean, default: false },
+    order: { type: Number, default: 0 },
+    usageCount: { type: Number, default: 0 },
+    lastUsedDate: { type: Date, default: null }
+  }],
   isActive: { type: Boolean, default: true },
   order: { type: Number, default: 0 }
 });

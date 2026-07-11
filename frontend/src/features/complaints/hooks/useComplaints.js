@@ -21,7 +21,8 @@ import {
   markWorkCompleted,
   uploadWorkAttachments,
   addWorkNotes,
-  confirmCompletion
+  confirmCompletion as confirmCompletionAction,
+  addFeedback as addFeedbackAction
 } from '../store/complaintSlice';
 import { fetchComplaintSettings } from '../store/complaintSettingsSlice';
 
@@ -117,8 +118,12 @@ export const useComplaints = (filters = {}, options = {}) => {
     return await dispatch(updateComplaintStatus({ id, data: { status: 'Reopened', remarks: reason } })).unwrap();
   };
 
-  const confirmCompletion = async (id, rating, remarks) => {
-    return await dispatch(updateComplaintStatus({ id, data: { status: 'Closed', remarks: `Rating: ${rating}. ${remarks}` } })).unwrap(); // Feedback integration could go here
+  const confirmCompletion = async (id, payload) => {
+    return await dispatch(confirmCompletionAction({ id, ...payload })).unwrap();
+  };
+
+  const addFeedback = async (id, data) => {
+    return await dispatch(addFeedbackAction({ id, data })).unwrap();
   };
 
   const uploadFiles = async (formData) => {
@@ -144,7 +149,7 @@ export const useComplaints = (filters = {}, options = {}) => {
   
   const handleUploadWorkAttachments = async (id, attachments) => dispatch(uploadWorkAttachments({ id, attachments })).unwrap();
   const handleAddWorkNotes = async (id, notes) => dispatch(addWorkNotes({ id, notes })).unwrap();
-  const handleConfirmCompletion = async (id, payload) => dispatch(confirmCompletion({ id, ...payload })).unwrap();
+  const handleConfirmCompletion = async (id, payload) => dispatch(confirmCompletionAction({ id, ...payload })).unwrap();
 
   return {
     complaints: list,
@@ -182,7 +187,8 @@ export const useComplaints = (filters = {}, options = {}) => {
     resumeWork: handleResumeWork,
     markWorkCompleted: handleMarkWorkCompleted,
     uploadWorkAttachments: handleUploadWorkAttachments,
-    addWorkNotes: handleAddWorkNotes
+    addWorkNotes: handleAddWorkNotes,
+    addFeedback: async (id, payload) => dispatch(addFeedbackAction({ id, data: payload })).unwrap()
   };
 };
 

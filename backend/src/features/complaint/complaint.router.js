@@ -61,7 +61,7 @@ router.post(
 // Create new complaint
 router.post(
   '/',
-  authorizePermission('complaints', 'create'),
+  authorizePermission('complaints', ['create', 'raise_ticket']),
   createComplaintValidator,
   complaintController.create
 );
@@ -85,7 +85,7 @@ router.put(
 // Add Comment
 router.post(
   '/:id/comments',
-  authorizePermission('complaints', ['comments', 'create']),
+  authorizePermission('complaints', ['comments', 'create', 'track_requests']),
   addCommentValidator,
   complaintController.addComment
 );
@@ -93,7 +93,7 @@ router.post(
 // Add Feedback
 router.post(
   '/:id/feedback',
-  authorizePermission('complaints', ['comments', 'create']), // Resusing comments or custom feedback perm
+  authorizePermission('complaints', ['comments', 'create', 'track_requests']), // Resusing comments or custom feedback perm
   complaintController.addFeedback
 );
 

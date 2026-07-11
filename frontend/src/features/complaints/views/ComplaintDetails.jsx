@@ -37,7 +37,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const ComplaintDetails = ({ complaintId, onClose }) => {
+const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
   const { currentComplaint: complaint, isDetailsLoading, loadComplaintDetails, addComment, updateStatus, assignTechnician, cancelComplaint, reopenComplaint, confirmCompletion } = useComplaints({}, { disableAutoFetch: true });
   const authUser = useSelector((state) => state.auth?.user || {});
   const userRole = authUser.role || 'Resident';
@@ -155,6 +155,20 @@ const ComplaintDetails = ({ complaintId, onClose }) => {
         { label: 'Rejected', isActive: true, isError: true }
       ];
       return renderSteps(steps);
+    }
+    if (complaint.vendor === 'Temporary Vendor' || complaint.vendor === 'External Vendor') {
+      const getTempVendorIndex = (s) => {
+        if (['Closed', 'Completed', 'Resolved'].includes(s)) return 2;
+        if (['Assigned', 'In Progress'].includes(s)) return 1;
+        return 0;
+      };
+      const idx = getTempVendorIndex(complaint.status);
+      const tempSteps = [
+        { label: 'Submitted', isCompleted: idx > 0, isActive: idx === 0 },
+        { label: 'Assigned', isCompleted: idx > 1, isActive: idx === 1 },
+        { label: 'Closed', isCompleted: idx > 2, isActive: idx === 2 }
+      ];
+      return renderSteps(tempSteps);
     }
     
     const currentStepIndex = getWorkflowStepIndex(complaint.status);
@@ -333,21 +347,16 @@ const ComplaintDetails = ({ complaintId, onClose }) => {
                     <button className="btn btn-ghost" onClick={handleEscalate}>Escalate</button>
                   </>
                 )}
-                {['Submitted', 'Open', 'Assigned', 'In Progress'].includes(complaint.status) && (
-                  <button className="btn btn-ghost" style={{ color: '#DC2626' }} onClick={() => {
-                    const reason = prompt('Reason for cancellation:');
-                    if (reason) {
-                      cancelComplaint(complaintId, reason).then(() => toast.success('Complaint Cancelled'));
-                    }
-                  }}>Cancel Request</button>
-                )}
                 <button className="btn btn-ghost" onClick={handlePrint}><i className="fa-solid fa-print"></i> Print / PDF</button>
                 {!['Cancelled', 'Closed', 'Resolved'].includes(complaint.status) && (
                   <button className="btn btn-primary" onClick={() => setShowAssignModal(true)}>Assign Technician</button>
                 )}
               </>
             )}
-            {userRole === 'Resident' && ['Submitted', 'Open'].includes(complaint.status) && (
+            {(
+              (['Admin', 'FacilityManager', 'Manager', 'Super Admin'].includes(userRole) && ['Submitted', 'Open', 'Assigned', 'In Progress'].includes(complaint.status)) ||
+              (userRole?.toLowerCase() === 'resident' && ['Submitted', 'Open', 'Assigned'].includes(complaint.status))
+            ) && (
               <button className="btn btn-ghost" style={{ color: '#DC2626' }} onClick={() => {
                 const reason = prompt('Reason for cancellation:');
                 if (reason) {
@@ -355,7 +364,7 @@ const ComplaintDetails = ({ complaintId, onClose }) => {
                 }
               }}>Cancel Request</button>
             )}
-            {userRole === 'Resident' && ['Resolved', 'Waiting For Resident Confirmation'].includes(complaint.status) && (
+            {userRole?.toLowerCase() === 'resident' && ['Resolved', 'Waiting For Resident Confirmation'].includes(complaint.status) && (
               <>
                 <button className="btn btn-ghost" onClick={() => {
                   const reason = prompt('Reason for reopening:');
@@ -372,8 +381,7 @@ const ComplaintDetails = ({ complaintId, onClose }) => {
         </div>
       </div>
       
-      <div className="content">
-        <section className="screen active" id="details">
+
           <div className="grid" style={{ gridTemplateColumns: '2fr 1fr', alignItems: 'start' }}>
             
             {/* Left Column */}
@@ -475,17 +483,56 @@ const ComplaintDetails = ({ complaintId, onClose }) => {
                       </div>
                     )}
                   </div>
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '8px' }}>
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {complaint.vendor === 'Temporary Vendor' && ['Assigned', 'In Progress'].includes(complaint.status) && (
+                      <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => {
+                        confirmCompletion(complaintId, { remarks: 'Work marked as done for temporary vendor.' })
+                          .then(() => toast.success('Work marked as done.'))
+                          .catch(e => toast.error(e.response?.data?.message || 'Error marking as done'));
+                      }}>
+                        Work Done
+                      </button>
+                    )}
                     <button className="btn btn-ghost" style={{ width: '100%' }} onClick={onClose}>
                       Cancel
                     </button>
                   </div>
+                </div>              </div>
+
+              {complaint.assignedTechnicianName && (
+                <div className="card">
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ink)', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>Assignee Details</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '12px', color: 'var(--ink-faint)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Name</span>
+                      <div style={{ color: 'var(--ink)', fontSize: '13px', fontWeight: 600 }}>{complaint.assignedTechnicianName}</div>
+                    </div>
+                    {true && (
+                      <div>
+                        <span style={{ display: 'block', fontSize: '12px', color: 'var(--ink-faint)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Phone Number</span>
+                        <div style={{ color: 'var(--ink)', fontSize: '13px' }}>
+                          {(() => {
+                            if (complaint.assignedTechnicianPhone) {
+                              return complaint.assignedTechnicianPhone;
+                            }
+                            if (complaint.assignedTechnicianId?.phone) {
+                              return complaint.assignedTechnicianId.phone;
+                            }
+                            if (complaint.vendor === 'Temporary Vendor') {
+                              const assignEvent = complaint.timeline?.find(t => t.action === 'Complaint Assigned' && t.remarks?.includes('Assigned to:'));
+                              if (assignEvent && assignEvent.remarks) {
+                                const match = assignEvent.remarks.match(/Phone:\s*([\d\+\-\(\)\s]+)/i);
+                                if (match && match[1]) return match[1].trim();
+                              }
+                            }
+                            return 'N/A';
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-
-
-
-
+              )}
 
 
 
@@ -554,7 +601,7 @@ const ComplaintDetails = ({ complaintId, onClose }) => {
                   <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '12px' }}>Resolution Feedback</h3>
                   <div className="feedback-stars" style={{ fontSize: '16px', marginBottom: '12px' }}>
                     {[1,2,3,4,5].map(star => (
-                      <i key={star} className={star <= complaint.feedback.rating ? "fa-solid fa-star" : "fa-regular fa-star"}></i>
+                      <i key={star} className={star <= (complaint.feedback.overallRating || complaint.feedback.rating) ? "fa-solid fa-star" : "fa-regular fa-star"}></i>
                     ))}
                   </div>
                   <p style={{ fontSize: '14px', color: 'var(--ink-soft)', fontStyle: 'italic', margin: 0 }}>
@@ -568,12 +615,23 @@ const ComplaintDetails = ({ complaintId, onClose }) => {
                 </div>
               )}
 
+              {['Resolved', 'Closed', 'Completed'].includes(complaint.status) && !(complaint.feedback && (complaint.feedback.overallRating || complaint.feedback.rating)) && onProvideFeedback && (
+                <div style={{ marginTop: '16px' }}>
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    onClick={() => onProvideFeedback(complaint._id)}
+                  >
+                    <i className="fa-solid fa-star"></i> Provide Feedback
+                  </button>
+                </div>
+              )}
+
 
             </div>
             
           </div>
-        </section>
-      </div>
+
 
       {/* Modals */}
       {showAssignModal && (

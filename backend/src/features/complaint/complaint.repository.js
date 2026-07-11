@@ -7,7 +7,8 @@ class ComplaintRepository {
   }
 
   async findById(id, orgId) {
-    return await Complaint.findOne({ _id: id, orgId });
+    return await Complaint.findOne({ _id: id, orgId })
+      .populate('assignedTechnicianId', 'name phone email avatar');
   }
 
   async findAll(orgId, filter, pagination, sort) {
@@ -27,7 +28,7 @@ class ComplaintRepository {
     }
 
     const [data, total] = await Promise.all([
-      Complaint.find(query).sort(sort).skip(skip).limit(limit),
+      Complaint.find(query).populate('residentId', 'username email').sort(sort).skip(skip).limit(limit),
       Complaint.countDocuments(query)
     ]);
 
@@ -35,9 +36,29 @@ class ComplaintRepository {
   }
 
   async update(id, orgId, updateData) {
+    const hasOperators = Object.keys(updateData).some(key => key.startsWith('$'));
+    let updateQuery;
+    
+    if (hasOperators) {
+      updateQuery = {};
+      const setFields = {};
+      for (const [key, value] of Object.entries(updateData)) {
+        if (key.startsWith('$')) {
+          updateQuery[key] = value;
+        } else {
+          setFields[key] = value;
+        }
+      }
+      if (Object.keys(setFields).length > 0) {
+        updateQuery.$set = { ...(updateQuery.$set || {}), ...setFields };
+      }
+    } else {
+      updateQuery = { $set: updateData };
+    }
+
     return await Complaint.findOneAndUpdate(
       { _id: id, orgId },
-      { $set: updateData },
+      updateQuery,
       { new: true, runValidators: true }
     );
   }
