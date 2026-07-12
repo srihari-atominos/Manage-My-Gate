@@ -50,5 +50,13 @@
       "scanner",
       "security_logs"
     ]
+  },
+  {
+    "feature": "visitor",
+    "actions": [
+      "resident",
+      "guard",
+      "admin"
+    ]
   }
 ]

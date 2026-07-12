@@ -11,7 +11,13 @@ export const shareQrCode = async (svgElementId, passData) => {
   }
 
   try {
-    const svgString = new XMLSerializer().serializeToString(svgElement);
+    const clonedSvg = svgElement.cloneNode(true);
+    clonedSvg.setAttribute('width', '256');
+    clonedSvg.setAttribute('height', '256');
+    if (!clonedSvg.getAttribute('xmlns')) {
+      clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    }
+    const svgString = new XMLSerializer().serializeToString(clonedSvg);
     const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
     const URL = window.URL || window.webkitURL || window;
     const blobURL = URL.createObjectURL(svgBlob);

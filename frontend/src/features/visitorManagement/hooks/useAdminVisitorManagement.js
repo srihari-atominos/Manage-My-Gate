@@ -12,6 +12,7 @@ export const useAdminVisitorManagement = () => {
   const { currentUser } = useAuth();
 
   const [activeTab, setActiveTab] = useState('overview');
+  const [generatedPass, setGeneratedPass] = useState(null);
   const [inviteMethod, setInviteMethod] = useState('guest');
   const [guestPassType, setGuestPassType] = useState('default');
   const [cabPassType, setCabPassType] = useState('default');
@@ -148,9 +149,13 @@ export const useAdminVisitorManagement = () => {
     providerName: ''
   });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleInputChange = (nameOrEvent, value) => {
+    if (nameOrEvent && nameOrEvent.target) {
+      const { name, value: val } = nameOrEvent.target;
+      setFormData(prev => ({ ...prev, [name]: val }));
+    } else {
+      setFormData(prev => ({ ...prev, [nameOrEvent]: value }));
+    }
   };
 
   const handleCreatePass = async (e) => {
@@ -183,8 +188,8 @@ export const useAdminVisitorManagement = () => {
     const payload = {
       orgId: activeOrgId || '60c72b2f9b1d8e25d88db652',
       createdById: currentUser?._id || currentUser?.id || '60c72b2f9b1d8e25d88db650',
-      roleId: resolvedRoleId || null,
-      passType: inviteMethod === 'cab_delivery' ? 'CAB' : inviteMethod.toUpperCase(),
+      roleId: resolvedRoleId || undefined,
+      passType: inviteMethod === 'cab_delivery' ? 'CAB' : (inviteMethod === 'group' ? 'GUEST' : inviteMethod.toUpperCase()),
       visitorDetails: {
         name: formData.visitorName || formData.eventName || formData.providerName || `Cab Order #${formData.orderId}`,
         idProofType: guestPassType === 'id_proof' ? 'Aadhaar' : 'None',
@@ -204,7 +209,8 @@ export const useAdminVisitorManagement = () => {
 
     try {
       if (activeOrgId) {
-        await dispatch(createPass(payload)).unwrap();
+        const created = await dispatch(createPass(payload)).unwrap();
+        setGeneratedPass(created);
         toast.success('Pass created successfully.');
       } else {
         const fallbackPass = {
@@ -217,6 +223,7 @@ export const useAdminVisitorManagement = () => {
           status: 'ACTIVE'
         };
         setLocalPasses(prev => [fallbackPass, ...prev]);
+        setGeneratedPass(fallbackPass);
         toast.success('Pass generated locally!');
       }
     } catch (err) {
@@ -328,7 +335,9 @@ export const useAdminVisitorManagement = () => {
     handleCreatePass,
     handleRevokePass,
     handleCopyPass,
-    activeOrgId
+    activeOrgId,
+    generatedPass,
+    setGeneratedPass
   };
 };
 

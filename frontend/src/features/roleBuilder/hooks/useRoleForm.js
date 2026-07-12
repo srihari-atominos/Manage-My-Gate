@@ -58,7 +58,12 @@ export const useRoleForm = ({ role, visible, onSave }) => {
   const handleSelectAllGroup = (groupCodes, checked) => {
     let newValue
     if (checked) {
-      newValue = Array.from(new Set([...selectedPermissions, ...groupCodes]))
+      let filteredGroupCodes = [...groupCodes]
+      const visitorCodes = groupCodes.filter((code) => code.startsWith('visitor:'))
+      if (visitorCodes.length > 1) {
+        filteredGroupCodes = groupCodes.filter((code) => !code.startsWith('visitor:') || code === visitorCodes[0])
+      }
+      newValue = Array.from(new Set([...selectedPermissions, ...filteredGroupCodes]))
     } else {
       newValue = selectedPermissions.filter((code) => !groupCodes.includes(code))
     }
@@ -66,9 +71,15 @@ export const useRoleForm = ({ role, visible, onSave }) => {
   }
 
   const handleTogglePermission = (permValue, checked) => {
-    const newValue = checked
+    let newValue = checked
       ? [...selectedPermissions, permValue]
       : selectedPermissions.filter((p) => p !== permValue)
+
+    // Enforce mutual exclusivity for visitor context permissions (single select)
+    if (checked && permValue.startsWith('visitor:')) {
+      newValue = newValue.filter((p) => !p.startsWith('visitor:') || p === permValue)
+    }
+
     setValue('permissions', newValue, { shouldDirty: true, shouldValidate: true })
   }
 

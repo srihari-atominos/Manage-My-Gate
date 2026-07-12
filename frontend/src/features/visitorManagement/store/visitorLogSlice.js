@@ -84,7 +84,7 @@ export const fetchPendingApprovals = createAsyncThunk(
   async (orgId, { rejectWithValue }) => {
     try {
       const response = await VisitorAPI.getPendingApprovals(orgId);
-      return response.data.data;
+      return response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch pending approvals');
     }

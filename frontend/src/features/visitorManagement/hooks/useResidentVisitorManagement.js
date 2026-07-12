@@ -118,9 +118,13 @@ export const useResidentVisitorManagement = () => {
     providerName: ''
   });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleInputChange = (nameOrEvent, value) => {
+    if (nameOrEvent && nameOrEvent.target) {
+      const { name, value: val } = nameOrEvent.target;
+      setFormData(prev => ({ ...prev, [name]: val }));
+    } else {
+      setFormData(prev => ({ ...prev, [nameOrEvent]: value }));
+    }
   };
 
   const handleCreatePass = async (e) => {
@@ -153,9 +157,9 @@ export const useResidentVisitorManagement = () => {
     const payload = {
       orgId: activeOrgId || '60c72b2f9b1d8e25d88db652', // Default Org ID if not loaded
       createdById: currentUser?._id || currentUser?.id || '60c72b2f9b1d8e25d88db650',
-      villaId: currentUser?.villaId || '60c72b2f9b1d8e25d88db661',
-      roleId: resolvedRoleId || null,
-      passType: inviteMethod === 'cab_delivery' ? 'CAB' : inviteMethod.toUpperCase(),
+      villaId: currentUser?.villaId || undefined,
+      roleId: resolvedRoleId || undefined,
+      passType: inviteMethod === 'cab_delivery' ? 'CAB' : (inviteMethod === 'group' ? 'GUEST' : inviteMethod.toUpperCase()),
       visitorDetails: {
         name: formData.visitorName || formData.eventName || formData.providerName || `Cab Order #${formData.orderId}`,
         idProofType: (inviteMethod === 'guest' && guestPassType === 'id_proof') || (inviteMethod === 'service' && servicePassType === 'id_proof') ? 'Aadhaar' : 'None',

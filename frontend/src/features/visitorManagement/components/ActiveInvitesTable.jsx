@@ -12,9 +12,10 @@ export const ActiveInvitesTable = ({
   handleRevokePass
 }) => {
   // Filter and Paginate Passes
-  const filteredPasses = passes.filter(pass => {
+  const filteredPasses = (passes || []).filter(pass => {
+    if (!pass) return false;
     const passMethod = pass.method || (
-      pass.passType === 'CAB' ? 'cab_delivery' :
+      (pass.passType === 'CAB' || pass.passType === 'DELIVERY') ? 'cab_delivery' :
       pass.passType === 'SERVICE' ? 'service' :
       pass.passType === 'GUEST' && (pass.usageLimit?.maxUses > 5) ? 'group' : 'guest'
     );

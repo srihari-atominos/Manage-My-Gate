@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { CNav, CNavItem, CNavLink } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilQrCode, cilShieldAlt, cilList, cilSpeedometer, cilPeople, cilSettings } from '@coreui/icons';
@@ -7,16 +8,20 @@ import { cilQrCode, cilShieldAlt, cilList, cilSpeedometer, cilPeople, cilSetting
 export const VisitorTopNav = ({ activeTab, onTabChange }) => {
   const location = useLocation();
   const path = location.pathname;
+  const user = useSelector((state) => state.auth.user);
+  const context = user?.visitorContext || 'None';
+
+  console.log('[VisitorTopNav] context:', context, 'user:', user);
 
   let navItems = [];
 
-  // Replicate setup but with separate links per role view to prevent cross-linking
-  if (path.includes('resident')) {
+  // Determine top navigation options based on context view state
+  if (context === 'Resident') {
     navItems = [
       { name: 'Create Pass', to: '#', id: 'create', icon: cilQrCode },
       { name: 'Walk-in Approval', to: '#', id: 'walkin', icon: cilShieldAlt }
     ];
-  } else if (path.includes('admin')) {
+  } else if (context === 'Admin') {
     navItems = [
       { name: 'Dashboard Overview', to: '#', id: 'overview', icon: cilSpeedometer },
       { name: 'Create Pass', to: '#', id: 'create', icon: cilQrCode },
@@ -24,7 +29,7 @@ export const VisitorTopNav = ({ activeTab, onTabChange }) => {
       { name: 'Visitor Logs', to: '#', id: 'logs', icon: cilList },
       { name: 'Blacklist Settings', to: '#', id: 'blacklist', icon: cilSettings }
     ];
-  } else if (path.includes('guard')) {
+  } else if (context === 'Guard') {
     navItems = [
       { name: 'Invite visitor', to: '#', id: 'invite', icon: cilPeople },
       { name: 'scaner', to: '#', id: 'scanner', icon: cilQrCode },

@@ -94,14 +94,30 @@ export const useGuardVisitorManagement = () => {
     if (activeOrgId) {
       setLoadingDirectory(true);
       Promise.all([
-        apiClient.get('/villas?limit=100'),
-        apiClient.get('/users?limit=100'),
-        dispatch(getPasses({ orgId: activeOrgId, params: { page: 1, limit: 100 } })),
+        apiClient.get('/villas?limit=100')
+          .catch(err => {
+            console.error('Failed to load villas in guard hook:', err);
+            return { data: { data: [] } };
+          }),
+        apiClient.get('/users?limit=100')
+          .catch(err => {
+            console.error('Failed to load users in guard hook:', err);
+            return { data: { data: [] } };
+          }),
+        dispatch(getPasses({ orgId: activeOrgId, params: { page: 1, limit: 100 } }))
+          .catch(err => {
+            console.error('Failed to load passes in guard hook:', err);
+            return null;
+          }),
         dispatch(getActiveVisitors(activeOrgId))
+          .catch(err => {
+            console.error('Failed to load active visitors in guard hook:', err);
+            return null;
+          })
       ])
         .then(([villasRes, usersRes]) => {
-          setDbVillas(villasRes.data?.data || []);
-          setDbUsers(usersRes.data?.data || []);
+          setDbVillas(villasRes?.data?.data || []);
+          setDbUsers(usersRes?.data?.data || []);
         })
         .catch(err => {
           console.error('Failed to sync guard console resources:', err);
@@ -181,7 +197,14 @@ export const useGuardVisitorManagement = () => {
   const handleInitiateWalkIn = async (walkInPayload) => {
     try {
       toast.loading('Initiating walk-in approval request...', { id: 'walkin-submit' });
-      const result = await dispatch(initiateWalkIn(walkInPayload)).unwrap();
+      
+      const enrichedPayload = {
+        ...walkInPayload,
+        orgId: activeOrgId,
+        guardId: currentUser?.id || currentUser?._id
+      };
+      
+      const result = await dispatch(initiateWalkIn(enrichedPayload)).unwrap();
       toast.success('Walk-in request sent to host!', { id: 'walkin-submit' });
       
       // Auto reload after request resolves

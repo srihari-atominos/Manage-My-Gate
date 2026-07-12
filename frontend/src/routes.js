@@ -32,6 +32,7 @@ const AdminMaintenanceView = React.lazy(() => import('./features/amenities/views
 const ResidentVisitorManagementView = React.lazy(() => import('./features/visitorManagement/views/ResidentVisitorManagementView'));
 const AdminVisitorManagementViews = React.lazy(() => import('./features/visitorManagement/views/AdminVisitorManagementViews'));
 const GuardVisitormanagementViews = React.lazy(() => import('./features/visitorManagement/views/GuardVisitormanagementViews'));
+const VisitorContextManager = React.lazy(() => import('./features/visitorManagement/views/VisitorContextManager'));
 
 /**
  * Application Routes configuration mapping paths to lazy-loaded components.
@@ -39,6 +40,7 @@ const GuardVisitormanagementViews = React.lazy(() => import('./features/visitorM
 export const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
+  { path: '/visitor-management', name: 'Visitor Management', element: VisitorContextManager },
   { path: '/visitor-management-resident', name: 'Visitor Passes', element: ResidentVisitorManagementView },
   { path: '/visitor-management-admin', name: 'Visitor Admin', element: AdminVisitorManagementViews },
   { path: '/visitor-management-guard', name: 'Gate Console', element: GuardVisitormanagementViews },

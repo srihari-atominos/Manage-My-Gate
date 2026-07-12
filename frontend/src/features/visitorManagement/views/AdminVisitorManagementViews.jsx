@@ -5,6 +5,7 @@ import ActiveInvitesTable from '../components/ActiveInvitesTable.jsx';
 import WalkInApprovalList from '../components/WalkInApprovalList.jsx';
 import VisitorLogsTable from '../components/VisitorLogsTable.jsx';
 import BlacklistSettings from '../components/BlacklistSettings.jsx';
+import InvitationSuccessModal from '../components/InvitationSuccessModal.jsx';
 import useAdminVisitorManagement from '../hooks/useAdminVisitorManagement.js';
 import '../styles/_visitorManagement.scss';
 
@@ -40,7 +41,9 @@ export const AdminVisitorManagementViews = () => {
     handleCreatePass,
     handleRevokePass,
     handleCopyPass,
-    activeOrgId
+    activeOrgId,
+    generatedPass,
+    setGeneratedPass
   } = useAdminVisitorManagement();
 
   // Calculate real-time statistics
@@ -74,6 +77,12 @@ export const AdminVisitorManagementViews = () => {
       <div className="view-container">
         <div className="view active" id="view-admin-visitor">
           
+          <InvitationSuccessModal 
+            visible={!!generatedPass} 
+            onClose={() => setGeneratedPass(null)} 
+            passData={generatedPass} 
+          />
+
           {activeTab === 'overview' && (
             <>
               {/* Statistics Counters Grid */}

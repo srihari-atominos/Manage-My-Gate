@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 import { shareQrCode } from '../utils/shareUtils.js';
 
 export const InvitationSuccessModal = ({ visible, onClose, passData }) => {
+  console.log('[InvitationSuccessModal] visible:', visible, 'passData:', passData);
   if (!passData) return null;
 
   const passCode = passData.id || passData._id || '—';

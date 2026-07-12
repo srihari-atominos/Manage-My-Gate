@@ -65,6 +65,24 @@ export class VisitorLogController {
       next(error);
     }
   }
+
+  /**
+   * Get pending walk-in check-in requests.
+   */
+  async getPending(req, res, next) {
+    try {
+      const { orgId } = req.params;
+      const userId = req.user.id;
+      const userRole = req.user.role || '';
+      
+      const isCommunityAdmin = userRole.toLowerCase().includes('admin') || userRole.toLowerCase().includes('super');
+      
+      const data = await visitorLogService.getPendingApprovals(orgId, isCommunityAdmin ? null : userId);
+      res.success(data, 'Pending approvals retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new VisitorLogController();

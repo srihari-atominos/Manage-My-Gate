@@ -7,7 +7,8 @@ export const createPass = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const response = await VisitorAPI.createPass(payload);
-      return response.data;
+      const body = response && response.success !== undefined ? response : response?.data;
+      return body?.data || body;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to create visitor pass');
     }
@@ -19,7 +20,8 @@ export const getPassDetails = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const response = await VisitorAPI.getPassDetails(id);
-      return response.data;
+      const body = response && response.success !== undefined ? response : response?.data;
+      return body?.data || body;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch pass details');
     }
@@ -31,7 +33,8 @@ export const updatePassStatus = createAsyncThunk(
   async ({ id, status }, { rejectWithValue }) => {
     try {
       const response = await VisitorAPI.updatePassStatus(id, status);
-      return response.data;
+      const body = response && response.success !== undefined ? response : response?.data;
+      return body?.data || body;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to update pass status');
     }
@@ -43,9 +46,11 @@ export const getPasses = createAsyncThunk(
   async ({ orgId, params }, { rejectWithValue }) => {
     try {
       const response = await VisitorAPI.getPasses(orgId, params);
+      const body = response && response.success !== undefined ? response : response?.data;
+      const innerData = body?.data || body;
       return {
-        data: response.data.data,
-        totalRecords: response.data.totalRecords,
+        data: Array.isArray(innerData) ? innerData : (innerData?.data || []),
+        totalRecords: innerData?.totalRecords || 0,
         page: params?.page || 1,
         limit: params?.limit || 10
       };

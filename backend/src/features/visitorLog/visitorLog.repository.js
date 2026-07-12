@@ -84,6 +84,25 @@ export class VisitorLogRepository {
       { new: true, runValidators: true, ...(session ? { session } : {}) }
     );
   }
+
+  /**
+   * Find pending walk-in log approvals.
+   * @param {Object} query - The Mongoose query filter.
+   * @returns {Promise<Object[]>}
+   */
+  async findPendingApprovals(query) {
+    return await VisitorLog.find(query)
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'residentId',
+        select: 'username name email'
+      })
+      .populate({
+        path: 'guardId',
+        select: 'username name'
+      })
+      .exec();
+  }
 }
 
 export default new VisitorLogRepository();

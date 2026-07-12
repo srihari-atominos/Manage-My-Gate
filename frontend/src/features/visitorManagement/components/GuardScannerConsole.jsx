@@ -30,7 +30,7 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
       if (isInside) {
         toast.success(`Pass verified! Resident host currently inside.`);
       } else {
-        if (found.status === 'ACTIVE' || found.status === 'Active') {
+        if (found.status === 'ACTIVE' || found.status === 'Active' || found.status === 'PENDING' || found.status === 'Pending') {
           toast.success(`Pass verified! Access Approved for ${found.visitorName || found.visitorDetails?.name}.`);
         } else {
           toast.error(`Pass Status is ${found.status}. Access Blocked.`);
@@ -92,7 +92,7 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
     setTypedCode('');
   };
 
-  const activePasses = passes.filter(p => p.status === 'ACTIVE' || p.status === 'Active');
+  const activePasses = passes.filter(p => p.status === 'ACTIVE' || p.status === 'Active' || p.status === 'PENDING' || p.status === 'Pending');
 
   return (
     <div className="dashboard-grid">
@@ -260,7 +260,7 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
                   <CButton 
                     color="success" 
                     onClick={handleCheckIn}
-                    disabled={matchedPass.status !== 'ACTIVE' && matchedPass.status !== 'Active'}
+                    disabled={matchedPass.status !== 'ACTIVE' && matchedPass.status !== 'Active' && matchedPass.status !== 'PENDING' && matchedPass.status !== 'Pending'}
                     style={{ width: '100%', color: '#fff', fontWeight: '700', padding: '12px 0' }}
                   >
                     <i className="fa-solid fa-right-to-bracket" style={{ marginRight: '8px' }}></i>

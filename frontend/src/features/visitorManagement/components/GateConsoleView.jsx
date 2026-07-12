@@ -30,7 +30,7 @@ export const GateConsoleView = ({ passes, setPasses, onCheckInSuccess }) => {
     const found = passes.find(p => p.id.toLowerCase() === scanCode.trim().toLowerCase());
     
     if (found) {
-      if (found.status === 'ACTIVE') {
+      if (found.status === 'ACTIVE' || found.status === 'Active' || found.status === 'PENDING' || found.status === 'Pending') {
         setScanResult('success');
         setMatchedPass(found);
         toast.success(`Access Granted for ${found.visitorName}!`);
@@ -75,11 +75,14 @@ export const GateConsoleView = ({ passes, setPasses, onCheckInSuccess }) => {
       setSearchResults([]);
       return;
     }
-    const filtered = passes.filter(p => 
-      p.visitorName.toLowerCase().includes(val.toLowerCase()) ||
-      p.id.toLowerCase().includes(val.toLowerCase()) ||
-      (p.details && p.details.toLowerCase().includes(val.toLowerCase()))
-    );
+    const filtered = (passes || []).filter(p => {
+      if (!p) return false;
+      const name = p.visitorName || p.visitorDetails?.name || '';
+      const passId = p.id || p._id || '';
+      return name.toLowerCase().includes(val.toLowerCase()) ||
+             passId.toLowerCase().includes(val.toLowerCase()) ||
+             (p.details && p.details.toLowerCase().includes(val.toLowerCase()));
+    });
     setSearchResults(filtered);
   };
 
@@ -248,12 +251,12 @@ export const GateConsoleView = ({ passes, setPasses, onCheckInSuccess }) => {
                       </div>
                     </div>
                     <button 
-                      className={`btn ${pass.status === 'ACTIVE' ? 'btn-primary' : 'btn-secondary'}`}
+                      className={`btn ${['ACTIVE', 'Active', 'PENDING', 'Pending'].includes(pass.status) ? 'btn-primary' : 'btn-secondary'}`}
                       style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}
-                      disabled={pass.status !== 'ACTIVE'}
+                      disabled={!['ACTIVE', 'Active', 'PENDING', 'Pending'].includes(pass.status)}
                       onClick={() => handleCheckInFallback(pass)}
                     >
-                      {pass.status === 'ACTIVE' ? 'Check-In' : 'Expired'}
+                      {['ACTIVE', 'Active', 'PENDING', 'Pending'].includes(pass.status) ? 'Check-In' : 'Expired'}
                     </button>
                   </div>
                 ))

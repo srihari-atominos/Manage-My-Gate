@@ -135,6 +135,23 @@ export class VisitorLogService {
   async getActiveLogsInside(orgId, session = null) {
     return await visitorLogRepository.findActiveLogsInside(orgId, session);
   }
+
+  /**
+   * Fetch pending walk-in log approvals.
+   * @param {string} orgId - The organization ID.
+   * @param {string|null} residentId - Optional resident ID to filter by.
+   * @returns {Promise<Object[]>}
+   */
+  async getPendingApprovals(orgId, residentId = null) {
+    const query = {
+      orgId,
+      logStatus: 'PENDING'
+    };
+    if (residentId) {
+      query.residentId = residentId;
+    }
+    return await visitorLogRepository.findPendingApprovals(query);
+  }
 }
 
 export default new VisitorLogService();

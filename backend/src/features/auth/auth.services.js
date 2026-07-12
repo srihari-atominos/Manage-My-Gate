@@ -159,6 +159,17 @@ export class AuthService {
       occupancyStatus: selectedMembership.villaId.occupancyStatus,
     } : null;
 
+    let visitorContext = 'None';
+    if (permissions && permissions.length > 0) {
+      if (permissions.includes('visitor:resident')) {
+        visitorContext = 'Resident';
+      } else if (permissions.includes('visitor:guard')) {
+        visitorContext = 'Guard';
+      } else if (permissions.includes('visitor:admin')) {
+        visitorContext = 'Admin';
+      }
+    }
+
     return {
       tokenPayload: {
         id: user._id,
@@ -169,6 +180,7 @@ export class AuthService {
         permissions,
         orgId,
         isPlatform,
+        visitorContext,
         villaId: villaInfo ? villaInfo.id : null,
         villaNumber: villaInfo ? villaInfo.villaNumber : '',
         villaBlock: villaInfo ? villaInfo.block : '',
@@ -215,6 +227,7 @@ export class AuthService {
         permissions: tokenPayload.permissions,
         orgId: tokenPayload.orgId,
         isPlatform: tokenPayload.isPlatform,
+        visitorContext: tokenPayload.visitorContext,
         villaId: tokenPayload.villaId,
         villaNumber: tokenPayload.villaNumber,
         villaBlock: tokenPayload.villaBlock,
@@ -250,6 +263,7 @@ export class AuthService {
         permissions: tokenPayload.permissions,
         orgId: tokenPayload.orgId,
         isPlatform: tokenPayload.isPlatform,
+        visitorContext: tokenPayload.visitorContext,
         villaId: tokenPayload.villaId,
         villaNumber: tokenPayload.villaNumber,
         villaBlock: tokenPayload.villaBlock,
@@ -458,6 +472,7 @@ export class AuthService {
           permissions: tokenPayload.permissions,
           orgId: tokenPayload.orgId,
           isPlatform: tokenPayload.isPlatform,
+          visitorContext: tokenPayload.visitorContext,
         },
         availableWorkspaces,
       };

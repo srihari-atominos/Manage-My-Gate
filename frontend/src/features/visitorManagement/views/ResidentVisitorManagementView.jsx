@@ -42,6 +42,8 @@ export const ResidentVisitorManagementView = () => {
     setGeneratedPass
   } = useResidentVisitorManagement();
 
+  console.log('[ResidentVisitorManagementView] generatedPass:', generatedPass);
+
   return (
     <div className="visitor-management-module-wrapper visitor-os-theme">
       <VisitorTopNav activeTab={activeTab} onTabChange={setActiveTab} />

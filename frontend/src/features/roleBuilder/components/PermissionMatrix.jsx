@@ -51,15 +51,17 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
               }}
             >
               <h6 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-main)' }}>
-                {category.toLowerCase() === 'amenities' ? 'Amenities & Bookings' : category.charAt(0).toUpperCase() + category.slice(1)} Permissions
+                {category.toLowerCase() === 'visitor' ? 'Visitor Management' : (category.toLowerCase() === 'amenities' ? 'Amenities & Bookings' : category.charAt(0).toUpperCase() + category.slice(1))} Permissions
               </h6>
-              <CFormCheck
-                id={`select-all-${category}`}
-                label="Select All"
-                checked={isAllGroupSelected}
-                onChange={(e) => onSelectAllGroup(groupCodes, e.target.checked)}
-                style={{ fontWeight: 600, color: 'var(--text-muted)', margin: 0 }}
-              />
+              {category.toLowerCase() !== 'visitor' && (
+                <CFormCheck
+                  id={`select-all-${category}`}
+                  label="Select All"
+                  checked={isAllGroupSelected}
+                  onChange={(e) => onSelectAllGroup(groupCodes, e.target.checked)}
+                  style={{ fontWeight: 600, color: 'var(--text-muted)', margin: 0 }}
+                />
+              )}
             </div>
             
             <CRow className="g-2">
@@ -71,6 +73,8 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
                 return (
                   <CCol xs={12} md={6} key={permValue}>
                     <CFormCheck
+                      type={category.toLowerCase() === 'visitor' ? 'radio' : 'checkbox'}
+                      name={category.toLowerCase() === 'visitor' ? 'visitor-permission-group' : undefined}
                       id={`perm-check-${idSafe}`}
                       label={formatPermissionLabel(perm.name || String(permValue))}
                       checked={isChecked}
