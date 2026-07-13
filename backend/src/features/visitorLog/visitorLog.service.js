@@ -3,6 +3,7 @@ import visitorPassService from '../visitorPass/visitorPass.service.js';
 import visitorLogEvents from './visitorLog.events.js';
 import HttpError from '../../utils/httpError.utils.js';
 import blacklistService from '../blacklist/blacklist.service.js';
+import visitorPassTokenService from '../visitorPassToken/visitorPassToken.service.js';
 
 export class VisitorLogService {
   /**
@@ -132,6 +133,26 @@ export class VisitorLogService {
     }
 
     const updatedLog = await visitorLogRepository.updateLogForCheckout(logId, new Date(), session);
+    
+    // Cleanup expired tokens from mapping if no other visitors remain inside under this pass
+    if (updatedLog.passId) {
+      try {
+        const pass = await visitorPassService.getPassById(updatedLog.passId, session);
+        if (pass && pass.status === 'EXPIRED') {
+          const logsInside = await visitorLogRepository.findActiveLogsInside(log.orgId, session);
+          const anyoneLeft = logsInside.some(l => 
+            l.passId?.toString() === pass._id?.toString() && 
+            l._id?.toString() !== logId.toString()
+          );
+          if (!anyoneLeft) {
+            await visitorPassTokenService.deleteTokenByPassId(pass._id, session);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to clean up expired token mapping:', err);
+      }
+    }
+
     visitorLogEvents.emit('log_checked_out', updatedLog);
     return updatedLog;
   }

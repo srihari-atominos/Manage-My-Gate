@@ -125,13 +125,12 @@ export class AuthService {
         }
       } else {
         roleName = roleNames.length > 0 ? roleNames[0] : null;
-        if (roles.length > 0) {
-          const allPermissions = new Set();
-          for (const roleObj of roles) {
-            const permissionsList = await rolePermissionService.getPermissionsByRoleId(roleObj._id);
-            permissionsList.forEach(permission => allPermissions.add(permission.name));
+        if (roleName) {
+          const activeRoleObj = roles.find(r => r.name === roleName);
+          if (activeRoleObj) {
+            const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+            permissions = permissionsList.map((permission) => permission.name);
           }
-          permissions = Array.from(allPermissions);
         }
       }
     }

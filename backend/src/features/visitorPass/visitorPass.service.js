@@ -151,9 +151,6 @@ export class VisitorPassService {
     }
 
     const updated = await visitorPassRepository.update(passDoc._id, { $set: updates }, session);
-    if (updated.status === 'EXPIRED') {
-      await visitorPassTokenService.deleteTokenByPassId(updated._id, session);
-    }
 
     visitorPassEvents.emit('pass_updated', updated);
     return updated;

@@ -251,20 +251,46 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
 
   const activePasses = passes.filter(p => p.status === 'ACTIVE' || p.status === 'Active' || p.status === 'PENDING' || p.status === 'Pending');
 
+  const isGroupPass = matchedPass && (
+    matchedPass.isGroupPass === true ||
+    (matchedPass.passType?.toUpperCase() === 'GUEST' && matchedPass.usageLimit?.maxUses > 2)
+  );
+  
+  // Check if at least one visitor from this pass is inside
+  const isVisitorInside = matchedPass && isVisitorCurrentlyInside(matchedPass);
+
   // Step 1: Evaluate if visitor is CURRENTLY INSIDE (Highest Priority)
   const isInside = matchedPass && (
-    isVisitorCurrentlyInside(matchedPass) ||
-    matchedPass.isInside ||
-    matchedPass.activeEntryExists ||
-    ['CHECKED_IN', 'Checked-in', 'IN_PREMISES', 'Inside', 'INSIDE'].includes(matchedPass.status)
+    isVisitorInside ||
+    (!isGroupPass && (
+      matchedPass.isInside ||
+      matchedPass.activeEntryExists ||
+      ['CHECKED_IN', 'Checked-in', 'IN_PREMISES', 'Inside', 'INSIDE'].includes(matchedPass.status)
+    ))
   );
 
-  // Step 2: Evaluate if pass is EXPIRED, REVOKED, or OUT OF USES (Second Priority, only if not inside)
+  // Step 2: Evaluate if pass is EXPIRED, REVOKED, or OUT OF USES
   const isOutOfUses = matchedPass && matchedPass.usageLimit?.maxUses && matchedPass.usageLimit.currentUses >= matchedPass.usageLimit.maxUses;
-  const isExpiredOrRevoked = matchedPass && !isInside && (
-    ['EXPIRED', 'Expired', 'REVOKED', 'Revoked', 'COMPLETED', 'Completed'].includes(matchedPass.status) || 
-    isOutOfUses ||
-    !isPassDateActive(matchedPass)
+  const isExpiredOrRevoked = matchedPass && (
+    isGroupPass 
+      ? (['REVOKED', 'Revoked'].includes(matchedPass.status) || !isPassDateActive(matchedPass) || (isOutOfUses && !isVisitorInside))
+      : (!isInside && (
+          ['EXPIRED', 'Expired', 'REVOKED', 'Revoked', 'COMPLETED', 'Completed'].includes(matchedPass.status) || 
+          isOutOfUses ||
+          !isPassDateActive(matchedPass)
+        ))
+  );
+
+  const showCheckIn = matchedPass && !isExpiredOrRevoked && (
+    isGroupPass 
+      ? (matchedPass.usageLimit.currentUses < matchedPass.usageLimit.maxUses) 
+      : !isInside
+  );
+
+  const showCheckOut = matchedPass && (
+    isGroupPass 
+      ? isVisitorInside 
+      : isInside
   );
 
   return (
@@ -443,6 +469,14 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
                       {matchedPass.vehicleNumber || matchedPass.vehicleDetails?.number || '—'}
                     </strong>
                   </div>
+                  {matchedPass.usageLimit && matchedPass.usageLimit.maxUses > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: '6px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Group Code Entries:</span>
+                      <strong style={{ color: 'var(--text-main)' }}>
+                        {matchedPass.usageLimit.currentUses || 0} / {matchedPass.usageLimit.maxUses}
+                      </strong>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Status:</span>
                     <strong style={{ color: isExpiredOrRevoked ? 'var(--danger)' : isInside ? 'var(--info)' : 'var(--success)' }}>
@@ -455,16 +489,38 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
 
               {/* Action Buttons */}
               <div style={{ marginTop: '24px' }}>
-                {isExpiredOrRevoked ? (
+                {showCheckIn && showCheckOut ? (
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <CButton 
+                      color="success" 
+                      onClick={handleCheckIn}
+                      disabled={isLoading}
+                      style={{ flex: 1, color: '#fff', fontWeight: '700', padding: '12px 0' }}
+                    >
+                      <i className="fa-solid fa-right-to-bracket" style={{ marginRight: '6px' }}></i>
+                      Check-In Guest
+                    </CButton>
+                    <CButton 
+                      color="warning" 
+                      onClick={handleCheckOut}
+                      disabled={isLoading}
+                      style={{ flex: 1, color: '#fff', fontWeight: '700', padding: '12px 0' }}
+                    >
+                      <i className="fa-solid fa-door-open" style={{ marginRight: '6px' }}></i>
+                      Check-Out Guest
+                    </CButton>
+                  </div>
+                ) : showCheckIn ? (
                   <CButton 
-                    color="secondary" 
-                    disabled={true}
-                    style={{ width: '100%', fontWeight: '700', padding: '12px 0', opacity: 0.6 }}
+                    color="success" 
+                    onClick={handleCheckIn}
+                    disabled={isLoading}
+                    style={{ width: '100%', color: '#fff', fontWeight: '700', padding: '12px 0' }}
                   >
-                    <i className="fa-solid fa-ban" style={{ marginRight: '8px' }}></i>
-                    Gate Access Blocked
+                    <i className="fa-solid fa-right-to-bracket" style={{ marginRight: '8px' }}></i>
+                    {isLoading ? 'Processing check-in...' : 'Confirm Gate Check-In'}
                   </CButton>
-                ) : isInside ? (
+                ) : showCheckOut ? (
                   <CButton 
                     color="warning" 
                     onClick={handleCheckOut}
@@ -476,13 +532,12 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
                   </CButton>
                 ) : (
                   <CButton 
-                    color="success" 
-                    onClick={handleCheckIn}
-                    disabled={isLoading || (matchedPass.status !== 'ACTIVE' && matchedPass.status !== 'Active' && matchedPass.status !== 'PENDING' && matchedPass.status !== 'Pending')}
-                    style={{ width: '100%', color: '#fff', fontWeight: '700', padding: '12px 0' }}
+                    color="secondary" 
+                    disabled={true}
+                    style={{ width: '100%', fontWeight: '700', padding: '12px 0', opacity: 0.6 }}
                   >
-                    <i className="fa-solid fa-right-to-bracket" style={{ marginRight: '8px' }}></i>
-                    {isLoading ? 'Processing check-in...' : 'Confirm Gate Check-In'}
+                    <i className="fa-solid fa-ban" style={{ marginRight: '8px' }}></i>
+                    Gate Access Blocked / Expired
                   </CButton>
                 )}
               </div>

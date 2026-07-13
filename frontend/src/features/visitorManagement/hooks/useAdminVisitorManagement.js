@@ -443,6 +443,7 @@ export const useAdminVisitorManagement = () => {
       roleId: resolvedRoleId || undefined,
       passType: inviteMethod === 'cab_delivery' ? 'CAB' : (inviteMethod === 'group' ? 'GUEST' : inviteMethod.toUpperCase()),
       isIdProofPass,
+      isGroupPass: inviteMethod === 'group',
       visitorDetails: {
         name: visitorName,
         idProofType: ((inviteMethod === 'guest' && guestPassType === 'id_proof') || (inviteMethod === 'service' && servicePassType === 'id_proof')) ? idProofTypeInput : 'None',
