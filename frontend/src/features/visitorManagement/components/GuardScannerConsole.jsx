@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { CButton, CFormInput, CFormSelect } from '@coreui/react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { fetchPassByCode } from '../store/visitorPassSlice.js';
 
 export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onCheckOutSuccess }) => {
   const [scannerMode, setScannerMode] = useState('camera'); // 'camera' | 'search'
@@ -9,6 +11,9 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
   // Scanned / Selected Pass State
   const [matchedPass, setMatchedPass] = useState(null);
   const [typedCode, setTypedCode] = useState('');
+
+  const dispatch = useDispatch();
+  const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId);
 
   // Web Camera scanning states and references
   const [cameraActive, setCameraActive] = useState(false);
@@ -125,19 +130,40 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
   };
 
   // Perform search / verify logic
-  const handleVerifyCode = (code) => {
+  const handleVerifyCode = async (code) => {
     if (!code || !code.trim()) {
       toast.error('Please enter or select a valid pass code.');
       return;
     }
 
     const cleaned = code.trim().toLowerCase();
-    const found = passes.find(p => 
+    
+    // 1. Try to find in the already loaded list in memory
+    let found = passes.find(p => 
       p.id?.toLowerCase() === cleaned || 
       p._id?.toLowerCase() === cleaned ||
+      p.shortKey?.toLowerCase() === cleaned ||
       p.visitorDetails?.name?.toLowerCase().includes(cleaned) ||
-      p.visitorName?.toLowerCase().includes(cleaned)
+      p.visitorName?.toLowerCase().includes(cleaned) ||
+      p.vehicleDetails?.number?.toLowerCase().includes(cleaned) ||
+      p.vehicleNumber?.toLowerCase().includes(cleaned) ||
+      p.visitorDetails?.phone?.includes(cleaned) ||
+      p.visitorDetails?.idProofNumber?.toLowerCase().includes(cleaned) ||
+      p.details?.toLowerCase().includes(cleaned)
     );
+
+    // 2. If not found in memory, and matches a 6-digit numeric key, fetch it from database
+    if (!found && /^\d{6}$/.test(cleaned) && activeOrgId) {
+      try {
+        toast.loading('Fetching pass code from database...', { id: 'fetch-code-task' });
+        const prefixedCode = `${activeOrgId}_${cleaned}`;
+        const pass = await dispatch(fetchPassByCode(prefixedCode)).unwrap();
+        found = pass;
+        toast.success('Pass details loaded successfully!', { id: 'fetch-code-task' });
+      } catch (err) {
+        toast.error(err.message || 'No matching active visitor pass found for this code.', { id: 'fetch-code-task' });
+      }
+    }
 
     if (found) {
       setMatchedPass(found);
@@ -156,7 +182,7 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
           toast.error(`Pass Status is ${found.status}. Access Blocked.`);
         }
       }
-    } else {
+    } else if (!/^\d{6}$/.test(cleaned)) {
       setMatchedPass(null);
       toast.error('Invalid pass: No matching pre-approved invitation found.');
     }

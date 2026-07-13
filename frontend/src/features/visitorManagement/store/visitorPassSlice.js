@@ -28,6 +28,19 @@ export const getPassDetails = createAsyncThunk(
   }
 );
 
+export const fetchPassByCode = createAsyncThunk(
+  'visitorPass/fetchPassByCode',
+  async (code, { rejectWithValue }) => {
+    try {
+      const response = await VisitorAPI.getPassByCode(code);
+      const body = response && response.success !== undefined ? response : response?.data;
+      return body?.data || body;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch pass details by key code');
+    }
+  }
+);
+
 export const updatePassStatus = createAsyncThunk(
   'visitorPass/updatePassStatus',
   async ({ id, status }, { rejectWithValue }) => {
@@ -117,6 +130,26 @@ export const visitorPassSlice = createSlice({
         state.activePass = action.payload;
       })
       .addCase(getPassDetails.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      })
+
+      // fetchPassByCode (Fetch operation - uses status)
+      .addCase(fetchPassByCode.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(fetchPassByCode.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.activePass = action.payload;
+        
+        // Optionally insert/update in passes list if not present
+        const exists = state.passes.some(pass => pass._id === action.payload._id);
+        if (!exists) {
+          state.passes.unshift(action.payload);
+        }
+      })
+      .addCase(fetchPassByCode.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
       })

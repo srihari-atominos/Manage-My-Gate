@@ -512,9 +512,9 @@ export const useResidentVisitorManagement = () => {
   };
 
   const handleCopyPass = (pass) => {
-    const text = pass.id || pass._id;
+    const text = pass.shortKey || pass.id || pass._id;
     navigator.clipboard.writeText(text);
-    toast.success('Pass ID copied to clipboard!');
+    toast.success('Invitation code copied to clipboard!');
   };
 
   const handleApproveEntry = async (id) => {

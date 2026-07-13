@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
-import { getPasses, createPass } from '../store/visitorPassSlice.js';
+import { getPasses, createPass, fetchPassByCode } from '../store/visitorPassSlice.js';
 import { getActiveVisitors, processPreApproved, initiateWalkIn, checkoutVisitor } from '../store/visitorLogSlice.js';
 import useAuth from '../../auth/hooks/useAuth.js';
 import apiClient from '../../../services/apiClient.js';

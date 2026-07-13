@@ -2,6 +2,7 @@ import visitorPassRepository from './visitorPass.repository.js';
 import visitorPassEvents from './visitorPass.events.js';
 import HttpError from '../../utils/httpError.utils.js';
 import blacklistService from '../blacklist/blacklist.service.js';
+import visitorPassTokenService from '../visitorPassToken/visitorPassToken.service.js';
 
 export class VisitorPassService {
   /**
@@ -24,8 +25,13 @@ export class VisitorPassService {
       }
     }
     const pass = await visitorPassRepository.create(passData, session);
-    visitorPassEvents.emit('pass_created', pass);
-    return pass;
+    const shortKey = await visitorPassTokenService.generateToken(pass.orgId, pass._id, pass.validity.endDate, session);
+    
+    const passObj = pass.toObject ? pass.toObject() : pass;
+    passObj.shortKey = shortKey;
+
+    visitorPassEvents.emit('pass_created', passObj);
+    return passObj;
   }
 
   /**
@@ -45,6 +51,8 @@ export class VisitorPassService {
     }
 
     const updatedPass = await visitorPassRepository.updateStatus(passId, 'REVOKED', session);
+    await visitorPassTokenService.deleteTokenByPassId(passId, session);
+
     visitorPassEvents.emit('pass_revoked', updatedPass);
     return updatedPass;
   }
@@ -143,6 +151,10 @@ export class VisitorPassService {
     }
 
     const updated = await visitorPassRepository.update(passDoc._id, { $set: updates }, session);
+    if (updated.status === 'EXPIRED') {
+      await visitorPassTokenService.deleteTokenByPassId(updated._id, session);
+    }
+
     visitorPassEvents.emit('pass_updated', updated);
     return updated;
   }
@@ -158,7 +170,9 @@ export class VisitorPassService {
     if (!pass) {
       throw new HttpError(404, `Visitor pass with ID ${id} not found.`);
     }
-    return pass;
+    const passObj = pass.toObject ? pass.toObject() : pass;
+    passObj.shortKey = await visitorPassTokenService.getShortKeyByPassId(pass._id, session);
+    return passObj;
   }
 
   /**
@@ -171,7 +185,17 @@ export class VisitorPassService {
    * @returns {Promise<{ data: Object[], totalRecords: number }>}
    */
   async getActivePasses(orgId, skip, limit, statuses, session = null) {
-    return await visitorPassRepository.findActivePassesByOrg(orgId, skip, limit, statuses, session);
+    const result = await visitorPassRepository.findActivePassesByOrg(orgId, skip, limit, statuses, session);
+    if (result && result.data) {
+      const mapped = [];
+      for (const pass of result.data) {
+        const passObj = pass.toObject ? pass.toObject() : pass;
+        passObj.shortKey = await visitorPassTokenService.getShortKeyByPassId(passObj._id, session);
+        mapped.push(passObj);
+      }
+      result.data = mapped;
+    }
+    return result;
   }
 
   /**

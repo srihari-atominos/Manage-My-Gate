@@ -1,4 +1,5 @@
 import visitorPassService from './visitorPass.service.js';
+import visitorPassTokenService from '../visitorPassToken/visitorPassToken.service.js';
 
 export class VisitorPassController {
   /**
@@ -63,6 +64,19 @@ export class VisitorPassController {
 
       const data = await visitorPassService.getActivePasses(orgId, skip, limit, statuses);
       res.success(data, 'Visitor passes retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+  /**
+   * Retrieve a VisitorPass by its short code.
+   */
+  async getByCode(req, res, next) {
+    try {
+      const { code } = req.params;
+      const passId = await visitorPassTokenService.getPassIdByCode(code);
+      const data = await visitorPassService.getPassById(passId);
+      res.success(data, 'Visitor pass retrieved by code successfully');
     } catch (error) {
       next(error);
     }

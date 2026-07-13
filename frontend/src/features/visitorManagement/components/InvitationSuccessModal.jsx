@@ -16,7 +16,7 @@ export const InvitationSuccessModal = ({ visible, onClose, passData }) => {
   console.log('[InvitationSuccessModal] visible:', visible, 'passData:', passData);
   if (!passData) return null;
 
-  const passCode = passData.id || passData._id || '—';
+  const passCode = passData.shortKey || passData.id || passData._id || '—';
   const visitorName = passData.visitorName || passData.visitorDetails?.name || 'Visitor';
   
   // Format dates for display
@@ -32,7 +32,7 @@ export const InvitationSuccessModal = ({ visible, onClose, passData }) => {
   const handleCopyLink = () => {
     const text = passCode;
     navigator.clipboard.writeText(text);
-    toast.success('Pass ID copied to clipboard!');
+    toast.success('Invitation code copied to clipboard!');
   };
 
   const handleWhatsAppShare = () => {

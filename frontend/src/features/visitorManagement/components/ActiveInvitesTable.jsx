@@ -84,6 +84,7 @@ export const ActiveInvitesTable = ({
               <tbody>
                 {currentPasses.map(pass => {
                   const passId = pass.id || pass._id;
+                  const displayPassCode = pass.shortKey || passId;
                   const name = pass.visitorName || pass.visitorDetails?.name || '—';
                   const details = pass.details || (
                     pass.visitorDetails?.idProofType && pass.visitorDetails.idProofType !== 'None'
@@ -115,9 +116,9 @@ export const ActiveInvitesTable = ({
                                 setGeneratedPass(pass);
                               }
                             }}
-                            title={pass.isIdProofPass ? `Pass ID: ${passId} (ID-Proof Pass)` : `Pass ID: ${passId} | Click to view QR Code`}
+                            title={pass.isIdProofPass ? `Pass ID: ${displayPassCode} (ID-Proof Pass)` : `Pass ID: ${displayPassCode} | Click to view QR Code`}
                           >
-                            {formatPassId(passId)}
+                            {formatPassId(displayPassCode)}
                           </span>
                           <span className="table-cell-sub">{details}</span>
                         </div>

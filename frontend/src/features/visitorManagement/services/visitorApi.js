@@ -26,6 +26,15 @@ export const VisitorAPI = {
   },
 
   /**
+   * Fetch details of a pass by its 6-digit key code.
+   * @param {string} code - The prefixed code.
+   * @returns {Promise<Object>} The API response.
+   */
+  getPassByCode: async (code) => {
+    return await axios.get(`/visitor-pass/code/${code}`);
+  },
+
+  /**
    * Update the status of a pass (e.g., revoking it).
    * @param {string} id - The pass ID.
    * @param {string} status - The new status (PENDING, ACTIVE, REVOKED, EXPIRED).
