@@ -412,6 +412,10 @@ export const useResidentVisitorManagement = () => {
     const matchedRoleObj = dbRoles.find(r => r.name === userRoleName);
     const resolvedRoleId = matchedRoleObj ? matchedRoleObj._id : null;
 
+    // Normalize start/end dates to encompass full calendar days
+    if (startDateObj) startDateObj.setHours(0, 0, 0, 0);
+    if (endDateObj) endDateObj.setHours(23, 59, 59, 999);
+
     const payload = {
       orgId: activeOrgId || '60c72b2f9b1d8e25d88db652',
       createdById: currentUser?._id || currentUser?.id || '60c72b2f9b1d8e25d88db650',

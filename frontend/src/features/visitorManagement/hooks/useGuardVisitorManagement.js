@@ -108,7 +108,7 @@ export const useGuardVisitorManagement = () => {
             console.error('Failed to load users in guard hook:', err);
             return { data: { data: [] } };
           }),
-        dispatch(getPasses({ orgId: activeOrgId, params: { page: 1, limit: 100 } }))
+        dispatch(getPasses({ orgId: activeOrgId, params: { page: 1, limit: 100, statuses: 'PENDING,ACTIVE,EXPIRED' } }))
           .catch(err => {
             console.error('Failed to load passes in guard hook:', err);
             return null;
@@ -161,7 +161,9 @@ export const useGuardVisitorManagement = () => {
         toast.loading('Registering visitor entry check-in...', { id: 'checkin-task' });
         await dispatch(processPreApproved(payload)).unwrap();
         await dispatch(getActiveVisitors(activeOrgId));
+        await dispatch(getPasses({ orgId: activeOrgId, params: { page: 1, limit: 100, statuses: 'PENDING,ACTIVE,EXPIRED' } }));
         toast.success('Gate Check-in processed successfully!', { id: 'checkin-task' });
+        return true;
       } else {
         const mockLog = {
           id: `L-${Math.floor(100 + Math.random() * 900)}`,
@@ -174,9 +176,11 @@ export const useGuardVisitorManagement = () => {
         };
         setLocalLiveEntries(prev => [mockLog, ...prev]);
         toast.success('Local fallback check-in successful.');
+        return true;
       }
     } catch (err) {
       toast.error(err.message || 'Failed to check-in visitor', { id: 'checkin-task' });
+      return false;
     }
   };
 
@@ -186,14 +190,18 @@ export const useGuardVisitorManagement = () => {
       if (id.startsWith('L-')) {
         setLocalLiveEntries(prev => prev.filter(entry => entry.id !== id));
         toast.success('Check-out registered locally.');
+        return true;
       } else {
         toast.loading('Registering visitor checkout exit...', { id: 'checkout-task' });
         await dispatch(checkoutVisitor(id)).unwrap();
         await dispatch(getActiveVisitors(activeOrgId));
+        await dispatch(getPasses({ orgId: activeOrgId, params: { page: 1, limit: 100, statuses: 'PENDING,ACTIVE,EXPIRED' } }));
         toast.success('Exit checkout logged successfully!', { id: 'checkout-task' });
+        return true;
       }
     } catch (err) {
       toast.error(err.message || 'Failed to check-out visitor', { id: 'checkout-task' });
+      return false;
     }
   };
 

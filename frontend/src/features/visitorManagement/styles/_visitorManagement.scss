@@ -498,6 +498,12 @@
       border-color: #A7F3D0 !important;
       color: #065F46 !important;
     }
+
+    &.blocked {
+      background-color: var(--danger-bg) !important;
+      border-color: #FCA5A5 !important;
+      color: #991B1B !important;
+    }
   }
 
   /* Walk-in Approval & Recent Logs layout classes */

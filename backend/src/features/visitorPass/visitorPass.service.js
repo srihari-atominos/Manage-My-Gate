@@ -11,6 +11,18 @@ export class VisitorPassService {
    * @returns {Promise<Object>} The created pass document.
    */
   async createPass(passData, session) {
+    if (passData && passData.validity) {
+      if (passData.validity.startDate) {
+        const start = new Date(passData.validity.startDate);
+        start.setHours(0, 0, 0, 0);
+        passData.validity.startDate = start;
+      }
+      if (passData.validity.endDate) {
+        const end = new Date(passData.validity.endDate);
+        end.setHours(23, 59, 59, 999);
+        passData.validity.endDate = end;
+      }
+    }
     const pass = await visitorPassRepository.create(passData, session);
     visitorPassEvents.emit('pass_created', pass);
     return pass;
@@ -57,10 +69,17 @@ export class VisitorPassService {
     const now = new Date();
 
     // 2. Check Date Validity
-    // Compare date parts by ignoring timezone differences or doing raw date checks
     const currentMs = now.getTime();
-    const startMs = new Date(pass.validity.startDate).getTime();
-    const endMs = new Date(pass.validity.endDate).getTime();
+    
+    // Normalize start date to beginning of the day (00:00:00.000)
+    const startDateObj = new Date(pass.validity.startDate);
+    startDateObj.setHours(0, 0, 0, 0);
+    const startMs = startDateObj.getTime();
+    
+    // Normalize end date to the very end of the day (23:59:59.999)
+    const endDateObj = new Date(pass.validity.endDate);
+    endDateObj.setHours(23, 59, 59, 999);
+    const endMs = endDateObj.getTime();
 
     if (currentMs < startMs || currentMs > endMs) {
       throw new HttpError(400, 'Visitor pass validity date range is not currently active.');

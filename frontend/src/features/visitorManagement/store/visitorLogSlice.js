@@ -7,7 +7,8 @@ export const processPreApproved = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const response = await VisitorAPI.processPreApproved(payload);
-      return response.data;
+      const body = response && response.success !== undefined ? response : response?.data;
+      return body?.data || body;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to log pre-approved entry');
     }
