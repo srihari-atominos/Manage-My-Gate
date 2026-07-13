@@ -288,6 +288,16 @@
     padding-top: 16px;
   }
 
+  .table-actions-container {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
   .table-pagination-buttons {
     display: flex;
     gap: 8px;
