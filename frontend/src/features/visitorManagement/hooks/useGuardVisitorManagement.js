@@ -140,6 +140,7 @@ export const useGuardVisitorManagement = () => {
     const matchingPass = passes.find(p => p._id === log.passId || p.id === log.passId);
     return {
       id: log._id || log.id,
+      passId: log.passId,
       visitorName: log.snapshot?.visitorName || 'Walk-in Visitor',
       type: matchingPass?.passType || log.entryType || 'GUEST',
       villa: log.residentId?.villaId?.villaNumber || 'Villa 101',
@@ -148,6 +149,7 @@ export const useGuardVisitorManagement = () => {
       guard: log.guardId?.username || 'Gate Console'
     };
   }) : localLiveEntries;
+
 
   // Check-In handler
   const handleCheckInSuccess = async (newLog) => {

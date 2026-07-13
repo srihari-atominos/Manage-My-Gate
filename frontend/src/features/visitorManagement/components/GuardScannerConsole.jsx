@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { CButton, CFormInput, CFormSelect } from '@coreui/react';
+import { Html5Qrcode } from 'html5-qrcode';
 
 export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onCheckOutSuccess }) => {
   const [scannerMode, setScannerMode] = useState('camera'); // 'camera' | 'search'
@@ -8,6 +9,89 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
   // Scanned / Selected Pass State
   const [matchedPass, setMatchedPass] = useState(null);
   const [typedCode, setTypedCode] = useState('');
+
+  // Web Camera scanning states and references
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const isScanningRef = useRef(false);
+  const lastScannedCodeRef = useRef({ code: '', time: 0 });
+
+  useEffect(() => {
+    let html5QrCode = null;
+    
+    if (scannerMode === 'camera') {
+      setCameraActive(false);
+      setCameraError('');
+
+      // Create a small delay to make sure the div #qr-reader is mounted in the DOM
+      const timer = setTimeout(() => {
+        const element = document.getElementById('qr-reader');
+        if (!element) return;
+        
+        try {
+          html5QrCode = new Html5Qrcode('qr-reader');
+          
+          html5QrCode.start(
+            { facingMode: 'environment' },
+            {
+              fps: 10,
+              qrbox: (width, height) => {
+                const size = Math.min(width, height) * 0.7;
+                return { width: Math.max(150, size), height: Math.max(150, size) };
+              }
+            },
+            (decodedText) => {
+              const now = Date.now();
+              // Prevent duplicate scanning (within 3 seconds)
+              if (lastScannedCodeRef.current.code === decodedText && now - lastScannedCodeRef.current.time < 3000) {
+                return;
+              }
+              lastScannedCodeRef.current = { code: decodedText, time: now };
+              toast.success('QR Code scanned successfully!');
+              handleVerifyCode(decodedText);
+            },
+            (errorMessage) => {
+              // Frame failures can be ignored
+            }
+          )
+          .then(() => {
+            isScanningRef.current = true;
+            setCameraActive(true);
+            setCameraError('');
+          })
+          .catch((err) => {
+            console.error('Failed to start camera scanner:', err);
+            setCameraError('Webcam access failed. Check device permissions.');
+            setCameraActive(false);
+            isScanningRef.current = false;
+          });
+        } catch (e) {
+          console.error('Html5Qrcode initialization error:', e);
+          setCameraError('Scanner init failed. Use mock selection below.');
+        }
+      }, 300);
+
+      return () => {
+        clearTimeout(timer);
+        if (html5QrCode) {
+          if (isScanningRef.current) {
+            isScanningRef.current = false;
+            html5QrCode.stop()
+              .then(() => {
+                setCameraActive(false);
+              })
+              .catch((err) => {
+                console.error('Error stopping scanner during cleanup:', err);
+              });
+          }
+        }
+      };
+    } else {
+      setCameraActive(false);
+      setCameraError('');
+    }
+  }, [scannerMode]);
+
 
   // Check if pass dates and times are active
   const isPassDateActive = (pass) => {
@@ -189,19 +273,46 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
           </div>
 
           {scannerMode === 'camera' ? (
-            /* Mode 1: QR Camera Scanner Simulator */
+            /* Mode 1: Active Web Camera Scanner with Simulator Fallback */
             <div className="scanner-viewfinder-wrapper">
+              <style>{`
+                #qr-reader video {
+                  width: 100% !important;
+                  height: 100% !important;
+                  object-fit: cover !important;
+                  border-radius: 20px;
+                }
+              `}</style>
+              
               <div className="scanner-viewfinder">
-                {/* Flashing scanner line */}
-                <div className="scanner-glow-line" />
+                {/* Flashing scanner line (only when camera is active) */}
+                {cameraActive && !cameraError && <div className="scanner-glow-line" />}
 
-                <div style={{ zIndex: 1, textAlign: 'center', color: '#94A3B8', padding: '16px' }}>
-                  <i className="fa-solid fa-qrcode" style={{ fontSize: '64px', color: '#334155', marginBottom: '12px' }}></i>
-                  <div style={{ fontSize: '11px', fontWeight: '600' }}>CAMERA PREVIEW</div>
-                </div>
+                {/* Real-time HTML5 Camera rendering container */}
+                <div id="qr-reader" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }} />
+
+                {/* Overlay loading / permission failure alerts */}
+                {(!cameraActive || cameraError) && (
+                  <div style={{ zIndex: 1, textAlign: 'center', color: '#94A3B8', padding: '16px', backgroundColor: '#0F172A', position: 'absolute', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    {cameraError ? (
+                      <>
+                        <i className="fa-solid fa-circle-exclamation text-danger mb-2" style={{ fontSize: '36px' }}></i>
+                        <div style={{ fontSize: '11px', fontWeight: '700', color: '#EF4444' }}>CAMERA BLOCKED</div>
+                        <div style={{ fontSize: '10px', color: '#94A3B8', marginTop: '4px', padding: '0 8px', lineHeight: '1.3' }}>
+                          {cameraError}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="spinner-border text-primary mb-3" role="status" style={{ width: '32px', height: '32px' }}></div>
+                        <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.5px' }}>STARTING WEBCAM FEED...</div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Simulated camera select trigger */}
+              {/* Simulated camera select trigger for testing and fallback */}
               <div style={{ width: '100%', maxWidth: '320px', marginTop: '20px' }}>
                 <CFormSelect
                   onChange={(e) => handleVerifyCode(e.target.value)}
@@ -215,7 +326,7 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
                   ))}
                 </CFormSelect>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '6px' }}>
-                  Select an active pass from the list to mock camera scan detection.
+                  Choose a pass from the list to mock a camera scan detection if no camera is connected.
                 </div>
               </div>
 
