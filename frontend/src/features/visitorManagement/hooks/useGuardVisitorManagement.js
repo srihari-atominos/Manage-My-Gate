@@ -5,10 +5,14 @@ import { getPasses, createPass } from '../store/visitorPassSlice.js';
 import { getActiveVisitors, processPreApproved, initiateWalkIn, checkoutVisitor } from '../store/visitorLogSlice.js';
 import useAuth from '../../auth/hooks/useAuth.js';
 import apiClient from '../../../services/apiClient.js';
+import useGuardWalkInListener from './useGuardWalkInListener.js';
 
 export const useGuardVisitorManagement = () => {
   const dispatch = useDispatch();
   const { currentUser } = useAuth();
+
+  // Activate real-time socket updates for guard walk-in resolution notifications
+  useGuardWalkInListener();
 
   const [activeTab, setActiveTab] = useState('invite');
 

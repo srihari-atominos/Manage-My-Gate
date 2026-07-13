@@ -41,21 +41,21 @@ export const AdminVisitorManagementViews = () => {
     handleCreatePass,
     handleRevokePass,
     handleCopyPass,
+    handleApproveEntry,
+    handleDenyEntry,
     activeOrgId,
     generatedPass,
     setGeneratedPass
   } = useAdminVisitorManagement();
 
-  // Calculate real-time statistics
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const todayDateString = new Date().toDateString();
 
   const entriesToday = logs.filter(log => {
     const logDateStr = log.checkInTime || log.createdAt;
     if (!logDateStr) return false;
     const logDate = new Date(logDateStr);
     const status = log.status || log.logStatus;
-    return logDate >= todayStart && (status === 'COMPLETED' || status === 'INSIDE');
+    return logDate.toDateString() === todayDateString && (status === 'COMPLETED' || status === 'INSIDE');
   }).length;
 
   const activePassesCount = passes.filter(p => {
@@ -204,13 +204,20 @@ export const AdminVisitorManagementViews = () => {
                   itemsPerPage={itemsPerPage}
                   handleCopyPass={handleCopyPass}
                   handleRevokePass={handleRevokePass}
+                  setGeneratedPass={setGeneratedPass}
                 />
               </div>
             </>
           )}
 
           {activeTab === 'walkin' && (
-            <WalkInApprovalList walkins={walkins} setWalkins={setWalkins} />
+            <WalkInApprovalList 
+              walkins={walkins} 
+              setWalkins={setWalkins} 
+              onApprove={handleApproveEntry} 
+              onDeny={handleDenyEntry} 
+              logs={logs}
+            />
           )}
 
           {activeTab === 'logs' && (

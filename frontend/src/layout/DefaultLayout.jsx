@@ -24,6 +24,8 @@ import { Navigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { AppContent, AppSidebar, AppHeader } from '../components/index'
 import useNotificationSocket from '../features/notification/hooks/useNotificationSocket.js'
+import useWalkInListener from '../features/visitorManagement/hooks/useWalkInListener.js'
+import GlobalGateApprovalModal from '../features/visitorManagement/components/GlobalGateApprovalModal.jsx'
 
 /**
  * DefaultLayout functional component
@@ -44,6 +46,9 @@ const DefaultLayout = () => {
   // Initialize real-time notification socket listener
   useNotificationSocket(user?.id || user?._id)
 
+  // Initialize real-time gate walk-in approval request listener
+  useWalkInListener()
+
   // Redirect to login if not authenticated
   if (!token) {
     return <Navigate to="/login" replace />
@@ -58,6 +63,7 @@ const DefaultLayout = () => {
           <AppContent />
         </div>
       </div>
+      <GlobalGateApprovalModal />
     </div>
   )
 }

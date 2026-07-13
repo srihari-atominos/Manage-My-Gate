@@ -1,7 +1,8 @@
-import { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
-import { addPendingApproval, resolveWalkIn } from '../store/visitorLogSlice.js';
+import toast from 'react-hot-toast';
+import { addPendingApproval, resolveWalkIn, setActiveGateRequest } from '../store/visitorLogSlice.js';
 
 /**
  * Custom Hook: useWalkInListener
@@ -37,6 +38,26 @@ export const useWalkInListener = () => {
 
     // Capture incoming approval request from socket emission
     socket.on('GATE_APPROVAL_REQUEST', (payload) => {
+      const visitorName = payload.snapshot?.visitorName || 'Walk-in Visitor';
+      
+      // Emit interactive clickable toast that opens the global approval modal
+      toast((t) => 
+        React.createElement('div', {
+          onClick: () => {
+            dispatch(setActiveGateRequest(payload));
+            toast.dismiss(t.id);
+          },
+          style: { cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px' }
+        },
+          React.createElement('div', { style: { fontWeight: '700', color: 'var(--primary, #0084FF)' } }, '🔔 Gate Entry Request'),
+          React.createElement('div', { style: { fontSize: '13px', color: 'var(--text-main, #0F172A)' } }, 
+            React.createElement('strong', null, visitorName),
+            ' is waiting at the gate. Click to Approve/Deny.'
+          )
+        ),
+        { duration: 8000 }
+      );
+
       dispatch(addPendingApproval(payload));
     });
 

@@ -31,6 +31,10 @@ export const createPassRules = [
     .optional()
     .isBoolean()
     .withMessage('isPrivate must be a boolean'),
+  body('isIdProofPass')
+    .optional()
+    .isBoolean()
+    .withMessage('isIdProofPass must be a boolean'),
 
   body('visitorDetails.name')
     .optional()

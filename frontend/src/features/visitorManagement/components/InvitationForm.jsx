@@ -17,10 +17,12 @@ export const InvitationForm = ({
   handleCreatePass 
 }) => {
   const providers = ['Amazon Prime', 'FedEx Express', 'DHL Worldwide', 'Uber Cab', 'Noon eCommerce', 'Zomato Delivery', 'Talabat Delivery', 'Deliveroo', 'Careem Taxi'];
-  const [providerSearch, setProviderSearch] = useState(formData.companyName || '');
+  const serviceTypes = ['Plumber', 'Electrician', 'Carpenter', 'AC Technician', 'Cleaning Staff', 'Maid', 'Gardener', 'Painter', 'Pest Control'];
   const [searchOpen, setSearchOpen] = useState(false);
-  const [selectedDays, setSelectedDays] = useState([1, 2, 3, 4, 5]); // Mon-Fri default
-  const [serviceSelectedDays, setServiceSelectedDays] = useState([1, 2, 3, 4, 5]); // Mon-Fri default for Service
+  const [serviceSearchOpen, setServiceSearchOpen] = useState(false);
+
+  const selectedDays = formData.selectedDays || [1, 2, 3, 4, 5];
+  const serviceSelectedDays = formData.serviceSelectedDays || [1, 2, 3, 4, 5];
 
   return (
     <div className="card card-hover">
@@ -32,7 +34,7 @@ export const InvitationForm = ({
         {inviteMethod === 'service' && 'Maintenance Service Entry'}
       </h3>
 
-      {searchOpen && <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 }} onClick={() => setSearchOpen(false)} />}
+      {(searchOpen || serviceSearchOpen) && <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 }} onClick={() => { setSearchOpen(false); setServiceSearchOpen(false); }} />}
 
       <form onSubmit={handleCreatePass}>
         {inviteMethod === 'guest' && (
@@ -85,8 +87,8 @@ export const InvitationForm = ({
                 type="text" 
                 className="form-control" 
                 placeholder="e.g. John Doe"
-                value={formData.visitorName}
-                onChange={(e) => handleInputChange('visitorName', e.target.value)}
+                value={formData.guestName || ''}
+                onChange={(e) => handleInputChange('guestName', e.target.value)}
               />
             </div>
             
@@ -100,10 +102,10 @@ export const InvitationForm = ({
                     onChange={(e) => handleInputChange('idProofType', e.target.value)}
                   >
                     <option value="Aadhaar Card">Aadhaar Card</option>
+                    <option value="PAN Card">PAN Card</option>
                     <option value="Driving License">Driving License</option>
-                    <option value="Passport">Passport</option>
-                    <option value="National ID">National ID</option>
                     <option value="Voter ID">Voter ID</option>
+                    <option value="Indian Passport">Indian Passport</option>
                   </select>
                 </div>
                 <div className="form-group">
@@ -125,7 +127,7 @@ export const InvitationForm = ({
                 <input 
                   type="date" 
                   className="form-control" 
-                  value={formData.startDate}
+                  value={formData.startDate || ''}
                   onChange={(e) => handleInputChange('startDate', e.target.value)}
                 />
               </div>
@@ -134,7 +136,7 @@ export const InvitationForm = ({
                 <input 
                   type="date" 
                   className="form-control" 
-                  value={formData.endDate}
+                  value={formData.endDate || ''}
                   onChange={(e) => handleInputChange('endDate', e.target.value)}
                 />
               </div>
@@ -145,8 +147,8 @@ export const InvitationForm = ({
                 type="number" 
                 className="form-control" 
                 min="1"
-                value={formData.maxUses}
-                onChange={(e) => handleInputChange('maxUses', Number(e.target.value))}
+                value={formData.usageLimit || ''}
+                onChange={(e) => handleInputChange('usageLimit', Number(e.target.value))}
               />
             </div>
           </>
@@ -160,7 +162,7 @@ export const InvitationForm = ({
                 type="text" 
                 className="form-control" 
                 placeholder="e.g. Housewarming Party"
-                value={formData.eventName}
+                value={formData.eventName || ''}
                 onChange={(e) => handleInputChange('eventName', e.target.value)}
               />
             </div>
@@ -170,7 +172,7 @@ export const InvitationForm = ({
                 type="number" 
                 className="form-control" 
                 min="1"
-                value={formData.totalTokens}
+                value={formData.totalTokens || ''}
                 onChange={(e) => handleInputChange('totalTokens', Number(e.target.value))}
               />
             </div>
@@ -180,7 +182,7 @@ export const InvitationForm = ({
               <input 
                 type="date" 
                 className="form-control" 
-                value={formData.eventDate}
+                value={formData.eventDate || ''}
                 onChange={(e) => handleInputChange('eventDate', e.target.value)}
               />
             </div>
@@ -252,6 +254,56 @@ export const InvitationForm = ({
               </button>
             </div>
 
+            {/* Cab / Taxi vs Delivery / Order Toggle */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', backgroundColor: '#F1F5F9', padding: '4px', borderRadius: '8px' }}>
+              <button
+                key="toggle-delivery"
+                type="button"
+                onClick={() => {
+                  handleInputChange('cabCategory', 'delivery');
+                  handleInputChange('vehicleNumber', '');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  border: 'none',
+                  backgroundColor: (formData.cabCategory || 'delivery') === 'delivery' ? '#fff' : 'transparent',
+                  color: (formData.cabCategory || 'delivery') === 'delivery' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                  boxShadow: (formData.cabCategory || 'delivery') === 'delivery' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Delivery / Order
+              </button>
+              <button
+                key="toggle-cab"
+                type="button"
+                onClick={() => {
+                  handleInputChange('cabCategory', 'cab');
+                  handleInputChange('orderId', '');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  border: 'none',
+                  backgroundColor: formData.cabCategory === 'cab' ? '#fff' : 'transparent',
+                  color: formData.cabCategory === 'cab' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                  boxShadow: formData.cabCategory === 'cab' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Cab / Taxi
+              </button>
+            </div>
+
             {/* Search & Select Provider */}
             <div className="form-group" style={{ position: 'relative', zIndex: 10 }}>
               <label className="form-label">Delivery Provider / Cab Brand</label>
@@ -259,9 +311,8 @@ export const InvitationForm = ({
                 type="text" 
                 className="form-control" 
                 placeholder="Search & select provider..."
-                value={providerSearch}
+                value={formData.companyName || ''}
                 onChange={(e) => {
-                  setProviderSearch(e.target.value);
                   handleInputChange('companyName', e.target.value);
                   setSearchOpen(true);
                 }}
@@ -283,12 +334,11 @@ export const InvitationForm = ({
                   marginTop: '4px'
                 }}>
                   {providers
-                    .filter(p => p.toLowerCase().includes(providerSearch.toLowerCase()))
+                    .filter(p => !formData.companyName || p.toLowerCase().includes(formData.companyName.toLowerCase()))
                     .map(provider => (
                       <div 
                         key={provider}
                         onClick={() => {
-                          setProviderSearch(provider);
                           handleInputChange('companyName', provider);
                           setSearchOpen(false);
                         }}
@@ -311,16 +361,30 @@ export const InvitationForm = ({
               )}
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Order Ref ID / Taxi Plate Code</label>
-              <input 
-                type="text" 
-                className="form-control" 
-                placeholder="e.g. AMZ-199-082 or Taxi license"
-                value={formData.orderId}
-                onChange={(e) => handleInputChange('orderId', e.target.value)}
-              />
-            </div>
+            {/* Conditional input fields */}
+            {(formData.cabCategory || 'delivery') === 'delivery' ? (
+              <div className="form-group">
+                <label className="form-label">Order Reference ID</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="e.g. AMZ-199-082"
+                  value={formData.orderId || ''}
+                  onChange={(e) => handleInputChange('orderId', e.target.value)}
+                />
+              </div>
+            ) : (
+              <div className="form-group">
+                <label className="form-label">Taxi License Number</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="e.g. MH 12 AB 1234 or 22 BH 1234 AB"
+                  value={formData.vehicleNumber || ''}
+                  onChange={(e) => handleInputChange('vehicleNumber', e.target.value)}
+                />
+              </div>
+            )}
 
             {cabUsageType === 'one_time' ? (
               <div className="form-group">
@@ -377,11 +441,10 @@ export const InvitationForm = ({
                           key={day.id}
                           type="button"
                           onClick={() => {
-                            if (isDaySelected) {
-                              setSelectedDays(prev => prev.filter(d => d !== day.id));
-                            } else {
-                              setSelectedDays(prev => [...prev, day.id]);
-                            }
+                            const nextDays = isDaySelected
+                              ? selectedDays.filter(d => d !== day.id)
+                              : [...selectedDays, day.id];
+                            handleInputChange('selectedDays', nextDays);
                           }}
                           style={{
                             padding: '6px 12px',
@@ -514,19 +577,61 @@ export const InvitationForm = ({
               </button>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Select Service Type</label>
-              <select 
-                className="form-control"
-                value={formData.serviceType}
-                onChange={(e) => handleInputChange('serviceType', e.target.value)}
-              >
-                <option value="Plumber">Plumbing Repair</option>
-                <option value="Electrician">Electrical Work</option>
-                <option value="Carpenter">Carpentry / Woodwork</option>
-                <option value="AC Technician">HVAC / AC Service</option>
-                <option value="Cleaning Staff">Cleaning Services</option>
-              </select>
+            {/* Search & Select Service Type */}
+            <div className="form-group" style={{ position: 'relative', zIndex: 10 }}>
+              <label className="form-label">Service Type</label>
+              <input 
+                type="text" 
+                className="form-control" 
+                placeholder="Search & select service type..."
+                value={formData.serviceType || ''}
+                onChange={(e) => {
+                  handleInputChange('serviceType', e.target.value);
+                  setServiceSearchOpen(true);
+                }}
+                onFocus={() => setServiceSearchOpen(true)}
+              />
+              {serviceSearchOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  backgroundColor: '#fff',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                  maxHeight: '160px',
+                  overflowY: 'auto',
+                  zIndex: 20,
+                  marginTop: '4px'
+                }}>
+                  {serviceTypes
+                    .filter(s => !formData.serviceType || s.toLowerCase().includes(formData.serviceType.toLowerCase()))
+                    .map(service => (
+                      <div 
+                        key={service}
+                        onClick={() => {
+                          handleInputChange('serviceType', service);
+                          setServiceSearchOpen(false);
+                        }}
+                        style={{
+                          padding: '10px 16px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          color: 'var(--text-main)',
+                          borderBottom: '1px solid #F1F5F9',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = '#F8FAFC'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = '#fff'}
+                      >
+                        {service}
+                      </div>
+                    ))
+                  }
+                </div>
+              )}
             </div>
             
             <div className="form-group">
@@ -550,10 +655,10 @@ export const InvitationForm = ({
                     onChange={(e) => handleInputChange('idProofType', e.target.value)}
                   >
                     <option value="Aadhaar Card">Aadhaar Card</option>
+                    <option value="PAN Card">PAN Card</option>
                     <option value="Driving License">Driving License</option>
-                    <option value="Passport">Passport</option>
-                    <option value="National ID">National ID</option>
                     <option value="Voter ID">Voter ID</option>
+                    <option value="Indian Passport">Indian Passport</option>
                   </select>
                 </div>
                 <div className="form-group">
@@ -610,11 +715,10 @@ export const InvitationForm = ({
                           key={day.id}
                           type="button"
                           onClick={() => {
-                            if (isDaySelected) {
-                              setServiceSelectedDays(prev => prev.filter(d => d !== day.id));
-                            } else {
-                              setServiceSelectedDays(prev => [...prev, day.id]);
-                            }
+                            const nextDays = isDaySelected
+                              ? serviceSelectedDays.filter(d => d !== day.id)
+                              : [...serviceSelectedDays, day.id];
+                            handleInputChange('serviceSelectedDays', nextDays);
                           }}
                           style={{
                             padding: '6px 12px',

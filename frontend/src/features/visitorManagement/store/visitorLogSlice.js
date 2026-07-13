@@ -19,7 +19,8 @@ export const initiateWalkIn = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const response = await VisitorAPI.initiateWalkIn(payload);
-      return response.data;
+      const body = response && response.success !== undefined ? response : response?.data;
+      return body?.data || body;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to initiate walk-in request');
     }
@@ -31,7 +32,8 @@ export const resolveWalkIn = createAsyncThunk(
   async ({ id, status }, { rejectWithValue }) => {
     try {
       const response = await VisitorAPI.resolveWalkIn(id, status);
-      return response.data;
+      const body = response && response.success !== undefined ? response : response?.data;
+      return body?.data || body;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to resolve walk-in request');
     }
@@ -43,7 +45,8 @@ export const checkoutVisitor = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const response = await VisitorAPI.checkoutVisitor(id);
-      return response.data;
+      const body = response && response.success !== undefined ? response : response?.data;
+      return body?.data || body;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to checkout visitor');
     }
@@ -55,7 +58,8 @@ export const getActiveVisitors = createAsyncThunk(
   async (orgId, { rejectWithValue }) => {
     try {
       const response = await VisitorAPI.getActiveVisitors(orgId);
-      return response.data;
+      const body = response && response.success !== undefined ? response : response?.data;
+      return body?.data || body;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch active visitors');
     }
@@ -67,9 +71,11 @@ export const fetchHistoryLogs = createAsyncThunk(
   async ({ orgId, params }, { rejectWithValue }) => {
     try {
       const response = await VisitorAPI.getHistoryLogs(orgId, params);
+      const body = response && response.success !== undefined ? response : response?.data;
+      const innerData = body?.data || body;
       return {
-        data: response.data.data.data,
-        totalRecords: response.data.data.totalRecords,
+        data: innerData?.data || (Array.isArray(innerData) ? innerData : []),
+        totalRecords: innerData?.totalRecords || 0,
         page: params?.page || 1,
         limit: params?.limit || 10
       };
@@ -84,7 +90,8 @@ export const fetchPendingApprovals = createAsyncThunk(
   async (orgId, { rejectWithValue }) => {
     try {
       const response = await VisitorAPI.getPendingApprovals(orgId);
-      return response.data;
+      const body = response && response.success !== undefined ? response : response?.data;
+      return body?.data || body;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch pending approvals');
     }
@@ -96,6 +103,7 @@ const initialState = {
   pendingApprovals: [],
   historyLogs: [],
   historyTotalRecords: 0,
+  activeGateRequest: null,
   status: 'idle',
   actionStatus: 'idle',
   error: null
@@ -115,6 +123,12 @@ export const visitorLogSlice = createSlice({
       if (!exists) {
         state.pendingApprovals.unshift(action.payload);
       }
+    },
+    setActiveGateRequest: (state, action) => {
+      state.activeGateRequest = action.payload;
+    },
+    clearActiveGateRequest: (state) => {
+      state.activeGateRequest = null;
     }
   },
   extraReducers: (builder) => {
@@ -236,5 +250,5 @@ export const visitorLogSlice = createSlice({
   }
 });
 
-export const { clearLogStatus, addPendingApproval } = visitorLogSlice.actions;
+export const { clearLogStatus, addPendingApproval, setActiveGateRequest, clearActiveGateRequest } = visitorLogSlice.actions;
 export default visitorLogSlice.reducer;

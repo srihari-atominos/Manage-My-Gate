@@ -32,21 +32,20 @@ export const VisitorLogsTable = ({ logs }) => {
   const currentLogs = filteredLogs.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
-    <div className="card" style={{ borderTop: '4px solid var(--primary)', display: 'flex', flexDirection: 'column', minHeight: '430px' }}>
+    <div className="card logs-card">
       
       {/* Top filter toolbar */}
-      <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '16px', flexWrap: 'wrap' }}>
-          <h3 style={{ fontSize: '18px', margin: 0 }}>
-            <i className="fa-solid fa-list-check" style={{ color: 'var(--primary)', marginRight: '8px' }}></i> Visitor Logs Database
+      <div className="flex-grow-1">
+        <div className="logs-toolbar">
+          <h3 style={{ fontSize: '18px' }}>
+            <i className="fa-solid fa-list-check card-title-icon"></i> Visitor Logs Database
           </h3>
           
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="logs-filters-group">
             {/* Search Input */}
             <input 
               type="text" 
-              className="form-control" 
-              style={{ maxWidth: '180px', padding: '8px 12px', fontSize: '13px' }}
+              className="form-control filter-input-search" 
               placeholder="Search logs..."
               value={searchQuery}
               onChange={(e) => {
@@ -57,8 +56,7 @@ export const VisitorLogsTable = ({ logs }) => {
 
             {/* Type Selector */}
             <select 
-              className="form-control"
-              style={{ maxWidth: '140px', padding: '8px 12px', fontSize: '13px' }}
+              className="form-control filter-select"
               value={typeFilter}
               onChange={(e) => {
                 setTypeFilter(e.target.value);
@@ -74,8 +72,7 @@ export const VisitorLogsTable = ({ logs }) => {
 
             {/* Status Selector */}
             <select 
-              className="form-control"
-              style={{ maxWidth: '140px', padding: '8px 12px', fontSize: '13px' }}
+              className="form-control filter-select"
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
@@ -91,12 +88,12 @@ export const VisitorLogsTable = ({ logs }) => {
         </div>
 
         {currentLogs.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '220px', color: 'var(--text-light)' }}>
-            <i className="fa-solid fa-folder-open" style={{ fontSize: '36px', marginBottom: '12px' }}></i>
-            <span style={{ fontSize: '14px', fontWeight: '500' }}>No entry logs found matching filters.</span>
+          <div className="empty-state-container" style={{ minHeight: '220px' }}>
+            <i className="fa-solid fa-folder-open empty-state-icon-history"></i>
+            <span className="empty-state-text-sub">No entry logs found matching filters.</span>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="overflow-auto">
             <table className="custom-table">
               <thead>
                 <tr>
@@ -125,40 +122,40 @@ export const VisitorLogsTable = ({ logs }) => {
                   return (
                     <tr key={logId}>
                       <td>
-                        <div style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-main)' }}>{name}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-light)', marginTop: '2px', textTransform: 'capitalize' }}>
+                        <div className="table-cell-bold">{name}</div>
+                        <div className="table-cell-sub text-capitalize">
                           Type: {type.replace('_', ' & ')}
                         </div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: '600', fontSize: '13px', color: 'var(--text-muted)' }}>{villa}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-light)' }}>Host: {resident}</div>
+                        <div className="table-cell-muted">{villa}</div>
+                        <div className="table-cell-sub">Host: {resident}</div>
                       </td>
                       <td>
-                        <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>{checkIn}</span>
+                        <span className="table-cell-muted">{checkIn}</span>
                       </td>
                       <td>
-                        <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>{checkOut}</span>
+                        <span className="table-cell-muted">{checkOut}</span>
                       </td>
                       <td>
                         {status === 'INSIDE' && (
-                          <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '50px', fontSize: '11px', fontWeight: '700', backgroundColor: 'var(--success-bg)', color: 'var(--success)' }}>
+                          <span className="log-status-badge inside">
                             INSIDE
                           </span>
                         )}
                         {(status === 'COMPLETED' || status === 'RESOLVED') && (
-                          <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '50px', fontSize: '11px', fontWeight: '700', backgroundColor: '#F1F5F9', color: '#64748B' }}>
+                          <span className="log-status-badge completed">
                             COMPLETED
                           </span>
                         )}
                         {(status === 'DENIED' || status === 'REJECTED') && (
-                          <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: '50px', fontSize: '11px', fontWeight: '700', backgroundColor: 'var(--danger-bg)', color: 'var(--danger)' }}>
+                          <span className="log-status-badge denied">
                             {status}
                           </span>
                         )}
                       </td>
                       <td>
-                        <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>{guard}</span>
+                        <span className="table-cell-muted">{guard}</span>
                       </td>
                     </tr>
                   );
@@ -171,26 +168,24 @@ export const VisitorLogsTable = ({ logs }) => {
 
       {/* Pagination control stuck at the absolute bottom of the card */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
-          <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>
+        <div className="table-pagination-footer">
+          <span className="table-cell-muted">
             Page {currentPage} of {totalPages} ({filteredLogs.length} total entries)
           </span>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="table-pagination-buttons">
             <button 
               className="btn btn-secondary" 
-              style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(prev => prev - 1)}
             >
-              <i className="fa-solid fa-chevron-left" style={{ marginRight: '4px' }}></i> Previous
+              <i className="fa-solid fa-chevron-left me-1"></i> Previous
             </button>
             <button 
               className="btn btn-secondary" 
-              style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px' }}
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage(prev => prev + 1)}
             >
-              Next <i className="fa-solid fa-chevron-right" style={{ marginLeft: '4px' }}></i>
+              Next <i className="fa-solid fa-chevron-right ms-1"></i>
             </button>
           </div>
         </div>

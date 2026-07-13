@@ -103,6 +103,115 @@ export class VisitorLogRepository {
       })
       .exec();
   }
+
+  /**
+   * Fetch paginated visitor logs history with aggregation facet count.
+   * @param {string} orgId - The organization ID.
+   * @param {number} skip - Number of records to skip.
+   * @param {number} limit - Max number of records to return.
+   * @param {Object} [filterQuery={}] - Filtering parameters.
+   * @param {import('mongoose').ClientSession} [session=null] - Optional Mongoose session.
+   * @returns {Promise<{ data: Object[], totalRecords: number }>}
+   */
+  async findHistoryLogsByOrg(orgId, skip = 0, limit = 10, filterQuery = {}, session = null) {
+    const matchStage = {
+      orgId: new mongoose.Types.ObjectId(orgId),
+      ...filterQuery
+    };
+
+    const pipeline = [
+      { $match: matchStage },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'residentId',
+          foreignField: '_id',
+          as: 'resident'
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'guardId',
+          foreignField: '_id',
+          as: 'guard'
+        }
+      },
+      {
+        $lookup: {
+          from: 'visitorpasses',
+          localField: 'passId',
+          foreignField: '_id',
+          as: 'pass'
+        }
+      },
+      {
+        $unwind: {
+          path: '$resident',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $unwind: {
+          path: '$guard',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $unwind: {
+          path: '$pass',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $facet: {
+          metadata: [{ $count: 'totalRecords' }],
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $project: {
+                _id: 1,
+                orgId: 1,
+                entryType: 1,
+                logStatus: 1,
+                snapshot: 1,
+                checkInTime: 1,
+                checkOutTime: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                residentId: {
+                  _id: '$resident._id',
+                  username: '$resident.username',
+                  name: '$resident.name',
+                  email: '$resident.email'
+                },
+                guardId: {
+                  _id: '$guard._id',
+                  username: '$guard.username',
+                  name: '$guard.name'
+                },
+                passId: {
+                  _id: '$pass._id',
+                  passType: '$pass.passType',
+                  status: '$pass.status',
+                  visitorDetails: '$pass.visitorDetails',
+                  vehicleDetails: '$pass.vehicleDetails',
+                  validity: '$pass.validity'
+                }
+              }
+            }
+          ]
+        }
+      }
+    ];
+
+    const result = await VisitorLog.aggregate(pipeline).session(session || null);
+    const data = result[0]?.data || [];
+    const totalRecords = result[0]?.metadata[0]?.totalRecords || 0;
+    return { data, totalRecords };
+  }
 }
 
 export default new VisitorLogRepository();

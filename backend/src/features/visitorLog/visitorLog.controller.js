@@ -83,6 +83,30 @@ export class VisitorLogController {
       next(error);
     }
   }
+
+  /**
+   * Get paginated visitor logs history for an organization.
+   */
+  async getHistory(req, res, next) {
+    try {
+      const { orgId } = req.params;
+      const skip = parseInt(req.query.skip, 10) || 0;
+      const limit = parseInt(req.query.limit, 10) || 10;
+      
+      const filter = {};
+      if (req.query.status && req.query.status !== 'all') {
+        filter.logStatus = req.query.status.toUpperCase();
+      }
+      if (req.query.entryType && req.query.entryType !== 'all') {
+        filter.entryType = req.query.entryType.toUpperCase();
+      }
+      
+      const data = await visitorLogService.getHistoryLogs(orgId, skip, limit, filter);
+      res.success(data, 'Visitor logs history retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new VisitorLogController();

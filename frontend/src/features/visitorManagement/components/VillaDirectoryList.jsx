@@ -24,16 +24,16 @@ export const VillaDirectoryList = ({ villas }) => {
     <div className="card invite-form-card">
       <div className="live-entries-card-header">
         <h3 style={{ fontSize: '18px', margin: 0 }}>
-          <i className="fa-solid fa-hotel" style={{ color: 'var(--primary)', marginRight: '8px' }}></i> Villa & Host Intercom Directory
+          <i className="fa-solid fa-hotel card-title-icon"></i> Villa & Host Intercom Directory
         </h3>
         
         <input 
           type="text" 
-          className="form-control" 
-          placeholder="Search by Villa or Resident Name..."
+          className="form-control filter-input-search" 
+          placeholder="Search by Villa or Resident..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ maxWidth: '280px', padding: '8px 12px', fontSize: '13px' }}
+          style={{ maxWidth: '280px' }}
         />
       </div>
 
@@ -42,16 +42,16 @@ export const VillaDirectoryList = ({ villas }) => {
           <div key={villa.id} className="villa-directory-card">
             <div>
               <div className="villa-directory-badge-wrap">
-                <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-main)' }}>{villa.number}</span>
-                <span style={{ fontSize: '10px', fontWeight: '700', padding: '2px 6px', borderRadius: '4px', backgroundColor: villa.status === 'Occupied' ? '#EBF8FF' : '#EDF2F7', color: villa.status === 'Occupied' ? '#2B6CB0' : '#4A5568' }}>
+                <span className="table-cell-bold fs-5">{villa.number}</span>
+                <span className={villa.status === 'Occupied' ? 'villa-status-occupied' : 'villa-status-vacant'}>
                   {villa.status}
                 </span>
               </div>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)', marginTop: '6px' }}>
+              <div className="table-cell-muted mt-1">
                 Resident: {villa.resident}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-light)', marginTop: '4px' }}>
-                <i className="fa-solid fa-phone" style={{ marginRight: '4px' }}></i> {villa.phone}
+              <div className="table-cell-sub">
+                <i className="fa-solid fa-phone me-1"></i> {villa.phone}
               </div>
             </div>
 
@@ -71,27 +71,20 @@ export const VillaDirectoryList = ({ villas }) => {
       {activeCall && (
         <div className="intercom-modal-backdrop">
           <div className="intercom-modal-card">
-            <div style={{ fontSize: '14px', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>
+            <div className="intercom-modal-title">
               Gate Intercom Outgoing Call
             </div>
-            <h4 style={{ margin: 0, fontSize: '24px', fontWeight: '800' }}>{activeCall.number}</h4>
-            <p style={{ margin: '8px 0 30px', color: '#94A3B8', fontSize: '14px' }}>{activeCall.resident}</p>
+            <h4 className="intercom-modal-number">{activeCall.number}</h4>
+            <p className="intercom-modal-resident">{activeCall.resident}</p>
             
             {/* Pulsing Intercom Phone Icon */}
             <div className="intercom-avatar-pulse">
               <i className="fa-solid fa-phone-volume"></i>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div className="d-flex justify-content-center">
               <button 
-                className="btn btn-danger" 
-                style={{ 
-                  borderRadius: '50px', 
-                  padding: '12px 30px', 
-                  fontWeight: '700',
-                  backgroundColor: '#EF4444',
-                  border: 'none'
-                }}
+                className="btn btn-danger intercom-btn-hangup"
                 onClick={() => setActiveCall(null)}
               >
                 Hang Up

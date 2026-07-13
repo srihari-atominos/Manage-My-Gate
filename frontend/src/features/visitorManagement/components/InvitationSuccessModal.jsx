@@ -30,9 +30,9 @@ export const InvitationSuccessModal = ({ visible, onClose, passData }) => {
   }
 
   const handleCopyLink = () => {
-    const text = `Pass ID: ${passCode}\nGuest: ${visitorName}\nValidity: ${validityText}`;
+    const text = passCode;
     navigator.clipboard.writeText(text);
-    toast.success('Invitation details copied to clipboard!');
+    toast.success('Pass ID copied to clipboard!');
   };
 
   const handleWhatsAppShare = () => {

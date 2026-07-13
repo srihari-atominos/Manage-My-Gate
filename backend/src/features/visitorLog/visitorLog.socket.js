@@ -26,6 +26,32 @@ export const dispatchWalkInPending = (log) => {
   }
 };
 
+/**
+ * Dispatches walk-in resolution (approved/rejected) to the target guard's socket room.
+ * @param {Object} log - The visitor log document.
+ */
+export const dispatchWalkInResolved = (log) => {
+  try {
+    const guardId = log.guardId;
+    if (!guardId) {
+      logger.info('Walk-in resolution log does not specify a guard; skipping socket dispatch.');
+      return;
+    }
+
+    const io = getIO();
+    const roomName = `user:${guardId}`;
+
+    logger.info(`Dispatching GATE_APPROVAL_RESOLVED to room ${roomName} for log ${log._id} with status ${log.logStatus}`);
+    
+    // Safely emit to room
+    io.to(roomName).emit('GATE_APPROVAL_RESOLVED', log);
+  } catch (error) {
+    logger.error('Failed to emit GATE_APPROVAL_RESOLVED via Socket.io:', error);
+    // Safe try/catch prevents this error from crashing the main Node execution thread
+  }
+};
+
 export default {
   dispatchWalkInPending,
+  dispatchWalkInResolved,
 };

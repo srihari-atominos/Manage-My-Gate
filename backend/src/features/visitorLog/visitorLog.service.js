@@ -2,6 +2,7 @@ import visitorLogRepository from './visitorLog.repository.js';
 import visitorPassService from '../visitorPass/visitorPass.service.js';
 import visitorLogEvents from './visitorLog.events.js';
 import HttpError from '../../utils/httpError.utils.js';
+import blacklistService from '../blacklist/blacklist.service.js';
 
 export class VisitorLogService {
   /**
@@ -51,6 +52,15 @@ export class VisitorLogService {
    * @returns {Promise<Object>} The pending visitor log.
    */
   async initiateWalkInRequest(walkInData, session = null) {
+    // Check Blacklist before initiating walk-in
+    const isBanned = await blacklistService.checkMatch(walkInData.orgId, {
+      name: walkInData.snapshot?.visitorName,
+      plate: walkInData.snapshot?.vehicleNumber
+    });
+    if (isBanned) {
+      throw new HttpError(403, `Visitor is blacklisted: ${isBanned.reason}`);
+    }
+
     const logData = {
       orgId: walkInData.orgId,
       guardId: walkInData.guardId,
@@ -151,6 +161,19 @@ export class VisitorLogService {
       query.residentId = residentId;
     }
     return await visitorLogRepository.findPendingApprovals(query);
+  }
+
+  /**
+   * Fetch paginated visitor logs history in an organization.
+   * @param {string} orgId - The organization ID.
+   * @param {number} skip - Number of items to skip.
+   * @param {number} limit - Number of items to return.
+   * @param {Object} [filters={}] - Optional filters.
+   * @param {import('mongoose').ClientSession} [session=null] - Optional Mongoose session.
+   * @returns {Promise<{ data: Object[], totalRecords: number }>}
+   */
+  async getHistoryLogs(orgId, skip, limit, filters = {}, session = null) {
+    return await visitorLogRepository.findHistoryLogsByOrg(orgId, skip, limit, filters, session);
   }
 }
 

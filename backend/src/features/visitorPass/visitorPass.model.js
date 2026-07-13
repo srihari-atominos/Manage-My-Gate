@@ -42,6 +42,10 @@ const visitorPassSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isIdProofPass: {
+      type: Boolean,
+      default: false,
+    },
     visitorDetails: {
       name: {
         type: String,

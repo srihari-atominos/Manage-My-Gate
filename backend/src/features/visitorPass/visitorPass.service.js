@@ -1,6 +1,7 @@
 import visitorPassRepository from './visitorPass.repository.js';
 import visitorPassEvents from './visitorPass.events.js';
 import HttpError from '../../utils/httpError.utils.js';
+import blacklistService from '../blacklist/blacklist.service.js';
 
 export class VisitorPassService {
   /**
@@ -87,6 +88,16 @@ export class VisitorPassService {
     // 5. Check Usage Limit
     if (pass.usageLimit.currentUses >= pass.usageLimit.maxUses) {
       throw new HttpError(400, 'Visitor pass has already reached its maximum usage limit.');
+    }
+
+    // 6. Check Blacklist Banned Profile
+    const isBanned = await blacklistService.checkMatch(pass.orgId, {
+      name: pass.visitorDetails?.name,
+      phone: pass.visitorDetails?.phone,
+      plate: pass.vehicleDetails?.number
+    });
+    if (isBanned) {
+      throw new HttpError(403, `Visitor is blacklisted: ${isBanned.reason}`);
     }
 
     return pass;

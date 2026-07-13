@@ -39,7 +39,8 @@ export const ResidentVisitorManagementView = () => {
     handleApproveEntry,
     handleDenyEntry,
     generatedPass,
-    setGeneratedPass
+    setGeneratedPass,
+    logs
   } = useResidentVisitorManagement();
 
   console.log('[ResidentVisitorManagementView] generatedPass:', generatedPass);
@@ -135,6 +136,7 @@ export const ResidentVisitorManagementView = () => {
                   itemsPerPage={itemsPerPage}
                   handleCopyPass={handleCopyPass}
                   handleRevokePass={handleRevokePass}
+                  setGeneratedPass={setGeneratedPass}
                 />
               </div>
             </>
@@ -143,7 +145,8 @@ export const ResidentVisitorManagementView = () => {
               walkins={walkins} 
               setWalkins={setWalkins} 
               onApprove={handleApproveEntry} 
-              onDeny={handleDenyEntry} 
+              onDeny={handleDenyEntry}
+              logs={logs}
             />
           )}
 

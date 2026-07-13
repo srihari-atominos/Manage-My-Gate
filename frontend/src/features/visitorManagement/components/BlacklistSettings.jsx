@@ -43,13 +43,13 @@ export const BlacklistSettings = ({ blacklist, setBlacklist }) => {
   };
 
   return (
-    <div className="dashboard-grid" style={{ gap: '24px' }}>
+    <div className="dashboard-grid">
       
       {/* Left panel: Block Profile Form */}
-      <div style={{ flex: 1 }}>
-        <div className="card" style={{ borderTop: '4px solid var(--danger, #E74C3C)' }}>
-          <h3 style={{ fontSize: '18px', marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
-            <i className="fa-solid fa-user-slash" style={{ color: 'var(--danger)', marginRight: '8px' }}></i> Add Banned Profile
+      <div>
+        <div className="card blacklist-card">
+          <h3 className="d-flex align-items-center mb-3" style={{ fontSize: '18px' }}>
+            <i className="fa-solid fa-user-slash card-title-icon-muted text-danger"></i> Add Banned Profile
           </h3>
 
           <form onSubmit={handleAddBlacklist}>
@@ -89,16 +89,15 @@ export const BlacklistSettings = ({ blacklist, setBlacklist }) => {
             <div className="form-group">
               <label className="form-label">Detailed Reason for Ban</label>
               <textarea 
-                className="form-control" 
+                className="form-control blacklist-reason-input" 
                 rows="3"
                 placeholder="Describe why this visitor or vehicle is blacklisted..."
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                style={{ resize: 'none' }}
               />
             </div>
 
-            <button type="submit" className="btn btn-danger w-100" style={{ marginTop: '16px', fontWeight: '600' }}>
+            <button type="submit" className="btn btn-danger w-100 mt-3 fw-bold">
               Confirm & Block Profile
             </button>
           </form>
@@ -106,67 +105,47 @@ export const BlacklistSettings = ({ blacklist, setBlacklist }) => {
       </div>
 
       {/* Right panel: Active database log */}
-      <div style={{ flex: 1.5 }}>
+      <div>
         <div className="card">
-          <h3 style={{ fontSize: '18px', marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
-            <i className="fa-solid fa-database" style={{ color: 'var(--text-muted)', marginRight: '8px' }}></i> Active Blacklist Database ({blacklist.length})
+          <h3 className="d-flex align-items-center mb-3" style={{ fontSize: '18px' }}>
+            <i className="fa-solid fa-database card-title-icon-muted"></i> Active Blacklist Database ({blacklist.length})
           </h3>
 
           {blacklist.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '260px', color: 'var(--text-light)' }}>
-              <i className="fa-solid fa-circle-check" style={{ fontSize: '42px', color: 'var(--success)', marginBottom: '12px' }}></i>
-              <span style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text-main)' }}>Blacklist is empty</span>
-              <span style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>No profiles or vehicles are currently banned.</span>
+            <div className="empty-state-container">
+              <i className="fa-solid fa-circle-check empty-state-icon"></i>
+              <span className="empty-state-text-main">Blacklist is empty</span>
+              <span className="empty-state-text-sub">No profiles or vehicles are currently banned.</span>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="pending-items-list">
               {blacklist.map(record => {
                 const recordId = record.id || record._id;
                 const recordDate = record.dateAdded || (record.createdAt ? new Date(record.createdAt).toLocaleDateString() : '—');
 
                 return (
-                  <div 
-                    key={recordId} 
-                    style={{
-                      backgroundColor: '#FFF5F5',
-                      border: '1px solid #FED7D7',
-                      borderRadius: '12px',
-                      padding: '16px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '16px'
-                    }}
-                  >
+                  <div key={recordId} className="blacklist-item-card">
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#9B2C2C' }}>{record.name}</h4>
-                        <span style={{ fontSize: '11px', color: '#9B2C2C', backgroundColor: '#FED7D7', padding: '2px 8px', borderRadius: '4px', fontWeight: '600' }}>
+                      <div className="item-header-row">
+                        <h4 className="blacklist-item-name">{record.name}</h4>
+                        <span className="blacklist-item-badge">
                           {recordId}
                         </span>
                       </div>
-                      <div style={{ fontSize: '12px', color: '#C53030', marginTop: '6px', fontWeight: '500' }}>
+                      <div className="blacklist-item-reason">
                         <strong>Reason:</strong> {record.reason}
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-light)', marginTop: '6px' }}>
-                        <i className="fa-solid fa-car-side" style={{ marginRight: '4px' }}></i> Plate: {record.plate || '—'} &bull; <i className="fa-solid fa-phone" style={{ marginLeft: '8px', marginRight: '4px' }}></i> Phone: {record.phone || '—'} &bull; <i className="fa-solid fa-calendar-days" style={{ marginLeft: '8px', marginRight: '4px' }}></i> Banned on: {recordDate}
+                      <div className="blacklist-item-meta">
+                        <i className="fa-solid fa-car-side me-1"></i> Plate: {record.plate || '—'} &bull; <i className="fa-solid fa-phone ms-2 me-1"></i> Phone: {record.phone || '—'} &bull; <i className="fa-solid fa-calendar-days ms-2 me-1"></i> Banned on: {recordDate}
                       </div>
                     </div>
 
                     <button 
-                      className="btn btn-secondary" 
-                      style={{ 
-                        padding: '8px 12px', 
-                        borderRadius: '8px', 
-                        fontSize: '12px', 
-                        color: 'var(--danger)', 
-                        borderColor: '#FED7D7',
-                        backgroundColor: '#fff'
-                      }}
+                      className="btn btn-secondary btn-unban"
                       onClick={() => handleRemoveBlacklist(recordId)}
                       title="Remove rule / Unban"
                     >
-                      <i className="fa-solid fa-trash-can"></i> Unban
+                      <i className="fa-solid fa-trash-can me-1"></i> Unban
                     </button>
                   </div>
                 );
