@@ -434,6 +434,15 @@ export class VillaService {
       };
       membership.villaId = villa._id;
       membership.residentType = mappedResidentType(residencyType);
+
+      // Sync user role in membership to the selected tenant role
+      const roleService = (await import('../role/role.services.js')).default;
+      const roleObj = await roleService.getRoleByName(residencyType, orgId, session);
+      if (roleObj) {
+        membership.roleId = roleObj._id;
+        membership.roleIds = [roleObj._id];
+      }
+
       await membership.save({ session });
 
       await session.commitTransaction();
@@ -498,9 +507,18 @@ export class VillaService {
             return 'Guest';
         }
       };
+      // Sync user role in membership to the selected tenant role
+      const roleService = (await import('../role/role.services.js')).default;
+      const roleObj = await roleService.getRoleByName(newResidencyType, orgId, session);
+      const updateFields = { residentType: mappedResidentType(newResidencyType) };
+      if (roleObj) {
+        updateFields.roleId = roleObj._id;
+        updateFields.roleIds = [roleObj._id];
+      }
+
       await OrgMembership.updateOne(
         { userId, orgId },
-        { $set: { residentType: mappedResidentType(newResidencyType) } }
+        { $set: updateFields }
       ).session(session);
 
       await session.commitTransaction();

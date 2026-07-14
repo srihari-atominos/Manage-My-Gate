@@ -8,6 +8,7 @@ import { syncRolePermissionsAsync } from '../store/roleSlice'
 const schema = yup.object().shape({
   name: yup.string().trim().required('Role name is required'),
   description: yup.string().trim().optional(),
+  isTenantRole: yup.boolean().optional().default(false),
   permissions: yup.array().of(yup.string().required()).required('Permissions array is required'),
   integrationMappings: yup.object().optional().default({}),
 })
@@ -28,6 +29,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
     defaultValues: {
       name: '',
       description: '',
+      isTenantRole: false,
       permissions: [],
       integrationMappings: {},
     },
@@ -42,6 +44,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
       reset({
         name: role.name || '',
         description: role.description || '',
+        isTenantRole: role.isTenantRole || false,
         permissions: role.permissions || [],
         integrationMappings: role.integrationMappings || {},
       })
@@ -49,6 +52,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
       reset({
         name: '',
         description: '',
+        isTenantRole: false,
         permissions: [],
         integrationMappings: {},
       })

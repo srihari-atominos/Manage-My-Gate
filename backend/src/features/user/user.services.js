@@ -192,6 +192,17 @@ export class UserService {
         const role = await roleService.getRoleByName(roleName, orgId, session);
         if (role) {
           roleIds.push(role._id);
+          // Auto-determine residentType if it is 'None' or empty based on role name keywords
+          if (!residentType || residentType === 'None') {
+            const lowerRoleName = role.name.toLowerCase();
+            if (lowerRoleName.includes('owner')) {
+              residentType = 'Owner';
+            } else if (lowerRoleName.includes('tenant')) {
+              residentType = 'Tenant';
+            } else if (lowerRoleName.includes('family')) {
+              residentType = 'Family';
+            }
+          }
         } else {
           throw new HttpError(400, `Role '${roleName}' not found in this community.`);
         }
@@ -211,7 +222,7 @@ export class UserService {
       if (villaId && (residentType === 'Owner' || residentType === 'Tenant')) {
         const villaService = (await import('../villa/villa.services.js')).default;
         const occupancyStatus = residentType === 'Owner' ? 'Owner Occupied' : 'Tenant Occupied';
-        await villaService.updateVillaOccupancy(villaId, occupancyStatus, session);
+        await villaService.updateVillaOccupancy(villaId, orgId, occupancyStatus, session);
       }
 
       // Dynamically import tokenService to follow clean cross-feature flow

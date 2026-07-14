@@ -26,6 +26,7 @@ import { inviteUserAsync } from '../../userManagement/store/userSlice';
 import useVilla from '../hooks/useVilla';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import apiClient from '../../../services/apiClient';
 
 export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
   const { t } = useTranslation();
@@ -43,6 +44,10 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
   
   // Tab states: 1 = Assign Existing, 2 = Invite via Email
   const [activeTab, setActiveTab] = useState(1);
+
+  // Dynamic roles states
+  const [tenantRoles, setTenantRoles] = useState([]);
+  const [loadingRoles, setLoadingRoles] = useState(false);
 
   // Form states for Tab 1 (Assign Existing)
   const [assignUserId, setAssignUserId] = useState('');
@@ -66,6 +71,25 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
         dispatch(fetchVillaByIdAsync(villaId));
       }
       fetchWorkspaceUsers();
+
+      // Load tenant roles
+      setLoadingRoles(true);
+      apiClient.get('/roles?limit=100')
+        .then((res) => {
+          const allRoles = res.data?.data || [];
+          const filtered = allRoles.filter((r) => r.isTenantRole);
+          setTenantRoles(filtered);
+          if (filtered.length > 0) {
+            setResidencyType(filtered[0].name);
+            setInviteResidencyType(filtered[0].name);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to fetch roles for villa occupants:', err);
+        })
+        .finally(() => {
+          setLoadingRoles(false);
+        });
     }
   }, [dispatch, visible, villaId, fetchWorkspaceUsers]);
 
@@ -96,20 +120,23 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
     setInviting(true);
     setInviteError(null);
 
-    // Map residencyType to roleName
-    let roleName = 'Family Member';
-    if (inviteResidencyType === 'Resident Owner' || inviteResidencyType === 'Non-Resident Owner') {
-      roleName = 'Resident Owner';
-    } else if (inviteResidencyType === 'Tenant') {
-      roleName = 'Resident Tenant';
-    }
+    // Map roleName to residentType
+    const getResidentTypeFromRoleName = (name) => {
+      const lower = (name || '').toLowerCase();
+      if (lower.includes('owner')) return 'Owner';
+      if (lower.includes('tenant')) return 'Tenant';
+      if (lower.includes('family')) return 'Family';
+      return 'Guest';
+    };
+
+    const residentType = getResidentTypeFromRoleName(inviteResidencyType);
 
     try {
       const actionResult = await dispatch(inviteUserAsync({
         email: inviteEmail.trim(),
         villaId,
-        residentType: inviteResidencyType,
-        roleName
+        residentType,
+        roleName: inviteResidencyType
       }));
 
       if (inviteUserAsync.fulfilled.match(actionResult)) {
@@ -264,11 +291,11 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                                   onChange={(e) => setEditResidencyType(e.target.value)}
                                   style={{ fontSize: '0.75rem' }}
                                 >
-                                  <option value="Tenant">{t('villas.details.tenantOpt', 'Tenant')}</option>
-                                  <option value="Resident Owner">{t('villas.details.ownerOpt', 'Resident Owner')}</option>
-                                  <option value="Family Member">{t('villas.details.familyOpt', 'Family Member')}</option>
-                                  <option value="Non-Resident Owner">{t('villas.details.nonResOwnerOpt', 'Non-Resident Owner')}</option>
-                                  <option value="Staff">{t('villas.details.staffOpt', 'Staff')}</option>
+                                  {tenantRoles.map((role) => (
+                                    <option key={role.id} value={role.name}>
+                                      {role.name}
+                                    </option>
+                                  ))}
                                 </CFormSelect>
                                 <CButton
                                   size="sm"
@@ -381,11 +408,11 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                           onChange={(e) => setResidencyType(e.target.value)}
                           size="sm"
                         >
-                          <option value="Tenant">{t('villas.details.tenantOpt', 'Tenant')}</option>
-                          <option value="Resident Owner">{t('villas.details.ownerOpt', 'Resident Owner')}</option>
-                          <option value="Family Member">{t('villas.details.familyOpt', 'Family Member')}</option>
-                          <option value="Non-Resident Owner">{t('villas.details.nonResOwnerOpt', 'Non-Resident Owner')}</option>
-                          <option value="Staff">{t('villas.details.staffOpt', 'Staff')}</option>
+                          {tenantRoles.map((role) => (
+                            <option key={role.id} value={role.name}>
+                              {role.name}
+                            </option>
+                          ))}
                         </CFormSelect>
                       </div>
                       <CButton
@@ -434,11 +461,11 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                           onChange={(e) => setInviteResidencyType(e.target.value)}
                           size="sm"
                         >
-                          <option value="Tenant">{t('villas.details.tenantOpt', 'Tenant')}</option>
-                          <option value="Resident Owner">{t('villas.details.ownerOpt', 'Resident Owner')}</option>
-                          <option value="Family Member">{t('villas.details.familyOpt', 'Family Member')}</option>
-                          <option value="Non-Resident Owner">{t('villas.details.nonResOwnerOpt', 'Non-Resident Owner')}</option>
-                          <option value="Staff">{t('villas.details.staffOpt', 'Staff')}</option>
+                          {tenantRoles.map((role) => (
+                            <option key={role.id} value={role.name}>
+                              {role.name}
+                            </option>
+                          ))}
                         </CFormSelect>
                       </div>
                       <CButton

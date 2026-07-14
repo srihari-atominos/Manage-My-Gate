@@ -19,6 +19,10 @@ export const createRoleRules = [
     .trim()
     .isLength({ max: 200 })
     .withMessage('Description cannot exceed 200 characters'),
+  body('isTenantRole')
+    .optional()
+    .isBoolean()
+    .withMessage('isTenantRole must be a boolean'),
   body('integrationMappings')
     .optional()
     .isObject()
@@ -68,6 +72,10 @@ export const updateRoleRules = [
     .trim()
     .isLength({ max: 200 })
     .withMessage('Description cannot exceed 200 characters'),
+  body('isTenantRole')
+    .optional()
+    .isBoolean()
+    .withMessage('isTenantRole must be a boolean'),
   body('permissions')
     .optional()
     .isArray()

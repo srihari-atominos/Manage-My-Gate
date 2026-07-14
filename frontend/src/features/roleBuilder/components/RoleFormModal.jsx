@@ -101,6 +101,17 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
             )}
           </div>
 
+          <div className="mb-3">
+            <CFormCheck
+              id="role-is-tenant-input"
+              label="Is Tenant/Unit Role (Belongs to Villa/Apartment Unit)"
+              {...register('isTenantRole')}
+            />
+            <div className="text-body-secondary small mt-1">
+              If checked, this role will belong to the unit and be selectable when onboarding residents to specific villas/apartments.
+            </div>
+          </div>
+
           {/* Role Integration Configuration Segment */}
           <div className="mb-3">
             <CFormLabel style={{ fontSize: '0.85rem', fontWeight: 600 }}>

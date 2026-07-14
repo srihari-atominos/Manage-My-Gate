@@ -60,6 +60,7 @@ export class RoleRepository {
               $project: {
                 name: 1,
                 description: 1,
+                isTenantRole: 1,
                 createdAt: 1,
                 updatedAt: 1,
                 permissions: '$permissionsList.name',

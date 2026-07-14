@@ -49,7 +49,7 @@ export class RoleService {
     const currentSession = session || localSession;
 
     try {
-      const { name, description, permissions, integrationMappings, orgId } = roleData;
+      const { name, description, permissions, integrationMappings, orgId, isTenantRole } = roleData;
       const trimmedName = name ? name.trim() : '';
       if (!trimmedName) {
         throw new HttpError(400, 'Role name is required.');
@@ -58,7 +58,7 @@ export class RoleService {
       if (existingRole) {
         throw new HttpError(400, `Role with name '${trimmedName}' already exists.`);
       }
-      const newRole = await roleRepository.create({ name: trimmedName, description, integrationMappings, orgId }, currentSession);
+      const newRole = await roleRepository.create({ name: trimmedName, description, integrationMappings, orgId, isTenantRole }, currentSession);
       
       let populatedPermissions = [];
       if (permissions && permissions.length > 0) {
@@ -97,9 +97,12 @@ export class RoleService {
     session.startTransaction();
     try {
       await this.getRoleById(id, session);
-      const { name, description, permissions, integrationMappings, orgId } = updateData;
+      const { name, description, permissions, integrationMappings, orgId, isTenantRole } = updateData;
       
       const roleUpdates = { description, integrationMappings };
+      if (isTenantRole !== undefined) {
+        roleUpdates.isTenantRole = isTenantRole;
+      }
       if (name) {
         const trimmedName = name.trim();
         const existing = await roleRepository.findByName(trimmedName, orgId, session);

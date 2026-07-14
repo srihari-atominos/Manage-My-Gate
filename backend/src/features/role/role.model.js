@@ -23,6 +23,10 @@ const roleSchema = new mongoose.Schema(
       of: mongoose.Schema.Types.ObjectId,
       default: {},
     },
+    isTenantRole: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

@@ -12,6 +12,7 @@ export class RoleController {
         id: role._id,
         name: role.name,
         description: role.description,
+        isTenantRole: role.isTenantRole || false,
         permissions: role.permissions || [],
         integrationMappings: role.integrationMappings || {},
       }));
@@ -23,14 +24,15 @@ export class RoleController {
 
   async createRole(req, res, next) {
     try {
-      const { name, description, permissions, integrationMappings } = req.body;
+      const { name, description, permissions, integrationMappings, isTenantRole } = req.body;
       const orgId = req.tenant.orgId;
-      const role = await roleService.createRole({ name, description, permissions, integrationMappings, orgId });
+      const role = await roleService.createRole({ name, description, permissions, integrationMappings, orgId, isTenantRole });
       
       res.success({
         id: role._id,
         name: role.name,
         description: role.description,
+        isTenantRole: role.isTenantRole || false,
         permissions: role.permissions || [],
         integrationMappings: role.integrationMappings || {},
       }, 'Role created successfully', 201);
@@ -48,13 +50,14 @@ export class RoleController {
         throw new HttpError(403, 'The Super Admin role is a protected system role and cannot be modified.');
       }
       
-      const { name, description, permissions, integrationMappings } = req.body;
-      const role = await roleService.updateRole(id, { name, description, permissions, integrationMappings, orgId });
+      const { name, description, permissions, integrationMappings, isTenantRole } = req.body;
+      const role = await roleService.updateRole(id, { name, description, permissions, integrationMappings, orgId, isTenantRole });
       
       res.success({
         id: role._id,
         name: role.name,
         description: role.description,
+        isTenantRole: role.isTenantRole || false,
         permissions: role.permissions || [],
         integrationMappings: role.integrationMappings || {},
       }, 'Role updated successfully');
