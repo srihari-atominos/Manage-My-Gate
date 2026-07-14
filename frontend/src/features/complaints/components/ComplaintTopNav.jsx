@@ -20,7 +20,7 @@ const navItems = [
   { name: 'Raise Ticket', to: '/admin/complaints/create', icon: cilPlus, requiredPermission: 'complaints:raise_ticket' },
   { name: 'Track', to: '/admin/complaints/my-tickets', icon: cilSearch, requiredPermission: 'complaints:track_requests' },
   { name: 'Management', to: '/admin/complaints/manage', icon: cilList, requiredPermission: 'complaints:complaint_management' },
-  { name: 'Staff', to: '/admin/complaints/staff', icon: cilPeople, requiredPermission: 'complaints:staff_vendors' },
+  { name: 'Staff', to: '/admin/complaints/staff', icon: cilPeople, requiredPermission: 'complaints:staff' },
   { name: 'Assignee', to: '/admin/complaints/assignee', icon: cilBriefcase, requiredPermission: 'complaints:assignee' }
 ];
 
