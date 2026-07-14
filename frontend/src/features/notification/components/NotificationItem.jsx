@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 import CIcon from '@coreui/icons-react';
@@ -79,6 +79,7 @@ const getNotificationIcon = (type) => {
  */
 export const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClose }) => {
   const { t, i18n } = useTranslation();
+const navigate = useNavigate();
   const { _id, id, title, body, type, isRead, createdAt, actionUrl } = notification;
   const notificationId = id || _id;
 
@@ -144,22 +145,24 @@ export const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClose
     // Legacy mapping for broken URLs already in the DB
     if (finalActionUrl.startsWith('/complaints/')) {
       finalActionUrl = '/complaints';
+    } else if (finalActionUrl.startsWith('/admin/complaints')) {
+      finalActionUrl = '/complaints';
     } else if (finalActionUrl === '/assignee') {
       finalActionUrl = '/admin/complaints/assignee';
     } else if (finalActionUrl.startsWith('#/')) {
       finalActionUrl = finalActionUrl.replace('#', '');
     }
 
+    // Use programmatic navigation to ensure HashRouter works correctly
+    // navigate defined at component level
+    const handleClick = () => {
+      if (onClose) onClose();
+      navigate(finalActionUrl);
+    };
     return (
-      <Link 
-        to={finalActionUrl} 
-        className={itemClassNames} 
-        onClick={() => {
-          if (onClose) onClose();
-        }}
-      >
+      <div className={itemClassNames} onClick={handleClick}>
         {renderedContent}
-      </Link>
+      </div>
     );
   }
 
@@ -182,7 +185,8 @@ NotificationItem.propTypes = {
     actionUrl: PropTypes.string,
   }).isRequired,
   onMarkAsRead: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
+  onClose: PropTypes.func,
+
 };
 
 export default NotificationItem;
