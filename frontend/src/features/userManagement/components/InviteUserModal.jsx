@@ -22,8 +22,10 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
   const [inviteEmail, setInviteEmail] = useState('')
   const [villas, setVillas] = useState([])
   const [selectedVillaId, setSelectedVillaId] = useState('')
-  const [residentType, setResidentType] = useState('None')
+  const [roles, setRoles] = useState([])
+  const [selectedRoleName, setSelectedRoleName] = useState('')
   const [loadingVillas, setLoadingVillas] = useState(false)
+  const [loadingRoles, setLoadingRoles] = useState(false)
 
   useEffect(() => {
     if (visible) {
@@ -38,6 +40,18 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
         .finally(() => {
           setLoadingVillas(false)
         })
+
+      setLoadingRoles(true)
+      apiClient.get('/roles?limit=100')
+        .then(res => {
+          setRoles(res.data?.data || [])
+        })
+        .catch(err => {
+          console.error('Failed to load roles for invite dropdown:', err)
+        })
+        .finally(() => {
+          setLoadingRoles(false)
+        })
     }
   }, [visible])
 
@@ -45,32 +59,40 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
     e.preventDefault()
     if (!inviteEmail.trim()) return
 
-    // Map residentType to roleName
-    let roleName = ''
-    if (residentType === 'Owner') roleName = 'Resident Owner'
-    else if (residentType === 'Tenant') roleName = 'Resident Tenant'
-    else if (residentType === 'Family') roleName = 'Family Member'
-    else if (residentType === 'Security Guard') roleName = 'Security Guard'
-    else if (residentType === 'Community Admin') roleName = 'Community Admin'
+    const selectedRole = roles.find(r => r.name === selectedRoleName)
+    const isTenant = selectedRole ? selectedRole.isTenantRole : false
+
+    // Determine residentType based on roleName
+    let residentType = 'None'
+    if (isTenant && selectedRoleName) {
+      const lowerName = selectedRoleName.toLowerCase()
+      if (lowerName.includes('owner')) residentType = 'Owner'
+      else if (lowerName.includes('tenant')) residentType = 'Tenant'
+      else if (lowerName.includes('family')) residentType = 'Family'
+      else residentType = 'Guest' // Fallback for other tenant roles
+    }
 
     onSendInvite({
       email: inviteEmail.trim(),
-      villaId: selectedVillaId || null,
-      residentType: ['Security Guard', 'Community Admin', 'None'].includes(residentType) ? 'None' : residentType,
-      roleName
+      villaId: isTenant ? selectedVillaId || null : null,
+      residentType,
+      roleName: selectedRoleName || null
     })
     
     setInviteEmail('')
     setSelectedVillaId('')
-    setResidentType('None')
+    setSelectedRoleName('')
   }
 
   const handleClose = () => {
     setInviteEmail('')
     setSelectedVillaId('')
-    setResidentType('None')
+    setSelectedRoleName('')
     onClose()
   }
+
+  const selectedRoleObj = roles.find(r => r.name === selectedRoleName)
+  const isTenantRole = selectedRoleObj ? selectedRoleObj.isTenantRole : false
 
   return (
     <CModal
@@ -103,24 +125,26 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
 
           <div className="mb-3">
             <CFormLabel htmlFor="invite-role-select" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-              Resident Type / Role
+              Select Role
             </CFormLabel>
             <CFormSelect
               id="invite-role-select"
-              value={residentType}
-              onChange={(e) => setResidentType(e.target.value)}
+              value={selectedRoleName}
+              onChange={(e) => setSelectedRoleName(e.target.value)}
               size="sm"
+              required
+              disabled={loadingRoles}
             >
-              <option value="None">General / Unassigned</option>
-              <option value="Owner">Resident Owner</option>
-              <option value="Tenant">Resident Tenant</option>
-              <option value="Family">Family Member</option>
-              <option value="Security Guard">Security Guard</option>
-              <option value="Community Admin">Community Admin</option>
+              <option value="">-- Choose a Role --</option>
+              {roles.map((role) => (
+                <option key={role.id} value={role.name}>
+                  {role.name} ({role.isTenantRole ? 'Tenant/Unit' : 'Global'})
+                </option>
+              ))}
             </CFormSelect>
           </div>
 
-          {['Owner', 'Tenant', 'Family'].includes(residentType) && (
+          {isTenantRole && (
             <div className="mb-3">
               <CFormLabel htmlFor="invite-villa-select" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
                 Select Villa / Unit
@@ -160,7 +184,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
             type="submit"
             color="primary"
             size="sm"
-            disabled={!inviteEmail.trim() || (['Owner', 'Tenant', 'Family'].includes(residentType) && !selectedVillaId)}
+            disabled={!inviteEmail.trim() || !selectedRoleName || (isTenantRole && !selectedVillaId)}
             style={{ fontWeight: 600 }}
           >
             Send Invitation

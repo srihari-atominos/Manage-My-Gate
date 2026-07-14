@@ -181,7 +181,7 @@ export class OrganizationService {
 
       // Create Community Admin Role
       const adminRole = await roleService.createRole(
-        { name: 'Community Admin', description: 'Gated community administrator with full access privileges.', orgId: newOrg._id },
+        { name: 'Community Admin', description: 'Gated community administrator with full access privileges.', orgId: newOrg._id, isTenantRole: false },
         session
       );
       // Admin gets all permissions
@@ -190,7 +190,7 @@ export class OrganizationService {
 
       // Create Resident Owner Role
       const ownerRole = await roleService.createRole(
-        { name: 'Resident Owner', description: 'Villa Owner residing in the community.', orgId: newOrg._id },
+        { name: 'Resident Owner', description: 'Villa Owner residing in the community.', orgId: newOrg._id, isTenantRole: true },
         session
       );
       const ownerPerms = getPermissionIds([
@@ -203,7 +203,7 @@ export class OrganizationService {
 
       // Create Resident Tenant Role
       const tenantRole = await roleService.createRole(
-        { name: 'Resident Tenant', description: 'Villa Tenant residing in the community.', orgId: newOrg._id },
+        { name: 'Resident Tenant', description: 'Villa Tenant residing in the community.', orgId: newOrg._id, isTenantRole: true },
         session
       );
       const tenantPerms = getPermissionIds([
@@ -216,7 +216,7 @@ export class OrganizationService {
 
       // Create Family Member Role
       const familyRole = await roleService.createRole(
-        { name: 'Family Member', description: 'Family member of a resident.', orgId: newOrg._id },
+        { name: 'Family Member', description: 'Family member of a resident.', orgId: newOrg._id, isTenantRole: true },
         session
       );
       const familyPerms = getPermissionIds([
@@ -228,7 +228,7 @@ export class OrganizationService {
 
       // Create Security Guard Role
       const guardRole = await roleService.createRole(
-        { name: 'Security Guard', description: 'Security gate staff.', orgId: newOrg._id },
+        { name: 'Security Guard', description: 'Security gate staff.', orgId: newOrg._id, isTenantRole: false },
         session
       );
       const guardPerms = getPermissionIds([

@@ -1,74 +1,77 @@
 import { body } from 'express-validator';
 
 export const createVillaRules = [
-  body('villaNumber')
+  body('orgId')
     .notEmpty()
-    .withMessage('Villa number is required')
+    .withMessage('Organization ID (orgId) is required')
+    .isMongoId()
+    .withMessage('Organization ID must be a valid Mongo ID'),
+  body('unitNumber')
+    .notEmpty()
+    .withMessage('Unit number is required')
     .isString()
-    .withMessage('Villa number must be a string')
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('Villa number cannot exceed 50 characters'),
-  body('block')
+    .withMessage('Unit number must be a string')
+    .trim(),
+  body('blockOrBuilding')
     .optional()
     .isString()
-    .withMessage('Block must be a string')
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('Block cannot exceed 50 characters'),
-  body('intercom')
+    .withMessage('Block or building must be a string')
+    .trim(),
+  body('type')
     .optional()
-    .isString()
-    .withMessage('Intercom must be a string')
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('Intercom cannot exceed 50 characters'),
-  body('configuration')
+    .isIn(['Studio', 'Apartment', 'Villa', 'Penthouse'])
+    .withMessage('Type must be one of: Studio, Apartment, Villa, Penthouse'),
+  body('status')
     .optional()
-    .isString()
-    .withMessage('Configuration must be a string')
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('Configuration cannot exceed 50 characters'),
-  body('occupancyStatus')
-    .optional()
-    .isIn(['Vacant', 'Owner Occupied', 'Tenant Occupied'])
-    .withMessage('Occupancy status must be one of: Vacant, Owner Occupied, Tenant Occupied'),
+    .isIn(['Vacant', 'Occupied', 'Under Maintenance'])
+    .withMessage('Status must be one of: Vacant, Occupied, Under Maintenance'),
+  body('primaryResidentId')
+    .optional({ nullable: true })
+    .custom((val) => {
+      if (val === null || val === '') return true;
+      const regex = /^[0-9a-fA-F]{24}$/;
+      return regex.test(val);
+    })
+    .withMessage('Primary resident ID must be a valid Mongo ID'),
+  body('floorAreaSqFt')
+    .optional({ nullable: true })
+    .isNumeric()
+    .withMessage('Floor area must be a number'),
 ];
 
 export const updateVillaRules = [
-  body('villaNumber')
+  body('unitNumber')
     .optional()
     .isString()
-    .withMessage('Villa number must be a string')
+    .withMessage('Unit number must be a string')
     .trim()
-    .isLength({ max: 50 })
-    .withMessage('Villa number cannot exceed 50 characters'),
-  body('block')
+    .notEmpty()
+    .withMessage('Unit number cannot be empty'),
+  body('blockOrBuilding')
     .optional()
     .isString()
-    .withMessage('Block must be a string')
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('Block cannot exceed 50 characters'),
-  body('intercom')
+    .withMessage('Block or building must be a string')
+    .trim(),
+  body('type')
     .optional()
-    .isString()
-    .withMessage('Intercom must be a string')
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('Intercom cannot exceed 50 characters'),
-  body('configuration')
+    .isIn(['Studio', 'Apartment', 'Villa', 'Penthouse'])
+    .withMessage('Type must be one of: Studio, Apartment, Villa, Penthouse'),
+  body('status')
     .optional()
-    .isString()
-    .withMessage('Configuration must be a string')
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('Configuration cannot exceed 50 characters'),
-  body('occupancyStatus')
-    .optional()
-    .isIn(['Vacant', 'Owner Occupied', 'Tenant Occupied'])
-    .withMessage('Occupancy status must be one of: Vacant, Owner Occupied, Tenant Occupied'),
+    .isIn(['Vacant', 'Occupied', 'Under Maintenance'])
+    .withMessage('Status must be one of: Vacant, Occupied, Under Maintenance'),
+  body('primaryResidentId')
+    .optional({ nullable: true })
+    .custom((val) => {
+      if (val === null || val === '') return true;
+      const regex = /^[0-9a-fA-F]{24}$/;
+      return regex.test(val);
+    })
+    .withMessage('Primary resident ID must be a valid Mongo ID'),
+  body('floorAreaSqFt')
+    .optional({ nullable: true })
+    .isNumeric()
+    .withMessage('Floor area must be a number'),
 ];
 
 export const batchGenerateRules = [
@@ -97,23 +100,27 @@ export const bulkUploadVillasRules = [
   body('villas')
     .isArray({ min: 1 })
     .withMessage('villas must be a non-empty array'),
-  body('villas.*.villaNumber')
+  body('villas.*.unitNumber')
     .notEmpty()
-    .withMessage('Villa number is required')
+    .withMessage('Unit number is required')
     .isString()
     .trim(),
-  body('villas.*.block')
+  body('villas.*.blockOrBuilding')
     .optional()
     .isString()
     .trim(),
-  body('villas.*.intercom')
+  body('villas.*.type')
     .optional()
-    .isString()
-    .trim(),
-  body('villas.*.configuration')
+    .isIn(['Studio', 'Apartment', 'Villa', 'Penthouse'])
+    .withMessage('Type must be one of: Studio, Apartment, Villa, Penthouse'),
+  body('villas.*.status')
     .optional()
-    .isString()
-    .trim(),
+    .isIn(['Vacant', 'Occupied', 'Under Maintenance'])
+    .withMessage('Status must be one of: Vacant, Occupied, Under Maintenance'),
+  body('villas.*.floorAreaSqFt')
+    .optional()
+    .isNumeric()
+    .withMessage('Floor area must be a number'),
   body('villas.*.email')
     .optional()
     .custom((val) => {
@@ -131,3 +138,33 @@ export const bulkUploadVillasRules = [
     .isString()
     .trim(),
 ];
+
+export const assignExistingUserRules = [
+  body('userId')
+    .notEmpty()
+    .withMessage('User ID (userId) is required')
+    .isMongoId()
+    .withMessage('User ID must be a valid Mongo ID'),
+  body('residencyType')
+    .notEmpty()
+    .withMessage('Residency type (residencyType) is required')
+    .isIn(['Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff'])
+    .withMessage('Residency type must be one of: Resident Owner, Tenant, Family Member, Non-Resident Owner, Staff'),
+];
+
+export const updateResidencyTypeRules = [
+  body('residencyType')
+    .notEmpty()
+    .withMessage('Residency type (residencyType) is required')
+    .isIn(['Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff'])
+    .withMessage('Residency type must be one of: Resident Owner, Tenant, Family Member, Non-Resident Owner, Staff'),
+];
+
+export default {
+  createVillaRules,
+  updateVillaRules,
+  batchGenerateRules,
+  bulkUploadVillasRules,
+  assignExistingUserRules,
+  updateResidencyTypeRules,
+};

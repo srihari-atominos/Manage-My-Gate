@@ -63,7 +63,7 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
   return (
     <div className="role-integration-configurator mt-3 p-3 border rounded bg-light-subtle">
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h6 className="mb-0 fw-bold text-primary" style={{ fontSize: '0.9rem' }}>
+        <h6 className="mb-0 fw-bold text-primary configurator-title">
           Configure Role Integrations
         </h6>
         <span className="text-secondary small">Select at most 1 connection per provider</span>
@@ -82,7 +82,6 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
         <div
           ref={carouselRef}
           className="carousel-container d-flex gap-2 overflow-x-auto py-1 scrollbar-hidden"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {PROVIDERS.map((provider) => {
             const isSelected = selectedProvider === provider.id
@@ -93,19 +92,14 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
                 key={provider.id}
                 type="button"
                 className={`carousel-card px-3 py-2 border rounded text-center bg-white flex-shrink-0 d-flex flex-column align-items-center gap-1 ${
-                  isSelected ? 'border-primary shadow-sm bg-light' : 'border-light-subtle'
+                  isSelected ? 'active-card shadow-sm bg-light' : 'border-light-subtle'
                 }`}
-                style={{
-                  minWidth: '110px',
-                  cursor: 'pointer',
-                  borderWidth: isSelected ? '2px' : '1px',
-                }}
                 onClick={() => setSelectedProvider(provider.id)}
               >
-                <span style={{ fontSize: '1.2rem' }}>{provider.icon}</span>
+                <span className="provider-icon">{provider.icon}</span>
                 <span className="fw-semibold small text-dark">{provider.name}</span>
                 {isMapped && (
-                  <span className="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2 py-0.5" style={{ fontSize: '0.65rem' }}>
+                  <span className="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2 py-0.5 status-badge">
                     Active
                   </span>
                 )}
@@ -134,7 +128,7 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
           <CTable align="middle" responsive hover className="mb-0 small">
             <CTableHead className="bg-light">
               <CTableRow>
-                <CTableHeaderCell style={{ width: '40px' }} className="text-center"></CTableHeaderCell>
+                <CTableHeaderCell className="text-center select-col"></CTableHeaderCell>
                 <CTableHeaderCell>Connection Name / Label</CTableHeaderCell>
                 <CTableHeaderCell>Status</CTableHeaderCell>
               </CTableRow>
@@ -143,7 +137,7 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
               {/* None / Disconnect Option */}
               <CTableRow
                 onClick={() => handleSelectConnection(null)}
-                style={{ cursor: 'pointer' }}
+                className="pointer-row"
               >
                 <CTableDataCell className="text-center">
                   <CFormCheck
@@ -176,7 +170,7 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
                     <CTableRow
                       key={conn.id}
                       onClick={() => handleSelectConnection(conn.id)}
-                      style={{ cursor: 'pointer' }}
+                      className="pointer-row"
                     >
                       <CTableDataCell className="text-center">
                         <CFormCheck

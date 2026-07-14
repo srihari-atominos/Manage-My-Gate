@@ -1,24 +1,24 @@
 import { Router } from 'express';
 import villaController from './villa.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
-import { createVillaRules, updateVillaRules, batchGenerateRules, bulkUploadVillasRules } from './villa.validateRules.js';
+import { createVillaRules, updateVillaRules, batchGenerateRules, bulkUploadVillasRules, assignExistingUserRules, updateResidencyTypeRules } from './villa.validateRules.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import { authorizePermission } from '../../middlewares/rbac.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
+import correlationIdMiddleware from '../../middlewares/correlationId.middleware.js';
 
 const router = Router();
-
-// Protect all villa routes
-router.use(isAuthenticated);
 
 /**
  * @swagger
  * /villas:
  *   get:
- *     summary: Retrieve all villas in the community
+ *     summary: Retrieve paginated list of units in the community
  */
 router.get(
   '/',
+  correlationIdMiddleware,
+  isAuthenticated,
   tenantContext,
   authorizePermission('villas', 'read'),
   villaController.getAll
@@ -28,10 +28,12 @@ router.get(
  * @swagger
  * /villas/stats:
  *   get:
- *     summary: Get occupancy statistics for villas
+ *     summary: Get occupancy statistics for units
  */
 router.get(
   '/stats',
+  correlationIdMiddleware,
+  isAuthenticated,
   tenantContext,
   authorizePermission('villas', 'read'),
   villaController.getStats
@@ -41,10 +43,12 @@ router.get(
  * @swagger
  * /villas/{id}:
  *   get:
- *     summary: Retrieve a single villa and its residents
+ *     summary: Retrieve a single unit and its residents
  */
 router.get(
   '/:id',
+  correlationIdMiddleware,
+  isAuthenticated,
   tenantContext,
   authorizePermission('villas', 'read'),
   villaController.getById
@@ -54,10 +58,12 @@ router.get(
  * @swagger
  * /villas:
  *   post:
- *     summary: Create a new villa
+ *     summary: Create a new unit
  */
 router.post(
   '/',
+  correlationIdMiddleware,
+  isAuthenticated,
   tenantContext,
   authorizePermission('villas', 'create'),
   validate(createVillaRules),
@@ -68,10 +74,12 @@ router.post(
  * @swagger
  * /villas/batch-generate:
  *   post:
- *     summary: Batch generate villas for community setup
+ *     summary: Batch generate units for community setup
  */
 router.post(
   '/batch-generate',
+  correlationIdMiddleware,
+  isAuthenticated,
   tenantContext,
   authorizePermission('villas', 'create'),
   validate(batchGenerateRules),
@@ -82,28 +90,12 @@ router.post(
  * @swagger
  * /villas/bulk-upload:
  *   post:
- *     summary: Bulk upload villas with residents
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - villas
- *             properties:
- *               villas:
- *                 type: array
- *                 items:
- *                   type: object
- *     responses:
- *       200:
- *         description: Bulk villa upload processed successfully.
- *       400:
- *         description: Validation error.
+ *     summary: Bulk upload units with residents
  */
 router.post(
   '/bulk-upload',
+  correlationIdMiddleware,
+  isAuthenticated,
   tenantContext,
   authorizePermission('villas', 'create'),
   validate(bulkUploadVillasRules),
@@ -114,10 +106,12 @@ router.post(
  * @swagger
  * /villas/{id}:
  *   put:
- *     summary: Update an existing villa
+ *     summary: Update an existing unit
  */
 router.put(
   '/:id',
+  correlationIdMiddleware,
+  isAuthenticated,
   tenantContext,
   authorizePermission('villas', 'update'),
   validate(updateVillaRules),
@@ -126,15 +120,79 @@ router.put(
 
 /**
  * @swagger
+ * /villas/{id}/assign:
+ *   patch:
+ *     summary: Assign primary resident to unit
+ */
+router.patch(
+  '/:id/assign',
+  correlationIdMiddleware,
+  isAuthenticated,
+  tenantContext,
+  authorizePermission('villas', 'update'),
+  villaController.assignResident
+);
+
+/**
+ * @swagger
  * /villas/{id}:
  *   delete:
- *     summary: Delete a villa
+ *     summary: Delete a unit
  */
 router.delete(
   '/:id',
+  correlationIdMiddleware,
+  isAuthenticated,
   tenantContext,
   authorizePermission('villas', 'delete'),
   villaController.delete
+);
+
+/**
+ * @swagger
+ * /villas/{id}/assign-resident:
+ *   post:
+ *     summary: Assign existing user to unit
+ */
+router.post(
+  '/:id/assign-resident',
+  correlationIdMiddleware,
+  isAuthenticated,
+  tenantContext,
+  authorizePermission('villas', 'update'),
+  validate(assignExistingUserRules),
+  villaController.assignExistingUser
+);
+
+/**
+ * @swagger
+ * /villas/{id}/residents/{userId}/type:
+ *   patch:
+ *     summary: Update residency type of assigned resident
+ */
+router.patch(
+  '/:id/residents/:userId/type',
+  correlationIdMiddleware,
+  isAuthenticated,
+  tenantContext,
+  authorizePermission('villas', 'update'),
+  validate(updateResidencyTypeRules),
+  villaController.updateResidencyType
+);
+
+/**
+ * @swagger
+ * /villas/{id}/residents/{userId}:
+ *   delete:
+ *     summary: Remove/unassign resident from unit
+ */
+router.delete(
+  '/:id/residents/:userId',
+  correlationIdMiddleware,
+  isAuthenticated,
+  tenantContext,
+  authorizePermission('villas', 'update'),
+  villaController.removeResident
 );
 
 export default router;

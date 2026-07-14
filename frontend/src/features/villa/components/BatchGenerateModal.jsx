@@ -18,24 +18,26 @@ import {
 } from '@coreui/react';
 import { batchGenerateVillasAsync, fetchVillasAsync } from '../store/villaSlice';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 export const BatchGenerateModal = ({ visible, onClose }) => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   
   // Local form state
   const [prefix, setPrefix] = useState('Villa');
   const [startNumber, setStartNumber] = useState(1);
   const [endNumber, setEndNumber] = useState(54);
-  const [block, setBlock] = useState('Block A');
-  const [configuration, setConfiguration] = useState('3 BHK');
-  const [intercomPrefix, setIntercomPrefix] = useState('80');
+  const [blockOrBuilding, setBlockOrBuilding] = useState('Block A');
+  const [type, setType] = useState('Apartment');
+  const [floorAreaSqFt, setFloorAreaSqFt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (startNumber > endNumber) {
-      setError('Start number must be less than or equal to end number.');
+      setError(t('villas.batch.errorStartEnd', 'Start number must be less than or equal to end number.'));
       return;
     }
 
@@ -48,21 +50,21 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
         endNumber,
         prefix,
         config: {
-          block,
-          configuration,
-          intercomPrefix
+          blockOrBuilding,
+          type,
+          floorAreaSqFt: floorAreaSqFt ? parseFloat(floorAreaSqFt) : null
         }
       }));
 
       if (batchGenerateVillasAsync.fulfilled.match(resultAction)) {
-        toast.success(`Successfully generated ${resultAction.payload.length} villas!`);
+        toast.success(t('villas.batch.successMsg', `Successfully generated ${resultAction.payload.length} units!`));
         dispatch(fetchVillasAsync({ page: 1, limit: 12 }));
         onClose();
       } else {
-        setError(resultAction.payload || 'Failed to batch generate villas.');
+        setError(resultAction.payload || t('villas.batch.failedMsg', 'Failed to batch generate units.'));
       }
     } catch (err) {
-      setError(err.message || 'An unexpected error occurred.');
+      setError(err.message || t('villas.batch.unexpectedError', 'An unexpected error occurred.'));
     } finally {
       setSubmitting(false);
     }
@@ -72,12 +74,12 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
     <CModal
       visible={visible}
       onClose={onClose}
-      id="batch-generate-modal"
       alignment="center"
+      className="batch-generate-modal"
     >
       <CModalHeader>
-        <CModalTitle style={{ fontSize: '1.1rem', fontWeight: 700 }}>
-          Batch Generate Villas
+        <CModalTitle className="modal-title-bold">
+          {t('villas.batch.title', 'Batch Generate Units')}
         </CModalTitle>
       </CModalHeader>
       <CForm onSubmit={handleSubmit}>
@@ -89,7 +91,9 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
           )}
 
           <div className="mb-3">
-            <CFormLabel htmlFor="batch-prefix" className="small fw-semibold">Villa Prefix</CFormLabel>
+            <CFormLabel htmlFor="batch-prefix" className="small fw-semibold">
+              {t('villas.batch.prefix', 'Unit Prefix')}
+            </CFormLabel>
             <CFormInput
               id="batch-prefix"
               value={prefix}
@@ -97,14 +101,16 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
               placeholder="e.g. Villa"
               size="sm"
             />
-            <div className="text-muted small-text mt-1" style={{ fontSize: '0.72rem' }}>
-              Suffix numbers will be appended automatically, e.g. "Villa 01".
+            <div className="text-muted small-text mt-1 bulk-text-xxs">
+              {t('villas.batch.prefixDesc', 'Suffix numbers will be appended automatically, e.g. "Villa 01".')}
             </div>
           </div>
 
           <CRow className="mb-3">
             <CCol>
-              <CFormLabel htmlFor="batch-start" className="small fw-semibold">Start Range</CFormLabel>
+              <CFormLabel htmlFor="batch-start" className="small fw-semibold">
+                {t('villas.batch.start', 'Start Range')}
+              </CFormLabel>
               <CFormInput
                 id="batch-start"
                 type="number"
@@ -116,7 +122,9 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
               />
             </CCol>
             <CCol>
-              <CFormLabel htmlFor="batch-end" className="small fw-semibold">End Range</CFormLabel>
+              <CFormLabel htmlFor="batch-end" className="small fw-semibold">
+                {t('villas.batch.end', 'End Range')}
+              </CFormLabel>
               <CFormInput
                 id="batch-end"
                 type="number"
@@ -131,51 +139,55 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
 
           <CRow className="mb-3">
             <CCol>
-              <CFormLabel htmlFor="batch-block" className="small fw-semibold">Block / Phase</CFormLabel>
+              <CFormLabel htmlFor="batch-block" className="small fw-semibold">
+                {t('villas.batch.blockOrBuilding', 'Block / Building')}
+              </CFormLabel>
               <CFormInput
                 id="batch-block"
-                value={block}
-                onChange={(e) => setBlock(e.target.value)}
+                value={blockOrBuilding}
+                onChange={(e) => setBlockOrBuilding(e.target.value)}
                 placeholder="e.g. Block A"
                 size="sm"
               />
             </CCol>
             <CCol>
-              <CFormLabel htmlFor="batch-config" className="small fw-semibold">Configuration</CFormLabel>
+              <CFormLabel htmlFor="batch-config" className="small fw-semibold">
+                {t('villas.batch.type', 'Unit Type')}
+              </CFormLabel>
               <CFormSelect
                 id="batch-config"
-                value={configuration}
-                onChange={(e) => setConfiguration(e.target.value)}
+                value={type}
+                onChange={(e) => setType(e.target.value)}
                 size="sm"
               >
-                <option value="3 BHK">3 BHK</option>
-                <option value="4 BHK">4 BHK</option>
-                <option value="5 BHK">5 BHK</option>
-                <option value="2 BHK">2 BHK</option>
+                <option value="Studio">{t('villas.types.Studio', 'Studio')}</option>
+                <option value="Apartment">{t('villas.types.Apartment', 'Apartment')}</option>
+                <option value="Villa">{t('villas.types.Villa', 'Villa')}</option>
+                <option value="Penthouse">{t('villas.types.Penthouse', 'Penthouse')}</option>
               </CFormSelect>
             </CCol>
           </CRow>
 
           <div className="mb-3">
-            <CFormLabel htmlFor="batch-intercom" className="small fw-semibold">Intercom Number Prefix</CFormLabel>
+            <CFormLabel htmlFor="batch-floor-area" className="small fw-semibold">
+              {t('villas.batch.floorArea', 'Floor Area (Sq Ft)')}
+            </CFormLabel>
             <CFormInput
-              id="batch-intercom"
-              value={intercomPrefix}
-              onChange={(e) => setIntercomPrefix(e.target.value)}
-              placeholder="e.g. 80"
+              id="batch-floor-area"
+              type="number"
+              value={floorAreaSqFt}
+              onChange={(e) => setFloorAreaSqFt(e.target.value)}
+              placeholder="e.g. 1500"
               size="sm"
             />
-            <div className="text-muted small-text mt-1" style={{ fontSize: '0.72rem' }}>
-              Appended with unit suffix. e.g., Prefix "80" makes "8001" for Villa 01.
-            </div>
           </div>
         </CModalBody>
         <CModalFooter>
           <CButton color="light" size="sm" onClick={onClose} disabled={submitting}>
-            Cancel
+            {t('villas.batch.cancel', 'Cancel')}
           </CButton>
           <CButton type="submit" color="primary" size="sm" disabled={submitting} className="fw-semibold">
-            {submitting ? 'Generating...' : 'Generate Villas'}
+            {submitting ? t('villas.batch.generating', 'Generating...') : t('villas.batch.submit', 'Generate Units')}
           </CButton>
         </CModalFooter>
       </CForm>

@@ -40,6 +40,19 @@ const RoleBuilderList = () => {
         render: (val) => <span className="fw-semibold">{val}</span>,
       },
       {
+        key: 'isTenantRole',
+        label: 'Scope',
+        render: (val) => (
+          <CBadge
+            color={val ? 'info' : 'primary'}
+            shape="rounded-pill"
+            className="px-2 py-1 text-white"
+          >
+            {val ? 'Tenant / Unit' : 'Global'}
+          </CBadge>
+        ),
+      },
+      {
         key: 'description',
         label: 'Description',
         render: (val) => (

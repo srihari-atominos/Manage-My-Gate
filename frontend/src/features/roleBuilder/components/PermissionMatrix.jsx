@@ -41,27 +41,9 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
         const isAllGroupSelected = groupCodes.length > 0 && groupCodes.every((code) => selectedIds.includes(code))
 
         return (
-          <div 
-            key={category} 
-            style={{
-              background: 'var(--surface-card)',
-              borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--border-light)',
-              padding: '24px',
-              boxShadow: 'var(--shadow-sm)'
-            }}
-          >
-            <div 
-              style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                borderBottom: '1px solid var(--border-light)', 
-                paddingBottom: '16px', 
-                marginBottom: '16px' 
-              }}
-            >
-              <h6 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-main)' }}>
+          <div key={category} className="permission-category-card">
+            <div className="permission-card-header">
+              <h6 className="permission-card-title">
                 {category.toLowerCase() === 'visitor' ? 'Visitor Management' : (category.toLowerCase() === 'amenities' ? 'Amenities & Bookings' : category.charAt(0).toUpperCase() + category.slice(1))} Permissions
               </h6>
               {category.toLowerCase() !== 'visitor' && (
@@ -70,7 +52,7 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
                   label="Select All"
                   checked={isAllGroupSelected}
                   onChange={(e) => onSelectAllGroup(groupCodes, e.target.checked)}
-                  style={{ fontWeight: 600, color: 'var(--text-muted)', margin: 0 }}
+                  className="permission-select-all-check"
                 />
               )}
             </div>

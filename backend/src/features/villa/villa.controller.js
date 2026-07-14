@@ -9,19 +9,21 @@ export class VillaController {
 
       // Extract filters
       const filters = {};
-      if (req.query.block) {
-        filters.block = req.query.block.trim();
+      if (req.query.blockOrBuilding) {
+        filters.blockOrBuilding = req.query.blockOrBuilding.trim();
       }
-      if (req.query.occupancyStatus) {
-        filters.occupancyStatus = req.query.occupancyStatus.trim();
+      if (req.query.status) {
+        filters.status = req.query.status.trim();
+      }
+      if (req.query.type) {
+        filters.type = req.query.type.trim();
       }
       if (req.query.search) {
-        // Regex search for villa number
-        filters.villaNumber = { $regex: req.query.search.trim(), $options: 'i' };
+        filters.search = req.query.search.trim();
       }
 
-      const { data, pagination } = await villaService.getAllVillas(orgId, page, limit, filters);
-      res.success({ data, pagination }, 'Villas retrieved successfully');
+      const { data, pagination } = await villaService.getUnitsPaginated({ orgId, page, limit, ...filters });
+      res.success({ data, pagination }, 'Units retrieved successfully');
     } catch (error) {
       next(error);
     }
@@ -30,8 +32,9 @@ export class VillaController {
   async getById(req, res, next) {
     try {
       const { id } = req.params;
-      const villaDetails = await villaService.getVillaDetailsWithResidents(id);
-      res.success(villaDetails, 'Villa details and residents retrieved successfully');
+      const orgId = req.tenant.orgId;
+      const villaDetails = await villaService.getVillaDetailsWithResidents(id, orgId);
+      res.success(villaDetails, 'Unit details retrieved successfully');
     } catch (error) {
       next(error);
     }
@@ -40,9 +43,8 @@ export class VillaController {
   async create(req, res, next) {
     try {
       const orgId = req.tenant.orgId;
-      const villaData = { ...req.body, orgId };
-      const villa = await villaService.createVilla(villaData);
-      res.success(villa, 'Villa created successfully', 201);
+      const villa = await villaService.createUnit(orgId, req.body);
+      res.success(villa, 'Unit created successfully', 201);
     } catch (error) {
       next(error);
     }
@@ -51,8 +53,9 @@ export class VillaController {
   async update(req, res, next) {
     try {
       const { id } = req.params;
-      const villa = await villaService.updateVilla(id, req.body);
-      res.success(villa, 'Villa updated successfully');
+      const orgId = req.tenant.orgId;
+      const villa = await villaService.updateUnit(id, orgId, req.body);
+      res.success(villa, 'Unit updated successfully');
     } catch (error) {
       next(error);
     }
@@ -61,8 +64,21 @@ export class VillaController {
   async delete(req, res, next) {
     try {
       const { id } = req.params;
-      await villaService.deleteVilla(id);
-      res.success({ id }, 'Villa deleted successfully');
+      const orgId = req.tenant.orgId;
+      await villaService.deleteUnit(id, orgId);
+      res.success({ id }, 'Unit deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async assignResident(req, res, next) {
+    try {
+      const { id } = req.params;
+      const orgId = req.tenant.orgId;
+      const { residentId } = req.body;
+      const villa = await villaService.assignPrimaryResident(id, orgId, residentId);
+      res.success(villa, 'Primary resident assigned successfully');
     } catch (error) {
       next(error);
     }
@@ -79,7 +95,7 @@ export class VillaController {
         prefix,
         config
       });
-      res.success(createdVillas, `Successfully batch generated ${createdVillas.length} villas.`, 201);
+      res.success(createdVillas, `Successfully batch generated ${createdVillas.length} units.`, 201);
     } catch (error) {
       next(error);
     }
@@ -89,7 +105,7 @@ export class VillaController {
     try {
       const orgId = req.tenant.orgId;
       const stats = await villaService.getVillaStats(orgId);
-      res.success(stats, 'Villa stats retrieved successfully');
+      res.success(stats, 'Unit stats retrieved successfully');
     } catch (error) {
       next(error);
     }
@@ -100,7 +116,42 @@ export class VillaController {
       const orgId = req.tenant.orgId;
       const { villas } = req.body;
       const result = await villaService.bulkUploadVillasAndResidents(villas, orgId);
-      res.success(result, 'Bulk villa upload process completed');
+      res.success(result, 'Bulk unit upload process completed');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async assignExistingUser(req, res, next) {
+    try {
+      const { id } = req.params;
+      const orgId = req.tenant.orgId;
+      const { userId, residencyType } = req.body;
+      const villa = await villaService.assignExistingUser(id, userId, residencyType, orgId);
+      res.success(villa, 'Resident assigned successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateResidencyType(req, res, next) {
+    try {
+      const { id, userId } = req.params;
+      const orgId = req.tenant.orgId;
+      const { residencyType } = req.body;
+      const villa = await villaService.updateResidencyType(id, userId, residencyType, orgId);
+      res.success(villa, 'Residency type updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async removeResident(req, res, next) {
+    try {
+      const { id, userId } = req.params;
+      const orgId = req.tenant.orgId;
+      const villa = await villaService.removeResident(id, userId, orgId);
+      res.success(villa, 'Resident removed successfully');
     } catch (error) {
       next(error);
     }
