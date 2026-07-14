@@ -18,6 +18,8 @@ import paymentRouter from '../features/payment/payment.router.js';
 import amenityDashboardRouter from '../features/amenityDashboard/amenityDashboard.router.js';
 import walletRouter from '../features/wallet/wallet.router.js';
 import securityLogRouter from '../features/securityLog/securityLog.routes.js';
+
+// Complaint and Technician routes (resolved merge conflict)
 import complaintRouter from '../features/complaint/complaint.router.js';
 import complaintSettingsRouter from '../features/complaintSettings/complaintSettings.router.js';
 import technicianRouter from '../features/technician/technician.router.js';
@@ -44,6 +46,8 @@ router.use('/payments', paymentRouter);
 router.use('/amenity-dashboard', amenityDashboardRouter);
 router.use('/wallet', walletRouter);
 router.use('/security-logs', securityLogRouter);
+
+// Complaint and Technician routes (resolved merge conflict)
 router.use('/complaints/settings', complaintSettingsRouter);
 router.use('/complaints', complaintRouter);
 router.use('/technicians', technicianRouter);

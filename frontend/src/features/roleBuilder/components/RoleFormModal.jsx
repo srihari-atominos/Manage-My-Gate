@@ -45,12 +45,12 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
     handleTogglePermission
   } = useRoleForm({ role, visible, onSave })
 
-  // Load available permissions when modal opens and list is empty
+  // Load available permissions when modal opens
   useEffect(() => {
-    if (visible && (!permissionsList || Object.keys(permissionsList).length === 0)) {
+    if (visible) {
       loadPermissions()
     }
-  }, [visible, permissionsList, loadPermissions])
+  }, [visible, loadPermissions])
 
 
 

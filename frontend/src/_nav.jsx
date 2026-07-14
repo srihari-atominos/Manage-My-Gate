@@ -35,6 +35,12 @@ const _nav = [
   },
   {
     component: CNavItem,
+    name: 'Visitor Management',
+    to: '/visitor-management',
+    icon: <CIcon icon={cilQrCode} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
     name: 'Villa Management',
     to: '/villas',
     icon: <CIcon icon={cilHome} customClassName="nav-icon" />,

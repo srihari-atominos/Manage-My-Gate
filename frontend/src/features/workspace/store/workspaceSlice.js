@@ -55,6 +55,19 @@ export const workspaceSlice = createSlice({
       state.error = null;
     },
   },
+  extraReducers: (builder) => {
+    builder.addCase('auth/logout', (state) => {
+      localStorage.removeItem('availableWorkspaces');
+      state.activeOrganizationId = null;
+      state.activeRole = null;
+      state.allowedFeatures = [];
+      state.organizationName = null;
+      state.isPlatform = false;
+      state.availableWorkspaces = [];
+      state.loading = false;
+      state.error = null;
+    });
+  },
 });
 
 export const { setActiveWorkspace, clearWorkspace } = workspaceSlice.actions;

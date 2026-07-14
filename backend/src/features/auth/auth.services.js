@@ -125,13 +125,12 @@ export class AuthService {
         }
       } else {
         roleName = roleNames.length > 0 ? roleNames[0] : null;
-        if (roles.length > 0) {
-          const allPermissions = new Set();
-          for (const roleObj of roles) {
-            const permissionsList = await rolePermissionService.getPermissionsByRoleId(roleObj._id);
-            permissionsList.forEach(permission => allPermissions.add(permission.name));
+        if (roleName) {
+          const activeRoleObj = roles.find(r => r.name === roleName);
+          if (activeRoleObj) {
+            const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
+            permissions = permissionsList.map((permission) => permission.name);
           }
-          permissions = Array.from(allPermissions);
         }
       }
     }
@@ -159,6 +158,17 @@ export class AuthService {
       occupancyStatus: selectedMembership.villaId.occupancyStatus,
     } : null;
 
+    let visitorContext = 'None';
+    if (permissions && permissions.length > 0) {
+      if (permissions.includes('visitor:resident')) {
+        visitorContext = 'Resident';
+      } else if (permissions.includes('visitor:guard')) {
+        visitorContext = 'Guard';
+      } else if (permissions.includes('visitor:admin')) {
+        visitorContext = 'Admin';
+      }
+    }
+
     return {
       tokenPayload: {
         id: user._id,
@@ -169,6 +179,7 @@ export class AuthService {
         permissions,
         orgId,
         isPlatform,
+        visitorContext,
         villaId: villaInfo ? villaInfo.id : null,
         villaNumber: villaInfo ? villaInfo.villaNumber : '',
         villaBlock: villaInfo ? villaInfo.block : '',
@@ -215,6 +226,7 @@ export class AuthService {
         permissions: tokenPayload.permissions,
         orgId: tokenPayload.orgId,
         isPlatform: tokenPayload.isPlatform,
+        visitorContext: tokenPayload.visitorContext,
         villaId: tokenPayload.villaId,
         villaNumber: tokenPayload.villaNumber,
         villaBlock: tokenPayload.villaBlock,
@@ -250,6 +262,7 @@ export class AuthService {
         permissions: tokenPayload.permissions,
         orgId: tokenPayload.orgId,
         isPlatform: tokenPayload.isPlatform,
+        visitorContext: tokenPayload.visitorContext,
         villaId: tokenPayload.villaId,
         villaNumber: tokenPayload.villaNumber,
         villaBlock: tokenPayload.villaBlock,
@@ -458,6 +471,7 @@ export class AuthService {
           permissions: tokenPayload.permissions,
           orgId: tokenPayload.orgId,
           isPlatform: tokenPayload.isPlatform,
+          visitorContext: tokenPayload.visitorContext,
         },
         availableWorkspaces,
       };

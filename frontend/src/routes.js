@@ -37,12 +37,25 @@ const ComplaintManagement = React.lazy(() => import('./features/complaints/views
 const StaffAndVendor = React.lazy(() => import('./features/complaints/views/StaffAndVendor'));
 const AssigneeView = React.lazy(() => import('./features/complaints/views/Assignee'));
 
+// Visitor Management Views
+const ResidentVisitorManagementView = React.lazy(() => import('./features/visitorManagement/views/ResidentVisitorManagementView'));
+const AdminVisitorManagementViews = React.lazy(() => import('./features/visitorManagement/views/AdminVisitorManagementViews'));
+const GuardVisitormanagementViews = React.lazy(() => import('./features/visitorManagement/views/GuardVisitormanagementViews'));
+const VisitorContextManager = React.lazy(() => import('./features/visitorManagement/views/VisitorContextManager'));
+
+
+
+
 /**
  * Application Routes configuration mapping paths to lazy-loaded components.
  */
 export const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
+  { path: '/visitor-management', name: 'Visitor Management', element: VisitorContextManager },
+  { path: '/visitor-management-resident', name: 'Visitor Passes', element: ResidentVisitorManagementView },
+  { path: '/visitor-management-admin', name: 'Visitor Admin', element: AdminVisitorManagementViews },
+  { path: '/visitor-management-guard', name: 'Gate Console', element: GuardVisitormanagementViews },
   { path: '/users', name: 'User Management', element: UserList, requiredPermission: 'users:read' },
   { path: '/villas', name: 'Villa Management', element: VillaManager, requiredPermission: 'villas:read' },
   { path: '/sample', name: 'Sample Feature', element: SampleFeature },

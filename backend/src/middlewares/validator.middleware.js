@@ -1,6 +1,7 @@
 import { validationResult } from 'express-validator';
 import HttpError from '../utils/httpError.utils.js';
 import fs from 'fs';
+import logger from '../utils/logger.utils.js';
 
 /**
  * Middleware wrapper to run validation rules and catch errors.
@@ -30,6 +31,8 @@ export const validate = (validationRules) => {
       message: err.msg,
       value: err.value,
     }));
+
+    logger.error('Validation errors: ' + JSON.stringify(extractedErrors, null, 2));
 
     // 4. Pass error to global error handler
     next(new HttpError(400, 'Validation failed. Please correct the invalid fields.', extractedErrors));

@@ -32,6 +32,18 @@ export const syncPermissions = async () => {
         upsertedPermissions.push(permission);
       }
     }
+    // 2b. Clean up deleted/obsolete permissions in database
+    const PermissionModel = (await import('../features/permission/permission.model.js')).default;
+    const RolePermissionModel = (await import('../features/rolePermission/rolePermission.model.js')).default;
+    const upsertedIds = upsertedPermissions.map(p => p._id);
+    const deletedPermissions = await PermissionModel.find({ _id: { $nin: upsertedIds } });
+    if (deletedPermissions.length > 0) {
+      const deletedIds = deletedPermissions.map(p => p._id);
+      await RolePermissionModel.deleteMany({ permissionId: { $in: deletedIds } });
+      await PermissionModel.deleteMany({ _id: { $in: deletedIds } });
+      logger.info(`Removed ${deletedPermissions.length} obsolete permissions from database.`);
+    }
+
     logger.info(`Synced ${upsertedPermissions.length} permissions successfully in database.`);
 
     // 3. Ensure default Platform Organization exists
