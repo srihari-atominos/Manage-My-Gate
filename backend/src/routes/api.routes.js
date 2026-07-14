@@ -18,6 +18,7 @@ import paymentRouter from '../features/payment/payment.router.js';
 import amenityDashboardRouter from '../features/amenityDashboard/amenityDashboard.router.js';
 import walletRouter from '../features/wallet/wallet.router.js';
 import securityLogRouter from '../features/securityLog/securityLog.routes.js';
+import noticeBoardRouter from '../features/noticeBoard/noticeBoard.routes.js';
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.use('/notifications', notificationRouter);
 router.use('/integrations', integrationHubRouter);
 router.use('/organizations', organizationRouter);
 router.use('/audit-logs', auditLogRouter);
+router.use('/notices', noticeBoardRouter);
 
 router.use('/templates', messageTemplateRouter);
 router.use('/villas', villaRouter);

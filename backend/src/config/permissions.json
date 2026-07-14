@@ -50,5 +50,14 @@
       "scanner",
       "security_logs"
     ]
+  },
+  {
+    "feature": "notices",
+    "actions": [
+      "create",
+      "read",
+      "update",
+      "delete"
+    ]
   }
 ]

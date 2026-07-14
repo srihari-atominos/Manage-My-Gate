@@ -15,6 +15,7 @@ import villaReducer from '../features/villa/store/villaSlice.js';
 import amenityReducer from '../features/amenities/store/amenitySlice.js';
 import dashboardReducer from '../features/amenities/store/dashboardSlice.js';
 import securityLogReducer from '../features/amenities/store/securityLogSlice.js';
+import noticeBoardReducer from '../features/noticeBoard/store/noticeBoardSlice.js';
 
 // Custom lightweight state logger middleware for development mode
 const stateLoggerMiddleware = (store) => (next) => (action) => {
@@ -47,6 +48,7 @@ export const store = configureStore({
     amenities: amenityReducer,
     amenitiesDashboard: dashboardReducer,
     securityLogs: securityLogReducer,
+    noticeBoard: noticeBoardReducer,
   },
   middleware: (getDefaultMiddleware) => {
     const middlewares = getDefaultMiddleware();

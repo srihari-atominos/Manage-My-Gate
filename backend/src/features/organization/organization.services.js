@@ -163,7 +163,7 @@ export class OrganizationService {
 
     try {
       // 1. Create Organization
-      const newOrg = await organizationRepository.create({ name: trimmedName, status: 'Active', allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities'] }, session);
+      const newOrg = await organizationRepository.create({ name: trimmedName, status: 'Active', allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices'] }, session);
 
       // 2. Create the default Roles and assign Permissions
       const roleService = (await import('../role/role.services.js')).default;
@@ -196,7 +196,8 @@ export class OrganizationService {
       const ownerPerms = getPermissionIds([
         'villas:read', 'users:read', 
         'amenities:discover', 'amenities:my_booking', 
-        'amenities:wallet', 'amenities:history', 'amenities:amenities'
+        'amenities:wallet', 'amenities:history', 'amenities:amenities',
+        'notices:read'
       ]);
       await rolePermissionService.updateRolePermissions(ownerRole._id.toString(), ownerPerms, session);
 
@@ -208,7 +209,8 @@ export class OrganizationService {
       const tenantPerms = getPermissionIds([
         'villas:read', 'users:read', 
         'amenities:discover', 'amenities:my_booking', 
-        'amenities:wallet', 'amenities:history', 'amenities:amenities'
+        'amenities:wallet', 'amenities:history', 'amenities:amenities',
+        'notices:read'
       ]);
       await rolePermissionService.updateRolePermissions(tenantRole._id.toString(), tenantPerms, session);
 
@@ -219,7 +221,8 @@ export class OrganizationService {
       );
       const familyPerms = getPermissionIds([
         'villas:read', 
-        'amenities:discover', 'amenities:my_booking', 'amenities:history'
+        'amenities:discover', 'amenities:my_booking', 'amenities:history',
+        'notices:read'
       ]);
       await rolePermissionService.updateRolePermissions(familyRole._id.toString(), familyPerms, session);
 
@@ -230,7 +233,8 @@ export class OrganizationService {
       );
       const guardPerms = getPermissionIds([
         'villas:read', 'users:read', 
-        'amenities:scanner', 'amenities:security_logs'
+        'amenities:scanner', 'amenities:security_logs',
+        'notices:read'
       ]);
       await rolePermissionService.updateRolePermissions(guardRole._id.toString(), guardPerms, session);
 

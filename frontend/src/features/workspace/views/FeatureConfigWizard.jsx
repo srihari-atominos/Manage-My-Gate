@@ -2,8 +2,9 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CContainer, CRow, CCol, CCard, CCardBody, CButton, CAlert, CSpinner } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
-import { cilUser, cilShieldAlt, cilLayers, cilHome, cilBuilding } from '@coreui/icons';
+import { cilUser, cilShieldAlt, cilLayers, cilHome, cilBuilding, cilList } from '@coreui/icons';
 import useFeatureConfigWizard from '../hooks/useFeatureConfigWizard.js';
+
 import SetupWorkspace from '../components/SetupWorkspace.jsx';
 import '../styles/_workspace.scss';
 
@@ -58,6 +59,12 @@ export const FeatureConfigWizard = () => {
       titleKey: 'workspace.wizard.amenities.title',
       descKey: 'workspace.wizard.amenities.desc',
       icon: cilBuilding,
+    },
+    {
+      id: 'notices',
+      titleKey: 'workspace.wizard.notices.title',
+      descKey: 'workspace.wizard.notices.desc',
+      icon: cilList,
     },
   ];
 

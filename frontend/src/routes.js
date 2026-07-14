@@ -11,6 +11,10 @@ const FeatureConfigWizard = React.lazy(() => import('./features/workspace/views/
 const VillaManager = React.lazy(() => import('./features/villa/views/VillaManager'));
 const OrganizationManager = React.lazy(() => import('./features/organization/views/OrganizationManager'));
 const AuditLogViewer = React.lazy(() => import('./features/auditLog/views/AuditLogViewer'));
+const NoticeBoardRedirector = React.lazy(() => import('./features/noticeBoard/views/NoticeBoardRedirector'));
+const NoticeBoardDashboardView = React.lazy(() => import('./features/noticeBoard/views/NoticeBoardDashboardView'));
+const NoticeBoardActiveView = React.lazy(() => import('./features/noticeBoard/views/NoticeBoardActiveView'));
+const NoticeBoardManageView = React.lazy(() => import('./features/noticeBoard/views/NoticeBoardManageView'));
 
 // Amenities Views (New)
 const AmenitiesRedirector = React.lazy(() => import('./features/amenities/views/AmenitiesRedirector'));
@@ -43,6 +47,10 @@ export const routes = [
   { path: '/workspace-setup', name: 'Workspace Setup', element: FeatureConfigWizard },
   { path: '/super-admin/organizations', name: 'Organization Manager', element: OrganizationManager, requirePlatform: true },
   { path: '/super-admin/audit-logs', name: 'Audit Logs', element: AuditLogViewer, requirePlatform: true },
+  { path: '/notices', name: 'Notice Board', element: NoticeBoardRedirector },
+  { path: '/admin/notices/dashboard', name: 'Notice Dashboard', element: NoticeBoardDashboardView, requiredPermission: 'notices:create' },
+  { path: '/notices/board', name: 'Active Board', element: NoticeBoardActiveView, requiredPermission: 'notices:read' },
+  { path: '/admin/notices/manage', name: 'Manage Notices', element: NoticeBoardManageView, requiredPermission: 'notices:create' },
 
   // Amenities Dynamic Redirector
   { path: '/amenities', name: 'Amenities & Bookings', element: AmenitiesRedirector },

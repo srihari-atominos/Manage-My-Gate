@@ -81,6 +81,13 @@ const _nav = [
   },
   {
     component: CNavItem,
+    name: 'Notice Board',
+    to: '/notices',
+    icon: <CIcon icon={cilList} customClassName="nav-icon" />,
+    requiredPermission: 'notices:read',
+  },
+  {
+    component: CNavItem,
     name: 'Organization Manager',
     to: '/super-admin/organizations',
     icon: <CIcon icon={cilBuilding} customClassName="nav-icon" />,
