@@ -29,7 +29,7 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
         
         // Filter complaints permissions as requested
         if (category.toLowerCase() === 'complaints') {
-          const allowedComplaintsPerms = ['dashboard', 'raise_ticket', 'complaint_management', 'staff_vendors', 'assignee', 'track_requests'];
+          const allowedComplaintsPerms = ['dashboard', 'raise_ticket', 'complaint_management', 'staff_vendors', 'assignee', 'track_requests', 'staff'];
           perms = perms.filter(p => {
             const permName = p.name || p.code || p._id || '';
             const action = permName.includes(':') ? permName.split(':')[1] : permName;

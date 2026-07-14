@@ -21,7 +21,7 @@
   },
   {
     "feature": "complaints",
-    "actions": ["view", "create", "update", "delete", "assign", "dashboard", "reports", "calendar", "settings", "comments", "timeline", "export", "analytics"]
+    "actions": ["view", "create", "update", "delete", "assign", "dashboard", "reports", "calendar", "settings", "comments", "timeline", "export", "analytics", "staff"]
   },
   {
     "feature": "visitor",

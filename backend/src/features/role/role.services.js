@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import roleRepository from './role.repository.js';
+import roleEvents from './role.events.js';
 import HttpError from '../../utils/httpError.utils.js';
 
 export class RoleService {
@@ -71,6 +72,8 @@ export class RoleService {
         
         await rolePermissionService.updateRolePermissions(newRole._id.toString(), permissionIds, currentSession);
         populatedPermissions = matchedPermissions.map(p => p.name);
+        // Emit event after role creation with permissions
+        roleEvents.emit('rolePermissionsUpdated', { roleId: newRole._id.toString(), permissionIds });
       }
       
       if (localSession) {
@@ -120,6 +123,8 @@ export class RoleService {
         
         await rolePermissionService.updateRolePermissions(id, permissionIds, session);
         populatedPermissions = matchedPermissions.map(p => p.name);
+        // Emit event after successful permission update
+        roleEvents.emit('rolePermissionsUpdated', { roleId: id, permissionIds });
       } else {
         const permissionsList = await rolePermissionService.getPermissionsByRoleId(id);
         populatedPermissions = permissionsList.map(p => p.name);
