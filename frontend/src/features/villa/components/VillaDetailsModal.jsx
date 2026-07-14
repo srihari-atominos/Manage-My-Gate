@@ -117,10 +117,17 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
     setInviteError(null);
 
     try {
+      const getResidentType = (type) => {
+        if (type.includes('Owner')) return 'Owner';
+        if (type === 'Family Member') return 'Family';
+        if (type === 'Staff') return 'Guest';
+        return 'Tenant';
+      };
+
       const actionResult = await dispatch(inviteUserAsync({
         email: inviteEmail.trim(),
         villaId,
-        residentType: inviteResidencyType
+        residentType: getResidentType(inviteResidencyType)
       }));
 
       if (inviteUserAsync.fulfilled.match(actionResult)) {
