@@ -107,7 +107,7 @@ export const routes = [
   { path: '/admin/complaints/create', name: 'Raise Ticket', element: CreateComplaint, requiredPermission: 'complaints:raise_ticket' },
   { path: '/admin/complaints/my-tickets', name: 'Track Requests', element: MyComplaints, requiredPermission: 'complaints:track_requests' },
   { path: '/admin/complaints/manage', name: 'Complaint Management', element: ComplaintManagement, requiredPermission: 'complaints:complaint_management' },
-  { path: '/admin/complaints/staff', name: 'Staff & Vendors', element: StaffAndVendor, requiredPermission: 'complaints:staff_vendors' },
+  { path: '/admin/complaints/staff', name: 'Staff & Vendors', element: StaffAndVendor, requiredPermission: 'complaints:staff' },
   { path: '/admin/complaints/assignee', name: 'Assignee', element: AssigneeView, requiredPermission: 'complaints:assignee' },
 ];
 

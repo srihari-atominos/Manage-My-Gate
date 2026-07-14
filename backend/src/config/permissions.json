@@ -21,7 +21,7 @@
   },
   {
     "feature": "complaints",
-    "actions": ["view", "create", "update", "delete", "assign", "dashboard", "reports", "calendar", "settings", "comments", "timeline", "export", "analytics", "staff", "raise_ticket", "track_requests", "complaint_management", "staff_vendors", "assignee"]
+    "actions": ["view", "create", "update", "delete", "assign", "dashboard", "reports", "calendar", "settings", "comments", "timeline", "export", "analytics", "staff", "raise_ticket", "track_requests", "complaint_management", "assignee"]
   },
   {
     "feature": "visitor",

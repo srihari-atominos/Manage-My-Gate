@@ -103,7 +103,7 @@ const _nav = [
       'complaints:raise_ticket',
       'complaints:track_requests',
       'complaints:complaint_management',
-      'complaints:staff_vendors',
+      'complaints:staff',
       'complaints:assignee'
     ],
   },
