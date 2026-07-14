@@ -4,7 +4,7 @@ import { formatCurrency } from '../../utils/amenityUtils.js';
 const BookingPricing = memo(({ draft }) => {
   return (
     <div className="bg-light p-4 rounded mb-4">
-      <h6 className="fw-bold mb-3 text-uppercase text-muted" style={{ letterSpacing: '1px' }}>Pricing Breakdown</h6>
+      <h6 className="fw-bold mb-3 text-uppercase text-muted" >Pricing Breakdown</h6>
       
       <div className="d-flex justify-content-between mb-2">
         <span className="text-muted">Slot Price</span>

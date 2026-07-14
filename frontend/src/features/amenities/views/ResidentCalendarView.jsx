@@ -199,7 +199,7 @@ const ResidentCalendarView = () => {
         {/* Header */}
         <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>My Bookings</h1>
+            <h1 style={{ marginBottom: '8px' }} className="fs-1">My Bookings</h1>
             <p style={{ color: 'var(--text-muted)' }}>Manage your upcoming and past amenity reservations</p>
           </div>
           <button className="btn btn-primary" onClick={() => setResidentBookingModalVisible(true)}>

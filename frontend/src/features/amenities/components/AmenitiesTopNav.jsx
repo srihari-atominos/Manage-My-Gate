@@ -35,7 +35,7 @@ const AmenitiesTopNav = () => {
   const filteredNavItems = navItems.filter(item => checkPermission(item.requiredPermission));
 
   return (
-    <div style={{ marginBottom: '24px', backgroundColor: '#fff', borderRadius: '8px', padding: '12px 24px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+    <div style={{ marginBottom: '24px', backgroundColor: 'var(--surface)', borderRadius: '8px', padding: '12px 24px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
       <CNav variant="underline" style={{ borderBottom: 'none', gap: '16px', flexWrap: 'nowrap', minWidth: 'max-content', paddingBottom: '4px' }}>
         {filteredNavItems.map((item) => {
           const isActive = location.pathname.startsWith(item.to);
@@ -45,17 +45,15 @@ const AmenitiesTopNav = () => {
                 to={item.to} 
                 as={NavLink}
                 active={isActive}
-                style={{ 
-                  display: 'flex', 
+                style={{ display: 'flex', 
                   flexDirection: 'column', 
                   alignItems: 'center', 
                   gap: '8px',
                   color: isActive ? 'var(--primary)' : 'var(--text-muted)',
-                  fontWeight: isActive ? '600' : '500',
+                  fontWeight: isActive ? '700' : '600',
                   padding: '8px 16px',
                   borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent',
-                  transition: 'all 0.2s ease-in-out'
-                }}
+                  transition: 'all 0.2s ease-in-out' }}
               >
                 <CIcon icon={item.icon} size="lg" style={{ marginBottom: '4px' }} />
                 {item.name}

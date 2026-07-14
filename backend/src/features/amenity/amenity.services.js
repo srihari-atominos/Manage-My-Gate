@@ -64,7 +64,7 @@ export class AmenityService {
         }
         
         if (a.currentStatus === 'Available') {
-          const conflicts = await amenityBookingRepository.findConflicts(a._id, today, currentTime, currentTime);
+          const conflicts = await amenityBookingRepository.findConflicts(orgId, a._id, today, currentTime, currentTime);
           if (conflicts.length >= a.capacity) {
             a.currentStatus = 'Fully Booked';
           }
@@ -472,7 +472,7 @@ export class AmenityService {
       if (inMaintenance) continue;
 
       // 4. Booking conflicts check
-      const conflicts = await amenityBookingRepository.findConflicts(amenity._id, dateStr, startTime, endTime);
+      const conflicts = await amenityBookingRepository.findConflicts(orgId, amenity._id, dateStr, startTime, endTime);
       
       if (conflicts.length < amenity.capacity) {
         const a = amenity.toObject ? amenity.toObject() : amenity;

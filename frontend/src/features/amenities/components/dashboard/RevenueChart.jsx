@@ -28,7 +28,7 @@ const RevenueChart = () => {
   return (
     <div className="card">
       <h3 style={{ marginBottom: '8px' }}>Revenue Trend</h3>
-      <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '32px', fontWeight: '500' }}>Performance over the last 6 months</p>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '32px' }} className="fw-medium small">Performance over the last 6 months</p>
       
       {revenueTrend.length > 0 ? (
         <div className="bar-chart">
@@ -49,7 +49,7 @@ const RevenueChart = () => {
       )}
       
       <div style={{ display: 'flex', gap: '24px', justifyContent: 'center', marginTop: '32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)' }} className="fw-semibold small">
           <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--primary)' }}></span> Revenue
         </div>
       </div>

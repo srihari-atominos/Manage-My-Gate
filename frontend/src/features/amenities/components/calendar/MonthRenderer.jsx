@@ -77,7 +77,7 @@ const MonthRenderer = memo(({ currentDate, events = [], onDateSelect, selectedDa
                   {hasBookings && (
                     <div className="rcv-booking-dot-row">
                       <span className="rcv-booking-badge">
-                        <i className="fa-solid fa-circle-check" style={{ fontSize: '8px' }}></i>
+                        <i className="small fa-solid fa-circle-check" ></i>
                         &nbsp;{bookings.length}
                       </span>
                     </div>

@@ -15,6 +15,7 @@ import {
   CButton,
 } from '@coreui/react';
 import { createTechnician, updateTechnician } from '../store/complaintSlice';
+import { fetchUsersAsync } from '../../userManagement/store/userSlice';
 import toast from 'react-hot-toast';
 
 const TechnicianModal = ({ visible, technician, onClose }) => {
@@ -26,7 +27,7 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
     phone: '',
     department: 'Electrical',
     type: 'In-House Staff',
-    status: 'Active',
+    status: 'Pending',
     whatsappEnabled: true
   });
 
@@ -39,7 +40,7 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
           phone: technician.phone || '',
           department: technician.department || 'Electrical',
           type: technician.type || 'In-House Staff',
-          status: technician.status || 'Active',
+          status: technician.status || 'Pending',
           whatsappEnabled: technician.whatsappEnabled !== undefined ? technician.whatsappEnabled : true
         });
       } else {
@@ -49,7 +50,7 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
           phone: '',
           department: 'Electrical',
           type: 'In-House Staff',
-          status: 'Active',
+          status: 'Pending',
           whatsappEnabled: true
         });
       }
@@ -77,7 +78,10 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
         toast.success('Staff/Vendor updated successfully.');
       } else {
         await dispatch(createTechnician(formData)).unwrap();
-        toast.success('Staff/Vendor added successfully.');
+        toast.success('Staff/Vendor added and invitation sent successfully.');
+        
+        // Refresh User Management list instantly
+        dispatch(fetchUsersAsync({ page: 1, limit: 10 }));
       }
       onClose(true);
     } catch (err) {
@@ -89,7 +93,7 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
   return (
     <CModal visible={visible} onClose={onClose} alignment="center" backdrop="static">
       <CModalHeader>
-        <CModalTitle>{technician ? 'Edit Staff/Vendor' : 'Add New Staff/Vendor'}</CModalTitle>
+        <CModalTitle>{technician ? 'Edit Staff/Vendor' : 'Invite Staff/Vendor'}</CModalTitle>
       </CModalHeader>
       <CModalBody>
         <CForm id="technicianForm" onSubmit={handleSubmit}>
@@ -147,19 +151,11 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
             <CFormLabel>Status</CFormLabel>
             <CFormSelect name="status" value={formData.status} onChange={handleChange}>
               <option value="Active">Active</option>
+              <option value="Pending">Pending Invitation</option>
               <option value="Inactive">Inactive</option>
             </CFormSelect>
           </div>
-          <div className="mb-3">
-            <CFormCheck 
-              type="checkbox" 
-              id="whatsappEnabled" 
-              name="whatsappEnabled"
-              label="Enable WhatsApp Notifications"
-              checked={formData.whatsappEnabled}
-              onChange={handleChange}
-            />
-          </div>
+
         </CForm>
       </CModalBody>
       <CModalFooter>
@@ -167,7 +163,7 @@ const TechnicianModal = ({ visible, technician, onClose }) => {
           Cancel
         </CButton>
         <CButton color="primary" type="submit" form="technicianForm">
-          {technician ? 'Save Changes' : 'Add Staff/Vendor'}
+          {technician ? 'Save Changes' : 'Send Invitation'}
         </CButton>
       </CModalFooter>
     </CModal>
@@ -181,3 +177,4 @@ TechnicianModal.propTypes = {
 };
 
 export default TechnicianModal;
+

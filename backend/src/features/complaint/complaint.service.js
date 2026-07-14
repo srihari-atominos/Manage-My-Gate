@@ -57,6 +57,12 @@ class ComplaintService {
       throw new HttpError(409, 'Possible duplicate complaint found. Do you still want to continue?', { duplicateTicket });
     }
 
+    // Smart Anti-Spam (Fuzzy Matching)
+    const fuzzyDuplicates = await complaintRepository.findFuzzyDuplicates(orgId, residentId, data.title);
+    if (fuzzyDuplicates.length > 0 && !data.ignoreDuplicateWarning) {
+      throw new HttpError(409, 'A similar complaint was recently submitted (Spam Prevention).', { duplicateTicket: fuzzyDuplicates[0] });
+    }
+
     const complaintNumber = await this.generateComplaintNumber(orgId);
     
     // Emergency Handling
@@ -160,13 +166,41 @@ class ComplaintService {
     return complaint;
   }
 
+  calculateActiveSLA(complaint) {
+    if (!complaint.slaDueDate || !complaint.statusHistory || complaint.statusHistory.length === 0) {
+      return complaint.slaDueDate;
+    }
+    
+    let totalHoldMs = 0;
+    let holdStartTime = null;
+
+    for (const history of complaint.statusHistory) {
+      if (history.status === 'On Hold') {
+        if (!holdStartTime) holdStartTime = new Date(history.timestamp);
+      } else {
+        if (holdStartTime) {
+          totalHoldMs += (new Date(history.timestamp) - holdStartTime);
+          holdStartTime = null;
+        }
+      }
+    }
+
+    if (holdStartTime && !['Closed', 'Completed', 'Resolved', 'Cancelled'].includes(complaint.status)) {
+      totalHoldMs += (new Date() - holdStartTime);
+    }
+
+    return new Date(new Date(complaint.slaDueDate).getTime() + totalHoldMs);
+  }
+
   calculateSLAStatus(complaint) {
     let slaStatus = 'Within SLA';
+    const effectiveSlaDueDate = this.calculateActiveSLA(complaint);
+    
     if (complaint.escalationLevel > 0) {
       slaStatus = 'Escalated';
-    } else if (complaint.slaDueDate && !['Closed', 'Completed', 'Resolved'].includes(complaint.status)) {
+    } else if (effectiveSlaDueDate && !['Closed', 'Completed', 'Resolved'].includes(complaint.status)) {
       const now = new Date();
-      const due = new Date(complaint.slaDueDate);
+      const due = new Date(effectiveSlaDueDate);
       const diffMs = due - now;
       if (diffMs < 0) {
         slaStatus = 'SLA Breached';
@@ -174,14 +208,14 @@ class ComplaintService {
         slaStatus = 'Near SLA';
       }
     } else if (['Closed', 'Completed', 'Resolved'].includes(complaint.status)) {
-       if (complaint.resolvedAt && complaint.slaDueDate && complaint.resolvedAt > complaint.slaDueDate) {
+       if (complaint.resolvedAt && effectiveSlaDueDate && complaint.resolvedAt > effectiveSlaDueDate) {
           slaStatus = 'SLA Breached';
        } else {
           slaStatus = 'Within SLA';
        }
     }
     const obj = complaint.toObject ? complaint.toObject() : complaint;
-    return { ...obj, slaStatus };
+    return { ...obj, slaStatus, effectiveSlaDueDate };
   }
 
   async getComplaints(orgId, filters, pagination, sort) {
@@ -422,16 +456,26 @@ class ComplaintService {
 
     const previousBroadcastIds = complaint.broadcastTechnicianIds || [];
 
-    const updateFields = {
-      status: 'Assigned',
-      assignedTechnicianId: userId,
-      assignedTechnicianName: userName,
-      isBroadcast: false,
-      broadcastTechnicianIds: [],
-      $push: { timeline: timelineEvent }
-    };
-
-    const updated = await complaintRepository.update(id, orgId, updateFields);
+    let updated;
+    if (complaint.isBroadcast) {
+      updated = await complaintRepository.acceptAssignmentAtomic(id, orgId, userId, userName, timelineEvent);
+      if (!updated) {
+        throw new HttpError(409, 'This ticket has already been accepted by another technician (Conflict).');
+      }
+    } else {
+      const updateFields = {
+        status: 'Assigned',
+        assignedTechnicianId: userId,
+        assignedTechnicianName: userName,
+        isBroadcast: false,
+        broadcastTechnicianIds: [],
+        $push: { 
+          statusHistory: { status: 'Assigned', timestamp: new Date() },
+          timeline: timelineEvent 
+        }
+      };
+      updated = await complaintRepository.update(id, orgId, updateFields);
+    }
 
     if (auditLogService && auditLogService.logAction) {
       await auditLogService.logAction({

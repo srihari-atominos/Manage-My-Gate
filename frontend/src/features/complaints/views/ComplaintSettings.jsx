@@ -214,8 +214,8 @@ const ComplaintSettings = () => {
         <div className="view active" id="settings">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
             <div>
-              <h2 style={{ fontSize: '28px', margin: 0 }}>System Settings</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Configure departments, priorities, SLAs, workflows and feedback</p>
+              <h2 style={{ margin: 0 }} className="fs-2">System Settings</h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }} className="fw-medium">Configure departments, priorities, SLAs, workflows and feedback</p>
             </div>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
               {saving ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="fa-solid fa-save" style={{ marginRight: '8px' }}></i>}
@@ -227,11 +227,11 @@ const ComplaintSettings = () => {
                 
                 {/* Departments & Categories */}
                 <div className="card">
-                  <h3 style={{ fontSize: '16px', marginBottom: '20px', color: 'var(--ink)' }}>Departments</h3>
+                  <h3 style={{ marginBottom: '20px', color: 'var(--ink)' }} className="fs-6">Departments</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
                     {(settings.departments || []).map((dep, idx) => (
                       <span key={idx} className="tag-chip">
-                        {dep.name} <i className="fa-solid fa-xmark" style={{ fontSize: '12px', cursor: 'pointer' }} onClick={() => removeDepartment(idx)}></i>
+                        {dep.name} <i className="small fa-solid fa-xmark" style={{ cursor: 'pointer' }} onClick={() => removeDepartment(idx)}></i>
                       </span>
                     ))}
                   </div>
@@ -244,11 +244,11 @@ const ComplaintSettings = () => {
                     }}>Add</button>
                   </div>
 
-                  <h3 style={{ fontSize: '16px', marginBottom: '20px', color: 'var(--ink)' }}>Categories & Issues</h3>
+                  <h3 style={{ marginBottom: '20px', color: 'var(--ink)' }} className="fs-6">Categories & Issues</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
                     {(settings.categories || []).map((cat, idx) => (
                       <span key={idx} className={`tag-chip ${activeCategoryIdx === idx ? 'selected' : ''}`} style={activeCategoryIdx === idx ? { backgroundColor: 'var(--primary)', color: 'white' } : { cursor: 'pointer' }} onClick={() => setActiveCategoryIdx(activeCategoryIdx === idx ? null : idx)}>
-                        {cat.name} <i className="fa-solid fa-xmark" style={{ fontSize: '12px', cursor: 'pointer', marginLeft: '6px' }} onClick={(e) => { e.stopPropagation(); removeCategory(idx); }}></i>
+                        {cat.name} <i className="small fa-solid fa-xmark" style={{ cursor: 'pointer', marginLeft: '6px' }} onClick={(e) => { e.stopPropagation(); removeCategory(idx); }}></i>
                       </span>
                     ))}
                   </div>
@@ -263,27 +263,27 @@ const ComplaintSettings = () => {
                   
                   {activeCategoryData && (
                     <div style={{ padding: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', marginTop: '16px' }}>
-                      <h4 style={{ fontSize: '14px', marginBottom: '16px', color: 'var(--ink)' }}>
+                      <h4 style={{ marginBottom: '16px', color: 'var(--ink)' }} className="small">
                         Suggested Issues for {activeCategoryData.name}
                       </h4>
                       
                       {issueAnalytics && (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
                           <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Active vs Disabled</div>
-                            <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--ink)', marginTop: '4px' }}>{issueAnalytics.activeCount} / {issueAnalytics.disabledCount}</div>
+                            <div style={{ color: 'var(--ink-soft)' }} className="small">Active vs Disabled</div>
+                            <div style={{ color: 'var(--ink)', marginTop: '4px' }} className="fw-bold fs-6">{issueAnalytics.activeCount} / {issueAnalytics.disabledCount}</div>
                           </div>
                           <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Never Used</div>
-                            <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--warning)', marginTop: '4px' }}>{issueAnalytics.neverUsedCount}</div>
+                            <div style={{ color: 'var(--ink-soft)' }} className="small">Never Used</div>
+                            <div style={{ color: 'var(--warning)', marginTop: '4px' }} className="fw-bold fs-6">{issueAnalytics.neverUsedCount}</div>
                           </div>
                           <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Most Used</div>
-                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--primary)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{issueAnalytics.mostUsed?.name || 'N/A'}</div>
+                            <div style={{ color: 'var(--ink-soft)' }} className="small">Most Used</div>
+                            <div style={{ color: 'var(--primary)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} className="fw-bold small">{issueAnalytics.mostUsed?.name || 'N/A'}</div>
                           </div>
                           <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Least Used</div>
-                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--danger)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{issueAnalytics.leastUsed?.name || 'N/A'}</div>
+                            <div style={{ color: 'var(--ink-soft)' }} className="small">Least Used</div>
+                            <div style={{ color: 'var(--danger)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} className="fw-bold small">{issueAnalytics.leastUsed?.name || 'N/A'}</div>
                           </div>
                         </div>
                       )}
@@ -299,7 +299,7 @@ const ComplaintSettings = () => {
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {!(activeCategoryData.suggestedIssues?.filter(i => !i.isArchived).length > 0) && (
-                          <div style={{ fontSize: '13px', color: 'var(--ink-faint)', fontStyle: 'italic' }}>No active suggested issues added yet.</div>
+                          <div style={{ color: 'var(--ink-faint)', fontStyle: 'italic' }} className="small">No active suggested issues added yet.</div>
                         )}
                         {(activeCategoryData.suggestedIssues || []).map((issue, issueIdx) => {
                           if (issue.isArchived) return null;
@@ -307,14 +307,14 @@ const ComplaintSettings = () => {
                             <div key={issueIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                                 <i className="fa-solid fa-grip-vertical" style={{ color: 'var(--ink-faint)', cursor: 'grab' }}></i>
-                                <span style={{ fontSize: '14px', color: issue.isActive ? 'var(--ink)' : 'var(--ink-faint)', textDecoration: issue.isActive ? 'none' : 'line-through' }}>{issue.name}</span>
+                                <span style={{ color: issue.isActive ? 'var(--ink)' : 'var(--ink-faint)', textDecoration: issue.isActive ? 'none' : 'line-through' }} className="small">{issue.name}</span>
                                 {issue.usageCount > 0 ? (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontSize: '11px', background: 'var(--surface-2)', padding: '2px 6px', borderRadius: '12px', color: 'var(--ink-soft)' }}>Used {issue.usageCount} times</span>
-                                    {issue.lastUsedDate && <span style={{ fontSize: '10px', color: 'var(--ink-faint)' }}>Last used: {new Date(issue.lastUsedDate).toLocaleDateString()}</span>}
+                                    <span style={{ background: 'var(--surface-2)', padding: '2px 6px', borderRadius: '12px', color: 'var(--ink-soft)' }} className="small">Used {issue.usageCount} times</span>
+                                    {issue.lastUsedDate && <span style={{ color: 'var(--ink-faint)' }} className="small">Last used: {new Date(issue.lastUsedDate).toLocaleDateString()}</span>}
                                   </div>
                                 ) : (
-                                  <span style={{ fontSize: '11px', background: 'var(--warning-soft)', padding: '2px 6px', borderRadius: '12px', color: 'var(--warning)', border: '1px solid var(--warning)' }}>
+                                  <span style={{ background: 'var(--warning-soft)', padding: '2px 6px', borderRadius: '12px', color: 'var(--warning)', border: '1px solid var(--warning)' }} className="small">
                                     <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '4px' }}></i> Never Used
                                   </span>
                                 )}
@@ -322,8 +322,8 @@ const ComplaintSettings = () => {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                 {issue.usageCount === 0 && (
                                   <div style={{ display: 'flex', gap: '4px' }}>
-                                    {issue.isActive && <button className="btn btn-sm btn-outline-warning" style={{ fontSize: '11px', padding: '2px 8px' }} onClick={() => toggleSuggestedIssue(activeCategoryIdx, issueIdx)}>Disable</button>}
-                                    <button className="btn btn-sm btn-outline-secondary" style={{ fontSize: '11px', padding: '2px 8px' }} onClick={() => { if(window.confirm('Archive this suggestion? It will no longer appear in the UI.')) archiveSuggestedIssue(activeCategoryIdx, issueIdx); }}>Archive</button>
+                                    {issue.isActive && <button className="small btn btn-sm btn-outline-warning" style={{ padding: '2px 8px' }} onClick={() => toggleSuggestedIssue(activeCategoryIdx, issueIdx)}>Disable</button>}
+                                    <button className="small btn btn-sm btn-outline-secondary" style={{ padding: '2px 8px' }} onClick={() => { if(window.confirm('Archive this suggestion? It will no longer appear in the UI.')) archiveSuggestedIssue(activeCategoryIdx, issueIdx); }}>Archive</button>
                                   </div>
                                 )}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -347,7 +347,7 @@ const ComplaintSettings = () => {
                 {/* SLAs & Priorities */}
                 <div className="card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3 style={{ fontSize: '16px', color: 'var(--ink)', margin: 0 }}>Service Level Agreements (SLA) & Priorities</h3>
+                    <h3 style={{ color: 'var(--ink)', margin: 0 }} className="fs-6">Service Level Agreements (SLA) & Priorities</h3>
                   </div>
                   
                   {settings.slaRules && settings.slaRules.length > 0 ? (
@@ -355,7 +355,7 @@ const ComplaintSettings = () => {
                       <div className="settings-row" key={idx}>
                         <div>
                           <span className={`badge ${rule.priority.toLowerCase()}`}>{rule.priority}</span>
-                          <div style={{ fontSize: '12px', color: 'var(--ink-faint)', marginTop: '4px' }}>Resolve within</div>
+                          <div style={{ color: 'var(--ink-faint)', marginTop: '4px' }} className="small">Resolve within</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <input 
@@ -369,7 +369,7 @@ const ComplaintSettings = () => {
                             style={{ width: '70px', marginBottom: 0, fontWeight: 600 }} 
                             className="form-control"
                           />
-                          <span style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Hours</span>
+                          <span style={{ color: 'var(--ink-soft)' }} className="small">Hours</span>
                         </div>
                       </div>
                     ))
@@ -380,14 +380,14 @@ const ComplaintSettings = () => {
                   )}
 
                   <hr style={{ margin: '20px 0', borderColor: 'var(--border-color)' }} />
-                  <h3 style={{ fontSize: '14px', marginBottom: '16px', color: 'var(--ink)' }}>Working Hours</h3>
+                  <h3 style={{ marginBottom: '16px', color: 'var(--ink)' }} className="small">Working Hours</h3>
                   <div style={{ display: 'flex', gap: '16px' }}>
                     <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '12px' }}>Start Time</label>
+                      <label  className="small">Start Time</label>
                       <input type="time" className="form-control" value={settings.workingHours?.start || '09:00'} onChange={(e) => handleChange('workingHours', 'start', e.target.value)} />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '12px' }}>End Time</label>
+                      <label  className="small">End Time</label>
                       <input type="time" className="form-control" value={settings.workingHours?.end || '18:00'} onChange={(e) => handleChange('workingHours', 'end', e.target.value)} />
                     </div>
                   </div>
@@ -395,7 +395,7 @@ const ComplaintSettings = () => {
 
                 {/* Workflow Configuration */}
                 <div className="card">
-                  <h3 style={{ fontSize: '16px', marginBottom: '20px', color: 'var(--ink)' }}>Workflow Configuration</h3>
+                  <h3 style={{ marginBottom: '20px', color: 'var(--ink)' }} className="fs-6">Workflow Configuration</h3>
                   
                   <div className="form-group mb-4">
                     <label className="form-label">Auto Close Days</label>
@@ -408,11 +408,11 @@ const ComplaintSettings = () => {
                     <input type="number" className="form-control" value={settings.workflow?.reopenLimit || 2} onChange={(e) => handleChange('workflow', 'reopenLimit', Number(e.target.value))} />
                   </div>
 
-                  <h3 style={{ fontSize: '14px', marginBottom: '16px', color: 'var(--ink)' }}>Custom Statuses</h3>
+                  <h3 style={{ marginBottom: '16px', color: 'var(--ink)' }} className="small">Custom Statuses</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
                     {(settings.workflow?.statuses || []).map((status, idx) => (
                       <span key={idx} className="tag-chip" style={{ backgroundColor: status.color, color: '#fff' }}>
-                        {status.name} <i className="fa-solid fa-xmark" style={{ fontSize: '12px', cursor: 'pointer' }} onClick={() => removeStatus(idx)}></i>
+                        {status.name} <i className="small fa-solid fa-xmark" style={{ cursor: 'pointer' }} onClick={() => removeStatus(idx)}></i>
                       </span>
                     ))}
                   </div>
@@ -428,7 +428,7 @@ const ComplaintSettings = () => {
 
                 {/* Notification Settings */}
                 <div className="card">
-                  <h3 style={{ fontSize: '16px', marginBottom: '20px', color: 'var(--ink)' }}>Notification Settings</h3>
+                  <h3 style={{ marginBottom: '20px', color: 'var(--ink)' }} className="fs-6">Notification Settings</h3>
                   <div className="table-responsive">
                     <table className="table table-borderless table-hover">
                       <thead>
@@ -455,7 +455,7 @@ const ComplaintSettings = () => {
                           };
                           return (
                             <tr key={idx}>
-                              <td style={{ fontSize: '13px', fontWeight: 500 }}>{evt}</td>
+                              <td  className="fw-medium small">{evt}</td>
                               <td><input type="checkbox" checked={rule.email} onChange={(e) => updateRule('email', e.target.checked)} /></td>
                               <td><input type="checkbox" checked={rule.sms} onChange={(e) => updateRule('sms', e.target.checked)} /></td>
                               <td><input type="checkbox" checked={rule.push} onChange={(e) => updateRule('push', e.target.checked)} /></td>
@@ -470,14 +470,14 @@ const ComplaintSettings = () => {
 
                 {/* Technician Assignment Rules */}
                 <div className="card">
-                  <h3 style={{ fontSize: '16px', marginBottom: '20px', color: 'var(--ink)' }}>Assignment Rules</h3>
+                  <h3 style={{ marginBottom: '20px', color: 'var(--ink)' }} className="fs-6">Assignment Rules</h3>
                   <div className="form-group mb-3">
                     <div className="form-check form-switch" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <input className="form-check-input" type="checkbox" role="switch" id="autoAssign" 
                         checked={settings.assignmentRules?.autoAssign || false} 
                         onChange={(e) => handleChange('assignmentRules', 'autoAssign', e.target.checked)} 
                         style={{ width: '40px', height: '20px', cursor: 'pointer', margin: 0 }} />
-                      <label className="form-check-label" htmlFor="autoAssign" style={{ margin: 0, fontWeight: 500 }}>Enable Auto Assignment</label>
+                      <label className="fw-medium form-check-label" htmlFor="autoAssign" style={{ margin: 0 }}>Enable Auto Assignment</label>
                     </div>
                   </div>
                   <div className="form-group">
@@ -495,25 +495,25 @@ const ComplaintSettings = () => {
 
                 {/* Resident Feedback & Rating */}
                 <div className="card">
-                  <h3 style={{ fontSize: '16px', marginBottom: '20px', color: 'var(--ink)' }}>Resident Feedback</h3>
+                  <h3 style={{ marginBottom: '20px', color: 'var(--ink)' }} className="fs-6">Resident Feedback</h3>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
                     <div className="form-check form-switch" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <input className="form-check-input" type="checkbox" role="switch" checked={settings.residentFeedback?.enabled || false} onChange={(e) => handleChange('residentFeedback', 'enabled', e.target.checked)} style={{ width: '40px', height: '20px', margin: 0 }} />
-                      <label style={{ margin: 0, fontWeight: 500 }}>Enable Resident Feedback</label>
+                      <label style={{ margin: 0 }} className="fw-medium">Enable Resident Feedback</label>
                     </div>
                     <div className="form-check form-switch" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <input className="form-check-input" type="checkbox" role="switch" checked={settings.residentFeedback?.allowAnonymous || false} onChange={(e) => handleChange('residentFeedback', 'allowAnonymous', e.target.checked)} style={{ width: '40px', height: '20px', margin: 0 }} />
-                      <label style={{ margin: 0, fontWeight: 500 }}>Allow Anonymous Feedback</label>
+                      <label style={{ margin: 0 }} className="fw-medium">Allow Anonymous Feedback</label>
                     </div>
                     <div className="form-check form-switch" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <input className="form-check-input" type="checkbox" role="switch" checked={settings.residentFeedback?.mandatoryBeforeClosing || false} onChange={(e) => handleChange('residentFeedback', 'mandatoryBeforeClosing', e.target.checked)} style={{ width: '40px', height: '20px', margin: 0 }} />
-                      <label style={{ margin: 0, fontWeight: 500 }}>Mandatory Before Closing</label>
+                      <label style={{ margin: 0 }} className="fw-medium">Mandatory Before Closing</label>
                     </div>
                   </div>
 
                   <hr style={{ margin: '20px 0', borderColor: 'var(--border-color)' }} />
-                  <h3 style={{ fontSize: '14px', marginBottom: '16px', color: 'var(--ink)' }}>Rating Configuration</h3>
+                  <h3 style={{ marginBottom: '16px', color: 'var(--ink)' }} className="small">Rating Configuration</h3>
                   
                   <div className="form-group mb-3">
                     <label className="form-label">Rating Scale</label>
@@ -527,13 +527,13 @@ const ComplaintSettings = () => {
 
                 {/* Feedback Questions & Comments */}
                 <div className="card">
-                  <h3 style={{ fontSize: '16px', marginBottom: '20px', color: 'var(--ink)' }}>Feedback Questions</h3>
+                  <h3 style={{ marginBottom: '20px', color: 'var(--ink)' }} className="fs-6">Feedback Questions</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
                     {(settings.feedbackQuestions || []).map((fq, idx) => (
                       <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--surface)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                        <span style={{ fontSize: '14px' }}>{fq.question}</span>
+                        <span  className="small">{fq.question}</span>
                         <div style={{ display: 'flex', gap: '12px' }}>
-                          <span style={{ fontSize: '12px', color: fq.isRequired ? 'var(--danger)' : 'var(--ink-faint)' }}>{fq.isRequired ? 'Required' : 'Optional'}</span>
+                          <span style={{ color: fq.isRequired ? 'var(--danger)' : 'var(--ink-faint)' }} className="small">{fq.isRequired ? 'Required' : 'Optional'}</span>
                           <i className="fa-solid fa-trash text-danger" style={{ cursor: 'pointer' }} onClick={() => removeQuestion(idx)}></i>
                         </div>
                       </div>
@@ -549,40 +549,40 @@ const ComplaintSettings = () => {
                   </div>
                   
                   <hr style={{ margin: '20px 0', borderColor: 'var(--border-color)' }} />
-                  <h3 style={{ fontSize: '14px', marginBottom: '16px', color: 'var(--ink)' }}>Comment Settings</h3>
+                  <h3 style={{ marginBottom: '16px', color: 'var(--ink)' }} className="small">Comment Settings</h3>
                   <div className="form-group mb-3">
                     <div className="form-check form-switch" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <input className="form-check-input" type="checkbox" role="switch" checked={settings.commentSettings?.allowComments ?? true} onChange={(e) => handleChange('commentSettings', 'allowComments', e.target.checked)} style={{ width: '40px', height: '20px', margin: 0 }} />
-                      <label style={{ margin: 0, fontWeight: 500 }}>Allow Comments</label>
+                      <label style={{ margin: 0 }} className="fw-medium">Allow Comments</label>
                     </div>
                   </div>
                   <div className="form-group mb-3">
                     <div className="form-check form-switch" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <input className="form-check-input" type="checkbox" role="switch" checked={settings.commentSettings?.mandatoryForLowRatings ?? true} onChange={(e) => handleChange('commentSettings', 'mandatoryForLowRatings', e.target.checked)} style={{ width: '40px', height: '20px', margin: 0 }} />
-                      <label style={{ margin: 0, fontWeight: 500 }}>Mandatory for Low Ratings</label>
+                      <label style={{ margin: 0 }} className="fw-medium">Mandatory for Low Ratings</label>
                     </div>
                   </div>
                 </div>
 
                 {/* Feedback Visibility & Analytics */}
                 <div className="card">
-                  <h3 style={{ fontSize: '16px', marginBottom: '20px', color: 'var(--ink)' }}>Feedback Visibility</h3>
+                  <h3 style={{ marginBottom: '20px', color: 'var(--ink)' }} className="fs-6">Feedback Visibility</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
                     {['resident', 'technician', 'facilityManager', 'admin', 'superAdmin'].map((role) => (
                       <div key={role} className="form-check form-switch" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <input className="form-check-input" type="checkbox" role="switch" checked={settings.feedbackVisibility?.[role] ?? true} onChange={(e) => handleChange('feedbackVisibility', role, e.target.checked)} style={{ width: '40px', height: '20px', margin: 0 }} />
-                        <label style={{ margin: 0, fontWeight: 500, textTransform: 'capitalize' }}>{role.replace(/([A-Z])/g, ' $1').trim()}</label>
+                        <label style={{ margin: 0, textTransform: 'capitalize' }} className="fw-medium">{role.replace(/([A-Z])/g, ' $1').trim()}</label>
                       </div>
                     ))}
                   </div>
 
                   <hr style={{ margin: '20px 0', borderColor: 'var(--border-color)' }} />
-                  <h3 style={{ fontSize: '14px', marginBottom: '16px', color: 'var(--ink)' }}>Feedback Analytics</h3>
+                  <h3 style={{ marginBottom: '16px', color: 'var(--ink)' }} className="small">Feedback Analytics</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {['averageRating', 'technicianRating', 'vendorRating', 'departmentRating', 'monthlyRating', 'residentSatisfaction'].map((metric) => (
                       <div key={metric} className="form-check form-switch" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <input className="form-check-input" type="checkbox" role="switch" checked={settings.feedbackAnalytics?.[metric] ?? true} onChange={(e) => handleChange('feedbackAnalytics', metric, e.target.checked)} style={{ width: '40px', height: '20px', margin: 0 }} />
-                        <label style={{ margin: 0, fontWeight: 500, textTransform: 'capitalize' }}>{metric.replace(/([A-Z])/g, ' $1').trim()}</label>
+                        <label style={{ margin: 0, textTransform: 'capitalize' }} className="fw-medium">{metric.replace(/([A-Z])/g, ' $1').trim()}</label>
                       </div>
                     ))}
                   </div>
@@ -590,11 +590,11 @@ const ComplaintSettings = () => {
 
                 {/* General Settings */}
                 <div className="card">
-                  <h3 style={{ fontSize: '16px', marginBottom: '20px', color: 'var(--ink)' }}>General Settings</h3>
+                  <h3 style={{ marginBottom: '20px', color: 'var(--ink)' }} className="fs-6">General Settings</h3>
                   <div className="form-group mb-3">
                     <div className="form-check form-switch" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <input className="form-check-input" type="checkbox" role="switch" checked={settings.general?.duplicateDetection || false} onChange={(e) => handleChange('general', 'duplicateDetection', e.target.checked)} style={{ width: '40px', height: '20px', margin: 0 }} />
-                      <label style={{ margin: 0, fontWeight: 500 }}>Duplicate Complaint Detection</label>
+                      <label style={{ margin: 0 }} className="fw-medium">Duplicate Complaint Detection</label>
                     </div>
                   </div>
                   <div className="form-group mb-3">

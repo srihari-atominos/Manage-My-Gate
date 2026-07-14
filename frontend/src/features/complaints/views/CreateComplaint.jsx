@@ -47,10 +47,11 @@ const CreateComplaint = () => {
 
   const dynamicCategories = settings?.categories?.filter(c => c.isActive) || [];
 
-  const displayCategories = [...(dynamicCategories.length > 0 ? dynamicCategories : [
+  const baseCategories = dynamicCategories.length > 0 ? dynamicCategories : [
     { name: 'Electrical' }, { name: 'Plumbing' }, { name: 'Parking' }, { name: 'Security' },
     { name: 'Housekeeping' }, { name: 'Amenities' }, { name: 'Landscaping' }, { name: 'Elevators' }
-  ]), { name: 'Others' }];
+  ];
+
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,9 +73,73 @@ const CreateComplaint = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [newTicket, setNewTicket] = useState(null);
 
+  const [showCamera, setShowCamera] = useState(false);
+  const [stream, setStream] = useState(null);
+  const videoRef = React.useRef(null);
+
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      setStream(mediaStream);
+      setShowCamera(true);
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      toast.error('Could not access camera. Please check permissions.');
+    }
+  };
+
+  useEffect(() => {
+    if (showCamera && videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [showCamera, stream]);
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setShowCamera(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+          if (selectedFiles.length < 5) {
+            setSelectedFiles(prev => [...prev, file]);
+          } else {
+            toast.error('Maximum 5 files allowed');
+          }
+          stopCamera();
+        }
+      }, 'image/jpeg', 0.8);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
+
   const [showDropdown, setShowDropdown] = useState(false);
   const [focusedSuggestionIdx, setFocusedSuggestionIdx] = useState(-1);
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
+
+  const filteredCategories = globalSearchTerm.trim() 
+    ? baseCategories.filter(c => c.name.toLowerCase().includes(globalSearchTerm.toLowerCase()))
+    : baseCategories;
+
+  const displayCategories = [...filteredCategories, { name: 'Others' }];
 
   const activeSuggestedIssues = React.useMemo(() => {
     if (!formData.category) return [];
@@ -416,14 +481,14 @@ const CreateComplaint = () => {
         <div className="view-container">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
             <div>
-              <h2 style={{ fontSize: '28px', margin: 0 }}>Raise a Ticket</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Log a new facility maintenance request</p>
+              <h2 style={{ margin: 0 }} className="fs-2">Raise a Ticket</h2>
+
             </div>
           </div>
             <div className="success-wrap">
               <div className="success-icon"><i className="fa-solid fa-check"></i></div>
-              <h3 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--ink)' }}>Ticket Submitted</h3>
-              <p style={{ color: 'var(--ink-soft)', marginTop: '8px', fontSize: '15px' }}>Your request has been routed to the facility management team.</p>
+              <h3 style={{ color: 'var(--ink)' }} className="fw-bold fs-4">Ticket Submitted</h3>
+              <p style={{ color: 'var(--ink-soft)', marginTop: '8px' }}>Your request has been routed to the facility management team.</p>
               
               <div className="ticket-pill" style={{ marginTop: '20px' }}>Ticket ID: #{newTicket?.complaintNumber}</div>
               
@@ -439,11 +504,11 @@ const CreateComplaint = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '16px', marginTop: '32px' }}>
+              <div className="d-flex align-items-center gap-3 mt-4">
                 <button className="btn btn-ghost btn-full" onClick={resetForm}>Raise Another</button>
                 <button className="btn btn-primary btn-full" onClick={() => navigate('/admin/complaints/my-tickets')}>Track Request</button>
               </div>
-              <div style={{ display: 'flex', gap: '16px', marginTop: '16px', justifyContent: 'center' }}>
+              <div className="d-flex align-items-center justify-content-center gap-3 mt-3">
                 <button className="btn btn-ghost" onClick={() => window.print()}><i className="fa-solid fa-file-pdf"></i> Download PDF</button>
               </div>
             </div>
@@ -459,8 +524,8 @@ const CreateComplaint = () => {
         <div className="view active" id="report">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
             <div>
-              <h2 style={{ fontSize: '28px', margin: 0 }}>Raise a Ticket</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Log a new facility maintenance request</p>
+              <h2 style={{ margin: 0 }} className="fs-2">Raise a Ticket</h2>
+
             </div>
           </div>
           <div className="form-shell">
@@ -485,23 +550,40 @@ const CreateComplaint = () => {
                     onChange={(e) => setGlobalSearchTerm(e.target.value)}
                   />
                   {globalSearchTerm && globalCategoryRecommendations.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: '4px' }}>
-                      <div style={{ fontSize: '12px', color: 'var(--ink-soft)', marginBottom: '8px', fontWeight: 'bold' }}>Recommended Categories</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {globalCategoryRecommendations.slice(0, 3).map((rec, idx) => (
-                          <div 
-                            key={idx}
-                            style={{ padding: '6px 12px', background: 'var(--primary-soft)', color: 'var(--primary)', borderRadius: '16px', fontSize: '13px', cursor: 'pointer', border: '1px solid var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' }}
-                            onClick={() => {
-                              setFormData({ ...formData, category: rec.name });
-                              setGlobalSearchTerm('');
-                              setStep(2);
-                            }}
-                          >
-                            <i className="fa-solid fa-check"></i> {rec.name} ({Math.min(rec.score, 99)}%)
+                    <div style={{ position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-md)',
+                      boxShadow: 'var(--shadow-lg)',
+                      zIndex: 1000,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      marginTop: '4px' }}>
+                      {globalCategoryRecommendations.map((cat, i) => (
+                        <div 
+                          key={i} 
+                          style={{ padding: '12px 16px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            borderBottom: i < globalCategoryRecommendations.length - 1 ? '1px solid var(--border)' : 'none' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--primary-light)'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                          onClick={() => {
+                            setFormData({ ...formData, category: cat.name, department: cat.name !== 'Others' ? cat.name : '' });
+                            setGlobalSearchTerm('');
+                          }}
+                        >
+                          <i className={`fa-solid ${getCategoryIcon(cat.name)}`} style={{ color: 'var(--primary)' }}></i>
+                          <div>
+                            <div style={{ color: 'var(--ink)' }} className="fw-semibold">{cat.name}</div>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -574,12 +656,12 @@ const CreateComplaint = () => {
                 
                 {activeSuggestedIssues.length > 0 && !formData.title && (
                   <div style={{ marginBottom: '20px' }}>
-                    <div style={{ fontSize: '13px', color: 'var(--ink-soft)', marginBottom: '8px' }}>Top Suggested Issues</div>
+                    <div style={{ color: 'var(--ink-soft)', marginBottom: '8px' }} className="small">Top Suggested Issues</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {activeSuggestedIssues.slice(0, 2).map((issue, idx) => (
                         <div 
                           key={idx}
-                          style={{ padding: '6px 12px', background: issue.isRecent ? 'var(--primary-soft)' : 'var(--surface-2)', color: issue.isRecent ? 'var(--primary)' : 'var(--ink)', borderRadius: '16px', fontSize: '13px', cursor: 'pointer', border: issue.isRecent ? '1px solid var(--primary)' : '1px solid var(--border)' }}
+                          style={{ padding: '6px 12px', background: issue.isRecent ? 'var(--primary-soft)' : 'var(--surface-2)', color: issue.isRecent ? 'var(--primary)' : 'var(--ink)', borderRadius: '16px', cursor: 'pointer', border: issue.isRecent ? '1px solid var(--primary)' : '1px solid var(--border)' }}
                           onMouseDown={(e) => {
                             e.preventDefault();
                             setFormData({ ...formData, title: issue.name });
@@ -592,7 +674,7 @@ const CreateComplaint = () => {
                         </div>
                       ))}
                       <div 
-                        style={{ padding: '6px 12px', background: 'transparent', color: 'var(--primary)', borderRadius: '16px', fontSize: '13px', cursor: 'pointer', border: '1px dashed var(--primary)' }}
+                        style={{ padding: '6px 12px', background: 'transparent', color: 'var(--primary)', borderRadius: '16px', cursor: 'pointer', border: '1px dashed var(--primary)' }}
                         onMouseDown={(e) => {
                           e.preventDefault();
                           setShowDropdown(true);
@@ -618,17 +700,25 @@ const CreateComplaint = () => {
               <div className="form-step active">
                 <h3>Upload Supporting Images</h3>
                 <p className="hint">Visuals help our team resolve issues faster. (Optional)</p>
-                <input type="file" id="fileUpload" multiple style={{ display: 'none' }} onChange={handleFileSelect} accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,video/mp4,video/webm" />
-                <label htmlFor="fileUpload" className="photo-drop" style={{ display: 'block', cursor: 'pointer' }}>
-                  <i className="fa-solid fa-cloud-arrow-up" style={{fontSize: '24px', marginBottom: '8px'}}></i>
-                  <b style={{ display: 'block', marginBottom: '4px', color: 'var(--ink)' }}>Click to upload</b>
-                  <span style={{ fontSize: '13px' }}>Images, PDF, Docs, Video (Max 5 files, 10MB each)</span>
-                </label>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <input type="file" id="fileUploadGallery" multiple style={{ display: 'none' }} onChange={handleFileSelect} accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,video/mp4,video/webm" />
+                  <label htmlFor="fileUploadGallery" className="photo-drop" style={{ display: 'block', cursor: 'pointer', flex: 1 }}>
+                    <i className="fs-3 fa-solid fa-cloud-arrow-up" style={{ marginBottom: '8px' }}></i>
+                    <b style={{ display: 'block', marginBottom: '4px', color: 'var(--ink)' }}>Upload from Gallery</b>
+                    <span  className="small">Images, PDF, Docs, Video</span>
+                  </label>
+                  
+                  <div className="photo-drop" style={{ display: 'block', cursor: 'pointer', flex: 1 }} onClick={startCamera}>
+                    <i className="fs-3 fa-solid fa-camera" style={{ marginBottom: '8px' }}></i>
+                    <b style={{ display: 'block', marginBottom: '4px', color: 'var(--ink)' }}>Take Photo</b>
+                    <span  className="small">Use Web/Mobile Camera</span>
+                  </div>
+                </div>
                 <div className="photo-thumbs">
                   {selectedFiles.map((file, i) => (
                     <div key={i} className="photo-thumb" style={{ position: 'relative', overflow: 'hidden' }}>
-                      <i className="fa-solid fa-file" style={{ fontSize: '24px', color: 'var(--ink-soft)' }}></i>
-                      <div style={{ position: 'absolute', bottom: 0, width: '100%', background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '10px', textAlign: 'center' }}>
+                      <i className="fs-3 fa-solid fa-file" style={{ color: 'var(--ink-soft)' }}></i>
+                      <div style={{ position: 'absolute', bottom: 0, width: '100%', background: 'rgba(0,0,0,0.5)', color: 'white', textAlign: 'center' }} className="small">
                         {file.name.substring(0, 10)}
                       </div>
                       <button 
@@ -653,21 +743,21 @@ const CreateComplaint = () => {
                     style={{ color: 'var(--ink-soft)', borderColor: 'var(--border)' }}
                     onClick={() => setFormData({ ...formData, priority: 'Medium' })}
                   >
-                    Standard<br/><span style={{ fontSize: '12px', fontWeight: 400 }}>48h SLA</span>
+                    Standard<br/><span  className="fw-normal small">48h SLA</span>
                   </div>
                   <div 
                     className={`priority-pill ${formData.priority === 'High' ? 'selected' : ''}`} 
                     style={{ color: '#D97706', borderColor: '#FDE68A' }}
                     onClick={() => setFormData({ ...formData, priority: 'High' })}
                   >
-                    High<br/><span style={{ fontSize: '12px', fontWeight: 400 }}>24h SLA</span>
+                    High<br/><span  className="fw-normal small">24h SLA</span>
                   </div>
                   <div 
                     className={`priority-pill ${formData.priority === 'Critical' ? 'selected' : ''}`} 
                     style={{ color: '#DC2626', borderColor: '#FECACA' }}
                     onClick={() => setFormData({ ...formData, priority: 'Critical' })}
                   >
-                    Critical<br/><span style={{ fontSize: '12px', fontWeight: 400 }}>Immediate</span>
+                    Critical<br/><span  className="fw-normal small">Immediate</span>
                   </div>
                 </div>
 
@@ -679,7 +769,7 @@ const CreateComplaint = () => {
                     onChange={e => setFormData({ ...formData, isEmergency: e.target.checked })}
                     style={{ width: '20px', height: '20px' }}
                   />
-                  <label htmlFor="emergencyToggle" style={{ margin: 0, fontWeight: 600, color: '#DC2626' }}>
+                  <label htmlFor="emergencyToggle" style={{ margin: 0, color: '#DC2626' }} className="fw-semibold">
                     🚨 This is an Emergency
                   </label>
                 </div>
@@ -702,8 +792,8 @@ const CreateComplaint = () => {
                     <div style={{ display: 'flex', gap: '12px' }}>
                       <i className="fa-solid fa-triangle-exclamation" style={{ color: 'var(--warning)', marginTop: '4px' }}></i>
                       <div>
-                        <h4 style={{ fontSize: '14px', margin: '0 0 4px 0', color: 'var(--ink)' }}>This issue looks similar to one already reported.</h4>
-                        <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, marginBottom: '12px' }}>You have an active ticket for a similar subject.</p>
+                        <h4 style={{ margin: '0 0 4px 0', color: 'var(--ink)' }} className="small">This issue looks similar to one already reported.</h4>
+                        <p style={{ color: 'var(--ink-soft)', margin: 0, marginBottom: '12px' }} className="small">You have an active ticket for a similar subject.</p>
                         <div style={{ display: 'flex', gap: '12px' }}>
                           {duplicateTicketData && (
                             <button className="btn btn-outline-primary btn-sm" onClick={() => window.open(`/complaints/${duplicateTicketData._id}`, '_blank')}>View Existing Ticket</button>
@@ -717,7 +807,7 @@ const CreateComplaint = () => {
               </div>
             )}
 
-            <div className="form-nav">
+            <div className="form-nav d-flex align-items-center justify-content-between mt-4 border-top pt-4">
               <button 
                 className="btn btn-ghost" 
                 onClick={prevStep} 
@@ -746,6 +836,35 @@ const CreateComplaint = () => {
           </div>
         </div>
       </div>
+
+      {showCamera && (
+        <div className="modal-overlay active" style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.8)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, padding: '20px' }}>
+          <div className="modal-box" style={{ width: '100%', maxWidth: '500px', background: '#000', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: '#111', borderBottom: '1px solid #333' }}>
+              <h4 style={{ margin: 0, color: '#fff' }} className="fw-semibold fs-6">Take a Photo</h4>
+              <button onClick={stopCamera} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff' }} className="fs-5">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div className="modal-body" style={{ position: 'relative', background: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                style={{ width: '100%', maxHeight: '60vh', objectFit: 'contain' }}
+              ></video>
+            </div>
+            <div className="modal-footer" style={{ padding: '20px', background: '#111', display: 'flex', justifyContent: 'center' }}>
+              <button 
+                onClick={capturePhoto} 
+                style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#fff', border: '4px solid #ccc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+              >
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '2px solid #000' }}></div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CRow, CCol, CCard, CCardBody } from '@coreui/react';
 import ComplaintTopNav from '../components/ComplaintTopNav';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { useAmenities } from '../../amenities/hooks/useAmenities';
@@ -86,70 +87,69 @@ const ComplaintDashboard = () => {
   return (
     <div className="complaints-module-wrapper complaints-os-theme">
       <ComplaintTopNav />
-      <div className="view-container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div className="view-container">
         
-        {/* HEADER */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-          <div>
-            <h2 style={{ fontSize: '28px', margin: 0 }}>Complaints Dashboard</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Block {user?.block || 'A'}, Flat {user?.flat || '704'} &middot; {user?.tenantId?.name || 'Greenview Society'}</p>
+
+        {/* PRIMARY ACTIONS - Sleek Grid Layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '48px' }}>
+          {/* Action 1 */}
+          <div 
+            onClick={() => navigate('/admin/complaints/create')}
+            style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '32px 24px', border: '1px solid var(--border)', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', overflow: 'hidden', borderBottom: '4px solid var(--primary)' }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+          >
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="fs-3">
+              <i className="fa-solid fa-screwdriver-wrench"></i>
+            </div>
+            <div>
+              <h3 style={{ color: 'var(--ink)', marginBottom: '8px' }} className="fw-bold fs-5">Raise a Ticket</h3>
+              <p style={{ color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }} className="small">Report electrical, plumbing, or facility issues instantly.</p>
+            </div>
+          </div>
+
+          {/* Action 2 */}
+          <div 
+            onClick={() => navigate('/admin/complaints/my-tickets')}
+            style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '32px 24px', border: '1px solid var(--border)', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', overflow: 'hidden', borderBottom: '4px solid var(--warning)' }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+          >
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--warning-light)', color: 'var(--warning)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="fs-3">
+              <i className="fa-solid fa-magnifying-glass-location"></i>
+            </div>
+            <div>
+              <h3 style={{ color: 'var(--ink)', marginBottom: '8px' }} className="fw-bold fs-5">Track Requests</h3>
+              <p style={{ color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }} className="small">Check the real-time status of your reported issues.</p>
+            </div>
+          </div>
+
+          {/* Action 3 */}
+          <div 
+            onClick={() => setShowFeedbackModal(true)}
+            style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '32px 24px', border: '1px solid var(--border)', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', overflow: 'hidden', borderBottom: '4px solid var(--danger)' }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+          >
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#fee2e2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="fs-3">
+              <i className="fa-solid fa-comment-dots"></i>
+            </div>
+            <div>
+              <h3 style={{ color: 'var(--ink)', marginBottom: '8px' }} className="fw-bold fs-5">Provide Feedback</h3>
+              <p style={{ color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }} className="small">Share your suggestions or overall feedback with us.</p>
+            </div>
           </div>
         </div>
-            
-            {/* WELCOME SECTION */}
-            <div style={{ marginBottom: '32px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0F172A', margin: '0 0 8px 0' }}>
-                Welcome back, {user?.firstName || user?.name || 'Ananya'}!
-              </h2>
-              <p style={{ color: '#64748B', fontSize: '15px', margin: 0 }}>
-                How can we help you with your facility today?
-              </p>
-            </div>
-            
-            {/* PRIMARY ACTIONS - Centered like image */}
-            <div className="grid grid-3" style={{ gap: '24px', marginBottom: '48px' }}>
-              <div 
-                className="resident-action-centered" 
-                onClick={() => navigate('/admin/complaints/create')}
-              >
-                <div className="action-icon-circle" style={{ background: '#EFF6FF', color: '#3B82F6' }}>
-                  <i className="fa-solid fa-screwdriver-wrench"></i>
-                </div>
-                <b className="action-title">Raise a Ticket</b>
-                <span className="action-desc">Report electrical, plumbing, or facility issues.</span>
-              </div>
 
-              <div 
-                className="resident-action-centered" 
-                onClick={() => navigate('/admin/complaints/my-tickets')}
-              >
-                <div className="action-icon-circle" style={{ background: '#FEF3C7', color: '#D97706' }}>
-                  <i className="fa-solid fa-magnifying-glass-location"></i>
-                </div>
-                <b className="action-title">Track Requests</b>
-                <span className="action-desc">Check the status of your reported issues.</span>
-              </div>
+        {/* MAINTENANCE BOARD */}
 
-              <div 
-                className="resident-action-centered" 
-                onClick={() => setShowFeedbackModal(true)}
-              >
-                <div className="action-icon-circle" style={{ background: '#FCE7F3', color: '#DB2777' }}>
-                  <i className="fa-solid fa-comment-dots"></i>
-                </div>
-                <b className="action-title">Provide Feedback</b>
-                <span className="action-desc">Share your suggestions or overall feedback.</span>
-              </div>
-            </div>
-
-            {/* MAINTENANCE BOARD */}
             <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1E293B', margin: '0 0 16px 0' }}>
+              <h3 style={{ color: 'var(--ink)', margin: '0 0 16px 0' }} className="fw-bold fs-6">
                 Maintenance Board
               </h3>
               
               {loading ? (
-                <div className="notice-card-simple" style={{ justifyContent: 'center', color: '#94A3B8' }}>
+                <div className="notice-card-simple" style={{ justifyContent: 'center', color: 'var(--ink-faint)' }}>
                   Loading maintenance updates...
                 </div>
               ) : maintenanceNotices.length > 0 ? (
@@ -167,7 +167,7 @@ const ComplaintDashboard = () => {
                   ))}
                 </div>
               ) : (
-                <div className="notice-card-simple" style={{ justifyContent: 'center', color: '#94A3B8' }}>
+                <div className="notice-card-simple" style={{ justifyContent: 'center', color: 'var(--ink-faint)' }}>
                   No active maintenance announcements.
                 </div>
               )}
@@ -177,30 +177,30 @@ const ComplaintDashboard = () => {
       </div>
 
       {showFeedbackModal && (
-        <div className="modal-overlay active" style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.6)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, padding: '20px' }}>
-          <div className="modal-box" style={{ width: '100%', maxWidth: '500px', background: '#ffffff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-              <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0f172a' }}>General Feedback</h4>
-              <button onClick={() => setShowFeedbackModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#64748b' }}>
+        <div className="modal-overlay active" style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, padding: '20px' }}>
+          <div className="modal-box" style={{ width: '100%', maxWidth: '500px', background: 'var(--surface)', borderRadius: 'var(--radius-md)', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+              <h4 style={{ margin: 0, color: 'var(--ink)' }} className="fw-semibold fs-5">General Feedback</h4>
+              <button onClick={() => setShowFeedbackModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--ink-soft)' }}>
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
             <div className="modal-body" style={{ padding: '24px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Your Feedback</label>
+                  <label style={{ display: 'block', color: 'var(--ink)', marginBottom: '8px' }} className="fw-semibold small">Your Feedback</label>
                   <textarea 
                     rows="5" 
                     className="form-control" 
                     value={generalFeedback}
                     onChange={e => setGeneralFeedback(e.target.value)}
-                    placeholder="Tell us what's on your mind... (e.g. maintenance team is doing a great job, or suggestions for improvement)"
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', resize: 'vertical' }}
+                    placeholder="Tell us what's on your mind..."
+                    style={{ width: '100%', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '14px', outline: 'none', resize: 'vertical', background: 'var(--surface)', color: 'var(--ink)' }}
                   ></textarea>
                 </div>
               </div>
             </div>
-            <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <div className="modal-footer d-flex align-items-center justify-content-end gap-3" style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
               <button className="btn btn-ghost" onClick={() => setShowFeedbackModal(false)} disabled={isSubmittingFeedback}>Cancel</button>
               <button className="btn btn-primary" onClick={handleFeedbackSubmit} disabled={isSubmittingFeedback}>
                 {isSubmittingFeedback ? 'Submitting...' : 'Submit Feedback'}
@@ -214,3 +214,5 @@ const ComplaintDashboard = () => {
 };
 
 export default ComplaintDashboard;
+
+

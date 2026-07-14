@@ -3,13 +3,6 @@ import apiClient from '../../../services/apiClient.js';
 const BASE_URL = '/complaints';
 
 export const complaintService = {
-  getSettings: async () => {
-    return await apiClient.get(`${BASE_URL}/settings`);
-  },
-
-  getDashboardStats: async () => {
-    return await apiClient.get(`${BASE_URL}/dashboard/stats`);
-  },
 
   getDashboardAnalytics: async (params) => {
     return await apiClient.get(`${BASE_URL}/dashboard/analytics`, { params });

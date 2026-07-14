@@ -27,7 +27,7 @@ const CommentBox = ({ complaintId, onCommentAdded }) => {
 
   return (
     <div className="comment-box">
-      <h4 style={{ fontSize: '18px', marginBottom: '16px' }}>Add Comment</h4>
+      <h4 style={{ marginBottom: '16px' }} className="fs-5">Add Comment</h4>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <textarea 

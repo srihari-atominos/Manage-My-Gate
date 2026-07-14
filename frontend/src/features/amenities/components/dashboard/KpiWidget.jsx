@@ -10,7 +10,7 @@ const KpiWidget = () => {
 
   const renderSection = (title, items) => (
     <div style={{ marginBottom: '32px' }}>
-      <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: 'var(--body-color)' }}>{title}</h3>
+      <h3 style={{ marginBottom: '16px', color: 'var(--body-color)' }} className="fw-semibold fs-5">{title}</h3>
       <div className="dashboard-grid">
         {items.map((item, index) => (
           <div key={index} className="card kpi-card card-hover" style={item.style || {}}>

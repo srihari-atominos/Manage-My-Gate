@@ -85,13 +85,13 @@ const AmenitiesMasterView = () => {
         <div className="view active" id="view-admin-amenities">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <h2 style={{ fontSize: '26px', margin: 0, lineHeight: 1.3 }}>Amenity Master</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: '500', margin: '4px 0 0' }}>Manage every bookable facility in your community.</p>
+              <h2 style={{ margin: 0, lineHeight: 1.3 }} className="fs-3">Amenity Master</h2>
+              <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }} className="fw-medium small">Manage every bookable facility in your community.</p>
             </div>
             
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '14px', color: '#6c757d', fontSize: '14px', pointerEvents: 'none' }}></i>
+                <i className="small fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '14px', color: '#6c757d', pointerEvents: 'none' }}></i>
                 <input 
                   type="text" 
                   className="form-control"

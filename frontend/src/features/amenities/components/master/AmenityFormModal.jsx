@@ -105,7 +105,7 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
     <div className="modal-overlay active amenity-os-theme" onClick={handleClose}>
       <div className="modal-box" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h4 style={{ fontSize: '20px', margin: 0 }}>{initialData ? 'Edit Amenity' : 'Add New Amenity'}</h4>
+          <h4 style={{ margin: 0 }} className="fs-4">{initialData ? 'Edit Amenity' : 'Add New Amenity'}</h4>
           <button type="button" className="modal-close" onClick={handleClose}>
             <i className="fa-solid fa-xmark"></i>
           </button>
@@ -237,8 +237,8 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                 ) : (
                   <>
                     <i className="fa-solid fa-cloud-arrow-up fa-3x" style={{ marginBottom: '16px', color: 'var(--primary)' }}></i>
-                    <div id="drop-zone-text" style={{ fontSize: '15px', fontWeight: '500' }}>
-                      Drag & drop an image here or <span style={{ color: 'var(--primary)', fontWeight: '700' }}>browse files</span>
+                    <div id="drop-zone-text"  className="fw-medium">
+                      Drag & drop an image here or <span style={{ color: 'var(--primary)' }} className="fw-bold">browse files</span>
                     </div>
                   </>
                 )}
@@ -262,7 +262,7 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                     {fieldState.error && <div className="text-danger small">{fieldState.error.message}</div>}
                   </div>
                 )} />
-                <span style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: '600', flexShrink: 0 }}>to</span>
+                <span style={{ color: 'var(--text-muted)', flexShrink: 0 }} className="fw-semibold small">to</span>
                 <Controller name="bookingRules.closeTime" control={control} render={({ field, fieldState }) => (
                   <div style={{ flex: 1 }}>
                     <input type="time" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} {...field} />
@@ -294,14 +294,14 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
             </div>
 
             <div className="form-section mt-4 mb-3 border-top pt-3">
-              <h5 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>Cancellation & Refund Policy</h5>
+              <h5 style={{ marginBottom: '16px' }} className="fw-semibold fs-6">Cancellation & Refund Policy</h5>
               
               <div className="form-group">
                 <div className="form-check form-switch" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <Controller name="bookingRules.isCancellationEnabled" control={control} render={({ field }) => (
                     <input className="form-check-input" type="checkbox" role="switch" id="cancelToggle" style={{ cursor: 'pointer', transform: 'scale(1.2)' }} checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
                   )} />
-                  <label className="form-check-label mb-0" htmlFor="cancelToggle" style={{ cursor: 'pointer', fontWeight: '500' }}>
+                  <label className="fw-medium form-check-label mb-0" htmlFor="cancelToggle" style={{ cursor: 'pointer' }}>
                     Enable Cancellation
                   </label>
                 </div>
@@ -322,7 +322,7 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                     </div>
                   ) : (
                     <div className="rules-table">
-                      <div className="row fw-bold mb-2 pb-2 border-bottom text-muted" style={{ fontSize: '13px' }}>
+                      <div className="small row fw-bold mb-2 pb-2 border-bottom text-muted" >
                         <div className="col-5">Cancel Before (Hours)</div>
                         <div className="col-5">Refund Percentage (%)</div>
                         <div className="col-2 text-center">Action</div>
@@ -354,7 +354,7 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                       ))}
                     </div>
                   )}
-                  <div className="mt-2 text-muted" style={{ fontSize: '12px' }}>
+                  <div className="small mt-2 text-muted" >
                     <i className="fa-solid fa-circle-info me-1"></i> Rules are automatically sorted by hours (Highest → Lowest) when saved.
                   </div>
                 </div>

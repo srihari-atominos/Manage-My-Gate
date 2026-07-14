@@ -5,6 +5,9 @@ import { useComplaints } from '../hooks/useComplaints';
 import ComplaintTopNav from '../components/ComplaintTopNav';
 import ComplaintDetails from './ComplaintDetails';
 import AssignComplaint from './AssignComplaint';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import toast from 'react-hot-toast';
 import '../styles/_complaints.scss';
 
 const ComplaintManagement = () => {
@@ -35,6 +38,33 @@ const ComplaintManagement = () => {
   const { complaints, pagination, isLoading } = useComplaints(activeFilters);
   const authUser = useSelector((state) => state.auth?.user || {});
   const userRole = authUser.role || 'Resident';
+
+  const handleExport = () => {
+    if (!complaints || complaints.length === 0) {
+      toast.error('No records to export');
+      return;
+    }
+    const wb = XLSX.utils.book_new();
+    const data = [
+      ["Ticket ID", "Title", "Category", "Status", "Priority", "Assigned To", "Date Submitted"]
+    ];
+    complaints.forEach(c => {
+      data.push([
+        c.complaintNumber || 'N/A',
+        c.title || 'N/A',
+        c.category || 'N/A',
+        c.status || 'N/A',
+        c.priority || 'N/A',
+        c.assignedTechnicianName || 'Unassigned',
+        new Date(c.createdAt).toLocaleDateString()
+      ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, "Complaints Management");
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    saveAs(blob, "complaints_management.xlsx");
+  };
   
   const [filter, setFilter] = useState('All Statuses');
   const [priorityFilter, setPriorityFilter] = useState('All Priorities');
@@ -77,21 +107,18 @@ const ComplaintManagement = () => {
       <div className="view-container">
         <div className="view active" id="management">
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <h2 style={{ fontSize: '28px', margin: 0 }}>Complaint Management</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Global view of all society service requests and maintenance tickets.</p>
+              <h2 style={{ margin: 0 }} className="fs-2">Complaint Management</h2>
+
             </div>
-            <div className="actions-group" style={{ display: 'flex', gap: '8px' }}>
-              <button className="btn btn-secondary" onClick={() => {
-                const token = localStorage.getItem('token');
-                window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints/export?auth_token=${token}`, '_blank');
-              }}>
-                <i className="fa-solid fa-file-export" style={{ marginRight: '6px' }}></i>
+            <div className="actions-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button className="btn btn-primary" onClick={handleExport} style={{ alignSelf: 'center' }}>
+                <i className="fa-solid fa-file-export"></i>
                 Export
               </button>
               <button className="btn btn-secondary" onClick={() => setShowRatingsModal(true)}>
-                <i className="fa-solid fa-star" style={{ color: '#f59e0b', marginRight: '6px' }}></i>
+                <i className="fa-solid fa-star"></i>
                 View All Feedback
               </button>
             </div>
@@ -119,13 +146,6 @@ const ComplaintManagement = () => {
                 <option>Resolved</option>
                 <option>Closed</option>
                 <option>Escalated</option>
-              </select>
-              <select className="filter-select" style={{ height: '40px', borderRadius: '8px', border: '1px solid var(--border)', padding: '0 12px', background: 'var(--surface)', color: 'var(--ink)' }} value={priorityFilter} onChange={e => handlePriorityFilter(e.target.value)}>
-                <option>All Priorities</option>
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
-                <option>Critical</option>
               </select>
             </div>
           </div>
@@ -172,8 +192,8 @@ const ComplaintManagement = () => {
                           </b>
                         </td>
                         <td>
-                          <b style={{ color: 'var(--ink)', fontWeight: 600 }}>{c.title}</b><br/>
-                          <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
+                          <b style={{ color: 'var(--ink)' }} className="fw-semibold">{c.title}</b><br/>
+                          <span style={{ color: 'var(--ink-soft)' }} className="small">
                             {c.location?.flat || ''} {c.location?.building ? `(${c.location?.building})` : ''}
                           </span>
                         </td>
@@ -209,8 +229,8 @@ const ComplaintManagement = () => {
 
             {pagination && pagination.totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', borderTop: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '14px', color: 'var(--ink-soft)' }}>
-                  Page <strong>{pagination.currentPage}</strong> of <strong>{pagination.totalPages}</strong> &mdash; {pagination.totalRecords} total records
+                <div style={{ color: 'var(--ink-soft)' }} className="small">
+                  Showing {((pagination.currentPage - 1) * filterParams.limit) + 1} to {Math.min(pagination.currentPage * filterParams.limit, pagination.totalRecords)} of {pagination.totalRecords} entries
                 </div>
                 <ul className="pagination pagination-sm mb-0" style={{ display: 'flex', listStyle: 'none', gap: '4px', margin: 0, padding: 0 }}>
                   <li className={`page-item ${pagination.currentPage === 1 ? 'disabled' : ''}`}>
@@ -257,47 +277,42 @@ const ComplaintManagement = () => {
                 </div>
               ) : (
                 ratedComplaints.map(c => (
-                  <div key={c._id} style={{ 
-                    background: 'var(--surface)', 
+                  <div key={c._id} style={{ background: 'var(--surface)', 
                     border: '1px solid var(--border)', 
                     borderRadius: '12px', 
                     padding: '20px', 
                     marginBottom: '16px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                  }}>
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <span style={{ background: 'var(--primary-light, #e0f2fe)', color: 'var(--primary, #0284c7)', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>
+                          <span style={{ background: 'var(--primary-light, #e0f2fe)', color: 'var(--primary, #0284c7)', padding: '4px 8px', borderRadius: '4px' }} className="fw-semibold small">
                             {c.complaintNumber}
                           </span>
-                          <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{c.title}</span>
+                          <span style={{ color: 'var(--ink)' }} className="fw-semibold">{c.title}</span>
                         </div>
-                        <div style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
+                        <div style={{ color: 'var(--ink-soft)' }} className="small">
                           <i className="fa-regular fa-user" style={{ marginRight: '6px' }}></i>
                           {c.residentName || (c.residentId && c.residentId.username) || 'Unknown Resident'} 
                           {c.location?.flat ? ` • Flat ${c.location.flat}` : ''}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '2px', color: '#f59e0b', fontSize: '14px' }}>
+                      <div style={{ display: 'flex', gap: '2px' }} className="small">
                         {c.category !== 'Feedback' ? (
                           [...Array(5)].map((_, i) => (
                             <i key={i} className={i < (c.feedback?.overallRating || c.feedback?.rating || 0) ? 'fa-solid fa-star' : 'fa-regular fa-star'}></i>
                           ))
                         ) : (
-                          <span style={{fontSize: '12px', color: 'var(--ink-soft)', fontWeight: 600, background: 'var(--surface-2)', padding: '2px 8px', borderRadius: '12px'}}>General Feedback</span>
+                          <span style={{ color: 'var(--ink-soft)', background: 'var(--surface-2)', padding: '2px 8px', borderRadius: '12px' }} className="fw-semibold small">General Feedback</span>
                         )}
                       </div>
                     </div>
                     {(c.feedback?.remarks || c.category === 'Feedback') && (
-                      <div style={{ 
-                        background: 'var(--surface-2)', 
+                      <div style={{ background: 'var(--surface-2)', 
                         padding: '12px 16px', 
                         borderRadius: '8px', 
-                        fontSize: '14px',
                         color: 'var(--ink)',
-                        borderLeft: '3px solid var(--primary)'
-                      }}>
+                        borderLeft: '3px solid var(--primary)' }} className="small">
                         "{c.feedback?.remarks || c.description}"
                       </div>
                     )}
@@ -330,3 +345,5 @@ const ComplaintManagement = () => {
 };
 
 export default ComplaintManagement;
+
+

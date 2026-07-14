@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useComplaints } from '../hooks/useComplaints';
 import toast from 'react-hot-toast';
+import AssignComplaint from './AssignComplaint';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -24,8 +25,8 @@ class ErrorBoundary extends React.Component {
         <div className="complaint-modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.7)', position: 'fixed', top: 0, bottom: 0, left: 0, right: 0 }}>
           <div style={{ background: '#fff', padding: '30px', borderRadius: '8px', maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <h2 style={{ color: 'red' }}>Something went wrong.</h2>
-            <p style={{ fontWeight: 'bold' }}>{this.state.error && this.state.error.toString()}</p>
-            <pre style={{ background: '#f5f5f5', padding: '10px', fontSize: '12px' }}>
+            <p  className="fw-bold">{this.state.error && this.state.error.toString()}</p>
+            <pre style={{ background: '#f5f5f5', padding: '10px' }} className="small">
               {this.state.errorInfo && this.state.errorInfo.componentStack}
             </pre>
             <button className="btn btn-primary" onClick={() => this.props.onClose()}>Close</button>
@@ -109,8 +110,8 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
   if (isDetailsLoading || localLoading) {
     return (
       <div className="complaint-modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.7)' }}>
-        <div style={{ background: '#ffffff', padding: '40px', borderRadius: '12px', textAlign: 'center', minWidth: '300px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-          <h3 style={{ margin: 0, color: '#1E293B', fontSize: '18px', fontWeight: 'bold' }}>Loading Details...</h3>
+        <div style={{ background: 'var(--surface)', padding: '40px', borderRadius: '12px', textAlign: 'center', minWidth: '300px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+          <h3 style={{ margin: 0, color: 'var(--ink)' }} className="fw-bold fs-5">Loading Details...</h3>
         </div>
       </div>
     );
@@ -119,10 +120,10 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
   if (!complaint) {
     return (
       <div className="complaint-modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.7)' }}>
-        <div style={{ background: '#ffffff', padding: '40px', borderRadius: '12px', textAlign: 'center', minWidth: '300px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#1E293B', margin: '0 0 12px 0' }}>Ticket Not Found</h3>
+        <div style={{ background: 'var(--surface)', padding: '40px', borderRadius: '12px', textAlign: 'center', minWidth: '300px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+          <h3 style={{ color: 'var(--ink)', margin: '0 0 12px 0' }} className="fw-semibold fs-5">Ticket Not Found</h3>
           <p style={{ color: '#475569', margin: '0 0 24px 0' }}>We couldn't find the details for this ticket.</p>
-          <button style={{ background: '#2F6FED', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }} onClick={onClose}>Close</button>
+          <button style={{ background: '#2F6FED', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer' }} onClick={onClose} className="fw-bold">Close</button>
         </div>
       </div>
     );
@@ -211,48 +212,39 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
             <div key={idx} style={{ display: 'flex', position: 'relative', paddingBottom: idx === steps.length - 1 ? '0' : '20px' }}>
               {/* Connector Line */}
               {idx !== steps.length - 1 && (
-                <div style={{
-                  position: 'absolute',
+                <div style={{ position: 'absolute',
                   left: '11px',
                   top: '24px',
                   bottom: 0,
                   width: '2px',
                   background: step.isCompleted ? 'var(--success)' : 'var(--border)',
-                  zIndex: 0
-                }} />
+                  zIndex: 0 }} />
               )}
               
               {/* Step Indicator Circle */}
-              <div style={{
-                width: '24px',
+              <div style={{ width: '24px',
                 height: '24px',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '11px',
-                fontWeight: 'bold',
                 background: circleBg,
                 color: circleColor,
                 border: circleBorder,
                 zIndex: 1,
                 marginRight: '12px',
-                flexShrink: 0
-              }}>
-                {step.isCompleted ? <i className="fa-solid fa-check" style={{ fontSize: '10px' }}></i> : idx + 1}
+                flexShrink: 0 }} className="fw-bold small">
+                {step.isCompleted ? <i className="small fa-solid fa-check" ></i> : idx + 1}
               </div>
               
               {/* Step Details */}
               <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <span style={{
-                  fontSize: '13px',
-                  fontWeight: step.isActive ? 700 : 600,
-                  color: step.isActive ? (step.isError ? 'var(--critical)' : 'var(--primary)') : (step.isCompleted ? 'var(--ink)' : 'var(--ink-faint)')
-                }}>
+                <span style={{ fontWeight: step.isActive ? 700 : 600,
+                  color: step.isActive ? (step.isError ? 'var(--critical)' : 'var(--primary)') : (step.isCompleted ? 'var(--ink)' : 'var(--ink-faint)') }} className="small">
                   {step.label}
                 </span>
                 {step.isActive && (
-                  <span style={{ fontSize: '11px', color: step.isError ? 'var(--critical)' : 'var(--ink-soft)' }}>
+                  <span style={{ color: step.isError ? 'var(--critical)' : 'var(--ink-soft)' }} className="small">
                     {step.isError ? 'Request Terminated' : 'Current Stage'}
                   </span>
                 )}
@@ -323,22 +315,18 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
 
   return (
     <ErrorBoundary onClose={onClose}>
-    <div className="complaint-modal-overlay" style={{ zIndex: 1000, overflowY: 'auto' }}>
-      <div className="complaint-modal" style={{ width: '90%', maxWidth: '1000px', margin: '40px auto', background: 'var(--bg)', display: 'block' }}>
-        <div className="page-header" style={{ padding: '24px', borderBottom: '1px solid var(--border)', background: '#fff', position: 'sticky', top: 0, zIndex: 10 }}>
+    <div className="complaints-os-theme complaint-modal-overlay active" onClick={onClose}>
+      <div className="complaint-modal" style={{ maxWidth: '1000px', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={(e) => e.stopPropagation()}>
+        <div className="complaint-modal-header">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '13px', color: 'var(--ink-soft)', cursor: 'pointer', marginBottom: '8px' }} onClick={onClose}>
-                <i className="fa-solid fa-arrow-left"></i> Back to List
-              </div>
-            <h1 id="pageTitle" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }} className="fs-4">
               Ticket {complaint.complaintNumber}
               <span className={`badge ${['Resolved', 'Closed'].includes(complaint.status) ? 'resolved' : ['In Progress', 'Assigned'].includes(complaint.status) ? 'progress' : 'open'}`}>
                 {complaint.status}
               </span>
-            </h1>
+            </h4>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div className="d-flex align-items-center gap-3">
             {['Admin', 'FacilityManager', 'Manager', 'Super Admin'].includes(userRole) && (
               <>
                 {!['Cancelled', 'Closed', 'Resolved'].includes(complaint.status) && (
@@ -377,9 +365,11 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                 }}>Confirm Completion</button>
               </>
             )}
+            <button type="button" className="complaint-modal-close" onClick={onClose} style={{ marginLeft: '12px' }}>
+              <i className="fa-solid fa-xmark"></i>
+            </button>
           </div>
         </div>
-      </div>
       
 
           <div className="grid" style={{ gridTemplateColumns: '2fr 1fr', alignItems: 'start' }}>
@@ -387,14 +377,14 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
             {/* Left Column */}
             <div>
               <div className="card" style={{ marginBottom: '20px' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--ink)', margin: '0 0 16px 0' }}>{complaint.title}</h2>
-                <p style={{ color: 'var(--ink-soft)', fontSize: '15px', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                <h2 style={{ color: 'var(--ink)', margin: '0 0 16px 0' }} className="fw-bold fs-5">{complaint.title}</h2>
+                <p style={{ color: 'var(--ink-soft)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                   {complaint.description}
                 </p>
 
                 {complaint.attachments && complaint.attachments.length > 0 && (
                   <div style={{ marginTop: '24px' }}>
-                    <h4 style={{ fontSize: '14px', color: 'var(--ink)', marginBottom: '12px' }}>Attached Files</h4>
+                    <h4 style={{ color: 'var(--ink)', marginBottom: '12px' }} className="small">Attached Files</h4>
                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                       {complaint.attachments.map((att, i) => {
                         const fileUrl = typeof att === 'string' ? att : att.url;
@@ -411,7 +401,7 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                             ) : (
                               <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)' }}>
                                 <i className="fa-solid fa-file-pdf fa-lg" style={{ marginBottom: '8px' }}></i>
-                                <a href={fileUrl} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: 'var(--primary)', textDecoration: 'none' }}>View</a>
+                                <a href={fileUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }} className="small">View</a>
                               </div>
                             )}
                           </div>
@@ -424,7 +414,7 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
 
               {/* Activity Timeline */}
               <div className="card">
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--ink)', marginBottom: '24px' }}>Activity & Updates</h3>
+                <h3 style={{ color: 'var(--ink)', marginBottom: '24px' }} className="fw-bold fs-6">Activity & Updates</h3>
                 <div className="timeline">
                   {complaint.timeline?.filter(evt => !evt.isInternal || userRole !== 'Resident').map((evt, idx) => (
                     <div className="tl-item done" key={idx}>
@@ -432,10 +422,10 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                       <div className="tl-content">
                         <b>
                           {evt.action}
-                          {evt.isInternal && <span className="badge warning" style={{ fontSize: '10px', padding: '2px 6px', marginLeft: '8px', background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A' }}>Internal</span>}
+                          {evt.isInternal && <span className="small badge warning" style={{ padding: '2px 6px', marginLeft: '8px', background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A' }}>Internal</span>}
                         </b>
                         <span>{evt.userName ? `${evt.userName} (${evt.userRole})` : evt.userRole} • {formatDate(evt.date || evt.timestamp || evt.createdAt || new Date())}</span>
-                        {evt.remarks && <p style={{ fontSize: '13.5px', color: 'var(--ink-soft)', marginTop: '8px', background: evt.isInternal ? '#FFFBEB' : 'var(--bg)', padding: '12px', borderRadius: 'var(--radius-md)', border: evt.isInternal ? '1px dashed #FDE68A' : 'none' }}>{evt.remarks}</p>}
+                        {evt.remarks && <p style={{ color: 'var(--ink-soft)', marginTop: '8px', background: evt.isInternal ? '#FFFBEB' : 'var(--bg)', padding: '12px', borderRadius: 'var(--radius-md)', border: evt.isInternal ? '1px dashed #FDE68A' : 'none' }}>{evt.remarks}</p>}
                       </div>
                     </div>
                   ))}
@@ -444,11 +434,11 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                 <div style={{ marginTop: '32px', borderTop: '1px solid var(--border)', paddingTop: '24px' }}>
                   <textarea 
                     placeholder="Type an update or comment..." 
-                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '16px', fontSize: '14px', minHeight: '80px', marginBottom: '12px' }}
+                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '16px', minHeight: '80px', marginBottom: '12px' }}
                     value={newComment}
                     onChange={e => setNewComment(e.target.value)}
                   ></textarea>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="d-flex align-items-center justify-content-between">
                     <div />
                     <button className="btn btn-primary" onClick={handleAddComment}>Post Update</button>
                   </div>
@@ -459,31 +449,31 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
             {/* Right Column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div className="card">
-                <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ink)', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>Ticket Info</h3>
+                <h3 style={{ color: 'var(--ink)', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }} className="fw-bold">Ticket Info</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '8px' }}>
-                    <span style={{ display: 'block', fontSize: '12px', color: 'var(--ink-faint)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '8px' }}>Ticket Flow</span>
+                    <span style={{ display: 'block', color: 'var(--ink-faint)', textTransform: 'uppercase', marginBottom: '8px' }} className="fw-semibold small">Ticket Flow</span>
                     {renderWorkflowFlow()}
                   </div>
                   <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div>
-                      <span style={{ display: 'block', fontSize: '12px', color: 'var(--ink-faint)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Created</span>
-                      <div style={{ color: 'var(--ink)', fontSize: '13px' }}>{formatDate(complaint.createdAt)}</div>
+                      <span style={{ display: 'block', color: 'var(--ink-faint)', textTransform: 'uppercase', marginBottom: '4px' }} className="fw-semibold small">Created</span>
+                      <div style={{ color: 'var(--ink)' }} className="small">{formatDate(complaint.createdAt)}</div>
                     </div>
                     {complaint.slaDueDate && (
                       <div>
-                        <span style={{ display: 'block', fontSize: '12px', color: 'var(--ink-faint)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Expected SLA</span>
-                        <div style={{ color: 'var(--ink)', fontSize: '13px' }}>{formatDate(complaint.slaDueDate)}</div>
+                        <span style={{ display: 'block', color: 'var(--ink-faint)', textTransform: 'uppercase', marginBottom: '4px' }} className="fw-semibold small">Expected SLA</span>
+                        <div style={{ color: 'var(--ink)' }} className="small">{formatDate(complaint.slaDueDate)}</div>
                       </div>
                     )}
                     {complaint.resolvedAt && (
                       <div>
-                        <span style={{ display: 'block', fontSize: '12px', color: 'var(--ink-faint)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Resolved</span>
-                        <div style={{ color: 'var(--ink)', fontSize: '13px' }}>{formatDate(complaint.resolvedAt)}</div>
+                        <span style={{ display: 'block', color: 'var(--ink-faint)', textTransform: 'uppercase', marginBottom: '4px' }} className="fw-semibold small">Resolved</span>
+                        <div style={{ color: 'var(--ink)' }} className="small">{formatDate(complaint.resolvedAt)}</div>
                       </div>
                     )}
                   </div>
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="d-flex flex-column gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '8px' }}>
                     {complaint.vendor === 'Temporary Vendor' && ['Assigned', 'In Progress'].includes(complaint.status) && (
                       <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => {
                         confirmCompletion(complaintId, { remarks: 'Work marked as done for temporary vendor.' })
@@ -501,16 +491,16 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
 
               {complaint.assignedTechnicianName && (
                 <div className="card">
-                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ink)', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>Assignee Details</h3>
+                  <h3 style={{ color: 'var(--ink)', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }} className="fw-bold">Assignee Details</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div>
-                      <span style={{ display: 'block', fontSize: '12px', color: 'var(--ink-faint)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Name</span>
-                      <div style={{ color: 'var(--ink)', fontSize: '13px', fontWeight: 600 }}>{complaint.assignedTechnicianName}</div>
+                      <span style={{ display: 'block', color: 'var(--ink-faint)', textTransform: 'uppercase', marginBottom: '4px' }} className="fw-semibold small">Name</span>
+                      <div style={{ color: 'var(--ink)' }} className="fw-semibold small">{complaint.assignedTechnicianName}</div>
                     </div>
                     {true && (
                       <div>
-                        <span style={{ display: 'block', fontSize: '12px', color: 'var(--ink-faint)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Phone Number</span>
-                        <div style={{ color: 'var(--ink)', fontSize: '13px' }}>
+                        <span style={{ display: 'block', color: 'var(--ink-faint)', textTransform: 'uppercase', marginBottom: '4px' }} className="fw-semibold small">Phone Number</span>
+                        <div style={{ color: 'var(--ink)' }} className="small">
                           {(() => {
                             if (complaint.assignedTechnicianPhone) {
                               return complaint.assignedTechnicianPhone;
@@ -538,36 +528,36 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
 
               {['Resolved', 'Closed', 'Completed', 'Waiting For Resident Confirmation'].includes(complaint.status) && (complaint.resolutionSummary || complaint.resolutionNotes || complaint.workDone || complaint.technicianRemarks || (complaint.workNotes && complaint.workNotes.length > 0) || (complaint.workAttachments && complaint.workAttachments.length > 0)) && (
                 <div className="card" style={{ background: '#F0FDF4', borderColor: '#BBF7D0' }}>
-                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#166534', marginBottom: '16px', borderBottom: '1px solid #BBF7D0', paddingBottom: '12px' }}>Resolution Details</h3>
+                  <h3 style={{ color: '#166534', marginBottom: '16px', borderBottom: '1px solid #BBF7D0', paddingBottom: '12px' }} className="fw-bold">Resolution Details</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {complaint.resolutionSummary && (
                       <div>
-                        <span style={{ display: 'block', fontSize: '11px', color: '#166534', opacity: 0.8, fontWeight: 600, textTransform: 'uppercase' }}>Resolution Summary</span>
-                        <div style={{ color: '#14532D', fontSize: '13px' }}>{complaint.resolutionSummary}</div>
+                        <span style={{ display: 'block', color: '#166534', opacity: 0.8, textTransform: 'uppercase' }} className="fw-semibold small">Resolution Summary</span>
+                        <div style={{ color: '#14532D' }} className="small">{complaint.resolutionSummary}</div>
                       </div>
                     )}
                     {complaint.resolutionNotes && (
                       <div>
-                        <span style={{ display: 'block', fontSize: '11px', color: '#166534', opacity: 0.8, fontWeight: 600, textTransform: 'uppercase' }}>Resolution Notes</span>
-                        <div style={{ color: '#14532D', fontSize: '13px' }}>{complaint.resolutionNotes}</div>
+                        <span style={{ display: 'block', color: '#166534', opacity: 0.8, textTransform: 'uppercase' }} className="fw-semibold small">Resolution Notes</span>
+                        <div style={{ color: '#14532D' }} className="small">{complaint.resolutionNotes}</div>
                       </div>
                     )}
                     {complaint.workDone && (
                       <div>
-                        <span style={{ display: 'block', fontSize: '11px', color: '#166534', opacity: 0.8, fontWeight: 600, textTransform: 'uppercase' }}>Work Done</span>
-                        <div style={{ color: '#14532D', fontSize: '13px' }}>{complaint.workDone}</div>
+                        <span style={{ display: 'block', color: '#166534', opacity: 0.8, textTransform: 'uppercase' }} className="fw-semibold small">Work Done</span>
+                        <div style={{ color: '#14532D' }} className="small">{complaint.workDone}</div>
                       </div>
                     )}
                     {complaint.technicianRemarks && (
                       <div>
-                        <span style={{ display: 'block', fontSize: '11px', color: '#166534', opacity: 0.8, fontWeight: 600, textTransform: 'uppercase' }}>Technician Remarks</span>
-                        <div style={{ color: '#14532D', fontSize: '13px' }}>{complaint.technicianRemarks}</div>
+                        <span style={{ display: 'block', color: '#166534', opacity: 0.8, textTransform: 'uppercase' }} className="fw-semibold small">Technician Remarks</span>
+                        <div style={{ color: '#14532D' }} className="small">{complaint.technicianRemarks}</div>
                       </div>
                     )}
                     {complaint.workNotes && complaint.workNotes.length > 0 && (
                       <div>
-                        <span style={{ display: 'block', fontSize: '11px', color: '#166534', opacity: 0.8, fontWeight: 600, textTransform: 'uppercase' }}>Work Notes</span>
-                        <ul style={{ color: '#14532D', fontSize: '13px', margin: 0, paddingLeft: '20px' }}>
+                        <span style={{ display: 'block', color: '#166534', opacity: 0.8, textTransform: 'uppercase' }} className="fw-semibold small">Work Notes</span>
+                        <ul style={{ color: '#14532D', margin: 0, paddingLeft: '20px' }} className="small">
                           {complaint.workNotes.map((note, idx) => (
                             <li key={idx}><strong>{formatDate(note.createdAt)}</strong>: {note.note} (by {note.authorName})</li>
                           ))}
@@ -576,7 +566,7 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                     )}
                     {complaint.workAttachments && complaint.workAttachments.length > 0 && (
                       <div>
-                        <span style={{ display: 'block', fontSize: '11px', color: '#166534', opacity: 0.8, fontWeight: 600, textTransform: 'uppercase', marginBottom: '8px' }}>Work Photos</span>
+                        <span style={{ display: 'block', color: '#166534', opacity: 0.8, textTransform: 'uppercase', marginBottom: '8px' }} className="fw-semibold small">Work Photos</span>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           {complaint.workAttachments.map((url, i) => (
                             <div key={i} style={{ width: '60px', height: '60px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #BBF7D0', cursor: 'pointer' }} onClick={() => setEnlargedImage(url)}>
@@ -588,8 +578,8 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                     )}
                     {complaint.completionDate && (
                       <div>
-                        <span style={{ display: 'block', fontSize: '11px', color: '#166534', opacity: 0.8, fontWeight: 600, textTransform: 'uppercase' }}>Completion Date</span>
-                        <div style={{ color: '#14532D', fontSize: '13px' }}>{formatDate(complaint.completionDate)}</div>
+                        <span style={{ display: 'block', color: '#166534', opacity: 0.8, textTransform: 'uppercase' }} className="fw-semibold small">Completion Date</span>
+                        <div style={{ color: '#14532D' }} className="small">{formatDate(complaint.completionDate)}</div>
                       </div>
                     )}
                   </div>
@@ -598,17 +588,17 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
 
               {['Resolved', 'Closed', 'Completed'].includes(complaint.status) && complaint.feedback && (
                 <div className="card" style={{ background: 'var(--primary-light)', borderColor: '#C7D2FE' }}>
-                  <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '12px' }}>Resolution Feedback</h3>
-                  <div className="feedback-stars" style={{ fontSize: '16px', marginBottom: '12px' }}>
+                  <h3 style={{ color: 'var(--primary-dark)', marginBottom: '12px' }} className="fw-bold">Resolution Feedback</h3>
+                  <div className="fs-6 feedback-stars" style={{ marginBottom: '12px' }}>
                     {[1,2,3,4,5].map(star => (
                       <i key={star} className={star <= (complaint.feedback.overallRating || complaint.feedback.rating) ? "fa-solid fa-star" : "fa-regular fa-star"}></i>
                     ))}
                   </div>
-                  <p style={{ fontSize: '14px', color: 'var(--ink-soft)', fontStyle: 'italic', margin: 0 }}>
+                  <p style={{ color: 'var(--ink-soft)', fontStyle: 'italic', margin: 0 }} className="small">
                     "{complaint.feedback.remarks}"
                   </p>
                   {complaint.feedback.feedbackDate && (
-                    <div style={{ fontSize: '11px', color: 'var(--ink-faint)', marginTop: '8px' }}>
+                    <div style={{ color: 'var(--ink-faint)', marginTop: '8px' }} className="small">
                       Submitted: {formatDate(complaint.feedback.feedbackDate)}
                     </div>
                   )}
@@ -618,8 +608,8 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
               {['Resolved', 'Closed', 'Completed'].includes(complaint.status) && !(complaint.feedback && (complaint.feedback.overallRating || complaint.feedback.rating)) && onProvideFeedback && (
                 <div style={{ marginTop: '16px' }}>
                   <button 
-                    className="btn btn-primary" 
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    className="fw-semibold btn btn-primary" 
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                     onClick={() => onProvideFeedback(complaint._id)}
                   >
                     <i className="fa-solid fa-star"></i> Provide Feedback
@@ -635,138 +625,13 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
 
       {/* Modals */}
       {showAssignModal && (
-        <div className="complaint-modal-overlay">
-          <div className="complaint-modal" style={{ display: 'block', maxWidth: '560px' }}>
-            <div className="complaint-modal-header" style={{ borderBottom: 'none', marginBottom: '16px' }}>
-              <h3 className="complaint-modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                Assign Technician <span style={{ color: 'var(--ink-faint)', fontWeight: 500, fontSize: '15px' }}>{complaint.complaintNumber}</span>
-              </h3>
-              <i className="fa-solid fa-xmark complaint-modal-close" onClick={() => setShowAssignModal(false)}></i>
-            </div>
-
-            {/* Notification Block */}
-            <div style={{
-              background: '#EFF6FF',
-              border: '1px solid #BFDBFE',
-              borderRadius: '8px',
-              padding: '16px',
-              marginBottom: '20px',
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'flex-start'
-            }}>
-              <i className="fa-solid fa-bell" style={{ color: '#2563EB', marginTop: '2px' }}></i>
-              <div>
-                <strong style={{ display: 'block', fontSize: '14px', color: '#1E3A8A', marginBottom: '6px' }}>Automated Notifications</strong>
-                <ol style={{ margin: 0, paddingLeft: '16px', fontSize: '13px', color: '#1E40AF', lineHeight: '1.6' }}>
-                  <li><strong>Assignee:</strong> Receives WhatsApp/SMS with ticket details.</li>
-                  <li><strong>Resident:</strong> Receives an in-app notification containing the Assignee's name.</li>
-                </ol>
-              </div>
-            </div>
-
-            {/* Radio Group Selector */}
-            <div style={{
-              display: 'flex',
-              gap: '24px',
-              marginBottom: '20px',
-              borderBottom: '1px solid var(--border)',
-              paddingBottom: '16px'
-            }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'var(--ink)', cursor: 'pointer', margin: 0 }}>
-                <input 
-                  type="radio" 
-                  name="assignmentType" 
-                  checked={assignmentType === 'staff'} 
-                  onChange={() => setAssignmentType('staff')} 
-                />
-                Select Existing Staff
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'var(--ink)', cursor: 'pointer', margin: 0 }}>
-                <input 
-                  type="radio" 
-                  name="assignmentType" 
-                  checked={assignmentType === 'vendor'} 
-                  onChange={() => setAssignmentType('vendor')} 
-                />
-                Assign Temporary Vendor
-              </label>
-            </div>
-
-            {/* Conditional Fields */}
-            {assignmentType === 'staff' ? (
-              <div className="form-group">
-                <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink)', marginBottom: '8px', display: 'block' }}>Select Department Staff / Vendor</label>
-                <select 
-                  value={assignForm.technicianId} 
-                  onChange={e => {
-                    const tech = technicians.find(t => t.id === e.target.value);
-                    setAssignForm({ ...assignForm, technicianId: e.target.value, technicianName: tech ? tech.name : '' });
-                  }}
-                  style={{ width: '100%', padding: '12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}
-                >
-                  <option value="">-- Choose Assignee --</option>
-                  {technicians.map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <>
-                <div className="form-group" style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink)', marginBottom: '8px', display: 'block' }}>Temporary Assignee Name</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g., Local Plumber (Raj)" 
-                    value={assignForm.temporaryName}
-                    onChange={e => setAssignForm({ ...assignForm, temporaryName: e.target.value })}
-                    style={{ width: '100%', padding: '12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink)', marginBottom: '8px', display: 'block' }}>Phone Number (For WhatsApp Notification)</label>
-                  <input 
-                    type="text" 
-                    placeholder="+91 00000 00000" 
-                    value={assignForm.temporaryPhone}
-                    onChange={e => setAssignForm({ ...assignForm, temporaryPhone: e.target.value })}
-                    style={{ width: '100%', padding: '12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}
-                  />
-                </div>
-              </>
-            )}
-
-            {/* Admin Instructions (Optional) */}
-            <div className="form-group" style={{ marginTop: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink)', marginBottom: '8px', display: 'block' }}>Admin Instructions (Optional)</label>
-              <textarea 
-                placeholder="E.g., Call the resident before heading to the flat..."
-                value={assignForm.adminInstructions}
-                onChange={e => setAssignForm({ ...assignForm, adminInstructions: e.target.value })}
-                style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '16px', fontSize: '14px', minHeight: '80px' }}
-              ></textarea>
-            </div>
-
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-              <button 
-                className="btn btn-ghost" 
-                style={{ padding: '10px 24px', fontSize: '14px', borderRadius: '6px', border: '1px solid var(--border)', background: 'none', color: 'var(--ink-soft)' }} 
-                onClick={() => setShowAssignModal(false)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="btn btn-primary" 
-                style={{ padding: '10px 24px', fontSize: '14px', borderRadius: '6px', background: '#2563EB', color: '#fff', border: 'none', fontWeight: 600 }}
-                onClick={handleAssign} 
-                disabled={assignmentType === 'staff' ? !assignForm.technicianId : !assignForm.temporaryName}
-              >
-                Confirm Assignment
-              </button>
-            </div>
-          </div>
-        </div>
+        <AssignComplaint 
+          complaint={complaint} 
+          onCancel={() => setShowAssignModal(false)}
+          onAssigned={() => {
+            setShowAssignModal(false);
+          }}
+        />
       )}
 
       {showUpdateModal && (
@@ -803,7 +668,7 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                 onChange={e => setUpdateForm({ ...updateForm, remarks: e.target.value })}
               ></textarea>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+            <div className="d-flex align-items-center justify-content-end gap-3 mt-4">
               <button className="btn btn-ghost" onClick={() => setShowUpdateModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={handleUpdateStatus}>Save Update</button>
             </div>
@@ -835,14 +700,14 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
 
       {showFeedbackModal && (
         <div className="modal-overlay active" style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.6)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, padding: '20px' }}>
-          <div className="modal-box" style={{ width: '100%', maxWidth: '500px', background: '#ffffff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-              <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0f172a' }}>Provide Feedback</h4>
+          <div className="modal-box" style={{ width: '100%', maxWidth: '500px', background: 'var(--surface)', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div className="complaint-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+              <h4 style={{ margin: 0, color: 'var(--ink)' }} className="fw-semibold fs-5">Provide Feedback</h4>
               <button onClick={() => setShowFeedbackModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#64748b' }}>
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
-            <div className="modal-body" style={{ padding: '24px' }}>
+            <div className="complaint-modal-body" style={{ padding: '24px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {[
                   { label: 'Overall Rating', key: 'overallRating' },
@@ -852,13 +717,13 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                   { label: 'Communication', key: 'communicationRating' }
                 ].map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '15px', fontWeight: 500, color: '#334155' }}>{item.label}</span>
+                    <span style={{ color: '#334155' }} className="fw-medium">{item.label}</span>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       {[1, 2, 3, 4, 5].map(star => (
                         <i 
                           key={star} 
-                          className="fa-solid fa-star" 
-                          style={{ color: star <= feedbackForm[item.key] ? '#f59e0b' : '#cbd5e1', cursor: 'pointer', fontSize: '20px' }}
+                          className="fs-4 fa-solid fa-star" 
+                          style={{ color: star <= feedbackForm[item.key] ? '#f59e0b' : '#cbd5e1', cursor: 'pointer' }}
                           onClick={() => setFeedbackForm({ ...feedbackForm, [item.key]: star })}
                         ></i>
                       ))}
@@ -867,7 +732,7 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                 ))}
                 
                 <div style={{ marginTop: '12px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Additional Remarks</label>
+                  <label style={{ display: 'block', color: '#334155', marginBottom: '8px' }} className="fw-semibold small">Additional Remarks</label>
                   <textarea 
                     rows="3" 
                     className="form-control" 
@@ -879,7 +744,7 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                 </div>
               </div>
             </div>
-            <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <div className="modal-footer d-flex align-items-center justify-content-end gap-3" style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
               <button className="btn btn-ghost" onClick={() => setShowFeedbackModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={() => {
                 confirmCompletion(complaintId, feedbackForm).then(() => {
@@ -899,3 +764,7 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
 };
 
 export default ComplaintDetails;
+
+
+
+

@@ -69,7 +69,7 @@ const ResidentBookingModal = memo(({
         
         <div className="row mb-4">
           <div className="col-md-6 mb-3 mb-md-0">
-            <label className="form-label" style={{ fontWeight: '500' }}>Select Date</label>
+            <label className="fw-medium form-label" >Select Date</label>
             <input 
               type="date" 
               className="form-control" 
@@ -79,7 +79,7 @@ const ResidentBookingModal = memo(({
             />
           </div>
           <div className="col-md-6">
-            <label className="form-label" style={{ fontWeight: '500' }}>Select Amenity</label>
+            <label className="fw-medium form-label" >Select Amenity</label>
             <select 
               className="form-control" 
               value={selectedAmenityId} 
@@ -96,7 +96,7 @@ const ResidentBookingModal = memo(({
 
         {selectedAmenityId && selectedDate && (
           <div>
-            <h6 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '12px' }}>Available Slots</h6>
+            <h6 style={{ color: 'var(--text-muted)', marginBottom: '12px' }} className="small">Available Slots</h6>
             {slotsLoading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
                 <CSpinner size="sm" />
@@ -104,7 +104,7 @@ const ResidentBookingModal = memo(({
             ) : allSlots && allSlots.length > 0 ? (
               <div>
                 {/* Legend */}
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', fontSize: '13px', flexWrap: 'wrap', justifyContent: 'center', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap', justifyContent: 'center', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }} className="small">
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--success)' }}></div> Available</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--danger)' }}></div> Booked</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--warning)' }}></div> Maintenance</span>
@@ -133,15 +133,15 @@ const ResidentBookingModal = memo(({
                         }}
                         className={isAvailable ? 'slot-hover' : ''}
                       >
-                        <div style={{ fontWeight: '600', fontSize: '14px' }}>{slot.startTime}</div>
-                        <span className={`badge ${getStatusBadgeClass(slot.status)}`} style={{ fontSize: '11px', padding: '4px 8px' }}>{slot.status}</span>
+                        <div  className="fw-semibold small">{slot.startTime}</div>
+                        <span className={`small badge ${getStatusBadgeClass(slot.status)}`} style={{ padding: '4px 8px' }}>{slot.status}</span>
                       </div>
                     );
                   })}
                 </div>
               </div>
             ) : (
-              <div style={{ fontSize: '14px', color: 'var(--text-muted)', textAlign: 'center', padding: '40px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+              <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px', background: 'var(--bg-secondary)', borderRadius: '8px' }} className="small">
                 No slots generated for this date.
               </div>
             )}

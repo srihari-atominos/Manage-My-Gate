@@ -99,6 +99,7 @@ export const NotificationPopover = ({ isOpen, onClose }) => {
                 notification={notification}
                 onMarkAsRead={handleMarkAsRead}
                 onDelete={handleDelete}
+                onClose={onClose}
               />
             ))}
           </div>

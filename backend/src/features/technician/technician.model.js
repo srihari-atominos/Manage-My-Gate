@@ -38,7 +38,7 @@ const technicianSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Active', 'Inactive'],
+    enum: ['Active', 'Inactive', 'Pending'],
     default: 'Active'
   },
   whatsappEnabled: {

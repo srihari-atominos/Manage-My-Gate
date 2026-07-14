@@ -27,7 +27,7 @@ const QrPassCard = memo(({ booking, onCancel }) => {
       
       <CCardBody className="p-0 position-relative d-flex flex-column" style={{ zIndex: 1 }}>
         <div className="p-4 text-center text-white">
-          <h5 className="fw-bold mb-1 opacity-75 text-uppercase" style={{ letterSpacing: '2px', fontSize: '0.85rem' }}>Digital Access Pass</h5>
+          <h5 className="fw-bold mb-1 opacity-75 text-uppercase" >Digital Access Pass</h5>
           <div className="d-flex align-items-center justify-content-center gap-3 mt-2">
             {booking.amenityImage && (
               <img 

@@ -51,31 +51,31 @@ const StaffAndVendor = () => {
         <div className="view active" id="staff">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <h2 style={{ fontSize: '28px', margin: 0 }}>Staff & Vendors Directory</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Manage technicians and monitor active workloads</p>
+              <h2 style={{ margin: 0 }} className="fs-2">Staff & Vendors Directory</h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }} className="fw-medium">Manage technicians and monitor active workloads</p>
             </div>
-            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)} style={{ whiteSpace: 'nowrap' }}>
-              <i className="fa-solid fa-plus" style={{ marginRight: '8px' }}></i> Add New Staff/Vendor
+            <button className="btn btn-primary" onClick={handleAddNew} style={{ whiteSpace: 'nowrap', alignSelf: 'center' }}>
+              <i className="fa-solid fa-plus"></i> Add New Staff/Vendor
             </button>
           </div>
           
           {/* Summary Cards */}
           <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-            <div className="kpi-card card-hover" style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-              <div style={{ color: 'var(--ink-soft)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Active Staff</div>
-              <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--ink)', marginTop: '8px' }}>{summary.activeStaff || 0}</div>
+            <div className="kpi-card card-hover" style={{ background: 'var(--surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <div style={{ color: 'var(--ink-soft)', textTransform: 'uppercase' }} className="fw-semibold small">Active Staff</div>
+              <div style={{ color: 'var(--ink)', marginTop: '8px' }} className="fw-bold fs-2">{summary.activeStaff || 0}</div>
             </div>
-            <div className="kpi-card card-hover" style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-              <div style={{ color: 'var(--ink-soft)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Available Staff</div>
-              <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--success)', marginTop: '8px' }}>{summary.availableStaff || 0}</div>
+            <div className="kpi-card card-hover" style={{ background: 'var(--surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <div style={{ color: 'var(--ink-soft)', textTransform: 'uppercase' }} className="fw-semibold small">Available Staff</div>
+              <div style={{ color: 'var(--success)', marginTop: '8px' }} className="fw-bold fs-2">{summary.availableStaff || 0}</div>
             </div>
-            <div className="kpi-card card-hover" style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-              <div style={{ color: 'var(--ink-soft)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Busy Staff</div>
-              <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--warning)', marginTop: '8px' }}>{summary.busyStaff || 0}</div>
+            <div className="kpi-card card-hover" style={{ background: 'var(--surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <div style={{ color: 'var(--ink-soft)', textTransform: 'uppercase' }} className="fw-semibold small">Busy Staff</div>
+              <div style={{ color: 'var(--warning)', marginTop: '8px' }} className="fw-bold fs-2">{summary.busyStaff || 0}</div>
             </div>
-            <div className="kpi-card card-hover" style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-              <div style={{ color: 'var(--ink-soft)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Jobs Completed Today</div>
-              <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--primary)', marginTop: '8px' }}>{summary.completedToday || 0}</div>
+            <div className="kpi-card card-hover" style={{ background: 'var(--surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <div style={{ color: 'var(--ink-soft)', textTransform: 'uppercase' }} className="fw-semibold small">Jobs Completed Today</div>
+              <div style={{ color: 'var(--primary)', marginTop: '8px' }} className="fw-bold fs-2">{summary.completedToday || 0}</div>
             </div>
           </div>
 
@@ -126,8 +126,8 @@ const StaffAndVendor = () => {
                       <tr key={s._id}>
                         <td>
                           <b style={{ color: 'var(--ink)', display: 'block' }}>{s.name}</b>
-                          <span style={{ fontSize: '12px', color: 'var(--ink-faint)', display: 'block' }}>{s.phone}</span>
-                          {s.email && <span style={{ fontSize: '12px', color: 'var(--ink-faint)', display: 'block' }}>{s.email}</span>}
+                          <span style={{ color: 'var(--ink-faint)', display: 'block' }} className="small">{s.phone}</span>
+                          {s.email && <span style={{ color: 'var(--ink-faint)', display: 'block' }} className="small">{s.email}</span>}
                         </td>
                         <td>{s.department}</td>
                         <td>{s.type}</td>
@@ -137,7 +137,7 @@ const StaffAndVendor = () => {
                           </span>
                         </td>
                         <td>
-                          <span style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                          <span style={{ color: 'var(--primary)' }} className="fw-semibold">
                             {s.completedTodayCount || 0} Tasks
                           </span>
                         </td>

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useComplaints } from '../hooks/useComplaints';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import ComplaintTopNav from '../components/ComplaintTopNav';
 import ComplaintDetails from './ComplaintDetails';
 import '../styles/_complaints.scss';
@@ -32,6 +34,32 @@ const MyComplaints = () => {
   };
 
   const { complaints, pagination, isLoading, cancelComplaint, addFeedback } = useComplaints(activeFilters);
+
+  const handleExport = () => {
+    if (!complaints || complaints.length === 0) {
+      toast.error('No records to export');
+      return;
+    }
+    const wb = XLSX.utils.book_new();
+    const data = [
+      ["Ticket ID", "Title", "Category", "Status", "Priority", "Date Submitted"]
+    ];
+    complaints.forEach(c => {
+      data.push([
+        c.complaintNumber || 'N/A',
+        c.title || 'N/A',
+        c.category || 'N/A',
+        c.status || 'N/A',
+        c.priority || 'N/A',
+        new Date(c.createdAt).toLocaleDateString()
+      ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, "My Complaints");
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    saveAs(blob, "my_complaints.xlsx");
+  };
   
   const [selectedComplaintId, setSelectedComplaintId] = useState(null);
   const [feedbackModalId, setFeedbackModalId] = useState(null);
@@ -56,15 +84,20 @@ const MyComplaints = () => {
       <ComplaintTopNav />
       <div className="view-container">
         <div className="view active" id="my-complaints">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+          <div className="d-flex align-items-center justify-content-between gap-3 mb-4 flex-wrap">
             <div>
-              <h2 style={{ fontSize: '28px', margin: 0 }}>Track Requests</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Track and manage your submitted tickets</p>
+              <h2 style={{ margin: 0 }} className="fs-2">Track Requests</h2>
+            </div>
+            <div className="actions-group d-flex align-items-center gap-2 flex-wrap">
+              <button className="btn btn-primary" onClick={handleExport}>
+                <i className="fa-solid fa-file-export"></i>
+                Export
+              </button>
             </div>
           </div>
 
-          <div className="filter-row" style={{ marginBottom: '24px', justifyContent: 'flex-start' }}>
-            <div className="search-bar" style={{ flex: '0 0 350px' }}>
+          <div className="filter-row mb-4">
+            <div className="search-bar">
               <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--ink-faint)' }}></i>
               <input 
                 type="text" 
@@ -84,9 +117,8 @@ const MyComplaints = () => {
             </select>
           </div>
 
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-
-            <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
+          <div className="card border-0 shadow-sm mb-4">
+            <div className="table-wrapper">
               <table className="ent-table">
                 <thead>
                   <tr>
@@ -121,16 +153,16 @@ const MyComplaints = () => {
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
                             <button 
-                              className="btn btn-ghost btn-sm" 
-                              style={{ fontSize: '12px', padding: '4px 10px' }}
+                              className="small btn btn-ghost btn-sm" 
+                              style={{ padding: '4px 10px' }}
                               onClick={() => setSelectedComplaintId(c._id)}
                             >
                               View
                             </button>
                             {['Submitted', 'Open'].includes(c.status) && (
                               <button 
-                                className="btn btn-ghost btn-sm" 
-                                style={{ color: '#DC2626', borderColor: '#fecaca', fontSize: '12px', padding: '4px 10px', whiteSpace: 'nowrap' }}
+                                className="small btn btn-ghost btn-sm" 
+                                style={{ color: '#DC2626', borderColor: '#fecaca', padding: '4px 10px', whiteSpace: 'nowrap' }}
                                 onClick={() => {
                                   const reason = prompt('Reason for cancellation:');
                                   if (reason) {
@@ -152,8 +184,8 @@ const MyComplaints = () => {
             
             {pagination && pagination.totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', borderTop: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '14px', color: 'var(--ink-soft)' }}>
-                  Page <strong>{pagination.currentPage}</strong> of <strong>{pagination.totalPages}</strong> &mdash; {pagination.totalRecords} total records
+                <div style={{ color: 'var(--ink-soft)' }} className="small">
+                  Showing {((pagination.currentPage - 1) * filterParams.limit) + 1} to {Math.min(pagination.currentPage * filterParams.limit, pagination.totalRecords)} of {pagination.totalRecords} entries
                 </div>
                 <ul className="pagination pagination-sm mb-0" style={{ display: 'flex', listStyle: 'none', gap: '4px', margin: 0, padding: 0 }}>
                   <li className={`page-item ${pagination.currentPage === 1 ? 'disabled' : ''}`}>
@@ -200,9 +232,9 @@ const MyComplaints = () => {
 
       {feedbackModalId && (
         <div className="modal-overlay active" style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.6)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, padding: '20px' }}>
-          <div className="modal-box" style={{ width: '100%', maxWidth: '500px', background: '#ffffff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-              <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0f172a' }}>Provide Feedback</h4>
+          <div className="modal-box" style={{ width: '100%', maxWidth: '500px', background: 'var(--surface)', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+              <h4 style={{ margin: 0, color: 'var(--ink)' }} className="fw-semibold fs-5">Provide Feedback</h4>
               <button onClick={() => setFeedbackModalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#64748b' }}>
                 <i className="fa-solid fa-xmark"></i>
               </button>
@@ -210,13 +242,13 @@ const MyComplaints = () => {
             <div className="modal-body" style={{ padding: '24px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '15px', fontWeight: 500, color: '#334155' }}>Overall Rating</span>
+                  <span style={{ color: '#334155' }} className="fw-medium">Overall Rating</span>
                   <div style={{ display: 'flex', gap: '4px' }}>
                     {[1, 2, 3, 4, 5].map(star => (
                       <i 
                         key={star} 
-                        className="fa-solid fa-star" 
-                        style={{ color: star <= feedbackForm.rating ? '#f59e0b' : '#cbd5e1', cursor: 'pointer', fontSize: '20px' }}
+                        className="fs-4 fa-solid fa-star" 
+                        style={{ color: star <= feedbackForm.rating ? '#f59e0b' : '#cbd5e1', cursor: 'pointer' }}
                         onClick={() => setFeedbackForm({ ...feedbackForm, rating: star })}
                       ></i>
                     ))}
@@ -224,7 +256,7 @@ const MyComplaints = () => {
                 </div>
                 
                 <div style={{ marginTop: '12px' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Additional Remarks</label>
+                  <label style={{ display: 'block', color: '#334155', marginBottom: '8px' }} className="fw-semibold small">Additional Remarks</label>
                   <textarea 
                     rows="3" 
                     className="form-control" 
@@ -236,7 +268,7 @@ const MyComplaints = () => {
                 </div>
               </div>
             </div>
-            <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button className="btn btn-ghost" onClick={() => setFeedbackModalId(null)}>Cancel</button>
               <button className="btn btn-primary" onClick={() => {
                 addFeedback(feedbackModalId, feedbackForm).then(() => {

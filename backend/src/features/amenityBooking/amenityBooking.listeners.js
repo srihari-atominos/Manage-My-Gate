@@ -25,7 +25,7 @@ const sendBookingNotification = async (booking, type, title, message) => {
       title: title,
       body: message,
       type: type === 'alert' ? 'WARNING' : type === 'info' ? 'INFO' : 'SUCCESS',
-      actionUrl: `#/resident/amenities/my-bookings`,
+      actionUrl: `/resident/amenities/calendar`,
       senderId: null // System notification
     });
   } catch (error) {

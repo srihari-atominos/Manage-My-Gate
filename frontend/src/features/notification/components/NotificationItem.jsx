@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 import CIcon from '@coreui/icons-react';
@@ -76,7 +77,7 @@ const getNotificationIcon = (type) => {
  * @param {Function} props.onMarkAsRead - Callback when mark as read is clicked
  * @param {Function} props.onDelete - Callback when delete/clear is clicked
  */
-export const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
+export const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClose }) => {
   const { t, i18n } = useTranslation();
   const { _id, id, title, body, type, isRead, createdAt, actionUrl } = notification;
   const notificationId = id || _id;
@@ -138,15 +139,32 @@ export const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
   );
 
   if (actionUrl) {
+    let finalActionUrl = actionUrl;
+    
+    // Legacy mapping for broken URLs already in the DB
+    if (finalActionUrl.startsWith('/complaints/')) {
+      finalActionUrl = '/complaints';
+    } else if (finalActionUrl === '/assignee') {
+      finalActionUrl = '/admin/complaints/assignee';
+    } else if (finalActionUrl.startsWith('#/')) {
+      finalActionUrl = finalActionUrl.replace('#', '');
+    }
+
     return (
-      <a href={actionUrl} className={itemClassNames}>
+      <Link 
+        to={finalActionUrl} 
+        className={itemClassNames} 
+        onClick={() => {
+          if (onClose) onClose();
+        }}
+      >
         {renderedContent}
-      </a>
+      </Link>
     );
   }
 
   return (
-    <div className={itemClassNames}>
+    <div className={itemClassNames} onClick={() => { if (onClose) onClose(); }}>
       {renderedContent}
     </div>
   );

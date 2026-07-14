@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
   const { assignComplaint, assignLoading, complaints, addComment } = useComplaints();
   
-  const [assignmentType, setAssignmentType] = useState('request');
+  const [assignmentType, setAssignmentType] = useState('broadcast');
   const [techniciansList, setTechniciansList] = useState([]);
   const [isFetchingTechs, setIsFetchingTechs] = useState(true);
   
@@ -143,28 +143,22 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
     : (form.specialization || 'N/A');
 
   return (
-    <div className="modal-overlay active" style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.6)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, padding: '20px', overflowY: 'auto' }}>
-      <div className="modal-box" style={{ width: '100%', maxWidth: '750px', background: '#ffffff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', margin: 'auto' }}>
-        
-        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 28px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-          <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            Assign Technician 
-            <span style={{ background: '#e2e8f0', padding: '4px 10px', borderRadius: '12px', fontSize: '13px', color: '#475569', fontWeight: 600, letterSpacing: '0.5px' }}>
-              {complaint?.complaintNumber || 'HD-1041'}
-            </span>
-          </h4>
-          <button onClick={onCancel} style={{ background: '#e2e8f0', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '16px', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#cbd5e1'} onMouseOut={e => e.currentTarget.style.background = '#e2e8f0'}>
-            <i className="fa-solid fa-xmark"></i>
-          </button>
+    <div className="complaints-os-theme complaint-modal-overlay active" onClick={onCancel}>
+      <div className="complaint-modal" style={{ maxWidth: '1000px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="complaint-modal-header">
+            <h4 style={{ margin: 0 }} className="fs-4">Assign Technician</h4>
+            <button type="button" className="complaint-modal-close" onClick={onCancel}>
+              <i className="fa-solid fa-xmark"></i>
+            </button>
         </div>
 
-        <div className="modal-body" style={{ padding: '28px', maxHeight: '70vh', overflowY: 'auto' }}>
+        <div className="complaint-modal-body">
           
 
           <form onSubmit={handleSubmit} id="assignForm">
             
             <div style={{ display: 'flex', gap: '32px', marginBottom: '28px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: '#0f172a', cursor: 'pointer', margin: 0, fontWeight: 600 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink)', cursor: 'pointer', margin: 0 }} className="fw-semibold">
                 <input 
                   type="radio" 
                   name="assignmentType" 
@@ -175,7 +169,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                 Request Assignee
               </label>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: '#0f172a', cursor: 'pointer', margin: 0, fontWeight: 600 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink)', cursor: 'pointer', margin: 0 }} className="fw-semibold">
                 <input 
                   type="radio" 
                   name="assignmentType" 
@@ -193,9 +187,9 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
               
               {assignmentType === 'broadcast' ? (
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '8px', display: 'block' }}>Select Multiple Staff to Request <span style={{ color: '#ef4444' }}>*</span></label>
+                  <label className="fw-semibold small form-label" style={{ color: 'var(--ink-soft)', marginBottom: '8px', display: 'block' }}>Select Multiple Staff to Request <span style={{ color: '#ef4444' }}>*</span></label>
                   {isFetchingTechs ? (
-                    <div style={{ width: '100%', height: '42px', background: '#f1f5f9', borderRadius: '6px', animation: 'pulse 1.5s infinite' }}></div>
+                    <div style={{ width: '100%', height: '42px', background: 'var(--bg)', borderRadius: '6px', animation: 'pulse 1.5s infinite' }}></div>
                   ) : (
                     <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px' }}>
                       {techniciansList.map(t => {
@@ -217,8 +211,8 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                               style={{ width: '18px', height: '18px', accentColor: '#2563eb' }}
                             />
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 600, color: '#0f172a' }}>{t.name}</div>
-                              <div style={{ fontSize: '13px', color: '#64748b' }}>{t.department} - {statusText}</div>
+                              <div style={{ color: 'var(--ink)' }} className="fw-semibold">{t.name}</div>
+                              <div style={{ color: 'var(--ink-soft)' }} className="small">{t.department} - {statusText}</div>
                             </div>
                           </label>
                         )
@@ -228,9 +222,9 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                 </div>
               ) : assignmentType === 'staff' ? (
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '8px', display: 'block' }}>Select Employee <span style={{ color: '#ef4444' }}>*</span></label>
+                  <label className="fw-semibold small form-label" style={{ color: 'var(--ink-soft)', marginBottom: '8px', display: 'block' }}>Select Employee <span style={{ color: '#ef4444' }}>*</span></label>
                   {isFetchingTechs ? (
-                    <div style={{ width: '100%', height: '42px', background: '#f1f5f9', borderRadius: '6px', animation: 'pulse 1.5s infinite' }}></div>
+                    <div style={{ width: '100%', height: '42px', background: 'var(--bg)', borderRadius: '6px', animation: 'pulse 1.5s infinite' }}></div>
                   ) : (
                     <div style={{ position: 'relative' }}>
                       <select 
@@ -238,7 +232,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                         value={form.technicianId}
                         onChange={e => setForm({ ...form, technicianId: e.target.value })}
                         required
-                        style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', backgroundColor: '#fff', color: '#0f172a', appearance: 'none', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                        style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', backgroundColor: 'var(--surface)', color: 'var(--ink)', appearance: 'none', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                       >
                         <option value="">-- Choose Assignee --</option>
                         {techniciansList.map(t => {
@@ -256,7 +250,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '8px', display: 'block' }}>Vendor Name <span style={{ color: '#ef4444' }}>*</span></label>
+                    <label className="fw-semibold small form-label" style={{ color: 'var(--ink-soft)', marginBottom: '8px', display: 'block' }}>Vendor Name <span style={{ color: '#ef4444' }}>*</span></label>
                     <input 
                       type="text"
                       className="form-control"
@@ -264,11 +258,11 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                       value={form.temporaryAssigneeName}
                       onChange={e => setForm({ ...form, temporaryAssigneeName: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', color: '#0f172a', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', color: 'var(--ink)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                     />
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '8px', display: 'block' }}>Phone Number <span style={{ color: '#ef4444' }}>*</span></label>
+                    <label className="fw-semibold small form-label" style={{ color: 'var(--ink-soft)', marginBottom: '8px', display: 'block' }}>Phone Number <span style={{ color: '#ef4444' }}>*</span></label>
                     <input 
                       type="text"
                       className="form-control"
@@ -276,28 +270,28 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                       value={form.phoneNumber}
                       onChange={e => setForm({ ...form, phoneNumber: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', color: '#0f172a', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', color: 'var(--ink)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                     />
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '8px', display: 'block' }}>Company Name (Optional)</label>
+                    <label className="fw-semibold small form-label" style={{ color: 'var(--ink-soft)', marginBottom: '8px', display: 'block' }}>Company Name (Optional)</label>
                     <input 
                       type="text"
                       className="form-control"
                       placeholder="e.g., QuickFix Services"
                       value={form.companyName}
                       onChange={e => setForm({ ...form, companyName: e.target.value })}
-                      style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', color: '#0f172a', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', color: 'var(--ink)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                     />
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '8px', display: 'block' }}>Specialization</label>
+                    <label className="fw-semibold small form-label" style={{ color: 'var(--ink-soft)', marginBottom: '8px', display: 'block' }}>Specialization</label>
                     <div style={{ position: 'relative' }}>
                       <select 
                         className="form-control"
                         value={form.specialization}
                         onChange={e => setForm({ ...form, specialization: e.target.value })}
-                        style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', backgroundColor: '#fff', color: '#0f172a', appearance: 'none', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                        style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', backgroundColor: 'var(--surface)', color: 'var(--ink)', appearance: 'none', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                       >
                         <option value="">-- Select --</option>
                         <option value="Plumber">Plumber</option>
@@ -316,14 +310,14 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
               )}
 
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '8px', display: 'block' }}>Expected Visit Time (Optional)</label>
+                <label className="fw-semibold small form-label" style={{ color: 'var(--ink-soft)', marginBottom: '8px', display: 'block' }}>Expected Visit Time (Optional)</label>
                 <div style={{ display: 'flex', gap: '16px' }}>
                   <div style={{ position: 'relative', flex: 1 }}>
                     <select 
                       className="form-control"
                       value={form.expectedVisit}
                       onChange={e => setForm({ ...form, expectedVisit: e.target.value, customVisitDate: '', customVisitTime: '' })}
-                      style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', backgroundColor: '#fff', color: '#0f172a', appearance: 'none', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', backgroundColor: 'var(--surface)', color: 'var(--ink)', appearance: 'none', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                     >
                       <option value="Immediately">Immediately</option>
                       <option value="Within 1 Hour">Within 1 Hour</option>
@@ -342,7 +336,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                         value={form.customVisitDate}
                         onChange={e => setForm({ ...form, customVisitDate: e.target.value })}
                         required
-                        style={{ flex: 1, padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', color: '#0f172a', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                        style={{ flex: 1, padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', color: 'var(--ink)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                       />
                       <input 
                         type="time" 
@@ -350,7 +344,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                         value={form.customVisitTime}
                         onChange={e => setForm({ ...form, customVisitTime: e.target.value })}
                         required
-                        style={{ flex: 1, padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', color: '#0f172a', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                        style={{ flex: 1, padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', color: 'var(--ink)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                       />
                     </>
                   )}
@@ -359,7 +353,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
 
               {(complaint?.assignedTechnicianId || complaint?.vendor) && (
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '8px', display: 'block' }}>Reassignment Reason <span style={{ color: '#ef4444' }}>*</span></label>
+                  <label className="fw-semibold small form-label" style={{ color: 'var(--ink-soft)', marginBottom: '8px', display: 'block' }}>Reassignment Reason <span style={{ color: '#ef4444' }}>*</span></label>
                   <input 
                     type="text" 
                     className="form-control"
@@ -367,14 +361,14 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                     value={form.reassignmentReason}
                     onChange={e => setForm({ ...form, reassignmentReason: e.target.value })}
                     required
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', color: '#0f172a', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', color: 'var(--ink)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                   />
                 </div>
               )}
 
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '14px', color: '#334155', margin: 0 }}>Admin Instructions (Optional)</label>
+                  <label className="fw-semibold small form-label" style={{ color: 'var(--ink-soft)', margin: 0 }}>Admin Instructions (Optional)</label>
                   <span style={{ fontSize: '12px', color: form.adminInstructions.length > 500 ? '#ef4444' : '#94a3b8' }}>
                     {form.adminInstructions.length}/500
                   </span>
@@ -386,23 +380,23 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                   placeholder="Example: Please call the resident before entering the apartment..."
                   value={form.adminInstructions}
                   onChange={e => setForm({ ...form, adminInstructions: e.target.value })}
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', resize: 'vertical', minHeight: '80px', fontFamily: 'inherit', color: '#0f172a', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none', resize: 'vertical', minHeight: '80px', fontFamily: 'inherit', color: 'var(--ink)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                 ></textarea>
               </div>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '14px', color: '#334155', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <label className="fw-semibold small form-label" style={{ color: 'var(--ink-soft)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Uploaded Attachments
                   </label>
                 </div>
                 {complaint?.attachments && complaint.attachments.length > 0 ? (
-                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                     {complaint.attachments.map((att, index) => {
                       const fileUrl = typeof att === 'string' ? att : att.url;
                       const isImage = fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i);
                       return (
-                        <div key={index} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #cbd5e1', background: '#fff' }}>
+                        <div key={index} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #cbd5e1', background: 'var(--surface)' }}>
                           {isImage ? (
                             <img 
                               src={fileUrl} 
@@ -411,9 +405,9 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                               onClick={() => setEnlargedImage(fileUrl)}
                             />
                           ) : (
-                            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)' }}>
                               <i className="fa-solid fa-file-pdf fa-lg" style={{ marginBottom: '8px' }}></i>
-                              <a href={fileUrl} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: '#2563eb', textDecoration: 'none' }}>View</a>
+                              <a href={fileUrl} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }} className="small">View</a>
                             </div>
                           )}
                         </div>
@@ -421,7 +415,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                     })}
                   </div>
                 ) : (
-                  <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>
+                  <div style={{ padding: '16px', background: 'var(--bg)', borderRadius: '8px', border: '1px dashed var(--border-focus)', textAlign: 'center', color: 'var(--ink-faint)' }} className="small">
                     No Attachments Uploaded
                   </div>
                 )}
@@ -430,28 +424,28 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
             </div>
 
             {/* Assignment Summary */}
-            <div style={{ marginTop: '32px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-              <h5 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Assignment Summary</h5>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', fontSize: '14px' }}>
+            <div style={{ marginTop: '32px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+              <h5 style={{ margin: '0 0 16px 0', color: 'var(--ink)' }} className="fw-bold">Assignment Summary</h5>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }} className="small">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ color: '#64748b', fontSize: '13px' }}>Complaint ID & Priority</span>
-                  <span style={{ color: '#0f172a', fontWeight: 600 }}>{complaint?.complaintNumber} <span style={{ background: complaint?.priority === 'Critical' ? '#fee2e2' : '#f1f5f9', color: complaint?.priority === 'Critical' ? '#b91c1c' : '#475569', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', marginLeft: '6px' }}>{complaint?.priority || 'Medium'}</span></span>
+                  <span style={{ color: 'var(--ink-soft)' }} className="small">Complaint ID & Priority</span>
+                  <span style={{ color: 'var(--ink)' }} className="fw-semibold">{complaint?.complaintNumber} <span style={{ background: complaint?.priority === 'Critical' ? 'var(--critical-light)' : 'var(--bg)', color: complaint?.priority === 'Critical' ? 'var(--critical)' : 'var(--ink-soft)', padding: '2px 8px', borderRadius: '12px', marginLeft: '6px' }} className="small">{complaint?.priority || 'Medium'}</span></span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ color: '#64748b', fontSize: '13px' }}>Resident & Unit</span>
-                  <span style={{ color: '#0f172a', fontWeight: 600 }}>{complaint?.residentName || 'Resident'} - {complaint?.location?.tower ? `${complaint.location.tower}, ` : ''}{complaint?.location?.flat || 'N/A'}</span>
+                  <span style={{ color: 'var(--ink-soft)' }} className="small">Resident & Unit</span>
+                  <span style={{ color: 'var(--ink)' }} className="fw-semibold">{complaint?.residentName || 'Resident'} - {complaint?.location?.tower ? `${complaint.location.tower}, ` : ''}{complaint?.location?.flat || 'N/A'}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ color: '#64748b', fontSize: '13px' }}>Category & Dept</span>
-                  <span style={{ color: '#0f172a', fontWeight: 600 }}>{complaint?.category} <i className="fa-solid fa-arrow-right" style={{ fontSize: '10px', margin: '0 6px', color: '#94a3b8' }}></i> {selectedTechDept}</span>
+                  <span style={{ color: 'var(--ink-soft)' }} className="small">Category & Dept</span>
+                  <span style={{ color: 'var(--ink)' }} className="fw-semibold">{complaint?.category} <i className="small fa-solid fa-arrow-right" style={{ margin: '0 6px', color: '#94a3b8' }}></i> {selectedTechDept}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ color: '#64748b', fontSize: '13px' }}>Assignee</span>
-                  <span style={{ color: '#0f172a', fontWeight: 600 }}>{selectedTechName} <span style={{ color: '#2563eb', fontWeight: 500, fontSize: '13px' }}>({assignmentType === 'staff' ? 'Existing Staff' : 'Temp Vendor'})</span></span>
+                  <span style={{ color: 'var(--ink-soft)' }} className="small">Assignee</span>
+                  <span style={{ color: 'var(--ink)' }} className="fw-semibold">{selectedTechName} <span style={{ color: '#2563eb' }} className="fw-medium small">({assignmentType === 'staff' ? 'Existing Staff' : 'Temp Vendor'})</span></span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: 'span 2' }}>
-                  <span style={{ color: '#64748b', fontSize: '13px' }}>Expected Visit Time</span>
-                  <span style={{ color: '#0f172a', fontWeight: 600 }}>
+                  <span style={{ color: 'var(--ink-soft)' }} className="small">Expected Visit Time</span>
+                  <span style={{ color: 'var(--ink)' }} className="fw-semibold">
                     {form.expectedVisit === 'Custom Date & Time' ? `${form.customVisitDate} at ${form.customVisitTime}` : form.expectedVisit}
                   </span>
                 </div>
@@ -462,15 +456,15 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
         </div>
 
         {/* Action Buttons */}
-        <div style={{ padding: '20px 28px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
-          <button type="button" onClick={onCancel} style={{ padding: '12px 24px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontWeight: 600, fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = '#f1f5f9'} onMouseOut={e => e.currentTarget.style.background = '#fff'}>
+        <div style={{ padding: '20px 28px', borderTop: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
+          <button type="button" className="btn btn-outline" onClick={onCancel} disabled={assignLoading}>
             Cancel
           </button>
           <button 
             type="submit" 
             form="assignForm"
             disabled={assignLoading}
-            style={{ padding: '12px 32px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '15px', cursor: assignLoading ? 'not-allowed' : 'pointer', opacity: assignLoading ? 0.7 : 1, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px' }}
+            style={{ padding: '12px 32px', borderRadius: '8px', border: 'none', background: '#2563eb', color: 'var(--surface)', cursor: assignLoading ? 'not-allowed' : 'pointer', opacity: assignLoading ? 0.7 : 1, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px' }}
             onMouseOver={e => !assignLoading && (e.currentTarget.style.background = '#1d4ed8')} 
             onMouseOut={e => !assignLoading && (e.currentTarget.style.background = '#2563eb')}
           >
@@ -488,13 +482,13 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
           <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }}>
             <button 
               onClick={() => setEnlargedImage(null)}
-              style={{ position: 'absolute', top: '-40px', right: 0, background: 'none', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer' }}
+              style={{ position: 'absolute', top: '-40px', right: 0, background: 'none', border: 'none', color: 'var(--surface)', fontSize: '24px', cursor: 'pointer' }}
             >
               <i className="fa-solid fa-xmark"></i>
             </button>
             <img src={enlargedImage} alt="Enlarged Attachment" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', display: 'block' }} onClick={e => e.stopPropagation()} />
             <div style={{ marginTop: '16px', textAlign: 'center' }}>
-              <a href={enlargedImage} download target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', background: '#2563eb', color: '#fff', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: 600, cursor: 'pointer', border: 'none' }}>
+              <a href={enlargedImage} download target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', background: '#2563eb', color: 'var(--surface)', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: 600, cursor: 'pointer', border: 'none' }}>
                 <i className="fa-solid fa-download" style={{ marginRight: '8px' }}></i> Download Image
               </a>
             </div>
@@ -506,4 +500,9 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
 };
 
 export default AssignComplaint;
+
+
+
+
+
 

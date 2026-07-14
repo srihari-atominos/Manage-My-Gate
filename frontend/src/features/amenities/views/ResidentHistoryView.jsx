@@ -98,7 +98,7 @@ const ResidentHistoryView = () => {
         <AmenitiesTopNav />
         <div className="view-container">
           <div className="view active" id="view-resident-history">
-            <h2 style={{ marginBottom: '32px', fontSize: '28px', marginTop: 0 }}>Booking History</h2>
+            <h2 style={{ marginBottom: '32px', marginTop: 0 }} className="fs-2">Booking History</h2>
             
             {loading && bookings.length === 0 ? (
               <div className="d-flex justify-content-center p-5"><CSpinner /></div>
@@ -133,7 +133,7 @@ const ResidentHistoryView = () => {
                     <tbody>
                       {bookings.map((booking) => (
                         <tr key={booking._id} id={`res-booking-row-${booking._id}`}>
-                          <td style={{ fontWeight: '800', color: 'var(--primary)' }}>{booking.bookingId || booking._id.substring(0, 8).toUpperCase()}</td>
+                          <td style={{ color: 'var(--primary)' }} className="fw-bold">{booking.bookingId || booking._id.substring(0, 8).toUpperCase()}</td>
                           <td>
                             <div className="d-flex align-items-center gap-3">
                               <img 
@@ -141,14 +141,14 @@ const ResidentHistoryView = () => {
                                 alt={booking.amenityId?.name}
                                 style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px' }}
                               />
-                              <span style={{ fontWeight: '700' }}>{booking.amenityId?.name || 'Unknown'}</span>
+                              <span  className="fw-bold">{booking.amenityId?.name || 'Unknown'}</span>
                             </div>
                           </td>
-                          <td style={{ fontWeight: '600' }}>{booking.bookingDate}</td>
-                          <td style={{ fontWeight: '600' }}>{booking.startTime} - {booking.endTime}</td>
+                          <td  className="fw-semibold">{booking.bookingDate}</td>
+                          <td  className="fw-semibold">{booking.startTime} - {booking.endTime}</td>
                           <td>{getStatusBadge(booking.status)}</td>
                           <td>{getEntryStatusBadge(booking.status, booking.qrStatus)}</td>
-                          <td style={{ fontSize: '0.85rem' }}>
+                          <td >
                             {booking.checkInTime ? (
                               <div><span className="text-muted">In:</span> {new Date(booking.checkInTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                             ) : '-'}

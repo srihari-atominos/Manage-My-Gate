@@ -10,15 +10,13 @@ const PAYMENT_BADGE = {
 };
 
 const BookingSkeleton = () => (
-  <div style={{
-    borderRadius: '16px',
+  <div style={{ borderRadius: '16px',
     overflow: 'hidden',
     border: '1px solid #E2E8F0',
     background: '#fff',
     display: 'flex',
     flexDirection: 'row',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-  }}>
+    boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
     <CPlaceholder animation="glow" style={{ width: '180px', minHeight: '150px', flexShrink: 0 }} />
     <div style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <CPlaceholder animation="glow" xs={7} size="lg" />

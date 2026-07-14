@@ -1,7 +1,7 @@
 import HttpError from '../utils/httpError.utils.js';
 import config from '../config/config.js';
 import logger from '../utils/logger.utils.js';
-
+import fs from 'fs';
 /**
  * Middleware to handle routes that are not found (404).
  */
@@ -34,6 +34,12 @@ export const errorHandler = (err, req, res, next) => {
     stack: err.stack,
     requestId: req.id
   });
+
+  try {
+    fs.writeFileSync('last_error.json', JSON.stringify({ statusCode, message, stack: err.stack, details, body: req.body }), 'utf-8');
+  } catch (e) {
+    // ignore
+  }
 
   const response = {
     success: false,

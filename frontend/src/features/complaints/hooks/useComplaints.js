@@ -151,6 +151,42 @@ export const useComplaints = (filters = {}, options = {}) => {
   const handleAddWorkNotes = async (id, notes) => dispatch(addWorkNotes({ id, notes })).unwrap();
   const handleConfirmCompletion = async (id, payload) => dispatch(confirmCompletionAction({ id, ...payload })).unwrap();
 
+  const exportDataToExcel = () => {
+    if (!list || list.length === 0) {
+      return;
+    }
+    
+    // Construct CSV header
+    const headers = ['Complaint No', 'Resident', 'Category', 'Priority', 'Status', 'Assigned To', 'Created At'];
+    
+    // Construct CSV rows
+    const rows = list.map(c => [
+      c.complaintNumber || '',
+      c.residentName || (c.residentId && c.residentId.username) || '',
+      c.category || '',
+      c.priority || '',
+      c.status || '',
+      c.assignedTechnicianName || c.vendor || 'Unassigned',
+      new Date(c.createdAt).toLocaleString()
+    ]);
+    
+    // Combine to CSV format
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    
+    // Create Blob and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'complaints_export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return {
     complaints: list,
     currentComplaint,
@@ -188,7 +224,8 @@ export const useComplaints = (filters = {}, options = {}) => {
     markWorkCompleted: handleMarkWorkCompleted,
     uploadWorkAttachments: handleUploadWorkAttachments,
     addWorkNotes: handleAddWorkNotes,
-    addFeedback: async (id, payload) => dispatch(addFeedbackAction({ id, data: payload })).unwrap()
+    addFeedback: async (id, payload) => dispatch(addFeedbackAction({ id, data: payload })).unwrap(),
+    exportDataToExcel
   };
 };
 

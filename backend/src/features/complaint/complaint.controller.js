@@ -43,9 +43,7 @@ class ComplaintController {
 
       if (status && status !== 'All Statuses') filters.status = status;
       if (search) {
-        filters.$or = filters.$or || [];
-        filters.$or.push({ complaintNumber: { $regex: search, $options: 'i' } });
-        filters.$or.push({ title: { $regex: search, $options: 'i' } });
+        filters.search = search;
       }
 
       console.log(`[DEBUG GET ALL] req.user:`, req.user, `| orgId:`, orgId, `| filters:`, JSON.stringify(filters));

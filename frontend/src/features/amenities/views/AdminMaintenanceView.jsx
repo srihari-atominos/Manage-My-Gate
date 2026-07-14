@@ -54,8 +54,8 @@ const AdminMaintenanceView = () => {
         <div className="view active" id="view-admin-maintenance">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
             <div>
-              <h2 style={{ fontSize: '28px', margin: 0 }}>Maintenance</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Track upkeep tasks and block amenities while work is in progress.</p>
+              <h2 style={{ margin: 0 }} className="fs-2">Maintenance</h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }} className="fw-medium">Track upkeep tasks and block amenities while work is in progress.</p>
             </div>
             <button className="btn btn-primary" onClick={() => { setSelectedTask(null); setModalVisible(true); }}>
               <i className="fa-solid fa-plus"></i> Schedule Task
@@ -79,11 +79,11 @@ const AdminMaintenanceView = () => {
                   ) : (
                     maintenanceList.map(task => (
                       <tr key={task._id}>
-                        <td style={{ fontWeight: '700' }}>{task.amenityName}</td>
+                        <td  className="fw-bold">{task.amenityName}</td>
                         <td>{task.title}</td>
                         <td>{task.assignedStaff || 'Unassigned'}</td>
                         <td>{task.startDate} {task.startTime ? `• ${task.startTime}` : ''} {task.endTime ? `- ${task.endTime}` : ''}</td>
-                        <td><span className={`badge badge-${task.status === 'completed' ? 'success' : task.status === 'in_progress' ? 'warning' : 'primary'}`} style={{ textTransform: 'capitalize' }}>{task.status || 'scheduled'}</span></td>
+                        <td><span className={`badge badge-${task.status === 'completed' ? 'success' : task.status === 'in_progress' ? 'warning' : 'primary'}`} style={{ textTransform: 'capitalize', ...(task.status === 'scheduled' || !task.status ? { background: '#e0e7ff', color: '#4338ca' } : {}) }}>{task.status || 'scheduled'}</span></td>
                         <td>
                           <button className="btn btn-sm btn-outline-primary" style={{ marginRight: '8px' }} onClick={() => handleEdit(task)}>
                             <i className="fa-solid fa-pen"></i> Edit

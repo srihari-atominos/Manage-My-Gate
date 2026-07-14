@@ -22,11 +22,13 @@ export const initComplaintSockets = () => {
         io.to(`user:${complaint.residentId}`).emit('complaint_assigned', complaint);
         
         if (complaint.isBroadcast && complaint.broadcastTechnicianIds) {
-          complaint.broadcastTechnicianIds.forEach(techId => {
+          complaint.broadcastTechnicianIds.forEach(tech => {
+            const techId = typeof tech === 'object' ? tech._id : tech;
             io.to(`user:${techId}`).emit('complaint_assigned', complaint);
           });
         } else if (complaint.assignedTechnicianId) {
-          io.to(`user:${complaint.assignedTechnicianId}`).emit('complaint_assigned', complaint);
+          const assigneeId = typeof complaint.assignedTechnicianId === 'object' ? complaint.assignedTechnicianId._id : complaint.assignedTechnicianId;
+          io.to(`user:${assigneeId}`).emit('complaint_assigned', complaint);
         }
       }
     });
@@ -47,18 +49,21 @@ export const initComplaintSockets = () => {
         io.to(`org:${orgId}:role:facilitymanager`).emit(eventName, complaint);
         io.to(`user:${complaint.residentId}`).emit(eventName, complaint);
         if (complaint.assignedTechnicianId) {
-          io.to(`user:${complaint.assignedTechnicianId}`).emit(eventName, complaint);
+          const assigneeId = typeof complaint.assignedTechnicianId === 'object' ? complaint.assignedTechnicianId._id : complaint.assignedTechnicianId;
+          io.to(`user:${assigneeId}`).emit(eventName, complaint);
         }
         if (previousBroadcastIds && previousBroadcastIds.length > 0) {
           previousBroadcastIds.forEach(techId => {
-            io.to(`user:${techId}`).emit(eventName, complaint);
-            io.to(`user:${techId}`).emit('complaint_updated', complaint);
+            const tId = typeof techId === 'object' ? techId._id : techId;
+            io.to(`user:${tId}`).emit(eventName, complaint);
+            io.to(`user:${tId}`).emit('complaint_updated', complaint);
           });
         }
         if (complaint.broadcastTechnicianIds && complaint.broadcastTechnicianIds.length > 0) {
           complaint.broadcastTechnicianIds.forEach(techId => {
-            io.to(`user:${techId}`).emit(eventName, complaint);
-            io.to(`user:${techId}`).emit('complaint_updated', complaint);
+            const tId = typeof techId === 'object' ? techId._id : techId;
+            io.to(`user:${tId}`).emit(eventName, complaint);
+            io.to(`user:${tId}`).emit('complaint_updated', complaint);
           });
         }
 

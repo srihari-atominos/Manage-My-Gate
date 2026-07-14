@@ -8,7 +8,7 @@ export const DeleteConfirmationModal = ({ visible, onClose, onConfirm, title = "
     <div className="modal-overlay active amenity-os-theme">
       <div className="modal-box" style={{ maxWidth: '400px' }}>
         <div className="modal-header">
-          <h2 style={{ fontSize: '20px', margin: 0, color: confirmColor }}>{title}</h2>
+          <h2 style={{ margin: 0, color: confirmColor }} className="fs-4">{title}</h2>
           <button className="modal-close" onClick={onClose}>
             <i className="fa-solid fa-xmark"></i>
           </button>

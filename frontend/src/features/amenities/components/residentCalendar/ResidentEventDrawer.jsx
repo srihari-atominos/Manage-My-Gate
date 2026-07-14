@@ -37,19 +37,15 @@ const BookingTimeline = ({ status }) => {
         <React.Fragment key={step.key}>
           <div className="d-flex flex-column align-items-center" style={{ minWidth: '60px' }}>
             <div 
-              className={`rounded-circle d-flex align-items-center justify-content-center`}
-              style={{ 
-                width: '28px', 
+              className={`fw-bold small rounded-circle d-flex align-items-center justify-content-center`}
+              style={{ width: '28px', 
                 height: '28px', 
                 background: idx <= currentIdx ? 'var(--bs-primary, #0d6efd)' : '#dee2e6',
-                color: 'white',
-                fontSize: '12px',
-                fontWeight: 'bold'
-              }}
+                color: 'white' }}
             >
               {idx <= currentIdx ? <i className="fa-solid fa-check"></i> : idx + 1}
             </div>
-            <span className="mt-1" style={{ fontSize: '10px', color: idx <= currentIdx ? 'var(--bs-primary, #0d6efd)' : '#6c757d', textAlign: 'center' }}>
+            <span className="small mt-1" style={{ color: idx <= currentIdx ? 'var(--bs-primary, #0d6efd)' : '#6c757d', textAlign: 'center' }}>
               {step.label}
             </span>
           </div>
@@ -138,7 +134,7 @@ const ResidentEventDrawer = memo(({ visible, onClose, event, onCancel }) => {
             <CRow className="g-2">
               <CCol xs={12}>
                 <div className="small text-muted">Booking ID</div>
-                <div className="fw-semibold" style={{ fontSize: '13px', wordBreak: 'break-all' }}>{event.bookingId || event.id}</div>
+                <div className="small fw-semibold" style={{ wordBreak: 'break-all' }}>{event.bookingId || event.id}</div>
               </CCol>
               <CCol xs={12}>
                 <div className="small text-muted">Date</div>

@@ -51,8 +51,11 @@ const Assignee = () => {
   
   // Filter for currently logged-in user
   const assignedComplaints = (complaints || []).filter(c => {
-    const uid = user?.id || user?._id || user?.userId;
-    const isMatch = c.assignedTechnicianId === uid || (c.isBroadcast && c.broadcastTechnicianIds?.includes(uid));
+    const uid = String(user?.id || user?._id || user?.userId || '');
+    const assigneeIdStr = typeof c.assignedTechnicianId === 'object' && c.assignedTechnicianId !== null 
+      ? String(c.assignedTechnicianId._id) 
+      : String(c.assignedTechnicianId || '');
+    const isMatch = assigneeIdStr === uid || (c.isBroadcast && c.broadcastTechnicianIds?.map(String).includes(uid));
     console.log(`[DEBUG] Complaint: ${c.complaintNumber} | user object:`, user, `| extracted uid: ${uid} | isMatch: ${isMatch}`);
     return isMatch;
   });
@@ -210,8 +213,8 @@ const Assignee = () => {
       
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
             <div>
-              <h2 style={{ fontSize: '28px', margin: 0 }}>Assignee Portal</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Manage your assigned maintenance tasks and complaints</p>
+              <h2 style={{ margin: 0 }} className="fs-2">Assignee Portal</h2>
+
             </div>
           </div>
 
@@ -256,7 +259,7 @@ const Assignee = () => {
                       )}
                       {assignedComplaints.map(c => (
                         <tr key={c._id} onClick={() => setSelectedComplaintId(c._id)} style={{ cursor: 'pointer' }}>
-                          <td style={{ fontWeight: 600 }}>#{c.complaintNumber}</td>
+                          <td  className="fw-semibold">#{c.complaintNumber}</td>
                           <td>{c.subject}</td>
                           <td>
                             <span className={`badge ${
@@ -276,23 +279,23 @@ const Assignee = () => {
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                               {c.status === 'Waiting For Acceptance' && (
                                 <>
-                                  <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={(e) => onAccept(e, c._id)}>Accept</button>
-                                  <button className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: '12px', color: 'var(--critical)' }} onClick={(e) => onReject(e, c)}>Reject</button>
+                                  <button className="small btn btn-primary" style={{ padding: '4px 12px' }} onClick={(e) => onAccept(e, c._id)}>Accept</button>
+                                  <button className="small btn btn-ghost" style={{ padding: '4px 12px', color: 'var(--critical)' }} onClick={(e) => onReject(e, c)}>Reject</button>
                                 </>
                               )}
                               {(c.status === 'Assigned' || c.status === 'Accepted') && (
-                                <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={(e) => onStartWork(e, c._id)}>Start Work</button>
+                                <button className="small btn btn-primary" style={{ padding: '4px 12px' }} onClick={(e) => onStartWork(e, c._id)}>Start Work</button>
                               )}
                               {c.status === 'In Progress' && (
                                 <>
-                                  <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: '12px', background: 'var(--success)' }} onClick={(e) => onComplete(e, c)}>Mark Completed</button>
-                                  <button className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={(e) => { e.stopPropagation(); setActiveComplaint(c); setShowUploadModal(true); }}>Upload Photos</button>
-                                  <button className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={(e) => { e.stopPropagation(); setActiveComplaint(c); setShowNotesModal(true); setActionReason(''); }}>Add Notes</button>
-                                  <button className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={(e) => onPause(e, c)}>Pause</button>
+                                  <button className="small btn btn-primary" style={{ padding: '4px 12px', background: 'var(--success)' }} onClick={(e) => onComplete(e, c)}>Mark Completed</button>
+                                  <button className="small btn btn-ghost" style={{ padding: '4px 12px' }} onClick={(e) => { e.stopPropagation(); setActiveComplaint(c); setShowUploadModal(true); }}>Upload Photos</button>
+                                  <button className="small btn btn-ghost" style={{ padding: '4px 12px' }} onClick={(e) => { e.stopPropagation(); setActiveComplaint(c); setShowNotesModal(true); setActionReason(''); }}>Add Notes</button>
+                                  <button className="small btn btn-ghost" style={{ padding: '4px 12px' }} onClick={(e) => onPause(e, c)}>Pause</button>
                                 </>
                               )}
                               {c.status === 'On Hold' && (
-                                <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={(e) => onResumeWork(e, c._id)}>Resume Work</button>
+                                <button className="small btn btn-primary" style={{ padding: '4px 12px' }} onClick={(e) => onResumeWork(e, c._id)}>Resume Work</button>
                               )}
                             </div>
                           </td>
@@ -303,7 +306,7 @@ const Assignee = () => {
                 </div>
 
                 <div className="pagination">
-                  <div className="page-info">Showing page {pagination?.currentPage || 1} of {pagination?.totalPages || 1} ({assignedComplaints.length} records)</div>
+                  <div className="page-info">page {pagination?.currentPage || 1} to {pagination?.totalPages || 1} and records {pagination?.totalRecords || 0}</div>
                   <div className="page-controls">
                     <button className="btn btn-ghost" onClick={() => handlePageChange(filterParams.page - 1)} disabled={filterParams.page <= 1}>Previous</button>
                     <button className="btn btn-ghost" onClick={() => handlePageChange(filterParams.page + 1)} disabled={filterParams.page >= (pagination?.totalPages || 1)}>Next</button>
@@ -407,7 +410,7 @@ const Assignee = () => {
                 style={{ width: '100%', border: '1px solid var(--border)', borderRadius: '6px', padding: '12px' }}
               />
               {selectedFiles.length > 0 && (
-                <div style={{ marginTop: '12px', fontSize: '14px', color: 'var(--ink-soft)' }}>
+                <div style={{ marginTop: '12px', color: 'var(--ink-soft)' }} className="small">
                   {selectedFiles.length} file(s) selected
                 </div>
               )}

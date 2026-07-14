@@ -20,7 +20,7 @@ const Timeline = ({ events }) => {
             {evt.attachments && evt.attachments.length > 0 && (
               <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {evt.attachments.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: 'var(--primary)' }}>
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }} className="small">
                     <i className="fa-solid fa-paperclip"></i> Attachment {i + 1}
                   </a>
                 ))}

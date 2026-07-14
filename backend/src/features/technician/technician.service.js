@@ -6,21 +6,27 @@ class TechnicianService {
   async createTechnician(orgId, data) {
     let userId = null;
     
-    // Automatically create a user account if an email is provided
-    if (data.email) {
-      const roleName = data.type === 'External Vendor' ? 'Staff/Vendor' : 'Staff/Vendor'; // Can be customized later
-      try {
-        const result = await userService.inviteUser(data.email, orgId, null, 'None', roleName);
-        if (result && result.user) {
-           userId = result.user._id;
-        }
-      } catch (err) {
-        console.error('Error auto-inviting technician user:', err);
-        // We'll proceed even if invite fails, maybe they already exist
-        const existingUser = await userService.getUserByEmail(data.email);
-        if (existingUser) {
-           userId = existingUser._id;
-        }
+    // Automatically create a user account
+    const emailToUse = data.email || `${data.phone.replace(/\D/g, '')}@staff.local`;
+    const roleName = data.type === 'External Vendor' ? 'Staff/Vendor' : 'Staff/Vendor'; // Can be customized later
+    try {
+      const roleService = (await import('../role/role.services.js')).default;
+      let role = await roleService.getRoleByName(roleName, orgId);
+      if (!role) {
+         await roleService.createRole({ name: roleName, description: 'Auto-created role for Staff and Vendors', orgId, permissions: [] });
+      }
+
+      const result = await userService.inviteUser(emailToUse, orgId, null, 'None', roleName);
+      if (result && result.user) {
+         userId = result.user._id;
+         data.status = 'Pending';
+      }
+    } catch (err) {
+      console.error('Error auto-inviting technician user:', err);
+      // We'll proceed even if invite fails, maybe they already exist
+      const existingUser = await userService.getUserByEmail(emailToUse);
+      if (existingUser) {
+         userId = existingUser._id;
       }
     }
 

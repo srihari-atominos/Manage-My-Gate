@@ -57,7 +57,7 @@ const StatCard = ({ label, value, icon, gradient }) => (
           <i className={`fa-solid ${icon} fa-xl text-white`}></i>
         </div>
         <div>
-          <h3 className="fw-bold mb-0" style={{ fontSize: '28px' }}>{value}</h3>
+          <h3 className="fs-2 fw-bold mb-0" >{value}</h3>
           <p className="text-muted small mb-0 fw-semibold">{label}</p>
         </div>
       </div>
@@ -110,7 +110,7 @@ const SecurityLogsView = () => {
         {/* ── Header ── */}
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
           <div>
-            <h1 className="fw-bold mb-1" style={{ fontSize: '28px', color: 'var(--text-main)' }}>
+            <h1 className="fs-2 fw-bold mb-1" style={{ color: 'var(--text-main)' }}>
               <i className="fa-solid fa-shield-halved me-3" style={{ color: 'var(--primary)' }}></i>
               Security Logs & Audit Trail
             </h1>
@@ -122,9 +122,6 @@ const SecurityLogsView = () => {
             </button>
             <button className="btn btn-outline-secondary fw-semibold" onClick={() => handleExport('csv')} style={{ borderRadius: '10px' }}>
               <i className="fa-solid fa-file-csv me-2"></i>Export CSV
-            </button>
-            <button className="btn btn-outline-danger fw-semibold" onClick={() => handleExport('pdf')} style={{ borderRadius: '10px' }}>
-              <i className="fa-solid fa-file-pdf me-2"></i>Export PDF
             </button>
           </div>
         </div>
@@ -225,7 +222,7 @@ const SecurityLogsView = () => {
             <div className="table-responsive">
               <table className="table table-hover align-middle mb-0">
                 <thead style={{ background: '#f8fafc' }}>
-                  <tr className="text-muted small fw-semibold" style={{ fontSize: '11px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                  <tr className="small text-muted small fw-semibold" style={{ textTransform: 'uppercase' }}>
                     <th className="ps-4 py-3">RESIDENT</th>
                     <th className="py-3">AMENITY</th>
                     <th className="py-3">GUARD</th>
@@ -280,10 +277,10 @@ const SecurityLogsView = () => {
                               </div>
                             )}
                             <div>
-                              <div className="fw-semibold" style={{ color: 'var(--text-main)', fontSize: '14px' }}>
+                              <div className="small fw-semibold" style={{ color: 'var(--text-main)' }}>
                                 {log.residentName || 'Unknown Resident'}
                               </div>
-                              <div className="text-muted" style={{ fontSize: '12px' }}>
+                              <div className="small text-muted" >
                                 {log.bookingReference || 'No Ref'}
                               </div>
                             </div>
@@ -292,7 +289,7 @@ const SecurityLogsView = () => {
 
                         {/* Amenity */}
                         <td className="py-3">
-                          <span className="fw-semibold" style={{ fontSize: '14px' }}>
+                          <span className="small fw-semibold" >
                             {log.amenityName || '—'}
                           </span>
                         </td>
@@ -323,7 +320,7 @@ const SecurityLogsView = () => {
                         {/* DateTime */}
                         <td className="py-3">
                           <div className="fw-semibold small">{new Date(log.scanTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                          <div className="text-muted" style={{ fontSize: '12px' }}>
+                          <div className="small text-muted" >
                             {new Date(log.scanTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                           </div>
                         </td>

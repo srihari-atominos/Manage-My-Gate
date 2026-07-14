@@ -33,7 +33,7 @@ complaintEvents.on('complaint.created', async ({ orgId, complaint }) => {
       recipientId: complaint.residentId,
       title: 'Complaint Submitted Successfully',
       body: `Your complaint (${complaint.complaintNumber}) has been submitted successfully.`,
-      actionUrl: `/complaints/${complaint._id}`,
+      actionUrl: `/complaints`,
       type: 'SUCCESS'
     });
   } catch (error) {
@@ -67,7 +67,7 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
     // Direct Assignment (Assign Employee)
     try {
       await notificationService.createNotification({
-        recipientId: complaint.assignedTechnicianId,
+        recipientId: typeof complaint.assignedTechnicianId === 'object' ? complaint.assignedTechnicianId._id : complaint.assignedTechnicianId,
         title: 'New Complaint Assignment',
         body: `You have been directly assigned to complaint: ${complaint.complaintNumber}.`,
         actionUrl: `/admin/complaints/assignee`,
@@ -75,7 +75,7 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
       });
 
       // Send email notification
-      const assigneeUser = await User.findById(complaint.assignedTechnicianId);
+      const assigneeUser = await User.findById(typeof complaint.assignedTechnicianId === 'object' ? complaint.assignedTechnicianId._id : complaint.assignedTechnicianId);
       if (assigneeUser && assigneeUser.email) {
         const { sendEmail } = await import('../../utils/email.utils.js');
         const emailBody = `
@@ -96,7 +96,7 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
         recipientId: complaint.residentId,
         title: 'Technician Assigned',
         body: `Your complaint (${complaint.complaintNumber}) has been assigned to ${complaint.assignedTechnicianName || complaint.vendor}.`,
-        actionUrl: `/complaints/${complaint._id}`,
+        actionUrl: `/complaints`,
         type: 'INFO'
       });
     } catch (err) { logger.error('Failed to notify resident:', err); }
@@ -112,7 +112,7 @@ complaintEvents.on('complaint.updated', async ({ orgId, complaint, action, previ
       await notificationService.createNotification({
         recipientId: complaint.residentId,
         title, body,
-        actionUrl: `/complaints/${complaint._id}`,
+        actionUrl: `/complaints`,
         type: 'INFO'
       });
     } catch (err) { logger.error('Failed to notify resident:', err); }
@@ -136,7 +136,7 @@ complaintEvents.on('complaint.updated', async ({ orgId, complaint, action, previ
               recipientId: techId,
               title: 'Assignment No Longer Available',
               body: `The complaint (${complaint.complaintNumber}) has already been accepted by another technician.`,
-              actionUrl: `/assignee`,
+              actionUrl: `/admin/complaints/assignee`,
               type: 'INFO'
             });
           } catch (err) { logger.error('Failed to notify missed assignee:', err); }

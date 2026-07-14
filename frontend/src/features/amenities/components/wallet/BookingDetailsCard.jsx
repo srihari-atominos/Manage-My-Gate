@@ -8,7 +8,7 @@ const BookingDetailsCard = memo(({ booking }) => {
   return (
     <CCard className="border-0 shadow-sm mb-4">
       <CCardBody className="p-4">
-        <h6 className="fw-bold mb-4 text-uppercase text-muted" style={{ letterSpacing: '1px' }}>Pass Details</h6>
+        <h6 className="fw-bold mb-4 text-uppercase text-muted" >Pass Details</h6>
         
         <CRow className="g-4 mb-4">
           <CCol xs={6}>

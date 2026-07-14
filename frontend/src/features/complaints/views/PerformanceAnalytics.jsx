@@ -30,8 +30,8 @@ const PerformanceAnalytics = () => {
         <div className="view active" id="analytics">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
             <div>
-              <h2 style={{ fontSize: '28px', margin: 0 }}>Performance Analytics</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Helpdesk efficiency metrics and feedback</p>
+              <h2 style={{ margin: 0 }} className="fs-2">Performance Analytics</h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }} className="fw-medium">Helpdesk efficiency metrics and feedback</p>
             </div>
             <button className="btn btn-secondary" onClick={() => {
                 const token = localStorage.getItem('token');
@@ -63,31 +63,31 @@ const PerformanceAnalytics = () => {
           <div className="section-title"><h3>Complaint Priority Summary</h3></div>
           <div className="grid grid-4" style={{ marginBottom: '40px' }}>
             <div className="card" style={{ padding: '20px', borderLeft: '4px solid #DC2626' }}>
-              <div style={{ fontSize: '13px', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase' }}>Critical</div>
+              <div style={{ color: 'var(--ink-soft)', textTransform: 'uppercase' }} className="fw-semibold small">Critical</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '8px' }}>
-                <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--ink)' }}>{getPriorityCount('Critical')}</span>
-                <span style={{ fontSize: '14px', color: 'var(--ink-soft)' }}>({getPriorityPercent('Critical')}%)</span>
+                <span style={{ color: 'var(--ink)' }} className="fw-bold fs-2">{getPriorityCount('Critical')}</span>
+                <span style={{ color: 'var(--ink-soft)' }} className="small">({getPriorityPercent('Critical')}%)</span>
               </div>
             </div>
             <div className="card" style={{ padding: '20px', borderLeft: '4px solid #F59E0B' }}>
-              <div style={{ fontSize: '13px', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase' }}>High</div>
+              <div style={{ color: 'var(--ink-soft)', textTransform: 'uppercase' }} className="fw-semibold small">High</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '8px' }}>
-                <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--ink)' }}>{getPriorityCount('High')}</span>
-                <span style={{ fontSize: '14px', color: 'var(--ink-soft)' }}>({getPriorityPercent('High')}%)</span>
+                <span style={{ color: 'var(--ink)' }} className="fw-bold fs-2">{getPriorityCount('High')}</span>
+                <span style={{ color: 'var(--ink-soft)' }} className="small">({getPriorityPercent('High')}%)</span>
               </div>
             </div>
             <div className="card" style={{ padding: '20px', borderLeft: '4px solid var(--primary)' }}>
-              <div style={{ fontSize: '13px', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase' }}>Medium</div>
+              <div style={{ color: 'var(--ink-soft)', textTransform: 'uppercase' }} className="fw-semibold small">Medium</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '8px' }}>
-                <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--ink)' }}>{getPriorityCount('Medium')}</span>
-                <span style={{ fontSize: '14px', color: 'var(--ink-soft)' }}>({getPriorityPercent('Medium')}%)</span>
+                <span style={{ color: 'var(--ink)' }} className="fw-bold fs-2">{getPriorityCount('Medium')}</span>
+                <span style={{ color: 'var(--ink-soft)' }} className="small">({getPriorityPercent('Medium')}%)</span>
               </div>
             </div>
             <div className="card" style={{ padding: '20px', borderLeft: '4px solid #10B981' }}>
-              <div style={{ fontSize: '13px', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase' }}>Low</div>
+              <div style={{ color: 'var(--ink-soft)', textTransform: 'uppercase' }} className="fw-semibold small">Low</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '8px' }}>
-                <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--ink)' }}>{getPriorityCount('Low')}</span>
-                <span style={{ fontSize: '14px', color: 'var(--ink-soft)' }}>({getPriorityPercent('Low')}%)</span>
+                <span style={{ color: 'var(--ink)' }} className="fw-bold fs-2">{getPriorityCount('Low')}</span>
+                <span style={{ color: 'var(--ink-soft)' }} className="small">({getPriorityPercent('Low')}%)</span>
               </div>
             </div>
           </div>
@@ -126,29 +126,29 @@ const PerformanceAnalytics = () => {
               <div className="section-title" style={{ marginTop: 0 }}><h3>SLA Summary</h3></div>
               <div className="card grid" style={{ gap: '16px', padding: '20px' }}>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '14px', color: 'var(--ink-soft)', fontWeight: 500 }}>Within SLA</span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#059669' }}>{kpis.withinSla || 0}</span>
+                    <span style={{ color: 'var(--ink-soft)' }} className="fw-medium small">Within SLA</span>
+                    <span style={{ color: '#059669' }} className="fw-bold fs-6">{kpis.withinSla || 0}</span>
                  </div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '14px', color: 'var(--ink-soft)', fontWeight: 500 }}>Near SLA Breach</span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#D97706' }}>{kpis.nearSlaBreach || 0}</span>
+                    <span style={{ color: 'var(--ink-soft)' }} className="fw-medium small">Near SLA Breach</span>
+                    <span style={{ color: '#D97706' }} className="fw-bold fs-6">{kpis.nearSlaBreach || 0}</span>
                  </div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '14px', color: 'var(--ink-soft)', fontWeight: 500 }}>Breached</span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#DC2626' }}>{kpis.slaBreached || 0}</span>
+                    <span style={{ color: 'var(--ink-soft)' }} className="fw-medium small">Breached</span>
+                    <span style={{ color: '#DC2626' }} className="fw-bold fs-6">{kpis.slaBreached || 0}</span>
                  </div>
                  <div style={{ height: '1px', background: 'var(--border)' }}></div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '14px', color: 'var(--ink-soft)', fontWeight: 500 }}>Avg Resolution Time</span>
-                    <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--ink)' }}>{Math.round(kpis.averageResolutionHours || 0)} hours</span>
+                    <span style={{ color: 'var(--ink-soft)' }} className="fw-medium small">Avg Resolution Time</span>
+                    <span style={{ color: 'var(--ink)' }} className="fw-bold small">{Math.round(kpis.averageResolutionHours || 0)} hours</span>
                  </div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '14px', color: 'var(--ink-soft)', fontWeight: 500 }}>Fastest Resolution</span>
-                    <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--ink)' }}>{Math.round(kpis.fastestResolutionHours || 0)} hours</span>
+                    <span style={{ color: 'var(--ink-soft)' }} className="fw-medium small">Fastest Resolution</span>
+                    <span style={{ color: 'var(--ink)' }} className="fw-bold small">{Math.round(kpis.fastestResolutionHours || 0)} hours</span>
                  </div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '14px', color: 'var(--ink-soft)', fontWeight: 500 }}>Slowest Resolution</span>
-                    <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--ink)' }}>{Math.round(kpis.slowestResolutionHours || 0)} hours</span>
+                    <span style={{ color: 'var(--ink-soft)' }} className="fw-medium small">Slowest Resolution</span>
+                    <span style={{ color: 'var(--ink)' }} className="fw-bold small">{Math.round(kpis.slowestResolutionHours || 0)} hours</span>
                  </div>
               </div>
             </div>
@@ -204,8 +204,8 @@ const PerformanceAnalytics = () => {
                data.recentComplaints.filter(c => c.rating).map((c, i) => (
                  <div className="feedback-card" key={i}>
                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                     <b style={{ fontSize: '14px', color: 'var(--ink)' }}>
-                       {c.residentName} <span style={{ color: 'var(--ink-faint)', fontWeight: 500 }}>&middot; #{c.complaintNumber}</span>
+                     <b style={{ color: 'var(--ink)' }} className="small">
+                       {c.residentName} <span style={{ color: 'var(--ink-faint)' }} className="fw-medium">&middot; #{c.complaintNumber}</span>
                      </b>
                      <div className="feedback-stars">
                        {[...Array(5)].map((_, idx) => (
@@ -213,8 +213,8 @@ const PerformanceAnalytics = () => {
                        ))}
                      </div>
                    </div>
-                   {c.feedback && <p style={{ fontSize: '14px', color: 'var(--ink-soft)', margin: '4px 0 0 0' }}>"{c.feedback}"</p>}
-                   <div style={{ fontSize: '12px', color: 'var(--ink-faint)', marginTop: '8px' }}>
+                   {c.feedback && <p style={{ color: 'var(--ink-soft)', margin: '4px 0 0 0' }} className="small">"{c.feedback}"</p>}
+                   <div style={{ color: 'var(--ink-faint)', marginTop: '8px' }} className="small">
                      {new Date(c.updatedAt || c.createdAt).toLocaleDateString('en-GB')}
                    </div>
                  </div>

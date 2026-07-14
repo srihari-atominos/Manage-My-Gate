@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Complaint from './complaint.model.js';
 
 class ComplaintRepository {
@@ -13,24 +14,82 @@ class ComplaintRepository {
 
   async findAll(orgId, filter, pagination, sort) {
     const { skip, limit } = pagination;
-    const query = { orgId, ...filter };
+    const query = { orgId: new mongoose.Types.ObjectId(orgId), ...filter };
+    
+    if (query.residentId && typeof query.residentId === 'string') {
+      query.residentId = new mongoose.Types.ObjectId(query.residentId);
+    }
+
+    // Cast ObjectIds in RBAC $or filters
+    if (query.$or) {
+      query.$or = query.$or.map(cond => {
+        const newCond = { ...cond };
+        if (newCond.residentId && typeof newCond.residentId === 'string') {
+          newCond.residentId = new mongoose.Types.ObjectId(newCond.residentId);
+        }
+        if (newCond.assignedTechnicianId && typeof newCond.assignedTechnicianId === 'string') {
+          newCond.assignedTechnicianId = new mongoose.Types.ObjectId(newCond.assignedTechnicianId);
+        }
+        if (newCond.broadcastTechnicianIds && typeof newCond.broadcastTechnicianIds === 'string') {
+          newCond.broadcastTechnicianIds = new mongoose.Types.ObjectId(newCond.broadcastTechnicianIds);
+        }
+        return newCond;
+      });
+    }
 
     if (query.search) {
       const searchRegex = new RegExp(query.search, 'i');
-      query.$or = [
+      const searchOr = [
         { complaintNumber: searchRegex },
         { title: searchRegex },
         { description: searchRegex },
         { category: searchRegex },
         { assignedTechnicianName: searchRegex }
       ];
+      
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: searchOr }];
+        delete query.$or;
+      } else {
+        query.$or = searchOr;
+      }
       delete query.search;
     }
 
-    const [data, total] = await Promise.all([
-      Complaint.find(query).populate('residentId', 'username email').sort(sort).skip(skip).limit(limit),
-      Complaint.countDocuments(query)
-    ]);
+    const aggregationPipeline = [
+      { $match: query },
+      { $sort: (sort && Object.keys(sort).length > 0) ? sort : { createdAt: -1 } },
+      {
+        $facet: {
+          metadata: [ { $count: "totalRecords" } ],
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'residentId',
+                foreignField: '_id',
+                pipeline: [
+                  { $project: { username: 1, email: 1 } }
+                ],
+                as: 'residentId'
+              }
+            },
+            {
+              $unwind: {
+                path: "$residentId",
+                preserveNullAndEmptyArrays: true
+              }
+            }
+          ]
+        }
+      }
+    ];
+
+    const result = await Complaint.aggregate(aggregationPipeline);
+    const total = result[0]?.metadata[0]?.totalRecords || 0;
+    const data = result[0]?.data || [];
 
     return { data, total };
   }
@@ -66,9 +125,42 @@ class ComplaintRepository {
   async updateStatus(id, orgId, status, additionalData = {}) {
     return await Complaint.findOneAndUpdate(
       { _id: id, orgId },
-      { $set: { status, ...additionalData } },
+      { 
+        $set: { status, ...additionalData },
+        $push: { statusHistory: { status, timestamp: new Date() } }
+      },
       { new: true, runValidators: true }
     );
+  }
+
+  async acceptAssignmentAtomic(id, orgId, userId, userName, timelineEvent) {
+    return await Complaint.findOneAndUpdate(
+      { _id: id, orgId, status: 'Waiting For Acceptance' },
+      { 
+        $set: { 
+          status: 'Assigned',
+          assignedTechnicianId: userId,
+          assignedTechnicianName: userName,
+          isBroadcast: false,
+          broadcastTechnicianIds: []
+        },
+        $push: { 
+          statusHistory: { status: 'Assigned', timestamp: new Date() },
+          timeline: timelineEvent 
+        }
+      },
+      { new: true }
+    );
+  }
+
+  async findFuzzyDuplicates(orgId, residentId, titleText) {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    return await Complaint.find({
+      orgId,
+      residentId,
+      createdAt: { $gte: twentyFourHoursAgo },
+      $text: { $search: titleText }
+    }).limit(1);
   }
 
   async addTimelineEvent(id, orgId, eventData) {

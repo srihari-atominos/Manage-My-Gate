@@ -98,6 +98,10 @@ const complaintSchema = new mongoose.Schema({
   
   // Tracking
   timeline: { type: [timelineEventSchema], default: [] },
+  statusHistory: [{
+    status: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+  }],
   
   // Feedback
   feedback: {
@@ -133,6 +137,7 @@ complaintSchema.index({ orgId: 1, status: 1 });
 complaintSchema.index({ orgId: 1, residentId: 1 });
 complaintSchema.index({ orgId: 1, assignedTechnicianId: 1 });
 complaintSchema.index({ orgId: 1, category: 1 });
+complaintSchema.index({ title: 'text', category: 'text' });
 
 complaintSchema.index({ orgId: 1, complaintNumber: 1 }, { unique: true });
 
