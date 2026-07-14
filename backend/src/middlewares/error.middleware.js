@@ -19,7 +19,7 @@ export const errorHandler = (err, req, res, next) => {
   const details = err.details || null;
 
   // Handle Multer errors
-  if (err.name === 'MulterError' || err.code?.startsWith('LIMIT_')) {
+  if (err.name === 'MulterError' || (typeof err.code === 'string' && err.code.startsWith('LIMIT_'))) {
     statusCode = 400;
     if (err.code === 'LIMIT_FILE_SIZE') {
       message = 'File too large. Maximum size is 10MB.';
