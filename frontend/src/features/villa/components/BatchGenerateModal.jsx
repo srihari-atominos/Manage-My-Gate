@@ -78,7 +78,7 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
       className="batch-generate-modal"
     >
       <CModalHeader>
-        <CModalTitle style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+        <CModalTitle className="modal-title-bold">
           {t('villas.batch.title', 'Batch Generate Units')}
         </CModalTitle>
       </CModalHeader>
@@ -101,7 +101,7 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
               placeholder="e.g. Villa"
               size="sm"
             />
-            <div className="text-muted small-text mt-1" style={{ fontSize: '0.72rem' }}>
+            <div className="text-muted small-text mt-1 bulk-text-xxs">
               {t('villas.batch.prefixDesc', 'Suffix numbers will be appended automatically, e.g. "Villa 01".')}
             </div>
           </div>

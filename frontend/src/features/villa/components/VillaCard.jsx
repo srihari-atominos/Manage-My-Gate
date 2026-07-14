@@ -27,7 +27,6 @@ export const VillaCard = ({ villa, onClick }) => {
     <CCard 
       className={`villa-card h-100 ${getOccupancyClass(villa.status)}`}
       onClick={() => onClick(villa)}
-      style={{ cursor: 'pointer' }}
     >
       <div className="villa-card-header">
         <div className="d-flex flex-column">
@@ -47,7 +46,7 @@ export const VillaCard = ({ villa, onClick }) => {
         </div>
         {villa.floorAreaSqFt && (
           <div className="villa-meta-item mt-1">
-            <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+            <span className="text-muted text-meta-desc">
               {villa.floorAreaSqFt} Sq Ft
             </span>
           </div>

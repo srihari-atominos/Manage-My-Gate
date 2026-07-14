@@ -578,7 +578,7 @@ export class VillaService {
       // 4. Clear OrgMembership fields
       await OrgMembership.updateOne(
         { userId, orgId },
-        { $set: { villaId: null, residentType: 'None' } }
+        { $set: { villaId: null, residentType: 'None', roleId: null, roleIds: [] } }
       ).session(session);
 
       await session.commitTransaction();

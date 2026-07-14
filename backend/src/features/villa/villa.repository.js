@@ -52,7 +52,7 @@ export class VillaRepository {
     const query = Villa.findOneAndUpdate(
       { _id: id, orgId },
       updateData,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
     if (session) query.session(session);
     return await query;

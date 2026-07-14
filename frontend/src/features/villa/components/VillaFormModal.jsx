@@ -98,7 +98,7 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
       className="villa-form-modal"
     >
       <CModalHeader>
-        <CModalTitle style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+        <CModalTitle className="modal-title-bold">
           {editingVilla ? t('villas.form.editTitle', 'Edit Unit') : t('villas.form.createTitle', 'Create Unit')}
         </CModalTitle>
       </CModalHeader>

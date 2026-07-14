@@ -140,6 +140,14 @@ export class UserService {
       await this.getUserById(id, session); // Throws if user doesn't exist
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       await orgMembershipService.deleteMembershipsByUserId(id, session);
+
+      // Remove user from any Villa residents arrays they might be in
+      const VillaModel = (await import('../villa/villa.model.js')).default;
+      await VillaModel.updateMany(
+        { 'residents.userId': id },
+        { $pull: { residents: { userId: id } } }
+      ).session(session);
+
       const deletedUser = await userRepository.delete(id, session);
       await session.commitTransaction();
       return deletedUser;
@@ -218,11 +226,53 @@ export class UserService {
         residentType
       }, session);
 
-      // Update Villa occupancy status if linking a resident owner/tenant
-      if (villaId && (residentType === 'Owner' || residentType === 'Tenant')) {
-        const villaService = (await import('../villa/villa.services.js')).default;
-        const occupancyStatus = residentType === 'Owner' ? 'Owner Occupied' : 'Tenant Occupied';
-        await villaService.updateVillaOccupancy(villaId, orgId, occupancyStatus, session);
+      // Sync user profile with villa and residencyType (must be one of: 'Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff')
+      let residencyType = 'Tenant';
+      const normalizedRole = roleName ? roleName.toLowerCase() : '';
+      if (normalizedRole.includes('owner') && normalizedRole.includes('non')) {
+        residencyType = 'Non-Resident Owner';
+      } else if (normalizedRole.includes('owner')) {
+        residencyType = 'Resident Owner';
+      } else if (normalizedRole.includes('tenant')) {
+        residencyType = 'Tenant';
+      } else if (normalizedRole.includes('family')) {
+        residencyType = 'Family Member';
+      } else if (normalizedRole.includes('staff')) {
+        residencyType = 'Staff';
+      } else {
+        // Fallback to residentType mapping
+        if (residentType === 'Owner') {
+          residencyType = 'Resident Owner';
+        } else if (residentType === 'Family') {
+          residencyType = 'Family Member';
+        } else if (residentType === 'Guest') {
+          residencyType = 'Staff';
+        }
+      }
+
+      await userRepository.update(user._id, { villaId, residencyType }, session);
+
+      // Add to Villa residents array if villaId is provided
+      if (villaId) {
+        const VillaModel = (await import('../villa/villa.model.js')).default;
+        const villa = await VillaModel.findOne({ _id: villaId, orgId }).session(session);
+        if (villa) {
+          const alreadyAssigned = villa.residents.some(r => String(r.userId) === String(user._id));
+          if (!alreadyAssigned) {
+            villa.residents.push({
+              userId: user._id,
+              residencyType,
+              isPrimary: false,
+              assignedAt: new Date()
+            });
+          }
+          if (residentType === 'Owner' || residentType === 'Tenant') {
+            villa.status = 'Occupied';
+          } else if (villa.status === 'Vacant') {
+            villa.status = 'Occupied';
+          }
+          await villa.save({ session });
+        }
       }
 
       // Dynamically import tokenService to follow clean cross-feature flow

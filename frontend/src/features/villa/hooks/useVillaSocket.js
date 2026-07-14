@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { io } from 'socket.io-client';
 import { fetchVillasAsync, fetchVillaStatsAsync } from '../store/villaSlice';
@@ -6,6 +6,7 @@ import logger from '../../../utils/logger';
 
 export const useVillaSocket = (orgId) => {
   const dispatch = useDispatch();
+  const socketRef = useRef(null);
 
   useEffect(() => {
     if (!orgId) return;
@@ -13,10 +14,12 @@ export const useVillaSocket = (orgId) => {
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
     logger.info(`Initializing real-time villa socket connection for org room: org:${orgId}`);
     
-    const socket = io(socketUrl, {
+    socketRef.current = io(socketUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
     });
+
+    const socket = socketRef.current;
 
     socket.on('connect', () => {
       logger.info(`Villa Socket connected successfully. Joining room: org:${orgId}`);

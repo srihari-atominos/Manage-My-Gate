@@ -211,7 +211,7 @@ export const VillaManagementView = () => {
         ) : villas.length === 0 ? (
           <CCard className="text-center py-5 shadow-sm border-0">
             <CCardBody>
-              <CIcon icon={cilGrid} size="xl" className="text-muted mb-3" style={{ opacity: 0.3 }} />
+              <CIcon icon={cilGrid} size="xl" className="text-muted mb-3 icon-opacity-30" />
               <h4>{t('villas.noVillas', 'No Units Configured')}</h4>
               <p className="text-muted mb-4">{t('villas.noVillasDesc', 'You can manually create or batch generate the community units grid.')}</p>
               <CButton color="primary" size="sm" onClick={openBatch} className="fw-semibold">
@@ -231,7 +231,7 @@ export const VillaManagementView = () => {
                     aria-label="Previous"
                     disabled={currentPage === 1}
                     onClick={() => handlePageChange(currentPage - 1)}
-                    style={{ cursor: currentPage === 1 ? 'default' : 'pointer' }}
+                    className={`pagination-item-link ${currentPage === 1 ? 'disabled' : ''}`}
                   >
                     <span aria-hidden="true">&laquo;</span>
                   </CPaginationItem>
@@ -240,7 +240,7 @@ export const VillaManagementView = () => {
                       key={i + 1}
                       active={currentPage === i + 1}
                       onClick={() => handlePageChange(i + 1)}
-                      style={{ cursor: 'pointer' }}
+                      className="pagination-item-link"
                     >
                       {i + 1}
                     </CPaginationItem>
@@ -249,7 +249,7 @@ export const VillaManagementView = () => {
                     aria-label="Next"
                     disabled={currentPage === totalPages}
                     onClick={() => handlePageChange(currentPage + 1)}
-                    style={{ cursor: currentPage === totalPages ? 'default' : 'pointer' }}
+                    className={`pagination-item-link ${currentPage === totalPages ? 'disabled' : ''}`}
                   >
                     <span aria-hidden="true">&raquo;</span>
                   </CPaginationItem>

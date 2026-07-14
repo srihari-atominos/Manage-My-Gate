@@ -91,7 +91,7 @@ export class RoleRepository {
 
   async update(id, updateData, session) {
     return await Role.findByIdAndUpdate(id, updateData, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
       ...(session ? { session } : {}),
     });

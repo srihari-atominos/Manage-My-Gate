@@ -105,3 +105,80 @@
   }
 }
 
+// PermissionMatrix custom styles
+.permission-category-card {
+  background: var(--cui-card-bg, #ffffff);
+  border-radius: 8px;
+  border: 1px solid var(--cui-border-color, #e4e7eb);
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1rem;
+}
+
+.permission-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--cui-border-color, #e4e7eb);
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
+
+.permission-card-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cui-body-color);
+}
+
+.permission-select-all-check {
+  font-weight: 600;
+  color: var(--cui-text-muted);
+  margin: 0;
+}
+
+// RoleFormModal custom styles
+.modal-title-custom {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.form-label-custom {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--cui-body-color);
+}
+
+// RoleIntegrationConfigurator overrides
+.role-integration-configurator {
+  .configurator-title {
+    font-size: 0.9rem;
+  }
+  
+  .carousel-card {
+    min-width: 110px;
+    cursor: pointer;
+    border-width: 1px;
+    
+    &.active-card {
+      border-width: 2px !important;
+    }
+    
+    .provider-icon {
+      font-size: 1.2rem;
+    }
+    
+    .status-badge {
+      font-size: 0.65rem;
+    }
+  }
+  
+  .select-col {
+    width: 40px;
+  }
+  
+  .pointer-row {
+    cursor: pointer;
+  }
+}
+

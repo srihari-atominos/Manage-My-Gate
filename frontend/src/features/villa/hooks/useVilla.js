@@ -41,7 +41,7 @@ export const useVilla = () => {
   } = useSelector((state) => state.villa);
 
   const activeWorkspace = useSelector((state) => state.workspace);
-  const orgId = activeWorkspace?.activeOrgId || activeWorkspace?.orgId || null;
+  const orgId = activeWorkspace?.activeOrganizationId || activeWorkspace?.activeOrgId || activeWorkspace?.orgId || null;
 
   // Modal Visibility State
   const [detailsVisible, setDetailsVisible] = useState(false);

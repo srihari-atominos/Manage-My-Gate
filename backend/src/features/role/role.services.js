@@ -222,10 +222,6 @@ export class RoleService {
     const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
     return await rolePermissionService.updateRolePermissions(roleId, permissionIds);
   }
-
-  async getRoleByName(name, orgId = null, session = null) {
-    return await roleRepository.findByName(name, orgId, session);
-  }
 }
 
 export default new RoleService();

@@ -59,14 +59,14 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
   return (
     <CModal visible={visible} onClose={onClose} id="role-form-modal" alignment="center" size="lg" scrollable>
       <CModalHeader>
-        <CModalTitle style={{ fontSize: '1rem', fontWeight: 700 }}>
+        <CModalTitle className="modal-title-custom">
           {role ? `Edit Role - ${role.name}` : 'Create New Role'}
         </CModalTitle>
       </CModalHeader>
       <CModalBody>
         <form id="role-form" onSubmit={handleSubmit}>
           <div className="mb-3">
-            <CFormLabel htmlFor="role-name-input" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            <CFormLabel htmlFor="role-name-input" className="form-label-custom">
               Role Name
             </CFormLabel>
             <CFormInput
@@ -84,7 +84,7 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
           </div>
 
           <div className="mb-3">
-            <CFormLabel htmlFor="role-desc-input" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            <CFormLabel htmlFor="role-desc-input" className="form-label-custom">
               Description
             </CFormLabel>
             <CFormTextarea
@@ -114,7 +114,7 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
 
           {/* Role Integration Configuration Segment */}
           <div className="mb-3">
-            <CFormLabel style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            <CFormLabel className="form-label-custom">
               Role Integrations
             </CFormLabel>
             <div className="d-flex align-items-center gap-3 p-2 border rounded bg-light-subtle">
@@ -145,7 +145,7 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
             />
           </div>
 
-          <div className="mb-2" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+          <div className="form-label-custom mb-2">
             Granular Permissions Mapping
           </div>
 
@@ -182,7 +182,7 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
           form="role-form"
           color="primary"
           size="sm"
-          style={{ fontWeight: 600 }}
+          className="fw-semibold"
         >
           {role ? 'Save Changes' : 'Create Role'}
         </CButton>

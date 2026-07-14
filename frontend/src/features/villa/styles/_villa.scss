@@ -168,6 +168,43 @@
 
 // Modal customization
 .villa-details-modal {
+  .modal-title-custom {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .directory-header {
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .directory-scroller {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .nav-link-custom {
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .form-check-custom {
+    cursor: pointer;
+  }
+
+  .inline-select {
+    font-size: 0.75rem;
+  }
+
+  .inline-btn {
+    font-size: 0.7rem;
+  }
+
+  .separator {
+    font-size: 0.7rem;
+  }
+
   .resident-list-item {
     padding: 0.75rem 1rem;
     border-radius: 8px;
@@ -188,11 +225,11 @@
       border-radius: 50%;
       background: var(--cui-primary, #321fdb);
       color: white;
-      font-weight: bold;
+      font-weight: 600;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
     }
 
     .resident-info {
@@ -202,12 +239,12 @@
 
     .resident-name {
       font-weight: 600;
-      font-size: 0.88rem;
+      font-size: 0.85rem !important;
       color: var(--cui-body-color);
     }
 
     .resident-email {
-      font-size: 0.75rem;
+      font-size: 0.75rem !important;
       color: var(--cui-text-muted);
     }
   }
@@ -242,4 +279,46 @@
 
 .bulk-text-xxs {
   font-size: 0.72rem;
+}
+
+// Utility styling classes to eliminate inline styles
+.modal-title-bold {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.section-title {
+  font-size: 0.95rem;
+}
+
+.pointer-clickable {
+  cursor: pointer;
+}
+
+.icon-opacity-60 {
+  opacity: 0.6;
+}
+
+.icon-opacity-30 {
+  opacity: 0.3;
+}
+
+.alert-title-sm {
+  font-size: 0.88rem;
+}
+
+.text-meta-desc {
+  font-size: 0.75rem;
+}
+
+.pagination-item-link {
+  cursor: pointer;
+  
+  &.disabled {
+    cursor: default;
+  }
+}
+
+.table-warning-row {
+  opacity: 0.8;
 }

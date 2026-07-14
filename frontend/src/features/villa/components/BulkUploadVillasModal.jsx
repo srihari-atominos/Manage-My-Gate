@@ -205,7 +205,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
       className="bulk-upload-villas-modal"
     >
       <CModalHeader className="border-bottom">
-        <CModalTitle style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+        <CModalTitle className="modal-title-bold">
           {t('villas.bulk.title', 'Bulk Upload Units & Residents')}
         </CModalTitle>
       </CModalHeader>
@@ -213,7 +213,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
       <CModalBody className="p-4">
         {!fileName && !parsedRows.length && !results && (
           <div className="mb-4 text-center p-4 border rounded-3 bg-light">
-            <h5 className="fw-semibold mb-2" style={{ fontSize: '0.95rem' }}>
+            <h5 className="fw-semibold mb-2 section-title">
               {t('villas.bulk.step1Title', '1. Download CSV Template')}
             </h5>
             <p className="text-muted small mb-3">
@@ -240,24 +240,23 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
 
         {!results && (
           <div className="mb-4">
-            <h5 className="fw-semibold mb-3" style={{ fontSize: '0.95rem' }}>
+            <h5 className="fw-semibold mb-3 section-title">
               {fileName ? t('villas.bulk.uploadedFile', 'Uploaded File') : t('villas.bulk.step2Title', '2. Upload CSV File')}
             </h5>
             <div
-              className="p-4 border rounded-3 text-center bg-light bulk-dropzone"
+              className="p-4 border rounded-3 text-center bg-light bulk-dropzone pointer-clickable"
               onClick={() => fileInputRef.current?.click()}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              style={{ cursor: 'pointer' }}
             >
               <input
                 type="file"
                 accept=".csv"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                style={{ display: 'none' }}
+                className="d-none"
               />
-              <CIcon icon={cilCloudUpload} size="xl" className="text-muted mb-2" style={{ opacity: 0.6 }} />
+              <CIcon icon={cilCloudUpload} size="xl" className="text-muted mb-2 icon-opacity-60" />
               {fileName ? (
                 <div>
                   <div className="fw-semibold text-primary mb-1">{fileName}</div>
@@ -276,7 +275,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
         {!results && parsedRows.length > 0 && (
           <div className="parsed-preview mb-3">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="fw-semibold mb-0" style={{ fontSize: '0.95rem' }}>
+              <h5 className="fw-semibold mb-0 section-title">
                 {t('villas.bulk.step3Title', '3. Preview Uploaded List')}
               </h5>
               <div className="d-flex gap-2">
@@ -285,7 +284,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
               </div>
             </div>
 
-            <div className="table-responsive border rounded-3 bulk-table-container" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+            <div className="table-responsive border rounded-3 bulk-table-container">
               <table className="table table-hover align-middle mb-0 small">
                 <thead className="table-light sticky-top">
                   <tr>
@@ -300,7 +299,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
                 </thead>
                 <tbody>
                   {parsedRows.map((row, idx) => (
-                    <tr key={idx} className={row.isValid ? '' : 'table-warning-row'} style={{ opacity: row.isValid ? 1 : 0.8 }}>
+                    <tr key={idx} className={row.isValid ? '' : 'table-warning-row'}>
                       <td className="ps-3 fw-bold text-primary">{row.unitNumber || <span className="text-danger">Missing</span>}</td>
                       <td>{row.blockOrBuilding || <span className="text-muted">—</span>}</td>
                       <td>{row.type || <span className="text-muted">—</span>}</td>
@@ -343,7 +342,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
             {results.successes.length > 0 && (
               <div className="mb-4">
                 <h6 className="fw-semibold text-success mb-2 fs-smaller">{t('villas.bulk.processed', 'Successfully Processed:')}</h6>
-                <div className="list-group rounded-3 bulk-list-container-lg" style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                <div className="list-group rounded-3 bulk-list-container-lg">
                   {results.successes.map((s, idx) => (
                     <div key={idx} className="list-group-item d-flex justify-content-between align-items-center py-2 small">
                       <div>
@@ -369,10 +368,10 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
 
             {results.failures.length > 0 && (
               <div>
-                <h6 className="fw-semibold text-danger mb-2" style={{ fontSize: '0.88rem' }}>
+                <h6 className="fw-semibold text-danger mb-2 alert-title-sm">
                   {t('villas.bulk.failedHeader', 'Failed to Process:')}
                 </h6>
-                <div className="list-group rounded-3 bulk-list-container" style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                <div className="list-group rounded-3 bulk-list-container">
                   {results.failures.map((f, idx) => (
                     <div key={idx} className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-light-danger">
                       <div className="ms-2 me-auto">

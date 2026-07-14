@@ -19,7 +19,8 @@ import {
   CAlert,
   CNav,
   CNavItem,
-  CNavLink
+  CNavLink,
+  CFormCheck
 } from '@coreui/react';
 import { fetchVillaByIdAsync } from '../store/villaSlice';
 import { inviteUserAsync } from '../../userManagement/store/userSlice';
@@ -39,7 +40,8 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
     fetchWorkspaceUsers,
     assignExistingUser,
     updateResidencyType,
-    removeResident
+    removeResident,
+    assignResident
   } = useVilla();
   
   // Tab states: 1 = Assign Existing, 2 = Invite via Email
@@ -52,6 +54,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
   // Form states for Tab 1 (Assign Existing)
   const [assignUserId, setAssignUserId] = useState('');
   const [residencyType, setResidencyType] = useState('Tenant');
+  const [isPrimaryResident, setIsPrimaryResident] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState(null);
 
@@ -102,14 +105,28 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
 
     try {
       await assignExistingUser(villaId, assignUserId, residencyType);
+      if (isPrimaryResident) {
+        await assignResident(villaId, assignUserId);
+      }
       toast.success(t('villas.details.assignSuccess', 'Resident assigned successfully'));
       setAssignUserId('');
+      setIsPrimaryResident(false);
       // Reload details
       dispatch(fetchVillaByIdAsync(villaId));
     } catch (err) {
       setAssignError(err || t('villas.details.assignFailed', 'Failed to assign resident'));
     } finally {
       setAssigning(false);
+    }
+  };
+
+  const handleSetPrimaryResident = async (userId) => {
+    try {
+      await assignResident(villaId, userId);
+      toast.success(userId ? t('villas.details.setPrimarySuccess', 'Primary resident set successfully') : t('villas.details.unsetPrimarySuccess', 'Primary resident cleared successfully'));
+      dispatch(fetchVillaByIdAsync(villaId));
+    } catch (err) {
+      toast.error(err || t('villas.details.setPrimaryFailed', 'Failed to update primary resident'));
     }
   };
 
@@ -209,7 +226,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
       ) : (
         <>
           <CModalHeader>
-            <CModalTitle style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+            <CModalTitle className="modal-title-custom">
               {t('villas.details.titlePattern', { number: selectedVilla.villa.unitNumber, defaultValue: `${selectedVilla.villa.unitNumber} Details` })}
             </CModalTitle>
           </CModalHeader>
@@ -242,7 +259,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
             <CRow>
               {/* Left Column: Residents Directory */}
               <CCol md={6} className="border-end pe-md-4">
-                <h5 className="mb-3 text-primary" style={{ fontSize: '0.95rem', fontWeight: 700 }}>
+                <h5 className="mb-3 text-primary directory-header">
                   {t('villas.details.directory', 'Residents Directory')}
                 </h5>
                 
@@ -251,22 +268,31 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                     {t('villas.details.noResidents', 'No residents registered to this unit yet.')}
                   </div>
                 ) : (
-                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  <div className="directory-scroller">
                     {selectedVilla.residents.map((res) => {
                       const isEditing = editingUserId === res.id;
+
+                      const isPrimary = selectedVilla.villa.primaryResidentId && 
+                        (String(selectedVilla.villa.primaryResidentId) === String(res.id) || 
+                         String(selectedVilla.villa.primaryResidentId._id) === String(res.id));
 
                       return (
                         <div key={res.id} className="resident-list-item d-flex flex-column p-2 mb-2 border rounded bg-white">
                           <div className="d-flex align-items-center justify-content-between">
                             <div className="d-flex align-items-center gap-2">
-                              <div className="resident-avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px', fontSize: '0.85rem', fontWeight: 600 }}>
+                              <div className="resident-avatar">
                                 {res.name ? res.name.charAt(0).toUpperCase() : (res.email ? res.email.charAt(0).toUpperCase() : 'U')}
                               </div>
                               <div>
-                                <div className="resident-name fw-semibold small" style={{ fontSize: '0.85rem' }}>
+                                <div className="resident-name fw-semibold small">
                                   {res.name || res.email?.split('@')[0]}
+                                  {isPrimary && (
+                                    <CBadge color="primary" size="sm" className="ms-2">
+                                      {t('villas.details.primaryBadge', 'Primary')}
+                                    </CBadge>
+                                  )}
                                 </div>
-                                <div className="resident-email text-muted" style={{ fontSize: '0.75rem' }}>
+                                <div className="resident-email text-muted">
                                   {res.email}
                                 </div>
                               </div>
@@ -289,7 +315,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                                   size="sm"
                                   value={editResidencyType}
                                   onChange={(e) => setEditResidencyType(e.target.value)}
-                                  style={{ fontSize: '0.75rem' }}
+                                  className="inline-select"
                                 >
                                   {tenantRoles.map((role) => (
                                     <option key={role.id} value={role.name}>
@@ -301,8 +327,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                                   size="sm"
                                   color="success"
                                   onClick={() => handleSaveResidencyType(res.id)}
-                                  className="text-white py-1 px-2"
-                                  style={{ fontSize: '0.7rem' }}
+                                  className="text-white py-1 px-2 inline-btn"
                                 >
                                   {t('villas.details.save', 'Save')}
                                 </CButton>
@@ -310,8 +335,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                                   size="sm"
                                   color="light"
                                   onClick={() => setEditingUserId(null)}
-                                  className="py-1 px-2"
-                                  style={{ fontSize: '0.7rem' }}
+                                  className="py-1 px-2 inline-btn"
                                 >
                                   {t('villas.details.cancel', 'Cancel')}
                                 </CButton>
@@ -320,17 +344,38 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                               <div className="d-flex gap-2">
                                 <CButton
                                   color="link"
-                                  className="p-0 text-decoration-none"
-                                  style={{ fontSize: '0.7rem' }}
+                                  className="p-0 text-decoration-none inline-btn"
                                   onClick={() => startEditResidencyType(res)}
                                 >
                                   {t('villas.details.editType', 'Edit Type')}
                                 </CButton>
-                                <span className="text-muted" style={{ fontSize: '0.7rem' }}>|</span>
+                                <span className="text-muted separator">|</span>
+                                {!isPrimary ? (
+                                  <>
+                                    <CButton
+                                      color="link"
+                                      className="p-0 text-decoration-none inline-btn text-primary"
+                                      onClick={() => handleSetPrimaryResident(res.id)}
+                                    >
+                                      {t('villas.details.setPrimary', 'Set Primary')}
+                                    </CButton>
+                                    <span className="text-muted separator">|</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CButton
+                                      color="link"
+                                      className="p-0 text-decoration-none inline-btn text-warning"
+                                      onClick={() => handleSetPrimaryResident(null)}
+                                    >
+                                      {t('villas.details.unsetPrimary', 'Unset Primary')}
+                                    </CButton>
+                                    <span className="text-muted separator">|</span>
+                                  </>
+                                )}
                                 <CButton
                                   color="link"
-                                  className="p-0 text-decoration-none text-danger"
-                                  style={{ fontSize: '0.7rem' }}
+                                  className="p-0 text-decoration-none inline-btn text-danger"
                                   onClick={() => handleRemoveResident(res.id)}
                                 >
                                   {t('villas.details.remove', 'Remove')}
@@ -352,7 +397,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                     <CNavLink
                       active={activeTab === 1}
                       onClick={() => setActiveTab(1)}
-                      style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
+                      className="nav-link-custom"
                     >
                       {t('villas.details.tabs.assignExisting', 'Assign Existing')}
                     </CNavLink>
@@ -361,7 +406,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                     <CNavLink
                       active={activeTab === 2}
                       onClick={() => setActiveTab(2)}
-                      style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
+                      className="nav-link-custom"
                     >
                       {t('villas.details.tabs.inviteEmail', 'Invite Resident')}
                     </CNavLink>
@@ -414,6 +459,15 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                             </option>
                           ))}
                         </CFormSelect>
+                      </div>
+                      <div className="mb-3">
+                        <CFormCheck
+                          id="assign-primary-check"
+                          label={t('villas.details.markPrimary', 'Designate as Primary Resident')}
+                          checked={isPrimaryResident}
+                          onChange={(e) => setIsPrimaryResident(e.target.checked)}
+                          className="form-check-custom"
+                        />
                       </div>
                       <CButton
                         type="submit"
