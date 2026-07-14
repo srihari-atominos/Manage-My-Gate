@@ -4,14 +4,18 @@ import config from './src/config/config.js';
 
 import './src/features/user/user.listeners.js';
 import './src/features/securityLog/securityLog.listeners.js';
+import './src/features/complaint/complaint.listeners.js';
+import './src/features/technician/technician.listeners.js';
 import connectToDb from './src/config/db/mongodbConnectToDb.config.js';
 import { initSocket } from './src/config/socket.js';
 import initializePassport from './src/features/auth/passport/passport.init.js';
 import logger from './src/utils/logger.utils.js';
 import { syncPermissions } from './src/utils/permissionSync.util.js';
+import complaintCron from './src/features/complaint/complaint.cron.js';
 
 const startServer = async () => {
   try {
+    complaintCron.init();
     // 1. Connect the database FIRST
     await connectToDb();
 

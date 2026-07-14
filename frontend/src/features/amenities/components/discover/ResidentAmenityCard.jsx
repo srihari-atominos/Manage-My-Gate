@@ -19,7 +19,7 @@ const ResidentAmenityCard = memo(({ amenity, onBook }) => {
       </div>
       
       <CCardBody className="d-flex flex-column p-4">
-        <div className="text-uppercase text-muted small fw-bold mb-1" style={{ letterSpacing: '1px' }}>
+        <div className="text-uppercase text-muted small fw-bold mb-1" >
           {amenity.type}
         </div>
         <h4 className="mb-2 text-truncate" title={amenity.name}>{amenity.name}</h4>

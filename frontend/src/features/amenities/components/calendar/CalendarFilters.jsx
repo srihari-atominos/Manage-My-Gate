@@ -5,7 +5,7 @@ const CalendarFilters = memo(({ filters, updateFilters }) => {
   return (
     <CCard className="border-0 shadow-sm mb-4">
       <CCardBody className="p-3">
-        <h6 className="fw-bold mb-3 text-uppercase text-muted" style={{ letterSpacing: '1px' }}>Filters</h6>
+        <h6 className="fw-bold mb-3 text-uppercase text-muted" >Filters</h6>
         
         <div className="mb-3">
           <CFormInput 

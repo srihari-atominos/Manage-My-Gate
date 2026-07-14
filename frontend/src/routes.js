@@ -32,11 +32,23 @@ const SecurityLogsView = React.lazy(() => import('./features/amenities/views/Sec
 const AdminLedgersView = React.lazy(() => import('./features/amenities/views/AdminLedgersView'));
 const AdminMaintenanceView = React.lazy(() => import('./features/amenities/views/AdminMaintenanceView'));
 
+// Complaints Views (New)
+const ComplaintsRedirector = React.lazy(() => import('./features/complaints/views/ComplaintRedirector'));
+const ComplaintDashboard = React.lazy(() => import('./features/complaints/views/ComplaintDashboard'));
+const CreateComplaint = React.lazy(() => import('./features/complaints/views/CreateComplaint'));
+const MyComplaints = React.lazy(() => import('./features/complaints/views/MyComplaints'));
+const ComplaintManagement = React.lazy(() => import('./features/complaints/views/ComplaintManagement'));
+const StaffAndVendor = React.lazy(() => import('./features/complaints/views/StaffAndVendor'));
+const AssigneeView = React.lazy(() => import('./features/complaints/views/Assignee'));
+
 // Visitor Management Views
 const ResidentVisitorManagementView = React.lazy(() => import('./features/visitorManagement/views/ResidentVisitorManagementView'));
 const AdminVisitorManagementViews = React.lazy(() => import('./features/visitorManagement/views/AdminVisitorManagementViews'));
 const GuardVisitormanagementViews = React.lazy(() => import('./features/visitorManagement/views/GuardVisitormanagementViews'));
 const VisitorContextManager = React.lazy(() => import('./features/visitorManagement/views/VisitorContextManager'));
+
+
+
 
 /**
  * Application Routes configuration mapping paths to lazy-loaded components.
@@ -88,6 +100,15 @@ export const routes = [
   { path: '/admin/amenities', name: 'Amenity Management', element: AmenitiesMasterView, requiredPermission: 'amenities:amenities' },
   { path: '/resident/amenities', name: 'Book Amenities', element: ResidentDiscoverView, requiredPermission: 'amenities:discover' },
   { path: '/resident/amenities/book/:id', name: 'Book Amenity Form', element: ResidentBookingView, requiredPermission: 'amenities:my_booking' },
+
+  // Complaints Unified Routes
+  { path: '/complaints', name: 'Complaints & Maintenance', element: ComplaintsRedirector },
+  { path: '/admin/complaints/dashboard', name: 'Complaints Dashboard', element: ComplaintDashboard, requiredPermission: 'complaints:dashboard' },
+  { path: '/admin/complaints/create', name: 'Raise Ticket', element: CreateComplaint, requiredPermission: 'complaints:raise_ticket' },
+  { path: '/admin/complaints/my-tickets', name: 'Track Requests', element: MyComplaints, requiredPermission: 'complaints:track_requests' },
+  { path: '/admin/complaints/manage', name: 'Complaint Management', element: ComplaintManagement, requiredPermission: 'complaints:complaint_management' },
+  { path: '/admin/complaints/staff', name: 'Staff & Vendors', element: StaffAndVendor, requiredPermission: 'complaints:staff_vendors' },
+  { path: '/admin/complaints/assignee', name: 'Assignee', element: AssigneeView, requiredPermission: 'complaints:assignee' },
 ];
 
 export default routes;

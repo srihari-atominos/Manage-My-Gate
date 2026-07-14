@@ -14,9 +14,9 @@ export const initSocket = (httpServer) => {
     return io;
   }
 
-  // Parse CLIENT_URL for CORS. Defaults to frontend default port.
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  const allowedOrigins = clientUrl.split(',').map((url) => url.trim());
+  // Parse ALLOWED_ORIGINS or CLIENT_URL for CORS. Defaults to frontend default port.
+  const envOrigins = process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL || 'http://localhost:5173';
+  const allowedOrigins = envOrigins.split(',').map((url) => url.trim());
 
   logger.info(`Initializing Socket.io with allowed origins: ${allowedOrigins.join(', ')}`);
 

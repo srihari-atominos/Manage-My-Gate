@@ -69,8 +69,8 @@ const ResidentBookingView = () => {
            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
              <img src={amenity.images?.[0] || 'https://via.placeholder.com/150'} alt={amenity.name} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '12px' }} />
              <div>
-               <h4 style={{ fontSize: '24px', marginBottom: '4px' }}>{amenity.name}</h4>
-               <div style={{ color: 'var(--text-muted)', fontSize: '14px', display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '8px' }}>
+               <h4 style={{ marginBottom: '4px' }} className="fs-3">{amenity.name}</h4>
+               <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '8px' }} className="small">
                  <span><i className="fa-solid fa-location-dot" style={{ marginRight: '6px' }}></i> {amenity.location}</span>
                  {amenity.bookingRules && amenity.bookingRules.openTime && (
                    <span><i className="fa-solid fa-clock" style={{ marginRight: '6px' }}></i> {amenity.bookingRules.openTime} - {amenity.bookingRules.closeTime}</span>

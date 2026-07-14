@@ -28,8 +28,8 @@ const ScanResultCard = memo(({ result, onReset }) => {
       className={`position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white ${bgColor}`} 
       style={{ zIndex: 9999, padding: '2rem' }}
     >
-      <i className={`fa-solid ${icon} mb-4`} style={{ fontSize: '100px' }}></i>
-      <h1 className="fw-bold mb-4" style={{ fontSize: '48px', letterSpacing: '2px', textAlign: 'center' }}>{title}</h1>
+      <i className={`fs-1 fa-solid ${icon} mb-4`} ></i>
+      <h1 className="fs-1 fw-bold mb-4" style={{ textAlign: 'center' }}>{title}</h1>
       
       {isSuccess ? (
         <div className="bg-white text-dark rounded-4 p-4 shadow-lg text-center" style={{ width: '100%', maxWidth: '400px' }}>
@@ -69,7 +69,7 @@ const ScanResultCard = memo(({ result, onReset }) => {
         <div className="bg-white text-dark rounded-4 p-4 shadow-lg text-center" style={{ width: '100%', maxWidth: '450px', borderTop: '8px solid #dc3545' }}>
           <div className="mb-4 mt-2">
             <div className="rounded-circle bg-danger bg-opacity-10 d-inline-flex align-items-center justify-content-center p-4 mb-3">
-              <i className="fa-solid fa-triangle-exclamation text-danger" style={{ fontSize: '48px' }}></i>
+              <i className="fs-1 fa-solid fa-triangle-exclamation text-danger" ></i>
             </div>
             <h3 className="fw-bold text-danger mb-2">Scan Rejected</h3>
             <p className="text-muted mb-0">The booking could not be validated</p>

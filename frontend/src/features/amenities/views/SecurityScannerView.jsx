@@ -25,7 +25,7 @@ const SecurityScannerView = () => {
       <div className="view-container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h1 style={{ fontSize: '32px', margin: 0 }}>Security Scanner</h1>
+            <h1 style={{ margin: 0 }} className="fs-1">Security Scanner</h1>
             <p className="text-muted mt-1 mb-0">Validate resident bookings for amenity access</p>
           </div>
         </div>
@@ -40,7 +40,7 @@ const SecurityScannerView = () => {
               {/* Left Panel: Scanner */}
               <div className="col-lg-6">
                 <div className="card h-100 p-4 border-0 shadow-sm">
-                  <h5 className="mb-3" style={{ fontWeight: '600' }}>Scanner</h5>
+                  <h5 className="fw-semibold mb-3" >Scanner</h5>
                   <div className="bg-light p-3 rounded mb-4 text-center">
                     {loading ? (
                       <ScannerLoading />
@@ -48,7 +48,7 @@ const SecurityScannerView = () => {
                       <ScannerCamera onScan={handleScan} />
                     )}
                   </div>
-                  <h6 className="mb-2" style={{ fontWeight: '600' }}>Manual Entry</h6>
+                  <h6 className="fw-semibold mb-2" >Manual Entry</h6>
                   <ScannerFallback onSubmit={handleManualEntry} />
                 </div>
               </div>
@@ -56,7 +56,7 @@ const SecurityScannerView = () => {
               {/* Right Panel: Last Scan Details (using the top of recentScans or null if none) */}
               <div className="col-lg-6">
                 <div className="card h-100 p-4 border-0 shadow-sm bg-light">
-                  <h5 className="mb-3" style={{ fontWeight: '600' }}>Last Scan Details</h5>
+                  <h5 className="fw-semibold mb-3" >Last Scan Details</h5>
                   {recentScans && recentScans.length > 0 ? (
                     <div className="last-scan-details">
                       <div className="d-flex align-items-center gap-3 mb-4 p-3 bg-white rounded border">
@@ -104,7 +104,7 @@ const SecurityScannerView = () => {
             {/* Bottom Panel: Recent Scan History */}
             <div className="card border-0 shadow-sm">
               <div className="card-body p-4">
-                <h5 className="mb-4" style={{ fontWeight: '600' }}>Recent Scan History</h5>
+                <h5 className="fw-semibold mb-4" >Recent Scan History</h5>
                 <div className="table-responsive">
                   <table className="table align-middle">
                     <thead className="table-light">

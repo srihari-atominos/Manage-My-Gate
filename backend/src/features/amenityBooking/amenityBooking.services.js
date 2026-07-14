@@ -110,7 +110,7 @@ export class AmenityBookingService {
     }
 
     // 8, 10 & 11. Overlapping Slot, Buffer Time, and Capacity Validation
-    const conflicts = await amenityBookingRepository.findConflicts(amenityId, bookingDate, startTime, endTime);
+    const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime);
     if (conflicts.length >= amenity.capacity) {
       throw new HttpError(400, 'The amenity is at full capacity for the selected time slot.');
     }
@@ -212,7 +212,7 @@ export class AmenityBookingService {
     const bookingDateTimeEnd = new Date(`${bookingDate}T${endTime}`);
     
     // Amenity availability check
-    const conflicts = await amenityBookingRepository.findConflicts(amenityId, bookingDate, startTime, endTime);
+    const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime);
     if (conflicts.length >= amenity.capacity) {
       throw new HttpError(400, 'The amenity is at full capacity for the selected time slot.');
     }
@@ -560,6 +560,9 @@ export class AmenityBookingService {
     updated.checkInTime = new Date();
     updated.checkedInBy = userId; // Log who scanned it (Security Guard)
     await updated.save();
+    
+    // Populate checkedInBy so frontend can display the guard's name
+    await updated.populate('checkedInBy', 'name');
 
     amenityBookingEventEmitter.emit(AMENITY_BOOKING_CHECKED_IN, updated);
     

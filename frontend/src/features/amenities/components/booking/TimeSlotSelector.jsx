@@ -115,7 +115,7 @@ const TimeSlotSelector = memo(({ draft, availableSlots = [], slotsLoading, updat
                         <div className="position-absolute bg-primary rounded-circle" style={{ width: '20px', height: '20px', top: '-8px', right: '-8px', border: '3px solid white' }}></div>
                       )}
                       
-                      <div className="fw-bolder fs-3 text-dark mb-1" style={{ letterSpacing: '-0.5px' }}>{slot.startTime}</div>
+                      <div className="fw-bolder fs-3 text-dark mb-1" >{slot.startTime}</div>
                       <div className="d-flex align-items-center mb-3">
                         <span className="text-secondary fw-semibold me-2">{slot.endTime}</span>
                         <span className="text-black-50 small">{slot.duration || '60'}m</span>

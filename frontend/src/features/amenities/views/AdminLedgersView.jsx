@@ -23,7 +23,7 @@ const AdminLedgersView = () => {
     switch (status) {
       case 'confirmed': return <span className="badge badge-success" style={{ textTransform: 'capitalize' }}><i className="fa-solid fa-check-circle"></i> Confirmed</span>;
       case 'pending': return <span className="badge badge-warning" style={{ textTransform: 'capitalize' }}><i className="fa-solid fa-clock"></i> Pending</span>;
-      case 'cancelled': return <span className="badge badge-danger" style={{ textTransform: 'capitalize' }}><i className="fa-solid fa-times-circle"></i> Cancelled</span>;
+      case 'cancelled': return <span className="badge" style={{ textTransform: 'capitalize', background: '#fee2e2', color: '#ef4444' }}><i className="fa-solid fa-times-circle"></i> Cancelled</span>;
       case 'checked-in': return <span className="badge badge-info" style={{ textTransform: 'capitalize' }}><i className="fa-solid fa-sign-in-alt"></i> Checked In</span>;
       case 'completed': return <span className="badge badge-secondary" style={{ textTransform: 'capitalize' }}><i className="fa-solid fa-flag-checkered"></i> Completed</span>;
       default: return <span className="badge badge-secondary" style={{ textTransform: 'capitalize' }}>{status}</span>;
@@ -38,15 +38,15 @@ const AdminLedgersView = () => {
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '32px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 style={{ fontSize: '24px', marginBottom: '8px' }}>Booking Master Ledger</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: '500' }}>Bookings are auto-confirmed via payment gateway. No manual approval required.</p>
+                <h3 style={{ marginBottom: '8px' }} className="fs-3">Booking Master Ledger</h3>
+                <p style={{ color: 'var(--text-muted)' }} className="fw-medium small">Bookings are auto-confirmed via payment gateway. No manual approval required.</p>
               </div>
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                 <div className="search-bar-app" style={{ margin: 0, padding: '8px 16px', boxShadow: 'none', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)', borderRadius: '24px', backgroundColor: 'var(--bg-light)' }}>
-                  <i className="fa-solid fa-magnifying-glass" style={{ fontSize: '14px', color: 'var(--text-muted)' }}></i>
+                  <i className="small fa-solid fa-magnifying-glass" style={{ color: 'var(--text-muted)' }}></i>
                   <input type="text" id="booking-search" placeholder="Search ID..." value={search} onChange={handleSearchChange} style={{ width: '150px', border: 'none', outline: 'none', backgroundColor: 'transparent' }} />
                 </div>
-                <button className="btn btn-primary" onClick={handleExport} style={{ borderRadius: '24px', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+                <button className="fw-semibold btn btn-primary" onClick={handleExport} style={{ borderRadius: '24px', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <i className="fa-solid fa-download"></i> Export
                 </button>
               </div>
@@ -61,7 +61,6 @@ const AdminLedgersView = () => {
                     <th>AMENITY & SLOT</th>
                     <th>FINANCIALS</th>
                     <th>STATUS</th>
-                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -72,32 +71,26 @@ const AdminLedgersView = () => {
                   ) : (
                     bookings.map(b => (
                       <tr key={b._id} data-status={b.status}>
-                        <td style={{ fontWeight: '800', color: 'var(--primary)' }}>#{b.bookingId || b._id.substring(b._id.length - 4).toUpperCase()}</td>
+                        <td style={{ color: 'var(--primary)' }} className="fw-bold">#{b.bookingId || b._id.substring(b._id.length - 4).toUpperCase()}</td>
                         <td>
-                          <div style={{ fontWeight: '700', fontSize: '15px' }}>{b.userId?.name || 'Unknown Resident'}</div>
-                          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>
+                          <div  className="fw-bold">{b.userId?.name || 'Unknown Resident'}</div>
+                          <div style={{ color: 'var(--text-muted)' }} className="fw-medium small">
                             {b.userId?.flatNumber ? `Flat ${b.userId.flatNumber}` : ''}{b.userId?.building ? `, ${b.userId.building}` : ''}
                           </div>
                         </td>
                         <td>
-                          <div style={{ fontWeight: '700', fontSize: '15px' }}>{b.amenityId?.name || 'Unknown Amenity'}</div>
-                          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>
+                          <div  className="fw-bold">{b.amenityId?.name || 'Unknown Amenity'}</div>
+                          <div style={{ color: 'var(--text-muted)' }} className="fw-medium small">
                             {b.bookingDate ? new Date(b.bookingDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) : ''} • {b.startTime} - {b.endTime}
                           </div>
                         </td>
                         <td>
-                          <div style={{ fontWeight: '700', fontSize: '15px' }}>₹{b.pricingDetails?.totalAmount || b.totalPrice || 0}</div>
-                          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>
+                          <div  className="fw-bold">₹{b.pricingDetails?.totalAmount || b.totalPrice || 0}</div>
+                          <div style={{ color: 'var(--text-muted)' }} className="fw-medium small">
                             {b.paymentStatus === 'success' || b.paymentStatus === 'completed' || b.paymentStatus === 'paid' ? 'Paid' : (b.paymentStatus || 'Pending')}
                           </div>
                         </td>
                         <td>{getStatusBadge(b.status)}</td>
-                        <td>
-                          <button className="btn btn-outline" style={{ padding: '8px 16px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-light)' }}>
-                             {/* Empty circle outline matching mockup */}
-                             <span style={{ display: 'inline-block', width: '24px', height: '12px' }}></span>
-                          </button>
-                        </td>
                       </tr>
                     ))
                   )}

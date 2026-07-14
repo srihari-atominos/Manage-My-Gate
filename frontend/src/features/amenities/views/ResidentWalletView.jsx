@@ -55,7 +55,7 @@ const ResidentWalletView = () => {
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div>
-            <h1 style={{ fontSize: '28px', margin: 0 }}>My Wallet</h1>
+            <h1 style={{ margin: 0 }} className="fs-2">My Wallet</h1>
             <p className="text-muted mt-1 mb-0">Balance: <span className="fw-bold">₹{balance?.toFixed(2) || '0.00'}</span></p>
           </div>
           <div>
@@ -110,7 +110,7 @@ const ResidentWalletView = () => {
           </CCard>
         )}
 
-        <h4 style={{ marginBottom: '16px', fontSize: '18px' }}>Active Access Passes</h4>
+        <h4 style={{ marginBottom: '16px' }} className="fs-5">Active Access Passes</h4>
         
         {loading && activePasses.length === 0 ? (
           <CCard className="mb-4 border-0 shadow-sm"><CCardBody><WalletLoading /></CCardBody></CCard>
@@ -130,7 +130,7 @@ const ResidentWalletView = () => {
           </CRow>
         )}
 
-        <h4 style={{ marginBottom: '16px', fontSize: '18px', marginTop: '24px' }}>Transaction History</h4>
+        <h4 style={{ marginBottom: '16px', marginTop: '24px' }} className="fs-5">Transaction History</h4>
         <TransactionHistory transactions={transactionHistory} loading={loading} />
 
       </div>

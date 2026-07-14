@@ -74,7 +74,7 @@ const MaintenanceFormModal = ({ visible, onClose, onSave, amenities = [], initia
     <div className="modal-overlay active amenity-os-theme" onClick={handleClose}>
       <div className="modal-box" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h4 style={{ fontSize: '20px', margin: 0 }}>{initialData ? 'Edit Maintenance Task' : 'Schedule Maintenance'}</h4>
+          <h4 style={{ margin: 0 }} className="fs-4">{initialData ? 'Edit Maintenance Task' : 'Schedule Maintenance'}</h4>
           <button type="button" className="modal-close" onClick={handleClose}>
             <i className="fa-solid fa-xmark"></i>
           </button>

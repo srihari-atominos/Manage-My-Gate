@@ -60,11 +60,11 @@ const CancelBookingModal = ({ visible, onClose, onConfirm, booking, isSubmitting
   return (
     <CModal visible={visible} onClose={onClose} alignment="center" backdrop="static" className="amenity-os-theme">
       <CModalHeader closeButton>
-        <CModalTitle style={{ fontSize: '18px', fontWeight: '600' }}>Cancel Booking</CModalTitle>
+        <CModalTitle  className="fw-semibold fs-5">Cancel Booking</CModalTitle>
       </CModalHeader>
       <CModalBody>
         <div className="mb-4 bg-light p-3 rounded border">
-          <h6 className="mb-2" style={{ fontWeight: '600' }}>Booking Details</h6>
+          <h6 className="fw-semibold mb-2" >Booking Details</h6>
           <div className="d-flex justify-content-between mb-1">
             <span className="text-muted">Amenity:</span>
             <span className="fw-medium">{booking.amenityName || booking.amenityId?.name}</span>
@@ -85,7 +85,7 @@ const CancelBookingModal = ({ visible, onClose, onConfirm, booking, isSubmitting
 
         {refundCalculation.showCalculation ? (
           <div className="mb-4">
-            <h6 className="mb-2" style={{ fontWeight: '600' }}>Estimated Refund</h6>
+            <h6 className="fw-semibold mb-2" >Estimated Refund</h6>
             <div className="p-3 rounded border" style={{ backgroundColor: refundCalculation.percentage === 0 ? '#fff3cd' : '#d1e7dd', borderColor: refundCalculation.percentage === 0 ? '#ffecb5' : '#badbcc' }}>
               <div className="d-flex justify-content-between mb-1">
                 <span style={{ color: refundCalculation.percentage === 0 ? '#664d03' : '#0f5132' }}>Refund Percentage:</span>

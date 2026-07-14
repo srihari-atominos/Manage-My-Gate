@@ -62,6 +62,7 @@ app.use(responseHandler);
 
 // Static public folder
 app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mount API routes at /api
 app.use('/api', apiRouter);

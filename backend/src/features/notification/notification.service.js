@@ -158,7 +158,7 @@ export class NotificationService {
         senderId: isSystem ? null : dummySenderId,
         title: `Dev Seed - Notification #${i}`,
         body: `This is test notification #${i} with type ${type}. Used to verify pagination scrolling and live sockets.`,
-        actionUrl: hasActionUrl ? `#/dashboard?ref=seed-${i}` : null,
+        actionUrl: hasActionUrl ? `/dashboard` : null,
         type,
         isRead,
         readAt: isRead ? new Date() : null,

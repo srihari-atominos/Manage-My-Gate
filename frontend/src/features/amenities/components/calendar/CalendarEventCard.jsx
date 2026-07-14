@@ -21,7 +21,7 @@ const CalendarEventCard = memo(({ event, onClick, isCompact = false }) => {
     return (
       <div 
         className={`p-1 mb-1 border rounded shadow-sm cursor-pointer d-flex align-items-center ${colorClass}`}
-        style={{ fontSize: '0.75rem', lineHeight: 1.2, overflow: 'hidden', whiteSpace: 'nowrap' }}
+        style={{ lineHeight: 1.2, overflow: 'hidden', whiteSpace: 'nowrap' }}
         onClick={() => onClick(event)}
         title={`${event.title} - ${event.subtitle} (${event.start} - ${event.end})`}
         role="button"

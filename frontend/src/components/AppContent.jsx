@@ -22,6 +22,7 @@ import React, { Suspense } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { CContainer, CSpinner } from '@coreui/react'
+import { useAuth } from '../features/auth/hooks/useAuth'
 import AuthGuard from '../features/auth/components/AuthGuard'
 import Page403 from '../views/pages/page403/Page403'
 
@@ -43,8 +44,8 @@ import { routes } from '../routes'
 const AppContent = () => {
   const location = useLocation()
   const activeWorkspace = useSelector((state) => state.workspace)
-  const allowedFeatures = activeWorkspace?.allowedFeatures || []
   const isPlatform = activeWorkspace?.isPlatform || false
+  const { checkPermission } = useAuth()
 
   return (
     <CContainer className="px-4" lg>
@@ -65,7 +66,7 @@ const AppContent = () => {
               )
             }
 
-            if (route.requiredPermission && !isPlatform && !allowedFeatures.includes(route.requiredPermission)) {
+            if (route.requiredPermission && !isPlatform && !checkPermission(route.requiredPermission)) {
               return (
                 <Route
                   key={idx}

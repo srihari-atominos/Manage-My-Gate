@@ -54,7 +54,7 @@ const AdminCalendarView = () => {
       <div className="view-container">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
           <div>
-            <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>Admin Calendar</h1>
+            <h1 style={{ marginBottom: '8px' }} className="fs-1">Admin Calendar</h1>
             <p style={{ color: 'var(--text-muted)' }}>Manage and view all amenity bookings</p>
           </div>
         </div>

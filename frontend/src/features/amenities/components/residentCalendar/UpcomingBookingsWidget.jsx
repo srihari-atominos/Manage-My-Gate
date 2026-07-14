@@ -21,7 +21,7 @@ const UpcomingBookingsWidget = memo(({ upcomingEvents, onEventClick }) => {
     <CCard className="border-0 shadow-sm mb-4">
       <CCardBody className="p-0">
         <div className="p-3 border-bottom bg-light">
-          <h6 className="fw-bold mb-0 text-uppercase text-muted" style={{ letterSpacing: '1px' }}>Upcoming Bookings</h6>
+          <h6 className="fw-bold mb-0 text-uppercase text-muted" >Upcoming Bookings</h6>
         </div>
         <div>
           {displayEvents.map((event, index) => (

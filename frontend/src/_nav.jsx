@@ -14,6 +14,7 @@ import {
   cilSettings,
   cilWallet,
   cilSearch,
+  cilWarning,
 } from '@coreui/icons';
 import { CNavItem, CNavTitle, CNavGroup } from '@coreui/react';
 
@@ -91,6 +92,20 @@ const _nav = [
     to: '/notices',
     icon: <CIcon icon={cilList} customClassName="nav-icon" />,
     requiredPermission: 'notices:read',
+  },
+  {
+    component: CNavItem,
+    name: 'Complaints / Maintenance',
+    to: '/complaints',
+    icon: <CIcon icon={cilWarning} customClassName="nav-icon" />,
+    requiredPermission: [
+      'complaints:dashboard',
+      'complaints:raise_ticket',
+      'complaints:track_requests',
+      'complaints:complaint_management',
+      'complaints:staff_vendors',
+      'complaints:assignee'
+    ],
   },
   {
     component: CNavItem,

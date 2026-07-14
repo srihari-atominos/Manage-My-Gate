@@ -20,7 +20,7 @@ const AmenityCardVertical = ({ image, title, location, rate, rating, onClick }) 
         <div className="app-card-v-bottom">
           <span className="app-card-v-price">
             ₹{rate}
-            <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-muted)' }}>/hr</span>
+            <span style={{ color: 'var(--text-muted)' }} className="fw-medium small">/hr</span>
           </span>
         </div>
       </div>

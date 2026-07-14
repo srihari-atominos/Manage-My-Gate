@@ -2,8 +2,9 @@ import AmenityBooking from './amenityBooking.model.js';
 import mongoose from 'mongoose';
 
 export class AmenityBookingRepository {
-  async findConflicts(amenityId, date, startTime, endTime) {
+  async findConflicts(orgId, amenityId, date, startTime, endTime) {
     return await AmenityBooking.find({
+      orgId,
       amenityId,
       bookingDate: date,
       status: { $in: ['pending', 'approved', 'confirmed', 'checked-in'] },

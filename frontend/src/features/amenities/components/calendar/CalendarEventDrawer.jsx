@@ -54,7 +54,7 @@ const CalendarEventDrawer = memo(({ visible, onClose, event }) => {
 
         <hr />
         
-        <h6 className="fw-bold text-muted text-uppercase mt-4 mb-3" style={{ letterSpacing: '1px' }}>Check-in Status</h6>
+        <h6 className="fw-bold text-muted text-uppercase mt-4 mb-3" >Check-in Status</h6>
         <div className="mb-4">
           {event.checkInStatus === 'entered' ? (
             <div>

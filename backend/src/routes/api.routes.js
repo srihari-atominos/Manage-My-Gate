@@ -23,6 +23,11 @@ import visitorLogRouter from '../features/visitorLog/visitorLog.router.js';
 import blacklistRouter from '../features/blacklist/blacklist.router.js';
 import noticeBoardRouter from '../features/noticeBoard/noticeBoard.routes.js';
 
+// Complaint and Technician routes
+import complaintRouter from '../features/complaint/complaint.router.js';
+import complaintSettingsRouter from '../features/complaintSettings/complaintSettings.router.js';
+import technicianRouter from '../features/technician/technician.router.js';
+
 const router = Router();
 
 // Mount feature routers here
@@ -46,6 +51,12 @@ router.use('/payments', paymentRouter);
 router.use('/amenity-dashboard', amenityDashboardRouter);
 router.use('/wallet', walletRouter);
 router.use('/security-logs', securityLogRouter);
+
+// Complaint and Technician routes (resolved merge conflict)
+router.use('/complaints/settings', complaintSettingsRouter);
+router.use('/complaints', complaintRouter);
+router.use('/technicians', technicianRouter);
+
 router.use('/visitor-pass', visitorPassRouter);
 router.use('/visitor-log', visitorLogRouter);
 router.use('/blacklist', blacklistRouter);

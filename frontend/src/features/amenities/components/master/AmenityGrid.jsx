@@ -24,13 +24,13 @@ const AmenityGrid = memo(({ amenities, canManage, canUpdate, canDelete, onEdit, 
             ></div>
             <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', gap: '8px' }}>
-                <h4 style={{ fontSize: '18px', margin: 0, lineHeight: 1.3 }}>{item.name}</h4>
+                <h4 style={{ margin: 0, lineHeight: 1.3 }} className="fs-5">{item.name}</h4>
                 <span className={`badge ${(item.currentStatus === 'Under Maintenance' || item.status === 'maintenance') ? 'badge-warning' : item.status === 'active' ? 'badge-success' : 'badge-secondary'}`} style={{ flexShrink: 0 }}>
                   {(item.currentStatus === 'Under Maintenance' || item.status === 'maintenance') ? 'Maintenance' : item.status === 'active' ? 'Active' : 'Inactive'}
                 </span>
               </div>
               
-              <div style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '16px', lineHeight: 1.8, fontWeight: '500', flex: 1 }}>
+              <div style={{ color: 'var(--text-muted)', marginBottom: '16px', lineHeight: 1.8, flex: 1 }} className="fw-medium small">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <i className="fa-solid fa-location-dot" style={{ color: 'var(--primary)', width: '14px', textAlign: 'center' }}></i> 
                   <span>{item.location || 'No location specified'}</span>
@@ -47,20 +47,20 @@ const AmenityGrid = memo(({ amenities, canManage, canUpdate, canDelete, onEdit, 
               
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button 
-                  className="btn btn-outline" 
-                  style={{ flex: 1, padding: '10px 16px', fontSize: '13px' }} 
+                  className="small btn btn-outline" 
+                  style={{ flex: 1, padding: '10px 16px' }} 
                   onClick={() => onEdit(item)}
                   disabled={!canUpdate}
                 >
-                  <i className="fa-solid fa-pen-to-square" style={{ fontSize: '12px' }}></i> Edit
+                  <i className="small fa-solid fa-pen-to-square" ></i> Edit
                 </button>
                 <button 
-                  className="btn btn-outline" 
-                  style={{ flex: 1, padding: '10px 16px', fontSize: '13px' }} 
+                  className="small btn btn-outline" 
+                  style={{ flex: 1, padding: '10px 16px' }} 
                   onClick={() => onToggleStatus(item)}
                   disabled={!(canDelete ?? canManage)}
                 >
-                  <i className={`fa-solid ${item.status === 'active' ? 'fa-ban' : 'fa-check'}`} style={{ fontSize: '12px' }}></i> {item.status === 'active' ? 'Deactivate' : 'Activate'}
+                  <i className={`small fa-solid ${item.status === 'active' ? 'fa-ban' : 'fa-check'}`} ></i> {item.status === 'active' ? 'Deactivate' : 'Activate'}
                 </button>
               </div>
             </div>

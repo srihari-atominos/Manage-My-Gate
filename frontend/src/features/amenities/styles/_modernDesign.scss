@@ -37,14 +37,14 @@
   --glass-blur: blur(12px);
 
   /* RESET & TYPOGRAPHY inside theme */
-  font-family: 'Inter', sans-serif;
+  
   color: var(--text-main);
   background-color: var(--surface-bg);
   line-height: 1.5;
 
   * {
     box-sizing: border-box;
-    font-family: 'Inter', sans-serif;
+    
   }
 
   h1, h2, h3, h4, h5, h6 { font-weight: 700; color: var(--text-main); letter-spacing: -0.02em; margin-top: 0; }

@@ -8,12 +8,12 @@ export const useWorkspaceSwitcher = () => {
   const dispatch = useDispatch();
 
   const availableWorkspaces = useSelector((state) => state.workspace.availableWorkspaces);
-  const activeWorkspace = useSelector((state) => ({
-    orgId: state.workspace.activeOrganizationId,
-    role: state.workspace.activeRole,
-    isPlatform: state.workspace.isPlatform,
-    name: state.workspace.organizationName,
-  }));
+  const orgId = useSelector((state) => state.workspace.activeOrganizationId);
+  const role = useSelector((state) => state.workspace.activeRole);
+  const isPlatform = useSelector((state) => state.workspace.isPlatform);
+  const name = useSelector((state) => state.workspace.organizationName);
+
+  const activeWorkspace = { orgId, role, isPlatform, name };
 
   const handleSwitchWorkspace = async (targetOrgId) => {
     try {

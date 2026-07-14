@@ -87,7 +87,7 @@ const DateDetailsPanel = memo(({
 
         {/* ── Section 2: Book an Amenity ── */}
         <div className="ddp-card">
-          <div className="ddp-card__title" style={{ color: '#0F172A', fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>
+          <div className="fw-bold fs-5 ddp-card__title" style={{ color: '#0F172A', marginBottom: '16px' }}>
             Available Slots
           </div>
 
@@ -136,13 +136,11 @@ const DateDetailsPanel = memo(({
                         <div
                           key={`slot-${i}`}
                           className={`ddp-slot-card ${cardClass}`}
-                          style={{
-                            borderLeftColor: isSelected ? '#0084FF' : cfg.color,
+                          style={{ borderLeftColor: isSelected ? '#0084FF' : cfg.color,
                             '--slot-bg-hover': cfg.bg,
                             background: isSelected ? '#F0F9FF' : '#ffffff',
                             borderColor: isSelected ? '#0084FF' : '#E2E8F0',
-                            opacity: (!isAvailable && !slot.bookedByMe) ? 0.6 : 1
-                          }}
+                            opacity: (!isAvailable && !slot.bookedByMe) ? 0.6 : 1 }}
                           onClick={() => {
                             if (isAvailable) {
                               onSlotSelect(slot);
@@ -151,7 +149,7 @@ const DateDetailsPanel = memo(({
                           title={isAvailable ? `Book ${slot.startTime} – ${slot.endTime}` : cfg.label}
                         >
                           {isSelected && (
-                            <div style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#0084FF', color: 'white', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', boxShadow: '0 2px 4px rgba(0,132,255,0.3)' }}>
+                            <div style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#0084FF', color: 'white', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,132,255,0.3)' }} className="small">
                               <i className="fa-solid fa-check"></i>
                             </div>
                           )}
@@ -162,10 +160,8 @@ const DateDetailsPanel = memo(({
                           </div>
                           <div
                             className="ddp-slot-badge"
-                            style={{ 
-                              background: isSelected ? '#0084FF' : cfg.bg, 
-                              color: isSelected ? '#ffffff' : cfg.color 
-                            }}
+                            style={{ background: isSelected ? '#0084FF' : cfg.bg, 
+                              color: isSelected ? '#ffffff' : cfg.color }}
                           >
                             {!isSelected && <span className="ddp-badge-dot" style={{ background: cfg.color }}></span>}
                             {isSelected ? 'Selected' : cfg.label}
@@ -183,10 +179,10 @@ const DateDetailsPanel = memo(({
                           <React.Fragment key={`row-${i}`}>
                             {slotCard}
                             <div className="ddp-card shadow-sm mt-1 mb-2" style={{ gridColumn: '1 / -1', background: '#F8FAFC', border: '1px solid #0084FF', padding: '16px', animation: 'fadeIn 0.3s ease-out' }}>
-                              <div className="ddp-card__title" style={{ fontSize: '16px', marginBottom: '12px' }}>
+                              <div className="fs-6 ddp-card__title" style={{ marginBottom: '12px' }}>
                                 Booking Summary
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }} className="small">
                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                   <span style={{ color: '#64748B' }}>Amenity</span>
                                   <strong style={{ color: '#0F172A' }}>{selectedAmenity.name}</strong>
@@ -205,7 +201,7 @@ const DateDetailsPanel = memo(({
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '8px', marginTop: '4px' }}>
                                   <span style={{ color: '#64748B' }}>Booking Amount</span>
-                                  <strong style={{ color: '#0F172A', fontSize: '16px' }}>
+                                  <strong style={{ color: '#0F172A' }} className="fs-6">
                                     {selectedSlot.price > 0 ? `₹${selectedSlot.price}` : 'Free'}
                                   </strong>
                                 </div>
@@ -215,8 +211,8 @@ const DateDetailsPanel = memo(({
                                 </div>
                               </div>
                               <button 
-                                className="btn btn-primary w-100 mt-3" 
-                                style={{ fontWeight: 600, padding: '10px' }}
+                                className="fw-semibold btn btn-primary w-100 mt-3" 
+                                style={{ padding: '10px' }}
                                 onClick={onBookNow}
                               >
                                 Book Now
@@ -232,9 +228,9 @@ const DateDetailsPanel = memo(({
                 </>
               ) : (
                 <div className="ddp-empty-text" style={{ textAlign: 'center', padding: '24px 0' }}>
-                  <i className="fa-regular fa-calendar-xmark" style={{ fontSize: '28px', marginBottom: '8px', display: 'block', color: '#CBD5E1' }}></i>
-                  <div style={{ color: '#0F172A', fontWeight: 600, marginBottom: '4px' }}>No available slots for this date.</div>
-                  <div style={{ fontSize: '13px' }}>Please select another date or amenity.</div>
+                  <i className="fs-2 fa-regular fa-calendar-xmark" style={{ marginBottom: '8px', display: 'block', color: '#CBD5E1' }}></i>
+                  <div style={{ color: '#0F172A', marginBottom: '4px' }} className="fw-semibold">No available slots for this date.</div>
+                  <div  className="small">Please select another date or amenity.</div>
                 </div>
               )}
             </>

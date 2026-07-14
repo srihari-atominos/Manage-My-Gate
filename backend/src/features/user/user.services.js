@@ -274,7 +274,9 @@ export class UserService {
   }
 
   async activateUser(id, hashedPassword, session) {
-    return await userRepository.update(id, { password: hashedPassword, status: 'Active' }, session);
+    const updatedUser = await userRepository.update(id, { password: hashedPassword, status: 'Active' }, session);
+    userEvents.emit('USER_ACTIVATED', { userId: id, session });
+    return updatedUser;
   }
 
   async updateProfile(id, { name, phone, avatarFilename }) {

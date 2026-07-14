@@ -20,7 +20,7 @@ const AmenityTable = memo(({ amenities, canManage, canUpdate, canDelete, onEdit,
         <tbody>
           {amenities.map(row => (
             <tr key={row._id}>
-              <td><span style={{ fontWeight: 600 }}>{row.name}</span></td>
+              <td><span  className="fw-semibold">{row.name}</span></td>
               <td>{row.type}</td>
               <td>{row.location}</td>
               <td>{row.capacity || 'N/A'}</td>

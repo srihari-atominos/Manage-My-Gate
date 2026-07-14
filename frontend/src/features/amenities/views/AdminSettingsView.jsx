@@ -83,8 +83,8 @@ const AdminSettingsView = () => {
         <div className="view active" id="view-admin-settings">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
             <div>
-              <h2 style={{ fontSize: '28px', margin: 0 }}>Amenity Settings</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Configure global rules, payments, and workflows for your community.</p>
+              <h2 style={{ margin: 0 }} className="fs-2">Amenity Settings</h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }} className="fw-medium">Configure global rules, payments, and workflows for your community.</p>
             </div>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
               {saving ? <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> : <i className="fa-solid fa-save" style={{ marginRight: '8px' }}></i>}
@@ -95,7 +95,7 @@ const AdminSettingsView = () => {
           <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))' }}>
             
             <div className="card card-hover">
-              <h3 style={{ fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center' }}>
+              <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center' }} className="fs-5">
                 <i className="fa-solid fa-credit-card" style={{ color: 'var(--primary)', marginRight: '8px' }}></i> Payment Configuration
               </h3>
               <div className="form-group">
@@ -138,7 +138,7 @@ const AdminSettingsView = () => {
             </div>
 
             <div className="card card-hover" style={{ borderTop: '4px solid var(--info)' }}>
-              <h3 style={{ fontSize: '18px', marginBottom: '24px' }}>
+              <h3 style={{ marginBottom: '24px' }} className="fs-5">
                 <i className="fa-solid fa-file-contract" style={{ color: 'var(--info)', marginRight: '8px' }}></i> Booking Policies & Refunds
               </h3>
               <div className="form-group">
@@ -168,7 +168,7 @@ const AdminSettingsView = () => {
                   checked={settings.bookingRules.autoConfirmation}
                   onChange={(e) => handleChange('bookingRules', 'autoConfirmation', e.target.checked)}
                 />
-                <label style={{ fontSize: '14px', color: 'var(--text-main)', fontWeight: '500', marginBottom: 0 }}>Enable auto confirmation</label>
+                <label style={{ color: 'var(--text-main)', marginBottom: 0 }} className="fw-medium small">Enable auto confirmation</label>
               </div>
               <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'center' }}>
                 <input 
@@ -177,7 +177,7 @@ const AdminSettingsView = () => {
                   checked={settings.bookingRules.approvalRequired}
                   onChange={(e) => handleChange('bookingRules', 'approvalRequired', e.target.checked)}
                 />
-                <label style={{ fontSize: '14px', color: 'var(--text-main)', fontWeight: '500', marginBottom: 0 }}>Approval Required</label>
+                <label style={{ color: 'var(--text-main)', marginBottom: 0 }} className="fw-medium small">Approval Required</label>
               </div>
             </div>
 

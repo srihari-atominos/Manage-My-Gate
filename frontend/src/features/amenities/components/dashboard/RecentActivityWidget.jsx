@@ -44,7 +44,7 @@ const RecentActivityWidget = () => {
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h3 style={{ margin: 0 }}>Live Activity Log</h3>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600', color: 'var(--success)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--success)' }} className="fw-semibold small">
           <span style={{ width: '8px', height: '8px', background: 'var(--success)', borderRadius: '50%', boxShadow: '0 0 8px var(--success)' }}></span> 
           LIVE
         </span>
@@ -56,12 +56,12 @@ const RecentActivityWidget = () => {
             const { icon, bg, color } = getIconAndColor(item);
             return (
               <div key={item.id || index} style={{ display: 'flex', gap: '16px', alignItems: 'center', paddingBottom: index !== recentActivity.length - 1 ? '20px' : '8px', borderBottom: index !== recentActivity.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: bg, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: bg, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="fs-4">
                   <i className={icon}></i>
                 </div>
                 <div>
-                  <div style={{ fontWeight: '700', fontSize: '15px' }}>{item.title}</div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>
+                  <div  className="fw-bold">{item.title}</div>
+                  <div style={{ color: 'var(--text-muted)' }} className="fw-medium small">
                     {item.subtitle} • {timeAgo(item.timestamp)}
                   </div>
                 </div>

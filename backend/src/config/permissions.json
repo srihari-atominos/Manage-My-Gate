@@ -1,71 +1,34 @@
 [
   {
     "feature": "users",
-    "actions": [
-      "create",
-      "read",
-      "update",
-      "delete"
-    ]
+    "actions": ["create", "read", "update", "delete"]
   },
   {
     "feature": "roles",
-    "actions": [
-      "create",
-      "read",
-      "update",
-      "delete"
-    ]
+    "actions": ["create", "read", "update", "delete"]
   },
   {
     "feature": "integrations",
-    "actions": [
-      "create",
-      "read",
-      "update",
-      "delete"
-    ]
+    "actions": ["create", "read", "update", "delete"]
   },
   {
     "feature": "villas",
-    "actions": [
-      "create",
-      "read",
-      "update",
-      "delete"
-    ]
+    "actions": ["create", "read", "update", "delete"]
   },
   {
     "feature": "amenities",
-    "actions": [
-      "dashboard",
-      "admin_calander",
-      "ledgers",
-      "amenities",
-      "maintenance",
-      "settings",
-      "discover",
-      "my_booking",
-      "wallet",
-      "scanner",
-      "security_logs"
-    ]
+    "actions": ["dashboard", "admin_calander", "ledgers", "amenities", "maintenance", "settings", "discover", "my_booking", "wallet", "scanner", "security_logs"]
+  },
+  {
+    "feature": "complaints",
+    "actions": ["view", "create", "update", "delete", "assign", "dashboard", "reports", "calendar", "settings", "comments", "timeline", "export", "analytics", "staff"]
   },
   {
     "feature": "visitor",
-    "actions": [
-      "resident",
-      "guard",
-      "admin"
-    ]
+    "actions": ["resident", "guard", "admin"]
   },
   {
     "feature": "notices",
-    "actions": [
-      "create",
-      "read",
-      "update",
-      "delete"
-    ]
+    "actions": ["create", "read", "update", "delete"]
   }
 ]

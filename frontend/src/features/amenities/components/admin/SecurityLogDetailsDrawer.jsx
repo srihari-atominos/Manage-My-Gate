@@ -16,8 +16,8 @@ const TimelineStep = ({ icon, iconBg, title, subtitle, isLast = false, isDenied 
       )}
     </div>
     <div className="pb-4">
-      <p className="fw-semibold mb-0" style={{ fontSize: '14px', color: isDenied ? '#ef4444' : '#0f172a' }}>{title}</p>
-      {subtitle && <p className="text-muted mb-0" style={{ fontSize: '12px' }}>{subtitle}</p>}
+      <p className="small fw-semibold mb-0" style={{ color: isDenied ? '#ef4444' : '#0f172a' }}>{title}</p>
+      {subtitle && <p className="small text-muted mb-0" >{subtitle}</p>}
     </div>
   </div>
 );
@@ -40,7 +40,7 @@ const SectionHeader = ({ icon, title }) => (
     <div className="rounded-2 p-2" style={{ background: '#f1f5f9' }}>
       <i className={`fa-solid ${icon} text-muted`}></i>
     </div>
-    <h6 className="fw-bold mb-0" style={{ fontSize: '13px', color: '#0f172a', letterSpacing: '0.3px' }}>{title}</h6>
+    <h6 className="small fw-bold mb-0" style={{ color: '#0f172a' }}>{title}</h6>
   </div>
 );
 
@@ -148,22 +148,18 @@ const SecurityLogDetailsDrawer = ({ log, onClose, show }) => {
     <div
       className={`offcanvas offcanvas-end shadow-lg ${show ? 'show' : ''}`}
       tabIndex="-1"
-      style={{
-        visibility: show ? 'visible' : 'hidden',
+      style={{ visibility: show ? 'visible' : 'hidden',
         width: '480px',
         borderLeft: 'none',
-        borderRadius: '0'
-      }}
+        borderRadius: '0' }}
       aria-labelledby="secLogDrawerLabel"
     >
       {/* Header */}
       <div
         className="offcanvas-header px-4 py-3 border-bottom"
-        style={{
-          background: isSuccess
+        style={{ background: isSuccess
             ? 'linear-gradient(135deg, #0084FF 0%, #0ea5e9 100%)'
-            : 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)'
-        }}
+            : 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)' }}
       >
         <div className="d-flex align-items-center gap-3">
           <div className="rounded-circle bg-white bg-opacity-25 p-2">

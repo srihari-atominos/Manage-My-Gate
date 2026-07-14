@@ -36,7 +36,7 @@ const TrendsWidget = memo(() => {
           <ul style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {data.map(item => (
               <li key={item._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid var(--border-light)' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{item.name}</span>
+                <span style={{ color: 'var(--text-main)' }} className="fw-semibold">{item.name}</span>
                 <span className="badge badge-info">{item.count} bookings</span>
               </li>
             ))}

@@ -56,8 +56,8 @@ const DashboardView = () => {
         <div className="view active" id="view-admin-dashboard">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
             <div>
-              <h2 style={{ fontSize: '28px', margin: 0 }}>Management Overview</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: '500', margin: 0 }}>Real-time metrics across all community facilities.</p>
+              <h2 style={{ margin: 0 }} className="fs-2">Management Overview</h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }} className="fw-medium">Real-time metrics across all community facilities.</p>
             </div>
             <button className="btn btn-primary" onClick={handleExport}>
               <i className="fa-solid fa-download" style={{ marginRight: '8px' }}></i> Export Report
