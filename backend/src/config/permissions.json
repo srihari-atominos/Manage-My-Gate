@@ -58,5 +58,14 @@
       "guard",
       "admin"
     ]
+  },
+  {
+    "feature": "notices",
+    "actions": [
+      "create",
+      "read",
+      "update",
+      "delete"
+    ]
   }
 ]

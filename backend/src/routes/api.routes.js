@@ -21,6 +21,7 @@ import securityLogRouter from '../features/securityLog/securityLog.routes.js';
 import visitorPassRouter from '../features/visitorPass/visitorPass.router.js';
 import visitorLogRouter from '../features/visitorLog/visitorLog.router.js';
 import blacklistRouter from '../features/blacklist/blacklist.router.js';
+import noticeBoardRouter from '../features/noticeBoard/noticeBoard.routes.js';
 
 const router = Router();
 
@@ -33,6 +34,7 @@ router.use('/notifications', notificationRouter);
 router.use('/integrations', integrationHubRouter);
 router.use('/organizations', organizationRouter);
 router.use('/audit-logs', auditLogRouter);
+router.use('/notices', noticeBoardRouter);
 
 router.use('/templates', messageTemplateRouter);
 router.use('/villas', villaRouter);

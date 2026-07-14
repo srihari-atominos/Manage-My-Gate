@@ -33,8 +33,20 @@ export const config = {
   cors: {
     allowedOrigins: (() => {
       const origins = process.env.ALLOWED_ORIGINS
-        ? process.env.ALLOWED_ORIGINS.split(',')
-        : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8000', 'http://localhost:8080'];
+        ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+        : [
+            'http://localhost:3000',
+            'http://localhost:3001',
+            'http://localhost:5173',
+            'http://localhost:8000',
+            'http://localhost:8080',
+            'http://127.0.0.1:3000',
+            'http://127.0.0.1:3001',
+            'http://127.0.0.1:5173',
+            'http://[::1]:3000',
+            'http://[::1]:3001',
+            'http://[::1]:5173'
+          ];
       const host = process.env.HOST || 'localhost';
       const port = parseInt(process.env.PORT || '5000', 10);
       origins.push(`http://${host}:${port}`);
