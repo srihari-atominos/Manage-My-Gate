@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { CButton, CFormInput, CFormSelect } from '@coreui/react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { fetchPassByCode } from '../store/visitorPassSlice.js';
+import { fetchPassByCode, getPassDetails } from '../store/visitorPassSlice.js';
 
 export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onCheckOutSuccess }) => {
   const [scannerMode, setScannerMode] = useState('camera'); // 'camera' | 'search'
@@ -137,23 +137,10 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
     }
 
     const cleaned = code.trim().toLowerCase();
+    let found = null;
     
-    // 1. Try to find in the already loaded list in memory
-    let found = passes.find(p => 
-      p.id?.toLowerCase() === cleaned || 
-      p._id?.toLowerCase() === cleaned ||
-      p.shortKey?.toLowerCase() === cleaned ||
-      p.visitorDetails?.name?.toLowerCase().includes(cleaned) ||
-      p.visitorName?.toLowerCase().includes(cleaned) ||
-      p.vehicleDetails?.number?.toLowerCase().includes(cleaned) ||
-      p.vehicleNumber?.toLowerCase().includes(cleaned) ||
-      p.visitorDetails?.phone?.includes(cleaned) ||
-      p.visitorDetails?.idProofNumber?.toLowerCase().includes(cleaned) ||
-      p.details?.toLowerCase().includes(cleaned)
-    );
-
-    // 2. If not found in memory, and matches a 6-digit numeric key, fetch it from database
-    if (!found && /^\d{6}$/.test(cleaned) && activeOrgId) {
+    // 1. Direct database fetches for exact keys/IDs to ensure real-time accuracy
+    if (/^\d{6}$/.test(cleaned) && activeOrgId) {
       try {
         toast.loading('Fetching pass code from database...', { id: 'fetch-code-task' });
         const prefixedCode = `${activeOrgId}_${cleaned}`;
@@ -163,6 +150,28 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
       } catch (err) {
         toast.error(err.message || 'No matching active visitor pass found for this code.', { id: 'fetch-code-task' });
       }
+    } else if (/^[0-9a-fA-F]{24}$/.test(cleaned)) {
+      try {
+        toast.loading('Fetching pass details from database...', { id: 'fetch-code-task' });
+        const pass = await dispatch(getPassDetails(code)).unwrap();
+        found = pass;
+        toast.success('Pass details loaded successfully!', { id: 'fetch-code-task' });
+      } catch (err) {
+        toast.error(err.message || 'No matching visitor pass found.', { id: 'fetch-code-task' });
+      }
+    } else {
+      // 2. Fall back to local search in memory for names, license plates, etc.
+      found = passes.find(p => 
+        p.id?.toLowerCase() === cleaned || 
+        p._id?.toLowerCase() === cleaned ||
+        p.visitorDetails?.name?.toLowerCase().includes(cleaned) ||
+        p.visitorName?.toLowerCase().includes(cleaned) ||
+        p.vehicleDetails?.number?.toLowerCase().includes(cleaned) ||
+        p.vehicleNumber?.toLowerCase().includes(cleaned) ||
+        p.visitorDetails?.phone?.includes(cleaned) ||
+        p.visitorDetails?.idProofNumber?.toLowerCase().includes(cleaned) ||
+        p.details?.toLowerCase().includes(cleaned)
+      );
     }
 
     if (found) {
@@ -182,7 +191,7 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
           toast.error(`Pass Status is ${found.status}. Access Blocked.`);
         }
       }
-    } else if (!/^\d{6}$/.test(cleaned)) {
+    } else if (!/^\d{6}$/.test(cleaned) && !/^[0-9a-fA-F]{24}$/.test(cleaned)) {
       setMatchedPass(null);
       toast.error('Invalid pass: No matching pre-approved invitation found.');
     }
@@ -471,7 +480,9 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
                   </div>
                   {matchedPass.usageLimit && matchedPass.usageLimit.maxUses > 1 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: '6px' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Group Code Entries:</span>
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        {isGroupPass ? 'Group Code Entries:' : 'Pass Entries Used:'}
+                      </span>
                       <strong style={{ color: 'var(--text-main)' }}>
                         {matchedPass.usageLimit.currentUses || 0} / {matchedPass.usageLimit.maxUses}
                       </strong>

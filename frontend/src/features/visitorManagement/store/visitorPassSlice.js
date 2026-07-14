@@ -128,6 +128,12 @@ export const visitorPassSlice = createSlice({
       .addCase(getPassDetails.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.activePass = action.payload;
+        const index = state.passes.findIndex(pass => pass._id === action.payload._id);
+        if (index !== -1) {
+          state.passes[index] = action.payload;
+        } else {
+          state.passes.unshift(action.payload);
+        }
       })
       .addCase(getPassDetails.rejected, (state, action) => {
         state.status = 'failed';
@@ -142,10 +148,10 @@ export const visitorPassSlice = createSlice({
       .addCase(fetchPassByCode.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.activePass = action.payload;
-        
-        // Optionally insert/update in passes list if not present
-        const exists = state.passes.some(pass => pass._id === action.payload._id);
-        if (!exists) {
+        const index = state.passes.findIndex(pass => pass._id === action.payload._id);
+        if (index !== -1) {
+          state.passes[index] = action.payload;
+        } else {
           state.passes.unshift(action.payload);
         }
       })
