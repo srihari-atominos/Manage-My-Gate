@@ -37,6 +37,28 @@ const villaSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    residents: [
+      {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        residencyType: {
+          type: String,
+          enum: ['Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff'],
+          default: 'Tenant',
+        },
+        isPrimary: {
+          type: Boolean,
+          default: false,
+        },
+        assignedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      }
+    ],
   },
   {
     timestamps: true,

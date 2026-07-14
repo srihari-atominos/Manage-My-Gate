@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import * as villaApi from '../services/villaApi';
+import * as villaService from '../services/villaService';
 
 // Async Thunks
 export const fetchVillasAsync = createAsyncThunk(
@@ -7,16 +7,16 @@ export const fetchVillasAsync = createAsyncThunk(
   async ({ page, limit }, { getState, rejectWithValue }) => {
     try {
       const { searchQuery, blockFilter, statusFilter } = getState().villa;
-      const response = await villaApi.fetchVillas({
+      const response = await villaService.fetchVillas({
         page,
         limit,
         search: searchQuery,
-        block: blockFilter,
-        occupancyStatus: statusFilter,
+        blockOrBuilding: blockFilter,
+        status: statusFilter,
       });
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch villas');
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch units');
     }
   }
 );
@@ -25,10 +25,10 @@ export const fetchVillaByIdAsync = createAsyncThunk(
   'villa/fetchVillaById',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await villaApi.fetchVillaById(id);
+      const response = await villaService.fetchVillaById(id);
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch villa details');
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch unit details');
     }
   }
 );
@@ -37,11 +37,11 @@ export const createVillaAsync = createAsyncThunk(
   'villa/createVilla',
   async (villaData, { dispatch, rejectWithValue }) => {
     try {
-      const response = await villaApi.createVilla(villaData);
+      const response = await villaService.createVilla(villaData);
       dispatch(fetchVillaStatsAsync());
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to create villa');
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to create unit');
     }
   }
 );
@@ -50,11 +50,11 @@ export const updateVillaAsync = createAsyncThunk(
   'villa/updateVilla',
   async ({ id, villaData }, { dispatch, rejectWithValue }) => {
     try {
-      const response = await villaApi.updateVilla(id, villaData);
+      const response = await villaService.updateVilla(id, villaData);
       dispatch(fetchVillaStatsAsync());
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to update villa');
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to update unit');
     }
   }
 );
@@ -63,11 +63,24 @@ export const deleteVillaAsync = createAsyncThunk(
   'villa/deleteVilla',
   async (id, { dispatch, rejectWithValue }) => {
     try {
-      await villaApi.deleteVilla(id);
+      await villaService.deleteVilla(id);
       dispatch(fetchVillaStatsAsync());
       return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to delete villa');
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to delete unit');
+    }
+  }
+);
+
+export const assignPrimaryResidentAsync = createAsyncThunk(
+  'villa/assignPrimaryResident',
+  async ({ id, residentId }, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await villaService.assignPrimaryResident(id, residentId);
+      dispatch(fetchVillaStatsAsync());
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to assign primary resident');
     }
   }
 );
@@ -76,11 +89,11 @@ export const batchGenerateVillasAsync = createAsyncThunk(
   'villa/batchGenerateVillas',
   async (batchData, { dispatch, rejectWithValue }) => {
     try {
-      const response = await villaApi.batchGenerateVillas(batchData);
+      const response = await villaService.batchGenerateVillas(batchData);
       dispatch(fetchVillaStatsAsync());
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to batch generate villas');
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to batch generate units');
     }
   }
 );
@@ -89,10 +102,10 @@ export const fetchVillaStatsAsync = createAsyncThunk(
   'villa/fetchVillaStats',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await villaApi.fetchVillaStats();
+      const response = await villaService.fetchVillaStats();
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch villa statistics');
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch unit statistics');
     }
   }
 );
@@ -101,11 +114,50 @@ export const bulkUploadVillasAsync = createAsyncThunk(
   'villa/bulkUploadVillas',
   async (villas, { dispatch, rejectWithValue }) => {
     try {
-      const response = await villaApi.bulkUploadVillas(villas);
+      const response = await villaService.bulkUploadVillas(villas);
       dispatch(fetchVillaStatsAsync());
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to bulk upload villas');
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to bulk upload units');
+    }
+  }
+);
+
+export const assignExistingUserThunk = createAsyncThunk(
+  'villa/assignExistingUser',
+  async ({ villaId, userId, residencyType }, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await villaService.assignExistingUser(villaId, userId, residencyType);
+      dispatch(fetchVillaStatsAsync());
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to assign resident');
+    }
+  }
+);
+
+export const updateResidencyTypeThunk = createAsyncThunk(
+  'villa/updateResidencyType',
+  async ({ villaId, userId, residencyType }, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await villaService.updateResidencyType(villaId, userId, residencyType);
+      dispatch(fetchVillaStatsAsync());
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to update residency type');
+    }
+  }
+);
+
+export const removeResidentThunk = createAsyncThunk(
+  'villa/removeResident',
+  async ({ villaId, userId }, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await villaService.removeResident(villaId, userId);
+      dispatch(fetchVillaStatsAsync());
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to remove resident');
     }
   }
 );
@@ -116,8 +168,8 @@ const initialState = {
   stats: {
     total: 0,
     vacant: 0,
-    ownerOccupied: 0,
-    tenantOccupied: 0,
+    occupied: 0,
+    maintenance: 0,
   },
   searchQuery: '',
   blockFilter: '',
@@ -167,7 +219,7 @@ const villaSlice = createSlice({
       })
       .addCase(fetchVillasAsync.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || 'Failed to fetch villas';
+        state.error = action.payload || 'Failed to fetch units';
       })
       // Fetch Villa By ID
       .addCase(fetchVillaByIdAsync.pending, (state) => {
@@ -180,13 +232,13 @@ const villaSlice = createSlice({
       })
       .addCase(fetchVillaByIdAsync.rejected, (state, action) => {
         state.selectedVillaLoading = false;
-        state.error = action.payload || 'Failed to fetch villa details';
+        state.error = action.payload || 'Failed to fetch unit details';
       })
       // Fetch Stats
       .addCase(fetchVillaStatsAsync.fulfilled, (state, action) => {
         state.stats = action.payload;
       })
-      // Create/Batch generate/Update/Delete (standard states updates)
+      // Create/Batch generate/Update/Delete/Assign states updates
       .addCase(createVillaAsync.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -196,7 +248,7 @@ const villaSlice = createSlice({
       })
       .addCase(createVillaAsync.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || 'Failed to create villa';
+        state.error = action.payload || 'Failed to create unit';
       })
       .addCase(batchGenerateVillasAsync.pending, (state) => {
         state.loading = true;
@@ -207,19 +259,28 @@ const villaSlice = createSlice({
       })
       .addCase(batchGenerateVillasAsync.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || 'Failed to batch generate villas';
+        state.error = action.payload || 'Failed to batch generate units';
       })
-      // Bulk Upload Villas
-      .addCase(bulkUploadVillasAsync.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+      .addCase(assignPrimaryResidentAsync.fulfilled, (state, action) => {
+        // Update selected villa if it's the one being modified
+        if (state.selectedVilla && state.selectedVilla.villa._id === action.payload._id) {
+          state.selectedVilla.villa = action.payload;
+        }
       })
-      .addCase(bulkUploadVillasAsync.fulfilled, (state) => {
-        state.loading = false;
+      .addCase(assignExistingUserThunk.fulfilled, (state, action) => {
+        if (state.selectedVilla && state.selectedVilla.villa._id === action.payload._id) {
+          state.selectedVilla.villa = action.payload;
+        }
       })
-      .addCase(bulkUploadVillasAsync.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || 'Failed to bulk upload villas';
+      .addCase(updateResidencyTypeThunk.fulfilled, (state, action) => {
+        if (state.selectedVilla && state.selectedVilla.villa._id === action.payload._id) {
+          state.selectedVilla.villa = action.payload;
+        }
+      })
+      .addCase(removeResidentThunk.fulfilled, (state, action) => {
+        if (state.selectedVilla && state.selectedVilla.villa._id === action.payload._id) {
+          state.selectedVilla.villa = action.payload;
+        }
       });
   },
 });

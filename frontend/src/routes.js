@@ -8,7 +8,7 @@ const UserList = React.lazy(() => import('./features/userManagement/UserList'));
 const NotificationView = React.lazy(() => import('./features/notification/views/NotificationView'));
 const IntegrationHubView = React.lazy(() => import('./features/integrationHub/views/IntegrationHubView'));
 const FeatureConfigWizard = React.lazy(() => import('./features/workspace/views/FeatureConfigWizard'));
-const VillaManager = React.lazy(() => import('./features/villa/views/VillaManager'));
+const VillaManagementView = React.lazy(() => import('./features/villa/views/VillaManagementView'));
 const OrganizationManager = React.lazy(() => import('./features/organization/views/OrganizationManager'));
 const AuditLogViewer = React.lazy(() => import('./features/auditLog/views/AuditLogViewer'));
 
@@ -45,7 +45,7 @@ export const routes = [
   { path: '/visitor-management-admin', name: 'Visitor Admin', element: AdminVisitorManagementViews },
   { path: '/visitor-management-guard', name: 'Gate Console', element: GuardVisitormanagementViews },
   { path: '/users', name: 'User Management', element: UserList, requiredPermission: 'users:read' },
-  { path: '/villas', name: 'Villa Management', element: VillaManager, requiredPermission: 'villas:read' },
+  { path: '/villas', name: 'Villa Management', element: VillaManagementView, requiredPermission: 'villas:read' },
   { path: '/sample', name: 'Sample Feature', element: SampleFeature },
   { path: '/role-builder', name: 'Role Builder', element: RoleBuilder, requiredPermission: 'roles:read' },
   { path: '/notifications', name: 'Notifications', element: NotificationView },

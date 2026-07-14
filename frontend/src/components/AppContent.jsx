@@ -75,7 +75,7 @@ const AppContent = () => {
               )
             }
 
-            const isProtected = ['/users', '/roles', '/role-builder', '/super-admin/organizations', '/super-admin/audit-logs'].includes(route.path)
+            const isProtected = ['/users', '/roles', '/role-builder', '/villas', '/super-admin/organizations', '/super-admin/audit-logs'].includes(route.path)
             const routeElement = isProtected ? (
               <AuthGuard>
                 <route.element />

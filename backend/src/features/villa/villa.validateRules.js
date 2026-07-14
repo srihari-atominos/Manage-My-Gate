@@ -138,9 +138,33 @@ export const bulkUploadVillasRules = [
     .isString()
     .trim(),
 ];
+
+export const assignExistingUserRules = [
+  body('userId')
+    .notEmpty()
+    .withMessage('User ID (userId) is required')
+    .isMongoId()
+    .withMessage('User ID must be a valid Mongo ID'),
+  body('residencyType')
+    .notEmpty()
+    .withMessage('Residency type (residencyType) is required')
+    .isIn(['Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff'])
+    .withMessage('Residency type must be one of: Resident Owner, Tenant, Family Member, Non-Resident Owner, Staff'),
+];
+
+export const updateResidencyTypeRules = [
+  body('residencyType')
+    .notEmpty()
+    .withMessage('Residency type (residencyType) is required')
+    .isIn(['Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff'])
+    .withMessage('Residency type must be one of: Resident Owner, Tenant, Family Member, Non-Resident Owner, Staff'),
+];
+
 export default {
   createVillaRules,
   updateVillaRules,
   batchGenerateRules,
   bulkUploadVillasRules,
+  assignExistingUserRules,
+  updateResidencyTypeRules,
 };

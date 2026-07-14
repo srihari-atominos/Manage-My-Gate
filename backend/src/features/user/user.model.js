@@ -47,6 +47,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       sparse: true,
     },
+    villaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Villa',
+      default: null,
+    },
+    residencyType: {
+      type: String,
+      enum: ['Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff', 'None'],
+      default: 'None',
+    },
   },
   {
     timestamps: true,

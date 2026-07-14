@@ -15,14 +15,23 @@ import {
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilPlus, cilGrid } from '@coreui/icons';
-import useVillaManager from '../hooks/useVillaManager';
-import VillaCard from '../components/VillaCard';
+import { useTranslation } from 'react-i18next';
+import useVilla from '../hooks/useVilla';
+import useVillaSocket from '../hooks/useVillaSocket';
+import VillaGrid from '../components/VillaGrid';
 import VillaDetailsModal from '../components/VillaDetailsModal';
 import BatchGenerateModal from '../components/BatchGenerateModal';
 import BulkUploadVillasModal from '../components/BulkUploadVillasModal';
+import VillaFormModal from '../components/VillaFormModal';
 import '../styles/_villa.scss';
 
-export const VillaManager = () => {
+/**
+ * VillaManagementView container
+ * Orchestrates layout, state hooks, search queries, pagination, and modals.
+ */
+export const VillaManagementView = () => {
+  const { t } = useTranslation();
+
   const {
     villas,
     stats,
@@ -33,16 +42,21 @@ export const VillaManager = () => {
     totalPages,
     loading,
     error,
+    orgId,
 
-    // Modal state
+    // Modal Control Flags
     detailsVisible,
     selectedVillaId,
+    formVisible,
+    editingVilla,
     batchVisible,
     bulkUploadVisible,
 
     // Actions
     openDetails,
     closeDetails,
+    openForm,
+    closeForm,
     openBatch,
     closeBatch,
     openBulkUpload,
@@ -51,40 +65,64 @@ export const VillaManager = () => {
     handleBlockChange,
     handleStatusChange,
     handlePageChange,
-    bulkUploadVillas,
-  } = useVillaManager();
+    createVilla,
+    updateVilla,
+    bulkUploadVillas
+  } = useVilla();
+
+  // Mount silent socket listener for real-time state sync
+  useVillaSocket(orgId);
+
+  const handleFormSubmit = async (formData) => {
+    if (editingVilla) {
+      await updateVilla(editingVilla._id, formData);
+    } else {
+      await createVilla(formData);
+    }
+  };
 
   return (
     <div className="villa-manager-view py-3">
       <CContainer fluid>
-        {/* Statistics Cards */}
+        {/* Statistics Banner */}
         <CRow className="villa-dashboard-stats g-3 mb-4">
-          <CCol xs={12} sm={4}>
+          <CCol xs={12} sm={3}>
             <CCard className="stat-card shadow-sm border-0">
               <CCardBody className="p-3 text-center">
-                <div className="stat-title text-muted mb-1">TOTAL VILLAS</div>
+                <div className="stat-title text-muted mb-1">
+                  {t('villas.totalUnits', 'TOTAL UNITS')}
+                </div>
                 <div className="stat-value text-primary">{stats.total || 0}</div>
               </CCardBody>
             </CCard>
           </CCol>
-          <CCol xs={12} sm={4}>
+          <CCol xs={12} sm={3}>
             <CCard className="stat-card shadow-sm border-0">
               <CCardBody className="p-3 text-center">
-                <div className="stat-title text-muted mb-1">OCCUPIED UNITS</div>
-                <div className="stat-value text-success">
-                  {(stats.ownerOccupied || 0) + (stats.tenantOccupied || 0)}
+                <div className="stat-title text-muted mb-1">
+                  {t('villas.occupiedUnits', 'OCCUPIED UNITS')}
                 </div>
-                <div className="small-text mt-1 text-muted" style={{ fontSize: '0.72rem' }}>
-                  Owner: {stats.ownerOccupied || 0} | Tenant: {stats.tenantOccupied || 0}
-                </div>
+                <div className="stat-value text-success">{stats.occupied || 0}</div>
               </CCardBody>
             </CCard>
           </CCol>
-          <CCol xs={12} sm={4}>
+          <CCol xs={12} sm={3}>
             <CCard className="stat-card shadow-sm border-0">
               <CCardBody className="p-3 text-center">
-                <div className="stat-title text-muted mb-1">VACANT UNITS</div>
+                <div className="stat-title text-muted mb-1">
+                  {t('villas.vacantUnits', 'VACANT UNITS')}
+                </div>
                 <div className="stat-value text-secondary">{stats.vacant || 0}</div>
+              </CCardBody>
+            </CCard>
+          </CCol>
+          <CCol xs={12} sm={3}>
+            <CCard className="stat-card shadow-sm border-0">
+              <CCardBody className="p-3 text-center">
+                <div className="stat-title text-muted mb-1">
+                  {t('villas.maintenanceUnits', 'UNDER MAINTENANCE')}
+                </div>
+                <div className="stat-value text-warning">{stats.maintenance || 0}</div>
               </CCardBody>
             </CCard>
           </CCol>
@@ -94,10 +132,10 @@ export const VillaManager = () => {
         <CCard className="border-0 shadow-sm mb-4">
           <CCardBody className="p-3">
             <CRow className="g-3 align-items-center">
-              <CCol md={4} sm={6} xs={12}>
+              <CCol md={3} sm={6} xs={12}>
                 <CFormInput
                   type="text"
-                  placeholder="Search villa number..."
+                  placeholder={t('villas.searchPlaceholder', 'Search unit number...')}
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   size="sm"
@@ -109,7 +147,7 @@ export const VillaManager = () => {
                   onChange={(e) => handleBlockChange(e.target.value)}
                   size="sm"
                 >
-                  <option value="">All Blocks</option>
+                  <option value="">{t('villas.allBlocks', 'All Blocks')}</option>
                   <option value="Block A">Block A</option>
                   <option value="Block B">Block B</option>
                   <option value="Block C">Block C</option>
@@ -121,22 +159,31 @@ export const VillaManager = () => {
                   onChange={(e) => handleStatusChange(e.target.value)}
                   size="sm"
                 >
-                  <option value="">All Statuses</option>
-                  <option value="Vacant">Vacant</option>
-                  <option value="Owner Occupied">Owner Occupied</option>
-                  <option value="Tenant Occupied">Tenant Occupied</option>
+                  <option value="">{t('villas.allStatuses', 'All Statuses')}</option>
+                  <option value="Vacant">{t('villas.statusTypes.Vacant', 'Vacant')}</option>
+                  <option value="Occupied">{t('villas.statusTypes.Occupied', 'Occupied')}</option>
+                  <option value="Under Maintenance">{t('villas.statusTypes.UnderMaintenance', 'Under Maintenance')}</option>
                 </CFormSelect>
               </CCol>
-              <CCol md={4} sm={12} xs={12} className="text-md-end text-center d-flex gap-2">
+              <CCol md={5} sm={12} xs={12} className="text-md-end text-center d-flex gap-2">
                 <CButton
-                  color="secondary"
+                  color="light"
                   variant="outline"
                   size="sm"
                   onClick={openBulkUpload}
                   className="w-100 fw-semibold d-flex align-items-center justify-content-center gap-1"
                 >
                   <CIcon icon={cilPlus} size="sm" />
-                  <span>Bulk Upload</span>
+                  <span>{t('villas.bulkUpload', 'Bulk Upload')}</span>
+                </CButton>
+                <CButton
+                  color="secondary"
+                  size="sm"
+                  onClick={() => openForm()}
+                  className="w-100 fw-semibold d-flex align-items-center justify-content-center gap-1"
+                >
+                  <CIcon icon={cilPlus} size="sm" />
+                  <span>{t('villas.createUnit', 'Create Unit')}</span>
                 </CButton>
                 <CButton
                   color="primary"
@@ -145,47 +192,38 @@ export const VillaManager = () => {
                   className="w-100 fw-semibold d-flex align-items-center justify-content-center gap-1"
                 >
                   <CIcon icon={cilPlus} size="sm" />
-                  <span>Batch Generate</span>
+                  <span>{t('villas.batchGenerate', 'Batch Generate')}</span>
                 </CButton>
               </CCol>
             </CRow>
           </CCardBody>
         </CCard>
 
-        {/* General Errors */}
+        {/* Global Error Banner */}
         {error && <CAlert color="danger" dismissible>{error}</CAlert>}
 
-        {/* Grid Loading or Empty State */}
+        {/* Grid Area */}
         {loading && villas.length === 0 ? (
           <div className="text-center py-5">
             <CSpinner color="primary" className="mb-2" />
-            <div>Loading villas directory...</div>
+            <div>{t('villas.loading', 'Loading units directory...')}</div>
           </div>
         ) : villas.length === 0 ? (
           <CCard className="text-center py-5 shadow-sm border-0">
             <CCardBody>
               <CIcon icon={cilGrid} size="xl" className="text-muted mb-3" style={{ opacity: 0.3 }} />
-              <h4>No Villas Configured</h4>
-              <p className="text-muted mb-4">You can manually create or batch generate the community units grid.</p>
+              <h4>{t('villas.noVillas', 'No Units Configured')}</h4>
+              <p className="text-muted mb-4">{t('villas.noVillasDesc', 'You can manually create or batch generate the community units grid.')}</p>
               <CButton color="primary" size="sm" onClick={openBatch} className="fw-semibold">
-                Generate 54 Villas
+                {t('villas.generateVillas', 'Generate 54 Units')}
               </CButton>
             </CCardBody>
           </CCard>
         ) : (
           <>
-            {/* Visual Grid */}
-            <div className="villa-grid">
-              {villas.map((villa) => (
-                <VillaCard 
-                  key={villa._id} 
-                  villa={villa} 
-                  onClick={openDetails} 
-                />
-              ))}
-            </div>
+            <VillaGrid villas={villas} onCardClick={openDetails} />
 
-            {/* Pagination Controls */}
+            {/* Pagination Banner */}
             {totalPages > 1 && (
               <div className="d-flex justify-content-center mt-4">
                 <CPagination aria-label="Villa pages navigation">
@@ -222,20 +260,28 @@ export const VillaManager = () => {
         )}
       </CContainer>
 
-      {/* Details Modal */}
+      {/* Details Dialog */}
       <VillaDetailsModal
         visible={detailsVisible}
         onClose={closeDetails}
         villaId={selectedVillaId}
       />
 
-      {/* Batch Generate Modal */}
+      {/* Form Dialog (Create / Edit) */}
+      <VillaFormModal
+        visible={formVisible}
+        onClose={closeForm}
+        onSubmit={handleFormSubmit}
+        editingVilla={editingVilla}
+      />
+
+      {/* Batch Dialog */}
       <BatchGenerateModal
         visible={batchVisible}
         onClose={closeBatch}
       />
 
-      {/* Bulk Upload Villas Modal */}
+      {/* Bulk Upload Dialog */}
       <BulkUploadVillasModal
         visible={bulkUploadVisible}
         onClose={closeBulkUpload}
@@ -245,4 +291,4 @@ export const VillaManager = () => {
   );
 };
 
-export default VillaManager;
+export default VillaManagementView;
