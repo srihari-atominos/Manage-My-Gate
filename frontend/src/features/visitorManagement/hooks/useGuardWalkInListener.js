@@ -31,6 +31,7 @@ export const useGuardWalkInListener = () => {
 
     socket.on('connect', () => {
       socket.emit('join_room', `user:${userId}`);
+      socket.emit('join_room', `org:${activeOrgId}:guards`);
     });
 
     socket.on('GATE_APPROVAL_RESOLVED', (payload) => {

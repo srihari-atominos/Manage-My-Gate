@@ -11,6 +11,8 @@ export const GuardInviteVisitorForm = ({
 }) => {
   // Visitor Details
   const [visitorName, setVisitorName] = useState('');
+  const [walkInType, setWalkInType] = useState('id_proof'); // 'id_proof' | 'vehicle'
+  const [idProofType, setIdProofType] = useState('Aadhaar Card');
   const [idProofNumber, setIdProofNumber] = useState('');
   const [vehicleNumber, setVehicleNumber] = useState('');
 
@@ -53,11 +55,85 @@ export const GuardInviteVisitorForm = ({
     }
   }, [inviteMethod, dbUsers]);
 
+  const validateIdProof = (type, number) => {
+    if (!number?.trim()) {
+      return 'ID Proof Reference / Number is required.';
+    }
+    const val = number.trim();
+    switch (type) {
+      case 'Aadhaar Card': {
+        const aadhaarRegex = /^\d{4}\s?\d{4}\s?\d{4}$/;
+        if (!aadhaarRegex.test(val)) {
+          return 'Invalid Aadhaar Card format. Expected 12 digits (e.g., 1234 5678 9012).';
+        }
+        break;
+      }
+      case 'PAN Card': {
+        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i;
+        if (!panRegex.test(val)) {
+          return 'Invalid PAN Card format. Expected 5 letters, 4 digits, 1 letter (e.g., ABCDE1234F).';
+        }
+        break;
+      }
+      case 'Driving License': {
+        const cleaned = val.replace(/[\s-]/g, '');
+        const dlRegex = /^[A-Z]{2}\d{13}$/i;
+        if (!dlRegex.test(cleaned)) {
+          return 'Invalid Driving License format. Expected standard Indian DL format with 15 characters (e.g., MH1220181234567).';
+        }
+        break;
+      }
+      case 'Voter ID': {
+        const voterRegex = /^[A-Z]{3}\d{7}$/i;
+        if (!voterRegex.test(val)) {
+          return 'Invalid Voter ID format. Expected 3 letters followed by 7 digits (e.g., XYZ1234567).';
+        }
+        break;
+      }
+      case 'Indian Passport': {
+        const passportRegex = /^[A-PR-WYa-pr-wy][1-9]\d\s?\d{4}[1-9]$/;
+        if (!passportRegex.test(val)) {
+          return 'Invalid Indian Passport format.';
+        }
+        break;
+      }
+      default:
+        break;
+    }
+    return null;
+  };
+
+  const validateVehiclePlate = (plate) => {
+    if (!plate?.trim()) {
+      return 'Vehicle Plate Number is required.';
+    }
+    const cleanedPlateForRegex = plate.replace(/[\s-]/g, '');
+    const licensePlateRegex = /^([A-Z]{2}[ -]?\d{1,2}[ -]?[A-Z]{1,3}[ -]?\d{4}|\d{2}[ -]?BH[ -]?\d{4}[ -]?[A-Z]{1,2})$/i;
+    if (!licensePlateRegex.test(cleanedPlateForRegex)) {
+      return 'Invalid vehicle number plate format. Must be a valid Indian state plate (e.g. MH-12-AB-1234) or BH series (e.g. 22-BH-1234-AB).';
+    }
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!visitorName.trim()) {
       toast.error('Visitor Name is required.');
       return;
+    }
+
+    if (walkInType === 'id_proof') {
+      const errorMsg = validateIdProof(idProofType, idProofNumber);
+      if (errorMsg) {
+        toast.error(errorMsg);
+        return;
+      }
+    } else {
+      const errorMsg = validateVehiclePlate(vehicleNumber);
+      if (errorMsg) {
+        toast.error(errorMsg);
+        return;
+      }
     }
 
     const targetHostId = inviteMethod === 'villa' ? selectedResidentId : selectedAdminId;
@@ -70,8 +146,8 @@ export const GuardInviteVisitorForm = ({
       residentId: targetHostId,
       snapshot: {
         visitorName: visitorName.trim(),
-        idProofNumber: idProofNumber.trim() || undefined,
-        vehicleNumber: vehicleNumber.trim() ? vehicleNumber.trim().toUpperCase() : undefined
+        idProofNumber: walkInType === 'id_proof' ? `${idProofType}: ${idProofNumber.trim()}` : undefined,
+        vehicleNumber: walkInType === 'vehicle' ? vehicleNumber.trim().toUpperCase() : undefined
       }
     };
 
@@ -80,6 +156,7 @@ export const GuardInviteVisitorForm = ({
       if (res && res.success) {
         // Reset form
         setVisitorName('');
+        setIdProofType('Aadhaar Card');
         setIdProofNumber('');
         setVehicleNumber('');
         setSelectedVillaId('');
@@ -114,31 +191,112 @@ export const GuardInviteVisitorForm = ({
             />
           </div>
 
+          {/* Segmented Verification Method Switch */}
           <div>
-            <CFormLabel htmlFor="visitor-id-input" style={{ fontWeight: '600', fontSize: '13px' }}>
-              ID Proof Number (Optional)
+            <CFormLabel style={{ fontWeight: '600', fontSize: '13px', marginBottom: '8px' }}>
+              Verification Method
             </CFormLabel>
-            <CFormInput
-              id="visitor-id-input"
-              type="text"
-              placeholder="e.g. Aadhaar, Passport or License"
-              value={idProofNumber}
-              onChange={(e) => setIdProofNumber(e.target.value)}
-            />
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', backgroundColor: '#F1F5F9', padding: '4px', borderRadius: '8px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setWalkInType('id_proof');
+                  setVehicleNumber('');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  border: 'none',
+                  backgroundColor: walkInType === 'id_proof' ? '#fff' : 'transparent',
+                  color: walkInType === 'id_proof' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                  boxShadow: walkInType === 'id_proof' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                By ID Proof
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setWalkInType('vehicle');
+                  setIdProofNumber('');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  border: 'none',
+                  backgroundColor: walkInType === 'vehicle' ? '#fff' : 'transparent',
+                  color: walkInType === 'vehicle' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                  boxShadow: walkInType === 'vehicle' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                By Vehicle Plate
+              </button>
+            </div>
           </div>
 
-          <div>
-            <CFormLabel htmlFor="visitor-plate-input" style={{ fontWeight: '600', fontSize: '13px' }}>
-              Vehicle Plate Number (Optional)
-            </CFormLabel>
-            <CFormInput
-              id="visitor-plate-input"
-              type="text"
-              placeholder="e.g. DXB-E5492"
-              value={vehicleNumber}
-              onChange={(e) => setVehicleNumber(e.target.value)}
-              style={{ textTransform: 'uppercase' }}
-            />
+          <div style={{ minHeight: '170px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            {walkInType === 'id_proof' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <CFormLabel htmlFor="id-proof-type-select" style={{ fontWeight: '600', fontSize: '13px' }}>
+                    Select ID Proof Type *
+                  </CFormLabel>
+                  <CFormSelect
+                    id="id-proof-type-select"
+                    value={idProofType}
+                    onChange={(e) => {
+                      setIdProofType(e.target.value);
+                      setIdProofNumber('');
+                    }}
+                  >
+                    <option value="Aadhaar Card">Aadhaar Card</option>
+                    <option value="PAN Card">PAN Card</option>
+                    <option value="Driving License">Driving License</option>
+                    <option value="Voter ID">Voter ID</option>
+                    <option value="Indian Passport">Indian Passport</option>
+                  </CFormSelect>
+                </div>
+
+                <div>
+                  <CFormLabel htmlFor="visitor-id-input" style={{ fontWeight: '600', fontSize: '13px' }}>
+                    {idProofType} Reference Number *
+                  </CFormLabel>
+                  <CFormInput
+                    id="visitor-id-input"
+                    type="text"
+                    placeholder={`Enter valid ${idProofType} number`}
+                    value={idProofNumber}
+                    onChange={(e) => setIdProofNumber(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <CFormLabel htmlFor="visitor-plate-input" style={{ fontWeight: '600', fontSize: '13px' }}>
+                  Vehicle Plate Number *
+                </CFormLabel>
+                <CFormInput
+                  id="visitor-plate-input"
+                  type="text"
+                  placeholder="e.g. MH-12-AB-1234 or 22-BH-1234-AB"
+                  value={vehicleNumber}
+                  onChange={(e) => setVehicleNumber(e.target.value)}
+                  style={{ textTransform: 'uppercase' }}
+                  required
+                />
+              </div>
+            )}
           </div>
         </div>
 

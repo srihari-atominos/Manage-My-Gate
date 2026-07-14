@@ -138,15 +138,22 @@ export const useGuardVisitorManagement = () => {
   // Map raw log fields to visual elements
   const liveEntries = reduxActiveVisitors && reduxActiveVisitors.length > 0 ? reduxActiveVisitors.map(log => {
     const matchingPass = passes.find(p => p._id === log.passId || p.id === log.passId);
+    
+    // Look up host details from user directory to resolve villa number for walk-ins
+    const hostUser = dbUsers.find(u => u.id === (log.residentId?._id || log.residentId));
+    const villaNumber = log.passId?.villaId?.villaNumber || hostUser?.villaNumber || '';
+    
     return {
       id: log._id || log.id,
       passId: log.passId,
       visitorName: log.snapshot?.visitorName || 'Walk-in Visitor',
       type: matchingPass?.passType || log.entryType || 'GUEST',
-      villa: log.residentId?.villaId?.villaNumber || 'Villa 101',
-      resident: log.residentId?.username || 'Host',
+      villa: villaNumber || '—',
+      resident: log.residentId?.username || hostUser?.name || 'Host',
       checkIn: log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
-      guard: log.guardId?.username || 'Gate Console'
+      guard: log.guardId?.username || 'Gate Console',
+      vehicleNumber: log.snapshot?.vehicleNumber || '',
+      idProofNumber: log.snapshot?.idProofNumber || ''
     };
   }) : localLiveEntries;
 

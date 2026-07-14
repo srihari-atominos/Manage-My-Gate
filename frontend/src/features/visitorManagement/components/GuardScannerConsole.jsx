@@ -172,6 +172,34 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
         p.visitorDetails?.idProofNumber?.toLowerCase().includes(cleaned) ||
         p.details?.toLowerCase().includes(cleaned)
       );
+
+      if (!found) {
+        // Look inside active liveEntries for matching walk-ins currently inside
+        const matchedActiveLog = liveEntries.find(entry => 
+          !entry.passId && ( // Only walk-ins (pre-approved have passId)
+            entry.visitorName?.toLowerCase().includes(cleaned) ||
+            entry.vehicleNumber?.toLowerCase().includes(cleaned) ||
+            entry.idProofNumber?.toLowerCase().includes(cleaned) ||
+            entry.villa?.toLowerCase().includes(cleaned) ||
+            entry.resident?.toLowerCase().includes(cleaned)
+          )
+        );
+        if (matchedActiveLog) {
+          found = {
+            id: matchedActiveLog.id,
+            _id: matchedActiveLog.id,
+            passType: 'WALK_IN',
+            status: 'ACTIVE',
+            visitorName: matchedActiveLog.visitorName,
+            visitorDetails: { 
+              name: matchedActiveLog.visitorName,
+              idProofNumber: matchedActiveLog.idProofNumber
+            },
+            vehicleDetails: { number: matchedActiveLog.vehicleNumber },
+            isWalkInLog: true
+          };
+        }
+      }
     }
 
     if (found) {
@@ -200,6 +228,7 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
   // Check if visitor is inside
   const isVisitorCurrentlyInside = (pass) => {
     if (!pass) return false;
+    if (pass.isWalkInLog) return true;
     const passIdStr = (pass._id || pass.id)?.toString();
     return liveEntries.some(entry => {
       const entryPassId = (entry.passId?._id || entry.passId || entry.passIdId)?.toString();
@@ -210,6 +239,7 @@ export const GuardScannerConsole = ({ passes, liveEntries, onCheckInSuccess, onC
   // Find active log ID for checkout
   const getActiveLogId = (pass) => {
     if (!pass) return null;
+    if (pass.isWalkInLog) return pass.id || pass._id;
     const passIdStr = (pass._id || pass.id)?.toString();
     const matched = liveEntries.find(entry => {
       const entryPassId = (entry.passId?._id || entry.passId || entry.passIdId)?.toString();

@@ -73,11 +73,8 @@ export class VisitorLogController {
     try {
       const { orgId } = req.params;
       const userId = req.user.id;
-      const userRole = req.user.role || '';
       
-      const isCommunityAdmin = userRole.toLowerCase().includes('admin') || userRole.toLowerCase().includes('super');
-      
-      const data = await visitorLogService.getPendingApprovals(orgId, isCommunityAdmin ? null : userId);
+      const data = await visitorLogService.getPendingApprovals(orgId, userId);
       res.success(data, 'Pending approvals retrieved successfully');
     } catch (error) {
       next(error);

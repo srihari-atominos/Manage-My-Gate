@@ -8,7 +8,9 @@ export const LiveEntriesTable = ({ liveEntries, onCheckOutSuccess }) => {
   const filteredEntries = liveEntries.filter(entry => 
     entry.visitorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     entry.villa.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    entry.resident.toLowerCase().includes(searchQuery.toLowerCase())
+    entry.resident.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (entry.vehicleNumber && entry.vehicleNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (entry.idProofNumber && entry.idProofNumber.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const totalPages = Math.ceil(filteredEntries.length / itemsPerPage);
@@ -62,6 +64,8 @@ export const LiveEntriesTable = ({ liveEntries, onCheckOutSuccess }) => {
                       <div className="table-cell-bold">{entry.visitorName}</div>
                       <div className="table-cell-sub">
                         Type: {entry.type.replace('_', ' & ')}
+                        {entry.vehicleNumber && ` | Plate: ${entry.vehicleNumber}`}
+                        {entry.idProofNumber && ` | ID: ${entry.idProofNumber}`}
                       </div>
                     </td>
                     <td>

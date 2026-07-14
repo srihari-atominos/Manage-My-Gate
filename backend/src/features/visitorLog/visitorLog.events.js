@@ -30,6 +30,21 @@ visitorLogEvents.on('walk_in_pending', (log) => {
 visitorLogEvents.on('walk_in_resolved', (log) => {
   logger.info(`Visitor log event bus triggered: walk_in_resolved for log ID ${log._id}`);
   dispatchWalkInResolved(log);
+
+  // Create a DB notification for the guard to alert them via UI headers/inbox
+  if (log.guardId) {
+    const isApproved = log.logStatus === 'INSIDE';
+    notificationService.createNotification({
+      recipientId: log.guardId,
+      senderId: log.residentId,
+      title: isApproved ? 'Walk-in Entry Approved' : 'Walk-in Entry Denied',
+      body: `Walk-in request for visitor "${log.snapshot?.visitorName || 'Walk-in'}" has been ${isApproved ? 'approved' : 'denied'} by host.`,
+      actionUrl: '#/visitor-management?tab=live',
+      type: isApproved ? 'SUCCESS' : 'ERROR'
+    }).catch((err) => {
+      logger.error(`Failed to create VMS notification for guard ${log.guardId}:`, err);
+    });
+  }
 });
 
 visitorLogEvents.on('log_created', (log) => {
