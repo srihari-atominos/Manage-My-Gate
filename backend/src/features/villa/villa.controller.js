@@ -9,15 +9,17 @@ export class VillaController {
 
       // Extract filters
       const filters = {};
-      if (req.query.block) {
-        filters.block = req.query.block.trim();
+      if (req.query.blockOrBuilding) {
+        filters.blockOrBuilding = req.query.blockOrBuilding.trim();
       }
-      if (req.query.occupancyStatus) {
-        filters.occupancyStatus = req.query.occupancyStatus.trim();
+      if (req.query.status) {
+        filters.status = req.query.status.trim();
+      }
+      if (req.query.type) {
+        filters.type = req.query.type.trim();
       }
       if (req.query.search) {
-        // Regex search for villa number
-        filters.villaNumber = { $regex: req.query.search.trim(), $options: 'i' };
+        filters.search = req.query.search.trim();
       }
 
       const { data, pagination } = await villaService.getAllVillas(orgId, page, limit, filters);
@@ -30,7 +32,8 @@ export class VillaController {
   async getById(req, res, next) {
     try {
       const { id } = req.params;
-      const villaDetails = await villaService.getVillaDetailsWithResidents(id);
+      const orgId = req.tenant.orgId;
+      const villaDetails = await villaService.getVillaDetailsWithResidents(id, orgId);
       res.success(villaDetails, 'Villa details and residents retrieved successfully');
     } catch (error) {
       next(error);
@@ -51,7 +54,8 @@ export class VillaController {
   async update(req, res, next) {
     try {
       const { id } = req.params;
-      const villa = await villaService.updateVilla(id, req.body);
+      const orgId = req.tenant.orgId;
+      const villa = await villaService.updateVilla(id, orgId, req.body);
       res.success(villa, 'Villa updated successfully');
     } catch (error) {
       next(error);
@@ -61,7 +65,8 @@ export class VillaController {
   async delete(req, res, next) {
     try {
       const { id } = req.params;
-      await villaService.deleteVilla(id);
+      const orgId = req.tenant.orgId;
+      await villaService.deleteVilla(id, orgId);
       res.success({ id }, 'Villa deleted successfully');
     } catch (error) {
       next(error);

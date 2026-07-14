@@ -2,35 +2,40 @@ import mongoose from 'mongoose';
 
 const villaSchema = new mongoose.Schema(
   {
-    villaNumber: {
-      type: String,
-      required: [true, 'Villa number is required'],
-      trim: true,
-    },
     orgId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Organization',
-      required: [true, 'Organization (community) ID is required'],
+      required: [true, 'Organization (orgId) is required'],
+      index: true,
     },
-    block: {
+    unitNumber: {
+      type: String,
+      required: [true, 'Unit number is required'],
+      trim: true,
+    },
+    blockOrBuilding: {
       type: String,
       trim: true,
       default: '',
     },
-    intercom: {
+    type: {
       type: String,
-      trim: true,
-      default: '',
+      enum: ['Studio', 'Apartment', 'Villa', 'Penthouse'],
+      default: 'Apartment',
     },
-    configuration: {
+    status: {
       type: String,
-      trim: true,
-      default: '', // e.g. "3 BHK", "4 BHK"
-    },
-    occupancyStatus: {
-      type: String,
-      enum: ['Vacant', 'Owner Occupied', 'Tenant Occupied'],
+      enum: ['Vacant', 'Occupied', 'Under Maintenance'],
       default: 'Vacant',
+    },
+    primaryResidentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    floorAreaSqFt: {
+      type: Number,
+      default: null,
     },
   },
   {
@@ -38,8 +43,9 @@ const villaSchema = new mongoose.Schema(
   }
 );
 
-// Enforce unique villa numbers per gated community (organization)
-villaSchema.index({ villaNumber: 1, orgId: 1 }, { unique: true });
+// Compound index on { orgId: 1, unitNumber: 1 } with unique: true
+// to prevent duplicate unit numbers within the same organization.
+villaSchema.index({ orgId: 1, unitNumber: 1 }, { unique: true });
 
 export const Villa = mongoose.model('Villa', villaSchema);
 export default Villa;

@@ -4,8 +4,9 @@ import HttpError from '../../utils/httpError.utils.js';
 import villaEvents from './villa.events.js';
 
 export class VillaService {
-  async getVillaById(id, session) {
-    const villa = await villaRepository.findById(id, session);
+  async getVillaById(id, orgId, session = null) {
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
+    const villa = await villaRepository.findById(id, orgId, session);
     if (!villa) {
       throw new HttpError(404, `Villa with ID ${id} not found.`);
     }
@@ -13,56 +14,65 @@ export class VillaService {
   }
 
   async createVilla(villaData, session = null) {
-    const { villaNumber, orgId } = villaData;
-    const trimmedNumber = villaNumber.trim();
+    const { unitNumber, orgId } = villaData;
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
+    if (!unitNumber) throw new HttpError(400, 'Unit number is required.');
 
-    const existing = await villaRepository.findByVillaNumber(trimmedNumber, orgId, session);
+    const trimmedNumber = unitNumber.trim();
+    const existing = await villaRepository.findByUnitNumber(trimmedNumber, orgId, session);
     if (existing) {
-      throw new HttpError(409, `Conflict. Villa number "${trimmedNumber}" already exists in this community.`);
+      throw new HttpError(409, `Conflict. Unit number "${trimmedNumber}" already exists in this community.`);
     }
 
-    const villa = await villaRepository.create({ ...villaData, villaNumber: trimmedNumber }, session);
-    
-    // Emit event outside transaction if possible, or just emit standard event
+    const villa = await villaRepository.create(orgId, { ...villaData, unitNumber: trimmedNumber }, session);
     villaEvents.emit('VILLA_CREATED', villa);
-
     return villa;
   }
 
-  async updateVilla(id, updateData, session = null) {
-    const villa = await this.getVillaById(id, session);
+  async updateVilla(id, orgId, updateData, session = null) {
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
+    const villa = await this.getVillaById(id, orgId, session);
 
-    // If villa number is changing, verify uniqueness
-    if (updateData.villaNumber && updateData.villaNumber.trim() !== villa.villaNumber) {
-      const trimmedNumber = updateData.villaNumber.trim();
-      const existing = await villaRepository.findByVillaNumber(trimmedNumber, villa.orgId, session);
+    // If unit number is changing, verify uniqueness
+    if (updateData.unitNumber && updateData.unitNumber.trim() !== villa.unitNumber) {
+      const trimmedNumber = updateData.unitNumber.trim();
+      const existing = await villaRepository.findByUnitNumber(trimmedNumber, orgId, session);
       if (existing) {
-        throw new HttpError(409, `Conflict. Villa number "${trimmedNumber}" already exists in this community.`);
+        throw new HttpError(409, `Conflict. Unit number "${trimmedNumber}" already exists in this community.`);
       }
-      updateData.villaNumber = trimmedNumber;
+      updateData.unitNumber = trimmedNumber;
     }
 
-    const updatedVilla = await villaRepository.update(id, updateData, session);
+    const updatedVilla = await villaRepository.update(id, orgId, updateData, session);
     villaEvents.emit('VILLA_UPDATED', updatedVilla);
     return updatedVilla;
   }
 
-  async deleteVilla(id, session = null) {
-    await this.getVillaById(id, session);
-    const deleted = await villaRepository.delete(id, session);
+  async deleteVilla(id, orgId, session = null) {
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
+    await this.getVillaById(id, orgId, session);
+    const deleted = await villaRepository.delete(id, orgId, session);
     villaEvents.emit('VILLA_DELETED', id);
     return deleted;
   }
 
   async getAllVillas(orgId, page = 1, limit = 10, filters = {}, session = null) {
-    const skip = (page - 1) * limit;
-    const { data, totalRecords } = await villaRepository.findAllPaginated(orgId, skip, limit, filters, session);
-    const totalPages = Math.ceil(totalRecords / limit);
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
+    
+    // Extract search query
+    const { search, ...restFilters } = filters;
+    
+    const { data, total } = await villaRepository.findPaginated(
+      { orgId, page, limit, search, ...restFilters },
+      session
+    );
+    
+    const totalPages = Math.ceil(total / limit);
 
     return {
       data,
       pagination: {
-        totalRecords,
+        totalRecords: total,
         currentPage: page,
         totalPages: totalPages || 1,
         limit,
@@ -71,14 +81,16 @@ export class VillaService {
   }
 
   async getVillaStats(orgId, session = null) {
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
     return await villaRepository.getOccupancyStats(orgId, session);
   }
 
   /**
    * Fetches a villa and its associated resident users from the Membership service
    */
-  async getVillaDetailsWithResidents(id, session = null) {
-    const villa = await this.getVillaById(id, session);
+  async getVillaDetailsWithResidents(id, orgId, session = null) {
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
+    const villa = await this.getVillaById(id, orgId, session);
 
     // Cross-Feature Service Call
     const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
@@ -102,6 +114,7 @@ export class VillaService {
    * Batch generates a list of villas (e.g. 54 villas for community setup) in a transaction.
    */
   async batchGenerateVillas({ orgId, startNumber = 1, endNumber = 54, prefix = 'Villa', config = {} }) {
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
     if (startNumber > endNumber) {
       throw new HttpError(400, 'Start number must be less than or equal to end number.');
     }
@@ -117,19 +130,18 @@ export class VillaService {
       for (let i = startNumber; i <= endNumber; i++) {
         // Zero-pad numbers for clean look, e.g. "Villa 01", "Villa 10"
         const numStr = i < 10 ? `0${i}` : `${i}`;
-        const villaNumber = prefix ? `${prefix.trim()} ${numStr}` : numStr;
+        const unitNumber = prefix ? `${prefix.trim()} ${numStr}` : numStr;
 
         // Skip if already exists
-        const existing = await villaRepository.findByVillaNumber(villaNumber, orgId, session);
+        const existing = await villaRepository.findByUnitNumber(unitNumber, orgId, session);
         if (existing) continue;
 
-        const villa = await villaRepository.create({
-          villaNumber,
-          orgId,
-          block: config.block || '',
-          intercom: config.intercomPrefix ? `${config.intercomPrefix}${numStr}` : '',
-          configuration: config.configuration || '',
-          occupancyStatus: 'Vacant'
+        const villa = await villaRepository.create(orgId, {
+          unitNumber,
+          blockOrBuilding: config.blockOrBuilding || '',
+          type: config.type || 'Apartment',
+          status: 'Vacant',
+          floorAreaSqFt: config.floorAreaSqFt || null
         }, session);
 
         createdVillas.push(villa);
@@ -147,45 +159,62 @@ export class VillaService {
     }
   }
 
-  async updateVillaOccupancy(id, occupancyStatus, session = null) {
-    return await villaRepository.update(id, { occupancyStatus }, session);
+  async updateVillaOccupancy(id, orgId, occupancyStatus, session = null) {
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
+    // Map occupancyStatus to status schema field
+    let status = 'Vacant';
+    if (occupancyStatus === 'Owner Occupied' || occupancyStatus === 'Tenant Occupied') {
+      status = 'Occupied';
+    }
+    return await villaRepository.update(id, orgId, { status }, session);
   }
 
-  async getVillaByNumber(villaNumber, orgId, session = null) {
-    return await villaRepository.findByVillaNumber(villaNumber, orgId, session);
+  async getVillaByNumber(unitNumber, orgId, session = null) {
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
+    return await villaRepository.findByUnitNumber(unitNumber, orgId, session);
   }
 
   async bulkUploadVillasAndResidents(villasArray, orgId) {
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
     const successes = [];
     const failures = [];
 
     const userService = (await import('../user/user.services.js')).default;
 
     for (const item of villasArray) {
-      const { villaNumber, block = '', intercom = '', configuration = '', email, residentType = 'None', roleName } = item;
-      const trimmedNumber = villaNumber.trim();
+      const { unitNumber, blockOrBuilding = '', type = 'Apartment', status = 'Vacant', floorAreaSqFt = null, email, residentType = 'None', roleName } = item;
+      const trimmedNumber = unitNumber ? unitNumber.trim() : '';
       const trimmedEmail = email ? email.trim().toLowerCase() : '';
 
+      if (!trimmedNumber) {
+        failures.push({
+          unitNumber: '',
+          email: trimmedEmail || null,
+          error: 'Unit number is required'
+        });
+        continue;
+      }
+
       try {
-        let villa = await villaRepository.findByVillaNumber(trimmedNumber, orgId);
+        let villa = await villaRepository.findByUnitNumber(trimmedNumber, orgId);
         let action = 'Created';
 
         if (villa) {
           const updateData = {};
-          if (block) updateData.block = block;
-          if (intercom) updateData.intercom = intercom;
-          if (configuration) updateData.configuration = configuration;
+          if (blockOrBuilding) updateData.blockOrBuilding = blockOrBuilding;
+          if (type) updateData.type = type;
+          if (status) updateData.status = status;
+          if (floorAreaSqFt !== null && floorAreaSqFt !== undefined) updateData.floorAreaSqFt = floorAreaSqFt;
           
-          villa = await villaRepository.update(villa._id, updateData);
+          villa = await villaRepository.update(villa._id, orgId, updateData);
           action = 'Updated';
         } else {
-          villa = await villaRepository.create({
-            villaNumber: trimmedNumber,
-            orgId,
-            block,
-            intercom,
-            configuration,
-            occupancyStatus: 'Vacant'
+          villa = await villaRepository.create(orgId, {
+            unitNumber: trimmedNumber,
+            blockOrBuilding,
+            type,
+            status,
+            floorAreaSqFt
           });
         }
 
@@ -209,7 +238,7 @@ export class VillaService {
         }
 
         successes.push({
-          villaNumber: trimmedNumber,
+          unitNumber: trimmedNumber,
           action,
           email: trimmedEmail || null,
           userInvited,
@@ -217,7 +246,7 @@ export class VillaService {
         });
       } catch (error) {
         failures.push({
-          villaNumber: trimmedNumber,
+          unitNumber: trimmedNumber,
           email: trimmedEmail || null,
           error: error.message || 'Villa operations failed'
         });
