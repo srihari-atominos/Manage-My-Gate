@@ -178,7 +178,7 @@ export class AmenityBookingRepository {
     return await AmenityBooking.findOneAndUpdate(
       query,
       { $set: { status, ...reviewData } },
-      { new: true }
+      { returnDocument: 'after' }
     ).populate('amenityId userId');
   }
 

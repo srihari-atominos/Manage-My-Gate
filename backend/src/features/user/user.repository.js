@@ -57,7 +57,7 @@ export class UserRepository {
    */
   async update(id, updateData, session) {
     return await User.findByIdAndUpdate(id, updateData, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
       ...(session ? { session } : {}),
     }).select('-password');

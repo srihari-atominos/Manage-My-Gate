@@ -34,7 +34,7 @@ export class SampleRepository {
    * @param {object} updateData - Data to update
    */
   async update(id, updateData) {
-    return await Sample.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    return await Sample.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
   }
 
   /**

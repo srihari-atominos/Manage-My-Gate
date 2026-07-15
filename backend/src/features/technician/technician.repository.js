@@ -18,7 +18,7 @@ class TechnicianRepository {
     return await Technician.findOneAndUpdate(
       { _id: id, orgId, isDeleted: false },
       { $set: updateData },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
   }
 
@@ -26,7 +26,7 @@ class TechnicianRepository {
     return await Technician.findOneAndUpdate(
       { _id: id, orgId },
       { $set: { isDeleted: true, status: 'Inactive' } },
-      { new: true }
+      { returnDocument: 'after' }
     );
   }
 

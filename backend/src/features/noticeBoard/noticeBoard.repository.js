@@ -67,7 +67,7 @@ export class NoticeBoardRepository {
    */
   async updateNotice(id, updateData, session) {
     return await Notice.findByIdAndUpdate(id, updateData, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
       session,
     });
@@ -87,7 +87,7 @@ export class NoticeBoardRepository {
     return await Notice.findByIdAndUpdate(
       id,
       { isPinned },
-      { new: true, runValidators: true, session }
+      { returnDocument: 'after', runValidators: true, session }
     );
   }
 

@@ -23,7 +23,7 @@ export class PermissionRepository {
     return await Permission.findOneAndUpdate(
       { name },
       { feature, action, name },
-      { new: true, upsert: true, runValidators: true }
+      { returnDocument: 'after', upsert: true, runValidators: true }
     );
   }
 }

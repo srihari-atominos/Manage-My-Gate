@@ -158,7 +158,7 @@ export class OrgMembershipRepository {
     return await OrgMembership.findOneAndUpdate(
       { userId, orgId },
       { roleIds, roleId: roleIds.length > 0 ? roleIds[0] : null },
-      { new: true, runValidators: true, session: session || null }
+      { returnDocument: 'after', runValidators: true, session: session || null }
     );
   }
 

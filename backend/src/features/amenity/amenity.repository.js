@@ -23,12 +23,12 @@ export class AmenityRepository {
     return await Amenity.findOneAndUpdate(
       { _id: id, orgId, isDeleted: false }, 
       updateData, 
-      { new: true, runValidators: true, ...options }
+      { returnDocument: 'after', runValidators: true, ...options }
     );
   }
 
   async softDelete(id, orgId) {
-    return await Amenity.findOneAndUpdate({ _id: id, orgId }, { isDeleted: true, status: 'inactive' }, { new: true });
+    return await Amenity.findOneAndUpdate({ _id: id, orgId }, { isDeleted: true, status: 'inactive' }, { returnDocument: 'after' });
   }
   async getAmenityStats(orgId) {
     const stats = await Amenity.aggregate([

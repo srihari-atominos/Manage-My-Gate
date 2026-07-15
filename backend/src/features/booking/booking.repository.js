@@ -26,7 +26,7 @@ export class BookingRepository {
   }
 
   async updateStatus(id, orgId, bookingStatus) {
-    return await Booking.findOneAndUpdate({ _id: id, orgId }, { bookingStatus }, { new: true, runValidators: true });
+    return await Booking.findOneAndUpdate({ _id: id, orgId }, { bookingStatus }, { returnDocument: 'after', runValidators: true });
   }
 
   async getBookingStats(orgId) {

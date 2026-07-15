@@ -29,7 +29,7 @@ export class VisitorLogRepository {
           checkOutTime: checkOutTime || new Date()
         }
       },
-      { new: true, runValidators: true, ...(session ? { session } : {}) }
+      { returnDocument: 'after', runValidators: true, ...(session ? { session } : {}) }
     );
   }
 
@@ -81,7 +81,7 @@ export class VisitorLogRepository {
     return await VisitorLog.findByIdAndUpdate(
       id,
       { $set: updateData },
-      { new: true, runValidators: true, ...(session ? { session } : {}) }
+      { returnDocument: 'after', runValidators: true, ...(session ? { session } : {}) }
     );
   }
 

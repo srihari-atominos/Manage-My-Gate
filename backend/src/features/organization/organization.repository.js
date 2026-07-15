@@ -20,7 +20,7 @@ export class OrganizationRepository {
     return await Organization.findByIdAndUpdate(
       orgId,
       { $set: { allowedFeatures: featuresArray } },
-      { new: true, runValidators: true, ...(session ? { session } : {}) }
+      { returnDocument: 'after', runValidators: true, ...(session ? { session } : {}) }
     );
   }
 
@@ -86,7 +86,7 @@ export class OrganizationRepository {
     return await Organization.findByIdAndUpdate(
       orgId,
       { $set: { status } },
-      { new: true, runValidators: true, ...(session ? { session } : {}) }
+      { returnDocument: 'after', runValidators: true, ...(session ? { session } : {}) }
     );
   }
 }

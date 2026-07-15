@@ -35,7 +35,7 @@ export class NotificationRepository {
    */
   async update(id, updateData, session) {
     return await Notification.findByIdAndUpdate(id, updateData, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
       session,
     });

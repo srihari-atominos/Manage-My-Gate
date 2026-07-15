@@ -118,7 +118,7 @@ class ComplaintRepository {
     return await Complaint.findOneAndUpdate(
       { _id: id, orgId },
       updateQuery,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
   }
 
@@ -129,7 +129,7 @@ class ComplaintRepository {
         $set: { status, ...additionalData },
         $push: { statusHistory: { status, timestamp: new Date() } }
       },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
   }
 
@@ -149,7 +149,7 @@ class ComplaintRepository {
           timeline: timelineEvent 
         }
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
   }
 
@@ -167,7 +167,7 @@ class ComplaintRepository {
     return await Complaint.findOneAndUpdate(
       { _id: id, orgId },
       { $push: { timeline: eventData } },
-      { new: true }
+      { returnDocument: 'after' }
     );
   }
 

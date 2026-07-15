@@ -15,7 +15,7 @@ class ComplaintSettingsRepository {
     const settings = await ComplaintSettings.findOneAndUpdate(
       { orgId },
       { $set: updateData },
-      { new: true, runValidators: true, upsert: true }
+      { returnDocument: 'after', runValidators: true, upsert: true }
     );
     return settings;
   }

@@ -25,7 +25,7 @@ export class MessageTemplateRepository {
       { _id: id, orgId },
       updateData,
       {
-        new: true,
+        returnDocument: 'after',
         runValidators: true,
         session,
       }

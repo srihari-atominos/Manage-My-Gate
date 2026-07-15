@@ -10,7 +10,7 @@ class AmenitySettingsRepository {
   }
 
   async updateSettings(orgId, data, session = null) {
-    const options = { new: true, upsert: true, runValidators: true };
+    const options = { returnDocument: 'after', upsert: true, runValidators: true };
     if (session) options.session = session;
     
     return await AmenitySettings.findOneAndUpdate(

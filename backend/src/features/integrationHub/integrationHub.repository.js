@@ -22,7 +22,7 @@ export class IntegrationHubRepository {
       { orgId, provider, accountLabel },
       { userId, credentials, status },
       {
-        new: true,
+        returnDocument: 'after',
         upsert: true,
         runValidators: true,
         session: session || null,
@@ -95,7 +95,7 @@ export class IntegrationHubRepository {
       { _id: connectionId, orgId },
       { accountLabel: newLabel },
       {
-        new: true,
+        returnDocument: 'after',
         runValidators: true,
         session: session || null,
       }

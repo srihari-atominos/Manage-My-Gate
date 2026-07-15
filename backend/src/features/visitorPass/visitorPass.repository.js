@@ -34,7 +34,7 @@ export class VisitorPassRepository {
     return await VisitorPass.findByIdAndUpdate(
       id,
       { status },
-      { new: true, runValidators: true, ...(session ? { session } : {}) }
+      { returnDocument: 'after', runValidators: true, ...(session ? { session } : {}) }
     );
   }
 
@@ -49,7 +49,7 @@ export class VisitorPassRepository {
     return await VisitorPass.findByIdAndUpdate(
       id,
       updateData,
-      { new: true, runValidators: true, ...(session ? { session } : {}) }
+      { returnDocument: 'after', runValidators: true, ...(session ? { session } : {}) }
     );
   }
 
