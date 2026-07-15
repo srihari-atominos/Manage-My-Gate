@@ -24,17 +24,18 @@ import {
 } from '@coreui/react';
 import { fetchVillaByIdAsync } from '../store/villaSlice';
 import { inviteUserAsync } from '../../userManagement/store/userSlice';
+import { fetchRolesAsync } from '../../roleBuilder/store/roleSlice';
 import useVilla from '../hooks/useVilla';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../../services/apiClient';
 
-const TENANT_TYPES = ['Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff'];
-
 export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { selectedVilla, selectedVillaLoading } = useSelector((state) => state.villa);
+  const { roles } = useSelector((state) => state.roleBuilder || { roles: [] });
+  const tenantRoles = roles ? roles.filter(r => r.isTenantRole).map(r => r.name) : [];
   
   // Custom hook containing state selectors and dispatch controller wrappers
   const {
@@ -51,20 +52,20 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
 
   // Form states for Tab 1 (Assign Existing)
   const [assignUserId, setAssignUserId] = useState('');
-  const [residencyType, setResidencyType] = useState('Tenant');
+  const [residencyType, setResidencyType] = useState('');
   const [isPrimaryResident, setIsPrimaryResident] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState(null);
 
   // Form states for Tab 2 (Invite via Email)
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteResidencyType, setInviteResidencyType] = useState('Tenant');
+  const [inviteResidencyType, setInviteResidencyType] = useState('');
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState(null);
 
   // Inline residency type editor states
   const [editingUserId, setEditingUserId] = useState(null);
-  const [editResidencyType, setEditResidencyType] = useState('Tenant');
+  const [editResidencyType, setEditResidencyType] = useState('');
 
   useEffect(() => {
     if (visible) {
@@ -72,6 +73,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
         dispatch(fetchVillaByIdAsync(villaId));
       }
       fetchWorkspaceUsers();
+      dispatch(fetchRolesAsync({ page: 1, limit: 100 }));
     }
   }, [dispatch, visible, villaId, fetchWorkspaceUsers]);
 
@@ -127,7 +129,8 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
       const actionResult = await dispatch(inviteUserAsync({
         email: inviteEmail.trim(),
         villaId,
-        residentType: getResidentType(inviteResidencyType)
+        residentType: getResidentType(inviteResidencyType),
+        roleName: inviteResidencyType
       }));
 
       if (inviteUserAsync.fulfilled.match(actionResult)) {
@@ -285,18 +288,19 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                           <div className="mt-2 border-top pt-2">
                             {isEditing ? (
                               <div className="d-flex align-items-center gap-1">
-                                <CFormSelect
-                                  size="sm"
-                                  value={editResidencyType}
-                                  onChange={(e) => setEditResidencyType(e.target.value)}
-                                  className="inline-select"
-                                >
-                                  {TENANT_TYPES.map((type) => (
-                                    <option key={type} value={type}>
-                                      {type}
-                                    </option>
-                                  ))}
-                                </CFormSelect>
+                                  <CFormSelect
+                                    size="sm"
+                                    value={editResidencyType}
+                                    onChange={(e) => setEditResidencyType(e.target.value)}
+                                    className="inline-select"
+                                  >
+                                    <option value="" disabled>Choose...</option>
+                                    {tenantRoles.map((type) => (
+                                      <option key={type} value={type}>
+                                        {type}
+                                      </option>
+                                    ))}
+                                  </CFormSelect>
                                 <CButton
                                   size="sm"
                                   color="success"
@@ -426,8 +430,10 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                           value={residencyType}
                           onChange={(e) => setResidencyType(e.target.value)}
                           size="sm"
+                          required
                         >
-                          {TENANT_TYPES.map((type) => (
+                          <option value="" disabled>{t('villas.details.chooseType', 'Choose...')}</option>
+                          {tenantRoles.map((type) => (
                             <option key={type} value={type}>
                               {type}
                             </option>
@@ -488,8 +494,10 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                           value={inviteResidencyType}
                           onChange={(e) => setInviteResidencyType(e.target.value)}
                           size="sm"
+                          required
                         >
-                          {TENANT_TYPES.map((type) => (
+                          <option value="" disabled>{t('villas.details.chooseType', 'Choose...')}</option>
+                          {tenantRoles.map((type) => (
                             <option key={type} value={type}>
                               {type}
                             </option>
