@@ -47,6 +47,10 @@ const AdminVisitorManagementViews = React.lazy(() => import('./features/visitorM
 const GuardVisitormanagementViews = React.lazy(() => import('./features/visitorManagement/views/GuardVisitormanagementViews'));
 const VisitorContextManager = React.lazy(() => import('./features/visitorManagement/views/VisitorContextManager'));
 
+// Financial Suite Views
+const BillingView = React.lazy(() => import('./features/billing/views/BillingView'));
+const AssessmentManagementView = React.lazy(() => import('./features/assessment/views/AssessmentManagementView'));
+
 
 
 
@@ -109,6 +113,10 @@ export const routes = [
   { path: '/admin/complaints/manage', name: 'Complaint Management', element: ComplaintManagement, requiredPermission: 'complaints:complaint_management' },
   { path: '/admin/complaints/staff', name: 'Staff & Vendors', element: StaffAndVendor, requiredPermission: 'complaints:staff' },
   { path: '/admin/complaints/assignee', name: 'Assignee', element: AssigneeView, requiredPermission: 'complaints:assignee' },
+
+  // Financial Suite Routes
+  { path: '/billing', name: 'Billing', element: BillingView },
+  { path: '/assessments', name: 'Assessment Manager', element: AssessmentManagementView },
 ];
 
 export default routes;

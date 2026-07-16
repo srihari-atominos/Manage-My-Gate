@@ -597,6 +597,25 @@ export class VillaService {
       await session.endSession();
     }
   }
+
+  async getUnitsByVillaIds(ids, session = null) {
+    return await Villa.find({ _id: { $in: ids } }).session(session);
+  }
+
+  async getUnitsByOrgId(orgId, session = null) {
+    return await Villa.find({ orgId }).session(session);
+  }
+
+  async getUnitsByOwner(ownerId, session = null) {
+    return await Villa.find({
+      residents: {
+        $elemMatch: {
+          userId: ownerId,
+          residencyType: { $in: ['Resident Owner', 'Non-Resident Owner'] }
+        }
+      }
+    }).session(session);
+  }
 }
 
 export default new VillaService();

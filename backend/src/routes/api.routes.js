@@ -22,6 +22,8 @@ import visitorPassRouter from '../features/visitorPass/visitorPass.router.js';
 import visitorLogRouter from '../features/visitorLog/visitorLog.router.js';
 import blacklistRouter from '../features/blacklist/blacklist.router.js';
 import noticeBoardRouter from '../features/noticeBoard/noticeBoard.routes.js';
+import assessmentRouter from '../features/assessment/assessment.routes.js';
+import invoiceRouter from '../features/invoice/invoice.routes.js';
 
 // Complaint and Technician routes
 import complaintRouter from '../features/complaint/complaint.router.js';
@@ -40,6 +42,8 @@ router.use('/integrations', integrationHubRouter);
 router.use('/organizations', organizationRouter);
 router.use('/audit-logs', auditLogRouter);
 router.use('/notices', noticeBoardRouter);
+router.use('/assessments', assessmentRouter);
+router.use('/invoices', invoiceRouter);
 
 router.use('/templates', messageTemplateRouter);
 router.use('/villas', villaRouter);

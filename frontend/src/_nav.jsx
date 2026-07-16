@@ -119,6 +119,16 @@ const _nav = [
     to: '/super-admin/audit-logs',
     icon: <CIcon icon={cilList} customClassName="nav-icon" />,
   },
+  {
+    component: CNavTitle,
+    name: 'Financial Suite',
+  },
+  {
+    component: CNavItem,
+    name: 'Billing',
+    to: '/billing',
+    icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
+  },
 ];
 
 export default _nav;

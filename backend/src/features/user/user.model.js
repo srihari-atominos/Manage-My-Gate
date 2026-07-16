@@ -57,6 +57,20 @@ const userSchema = new mongoose.Schema(
       enum: ['Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff', 'None'],
       default: 'None',
     },
+    roles: {
+      type: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Role',
+        index: true,
+      }],
+      required: [true, 'At least one role is required'],
+      validate: {
+        validator: function (v) {
+          return Array.isArray(v) && v.length > 0;
+        },
+        message: 'A user must have at least one role assigned.',
+      },
+    },
   },
   {
     timestamps: true,

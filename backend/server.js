@@ -12,10 +12,12 @@ import initializePassport from './src/features/auth/passport/passport.init.js';
 import logger from './src/utils/logger.utils.js';
 import { syncPermissions } from './src/utils/permissionSync.util.js';
 import complaintCron from './src/features/complaint/complaint.cron.js';
+import assessmentCron from './src/features/assessment/utils/assessmentCron.js';
 
 const startServer = async () => {
   try {
     complaintCron.init();
+    assessmentCron.init();
     // 1. Connect the database FIRST
     await connectToDb();
 
