@@ -25,6 +25,14 @@ export const assessmentService = {
   async updateAssessment(id, payload) {
     return await apiClient.patch(`/assessments/${id}`, payload);
   },
+
+  /**
+   * Delete or archive an assessment billing template.
+   * @param {string} id
+   */
+  async deleteAssessment(id) {
+    return await apiClient.delete(`/assessments/${id}`);
+  },
 };
 
 export default assessmentService;

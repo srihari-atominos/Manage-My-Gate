@@ -8,76 +8,7 @@ import React, { useState, useMemo, memo, useCallback } from 'react';
  * Fully driven by local mock data — zero API/socket wiring.
  */
 
-// ── Mock invoice data ─────────────────────────────────────────────────────
 
-const MOCK_INVOICES = [
-  {
-    _id:           'inv1',
-    invoiceNumber: 'INV-2026-07-001',
-    unitNumber:    'Villa 14 - Block B',
-    targetUser:    'Rahul Sharma',
-    amount:         7000,
-    currency:      '₹',
-    status:        'PAID',
-    paymentMethod: 'UPI',
-    date:          '2026-07-01',
-  },
-  {
-    _id:           'inv2',
-    invoiceNumber: 'INV-2026-07-002',
-    unitNumber:    'Villa 22 - Block A',
-    targetUser:    'Priya Nair',
-    amount:         7000,
-    currency:      '₹',
-    status:        'UNPAID',
-    paymentMethod: '—',
-    date:          '2026-07-01',
-  },
-  {
-    _id:           'inv3',
-    invoiceNumber: 'INV-2026-07-003',
-    unitNumber:    'Villa 08 - Block C',
-    targetUser:    'James Thompson',
-    amount:         9500,
-    currency:      '₹',
-    status:        'VERIFICATION_PENDING',
-    paymentMethod: 'Cheque #44892',
-    date:          '2026-07-02',
-  },
-  {
-    _id:           'inv4',
-    invoiceNumber: 'INV-2026-07-004',
-    unitNumber:    'Villa 33 - Block D',
-    targetUser:    'Fatima Al-Zaabi',
-    amount:         7000,
-    currency:      '₹',
-    status:        'PAID',
-    paymentMethod: 'Bank Transfer',
-    date:          '2026-07-03',
-  },
-  {
-    _id:           'inv5',
-    invoiceNumber: 'INV-2026-07-005',
-    unitNumber:    'Villa 17 - Block A',
-    targetUser:    'David Chen',
-    amount:        12000,
-    currency:      '₹',
-    status:        'UNPAID',
-    paymentMethod: '—',
-    date:          '2026-07-03',
-  },
-  {
-    _id:           'inv6',
-    invoiceNumber: 'INV-2026-07-006',
-    unitNumber:    'Villa 41 - Block B',
-    targetUser:    'Sara Al-Mansouri',
-    amount:         7000,
-    currency:      '₹',
-    status:        'VERIFICATION_PENDING',
-    paymentMethod: 'Cheque #44901',
-    date:          '2026-07-04',
-  },
-];
 
 // ── Status badge config ───────────────────────────────────────────────────
 
@@ -177,34 +108,54 @@ LedgerRow.displayName = 'LedgerRow';
 
 // ── Main Component ────────────────────────────────────────────────────────
 
-const BillingLedgerTable = memo(() => {
-  const [search, setSearch]         = useState('');
+const BillingLedgerTable = memo(({
+  kpis = { grossDemand: 0, totalCollected: 0, inTransitGateway: 0, totalUnpaidArrears: 0 },
+  invoices = [],
+  pagination = { currentPage: 1, totalPages: 1, totalRecords: 0, limit: 10 },
+  loading = false,
+  onPageChange,
+  onSettleOffline,
+}) => {
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  const handleMarkPaid    = useCallback((id) => console.log('[BillingLedgerTable] Mark Paid:', id),   []);
-  const handleOfflineSettle = useCallback((id) => console.log('[BillingLedgerTable] Offline Settle:', id), []);
-
-  const filtered = useMemo(() => {
-    let rows = MOCK_INVOICES;
-    if (statusFilter !== 'ALL') rows = rows.filter(r => r.status === statusFilter);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      rows = rows.filter(r =>
-        r.invoiceNumber.toLowerCase().includes(q)
-        || r.unitNumber.toLowerCase().includes(q)
-        || r.targetUser.toLowerCase().includes(q)
-      );
+  const handleMarkPaid = useCallback(async (invoiceId) => {
+    if (window.confirm("Mark this invoice as PAID?")) {
+      try {
+        await onSettleOffline(invoiceId, { offlineReference: "Marked paid by Admin", paymentMethod: 'CASH' });
+        alert('Invoice marked as paid successfully.');
+      } catch (err) {
+        alert('Failed to update invoice: ' + err.message);
+      }
     }
-    return rows;
-  }, [search, statusFilter]);
+  }, [onSettleOffline]);
 
-  const summary = useMemo(() => ({
-    total:   MOCK_INVOICES.length,
-    paid:    MOCK_INVOICES.filter(r => r.status === 'PAID').length,
-    unpaid:  MOCK_INVOICES.filter(r => r.status === 'UNPAID').length,
-    pending: MOCK_INVOICES.filter(r => r.status === 'VERIFICATION_PENDING').length,
-    totalAmount: MOCK_INVOICES.reduce((s, r) => s + r.amount, 0),
-  }), []);
+  const handleOfflineSettle = useCallback(async (invoiceId) => {
+    const reference = window.prompt("Enter offline settlement transaction ID or reference (cheque or NEFT reference):");
+    if (reference) {
+      try {
+        await onSettleOffline(invoiceId, { offlineReference: reference, paymentMethod: 'CHEQUE' });
+        alert('Offline payment verified and recorded successfully.');
+      } catch (err) {
+        alert('Failed to settle invoice: ' + err.message);
+      }
+    }
+  }, [onSettleOffline]);
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearch(val);
+    if (onPageChange) {
+      onPageChange(1, { search: val, status: statusFilter });
+    }
+  };
+
+  const handleStatusFilterChange = (status) => {
+    setStatusFilter(status);
+    if (onPageChange) {
+      onPageChange(1, { search, status });
+    }
+  };
 
   return (
     <div className="billing-ledger">
@@ -214,28 +165,32 @@ const BillingLedgerTable = memo(() => {
         <div className="billing-ledger__kpi-card">
           <i className="fa-solid fa-file-invoice billing-ledger__kpi-icon" />
           <div>
-            <div className="billing-ledger__kpi-value">{summary.total}</div>
+            <div className="billing-ledger__kpi-value">
+              {loading ? '…' : (kpis.totalCollected + kpis.totalUnpaidArrears) ? (kpis.grossDemand || 0) : 0}
+            </div>
             <div className="billing-ledger__kpi-label">Total Invoices</div>
           </div>
         </div>
         <div className="billing-ledger__kpi-card billing-ledger__kpi-card--success">
           <i className="fa-solid fa-circle-check billing-ledger__kpi-icon" />
           <div>
-            <div className="billing-ledger__kpi-value">{summary.paid}</div>
+            <div className="billing-ledger__kpi-value">{loading ? '…' : kpis.totalCollected}</div>
             <div className="billing-ledger__kpi-label">Paid</div>
           </div>
         </div>
         <div className="billing-ledger__kpi-card billing-ledger__kpi-card--danger">
           <i className="fa-solid fa-circle-xmark billing-ledger__kpi-icon" />
           <div>
-            <div className="billing-ledger__kpi-value">{summary.unpaid}</div>
+            <div className="billing-ledger__kpi-value">
+              {loading ? '…' : (kpis.totalUnpaidArrears - kpis.inTransitGateway)}
+            </div>
             <div className="billing-ledger__kpi-label">Unpaid</div>
           </div>
         </div>
         <div className="billing-ledger__kpi-card billing-ledger__kpi-card--info">
           <i className="fa-solid fa-clock-rotate-left billing-ledger__kpi-icon" />
           <div>
-            <div className="billing-ledger__kpi-value">{summary.pending}</div>
+            <div className="billing-ledger__kpi-value">{loading ? '…' : kpis.inTransitGateway}</div>
             <div className="billing-ledger__kpi-label">Pending</div>
           </div>
         </div>
@@ -243,7 +198,7 @@ const BillingLedgerTable = memo(() => {
           <i className="fa-solid fa-indian-rupee-sign billing-ledger__kpi-icon" />
           <div>
             <div className="billing-ledger__kpi-value">
-              ₹{summary.totalAmount.toLocaleString('en-IN')}
+              ₹{loading ? '…' : (kpis.grossDemand || 0).toLocaleString('en-IN')}
             </div>
             <div className="billing-ledger__kpi-label">Total Billed</div>
           </div>
@@ -259,7 +214,7 @@ const BillingLedgerTable = memo(() => {
             className="billing-ledger__search"
             placeholder="Search invoice, unit, or resident…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={handleSearchChange}
             aria-label="Search invoices"
           />
         </div>
@@ -270,7 +225,7 @@ const BillingLedgerTable = memo(() => {
               key={s}
               type="button"
               className={`billing-ledger__filter-pill${statusFilter === s ? ' billing-ledger__filter-pill--active' : ''}`}
-              onClick={() => setStatusFilter(s)}
+              onClick={() => handleStatusFilterChange(s)}
             >
               {s === 'ALL' ? 'All' : s === 'VERIFICATION_PENDING' ? 'Pending' : s.charAt(0) + s.slice(1).toLowerCase()}
             </button>
@@ -279,7 +234,18 @@ const BillingLedgerTable = memo(() => {
       </div>
 
       {/* ── Table ─────────────────────────────────────────────────────── */}
-      <div className="billing-ledger__table-wrap">
+      <div className="billing-ledger__table-wrap" style={{ position: 'relative' }}>
+        {loading && (
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(255, 255, 255, 0.7)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', zIndex: 10
+          }}>
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        )}
         <table className="billing-ledger__table">
           <thead>
             <tr className="billing-ledger__thead-row">
@@ -293,7 +259,7 @@ const BillingLedgerTable = memo(() => {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {invoices.length === 0 ? (
               <tr>
                 <td colSpan={7} className="billing-ledger__empty">
                   <i className="fa-solid fa-inbox" style={{ fontSize: '28px', opacity: 0.3 }} />
@@ -301,7 +267,7 @@ const BillingLedgerTable = memo(() => {
                 </td>
               </tr>
             ) : (
-              filtered.map(inv => (
+              invoices.map(inv => (
                 <LedgerRow
                   key={inv._id}
                   invoice={inv}
@@ -312,6 +278,33 @@ const BillingLedgerTable = memo(() => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* ── Pagination Footer ─────────────────────────────────────────── */}
+      <div className="table-pagination-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+        <span style={{ fontSize: '13px', color: 'var(--text-muted, #64748B)' }}>
+          Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalRecords} total records)
+        </span>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            disabled={pagination.currentPage <= 1 || loading}
+            onClick={() => onPageChange && onPageChange(pagination.currentPage - 1, { search, status: statusFilter })}
+            style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '6px' }}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            disabled={pagination.currentPage >= pagination.totalPages || loading}
+            onClick={() => onPageChange && onPageChange(pagination.currentPage + 1, { search, status: statusFilter })}
+            style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '6px' }}
+          >
+            Next
+          </button>
+        </div>
       </div>
 
     </div>

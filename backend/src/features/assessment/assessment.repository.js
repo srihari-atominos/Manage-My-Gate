@@ -47,6 +47,16 @@ export class AssessmentRepository {
       ...(session ? { session } : {}),
     });
   }
+
+  /**
+   * Delete an assessment template physically.
+   * @param {string} id - Assessment ID.
+   * @param {import('mongoose').ClientSession} [session] - Optional session.
+   * @returns {Promise<import('mongoose').Document | null>}
+   */
+  async delete(id, session) {
+    return await Assessment.findByIdAndDelete(id, session ? { session } : undefined);
+  }
 }
 
 export default new AssessmentRepository();

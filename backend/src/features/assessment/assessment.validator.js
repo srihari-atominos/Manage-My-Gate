@@ -8,8 +8,7 @@ export const createAssessmentSchema = [
     .withMessage('Community ID must be a valid Mongo ObjectId'),
 
   body('villaId')
-    .notEmpty()
-    .withMessage('Villa ID is required')
+    .optional({ nullable: true })
     .isMongoId()
     .withMessage('Villa ID must be a valid Mongo ObjectId'),
 

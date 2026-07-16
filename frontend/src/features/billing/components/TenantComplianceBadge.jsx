@@ -35,12 +35,12 @@ const MOCK_TENANT_ARREARS = [
 // ── Sub-component ─────────────────────────────────────────────────────────
 
 const ArrearPill = memo(({ arrear }) => {
-  const isUrgent = arrear.daysUntilDue <= 5;
+  const isUrgent = arrear.status === 'UNPAID';
   return (
     <div className={`tenant-compliance-card__arrear-row${isUrgent ? ' tenant-compliance-card__arrear-row--urgent' : ''}`}>
       {/* Tenant avatar placeholder */}
       <div className="tenant-compliance-card__avatar">
-        {arrear.tenantName.charAt(0)}
+        {(arrear.tenantName || 'T').charAt(0)}
       </div>
 
       <div className="tenant-compliance-card__detail">
@@ -50,11 +50,11 @@ const ArrearPill = memo(({ arrear }) => {
 
       <div className="text-end">
         <div className="tenant-compliance-card__amount">
-          {arrear.currency}{arrear.amount.toLocaleString('en-IN')}
+          ₹{(arrear.amountDue || 0).toLocaleString('en-IN')}
         </div>
         <span className={`tenant-compliance-card__warning-pill${isUrgent ? ' tenant-compliance-card__warning-pill--urgent' : ''}`}>
           <i className={`fa-solid ${isUrgent ? 'fa-triangle-exclamation' : 'fa-clock'} me-1`} />
-          Due in {arrear.daysUntilDue} {arrear.daysUntilDue === 1 ? 'day' : 'days'}
+          {arrear.status}
         </span>
       </div>
     </div>
@@ -64,34 +64,44 @@ ArrearPill.displayName = 'ArrearPill';
 
 // ── Main component ────────────────────────────────────────────────────────
 
-const TenantComplianceBadge = memo(() => (
-  <div className="tenant-compliance-card">
+const TenantComplianceBadge = memo(({ activeDues = null }) => {
+  const arrears = activeDues?.secondaryCompliance || [];
 
-    <div className="tenant-compliance-card__header">
-      <div className="tenant-compliance-card__header-icon">
-        <i className="fa-solid fa-person-shelter" />
+  return (
+    <div className="tenant-compliance-card">
+
+      <div className="tenant-compliance-card__header">
+        <div className="tenant-compliance-card__header-icon">
+          <i className="fa-solid fa-person-shelter" />
+        </div>
+        <div>
+          <h5 className="tenant-compliance-card__title">Tenant Arrears</h5>
+          <p className="tenant-compliance-card__sub">
+            Maintenance dues for your leased units
+          </p>
+        </div>
       </div>
-      <div>
-        <h5 className="tenant-compliance-card__title">Tenant Arrears</h5>
-        <p className="tenant-compliance-card__sub">
-          Maintenance dues for your leased units
-        </p>
+
+      <div className="tenant-compliance-card__list">
+        {arrears.length === 0 ? (
+          <div style={{ color: 'var(--text-muted, #64748B)', fontSize: '13px', textAlign: 'center', padding: '24px 16px' }}>
+            No tenant arrears recorded for your units.
+          </div>
+        ) : (
+          arrears.map((arrear, idx) => (
+            <ArrearPill key={arrear._id || idx} arrear={arrear} />
+          ))
+        )}
       </div>
-    </div>
 
-    <div className="tenant-compliance-card__list">
-      {MOCK_TENANT_ARREARS.map(arrear => (
-        <ArrearPill key={arrear._id} arrear={arrear} />
-      ))}
-    </div>
+      <div className="tenant-compliance-card__footer-note">
+        <i className="fa-solid fa-circle-info me-2" />
+        As the owner, you may be held liable if tenant dues remain unpaid beyond 30 days.
+      </div>
 
-    <div className="tenant-compliance-card__footer-note">
-      <i className="fa-solid fa-circle-info me-2" />
-      As the owner, you may be held liable if tenant dues remain unpaid beyond 30 days.
     </div>
-
-  </div>
-));
+  );
+});
 TenantComplianceBadge.displayName = 'TenantComplianceBadge';
 
 export default TenantComplianceBadge;

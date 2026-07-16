@@ -52,6 +52,19 @@ export class InvoiceController {
       next(error);
     }
   }
+
+  /**
+   * Fetch all invoices for a community (filtered & paginated).
+   */
+  async getAllInvoices(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const data = await invoiceService.getInvoices(orgId, req.query);
+      res.success(data, 'Community invoices retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new InvoiceController();

@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback, memo } from 'react';
+import React, { memo, useState, useMemo } from 'react';
+import { useAssessmentForm } from '../hooks/useAssessmentForm';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -364,7 +365,7 @@ const ScopeTable = memo(({ rows, selectedIds, onToggle, onSelectAll, onDeselectA
         ) : filtered.map((row, idx) => {
           const isChecked = selectedIds.includes(row._id);
           return (
-            <label key={row._id} style={{
+            <label key={row._id || idx} style={{
               display: 'flex', alignItems: 'center', gap: '12px',
               padding: '11px 14px',
               borderBottom: idx < filtered.length - 1 ? '1px solid var(--border-light, #E2E8F0)' : 'none',
@@ -390,127 +391,45 @@ ScopeTable.displayName = 'ScopeTable';
 // ── Inner Modal — all state and logic lives here ───────────────────────────
 // Separated from the outer guard so hooks are never called conditionally.
 
-const AssessmentFormModalInner = memo(({ onClose }) => {
-
-  // Sec 1 — Core
-  const [name, setName]               = useState('');
-  const [type, setType]               = useState('RECURRING');
-
-  // Recurring
-  const [billingCycle, setBillingCycle] = useState('MONTHLY');
-  const [selectedDays, setSelectedDays] = useState([]);
-  const [genDayOption, setGenDayOption] = useState('FIRST');
-  const [customDay, setCustomDay]       = useState('');
-
-  // One-Time
-  const [triggerMode, setTriggerMode]               = useState('IMMEDIATE');
-  const [scheduledDateTime, setScheduledDateTime]   = useState('');
-
-  // Capital Repair
-  const [collectionMethod, setCollectionMethod]   = useState('LUMP_SUM');
-  const [totalInstallments, setTotalInstallments] = useState('');
-
-  // Validation gate
-  const [validated, setValidated] = useState(false);
-
-  // Sec 2
-  const [calcMethod, setCalcMethod]   = useState('FLAT_RATE');
-  const [flatAmount, setFlatAmount]   = useState('');
-  const [ratePerSqFt, setRatePerSqFt] = useState('');
-  const [tieredRates, setTieredRates] = useState({
-    studio: '', bhk1: '', bhk2: '', bhk3: '', bhk4: '', penthouse: '', duplex: '',
-  });
-
-  // Sec 3
-  const [scopeType, setScopeType]                 = useState('ALL_COMMUNITY');
-  // Charge To: array of selected role IDs (all pre-selected by default)
-  const [checkedRoles, setCheckedRoles] = useState(() => MOCK_TENANT_ROLES.map(r => r._id));
-  const [selectedIds, setSelectedIds]             = useState([]);
-  const [selectedUnitTypes, setSelectedUnitTypes] = useState([]);
-
-  // ── Stable handlers (useCallback + functional updates) ───────────────
-
-  const handleTypeChange = useCallback((val) => {
-    setType(val);
-    setBillingCycle('MONTHLY');
-    setSelectedDays([]);
-    setGenDayOption('FIRST');
-    setCustomDay('');
-    setTriggerMode('IMMEDIATE');
-    setScheduledDateTime('');
-    setCollectionMethod('LUMP_SUM');
-    setTotalInstallments('');
-    setValidated(false);
-  }, []);
-
-  const handleBillingCycleChange = useCallback((val) => {
-    setBillingCycle(val);
-    setSelectedDays([]);
-    setGenDayOption('FIRST');
-    setCustomDay('');
-  }, []);
-
-  const handleToggleDay = useCallback((idx) =>
-    setSelectedDays(prev => prev.includes(idx) ? prev.filter(d => d !== idx) : [...prev, idx])
-  , []);
-
-  const handleToggleId    = useCallback((id)  => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]), []);
-  const handleSelectAll   = useCallback((ids) => setSelectedIds(p => Array.from(new Set([...p, ...ids]))), []);
-  const handleDeselectAll = useCallback((ids) => setSelectedIds(p => p.filter(id => !ids.includes(id))), []);
-  const handleToggleUType = useCallback((t)   => setSelectedUnitTypes(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]), []);
-  const handleScopeChange = useCallback((val) => { setScopeType(val); setSelectedIds([]); setSelectedUnitTypes([]); }, []);
-
-  const handleTieredRate = useCallback((key, val) =>
-    setTieredRates(p => ({ ...p, [key]: val }))
-  , []);
-
-  // ── Computed errors ───────────────────────────────────────────────────
-
-  const errors = useMemo(() => {
-    const e = {};
-    if (!name.trim()) e.name = 'Assessment name is required.';
-
-    const isRecurring = type === 'RECURRING' || (type === 'CAPITAL_REPAIR' && collectionMethod === 'INSTALLMENT');
-    const isOneTime   = type === 'ONE_TIME'  || (type === 'CAPITAL_REPAIR' && collectionMethod === 'LUMP_SUM');
-
-    if (isRecurring) {
-      if (billingCycle === 'WEEKLY' && selectedDays.length === 0)
-        e.selectedDays = 'Please select at least one day of the week.';
-      if (billingCycle !== 'WEEKLY' && genDayOption === 'CUSTOM') {
-        const n = Number(customDay);
-        if (!customDay || n < 1 || n > 31) e.customDay = true;
-      }
-      if (type === 'CAPITAL_REPAIR') {
-        const n = Number(totalInstallments);
-        if (!totalInstallments || n < 2) e.totalInstallments = 'Minimum 2 installments required.';
-      }
-    }
-    if (isOneTime && triggerMode === 'SCHEDULED' && !scheduledDateTime)
-      e.scheduledDateTime = true;
-
-    return e;
-  }, [name, type, billingCycle, selectedDays, genDayOption, customDay,
-      triggerMode, scheduledDateTime, collectionMethod, totalInstallments]);
-
-  const handleSave = useCallback(() => {
-    setValidated(true);
-    if (Object.keys(errors).length > 0) return;
-    // API call wired in config phase
-  }, [errors]);
-
-  // ── Derived flags (stable) ────────────────────────────────────────────
-
-  const showRecurring = type === 'RECURRING' || (type === 'CAPITAL_REPAIR' && collectionMethod === 'INSTALLMENT');
-  const showOneTime   = type === 'ONE_TIME'  || (type === 'CAPITAL_REPAIR' && collectionMethod === 'LUMP_SUM');
-
-  const scopeRows = scopeType === 'SPECIFIC_USERS' ? MOCK_USERS
-                  : scopeType === 'VILLA_BLOCK'     ? MOCK_BLOCKS
-                  : MOCK_UNITS;
-  const showScopeTable = ['VILLA_BLOCK', 'SPECIFIC_UNITS', 'SPECIFIC_USERS'].includes(scopeType);
-  const showUTypeChips = scopeType === 'UNIT_TYPE';
-
-  const activeErrors = validated ? errors : {};
-  const hasErrors    = validated && Object.keys(errors).length > 0;
+const AssessmentFormModalInner = memo(({ onClose, onSuccess, assessment = null }) => {
+  const {
+    name, setName,
+    type,
+    billingCycle,
+    selectedDays,
+    genDayOption, setGenDayOption,
+    customDay, setCustomDay,
+    triggerMode, setTriggerMode,
+    scheduledDateTime, setScheduledDateTime,
+    collectionMethod, setCollectionMethod,
+    totalInstallments, setTotalInstallments,
+    calcMethod, setCalcMethod,
+    flatAmount, setFlatAmount,
+    ratePerSqFt, setRatePerSqFt,
+    tieredRates,
+    scopeType,
+    checkedRoles, setCheckedRoles,
+    selectedIds,
+    selectedUnitTypes,
+    roles,
+    scopeRows,
+    showRecurring,
+    showOneTime,
+    showScopeTable,
+    showUTypeChips,
+    activeErrors,
+    hasErrors,
+    handleTypeChange,
+    handleBillingCycleChange,
+    handleToggleDay,
+    handleToggleId,
+    handleSelectAll,
+    handleDeselectAll,
+    handleToggleUType,
+    handleScopeChange,
+    handleTieredRate,
+    handleSave,
+  } = useAssessmentForm({ onClose, onSuccess, assessment });
 
   // ── Render ────────────────────────────────────────────────────────────
 
@@ -525,8 +444,8 @@ const AssessmentFormModalInner = memo(({ onClose }) => {
               <i className="fa-solid fa-file-invoice" />
             </div>
             <div>
-              <h3 className="billing-modal-header__title">New Assessment Template</h3>
-              <p className="billing-modal-header__sub">Configure billing rules and target scope</p>
+              <h3 className="billing-modal-header__title">{assessment ? 'Edit Assessment Template' : 'New Assessment Template'}</h3>
+              <p className="billing-modal-header__sub">{assessment ? 'Update billing rules and target scope' : 'Configure billing rules and target scope'}</p>
             </div>
           </div>
           <button type="button" className="billing-modal-close" onClick={onClose} aria-label="Close">
@@ -728,16 +647,17 @@ const AssessmentFormModalInner = memo(({ onClose }) => {
               Select which resident roles will receive this invoice.
             </p>
             <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '8px' }} role="group" aria-label="Charge to roles">
-              {MOCK_TENANT_ROLES.map(role => {
-                const isChecked = checkedRoles.includes(role._id);
+              {roles.map((role, idx) => {
+                const roleId = role._id || role.id;
+                const isChecked = checkedRoles.includes(roleId);
                 return (
                   <label
-                    key={role._id}
+                    key={roleId || role.name || idx}
                     onClick={() =>
                       setCheckedRoles(prev =>
-                        prev.includes(role._id)
-                          ? prev.filter(id => id !== role._id)
-                          : [...prev, role._id]
+                        prev.includes(roleId)
+                          ? prev.filter(id => id !== roleId)
+                          : [...prev, roleId]
                       )
                     }
                     style={{
@@ -857,9 +777,9 @@ AssessmentFormModalInner.displayName = 'AssessmentFormModalInner';
 // The inner component is only mounted when visible=true, so its state
 // is also automatically reset every time the modal is closed and reopened.
 
-export const AssessmentFormModal = ({ visible, onClose }) => {
+export const AssessmentFormModal = ({ visible, onClose, onSuccess, assessment }) => {
   if (!visible) return null;
-  return <AssessmentFormModalInner onClose={onClose} />;
+  return <AssessmentFormModalInner onClose={onClose} onSuccess={onSuccess} assessment={assessment} />;
 };
 
 export default AssessmentFormModal;

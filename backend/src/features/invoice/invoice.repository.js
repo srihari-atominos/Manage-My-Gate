@@ -96,7 +96,7 @@ export class InvoiceRepository {
       },
       {
         $lookup: {
-          from: 'units',
+          from: 'villas',
           localField: 'unitId',
           foreignField: '_id',
           as: 'unitInfo',
@@ -170,6 +170,106 @@ export class InvoiceRepository {
     }
 
     return await invoice.save(session ? { session } : undefined);
+  }
+
+  /**
+   * Fetch all community invoices.
+   */
+  async getInvoices(orgId, query) {
+    const { page = 1, limit = 10, status, search } = query;
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+    const take = parseInt(limit, 10);
+
+    const matchConditions = {};
+    if (status && status !== 'ALL') {
+      matchConditions.status = status;
+    }
+
+    const searchMatch = {};
+    if (search && search.trim()) {
+      const q = search.trim();
+      searchMatch.$or = [
+        { invoiceNumber: { $regex: q, $options: 'i' } },
+        { 'unitInfo.unitNumber': { $regex: q, $options: 'i' } },
+        { 'userInfo.name': { $regex: q, $options: 'i' } },
+        { 'userInfo.username': { $regex: q, $options: 'i' } }
+      ];
+    }
+
+    const result = await Invoice.aggregate([
+      {
+        $lookup: {
+          from: 'assessments',
+          localField: 'assessmentId',
+          foreignField: '_id',
+          as: 'assessment',
+        },
+      },
+      { $unwind: '$assessment' },
+      {
+        $match: {
+          'assessment.communityId': new mongoose.Types.ObjectId(orgId),
+          ...matchConditions,
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'targetUserId',
+          foreignField: '_id',
+          as: 'userInfo',
+        },
+      },
+      { $unwind: { path: '$userInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'villas',
+          localField: 'unitId',
+          foreignField: '_id',
+          as: 'unitInfo',
+        },
+      },
+      { $unwind: { path: '$unitInfo', preserveNullAndEmptyArrays: true } },
+      { $match: searchMatch },
+      { $sort: { createdAt: -1 } },
+      {
+        $facet: {
+          data: [
+            { $skip: skip },
+            { $limit: take },
+            {
+              $project: {
+                _id: 1,
+                invoiceNumber: 1,
+                date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                unitNumber: '$unitInfo.unitNumber',
+                targetUser: { $ifNull: ['$userInfo.name', '$userInfo.username'] },
+                amount: '$totalDue',
+                currency: { $literal: '₹' },
+                status: 1,
+                paymentMethod: { $ifNull: ['$paymentMethod', '—'] },
+                offlineReference: 1,
+              },
+            },
+          ],
+          metadata: [{ $count: 'totalRecords' }],
+        },
+      },
+    ]);
+
+    const data = result[0]?.data || [];
+    const totalRecords = result[0]?.metadata[0]?.totalRecords || 0;
+    const totalPages = Math.ceil(totalRecords / take) || 1;
+
+    return {
+      data,
+      pagination: {
+        totalRecords,
+        currentPage: parseInt(page, 10),
+        totalPages,
+        limit: take,
+      },
+    };
   }
 }
 

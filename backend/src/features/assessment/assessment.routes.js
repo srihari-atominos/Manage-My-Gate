@@ -29,4 +29,9 @@ router.patch(
   assessmentController.update
 );
 
+router.delete(
+  '/:id',
+  assessmentController.delete
+);
+
 export default router;

@@ -6,6 +6,7 @@ import {
   modifyAssessment,
   clearAssessmentError,
   setActiveTemplate,
+  deleteAssessmentTemplate,
 } from '../store/assessmentSlice.js';
 
 /**
@@ -18,7 +19,7 @@ export const useAssessment = () => {
   const dispatch = useDispatch();
 
   // 1. Selector mapping
-  const { assessmentsList, activeTemplate, loading, error } = useSelector(
+  const { assessmentsList, activeTemplate, pagination, loading, error } = useSelector(
     (state) => state.assessment
   );
   const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId);
@@ -27,7 +28,9 @@ export const useAssessment = () => {
   const loadAssessments = useCallback(
     (params = {}) => {
       const orgId = params.orgId || activeOrgId;
-      return dispatch(fetchAssessments({ orgId, ...params }));
+      const page = params.page || 1;
+      const limit = params.limit || 3;
+      return dispatch(fetchAssessments({ orgId, page, limit, ...params }));
     },
     [dispatch, activeOrgId]
   );
@@ -62,10 +65,18 @@ export const useAssessment = () => {
     [dispatch]
   );
 
+  const deleteTemplate = useCallback(
+    (id) => {
+      return dispatch(deleteAssessmentTemplate(id));
+    },
+    [dispatch]
+  );
+
   return {
     // Redux Slice states
     assessmentsList,
     activeTemplate,
+    pagination,
     loading,
     error,
 
@@ -73,6 +84,7 @@ export const useAssessment = () => {
     loadAssessments,
     saveAssessment,
     editAssessment,
+    deleteTemplate,
     selectTemplate,
     resetAssessmentError,
   };

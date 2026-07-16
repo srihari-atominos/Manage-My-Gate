@@ -23,9 +23,38 @@ const MOCK_LIABILITY = {
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-const HeroLiabilityBanner = memo(() => {
-  const [isClearing, setIsClearing] = useState(false);
-  const d = MOCK_LIABILITY;
+const HeroLiabilityBanner = memo(({ activeDues = null, settleOffline }) => {
+  const totalOutstanding = activeDues?.totalPortfolioDue || 0;
+  const unitBreakdown = activeDues?.unitBreakdown || [];
+
+  // Determine if there is any cheque/offline payment currently clearing (VERIFICATION_PENDING)
+  const clearingInvoice = unitBreakdown.find(inv => inv.status === 'VERIFICATION_PENDING');
+  const isClearing = !!clearingInvoice;
+  const clearingAmount = clearingInvoice?.totalDue || 0;
+  const clearingRef = clearingInvoice?.offlineReference || 'Cheque';
+
+  const handlePayNow = async () => {
+    const firstUnpaid = unitBreakdown.find(inv => inv.status === 'UNPAID');
+    if (!firstUnpaid) {
+      alert('You have no outstanding unpaid invoices!');
+      return;
+    }
+
+    const ref = window.prompt(
+      `Enter payment confirmation reference (cheque or NEFT reference) to settle invoice ${firstUnpaid.invoiceNumber} of ₹${firstUnpaid.totalDue.toLocaleString('en-IN')}:`
+    );
+    if (ref) {
+      try {
+        await settleOffline(firstUnpaid.invoiceId || firstUnpaid._id, {
+          offlineReference: ref,
+          paymentMethod: 'CHEQUE',
+        });
+        alert('Offline payment submitted successfully! Awaiting admin verification.');
+      } catch (err) {
+        alert('Failed to submit offline payment: ' + err.message);
+      }
+    }
+  };
 
   return (
     <div className={`hero-liability-card${isClearing ? ' hero-liability-card--clearing' : ''}`}>
@@ -38,30 +67,29 @@ const HeroLiabilityBanner = memo(() => {
 
       {/* Big amount */}
       <div className="hero-liability-card__amount">
-        <span className="hero-liability-card__currency">{d.currency}</span>
-        {d.totalOutstanding.toLocaleString('en-IN')}
+        <span className="hero-liability-card__currency">₹</span>
+        {totalOutstanding.toLocaleString('en-IN')}
       </div>
 
       {/* Breakdown */}
       <div className="hero-liability-card__breakdown">
-        <div className="hero-liability-card__breakdown-row">
-          <span className="hero-liability-card__breakdown-label">
-            <i className="fa-solid fa-circle-dot me-2 opacity-50" />
-            Base Maintenance
-          </span>
-          <span className="hero-liability-card__breakdown-value">
-            {d.currency}{d.baseMaintenance.toLocaleString('en-IN')}
-          </span>
-        </div>
-        <div className="hero-liability-card__breakdown-row">
-          <span className="hero-liability-card__breakdown-label">
-            <i className="fa-solid fa-circle-dot me-2 opacity-50" />
-            Carried-forward Arrears
-          </span>
-          <span className="hero-liability-card__breakdown-value">
-            {d.currency}{d.carriedArrears.toLocaleString('en-IN')}
-          </span>
-        </div>
+        {unitBreakdown.length === 0 ? (
+          <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '13px', textAlign: 'center', padding: '10px 0' }}>
+            🎉 No outstanding dues. Good job!
+          </div>
+        ) : (
+          unitBreakdown.map((item) => (
+            <div key={item.invoiceId || item._id} className="hero-liability-card__breakdown-row">
+              <span className="hero-liability-card__breakdown-label">
+                <i className="fa-solid fa-circle-dot me-2 opacity-50" />
+                {item.unitNumber || 'Unit'} - Period: {item.billingPeriodString}
+              </span>
+              <span className="hero-liability-card__breakdown-value">
+                ₹{(item.totalDue || 0).toLocaleString('en-IN')}
+              </span>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Clearing message — shown when isClearing */}
@@ -69,8 +97,8 @@ const HeroLiabilityBanner = memo(() => {
         <div className="hero-liability-card__clearing-msg">
           <i className="fa-solid fa-clock-rotate-left hero-liability-card__clearing-icon" />
           <span>
-            Payment of {d.currency}{d.clearingAmount.toLocaleString('en-IN')} is currently
-            clearing via Bank Cheque {d.clearingCheque}.
+            Payment of ₹{clearingAmount.toLocaleString('en-IN')} is currently
+            clearing via Reference {clearingRef}.
           </span>
         </div>
       )}
@@ -80,24 +108,20 @@ const HeroLiabilityBanner = memo(() => {
         <button
           type="button"
           className="hero-liability-card__pay-btn"
-          disabled={isClearing}
-          onClick={() => console.log('[HeroLiabilityBanner] Pay Now clicked')}
+          disabled={isClearing || totalOutstanding === 0}
+          onClick={handlePayNow}
         >
-          {isClearing
-            ? <><i className="fa-solid fa-spinner fa-spin me-2" />Processing…</>
-            : <><i className="fa-solid fa-bolt me-2" />Pay Now — {d.currency}{d.totalOutstanding.toLocaleString('en-IN')}</>
-          }
-        </button>
-
-        {/* Demo toggle — lets reviewer simulate the clearing state */}
-        <button
-          type="button"
-          className="hero-liability-card__toggle-demo"
-          onClick={() => setIsClearing(prev => !prev)}
-          title="Toggle clearing state (demo only)"
-        >
-          <i className={`fa-solid ${isClearing ? 'fa-eye-slash' : 'fa-eye'} me-1`} />
-          {isClearing ? 'Exit Clearing Preview' : 'Preview Clearing State'}
+          {isClearing ? (
+            <>
+              <i className="fa-solid fa-spinner fa-spin me-2" />
+              Processing Clearance…
+            </>
+          ) : (
+            <>
+              <i className="fa-solid fa-bolt me-2" />
+              Pay Now — ₹{totalOutstanding.toLocaleString('en-IN')}
+            </>
+          )}
         </button>
       </div>
 

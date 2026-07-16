@@ -11,7 +11,8 @@ const assessmentSchema = new mongoose.Schema(
     villaId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Villa',
-      required: [true, 'Villa ID is required'],
+      required: false,
+      default: null,
       index: true,
     },
     name: {
@@ -71,6 +72,14 @@ const assessmentSchema = new mongoose.Schema(
           message: 'Target role must be TENANT, OWNER, or BOTH',
         },
         default: 'OWNER',
+      },
+      targetRoleIds: {
+        type: [{
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Role',
+          index: true,
+        }],
+        default: [],
       },
     },
     calculationMethod: {

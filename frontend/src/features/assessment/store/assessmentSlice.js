@@ -41,9 +41,24 @@ export const modifyAssessment = createAsyncThunk(
   }
 );
 
+export const deleteAssessmentTemplate = createAsyncThunk(
+  'assessment/deleteAssessmentTemplate',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await assessmentService.deleteAssessment(id);
+      const body = response?.success !== undefined ? response : response?.data;
+      // return deleted/archived template id so we can filter state
+      return { id, data: body?.data || body };
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to delete assessment template');
+    }
+  }
+);
+
 const initialState = {
   assessmentsList: [],
   activeTemplate: null,
+  pagination: { currentPage: 1, totalPages: 1, totalRecords: 0, limit: 10 },
   loading: false,
   error: null,
 };
@@ -68,9 +83,13 @@ export const assessmentSlice = createSlice({
       })
       .addCase(fetchAssessments.fulfilled, (state, action) => {
         state.loading = false;
-        state.assessmentsList = Array.isArray(action.payload)
-          ? action.payload
-          : (action.payload?.data || []);
+        if (Array.isArray(action.payload)) {
+          state.assessmentsList = action.payload;
+          state.pagination = { currentPage: 1, totalPages: 1, totalRecords: action.payload.length, limit: 10 };
+        } else {
+          state.assessmentsList = action.payload?.data || [];
+          state.pagination = action.payload?.pagination || { currentPage: 1, totalPages: 1, totalRecords: 0, limit: 10 };
+        }
       })
       .addCase(fetchAssessments.rejected, (state, action) => {
         state.loading = false;
@@ -108,6 +127,25 @@ export const assessmentSlice = createSlice({
         }
       })
       .addCase(modifyAssessment.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // deleteAssessmentTemplate
+      .addCase(deleteAssessmentTemplate.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteAssessmentTemplate.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload) {
+          state.assessmentsList = state.assessmentsList.filter((item) => item._id !== action.payload.id);
+          if (state.activeTemplate?._id === action.payload.id) {
+            state.activeTemplate = null;
+          }
+        }
+      })
+      .addCase(deleteAssessmentTemplate.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

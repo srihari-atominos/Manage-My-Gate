@@ -16,6 +16,12 @@ router.get('/my-dues', invoiceController.getMyDues);
 
 // Features requiring tenant organization context and permissions
 router.get(
+  '/',
+  tenantContext,
+  invoiceController.getAllInvoices
+);
+
+router.get(
   '/kpis',
   tenantContext,
   invoiceController.getDashboardKPIs

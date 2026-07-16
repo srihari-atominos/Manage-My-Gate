@@ -97,9 +97,14 @@ export class AssessmentService {
     const { page = 1, limit = 10, communityId, type, isActive } = query;
     const filter = {};
 
-    if (communityId) filter.communityId = communityId;
+    if (communityId) filter.communityId = new mongoose.Types.ObjectId(communityId);
     if (type) filter.type = type;
-    if (isActive !== undefined) filter.isActive = isActive === 'true';
+
+    // Default to active-only templates if isActive query parameter is not provided
+    const activeFilterVal = isActive !== undefined ? isActive : 'true';
+    if (activeFilterVal !== 'all') {
+      filter.isActive = activeFilterVal === 'true';
+    }
 
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const take = parseInt(limit, 10);
@@ -128,6 +133,38 @@ export class AssessmentService {
         limit: take,
       },
     };
+  }
+
+  /**
+   * Delete or archive assessment template safely.
+   */
+  async deleteAssessment(id) {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info('deleteAssessment service called', { id, correlationId });
+
+    const existing = await assessmentRepository.findById(id);
+    if (!existing) {
+      throw new HttpError(404, `Assessment template with ID ${id} not found`);
+    }
+
+    // Check if any invoices are associated with this template
+    const hasInvoices = await Invoice.exists({ assessmentId: id }) !== null;
+
+    if (hasInvoices) {
+      // Soft delete: set isActive to false
+      await assessmentRepository.updateTemplate(id, { isActive: false });
+      return {
+        status: 'archived',
+        message: 'Assessment template archived successfully. Active invoice histories have been preserved.',
+      };
+    } else {
+      // Hard delete: remove physically
+      await assessmentRepository.delete(id);
+      return {
+        status: 'deleted',
+        message: 'Assessment template deleted successfully.',
+      };
+    }
   }
 
   /**

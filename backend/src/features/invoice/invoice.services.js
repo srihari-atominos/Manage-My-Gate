@@ -280,6 +280,13 @@ export class InvoiceService {
     }
     return await invoiceRepository.getDashboardKPIs(communityId);
   }
+
+  /**
+   * Fetch paginated and populated invoices for a community.
+   */
+  async getInvoices(orgId, query) {
+    return await invoiceRepository.getInvoices(orgId, query);
+  }
 }
 
 export default new InvoiceService();

@@ -43,6 +43,19 @@ export class AssessmentController {
       next(error);
     }
   }
+
+  /**
+   * Delete or archive assessment template safely.
+   */
+  async delete(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await assessmentService.deleteAssessment(id);
+      res.success(result, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new AssessmentController();
