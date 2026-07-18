@@ -84,7 +84,7 @@ const resources = {
             desc: 'Connect and manage external API integrations and third-party tools',
           },
           villas: {
-            title: 'Villa Management',
+            title: 'Unit Management',
             desc: 'Manage community villas, blocks, intercoms, and occupancy status',
           },
           amenities: {
@@ -94,6 +94,10 @@ const resources = {
           notices: {
             title: 'Notice Board',
             desc: 'Publish and manage community announcements, guidelines, and notice updates',
+          },
+          complaints: {
+            title: 'Complaints & Maintenance',
+            desc: 'Log and manage resident complaints, maintenance requests, and technician assignments',
           },
           submit: 'Confirm & Initialize Workspace',
           loading: 'Initializing...',
@@ -135,7 +139,8 @@ const resources = {
         },
         cards: {
           userManagement: 'User Management',
-          villaManagement: 'Villa Management',
+          unitManagement: 'Unit Management',
+          visitorManagement: 'Visitor Management',
           roleBuilder: 'Role Builder',
           integrationHub: 'Integration Hub',
           organizationManager: 'Organization Manager',

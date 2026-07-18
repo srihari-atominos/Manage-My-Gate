@@ -41,7 +41,7 @@ const SecurityScannerView = () => {
               <div className="col-lg-6">
                 <div className="card h-100 p-4 border-0 shadow-sm">
                   <h5 className="fw-semibold mb-3" >Scanner</h5>
-                  <div className="bg-light p-3 rounded mb-4 text-center">
+                  <div className="bg-body-secondary p-3 rounded mb-4 text-center">
                     {loading ? (
                       <ScannerLoading />
                     ) : (
@@ -55,11 +55,11 @@ const SecurityScannerView = () => {
 
               {/* Right Panel: Last Scan Details (using the top of recentScans or null if none) */}
               <div className="col-lg-6">
-                <div className="card h-100 p-4 border-0 shadow-sm bg-light">
+                <div className="card h-100 p-4 border-0 shadow-sm bg-body-secondary">
                   <h5 className="fw-semibold mb-3" >Last Scan Details</h5>
                   {recentScans && recentScans.length > 0 ? (
                     <div className="last-scan-details">
-                      <div className="d-flex align-items-center gap-3 mb-4 p-3 bg-white rounded border">
+                      <div className="d-flex align-items-center gap-3 mb-4 p-3 bg-body rounded border">
                         <img 
                           src={recentScans[0].residentPhoto || 'https://via.placeholder.com/60'} 
                           alt="Resident" 
@@ -71,7 +71,7 @@ const SecurityScannerView = () => {
                         </div>
                       </div>
                       
-                      <div className="bg-white p-3 rounded border mb-3">
+                      <div className="bg-body p-3 rounded border mb-3">
                         <h6 className="fw-bold mb-3 border-bottom pb-2">Booking Info</h6>
                         <div className="d-flex justify-content-between mb-2">
                           <span className="text-muted small">Booking ID</span>

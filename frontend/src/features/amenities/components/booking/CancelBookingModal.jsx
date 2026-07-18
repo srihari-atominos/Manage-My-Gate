@@ -63,7 +63,7 @@ const CancelBookingModal = ({ visible, onClose, onConfirm, booking, isSubmitting
         <CModalTitle  className="fw-semibold fs-5">Cancel Booking</CModalTitle>
       </CModalHeader>
       <CModalBody>
-        <div className="mb-4 bg-light p-3 rounded border">
+        <div className="mb-4 bg-body-secondary p-3 rounded border">
           <h6 className="fw-semibold mb-2" >Booking Details</h6>
           <div className="d-flex justify-content-between mb-1">
             <span className="text-muted">Amenity:</span>

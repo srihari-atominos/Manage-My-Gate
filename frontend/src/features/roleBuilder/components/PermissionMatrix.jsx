@@ -39,6 +39,15 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
         
         const groupCodes = perms.map((p) => p.name || p.code || p._id)
         const isAllGroupSelected = groupCodes.length > 0 && groupCodes.every((code) => selectedIds.includes(code))
+        
+        // Enforce single visual selection for visitor radios if backend synced multiple
+        let firstSelectedVisitorPerm = null
+        if (category.toLowerCase() === 'visitor') {
+          const selected = perms.find((p) => selectedIds.includes(p.name || p.code || p._id))
+          if (selected) {
+            firstSelectedVisitorPerm = selected.name || selected.code || selected._id
+          }
+        }
 
         return (
           <div key={category} className="permission-category-card">
@@ -61,17 +70,28 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
               {perms.map((perm) => {
                 const permValue = perm.name || perm.code || perm._id
                 const idSafe = String(permValue).replace(/:/g, '-')
-                const isChecked = selectedIds.includes(permValue)
+                let isChecked = selectedIds.includes(permValue)
+                
+                if (category.toLowerCase() === 'visitor') {
+                  isChecked = permValue === firstSelectedVisitorPerm
+                }
 
                 return (
                   <CCol xs={12} md={6} key={permValue}>
                     <CFormCheck
                       type={category.toLowerCase() === 'visitor' ? 'radio' : 'checkbox'}
-                      name={category.toLowerCase() === 'visitor' ? 'visitor-permission-group' : undefined}
                       id={`perm-check-${idSafe}`}
                       label={formatPermissionLabel(perm.name || String(permValue))}
                       checked={isChecked}
                       onChange={(e) => onTogglePermission(permValue, e.target.checked)}
+                      onClick={(e) => {
+                        // Allow deselecting radio button by clicking it again
+                        if (category.toLowerCase() === 'visitor' && isChecked) {
+                          // Prevent default to stop native radio behavior
+                          e.preventDefault()
+                          onTogglePermission(permValue, false)
+                        }
+                      }}
                     />
                   </CCol>
                 )

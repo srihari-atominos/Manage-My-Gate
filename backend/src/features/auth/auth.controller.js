@@ -1,6 +1,7 @@
 import authService from './auth.services.js';
 import config from '../../config/config.js';
 import { setAuthCookie } from '../../utils/cookie.utils.js';
+import * as sessionController from '../session/session.controller.js';
 
 export class AuthController {
   async register(req, res, next) {
@@ -55,23 +56,130 @@ export class AuthController {
     }
   }
 
-  async verifyGoogle(req, res, next) {
+  async googleLogin(req, res, next) {
     try {
       const { token } = req.body;
-      const data = await authService.loginOrRegisterWithGoogle(token);
+      const data = await authService.loginWithGoogle(token);
       setAuthCookie(res, data.token);
+      res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
       res.success(data, 'Google login successful');
     } catch (error) {
       next(error);
     }
   }
 
-  async verifyMicrosoft(req, res, next) {
+  async microsoftLogin(req, res, next) {
     try {
       const { token } = req.body;
-      const data = await authService.loginOrRegisterWithMicrosoft(token);
+      const data = await authService.loginWithMicrosoft(token);
       setAuthCookie(res, data.token);
+      res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
       res.success(data, 'Microsoft login successful');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async initiatePhoneLogin(req, res, next) {
+    try {
+      const { phone } = req.body;
+      const data = await authService.initiatePhoneLogin(phone);
+      res.success(data, 'OTP sent to phone');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyPhoneLogin(req, res, next) {
+    try {
+      const { phone, code } = req.body;
+      const deviceInfo = {
+        deviceName: req.headers['user-agent'],
+        browser: 'Browser', // parse user agent in a real app
+        os: 'OS',
+        ipAddress: req.ip,
+      };
+      const data = await authService.verifyPhoneLogin(phone, code, deviceInfo);
+      setAuthCookie(res, data.token);
+      res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+      res.success(data, 'Login successful');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async initiateEmailOtpLogin(req, res, next) {
+    try {
+      const { email } = req.body;
+      const data = await authService.initiateEmailOtpLogin(email);
+      res.success(data, 'OTP sent to email');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyEmailOtpLogin(req, res, next) {
+    try {
+      const { email, code } = req.body;
+      const deviceInfo = {
+        deviceName: req.headers['user-agent'],
+        browser: 'Browser',
+        os: 'OS',
+        ipAddress: req.ip,
+      };
+      const data = await authService.verifyEmailOtpLogin(email, code, deviceInfo);
+      setAuthCookie(res, data.token);
+      res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+      res.success(data, 'Login successful');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async forgotPassword(req, res, next) {
+    try {
+      const { identifier } = req.body;
+      const data = await authService.forgotPassword(identifier);
+      res.success(data, 'Password reset OTP sent');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resetPassword(req, res, next) {
+    try {
+      const { identifier, code, newPassword } = req.body;
+      await authService.resetPassword(identifier, code, newPassword);
+      res.success(null, 'Password has been reset successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyResetPasswordOtp(req, res, next) {
+    try {
+      const { identifier, code } = req.body;
+      // We pass false to deleteOnSuccess so the OTP is kept for the final resetPassword step
+      const otpService = (await import('../otp/otp.services.js')).default;
+      await otpService.verifyOTP(identifier, code, 'RESET', null, false);
+      res.success(null, 'OTP verified successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async refreshToken(req, res, next) {
+    // delegate to session controller
+    return sessionController.refreshToken(req, res, next);
+  }
+
+  async logout(req, res, next) {
+    try {
+      const token = req.cookies.refreshToken || req.body.refreshToken;
+      await authService.logout(req.user.id, token);
+      res.clearCookie('accessToken');
+      res.clearCookie('refreshToken');
+      res.success(null, 'Logged out successfully');
     } catch (error) {
       next(error);
     }

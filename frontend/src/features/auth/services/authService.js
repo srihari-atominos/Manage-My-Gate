@@ -15,16 +15,60 @@ export const acceptInvite = async ({ token, password }) => {
   return await apiClient.post('/auth/accept-invite', { token, password });
 };
 
-export const createWorkspace = async ({ name }) => {
-  return await apiClient.post('/organizations/setup', { name });
+export const createWorkspace = async (workspaceData) => {
+  return await apiClient.post('/organizations/setup', workspaceData);
 };
 
-export const verifyGoogleToken = async (token) => {
-  return await apiClient.post('/auth/google/verify', { token });
+export const loginWithGoogle = async (token) => {
+  return await apiClient.post('/auth/google', { token });
 };
 
-export const verifyMicrosoftToken = async (token) => {
-  return await apiClient.post('/auth/microsoft/verify', { token });
+export const loginWithMicrosoft = async (token) => {
+  return await apiClient.post('/auth/microsoft', { token });
+};
+
+export const initiatePhoneLogin = async (phone) => {
+  return await apiClient.post('/auth/login/phone', { phone });
+};
+
+export const verifyPhoneLogin = async (phone, code) => {
+  return await apiClient.post('/auth/login/phone/verify', { phone, code });
+};
+
+export const initiateEmailOtpLogin = async (email) => {
+  return await apiClient.post('/auth/login/email-otp', { email });
+};
+
+export const verifyEmailOtpLogin = async (email, code) => {
+  return await apiClient.post('/auth/login/email-otp/verify', { email, code });
+};
+
+export const forgotPassword = async (identifier) => {
+  return await apiClient.post('/auth/forgot-password', { identifier });
+};
+
+export const verifyResetPasswordOtp = async (identifier, code) => {
+  return await apiClient.post('/auth/forgot-password/verify-otp', { identifier, code });
+};
+
+export const resetPassword = async (identifier, code, newPassword) => {
+  return await apiClient.post('/auth/reset-password', { identifier, code, newPassword });
+};
+
+export const logoutApi = async () => {
+  return await apiClient.post('/auth/logout');
+};
+
+export const fetchSessions = async () => {
+  return await apiClient.get('/session');
+};
+
+export const revokeSession = async (sessionId) => {
+  return await apiClient.delete(`/session/${sessionId}`);
+};
+
+export const revokeAllSessions = async () => {
+  return await apiClient.delete('/session/all');
 };
 
 export default {
@@ -32,6 +76,17 @@ export default {
   register,
   acceptInvite,
   createWorkspace,
-  verifyGoogleToken,
-  verifyMicrosoftToken,
+  loginWithGoogle,
+  loginWithMicrosoft,
+  initiatePhoneLogin,
+  verifyPhoneLogin,
+  initiateEmailOtpLogin,
+  verifyEmailOtpLogin,
+  forgotPassword,
+  verifyResetPasswordOtp,
+  resetPassword,
+  logoutApi,
+  fetchSessions,
+  revokeSession,
+  revokeAllSessions,
 };

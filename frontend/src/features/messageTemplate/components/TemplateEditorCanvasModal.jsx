@@ -160,7 +160,7 @@ export const TemplateEditorCanvasModal = ({ visible, onClose }) => {
                 />
                 
                 {/* Placeholder variable indicator */}
-                <div className="mt-2 p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+                <div className="mt-2 p-2 border rounded bg-body-secondary d-flex align-items-center justify-content-between">
                   <span className="small text-secondary">
                     Required placeholder: <code className="fw-bold text-primary">{"{{invite_link}}"}</code>
                   </span>

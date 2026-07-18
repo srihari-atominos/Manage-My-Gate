@@ -75,7 +75,7 @@ const Colors = () => {
             <ThemeColor className="bg-info">
               <h6>Brand Info Color</h6>
             </ThemeColor>
-            <ThemeColor className="bg-light">
+            <ThemeColor className="bg-body-secondary">
               <h6>Brand Light Color</h6>
             </ThemeColor>
             <ThemeColor className="bg-dark">

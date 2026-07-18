@@ -54,7 +54,7 @@ const AppHeaderDropdown = () => {
   }
 
   // Derive dynamic backend static base URL
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5002/api'
   const backendHost = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase
   const avatarUrl = currentUser?.avatar ? `${backendHost}/${currentUser.avatar.startsWith('/') ? currentUser.avatar.substring(1) : currentUser.avatar}` : null
 

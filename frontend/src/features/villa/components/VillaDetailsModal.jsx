@@ -241,7 +241,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                 </h5>
                 
                 {selectedVilla.residents.length === 0 ? (
-                  <div className="text-center py-4 text-muted small bg-light rounded">
+                  <div className="text-center py-4 text-muted small bg-body-secondary rounded">
                     {t('villas.details.noResidents', 'No residents registered to this unit yet.')}
                   </div>
                 ) : (
@@ -254,7 +254,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                          String(selectedVilla.villa.primaryResidentId._id) === String(res.id));
 
                       return (
-                        <div key={res.id} className="resident-list-item d-flex flex-column p-2 mb-2 border rounded bg-white">
+                        <div key={res.id} className="resident-list-item d-flex flex-column p-2 mb-2 border rounded bg-body">
                           <div className="d-flex align-items-center justify-content-between">
                             <div className="d-flex align-items-center gap-2">
                               <div className="resident-avatar">

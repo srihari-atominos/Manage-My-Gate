@@ -117,7 +117,7 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
             <CFormLabel className="form-label-custom">
               Role Integrations
             </CFormLabel>
-            <div className="d-flex align-items-center gap-3 p-2 border rounded bg-light-subtle">
+            <div className="d-flex align-items-center gap-3 p-2 border rounded bg-body-secondary-subtle">
               <CButton
                 type="button"
                 color="info"

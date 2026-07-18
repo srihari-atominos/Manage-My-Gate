@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import useAuthRouting from '../hooks/useAuthRouting.js';
 import useAuth from '../hooks/useAuth.js';
+import { GoogleLogin } from '@react-oauth/google';
+import { useMsal } from '@azure/msal-react';
 import {
   CButton,
   CCard,
@@ -16,13 +18,14 @@ import {
   CCol,
   CAlert,
   CSpinner,
+  CProgress,
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
-import { cilLockLocked, cilUser } from '@coreui/icons';
+import { cilLockLocked, cilUser, cilPhone, cilEnvelopeOpen } from '@coreui/icons';
 
 /**
  * RegisterForm Component
- * Refactored to support a toggleable "Get Started" view (Login vs Register)
+ * Refactored to support SSO and strong password validations.
  * Adheres to the "Thin View" architectural pattern.
  */
 export const RegisterForm = () => {
@@ -32,23 +35,28 @@ export const RegisterForm = () => {
 
   const [isLoginMode, setIsLoginMode] = useState(location.pathname === '/login-createOrg');
 
-  const { loading, error, successMsg, login, register: authRegister, clearStatus } = useAuth();
+  const { loading, error, successMsg, login, register: authRegister, loginGoogle, loginMicrosoft, clearStatus } = useAuth();
   const { handlePostAuthRedirect, isAuthenticated } = useAuthRouting();
 
   const {
     register,
     handleSubmit,
     setValue,
+    watch,
     clearErrors,
     formState: { errors },
   } = useForm({
     defaultValues: {
       name: '',
       email: '',
+      phone: '',
       password: '',
       confirmPassword: '',
     },
+    mode: 'onChange'
   });
+
+  const watchPassword = watch('password', '');
 
   useEffect(() => {
     clearStatus();
@@ -67,7 +75,7 @@ export const RegisterForm = () => {
     if (isLoginMode) {
       navigate('/register');
     } else {
-      navigate('/login-createOrg');
+      navigate('/login');
     }
   };
 
@@ -77,11 +85,34 @@ export const RegisterForm = () => {
     }
   }, [isAuthenticated]);
 
+  const { instance: msalInstance } = useMsal();
+
+  const handleMicrosoftLogin = () => {
+    import('react-hot-toast').then(({ toast }) => {
+      msalInstance.loginPopup({
+        scopes: ['openid', 'profile', 'user.read'],
+      })
+      .then((response) => {
+        if (response && response.idToken) {
+          loginMicrosoft(response.idToken);
+        }
+      })
+      .catch((err) => {
+        console.error('Microsoft login failed:', err);
+        if (err.errorCode === 'interaction_in_progress' || (err.message && err.message.includes('interaction_in_progress'))) {
+          sessionStorage.clear();
+          toast.error('Stuck Microsoft session cleared! Please click the button one more time.');
+        } else {
+          toast.error(`Microsoft login failed: ${err.message || 'Unknown error'}`);
+        }
+      });
+    });
+  };
+
   const onSubmit = (data) => {
     if (isLoginMode) {
       login({ login: data.email.trim(), password: data.password });
     } else {
-      // Generate valid alphanumeric username from email prefix to satisfy backend validator
       const emailPrefix = data.email.trim().split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
       let derivedUsername = emailPrefix;
       if (derivedUsername.length < 3) {
@@ -94,6 +125,7 @@ export const RegisterForm = () => {
         name: data.name.trim(),
         username: derivedUsername,
         email: data.email.trim().toLowerCase(),
+        phone: data.phone?.trim() || undefined,
         password: data.password,
       }).then((action) => {
         if (action.meta.requestStatus === 'fulfilled') {
@@ -105,46 +137,63 @@ export const RegisterForm = () => {
     }
   };
 
+  // Password Strength Calculation
+  const getPasswordStrength = (pass) => {
+    let score = 0;
+    if (!pass) return { score: 0, color: 'danger', label: 'Weak' };
+    if (pass.length >= 8) score += 25;
+    if (/[A-Z]/.test(pass)) score += 25;
+    if (/[a-z]/.test(pass)) score += 25;
+    if (/[0-9]/.test(pass) && /[^A-Za-z0-9]/.test(pass)) score += 25;
+
+    if (score < 50) return { score, color: 'danger', label: 'Weak' };
+    if (score < 100) return { score, color: 'warning', label: 'Fair' };
+    return { score, color: 'success', label: 'Strong' };
+  };
+
+  const strength = getPasswordStrength(watchPassword);
+
   return (
     <CCard style={styles.card}>
       <CCardBody style={styles.cardBody}>
         {/* Top Section Info Alert */}
         <CAlert color="info" style={styles.alertHeader}>
           <h5 className="alert-heading fw-semibold">
-            {t('auth.register.alertTitle', { defaultValue: 'Why do we need this login?' })}
+            {t('auth.register.alertTitle', { defaultValue: 'Enterprise Workspace Platform' })}
           </h5>
           <p className="mb-0">
             {t('auth.register.alertText', {
               defaultValue:
-                'This login gives you access to the Enterprise Workspace Platform, where you can create and manage your organization securely.',
+                'Create an account to access the platform and set up your secure organization workspace.',
             })}
           </p>
         </CAlert>
 
+        <h1 style={styles.title}>
+          {isLoginMode
+            ? t('auth.register.loginTitle', { defaultValue: 'Log In to Your Account' })
+            : t('auth.register.title', { defaultValue: 'Register' })}
+        </h1>
+        <p style={styles.subtitle}>
+          {isLoginMode
+            ? t('auth.register.loginSubtitle', { defaultValue: 'Access the platform securely' })
+            : t('auth.register.subtitle', { defaultValue: 'Create your enterprise account' })}
+        </p>
+
+        {error && (
+          <CAlert color="danger" style={styles.alert}>
+            {error}
+          </CAlert>
+        )}
+
+        {successMsg && (
+          <CAlert color="success" style={styles.alert}>
+            {successMsg}
+          </CAlert>
+        )}
+
+        {/* Form Registration */}
         <CForm onSubmit={handleSubmit(onSubmit)}>
-          <h1 style={styles.title}>
-            {isLoginMode
-              ? t('auth.register.loginTitle', { defaultValue: 'Log In to Your Account' })
-              : t('auth.register.title', { defaultValue: 'Create Your Account' })}
-          </h1>
-          <p style={styles.subtitle}>
-            {isLoginMode
-              ? t('auth.register.loginSubtitle', { defaultValue: 'Access the platform securely' })
-              : t('auth.register.subtitle', { defaultValue: 'Create your credentials to get started' })}
-          </p>
-
-          {error && (
-            <CAlert color="danger" style={styles.alert}>
-              {error}
-            </CAlert>
-          )}
-
-          {successMsg && (
-            <CAlert color="success" style={styles.alert}>
-              {successMsg}
-            </CAlert>
-          )}
-
           {/* Full Name */}
           {!isLoginMode && (
             <div className="mb-3">
@@ -171,7 +220,9 @@ export const RegisterForm = () => {
           {/* Email */}
           <div className="mb-3">
             <CInputGroup>
-              <CInputGroupText style={styles.inputIconText}>@</CInputGroupText>
+              <CInputGroupText style={styles.inputIconText}>
+                <CIcon icon={cilEnvelopeOpen} style={styles.icon} />
+              </CInputGroupText>
               <CFormInput
                 style={styles.input}
                 type="email"
@@ -192,6 +243,33 @@ export const RegisterForm = () => {
             )}
           </div>
 
+          {/* Phone */}
+          {!isLoginMode && (
+            <div className="mb-3">
+              <CInputGroup>
+                <CInputGroupText style={styles.inputIconText}>
+                  <CIcon icon={cilPhone} style={styles.icon} />
+                </CInputGroupText>
+                <CFormInput
+                  style={styles.input}
+                  placeholder={t('auth.register.phonePlaceholder', { defaultValue: 'Phone Number' })}
+                  autoComplete="tel"
+                  disabled={loading}
+                  {...register('phone', {
+                    required: !isLoginMode && t('auth.register.phoneRequired', { defaultValue: 'Phone number is required.' }),
+                    pattern: {
+                      value: /^\+?[0-9\s\-\(\)]{7,20}$/,
+                      message: t('auth.register.phoneInvalid', { defaultValue: 'Invalid phone number.' }),
+                    },
+                  })}
+                />
+              </CInputGroup>
+              {errors.phone && (
+                <div className="text-danger small mt-1 ms-1">{errors.phone.message}</div>
+              )}
+            </div>
+          )}
+
           {/* Password */}
           <div className="mb-3">
             <CInputGroup>
@@ -206,15 +284,28 @@ export const RegisterForm = () => {
                 disabled={loading}
                 {...register('password', {
                   required: t('auth.register.passwordRequired', { defaultValue: 'Password is required.' }),
-                  minLength: {
-                    value: 6,
-                    message: t('auth.register.passwordLength', { defaultValue: 'Password must be at least 6 characters long.' }),
-                  },
+                  validate: (value) => {
+                    if (isLoginMode) return true;
+                    if (value.length < 8) return 'Password must be at least 8 characters long.';
+                    if (!/[A-Z]/.test(value)) return 'Password must contain at least one uppercase letter.';
+                    if (!/[a-z]/.test(value)) return 'Password must contain at least one lowercase letter.';
+                    if (!/[0-9]/.test(value)) return 'Password must contain at least one number.';
+                    if (!/[^A-Za-z0-9]/.test(value)) return 'Password must contain at least one special character.';
+                    return true;
+                  }
                 })}
               />
             </CInputGroup>
             {errors.password && (
               <div className="text-danger small mt-1 ms-1">{errors.password.message}</div>
+            )}
+            {!isLoginMode && watchPassword && (
+              <div className="mt-2 ms-1">
+                <CProgress value={strength.score} color={strength.color} height={6} className="mb-1 rounded" />
+                <div className="small text-muted d-flex justify-content-between">
+                  <span>Password strength: <strong className={`text-${strength.color}`}>{strength.label}</strong></span>
+                </div>
+              </div>
             )}
           </div>
 
@@ -246,7 +337,7 @@ export const RegisterForm = () => {
 
           <CRow>
             <CCol xs={12} className="d-grid mb-3">
-              <CButton type="submit" color="success" style={styles.submitButton} disabled={loading}>
+              <CButton type="submit" color="primary" style={styles.submitButton} disabled={loading}>
                 {loading ? (
                   <CSpinner size="sm" variant="grow" />
                 ) : isLoginMode ? (
@@ -256,15 +347,61 @@ export const RegisterForm = () => {
                 )}
               </CButton>
             </CCol>
-            <CCol xs={12} className="text-center">
-              <CButton color="link" onClick={toggleMode} style={styles.toggleLink} className="p-0">
-                {isLoginMode
-                  ? t('auth.register.signUpLink', { defaultValue: "Don't have an account? Sign Up" })
-                  : t('auth.register.loginLink', { defaultValue: 'Already have an account? Login' })}
-              </CButton>
-            </CCol>
           </CRow>
         </CForm>
+
+        {!isLoginMode && (
+          <div style={styles.dividerContainer}>
+            <div style={styles.dividerLine}></div>
+            <span style={styles.dividerText}>OR</span>
+            <div style={styles.dividerLine}></div>
+          </div>
+        )}
+
+        {/* Enterprise SSO Registration */}
+        {!isLoginMode && (
+          <div className="mb-4">
+            <CRow className="g-3 align-items-center justify-content-center">
+              <CCol xs={12} sm={6} className="d-flex justify-content-center">
+                <div style={{ width: '100%', maxWidth: '210px' }}>
+                  <GoogleLogin
+                    onSuccess={credentialResponse => {
+                      loginGoogle(credentialResponse.credential);
+                    }}
+                    onError={() => {
+                      console.error('Google Sign-In failed');
+                    }}
+                    type="standard"
+                    theme="outline"
+                    size="large"
+                    text="signup_with"
+                    shape="pill"
+                    width="210px"
+                  />
+                </div>
+              </CCol>
+              <CCol xs={12} sm={6} className="d-flex justify-content-center">
+                <CButton 
+                  onClick={handleMicrosoftLogin}
+                  style={styles.msButton}
+                  disabled={loading}
+                  className="w-100"
+                >
+                  <span style={styles.msIcon}>❖</span>
+                  Continue with Microsoft
+                </CButton>
+              </CCol>
+            </CRow>
+          </div>
+        )}
+
+        <div className="text-center mt-2">
+          <CButton color="link" onClick={toggleMode} style={styles.toggleLink} className="p-0">
+            {isLoginMode
+              ? t('auth.register.signUpLink', { defaultValue: "Don't have an account? Sign Up" })
+              : t('auth.register.loginLink', { defaultValue: 'Already have an account? Login' })}
+          </CButton>
+        </div>
       </CCardBody>
     </CCard>
   );
@@ -274,14 +411,13 @@ const styles = {
   card: {
     maxWidth: '520px',
     width: '100%',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.35)',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
     borderRadius: '16px',
     overflow: 'hidden',
-    background: 'rgba(255, 255, 255, 0.03)',
-    backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: '#ffffff',
+    border: 'none',
     padding: '24px 16px',
-    color: '#ffffff',
+    color: '#1f2937',
   },
   cardBody: {
     display: 'flex',
@@ -289,28 +425,28 @@ const styles = {
   },
   alertHeader: {
     borderRadius: '12px',
-    background: 'rgba(59, 130, 246, 0.1)',
-    border: '1px solid rgba(59, 130, 246, 0.2)',
-    color: '#bfdbfe',
+    background: '#eff6ff',
+    border: '1px solid #bfdbfe',
+    color: '#1e3a8a',
     marginBottom: '28px',
     padding: '16px',
   },
   title: {
     fontSize: '32px',
     fontWeight: '700',
-    color: '#ffffff',
+    color: '#111827',
     marginBottom: '8px',
     letterSpacing: '-0.025em',
   },
   subtitle: {
-    color: '#a1a1aa',
+    color: '#6b7280',
     fontSize: '15px',
     marginBottom: '24px',
   },
   inputIconText: {
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    color: '#a1a1aa',
+    background: '#f3f4f6',
+    border: '1px solid #e5e7eb',
+    color: '#6b7280',
     minWidth: '50px',
     justifyContent: 'center',
   },
@@ -319,9 +455,9 @@ const styles = {
     height: '18px',
   },
   input: {
-    background: 'rgba(255, 255, 255, 0.02)',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    color: '#ffffff',
+    background: '#ffffff',
+    border: '1px solid #d1d5db',
+    color: '#1f2937',
     padding: '12px',
   },
   alert: {
@@ -330,20 +466,57 @@ const styles = {
     marginBottom: '20px',
   },
   submitButton: {
-    background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
     border: 'none',
     padding: '12px',
     fontSize: '16px',
     fontWeight: '600',
     borderRadius: '8px',
-    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
     transition: 'all 0.2s',
   },
   toggleLink: {
-    color: '#34d399',
+    color: '#2563eb',
     fontSize: '14px',
     textDecoration: 'none',
     fontWeight: '500',
+  },
+  dividerContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '24px 0',
+  },
+  dividerLine: {
+    flex: 1,
+    height: '1px',
+    backgroundColor: '#e5e7eb',
+  },
+  dividerText: {
+    padding: '0 12px',
+    color: '#9ca3af',
+    fontSize: '13px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    fontWeight: '500',
+  },
+  msButton: {
+    background: '#2f2f2f',
+    color: '#ffffff',
+    border: 'none',
+    padding: '9px 16px',
+    fontSize: '14px',
+    fontWeight: '500',
+    borderRadius: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '40px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  },
+  msIcon: {
+    marginRight: '8px',
+    fontSize: '16px',
   },
 };
 

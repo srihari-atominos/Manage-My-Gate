@@ -175,7 +175,7 @@ export const NoticeCard = ({
             )}
             <CBadge
               color="light"
-              className="text-dark border border-secondary border-opacity-25 small fw-semibold"
+              className="text-body border border-secondary border-opacity-25 small fw-semibold"
               style={{ fontSize: '10px' }}
             >
               {t(`noticeBoard.categories.${category}`, category)}
@@ -209,7 +209,7 @@ export const NoticeCard = ({
 
         {/* Notice Title */}
         <h5
-          className="fw-bold text-dark mt-1 mb-1 cursor-pointer hover-text-primary text-truncate-2"
+          className="fw-bold text-body mt-1 mb-1 cursor-pointer hover-text-primary text-truncate-2"
           onClick={() => onDetails(notice)}
           style={{ fontSize: '14.5px', minHeight: '38px', margin: '4px 0' }}
         >
@@ -231,7 +231,7 @@ export const NoticeCard = ({
             className="text-body-secondary small d-flex align-items-center gap-1 flex-wrap"
             style={{ fontSize: '11px' }}
           >
-            <span className="fw-semibold text-dark">{creatorName}</span>
+            <span className="fw-semibold text-body">{creatorName}</span>
             <span className="text-opacity-50">•</span>
             <span>{formattedDate}</span>
             {hasAttachments && (

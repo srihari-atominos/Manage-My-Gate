@@ -42,7 +42,7 @@ const integrationHubSchema = new mongoose.Schema(
     provider: {
       type: String,
       required: [true, 'Provider name is required'],
-      enum: ['openai', 'twilio', 'resend', 'smtp'],
+      enum: ['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral'],
       trim: true,
     },
     accountLabel: {

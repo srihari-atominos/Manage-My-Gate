@@ -4,27 +4,26 @@
   padding: 1.5rem 0;
 
   .audit-log-card {
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #ffffff;
+    border: 1px solid #e4e7ea;
     border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     overflow: hidden;
     transition: all 0.3s ease;
 
     .card-header {
-      background: rgba(255, 255, 255, 0.02);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: #f8f9fa;
+      border-bottom: 1px solid #e4e7ea;
       padding: 1.5rem 2rem;
 
       h3 {
-        color: #ffffff;
+        color: #3c4b64;
         font-weight: 700;
         letter-spacing: -0.02em;
         margin: 0;
       }
       p {
-        color: #a1a1aa;
+        color: #768192;
         font-size: 0.875rem;
         margin: 0.25rem 0 0 0;
       }
@@ -32,12 +31,12 @@
 
     .table {
       margin-bottom: 0;
-      color: #e4e4e7;
+      color: #3c4b64;
 
       th {
-        background: rgba(255, 255, 255, 0.01);
-        border-bottom: 2px solid rgba(255, 255, 255, 0.08);
-        color: #a1a1aa;
+        background: #f8f9fa;
+        border-bottom: 2px solid #e4e7ea;
+        color: #768192;
         font-weight: 600;
         text-transform: uppercase;
         font-size: 0.75rem;
@@ -46,26 +45,73 @@
       }
 
       td {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid #e4e7ea;
         padding: 1.25rem 2rem;
         vertical-align: middle;
         font-size: 0.9rem;
       }
 
       tr:hover {
-        background: rgba(255, 255, 255, 0.02);
+        background: #ebedef;
         transition: background 0.2s ease;
       }
     }
   }
 
   .meta-badge {
-    background-color: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #e4e4e7;
+    background-color: #ebedef;
+    border: 1px solid #d8dbe0;
+    color: #4f5d73;
     font-size: 0.75rem;
     padding: 0.35em 0.7em;
     border-radius: 6px;
     font-family: var(--cui-font-monospace, monospace);
+  }
+}
+
+[data-coreui-theme='dark'] {
+  .audit-log-container {
+    .audit-log-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+
+      .card-header {
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+        h3 {
+          color: #ffffff;
+        }
+        p {
+          color: #a1a1aa;
+        }
+      }
+
+      .table {
+        color: #e4e4e7;
+
+        th {
+          background: rgba(255, 255, 255, 0.01);
+          border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+          color: #a1a1aa;
+        }
+
+        td {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        tr:hover {
+          background: rgba(255, 255, 255, 0.02);
+        }
+      }
+    }
+
+    .meta-badge {
+      background-color: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e4e4e7;
+    }
   }
 }

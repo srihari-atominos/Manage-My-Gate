@@ -34,7 +34,7 @@ const TimeSlotSelector = memo(({ draft, availableSlots = [], slotsLoading, updat
         ) : (
           <div className="d-flex flex-wrap gap-3 mb-4">
             {availableSlots.length === 0 ? (
-              <div className="w-100 text-center p-4 text-muted border rounded bg-light">
+              <div className="w-100 text-center p-4 text-muted border rounded bg-body-secondary">
                 <i className="fa-regular fa-calendar-xmark fs-2 mb-3 text-secondary"></i>
                 <h6 className="fw-bold">No available slots for this date.</h6>
                 <p className="mb-0 small">Please select another date or amenity.</p>
@@ -107,7 +107,7 @@ const TimeSlotSelector = memo(({ draft, availableSlots = [], slotsLoading, updat
                   return (
                     <div 
                       key={idx}
-                      className={`position-relative p-3 rounded-4 bg-white ${borderColor}`}
+                      className={`position-relative p-3 rounded-4 bg-body ${borderColor}`}
                       style={{ cursor, minWidth: '150px', transition: 'all 0.2s', opacity }}
                       onClick={() => !isDisabled && updateDraft({ startTime: slot.startTime, endTime: slot.endTime, price: slot.price })}
                     >
@@ -115,7 +115,7 @@ const TimeSlotSelector = memo(({ draft, availableSlots = [], slotsLoading, updat
                         <div className="position-absolute bg-primary rounded-circle" style={{ width: '20px', height: '20px', top: '-8px', right: '-8px', border: '3px solid white' }}></div>
                       )}
                       
-                      <div className="fw-bolder fs-3 text-dark mb-1" >{slot.startTime}</div>
+                      <div className="fw-bolder fs-3 text-body mb-1" >{slot.startTime}</div>
                       <div className="d-flex align-items-center mb-3">
                         <span className="text-secondary fw-semibold me-2">{slot.endTime}</span>
                         <span className="text-black-50 small">{slot.duration || '60'}m</span>

@@ -28,15 +28,15 @@ const CreateComplaint = () => {
   // Auto-populate from auth user
   const authUser = useSelector(state => state.auth?.user);
   const user = {
-    name: authUser?.firstName ? `${authUser.firstName} ${authUser.lastName || ''}`.trim() : 'Resident',
-    id: authUser?._id || 'RES-101',
-    flat: authUser?.flat || '',
+    name: authUser?.username || authUser?.name || 'Resident',
+    id: authUser?.id || authUser?._id || 'RES-101',
+    flat: authUser?.villaNumber || authUser?.flat || '',
     floor: authUser?.floor || '',
-    block: authUser?.block || '',
-    tower: authUser?.tower || '',
+    block: authUser?.villaBlock || authUser?.block || '',
+    tower: authUser?.villaBlock || authUser?.tower || '',
     building: authUser?.building || '',
     organization: authUser?.orgId || '',
-    mobile: authUser?.mobile || '',
+    mobile: authUser?.phone || authUser?.mobile || '',
     email: authUser?.email || ''
   };
 

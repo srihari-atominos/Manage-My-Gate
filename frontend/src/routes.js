@@ -61,7 +61,7 @@ export const routes = [
   { path: '/visitor-management-admin', name: 'Visitor Admin', element: AdminVisitorManagementViews },
   { path: '/visitor-management-guard', name: 'Gate Console', element: GuardVisitormanagementViews },
   { path: '/users', name: 'User Management', element: UserList, requiredPermission: 'users:read' },
-  { path: '/villas', name: 'Villa Management', element: VillaManagementView, requiredPermission: 'villas:read' },
+  { path: '/villas', name: 'Unit Management', element: VillaManagementView, requiredPermission: 'villas:read' },
   { path: '/sample', name: 'Sample Feature', element: SampleFeature },
   { path: '/role-builder', name: 'Role Builder', element: RoleBuilder, requiredPermission: 'roles:read' },
   { path: '/notifications', name: 'Notifications', element: NotificationView },

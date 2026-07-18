@@ -41,7 +41,7 @@ const ResidentHistoryView = () => {
       case 'confirmed': return <span className="badge badge-success">Confirmed</span>;
       case 'completed': return <span className="badge badge-secondary">Completed</span>;
       case 'checked-in': return <span className="badge badge-info">Checked In</span>;
-      case 'pending': return <span className="badge badge-warning text-dark">Pending</span>;
+      case 'pending': return <span className="badge badge-warning text-body">Pending</span>;
       case 'cancelled': return <span className="badge badge-danger">Cancelled</span>;
       default: return <span className="badge badge-secondary text-capitalize">{status}</span>;
     }
@@ -53,7 +53,7 @@ const ResidentHistoryView = () => {
       case 'checked-in': return <span className="badge badge-info">Entered</span>;
       case 'completed': return <span className="badge badge-secondary">Completed</span>;
       case 'cancelled': return <span className="badge badge-danger">Cancelled</span>;
-      default: return <span className="badge badge-warning text-dark">Not Entered</span>;
+      default: return <span className="badge badge-warning text-body">Not Entered</span>;
     }
   };
 
@@ -70,7 +70,7 @@ const ResidentHistoryView = () => {
   const getPaymentStatusBadge = (status) => {
     switch (status) {
       case 'success': return <span className="badge badge-success text-white">Paid</span>;
-      case 'pending': return <span className="badge badge-warning text-dark">Unpaid</span>;
+      case 'pending': return <span className="badge badge-warning text-body">Unpaid</span>;
       case 'failed': return <span className="badge badge-danger text-white">Failed</span>;
       case 'refunded': return <span className="badge badge-info text-white">Refunded</span>;
       case 'partial_refund': return <span className="badge bg-purple text-white">Partial Refund</span>;

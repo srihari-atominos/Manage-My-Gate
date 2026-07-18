@@ -19,7 +19,7 @@ export const VisitorContextManager = () => {
     default:
       return (
         <div className="container py-5 visitor-os-theme">
-          <CCallout color="warning" className="bg-white shadow-sm border-start-4 p-4">
+          <CCallout color="warning" className="bg-body shadow-sm border-start-4 p-4">
             <h5 className="fw-bold text-warning mb-2">Access Restrained</h5>
             <p className="mb-0 text-muted">
               Your active organization role is not configured with any Visitor Management context. 

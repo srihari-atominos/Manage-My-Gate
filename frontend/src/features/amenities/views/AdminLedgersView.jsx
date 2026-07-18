@@ -42,7 +42,7 @@ const AdminLedgersView = () => {
                 <p style={{ color: 'var(--text-muted)' }} className="fw-medium small">Bookings are auto-confirmed via payment gateway. No manual approval required.</p>
               </div>
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                <div className="search-bar-app" style={{ margin: 0, padding: '8px 16px', boxShadow: 'none', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)', borderRadius: '24px', backgroundColor: 'var(--bg-light)' }}>
+                <div className="search-bar-app" style={{ margin: 0, padding: '8px 16px', boxShadow: 'none', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-light)', borderRadius: '24px', backgroundColor: 'var(--bg-body-secondary)' }}>
                   <i className="small fa-solid fa-magnifying-glass" style={{ color: 'var(--text-muted)' }}></i>
                   <input type="text" id="booking-search" placeholder="Search ID..." value={search} onChange={handleSearchChange} style={{ width: '150px', border: 'none', outline: 'none', backgroundColor: 'transparent' }} />
                 </div>

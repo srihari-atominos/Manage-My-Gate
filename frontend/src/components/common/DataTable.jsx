@@ -57,17 +57,15 @@ const DataTable = ({
                 {columns.map((col) => (
                   <CTableHeaderCell
                     key={col.key}
+                    className="text-body-secondary bg-body-tertiary border-bottom"
                     style={{
                       fontSize: '0.8rem',
                       fontWeight: 700,
                       textTransform: 'uppercase',
                       letterSpacing: '0.07em',
-                      color: 'var(--cui-text-muted, #768192)',
-                      borderBottom: '2px solid var(--cui-border-color, #dee2e6)',
                       whiteSpace: 'nowrap',
                       position: 'sticky',
                       top: 0,
-                      backgroundColor: 'var(--cui-card-bg, #fff)',
                       zIndex: 2,
                       paddingTop: '12px',
                       paddingBottom: '12px',
@@ -78,17 +76,15 @@ const DataTable = ({
                 ))}
                 {renderRowActions && (
                   <CTableHeaderCell
+                    className="text-body-secondary bg-body-tertiary border-bottom"
                     style={{
                       fontSize: '0.8rem',
                       fontWeight: 700,
                       textTransform: 'uppercase',
                       letterSpacing: '0.07em',
-                      color: 'var(--cui-text-muted, #768192)',
-                      borderBottom: '2px solid var(--cui-border-color, #dee2e6)',
                       whiteSpace: 'nowrap',
                       position: 'sticky',
                       top: 0,
-                      backgroundColor: 'var(--cui-card-bg, #fff)',
                       zIndex: 2,
                       paddingTop: '12px',
                       paddingBottom: '12px',
@@ -107,7 +103,7 @@ const DataTable = ({
                     className="text-center py-5"
                   >
                     <CSpinner color="primary" size="sm" className="me-2" />
-                    <span style={{ fontSize: '0.9rem', color: 'var(--cui-text-muted, #768192)' }}>
+                    <span className="text-body-secondary" style={{ fontSize: '0.9rem' }}>
                       Loading users...
                     </span>
                   </CTableDataCell>

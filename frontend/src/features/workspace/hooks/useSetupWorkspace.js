@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +12,8 @@ export const useSetupWorkspace = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  const authUser = useSelector((state) => state.auth.user);
+
   const { loading, error } = useAuthRouting();
 
   const [checking, setChecking] = useState(false);
@@ -22,12 +24,17 @@ export const useSetupWorkspace = () => {
     register,
     handleSubmit,
     watch,
+    setValue,
+    setError,
     formState: { errors },
   } = useForm({
     defaultValues: {
       name: '',
+      timezone: 'Asia/Kolkata',
+      contactEmail: authUser?.email || '',
+      contactPhone: authUser?.phone || '',
     },
-    mode: 'onChange',
+    mode: 'onTouched',
   });
 
   const orgName = watch('name');
@@ -62,7 +69,13 @@ export const useSetupWorkspace = () => {
   }, [orgName, t]);
 
   const onSubmit = (data) => {
-    dispatch(createWorkspace({ name: data.name.trim() })).then((action) => {
+    dispatch(createWorkspace({ 
+      name: data.name.trim(),
+      organizationType: 'Residential', // Default to Residential since UI field is removed
+      timezone: data.timezone,
+      contactEmail: data.contactEmail?.trim(),
+      contactPhone: data.contactPhone?.trim()
+    })).then((action) => {
       if (createWorkspace.fulfilled.match(action)) {
         navigate('/workspace-setup');
       }
@@ -75,7 +88,7 @@ export const useSetupWorkspace = () => {
     isAvailable !== true ||
     !orgName ||
     orgName.trim().length < 3 ||
-    !!errors.name;
+    Object.keys(errors).length > 0;
 
   return {
     register,

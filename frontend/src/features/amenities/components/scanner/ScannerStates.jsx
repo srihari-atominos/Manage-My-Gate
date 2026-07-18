@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { CCard, CCardBody, CSpinner } from '@coreui/react';
 
 export const ScannerLoading = memo(() => (
-  <CCard className="border-0 shadow-sm text-center bg-light h-100 d-flex flex-column justify-content-center">
+  <CCard className="border-0 shadow-sm text-center bg-body-secondary h-100 d-flex flex-column justify-content-center">
     <CCardBody className="p-5 d-flex flex-column align-items-center justify-content-center">
       <CSpinner color="primary" className="mb-3" style={{ width: '3rem', height: '3rem' }} />
       <h5 className="fw-bold mb-1">Verifying Pass...</h5>
@@ -14,7 +14,7 @@ export const ScannerLoading = memo(() => (
 export const ScannerError = memo(({ message }) => (
   <CCard className="border-0 shadow-sm text-center border-danger border-opacity-50 bg-danger bg-opacity-10 h-100 d-flex flex-column justify-content-center">
     <CCardBody className="p-5">
-      <div className="rounded-circle bg-white text-danger d-inline-flex align-items-center justify-content-center shadow-sm mb-4" style={{ width: '80px', height: '80px' }}>
+      <div className="rounded-circle bg-body text-danger d-inline-flex align-items-center justify-content-center shadow-sm mb-4" style={{ width: '80px', height: '80px' }}>
         <i className="fa-solid fa-triangle-exclamation fs-1"></i>
       </div>
       <h5 className="text-danger fw-bold">Camera Initialization Failed</h5>

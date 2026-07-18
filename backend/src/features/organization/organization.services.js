@@ -150,7 +150,7 @@ export class OrganizationService {
     return !org;
   }
 
-  async setupWorkspace({ name, userId }) {
+  async setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId, password }) {
     // Enforce name uniqueness checks BEFORE starting the write transaction
     const trimmedName = name.trim();
     const existingOrg = await organizationRepository.findByName(trimmedName);
@@ -162,8 +162,25 @@ export class OrganizationService {
     session.startTransaction();
 
     try {
+      if (password) {
+        const userService = (await import('../user/user.services.js')).default;
+        const { hashPassword } = await import('../../utils/crypto.utils.js');
+        const hashedPassword = await hashPassword(password);
+        await userService.updateUser(userId, { password: hashedPassword }, session);
+      }
+
       // 1. Create Organization
-      const newOrg = await organizationRepository.create({ name: trimmedName, status: 'Active', allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices'] }, session);
+      const orgPayload = {
+        name: trimmedName,
+        organizationType,
+        contactEmail,
+        contactPhone,
+        expectedMemberCount,
+        timezone: timezone || 'Asia/Kolkata',
+        status: 'Active',
+        allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices']
+      };
+      const newOrg = await organizationRepository.create(orgPayload, session);
 
       // 2. Create the default Roles and assign Permissions
       const roleService = (await import('../role/role.services.js')).default;

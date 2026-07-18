@@ -87,7 +87,7 @@ export const AdminDashboard = ({ groups, appName }) => {
       {/* Quick Stats Grid */}
       <CRow className="g-3 mb-5">
         <CCol xs={6} md={3}>
-          <CCard className="border-0 shadow-sm text-center py-3 bg-light">
+          <CCard className="border-0 shadow-sm text-center py-3">
             <CCardBody className="p-0">
               <div className="text-muted small fw-semibold text-uppercase">Villas</div>
               <div className="fs-3 fw-bold text-primary">{stats.total}</div>
@@ -95,7 +95,7 @@ export const AdminDashboard = ({ groups, appName }) => {
           </CCard>
         </CCol>
         <CCol xs={6} md={3}>
-          <CCard className="border-0 shadow-sm text-center py-3 bg-light">
+          <CCard className="border-0 shadow-sm text-center py-3">
             <CCardBody className="p-0">
               <div className="text-muted small fw-semibold text-uppercase">Occupied</div>
               <div className="fs-3 fw-bold text-success">{stats.occupied}</div>
@@ -103,7 +103,7 @@ export const AdminDashboard = ({ groups, appName }) => {
           </CCard>
         </CCol>
         <CCol xs={6} md={3}>
-          <CCard className="border-0 shadow-sm text-center py-3 bg-light">
+          <CCard className="border-0 shadow-sm text-center py-3">
             <CCardBody className="p-0">
               <div className="text-muted small fw-semibold text-uppercase">Vacant</div>
               <div className="fs-3 fw-bold text-secondary">{stats.vacant}</div>
@@ -111,7 +111,7 @@ export const AdminDashboard = ({ groups, appName }) => {
           </CCard>
         </CCol>
         <CCol xs={6} md={3}>
-          <CCard className="border-0 shadow-sm text-center py-3 bg-light">
+          <CCard className="border-0 shadow-sm text-center py-3">
             <CCardBody className="p-0">
               <div className="text-muted small fw-semibold text-uppercase">Total Residents</div>
               <div className="fs-3 fw-bold text-info">{stats.residents}</div>

@@ -615,3 +615,89 @@
   }
 }
 
+/* ==========================================================================
+   Notice Board Dark Theme Overrides
+   ========================================================================== */
+[data-coreui-theme='dark'] {
+  .notice-board-theme {
+    --text-main: rgba(255, 255, 255, 0.87);
+    --text-muted: rgba(255, 255, 255, 0.6);
+    --text-light: rgba(255, 255, 255, 0.38);
+
+    --border-light: rgba(255, 255, 255, 0.1);
+    --border-focus: rgba(255, 255, 255, 0.2);
+    --surface-bg: #212631;
+    --surface-card: #2a303d;
+
+    --success-bg: rgba(46, 184, 92, 0.2);
+    --warning-bg: rgba(249, 177, 21, 0.2);
+    --danger-bg: rgba(229, 83, 83, 0.2);
+    --info-bg: rgba(51, 153, 255, 0.2);
+
+    color: var(--text-main);
+
+    .notice-board-topnav-container {
+      background-color: var(--surface-card);
+    }
+  }
+
+  .notice-filter-bar {
+    background-color: #2a303d !important;
+    .form-control,
+    .form-select,
+    .btn-reset-filter,
+    .input-group-text {
+      background-color: #212631 !important;
+      color: rgba(255, 255, 255, 0.87) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+
+      &:focus,
+      &:active,
+      &.active {
+        background-color: #2a303d !important;
+        border-color: #3b82f6 !important;
+        color: #ffffff !important;
+      }
+    }
+    .notice-search-group {
+      .input-group-text, .form-control {
+        background-color: #212631 !important;
+      }
+      &:focus-within {
+        .input-group-text, .form-control {
+          background-color: #2a303d !important;
+        }
+      }
+    }
+    .btn-reset-filter:hover {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      color: #ffffff !important;
+    }
+  }
+
+  .notice-admin-tabs {
+    .nav-link {
+      background-color: #2a303d !important;
+      color: rgba(255, 255, 255, 0.87) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+
+      &:hover {
+        background-color: #321fdb !important;
+        border-color: #321fdb !important;
+        color: #ffffff !important;
+      }
+
+      &.active {
+        background-color: #321fdb !important;
+        border-color: #321fdb !important;
+        color: #ffffff !important;
+      }
+    }
+  }
+
+  .notice-card, .notice-empty-state {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+}
+
+

@@ -52,14 +52,14 @@ export const InvitationSuccessModal = ({ visible, onClose, passData }) => {
           🎉 Invitation Created!
         </CModalTitle>
       </CModalHeader>
-      <CModalBody className="text-center py-4 bg-light">
+      <CModalBody className="text-center py-4 bg-body-secondary">
         <p className="text-muted mb-3 small">
           Share this QR Code/Pass with your visitor to grant them seamless entry at the gate.
         </p>
 
         {/* Dynamic QR Code Card */}
         <div 
-          className="mx-auto p-3 bg-white rounded shadow-sm border mb-4" 
+          className="mx-auto p-3 bg-body rounded shadow-sm border mb-4" 
           style={{ width: 'fit-content' }}
         >
           <QRCode 
@@ -68,7 +68,7 @@ export const InvitationSuccessModal = ({ visible, onClose, passData }) => {
             size={160} 
             level="M"
           />
-          <div className="mt-3 font-weight-bold text-dark border-top pt-2">
+          <div className="mt-3 font-weight-bold text-body border-top pt-2">
             {passCode}
           </div>
           <div className="text-muted small mt-1">
@@ -79,7 +79,7 @@ export const InvitationSuccessModal = ({ visible, onClose, passData }) => {
           </div>
         </div>
       </CModalBody>
-      <CModalFooter className="flex-column gap-2 border-top-0 pt-0 bg-light">
+      <CModalFooter className="flex-column gap-2 border-top-0 pt-0 bg-body-secondary">
         <CButton 
           color="success" 
           className="w-100 text-white font-weight-semibold py-2 d-flex align-items-center justify-content-center gap-2"

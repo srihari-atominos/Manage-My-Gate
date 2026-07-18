@@ -5,6 +5,7 @@ import { useComplaints } from '../hooks/useComplaints';
 import ComplaintTopNav from '../components/ComplaintTopNav';
 import ComplaintDetails from './ComplaintDetails';
 import AssignComplaint from './AssignComplaint';
+import VendorPassModal from '../components/VendorPassModal.jsx';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import toast from 'react-hot-toast';
@@ -338,6 +339,7 @@ const ComplaintManagement = () => {
           onAssigned={() => setAssigningComplaintId(null)}
         />
       )}
+      <VendorPassModal />
         </div>
       </div>
     </div>

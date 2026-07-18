@@ -151,7 +151,7 @@ export const NoticeBoardList = () => {
         {/* Page Header */}
         <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
           <div className="d-flex flex-column">
-            <h2 className="fw-bold text-dark mb-1">{t('noticeBoard.title', 'Notice Board')}</h2>
+            <h2 className="fw-bold text-body mb-1">{t('noticeBoard.title', 'Notice Board')}</h2>
             <span className="text-secondary small">
               {t('noticeBoard.subtitle', 'Stay updated with the latest community announcements.')}
             </span>

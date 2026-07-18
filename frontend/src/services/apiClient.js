@@ -14,7 +14,22 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Important for secure cookies (Refresh Token)
 })
+
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
 
 // Request Interceptor: Inject Token and Correlation ID
 apiClient.interceptors.request.use(
@@ -46,6 +61,7 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response.data,
   async (error) => {
+    const originalRequest = error.config;
     // Check if error is due to CORS (or network error where response is undefined)
     if (
       error.message === 'Network Error' ||
@@ -59,19 +75,49 @@ apiClient.interceptors.response.use(
       toast.error('Request failed with status code 502')
     }
 
-    // Handle 401 Unauthorized globally
-    if (error.response && error.response.status === 401) {
-      try {
-        // Dynamic import to prevent circular dependency at compile/load time
-        const { store } = await import('../store/store.js')
-        const { logout } = await import('../features/auth/store/authSlice.js')
-        store.dispatch(logout())
-      } catch (dispatchErr) {
-        console.error('Failed to trigger automatic logout on 401', dispatchErr)
+    // Handle 401 Unauthorized globally with Silent Refresh
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise(function(resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers['Authorization'] = 'Bearer ' + token;
+          return apiClient(originalRequest);
+        }).catch(err => {
+          return Promise.reject(err);
+        });
       }
-      
-      // Fallback redirect to login page
-      window.location.hash = '#/login'
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const res = await axios.post(`${apiClient.defaults.baseURL}/auth/refresh-token`, {}, { withCredentials: true });
+        
+        if (res.status === 200 || res.status === 201) {
+          const newToken = res.data.token;
+          localStorage.setItem('token', newToken);
+          apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newToken;
+          originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
+          
+          processQueue(null, newToken);
+          return apiClient(originalRequest);
+        }
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        
+        try {
+          const { store } = await import('../store/store.js')
+          const { logout } = await import('../features/auth/store/authSlice.js')
+          store.dispatch(logout())
+        } catch (dispatchErr) {
+          console.error('Failed to trigger automatic logout on 401', dispatchErr)
+        }
+        window.location.hash = '#/login'
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
     }
     
     // Extract backend error message if available to prevent raw Axios error strings

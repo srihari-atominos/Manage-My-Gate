@@ -110,11 +110,11 @@ class ComplaintController {
         device: 'Web'
       };
       
-      const updated = await complaintService.assignTechnician(
+      const result = await complaintService.assignTechnician(
         id, orgId, technicianId, technicianIds, assignmentType, technicianName, 
         adminId, adminName, vendor, team, instructions, preferredVisitDate, preferredVisitTime, metaData, reassignmentReason
       );
-      res.success(updated, 'Technician assigned successfully');
+      res.success({ complaint: result.complaint, vendorPass: result.vendorPass }, 'Technician assigned successfully');
     } catch (error) {
       next(error);
     }

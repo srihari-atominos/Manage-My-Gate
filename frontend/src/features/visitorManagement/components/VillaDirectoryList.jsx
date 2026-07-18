@@ -5,10 +5,12 @@ export const VillaDirectoryList = ({ villas }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCall, setActiveCall] = useState(null); // stores villa object when calling
 
-  const filteredVillas = villas.filter(v => 
-    v.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.resident.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredVillas = villas.filter(v => {
+    const numberStr = v.number ? String(v.number).toLowerCase() : '';
+    const residentStr = v.resident ? String(v.resident).toLowerCase() : '';
+    const query = searchQuery ? searchQuery.toLowerCase() : '';
+    return numberStr.includes(query) || residentStr.includes(query);
+  });
 
   const handleIntercomCall = (villa) => {
     setActiveCall(villa);

@@ -150,6 +150,7 @@ export class UserService {
 
       const deletedUser = await userRepository.delete(id, session);
       await session.commitTransaction();
+      userEvents.emit('USER_UPDATED', { userId: id, action: 'deleted' });
       return deletedUser;
     } catch (error) {
       await session.abortTransaction();
@@ -181,7 +182,7 @@ export class UserService {
         const userData = {
           email: trimmedEmail,
           username: username,
-          status: 'Pending',
+          status: 'Pending Verification',
         };
         user = await userRepository.create(userData, session);
       }
@@ -283,6 +284,9 @@ export class UserService {
 
       // Dispatch event for asynchronous SMTP email transmission
       userEvents.emit('USER_INVITED', { email: trimmedEmail, orgId, invitationToken });
+      
+      // Dispatch event for real-time frontend syncing
+      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'invited' });
 
       return { user, invitationToken };
     } catch (error) {
@@ -314,12 +318,13 @@ export class UserService {
       }
 
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-      const membership = await orgMembershipService.updateMembershipRole(userId, orgId, roleIds, session);
-      if (!membership) {
+      const updatedMembership = await orgMembershipService.updateMembershipRole(userId, orgId, roleIds, session);
+      if (!updatedMembership) {
         throw new HttpError(404, 'User organization membership not found.');
       }
-
+      
       await session.commitTransaction();
+      userEvents.emit('USER_UPDATED', { userId, orgId, action: 'roles_updated' });
       return { id: userId, roles: foundRoleNames };
     } catch (error) {
       await session.abortTransaction();
@@ -337,6 +342,7 @@ export class UserService {
   async activateUser(id, hashedPassword, session) {
     const updatedUser = await userRepository.update(id, { password: hashedPassword, status: 'Active' }, session);
     userEvents.emit('USER_ACTIVATED', { userId: id, session });
+    userEvents.emit('USER_UPDATED', { userId: id, action: 'activated' });
     return updatedUser;
   }
 
@@ -366,6 +372,8 @@ export class UserService {
 
       const updatedUser = await userRepository.update(id, payload, session);
       await session.commitTransaction();
+      
+      userEvents.emit('USER_UPDATED', { userId: id, action: 'profile_updated' });
       return updatedUser;
     } catch (error) {
       await session.abortTransaction();

@@ -1,5 +1,7 @@
 import { Server } from 'socket.io';
 import logger from '../utils/logger.utils.js';
+import { initRoleSocket } from '../features/role/role.socket.js';
+import { initUserSocket } from '../features/user/user.socket.js';
 
 let io = null;
 
@@ -49,6 +51,10 @@ export const initSocket = (httpServer) => {
       logger.info(`Socket client disconnected: ${socket.id}, reason: ${reason}`);
     });
   });
+
+  // Initialize feature-level socket dispatchers
+  initRoleSocket();
+  initUserSocket();
 
   return io;
 };

@@ -87,7 +87,7 @@ export const ResidentDashboard = () => {
         {/* Left column: Villa Stats and Co-residents */}
         <CCol lg={7}>
           {loading || !villaDetails ? (
-            <div className="text-center py-5 bg-white rounded-4 shadow-sm border">
+            <div className="text-center py-5 bg-body rounded-4 shadow-sm border">
               <CSpinner color="primary" className="mb-2" />
               <div>Loading villa occupancy data...</div>
             </div>
@@ -99,7 +99,7 @@ export const ResidentDashboard = () => {
                   <div className="d-flex justify-content-between align-items-start mb-3">
                     <div>
                       <h4 className="fw-bold mb-0">{villaDetails.villa.villaNumber}</h4>
-                      <span className="badge bg-white text-primary mt-1 fw-bold">{villaDetails.villa.block || 'Main Block'}</span>
+                      <span className="badge bg-body text-primary mt-1 fw-bold">{villaDetails.villa.block || 'Main Block'}</span>
                     </div>
                     <CBadge color="success" className="px-2 py-1 text-uppercase fw-bold" style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid white' }}>
                       {user.residentType} Status
@@ -133,13 +133,13 @@ export const ResidentDashboard = () => {
                 </CCardHeader>
                 <CCardBody className="px-4 pb-4">
                   {villaDetails.residents.length <= 1 ? (
-                    <div className="text-center py-4 bg-light rounded-3 text-muted small">
+                    <div className="text-center py-4 bg-body-secondary rounded-3 text-muted small">
                       No other family members or co-residents registered yet.
                     </div>
                   ) : (
                     <div className="d-flex flex-column gap-3">
                       {villaDetails.residents.filter(r => r.id !== user.id).map((res) => (
-                        <div key={res.id} className="d-flex align-items-center justify-content-between p-3 border rounded-3 bg-light-subtle">
+                        <div key={res.id} className="d-flex align-items-center justify-content-between p-3 border rounded-3 bg-body-secondary-subtle">
                           <div className="d-flex align-items-center gap-3">
                             <div className="rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', fontSize: '0.9rem' }}>
                               {res.name ? res.name.charAt(0).toUpperCase() : 'U'}
@@ -217,11 +217,11 @@ export const ResidentDashboard = () => {
             </CCardHeader>
             <CCardBody className="px-4 pb-4">
               <div className="d-flex flex-column gap-3">
-                <div className="p-3 border-start border-warning border-3 bg-light rounded-2">
+                <div className="p-3 border-start border-warning border-3 bg-body-secondary rounded-2">
                   <div className="fw-semibold small">Maintenance Schedule</div>
                   <p className="text-muted small mb-0 mt-1">Water supply maintenance planned for Block A on Saturday 10 AM to 1 PM.</p>
                 </div>
-                <div className="p-3 border-start border-info border-3 bg-light rounded-2">
+                <div className="p-3 border-start border-info border-3 bg-body-secondary rounded-2">
                   <div className="fw-semibold small">Annual General Meeting</div>
                   <p className="text-muted small mb-0 mt-1">Gated community general assembly on Sunday, July 12th at 4:30 PM in the Clubhouse.</p>
                 </div>

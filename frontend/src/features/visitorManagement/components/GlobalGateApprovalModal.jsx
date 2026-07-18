@@ -60,7 +60,7 @@ export const GlobalGateApprovalModal = () => {
             style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary, #0084FF)' }}
           />
           <div>
-            <h4 className="m-0 fw-bold text-dark">{visitorName}</h4>
+            <h4 className="m-0 fw-bold text-body">{visitorName}</h4>
             <div className="d-flex gap-2 align-items-center mt-1">
               <CBadge color="primary">{company}</CBadge>
               <span className="text-muted small">{gateNumber}</span>
@@ -68,7 +68,7 @@ export const GlobalGateApprovalModal = () => {
           </div>
         </div>
 
-        <div className="bg-light p-3 rounded shadow-sm border">
+        <div className="bg-body-secondary p-3 rounded shadow-sm border">
           <div className="mb-2">
             <strong>Purpose:</strong> <span className="text-muted">{purpose}</span>
           </div>

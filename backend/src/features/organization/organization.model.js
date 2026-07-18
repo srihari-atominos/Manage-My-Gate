@@ -12,6 +12,28 @@ const organizationSchema = new mongoose.Schema(
       enum: ['Pending', 'Active', 'Rejected'],
       default: 'Active',
     },
+    organizationType: {
+      type: String,
+      enum: ['Residential', 'Corporate', 'Educational', 'Commercial', 'Other'],
+      required: true,
+    },
+    contactEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    contactPhone: {
+      type: String,
+      trim: true,
+    },
+    expectedMemberCount: {
+      type: Number,
+      min: 1,
+    },
+    timezone: {
+      type: String,
+      default: 'Asia/Kolkata',
+    },
     allowedFeatures: {
       type: [String],
       default: [],

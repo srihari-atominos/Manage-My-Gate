@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CContainer, CRow, CCol, CCard, CCardBody, CButton, CAlert, CSpinner } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
-import { cilUser, cilShieldAlt, cilLayers, cilHome, cilBuilding, cilList } from '@coreui/icons';
+import { cilUser, cilShieldAlt, cilLayers, cilHome, cilBuilding, cilList, cilSettings } from '@coreui/icons';
 import useFeatureConfigWizard from '../hooks/useFeatureConfigWizard.js';
 
 import SetupWorkspace from '../components/SetupWorkspace.jsx';
@@ -66,17 +66,23 @@ export const FeatureConfigWizard = () => {
       descKey: 'workspace.wizard.notices.desc',
       icon: cilList,
     },
+    {
+      id: 'complaints',
+      titleKey: 'workspace.wizard.complaints.title',
+      descKey: 'workspace.wizard.complaints.desc',
+      icon: cilSettings,
+    },
   ];
 
   return (
-    <div className="feature-config-wizard bg-light">
+    <div className="feature-config-wizard bg-body-secondary">
       <CContainer>
         <CRow className="justify-content-center">
           <CCol md={9} lg={8} xl={7}>
             <CCard className="shadow-lg border-0 rounded-4">
               <CCardBody className="p-5">
                 <div className="text-center mb-4">
-                  <h2 className="fw-bold text-dark mb-2">
+                  <h2 className="fw-bold text-body mb-2">
                     {t('workspace.wizard.title')}
                   </h2>
                   <p className="text-muted">
@@ -114,7 +120,7 @@ export const FeatureConfigWizard = () => {
                                 className="feature-card-icon"
                               />
                             </div>
-                            <h5 className="fw-semibold text-dark mb-2">
+                            <h5 className="fw-semibold text-body mb-2">
                               {t(feature.titleKey)}
                             </h5>
                             <p className="text-muted small mb-0">

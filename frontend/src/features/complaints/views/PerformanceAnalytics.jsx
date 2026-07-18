@@ -35,7 +35,7 @@ const PerformanceAnalytics = () => {
             </div>
             <button className="btn btn-secondary" onClick={() => {
                 const token = localStorage.getItem('token');
-                window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints/export?auth_token=${token}`, '_blank');
+                window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:5002'}/api/complaints/export?auth_token=${token}`, '_blank');
               }}>
               <i className="fa-solid fa-file-export" style={{ marginRight: '8px' }}></i> Export Report
             </button>

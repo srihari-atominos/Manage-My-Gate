@@ -412,6 +412,39 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                 )}
               </div>
 
+              {/* Assignment Summary */}
+              <div className="card" style={{ marginBottom: '20px' }}>
+                <h3 style={{ color: 'var(--ink)', marginBottom: '16px' }} className="fw-bold fs-6">Assignment Summary</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }} className="small">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ color: 'var(--ink-soft)' }} className="small">Resident & Unit</span>
+                    <span style={{ color: 'var(--ink)' }} className="fw-semibold">{complaint?.residentName || complaint?.residentId?.username || 'Resident'} - {complaint?.location?.tower ? `${complaint.location.tower}, ` : ''}{complaint?.location?.flat || 'N/A'}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ color: 'var(--ink-soft)' }} className="small">Category</span>
+                    <span style={{ color: 'var(--ink)' }} className="fw-semibold">{complaint?.category}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ color: 'var(--ink-soft)' }} className="small">Assignee</span>
+                    <span style={{ color: 'var(--ink)' }} className="fw-semibold">{complaint?.assignedTechnicianName || 'Unassigned'} {(complaint?.assignedTechnicianName || complaint?.vendor === 'Temporary Vendor') && <span style={{ color: '#2563eb' }} className="fw-medium small">({complaint?.vendor === 'Temporary Vendor' ? 'Temp Vendor' : 'Existing Staff'})</span>}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ color: 'var(--ink-soft)' }} className="small">Expected Visit Time</span>
+                    <span style={{ color: 'var(--ink)' }} className="fw-semibold">
+                      {complaint?.preferredVisitDate ? `${complaint.preferredVisitDate} ${complaint.preferredVisitTime || ''}`.trim() : 'Not specified'}
+                    </span>
+                  </div>
+                  {(complaint?.instructions || complaint?.adminInstructions) && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: 'span 2' }}>
+                      <span style={{ color: 'var(--ink-soft)' }} className="small">Admin Instructions</span>
+                      <span className="fw-semibold" style={{ color: 'var(--ink)', whiteSpace: 'pre-wrap' }}>
+                        {complaint.instructions || complaint.adminInstructions}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Activity Timeline */}
               <div className="card">
                 <h3 style={{ color: 'var(--ink)', marginBottom: '24px' }} className="fw-bold fs-6">Activity & Updates</h3>

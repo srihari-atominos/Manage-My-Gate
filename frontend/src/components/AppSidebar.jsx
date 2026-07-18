@@ -40,6 +40,7 @@ import { logo } from '../assets/brand/logo'
 import { sygnet } from '../assets/brand/sygnet'
 
 import { useAuth } from '../features/auth/hooks/useAuth'
+import useRoleSocket from '../features/roleBuilder/hooks/useRoleSocket'
 
 // sidebar nav config
 import navigation from '../_nav'
@@ -60,6 +61,10 @@ const AppSidebar = () => {
   const dispatch = useDispatch()
   const unfoldable = useSelector((state) => state.ui.sidebarUnfoldable)
   const sidebarShow = useSelector((state) => state.ui.sidebarShow)
+  
+  // Attach real-time listener for role permission updates
+  useRoleSocket()
+
   const activeWorkspace = useSelector((state) => state.workspace)
   const allowedFeatures = useSelector((state) => state.workspace?.allowedFeatures || [])
   const isPlatform = useSelector((state) => state.workspace?.isPlatform || false)
@@ -82,12 +87,10 @@ const AppSidebar = () => {
     }
     
     if (Array.isArray(item.requiredPermission)) {
-      const isAllowed = isPlatform || item.requiredPermission.some(perm => checkPermission(perm));
-      return isAllowed;
+      return item.requiredPermission.some(perm => checkPermission(perm));
     }
 
-    const isAllowed = isPlatform || checkPermission(item.requiredPermission);
-    return isAllowed;
+    return checkPermission(item.requiredPermission);
   };
 
   const filterItems = (items) => {
@@ -135,7 +138,10 @@ const AppSidebar = () => {
   const portalNav = navigation.filter((item) => !SUPER_ADMIN_PATHS.has(item.to));
   const superAdminNav = navigation.filter((item) => SUPER_ADMIN_PATHS.has(item.to));
 
-  const baseItems = isPlatform ? [...superAdminNav, ...portalNav] : portalNav;
+  const dashboardItem = portalNav.find((item) => item.name === 'Dashboard');
+  const restPortalNav = portalNav.filter((item) => item.name !== 'Dashboard');
+
+  const baseItems = isPlatform ? [dashboardItem, ...superAdminNav, ...restPortalNav].filter(Boolean) : portalNav;
   const filteredNavigationItems = filterItems(baseItems);
 
 

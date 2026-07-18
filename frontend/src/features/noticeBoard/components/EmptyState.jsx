@@ -14,17 +14,17 @@ export const EmptyState = ({ canCreate, onAddClick }) => {
 
   return (
     <CCard
-      className="text-center py-5 border-0 shadow-sm bg-white rounded-3 notice-empty-state"
+      className="text-center py-5 border-0 shadow-sm bg-body rounded-3 notice-empty-state"
       style={{ borderRadius: '16px' }}
     >
       <CCardBody className="d-flex flex-column align-items-center justify-content-center p-5">
         <div
-          className="rounded-circle bg-light p-3 mb-3 text-secondary"
+          className="rounded-circle bg-body-secondary p-3 mb-3 text-secondary"
           style={{ width: 'fit-content' }}
         >
           <CIcon icon={cilWarning} size="xl" className="align-middle" />
         </div>
-        <h4 className="fw-bold text-dark mb-2">
+        <h4 className="fw-bold text-body mb-2">
           {t('noticeBoard.empty.title', 'No Notices Available')}
         </h4>
         <p

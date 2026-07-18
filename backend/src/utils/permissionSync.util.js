@@ -72,10 +72,15 @@ export const syncPermissions = async () => {
       }
     }
 
-    // 5. Map all system permissions to Platform Super Admin role
-    const permissionIds = upsertedPermissions.map((p) => p._id.toString());
-    await rolePermissionService.updateRolePermissions(superAdminRole._id.toString(), permissionIds);
-    logger.info('Mapped all system permissions to the "Platform Super Admin" role.');
+    // 5. Map all system permissions to Platform Super Admin role (only if it has no permissions, preserving custom edits)
+    const existingPerms = await rolePermissionService.getPermissionsByRoleId(superAdminRole._id);
+    if (existingPerms.length === 0) {
+      const permissionIds = upsertedPermissions.map((p) => p._id.toString());
+      await rolePermissionService.updateRolePermissions(superAdminRole._id.toString(), permissionIds);
+      logger.info('Mapped all system permissions to the "Platform Super Admin" role (first time setup or failsafe).');
+    } else {
+      logger.info('Platform Super Admin role already has custom permissions. Skipping auto-sync to preserve user edits.');
+    }
 
     // 6. Bootstrap default Super Admin user using env credentials
     const adminEmail = process.env.SUPER_ADMIN_EMAIL;

@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { CCard, CCardBody, CSpinner } from '@coreui/react';
 
 export const WalletLoading = memo(() => (
-  <CCard className="border-0 shadow-sm text-center bg-light">
+  <CCard className="border-0 shadow-sm text-center bg-body-secondary">
     <CCardBody className="p-5">
       <CSpinner color="primary" className="mb-3" />
       <p className="text-muted mb-0">Loading your digital wallet...</p>

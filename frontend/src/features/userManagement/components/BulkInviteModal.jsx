@@ -217,7 +217,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
       <CModalBody className="p-4">
         {/* Step 1: Template Download */}
         {!fileName && !parsedRows.length && !results && (
-          <div className="mb-4 text-center p-4 border rounded-3 bg-light">
+          <div className="mb-4 text-center p-4 border rounded-3 bg-body-secondary">
             <h5 className="fw-semibold mb-2" style={{ fontSize: '0.95rem' }}>1. Download CSV Template</h5>
             <p className="text-muted small mb-3">
               Use our standard format to prepare your invitation list. You can specify whether each invitee is a resident or staff/worker.
@@ -249,7 +249,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
               {fileName ? 'Uploaded File' : '2. Upload Filled CSV'}
             </h5>
             <div
-              className="dropzone-area p-4 border rounded-3 text-center bg-light bulk-dropzone"
+              className="dropzone-area p-4 border rounded-3 text-center bg-body-secondary bulk-dropzone"
               onClick={() => fileInputRef.current?.click()}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
@@ -370,9 +370,9 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                 <h6 className="fw-semibold text-danger mb-2" style={{ fontSize: '0.88rem' }}>Failed to Invite:</h6>
                 <div className="list-group rounded-3 max-vh-25 bulk-list-container">
                   {results.failures.map((f, idx) => (
-                    <div key={idx} className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-light-danger">
+                    <div key={idx} className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-body-secondary-danger">
                       <div className="ms-2 me-auto">
-                        <div className="fw-semibold text-dark">{f.email}</div>
+                        <div className="fw-semibold text-body">{f.email}</div>
                         <span className="text-muted bulk-text-xxs">Reason: {f.error}</span>
                       </div>
                       <CBadge color="danger">Failed</CBadge>

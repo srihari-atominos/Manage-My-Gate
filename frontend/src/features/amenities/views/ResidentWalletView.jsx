@@ -20,7 +20,7 @@ const ResidentWalletView = () => {
   const [bookingToCancel, setBookingToCancel] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  const presetAmounts = [500, 1000, 2000, 5000];
+  const presetAmounts = [500, 1000, 2000, 5002];
 
   const handleAddMoney = async () => {
     if (!addAmount || isNaN(addAmount) || Number(addAmount) <= 0) return;
@@ -69,7 +69,7 @@ const ResidentWalletView = () => {
         </div>
 
         {showAddMoney && (
-          <CCard className="mb-4 border-0 shadow-sm bg-light">
+          <CCard className="mb-4 border-0 shadow-sm bg-body-secondary">
             <CCardBody className="p-4">
               <h5 className="mb-3">Recharge Wallet</h5>
               
