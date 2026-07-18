@@ -8,9 +8,9 @@ const nameToKeyMap = {
     titleKey: 'dashboard.cards.userManagement',
     id: 'user-management'
   },
-  'Villa Management': {
-    titleKey: 'dashboard.cards.villaManagement',
-    id: 'villa-management'
+  'Unit Management': {
+    titleKey: 'dashboard.cards.unitManagement',
+    id: 'unit-management'
   },
   'Role Builder': {
     titleKey: 'dashboard.cards.roleBuilder',
@@ -56,13 +56,11 @@ export const useDashboard = () => {
   const isPlatform = activeWorkspace?.isPlatform || false;
   console.log('--- DEBUG useDashboard allowedFeatures:', allowedFeatures);
 
-  // Exact same filtering logic as AppSidebar.jsx
+  const SUPER_ADMIN_PATHS = new Set(['/super-admin/organizations', '/super-admin/audit-logs']);
+
+  // Match the logic in AppSidebar.jsx minus the dashboard itself
   const PORTAL_CATEGORIES = navigation.filter((item) => 
-    item.to === '/users' || 
-    item.to === '/villas' || 
-    item.to === '/role-builder' || 
-    item.to === '/integrations' || 
-    !item.to
+    !SUPER_ADMIN_PATHS.has(item.to) && item.to !== '/dashboard'
   );
 
   const SUPER_ADMIN_CATEGORIES = navigation.filter((item) =>
@@ -82,6 +80,9 @@ export const useDashboard = () => {
       if (item.items) {
         const permittedItems = item.items.filter(nextItem => {
           if (!nextItem.requiredPermission) return true;
+          if (Array.isArray(nextItem.requiredPermission)) {
+            return nextItem.requiredPermission.some(perm => checkPermission(perm));
+          }
           return checkPermission(nextItem.requiredPermission);
         });
 
@@ -94,6 +95,10 @@ export const useDashboard = () => {
     } else {
       if (!item.requiredPermission) {
         result.push(item);
+      } else if (Array.isArray(item.requiredPermission)) {
+        if (item.requiredPermission.some(perm => checkPermission(perm))) {
+          result.push(item);
+        }
       } else if (checkPermission(item.requiredPermission)) {
         result.push(item);
       }

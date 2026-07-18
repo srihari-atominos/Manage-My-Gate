@@ -307,7 +307,9 @@ const complaintSlice = createSlice({
     staffVendors: null,
     technicians: [],
     status: 'idle',
-    error: null
+    error: null,
+    generatedVendorPass: null,
+    isVendorPassModalOpen: false
   },
   reducers: {
     updateComplaintInList: (state, action) => {
@@ -327,6 +329,10 @@ const complaintSlice = createSlice({
     },
     clearErrors: (state) => {
       state.error = null;
+    },
+    closeVendorPassModal: (state) => {
+      state.generatedVendorPass = null;
+      state.isVendorPassModalOpen = false;
     }
   },
   extraReducers: (builder) => {
@@ -383,12 +389,21 @@ const complaintSlice = createSlice({
       })
       .addCase(assignComplaint.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        const index = state.list.findIndex(c => c._id === action.payload._id);
-        if (index !== -1) {
-          state.list[index] = action.payload;
+        
+        // Handle potentially updated response structure { complaint, vendorPass }
+        const complaintData = action.payload.complaint || action.payload;
+        
+        if (action.payload.vendorPass) {
+          state.generatedVendorPass = action.payload.vendorPass;
+          state.isVendorPassModalOpen = true;
         }
-        if (state.currentComplaint && state.currentComplaint._id === action.payload._id) {
-          state.currentComplaint = action.payload;
+
+        const index = state.list.findIndex(c => c._id === complaintData._id);
+        if (index !== -1) {
+          state.list[index] = complaintData;
+        }
+        if (state.currentComplaint && state.currentComplaint._id === complaintData._id) {
+          state.currentComplaint = complaintData;
         }
       })
       .addCase(assignComplaint.rejected, (state, action) => {
@@ -490,5 +505,5 @@ const complaintSlice = createSlice({
   }
 });
 
-export const { updateComplaintInList, addComplaintToList, updateCurrentComplaint, clearErrors } = complaintSlice.actions;
+export const { updateComplaintInList, addComplaintToList, updateCurrentComplaint, clearErrors, clearCalendarEvents, closeVendorPassModal } = complaintSlice.actions;
 export default complaintSlice.reducer;

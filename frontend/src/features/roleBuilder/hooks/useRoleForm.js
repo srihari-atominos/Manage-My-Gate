@@ -23,6 +23,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
     control,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(schema),
@@ -60,28 +61,30 @@ export const useRoleForm = ({ role, visible, onSave }) => {
   }, [role, visible, reset])
 
   const handleSelectAllGroup = (groupCodes, checked) => {
+    const currentPermissions = getValues('permissions') || []
     let newValue
     if (checked) {
       let filteredGroupCodes = [...groupCodes]
-      const visitorCodes = groupCodes.filter((code) => code.startsWith('visitor:'))
+      const visitorCodes = groupCodes.filter((code) => String(code).toLowerCase().startsWith('visitor:'))
       if (visitorCodes.length > 1) {
-        filteredGroupCodes = groupCodes.filter((code) => !code.startsWith('visitor:') || code === visitorCodes[0])
+        filteredGroupCodes = groupCodes.filter((code) => !String(code).toLowerCase().startsWith('visitor:') || code === visitorCodes[0])
       }
-      newValue = Array.from(new Set([...selectedPermissions, ...filteredGroupCodes]))
+      newValue = Array.from(new Set([...currentPermissions, ...filteredGroupCodes]))
     } else {
-      newValue = selectedPermissions.filter((code) => !groupCodes.includes(code))
+      newValue = currentPermissions.filter((code) => !groupCodes.includes(code))
     }
     setValue('permissions', newValue, { shouldDirty: true, shouldValidate: true })
   }
 
   const handleTogglePermission = (permValue, checked) => {
+    const currentPermissions = getValues('permissions') || []
     let newValue = checked
-      ? [...selectedPermissions, permValue]
-      : selectedPermissions.filter((p) => p !== permValue)
+      ? [...currentPermissions, permValue]
+      : currentPermissions.filter((p) => p !== permValue)
 
     // Enforce mutual exclusivity for visitor context permissions (single select)
-    if (checked && permValue.startsWith('visitor:')) {
-      newValue = newValue.filter((p) => !p.startsWith('visitor:') || p === permValue)
+    if (checked && String(permValue).toLowerCase().startsWith('visitor:')) {
+      newValue = newValue.filter((p) => !String(p).toLowerCase().startsWith('visitor:') || p === permValue)
     }
 
     setValue('permissions', newValue, { shouldDirty: true, shouldValidate: true })

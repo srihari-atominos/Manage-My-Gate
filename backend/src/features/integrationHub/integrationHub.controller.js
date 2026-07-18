@@ -106,6 +106,30 @@ export class IntegrationHubController {
             { name: 'authPassword', label: 'Password', type: 'password' },
           ],
         },
+        {
+          id: 'firebase',
+          name: 'Firebase Authentication',
+          fields: [
+            { name: 'projectId', label: 'Project ID', type: 'text' },
+            { name: 'apiKey', label: 'API Key', type: 'password' },
+            { name: 'authDomain', label: 'Auth Domain', type: 'text' },
+            { name: 'appId', label: 'App ID', type: 'text' },
+            { name: 'messagingSenderId', label: 'Messaging Sender ID', type: 'text' },
+            { name: 'storageBucket', label: 'Storage Bucket (Optional)', type: 'text', required: false },
+          ],
+        },
+        {
+          id: 'messageCentral',
+          name: 'Message Central',
+          fields: [
+            { name: 'customerId', label: 'Customer ID', type: 'text' },
+            { name: 'authToken', label: 'Auth Token', type: 'password' },
+            { name: 'countryCode', label: 'Country Code', type: 'text' },
+            { name: 'senderId', label: 'Sender ID', type: 'text', required: false },
+            { name: 'flowId', label: 'Flow ID', type: 'text', required: false },
+            { name: 'environment', label: 'Environment', type: 'text', required: false },
+          ],
+        },
       ];
       res.success(catalog, 'Integration catalog retrieved successfully', 200);
     } catch (error) {

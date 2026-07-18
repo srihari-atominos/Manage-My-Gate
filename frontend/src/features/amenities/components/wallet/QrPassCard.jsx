@@ -22,7 +22,7 @@ const QrPassCard = memo(({ booking, onCancel }) => {
     <CCard className="border-0 shadow-sm mb-4 overflow-hidden position-relative h-100">
       <div className="bg-primary position-absolute w-100" style={{ height: '140px', top: 0, left: 0, zIndex: 0 }}>
         {/* Decorative circles */}
-        <div className="position-absolute rounded-circle bg-white opacity-10" style={{ width: '200px', height: '200px', top: '-50px', right: '-50px' }}></div>
+        <div className="position-absolute rounded-circle bg-body opacity-10" style={{ width: '200px', height: '200px', top: '-50px', right: '-50px' }}></div>
       </div>
       
       <CCardBody className="p-0 position-relative d-flex flex-column" style={{ zIndex: 1 }}>
@@ -41,8 +41,8 @@ const QrPassCard = memo(({ booking, onCancel }) => {
           </div>
         </div>
 
-        <div className="bg-white p-4 mx-4 rounded shadow-sm text-center" style={{ marginTop: '-20px' }}>
-          <div className="d-inline-block p-2 border rounded bg-white">
+        <div className="bg-body p-4 mx-4 rounded shadow-sm text-center" style={{ marginTop: '-20px' }}>
+          <div className="d-inline-block p-2 border rounded bg-body">
             {booking.qrPayload?.startsWith('data:image') ? (
               <img src={booking.qrPayload} alt="QR Code" width={160} height={160} />
             ) : (
@@ -84,7 +84,7 @@ const QrPassCard = memo(({ booking, onCancel }) => {
             </CCol>
             <CCol xs={6}>
               <div className="small text-muted text-uppercase fw-bold mb-1">Payment</div>
-              <span className={`badge ${booking.paymentStatus === 'success' ? 'bg-success' : 'bg-warning text-dark'}`}>
+              <span className={`badge ${booking.paymentStatus === 'success' ? 'bg-success' : 'bg-warning text-body'}`}>
                 {booking.paymentStatus || 'Pending'}
               </span>
             </CCol>

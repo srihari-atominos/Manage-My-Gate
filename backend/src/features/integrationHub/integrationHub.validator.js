@@ -10,8 +10,8 @@ export const connectRules = [
     .notEmpty()
     .withMessage('Provider is required')
     .toLowerCase()
-    .isIn(['openai', 'twilio', 'resend', 'smtp'])
-    .withMessage('Invalid provider. Allowed values: openai, twilio, resend, smtp'),
+    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral'])
+    .withMessage('Invalid provider. Allowed values: openai, twilio, resend, smtp, firebase, messagecentral'),
 
   body('accountLabel')
     .trim()
@@ -87,6 +87,90 @@ export const connectRules = [
     .withMessage('SMTP Password (authPassword) is required')
     .isString()
     .withMessage('SMTP Password must be a valid string'),
+
+  // Firebase validation rules
+  body('credentials.projectId')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'firebase')
+    .trim()
+    .notEmpty()
+    .withMessage('Project ID (projectId) is required for Firebase integration')
+    .isString()
+    .withMessage('Project ID must be a valid string'),
+
+  body('credentials.apiKey')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'firebase')
+    .trim()
+    .notEmpty()
+    .withMessage('API Key (apiKey) is required for Firebase integration')
+    .isString()
+    .withMessage('API Key must be a valid string'),
+
+  body('credentials.authDomain')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'firebase')
+    .trim()
+    .notEmpty()
+    .withMessage('Auth Domain (authDomain) is required for Firebase integration')
+    .isString()
+    .withMessage('Auth Domain must be a valid string'),
+
+  body('credentials.appId')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'firebase')
+    .trim()
+    .notEmpty()
+    .withMessage('App ID (appId) is required for Firebase integration')
+    .isString()
+    .withMessage('App ID must be a valid string'),
+
+  body('credentials.messagingSenderId')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'firebase')
+    .trim()
+    .notEmpty()
+    .withMessage('Messaging Sender ID (messagingSenderId) is required for Firebase integration')
+    .isString()
+    .withMessage('Messaging Sender ID must be a valid string'),
+
+  // Message Central validation rules
+  body('credentials.customerId')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'messagecentral')
+    .trim()
+    .notEmpty()
+    .withMessage('Customer ID (customerId) is required for Message Central integration')
+    .isString()
+    .withMessage('Customer ID must be a valid string'),
+
+  body('credentials.authToken')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'messagecentral')
+    .trim()
+    .notEmpty()
+    .withMessage('Auth Token (authToken) is required for Message Central integration')
+    .isString()
+    .withMessage('Auth Token must be a valid string'),
+
+  body('credentials.countryCode')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'messagecentral')
+    .trim()
+    .notEmpty()
+    .withMessage('Country Code (countryCode) is required for Message Central integration')
+    .isString()
+    .withMessage('Country Code must be a valid string'),
+
+  body('credentials.senderId')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'messagecentral' && value !== undefined && value !== '')
+    .trim()
+    .isString()
+    .withMessage('Sender ID must be a valid string'),
+
+  body('credentials.flowId')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'messagecentral' && value !== undefined && value !== '')
+    .trim()
+    .isString()
+    .withMessage('Flow ID must be a valid string'),
+
+  body('credentials.environment')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'messagecentral' && value !== undefined && value !== '')
+    .trim()
+    .isString()
+    .withMessage('Environment must be a valid string'),
 ];
 
 /**
@@ -131,7 +215,7 @@ export const listRules = [
     .optional()
     .trim()
     .toLowerCase()
-    .isIn(['openai', 'twilio', 'resend', 'smtp'])
+    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral'])
     .withMessage('Invalid provider filter'),
 ];
 

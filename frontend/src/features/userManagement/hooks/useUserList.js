@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { io } from 'socket.io-client'
 import {
   setSearchQuery,
   toggleRole,
@@ -41,6 +42,34 @@ export const useUserList = () => {
 
   const { roles } = useSelector((state) => state.roleBuilder)
   const currentUserId = useSelector((state) => state.auth.user?.id)
+  const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId)
+
+  // Real-time real-time sync via Socket.io
+  useEffect(() => {
+    if (!activeOrgId) return
+
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002'
+    const socket = io(socketUrl, {
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+    })
+
+    socket.on('connect', () => {
+      socket.emit('join_room', `org:${activeOrgId}`)
+    })
+
+    socket.on('RECORD_UPDATED', (payload) => {
+      if (payload.type === 'USER') {
+        // Silently refresh the list in the background
+        dispatch(fetchUsersAsync({ page: currentPage, limit: rowsPerPage }))
+      }
+    })
+
+    return () => {
+      socket.off('RECORD_UPDATED')
+      socket.disconnect()
+    }
+  }, [activeOrgId, dispatch, currentPage, rowsPerPage])
 
   // Fetch users when pagination states change
   useEffect(() => {

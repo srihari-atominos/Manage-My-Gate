@@ -136,13 +136,13 @@ export const GuardDashboard = () => {
                   <div className="small text-muted">Searching community directory...</div>
                 </div>
               ) : results.length === 0 ? (
-                <div className="text-center py-4 bg-light rounded text-muted small">
+                <div className="text-center py-4 bg-body-secondary rounded text-muted small">
                   Enter search terms to find villa details.
                 </div>
               ) : (
                 <div className="d-flex flex-column gap-3">
                   {results.map((villa) => (
-                    <div key={villa._id} className="d-flex align-items-center justify-content-between p-3 border rounded-3 bg-light-subtle">
+                    <div key={villa._id} className="d-flex align-items-center justify-content-between p-3 border rounded-3 bg-body-secondary-subtle">
                       <div>
                         <div className="fw-bold text-primary">{villa.villaNumber}</div>
                         <div className="text-muted small">

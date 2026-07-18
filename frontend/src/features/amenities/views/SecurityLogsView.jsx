@@ -141,16 +141,16 @@ const SecurityLogsView = () => {
         {/* ── Filters & Table Card ── */}
         <div className="card border-0 shadow-sm" style={{ borderRadius: '16px' }}>
           {/* Filter Bar */}
-          <div className="card-header bg-white border-bottom px-4 py-3" style={{ borderRadius: '16px 16px 0 0' }}>
+          <div className="card-header bg-body border-bottom px-4 py-3" style={{ borderRadius: '16px 16px 0 0' }}>
             <div className="row g-2 align-items-center">
               <div className="col-12 col-md-3">
                 <div className="input-group">
-                  <span className="input-group-text bg-light border-end-0 text-muted">
+                  <span className="input-group-text bg-body-secondary border-end-0 text-muted">
                     <i className="fa-solid fa-search"></i>
                   </span>
                   <input
                     type="text"
-                    className="form-control bg-light border-start-0 ps-0"
+                    className="form-control bg-body-secondary border-start-0 ps-0"
                     placeholder="Search resident, amenity, guard..."
                     value={filters.search || ''}
                     onChange={(e) => handleFilterChange('search', e.target.value)}
@@ -341,7 +341,7 @@ const SecurityLogsView = () => {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="card-footer bg-white border-top d-flex flex-wrap justify-content-between align-items-center p-3 gap-2" style={{ borderRadius: '0 0 16px 16px' }}>
+            <div className="card-footer bg-body border-top d-flex flex-wrap justify-content-between align-items-center p-3 gap-2" style={{ borderRadius: '0 0 16px 16px' }}>
               <div className="text-muted small">
                 Page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages}</strong> &mdash; {pagination.total} total records
               </div>

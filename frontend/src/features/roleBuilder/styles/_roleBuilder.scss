@@ -182,3 +182,46 @@
   }
 }
 
+/* ==========================================================================
+   Role Builder Dark Theme Overrides
+   ========================================================================== */
+[data-coreui-theme='dark'] {
+  .permission-category-card {
+    background: #2a303d !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .permission-card-header {
+    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .permission-card-title {
+    color: rgba(255, 255, 255, 0.87) !important;
+  }
+
+  .permission-select-all-check {
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
+
+  .role-integration-configurator {
+    .carousel-card {
+      background: #2a303d !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      
+      &:hover {
+        border-color: #321fdb !important;
+      }
+      
+      &.border-primary {
+        border-color: #321fdb !important;
+      }
+    }
+
+    .connections-table-wrapper {
+      .table th {
+        color: rgba(255, 255, 255, 0.87) !important;
+      }
+    }
+  }
+}

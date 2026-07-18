@@ -212,7 +212,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
 
       <CModalBody className="p-4">
         {!fileName && !parsedRows.length && !results && (
-          <div className="mb-4 text-center p-4 border rounded-3 bg-light">
+          <div className="mb-4 text-center p-4 border rounded-3 bg-body-secondary">
             <h5 className="fw-semibold mb-2 section-title">
               {t('villas.bulk.step1Title', '1. Download CSV Template')}
             </h5>
@@ -244,7 +244,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
               {fileName ? t('villas.bulk.uploadedFile', 'Uploaded File') : t('villas.bulk.step2Title', '2. Upload CSV File')}
             </h5>
             <div
-              className="p-4 border rounded-3 text-center bg-light bulk-dropzone pointer-clickable"
+              className="p-4 border rounded-3 text-center bg-body-secondary bulk-dropzone pointer-clickable"
               onClick={() => fileInputRef.current?.click()}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
@@ -373,9 +373,9 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
                 </h6>
                 <div className="list-group rounded-3 bulk-list-container">
                   {results.failures.map((f, idx) => (
-                    <div key={idx} className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-light-danger">
+                    <div key={idx} className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-body-secondary-danger">
                       <div className="ms-2 me-auto">
-                        <div className="fw-semibold text-dark">{f.unitNumber}</div>
+                        <div className="fw-semibold text-body">{f.unitNumber}</div>
                         <span className="text-muted bulk-text-xxs">Reason: {f.error}</span>
                       </div>
                       <CBadge color="danger">Failed</CBadge>

@@ -50,14 +50,31 @@ try {
   console.error('Failed to bootstrap workspace hydration from localStorage:', error)
 }
 
-createRoot(document.getElementById('root')).render(
-  <ErrorBoundary>
-    <Provider store={store}>
-      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'placeholder-google-client-id'}>
-        <MsalProvider instance={msalInstance}>
-          <App />
-        </MsalProvider>
-      </GoogleOAuthProvider>
-    </Provider>
-  </ErrorBoundary>,
-)
+// Initialize MSAL and then render the app
+msalInstance.initialize().then(() => {
+  createRoot(document.getElementById('root')).render(
+    <ErrorBoundary>
+      <Provider store={store}>
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'placeholder-google-client-id'}>
+          <MsalProvider instance={msalInstance}>
+            <App />
+          </MsalProvider>
+        </GoogleOAuthProvider>
+      </Provider>
+    </ErrorBoundary>,
+  )
+}).catch(err => {
+  console.error("MSAL Initialization failed:", err);
+  // Render anyway so the rest of the app works, even if Microsoft SSO fails
+  createRoot(document.getElementById('root')).render(
+    <ErrorBoundary>
+      <Provider store={store}>
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'placeholder-google-client-id'}>
+          <MsalProvider instance={msalInstance}>
+            <App />
+          </MsalProvider>
+        </GoogleOAuthProvider>
+      </Provider>
+    </ErrorBoundary>,
+  )
+});

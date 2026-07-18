@@ -74,7 +74,7 @@ export const ProviderConnectionsModal = ({
       </CModalHeader>
 
       {/* Toolbar */}
-      <div className="d-flex justify-content-end p-3 border-bottom bg-light">
+      <div className="d-flex justify-content-end p-3 border-bottom bg-body-secondary">
         <CButton
           color="primary"
           size="sm"

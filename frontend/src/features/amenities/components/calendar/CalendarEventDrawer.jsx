@@ -7,7 +7,7 @@ const CalendarEventDrawer = memo(({ visible, onClose, event }) => {
 
   return (
     <COffcanvas placement="end" visible={visible} onHide={onClose}>
-      <COffcanvasHeader className="bg-light border-bottom">
+      <COffcanvasHeader className="bg-body-secondary border-bottom">
         <COffcanvasTitle>Booking Details</COffcanvasTitle>
         <CCloseButton className="text-reset" onClick={onClose} />
       </COffcanvasHeader>
@@ -19,7 +19,7 @@ const CalendarEventDrawer = memo(({ visible, onClose, event }) => {
           <AmenityStatusBadge status={event.status} />
         </div>
 
-        <div className="bg-light p-3 rounded mb-4 shadow-sm border border-opacity-50">
+        <div className="bg-body-secondary p-3 rounded mb-4 shadow-sm border border-opacity-50">
           <CRow className="g-3">
             <CCol xs={12}>
               <div className="small text-muted text-uppercase fw-bold mb-1">Booking ID</div>

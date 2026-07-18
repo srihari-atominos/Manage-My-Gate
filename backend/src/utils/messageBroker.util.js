@@ -1,8 +1,8 @@
 import Redis from 'ioredis';
+import { EventEmitter } from 'events';
 import logger from './logger.utils.js';
 
 // Retry strategy: back off exponentially up to 2s, but stop after 5 attempts.
-// Returning null tells ioredis to stop retrying (avoids endless ECONNREFUSED spam).
 const MAX_RETRY_ATTEMPTS = 5;
 
 function buildRetryStrategy(clientName) {
@@ -13,10 +13,9 @@ function buildRetryStrategy(clientName) {
         warned = true;
         logger.warn(
           `[MessageBroker] Redis ${clientName} could not connect after ${MAX_RETRY_ATTEMPTS} attempts. ` +
-          'Running without Redis — pub/sub events will be no-ops. Start Redis to enable cross-pod messaging.'
+          'Cross-pod messaging will fallback to local event bus. Start Redis to enable multi-instance scaling.'
         );
       }
-      // Returning null stops ioredis from retrying
       return null;
     }
     return Math.min(times * 200, 2000);
@@ -25,76 +24,100 @@ function buildRetryStrategy(clientName) {
 
 class MessageBroker {
   constructor() {
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-
-    this._available = false;
     this.handlers = new Map();
+    this.localBus = new EventEmitter();
+    this.useRedis = !!process.env.REDIS_URL;
+    this._available = false;
 
-    // Publisher client
-    this.publisher = new Redis(redisUrl, {
-      maxRetriesPerRequest: null, // let retryStrategy control lifetime
-      enableOfflineQueue: false,
-      lazyConnect: false,
-      retryStrategy: buildRetryStrategy('Publisher'),
-    });
+    if (this.useRedis) {
+      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
-    // Subscriber client (must be a separate connection for Redis pub/sub)
-    this.subscriber = new Redis(redisUrl, {
-      maxRetriesPerRequest: null,
-      enableOfflineQueue: false,
-      lazyConnect: false,
-      retryStrategy: buildRetryStrategy('Subscriber'),
-    });
+      // Publisher client
+      this.publisher = new Redis(redisUrl, {
+        maxRetriesPerRequest: null,
+        enableOfflineQueue: false,
+        lazyConnect: false,
+        retryStrategy: buildRetryStrategy('Publisher'),
+      });
 
-    this.publisher.on('error', () => {}); // suppressed — retryStrategy logs the final failure
-    this.subscriber.on('error', () => {});
+      // Subscriber client
+      this.subscriber = new Redis(redisUrl, {
+        maxRetriesPerRequest: null,
+        enableOfflineQueue: false,
+        lazyConnect: false,
+        retryStrategy: buildRetryStrategy('Subscriber'),
+      });
 
-    this.publisher.on('connect', () => {
-      this._available = true;
-      logger.info('[MessageBroker] Redis Publisher connected.');
-    });
+      this.publisher.on('error', () => {}); // suppressed — retryStrategy logs the final failure
+      this.subscriber.on('error', () => {});
 
-    this.subscriber.on('connect', () => {
-      logger.info('[MessageBroker] Redis Subscriber connected.');
-    });
+      this.publisher.on('connect', () => {
+        this._available = true;
+        logger.info('[MessageBroker] Redis Publisher connected.');
+      });
 
-    // Listen for incoming messages on subscribed channels
-    this.subscriber.on('message', (channel, message) => {
-      try {
-        const payload = JSON.parse(message);
-        const channelHandlers = this.handlers.get(channel) || [];
-        for (const handler of channelHandlers) {
-          handler(payload);
+      this.subscriber.on('connect', () => {
+        logger.info('[MessageBroker] Redis Subscriber connected.');
+      });
+
+      // Listen for incoming messages on subscribed channels
+      this.subscriber.on('message', (channel, message) => {
+        try {
+          const payload = JSON.parse(message);
+          const channelHandlers = this.handlers.get(channel) || [];
+          for (const handler of channelHandlers) {
+            handler(payload);
+          }
+        } catch (err) {
+          logger.error(`[MessageBroker] Error parsing message on channel ${channel}:`, err);
         }
-      } catch (err) {
-        logger.error(`[MessageBroker] Error parsing message on channel ${channel}:`, err);
-      }
-    });
+      });
+    }
   }
 
   /**
-   * Publish an event to the global Redis message broker.
-   * No-ops silently when Redis is unavailable.
+   * Publish an event to the global Redis message broker or local bus
    */
   async publishEvent(channel, payload) {
-    if (this.publisher.status !== 'ready') return;
     try {
-      await this.publisher.publish(channel, JSON.stringify(payload));
+      if (this.useRedis && this._available && this.publisher && this.publisher.status === 'ready') {
+        const message = JSON.stringify(payload);
+        await this.publisher.publish(channel, message);
+      } else {
+        this.localBus.emit(channel, payload);
+      }
     } catch (err) {
       logger.error(`[MessageBroker] Failed to publish to channel ${channel}:`, err);
     }
   }
 
   /**
-   * Subscribe to a channel globally.
-   * No-ops silently when Redis is unavailable.
+   * Subscribe to a channel globally or locally
    */
   subscribeEvent(channel, callback) {
     if (!this.handlers.has(channel)) {
       this.handlers.set(channel, []);
-      if (this.subscriber.status === 'ready') {
+      
+      if (this.useRedis && this.subscriber) {
+        // We subscribe on Redis
         this.subscriber.subscribe(channel, (err) => {
           if (err) logger.error(`[MessageBroker] Failed to subscribe to ${channel}:`, err);
+        });
+
+        // Also fallback listener on localBus in case Redis pub/sub goes down or is bypassed locally
+        this.localBus.on(channel, (payload) => {
+          const channelHandlers = this.handlers.get(channel) || [];
+          for (const handler of channelHandlers) {
+            handler(payload);
+          }
+        });
+      } else {
+        // Purely local event bus
+        this.localBus.on(channel, (payload) => {
+          const channelHandlers = this.handlers.get(channel) || [];
+          for (const handler of channelHandlers) {
+            handler(payload);
+          }
         });
       }
     }

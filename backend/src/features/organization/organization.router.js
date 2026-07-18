@@ -47,6 +47,11 @@ const setupWorkspaceRules = [
     .isString()
     .withMessage('Organization name must be a string')
     .trim(),
+  body('password')
+    .optional()
+    .isString()
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
 ];
 
 // Check Organization Name availability route (authenticated context, decoupled setup)

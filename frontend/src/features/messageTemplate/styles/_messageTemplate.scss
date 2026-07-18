@@ -15,7 +15,8 @@
 
   textarea.font-monospace {
     font-family: var(--cui-font-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace) !important;
-    background-color: #ffffff;
+    background-color: var(--cui-body-bg, #ffffff);
+    color: var(--cui-body-color);
     border: 1px solid var(--cui-border-color, #ced4da);
     
     &:focus {

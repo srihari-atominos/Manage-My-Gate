@@ -9,6 +9,10 @@ const userSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
     },
+    emailVerified: {
+      type: Boolean,
+      default: true,
+    },
     username: {
       type: String,
       required: [true, 'Username is required'],
@@ -23,8 +27,8 @@ const userSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Pending', 'Active', 'Inactive'],
-      default: 'Pending',
+      enum: ['Pending Verification', 'Active', 'Suspended', 'Blocked'],
+      default: 'Pending Verification',
     },
     name: {
       type: String,
@@ -33,20 +37,22 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
+      unique: true,
+      sparse: true,
+    },
+    phoneVerified: {
+      type: Boolean,
+      default: true,
+    },
+    notificationPreferences: {
+      email: { type: Boolean, default: true },
+      sms: { type: Boolean, default: true },
     },
     avatar: {
       type: String,
       trim: true,
     },
-    ssoProvider: {
-      type: String,
-      enum: ['google', 'microsoft', 'none'],
-      default: 'none',
-    },
-    ssoId: {
-      type: String,
-      sparse: true,
-    },
+
     villaId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Villa',

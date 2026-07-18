@@ -112,6 +112,8 @@ export class OrgMembershipRepository {
               _id: 0,
               id: '$user._id',
               username: '$user.username',
+              name: '$user.name',
+              phone: '$user.phone',
               email: '$user.email',
               role: {
                 $cond: {

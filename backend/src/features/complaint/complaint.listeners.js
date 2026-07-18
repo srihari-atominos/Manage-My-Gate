@@ -65,9 +65,13 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
     }
   } else if (complaint.assignedTechnicianId) {
     // Direct Assignment (Assign Employee)
+    const techIdStr = complaint.assignedTechnicianId._id 
+      ? complaint.assignedTechnicianId._id.toString() 
+      : complaint.assignedTechnicianId.toString();
+
     try {
       await notificationService.createNotification({
-        recipientId: typeof complaint.assignedTechnicianId === 'object' ? complaint.assignedTechnicianId._id : complaint.assignedTechnicianId,
+        recipientId: techIdStr,
         title: 'New Complaint Assignment',
         body: `You have been directly assigned to complaint: ${complaint.complaintNumber}.`,
         actionUrl: `/admin/complaints/assignee`,
@@ -75,7 +79,7 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
       });
 
       // Send email notification
-      const assigneeUser = await User.findById(typeof complaint.assignedTechnicianId === 'object' ? complaint.assignedTechnicianId._id : complaint.assignedTechnicianId);
+      const assigneeUser = await User.findById(techIdStr);
       if (assigneeUser && assigneeUser.email) {
         const { sendEmail } = await import('../../utils/email.utils.js');
         const emailBody = `

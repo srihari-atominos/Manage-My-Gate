@@ -12,7 +12,7 @@ export const useAmenities = () => {
 
   useEffect(() => {
     if (successMsg || error) {
-      const timer = setTimeout(() => dispatch(clearStatus()), 5000);
+      const timer = setTimeout(() => dispatch(clearStatus()), 5002);
       return () => clearTimeout(timer);
     }
   }, [successMsg, error, dispatch]);

@@ -5,7 +5,7 @@ import AmenityStatusBadge from '../AmenityStatusBadge.jsx';
 const UpcomingBookingsWidget = memo(({ upcomingEvents, onEventClick }) => {
   if (!upcomingEvents || upcomingEvents.length === 0) {
     return (
-      <CCard className="border-0 shadow-sm mb-4 bg-light text-center">
+      <CCard className="border-0 shadow-sm mb-4 bg-body-secondary text-center">
         <CCardBody className="p-4">
           <i className="fa-solid fa-calendar-check fs-2 text-muted mb-2"></i>
           <p className="text-muted mb-0 small">No upcoming bookings</p>
@@ -20,14 +20,14 @@ const UpcomingBookingsWidget = memo(({ upcomingEvents, onEventClick }) => {
   return (
     <CCard className="border-0 shadow-sm mb-4">
       <CCardBody className="p-0">
-        <div className="p-3 border-bottom bg-light">
+        <div className="p-3 border-bottom bg-body-secondary">
           <h6 className="fw-bold mb-0 text-uppercase text-muted" >Upcoming Bookings</h6>
         </div>
         <div>
           {displayEvents.map((event, index) => (
             <div 
               key={event.id} 
-              className={`p-3 cursor-pointer hover-bg-light d-flex align-items-center gap-3 ${index !== displayEvents.length - 1 ? 'border-bottom' : ''}`}
+              className={`p-3 cursor-pointer hover-bg-body-secondary d-flex align-items-center gap-3 ${index !== displayEvents.length - 1 ? 'border-bottom' : ''}`}
               onClick={() => onEventClick(event)}
               role="button"
               tabIndex="0"

@@ -38,10 +38,11 @@ const _nav = [
     name: 'Visitor Management',
     to: '/visitor-management',
     icon: <CIcon icon={cilQrCode} customClassName="nav-icon" />,
+    requiredPermission: ['visitor:resident', 'visitor:guard', 'visitor:admin'],
   },
   {
     component: CNavItem,
-    name: 'Villa Management',
+    name: 'Unit Management',
     to: '/villas',
     icon: <CIcon icon={cilHome} customClassName="nav-icon" />,
     requiredPermission: 'villas:read',

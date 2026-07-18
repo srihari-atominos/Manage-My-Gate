@@ -13,7 +13,7 @@ const ScannerFallback = memo(({ onSubmit }) => {
   };
 
   return (
-    <div className="mt-4 p-4 bg-light rounded shadow-sm text-center">
+    <div className="mt-4 p-4 bg-body-secondary rounded shadow-sm text-center">
       <h6 className="fw-bold mb-3 text-uppercase text-muted" >Manual Entry</h6>
       <p className="small text-muted mb-3">If the QR scanner is not working, enter the Booking ID manually.</p>
       

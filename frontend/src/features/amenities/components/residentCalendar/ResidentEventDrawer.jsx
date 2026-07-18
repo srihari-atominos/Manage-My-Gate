@@ -94,7 +94,7 @@ const ResidentEventDrawer = memo(({ visible, onClose, event, onCancel }) => {
   return (
     <>
       <COffcanvas placement="end" visible={visible} onHide={onClose} style={{ maxWidth: '440px', width: '100%' }}>
-        <COffcanvasHeader className="bg-light border-bottom">
+        <COffcanvasHeader className="bg-body-secondary border-bottom">
           <COffcanvasTitle className="fw-bold">Booking Details</COffcanvasTitle>
           <CCloseButton className="text-reset" onClick={onClose} />
         </COffcanvasHeader>
@@ -123,13 +123,13 @@ const ResidentEventDrawer = memo(({ visible, onClose, event, onCancel }) => {
           </div>
 
           {/* Booking Timeline */}
-          <div className="bg-light p-3 rounded border">
+          <div className="bg-body-secondary p-3 rounded border">
             <div className="small text-muted text-uppercase fw-bold mb-3">Booking Progress</div>
             <BookingTimeline status={event.status} />
           </div>
 
           {/* Booking Information */}
-          <div className="bg-light p-3 rounded border">
+          <div className="bg-body-secondary p-3 rounded border">
             <div className="small text-muted text-uppercase fw-bold mb-3">Booking Information</div>
             <CRow className="g-2">
               <CCol xs={12}>
@@ -158,7 +158,7 @@ const ResidentEventDrawer = memo(({ visible, onClose, event, onCancel }) => {
           </div>
 
           {/* Payment Information */}
-          <div className="bg-light p-3 rounded border">
+          <div className="bg-body-secondary p-3 rounded border">
             <div className="small text-muted text-uppercase fw-bold mb-3">Payment Information</div>
             <CRow className="g-2">
               <CCol xs={6}>
@@ -176,7 +176,7 @@ const ResidentEventDrawer = memo(({ visible, onClose, event, onCancel }) => {
 
           {/* QR Code Section */}
           {(isConfirmed || isCompleted) && (
-            <div className="bg-light p-3 rounded border text-center">
+            <div className="bg-body-secondary p-3 rounded border text-center">
               <div className="small text-muted text-uppercase fw-bold mb-3">Access QR Pass</div>
               {event.qrCode ? (
                 <>

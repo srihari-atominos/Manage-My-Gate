@@ -36,7 +36,7 @@ export const loginWithGoogle = createAsyncThunk(
   'auth/loginWithGoogle',
   async (token, { dispatch, rejectWithValue }) => {
     try {
-      const response = await authService.verifyGoogleToken(token)
+      const response = await authService.loginWithGoogle(token)
       
       const user = response.data?.user
       const availableWorkspaces = response.data?.availableWorkspaces || []
@@ -64,7 +64,7 @@ export const loginWithMicrosoft = createAsyncThunk(
   'auth/loginWithMicrosoft',
   async (token, { dispatch, rejectWithValue }) => {
     try {
-      const response = await authService.verifyMicrosoftToken(token)
+      const response = await authService.loginWithMicrosoft(token)
       
       const user = response.data?.user
       const availableWorkspaces = response.data?.availableWorkspaces || []
@@ -176,9 +176,9 @@ export const switchWorkspaceContext = createAsyncThunk(
 
 export const createWorkspace = createAsyncThunk(
   'auth/createWorkspace',
-  async ({ name }, { dispatch, rejectWithValue }) => {
+  async (workspaceData, { dispatch, rejectWithValue }) => {
     try {
-      const response = await authService.createWorkspace({ name })
+      const response = await authService.createWorkspace(workspaceData)
       
       const token = response.data?.token
       const user = response.data?.user
@@ -201,6 +201,99 @@ export const createWorkspace = createAsyncThunk(
       return response
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to create workspace')
+    }
+  }
+)
+
+export const requestOtp = createAsyncThunk(
+  'auth/requestOtp',
+  async ({ identifier, isEmail }, { rejectWithValue }) => {
+    try {
+      const response = isEmail
+        ? await authService.initiateEmailOtpLogin(identifier)
+        : await authService.initiatePhoneLogin(identifier)
+      return response
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to request OTP')
+    }
+  }
+)
+
+export const verifyOtpLogin = createAsyncThunk(
+  'auth/verifyOtpLogin',
+  async ({ identifier, code, isEmail }, { dispatch, rejectWithValue }) => {
+    try {
+      const response = isEmail
+        ? await authService.verifyEmailOtpLogin(identifier, code)
+        : await authService.verifyPhoneLogin(identifier, code)
+      
+      const user = response.data?.user
+      const availableWorkspaces = response.data?.availableWorkspaces || []
+      
+      if (user) {
+        dispatch(
+          setActiveWorkspace({
+            activeOrganizationId: user.orgId,
+            activeRole: user.role,
+            allowedFeatures: user.permissions || [],
+            isPlatform: user.isPlatform || false,
+            availableWorkspaces: availableWorkspaces,
+          })
+        )
+      }
+      return response
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'OTP verification failed')
+    }
+  }
+)
+
+export const requestPasswordReset = createAsyncThunk(
+  'auth/requestPasswordReset',
+  async (identifier, { rejectWithValue }) => {
+    try {
+      const response = await authService.forgotPassword(identifier)
+      return response
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to request password reset')
+    }
+  }
+)
+
+export const verifyResetOtp = createAsyncThunk(
+  'auth/verifyResetOtp',
+  async ({ identifier, code }, { rejectWithValue }) => {
+    try {
+      const response = await authService.verifyResetPasswordOtp(identifier, code)
+      return response
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'OTP verification failed')
+    }
+  }
+)
+
+export const resetPassword = createAsyncThunk(
+  'auth/resetPassword',
+  async ({ identifier, code, newPassword }, { rejectWithValue }) => {
+    try {
+      const response = await authService.resetPassword(identifier, code, newPassword)
+      return response
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to reset password')
+    }
+  }
+)
+
+export const performLogout = createAsyncThunk(
+  'auth/performLogout',
+  async (_, { dispatch, rejectWithValue }) => {
+    try {
+      await authService.logoutApi()
+      dispatch(logout()) // trigger the standard reducer
+      return true
+    } catch (error) {
+      dispatch(logout()) // still logout on frontend
+      return rejectWithValue(error.response?.data?.message || error.message || 'Logout API failed')
     }
   }
 )
@@ -230,11 +323,13 @@ const authSlice = createSlice({
       state.token = null
       state.error = null
       state.successMsg = null
+      state.otpSent = false // for UI flow
     },
     clearStatus: (state) => {
       state.error = null
       state.successMsg = null
       state.loading = false
+      state.otpSent = false
     },
     updateTokenAndUser: (state, action) => {
       const { token, user } = action.payload || {};
@@ -433,6 +528,91 @@ const authSlice = createSlice({
       .addCase(createWorkspace.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload || 'Workspace creation failed'
+      })
+      // Request OTP
+      .addCase(requestOtp.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(requestOtp.fulfilled, (state, action) => {
+        state.loading = false
+        state.otpSent = true
+        state.successMsg = action.payload.message || 'OTP sent successfully!'
+      })
+      .addCase(requestOtp.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Failed to send OTP'
+      })
+      // Verify OTP Login
+      .addCase(verifyOtpLogin.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(verifyOtpLogin.fulfilled, (state, action) => {
+        state.loading = false
+        state.isAuthenticated = true
+        state.otpSent = false
+        state.token = action.payload.data?.token
+        state.user = action.payload.data?.user
+        state.successMsg = action.payload.message || 'Login successful!'
+        
+        if (action.payload.data?.token) {
+          localStorage.setItem('token', action.payload.data.token)
+        }
+        if (action.payload.data?.user) {
+          localStorage.setItem('user', JSON.stringify(action.payload.data.user))
+        }
+        if (action.payload.data?.availableWorkspaces) {
+          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+        }
+      })
+      .addCase(verifyOtpLogin.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Login failed'
+      })
+      // Password Reset
+      .addCase(requestPasswordReset.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(requestPasswordReset.fulfilled, (state, action) => {
+        state.loading = false
+        state.otpSent = true
+        state.successMsg = action.payload.message || 'Reset OTP sent!'
+      })
+      .addCase(requestPasswordReset.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Failed to send reset OTP'
+      })
+      .addCase(verifyResetOtp.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(verifyResetOtp.fulfilled, (state, action) => {
+        state.loading = false
+        state.successMsg = action.payload.message || 'OTP verified successfully!'
+      })
+      .addCase(verifyResetOtp.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Invalid OTP'
+      })
+      .addCase(resetPassword.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(resetPassword.fulfilled, (state, action) => {
+        state.loading = false
+        state.otpSent = false
+        state.successMsg = action.payload.message || 'Password reset successfully!'
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Password reset failed'
       })
   },
 })

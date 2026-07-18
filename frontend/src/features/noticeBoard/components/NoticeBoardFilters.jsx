@@ -71,7 +71,7 @@ export const NoticeBoardFilters = ({
       <div className="flex-grow-1" style={{ minWidth: '180px', maxWidth: '300px' }}>
         <form onSubmit={handleSearchSubmit}>
           <CInputGroup size="sm" className="notice-search-group">
-            <span className="input-group-text bg-light text-muted">
+            <span className="input-group-text bg-body-secondary text-muted">
               <CIcon icon={cilSearch} size="sm" />
             </span>
             <CFormInput
@@ -79,7 +79,7 @@ export const NoticeBoardFilters = ({
               placeholder={t('noticeBoard.searchPlaceholder', 'Search Notices')}
               value={searchTerm}
               onChange={handleSearchInput}
-              className="bg-light ps-0"
+              className="bg-body-secondary ps-0"
             />
           </CInputGroup>
         </form>
@@ -91,7 +91,7 @@ export const NoticeBoardFilters = ({
           size="sm"
           value={filters.category || ''}
           onChange={(e) => handleFilterChange('category', e.target.value)}
-          className="form-select bg-light"
+          className="form-select bg-body-secondary"
         >
           <option value="">{t('noticeBoard.filters.allCategories', 'All Categories')}</option>
           {Object.values(CATEGORIES).map((cat) => (
@@ -108,7 +108,7 @@ export const NoticeBoardFilters = ({
           size="sm"
           value={filters.priority || ''}
           onChange={(e) => handleFilterChange('priority', e.target.value)}
-          className="form-select bg-light"
+          className="form-select bg-body-secondary"
         >
           <option value="">{t('noticeBoard.filters.allPriorities', 'All Priorities')}</option>
           {Object.values(PRIORITIES).map((pri) => (
@@ -125,7 +125,7 @@ export const NoticeBoardFilters = ({
           size="sm"
           value={activeSortOption}
           onChange={handleSortSelect}
-          className="form-select bg-light"
+          className="form-select bg-body-secondary"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -157,7 +157,7 @@ export const NoticeBoardFilters = ({
                 onFiltersChange({ readStatus: '', isBookmarked: '' })
               }
             }}
-            className="form-select bg-light"
+            className="form-select bg-body-secondary"
           >
             <option value="All">{t('noticeBoard.tabs.allNotices', 'All Notices')}</option>
             <option value="Unread">{t('noticeBoard.tabs.unread', 'Unread')}</option>
@@ -173,7 +173,7 @@ export const NoticeBoardFilters = ({
             size="sm"
             value={filters.status || ''}
             onChange={(e) => handleFilterChange('status', e.target.value)}
-            className="form-select bg-light"
+            className="form-select bg-body-secondary"
           >
             <option value="">{t('noticeBoard.filters.allStatuses', 'All Statuses')}</option>
             {Object.values(STATUSES).map((st) => (

@@ -22,7 +22,7 @@ export const useSampleFeature = () => {
     if (successMsg || error) {
       const timer = setTimeout(() => {
         dispatch(clearStatus());
-      }, 5000);
+      }, 5002);
       return () => clearTimeout(timer);
     }
   }, [successMsg, error, dispatch]);

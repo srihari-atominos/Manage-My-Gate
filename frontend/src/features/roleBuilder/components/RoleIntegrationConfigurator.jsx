@@ -61,7 +61,7 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
   }
 
   return (
-    <div className="role-integration-configurator mt-3 p-3 border rounded bg-light-subtle">
+    <div className="role-integration-configurator mt-3 p-3 border rounded bg-body-secondary-subtle">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h6 className="mb-0 fw-bold text-primary configurator-title">
           Configure Role Integrations
@@ -73,7 +73,7 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
       <div className="carousel-wrapper position-relative mb-3 px-4">
         <button
           type="button"
-          className="carousel-nav-btn carousel-nav-left border-0 rounded-circle bg-white shadow-sm"
+          className="carousel-nav-btn carousel-nav-left border-0 rounded-circle bg-body shadow-sm"
           onClick={scrollLeft}
         >
           ‹
@@ -91,13 +91,13 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
               <button
                 key={provider.id}
                 type="button"
-                className={`carousel-card px-3 py-2 border rounded text-center bg-white flex-shrink-0 d-flex flex-column align-items-center gap-1 ${
-                  isSelected ? 'active-card shadow-sm bg-light' : 'border-light-subtle'
+                className={`carousel-card px-3 py-2 border rounded text-center bg-body flex-shrink-0 d-flex flex-column align-items-center gap-1 ${
+                  isSelected ? 'active-card shadow-sm bg-body-secondary' : 'border-light-subtle'
                 }`}
                 onClick={() => setSelectedProvider(provider.id)}
               >
                 <span className="provider-icon">{provider.icon}</span>
-                <span className="fw-semibold small text-dark">{provider.name}</span>
+                <span className="fw-semibold small text-body">{provider.name}</span>
                 {isMapped && (
                   <span className="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2 py-0.5 status-badge">
                     Active
@@ -110,7 +110,7 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
 
         <button
           type="button"
-          className="carousel-nav-btn carousel-nav-right border-0 rounded-circle bg-white shadow-sm"
+          className="carousel-nav-btn carousel-nav-right border-0 rounded-circle bg-body shadow-sm"
           onClick={scrollRight}
         >
           ›
@@ -118,7 +118,7 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
       </div>
 
       {/* Connections Table */}
-      <div className="connections-table-wrapper border rounded bg-white overflow-hidden mb-3">
+      <div className="connections-table-wrapper border rounded bg-body overflow-hidden mb-3">
         {isLoading ? (
           <div className="d-flex justify-content-center align-items-center py-4">
             <CSpinner color="primary" size="sm" className="me-2" />
@@ -126,7 +126,7 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
           </div>
         ) : (
           <CTable align="middle" responsive hover className="mb-0 small">
-            <CTableHead className="bg-light">
+            <CTableHead className="bg-body-secondary">
               <CTableRow>
                 <CTableHeaderCell className="text-center select-col"></CTableHeaderCell>
                 <CTableHeaderCell>Connection Name / Label</CTableHeaderCell>
@@ -181,7 +181,7 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
                           onChange={() => handleSelectConnection(conn.id)}
                         />
                       </CTableDataCell>
-                      <CTableDataCell className="fw-semibold text-dark">
+                      <CTableDataCell className="fw-semibold text-body">
                         {conn.accountLabel}
                       </CTableDataCell>
                       <CTableDataCell>

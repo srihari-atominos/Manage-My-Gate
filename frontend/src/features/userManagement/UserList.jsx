@@ -118,8 +118,13 @@ const UserList = () => {
     },
     {
       key: 'email',
-      label: 'Email',
-      render: (val) => <span className="text-body-secondary">{val}</span>,
+      label: 'Contact Info',
+      render: (val, row) => (
+        <div className="d-flex flex-column gap-1">
+          <span className="text-body-secondary">{val}</span>
+          {row.phone && <span className="text-muted small"><i className="fa-solid fa-phone me-1"></i>{row.phone}</span>}
+        </div>
+      ),
     },
     {
       key: 'villaNumber',
@@ -145,7 +150,7 @@ const UserList = () => {
       render: (val) => {
         if (!val || val === '' || (Array.isArray(val) && val.length === 0)) {
           return (
-            <CBadge color="light" className="text-dark small px-2 py-1 border">
+            <CBadge color="light" className="text-body small px-2 py-1 border">
               Unassigned
             </CBadge>
           )

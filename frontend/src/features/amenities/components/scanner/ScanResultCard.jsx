@@ -5,7 +5,7 @@ const ScanResultCard = memo(({ result, onReset }) => {
     // Automatically close after 5 seconds
     const timer = setTimeout(() => {
       onReset();
-    }, 5000);
+    }, 5002);
     return () => clearTimeout(timer);
   }, [onReset]);
 
@@ -32,7 +32,7 @@ const ScanResultCard = memo(({ result, onReset }) => {
       <h1 className="fs-1 fw-bold mb-4" style={{ textAlign: 'center' }}>{title}</h1>
       
       {isSuccess ? (
-        <div className="bg-white text-dark rounded-4 p-4 shadow-lg text-center" style={{ width: '100%', maxWidth: '400px' }}>
+        <div className="bg-body text-body rounded-4 p-4 shadow-lg text-center" style={{ width: '100%', maxWidth: '400px' }}>
           {booking.userId?.profilePicture && (
             <img 
               src={booking.userId.profilePicture} 
@@ -44,7 +44,7 @@ const ScanResultCard = memo(({ result, onReset }) => {
           <h3 className="fw-bold mb-1">{booking.userId?.name || 'Resident Name'}</h3>
           <p className="text-muted mb-4 small fw-semibold">ID: {booking.bookingId}</p>
           
-          <div className="d-flex flex-column gap-2 text-start bg-light p-3 rounded-3 mb-4">
+          <div className="d-flex flex-column gap-2 text-start bg-body-secondary p-3 rounded-3 mb-4">
             <div className="d-flex justify-content-between border-bottom pb-2">
               <span className="text-muted fw-semibold">Amenity</span>
               <span className="fw-bold">{booking.amenityId?.name || 'Amenity'}</span>
@@ -66,7 +66,7 @@ const ScanResultCard = memo(({ result, onReset }) => {
           </h5>
         </div>
       ) : (
-        <div className="bg-white text-dark rounded-4 p-4 shadow-lg text-center" style={{ width: '100%', maxWidth: '450px', borderTop: '8px solid #dc3545' }}>
+        <div className="bg-body text-body rounded-4 p-4 shadow-lg text-center" style={{ width: '100%', maxWidth: '450px', borderTop: '8px solid #dc3545' }}>
           <div className="mb-4 mt-2">
             <div className="rounded-circle bg-danger bg-opacity-10 d-inline-flex align-items-center justify-content-center p-4 mb-3">
               <i className="fs-1 fa-solid fa-triangle-exclamation text-danger" ></i>
@@ -75,7 +75,7 @@ const ScanResultCard = memo(({ result, onReset }) => {
             <p className="text-muted mb-0">The booking could not be validated</p>
           </div>
           
-          <div className="bg-light rounded-3 p-4 mb-4 border border-danger border-opacity-25">
+          <div className="bg-body-secondary rounded-3 p-4 mb-4 border border-danger border-opacity-25">
             <h5 className="fw-bold mb-0 lh-base" style={{ color: '#0b0f19' }}>{message}</h5>
           </div>
           

@@ -5,6 +5,7 @@ import {
   CCardBody,
   CForm,
   CFormInput,
+  CFormSelect,
   CInputGroup,
   CInputGroupText,
   CButton,
@@ -12,7 +13,7 @@ import {
   CSpinner,
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
-import { cilHome } from '@coreui/icons';
+import { cilHome, cilScreenSmartphone, cilEnvelopeOpen, cilGlobeAlt, cilLockLocked } from '@coreui/icons';
 import useSetupWorkspace from '../hooks/useSetupWorkspace.js';
 
 /**
@@ -39,7 +40,7 @@ export const SetupWorkspace = () => {
   } = useSetupWorkspace();
 
   return (
-    <div className="setup-workspace bg-light min-vh-100 d-flex flex-row align-items-center" style={styles.pageBackground}>
+    <div className="setup-workspace min-vh-100 d-flex flex-row align-items-center" style={styles.pageBackground}>
       <div className="container">
         <div className="row justify-content-center">
           <div className="col-md-7 col-lg-6 col-xl-5">
@@ -84,30 +85,34 @@ export const SetupWorkspace = () => {
                     )}
 
                     {/* Live Validation Feedback */}
-                    <div className="mt-2 ms-1" style={styles.feedbackContainer}>
-                      {checking && (
-                        <span style={styles.checkingText}>
-                          <CSpinner size="sm" variant="grow" className="me-2" style={styles.spinner} />
-                          {t('workspace.setup.checking', { defaultValue: 'Checking name availability...' })}
-                        </span>
-                      )}
-                      {!checking && isAvailable === true && (
-                        <span style={styles.availableText}>
-                          ✓ {t('workspace.setup.available', { defaultValue: 'Name is available' })}
-                        </span>
-                      )}
-                      {!checking && isAvailable === false && !checkError && (
-                        <span style={styles.unavailableText}>
-                          ✗ {t('workspace.setup.taken', { defaultValue: 'Organization name is already taken' })}
-                        </span>
-                      )}
-                      {checkError && (
-                        <span style={styles.unavailableText}>
-                          ✗ {checkError}
-                        </span>
-                      )}
-                    </div>
+                    {(checking || isAvailable !== null || checkError) && (
+                      <div className="mt-2 ms-1" style={styles.feedbackContainer}>
+                        {checking && (
+                          <span style={styles.checkingText}>
+                            <CSpinner size="sm" variant="grow" className="me-2" style={styles.spinner} />
+                            {t('workspace.setup.checking', { defaultValue: 'Checking name availability...' })}
+                          </span>
+                        )}
+                        {!checking && isAvailable === true && (
+                          <span style={styles.availableText}>
+                            ✓ {t('workspace.setup.available', { defaultValue: 'Name is available' })}
+                          </span>
+                        )}
+                        {!checking && isAvailable === false && !checkError && (
+                          <span style={styles.unavailableText}>
+                            ✗ {t('workspace.setup.taken', { defaultValue: 'Organization name is already taken' })}
+                          </span>
+                        )}
+                        {checkError && (
+                          <span style={styles.unavailableText}>
+                            ✗ {checkError}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
+
+
 
                   <div className="d-grid mt-4">
                     <CButton
@@ -138,19 +143,18 @@ export const SetupWorkspace = () => {
 
 const styles = {
   pageBackground: {
-    backgroundColor: '#0b0f19',
+    backgroundColor: '#f3f4f6', // Light gray background matching the screenshot
     minHeight: '100vh',
     display: 'flex',
     alignItems: 'center',
   },
   card: {
     borderRadius: '16px',
-    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.35)',
-    border: '1px solid rgba(255, 255, 255, 0.06)',
-    background: 'rgba(255, 255, 255, 0.03)',
-    backdropFilter: 'blur(10px)',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+    background: '#ffffff',
+    border: 'none',
     padding: '24px 16px',
-    color: '#ffffff',
+    color: '#1f2937',
   },
   cardBody: {
     display: 'flex',
@@ -159,18 +163,18 @@ const styles = {
   title: {
     fontSize: '28px',
     fontWeight: '700',
-    color: '#ffffff',
+    color: '#111827',
     letterSpacing: '-0.025em',
     marginBottom: '8px',
   },
   subtitle: {
-    color: '#a1a1aa',
+    color: '#6b7280',
     fontSize: '15px',
   },
   inputIconText: {
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    color: '#a1a1aa',
+    background: '#f3f4f6',
+    border: '1px solid #e5e7eb',
+    color: '#6b7280',
     minWidth: '50px',
     justifyContent: 'center',
   },
@@ -179,18 +183,17 @@ const styles = {
     height: '18px',
   },
   input: {
-    background: 'rgba(255, 255, 255, 0.02)',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    color: '#ffffff',
+    background: '#ffffff',
+    border: '1px solid #d1d5db',
+    color: '#1f2937',
     padding: '12px',
   },
   feedbackContainer: {
-    minHeight: '24px',
     fontSize: '14px',
     fontWeight: '500',
   },
   checkingText: {
-    color: '#60a5fa',
+    color: '#3b82f6',
     display: 'flex',
     alignItems: 'center',
   },
@@ -199,10 +202,10 @@ const styles = {
     height: '14px',
   },
   availableText: {
-    color: '#34d399',
+    color: '#10b981',
   },
   unavailableText: {
-    color: '#f87171',
+    color: '#ef4444',
   },
   alert: {
     borderRadius: '8px',
@@ -221,13 +224,13 @@ const styles = {
     transition: 'all 0.2s',
   },
   submitButtonDisabled: {
-    background: 'rgba(255, 255, 255, 0.08)',
+    background: '#e5e7eb',
     border: 'none',
     padding: '12px',
     fontSize: '16px',
     fontWeight: '600',
     borderRadius: '8px',
-    color: 'rgba(255, 255, 255, 0.3)',
+    color: '#9ca3af',
     cursor: 'not-allowed',
   },
 };

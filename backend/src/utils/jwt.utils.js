@@ -19,3 +19,21 @@ export const signToken = (payload, expiresIn = '24h') => {
 export const verifyToken = (token) => {
   return jwt.verify(token, config.jwt.secret);
 };
+
+/**
+ * Sign a payload into a Refresh token.
+ * @param {object} payload - The token payload
+ * @returns {string} The signed JWT
+ */
+export const signRefreshToken = (payload) => {
+  return jwt.sign(payload, config.jwt.refreshSecret, { expiresIn: config.jwt.refreshExpiresIn });
+};
+
+/**
+ * Verify and decode a Refresh token.
+ * @param {string} token - The Refresh token
+ * @returns {object} The decoded token payload
+ */
+export const verifyRefreshToken = (token) => {
+  return jwt.verify(token, config.jwt.refreshSecret);
+};

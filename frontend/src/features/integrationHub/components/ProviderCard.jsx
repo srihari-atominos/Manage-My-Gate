@@ -20,9 +20,20 @@ export const ProviderCard = ({ provider, onClick }) => {
         return '#10a37f';
       case 'resend':
         return '#2563eb';
+      case 'firebase':
+        return '#FFCA28';
+      case 'messageCentral':
+        return '#1565C0';
       default:
         return 'var(--cui-primary, #4f46e5)';
     }
+  };
+
+  const getDefaultDescription = (provider) => {
+    if (provider.id === 'messageCentral') {
+      return 'Configure Message Central for SMS OTP and Transactional SMS.';
+    }
+    return `Connect to ${provider.name} Integration`;
   };
 
   return (
@@ -47,10 +58,7 @@ export const ProviderCard = ({ provider, onClick }) => {
             <h5 className="provider-name mb-1 fw-semibold">{provider.name}</h5>
             <small className="text-muted">
               {t(`integrationHub.providers.${provider.id}.description`, {
-                defaultValue: t('integrationHub.providers.connectDescription', {
-                  providerName: provider.name,
-                  defaultValue: `Connect to ${provider.name} Integration`,
-                }),
+                defaultValue: getDefaultDescription(provider),
               })}
             </small>
           </div>

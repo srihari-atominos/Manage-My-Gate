@@ -31,7 +31,7 @@ export const ConnectionForm = ({ selectedProvider, onSubmit, isSubmitting, submi
   };
 
   return (
-    <CForm onSubmit={handleSubmit(onFormSubmit)} className="connection-form p-3 border rounded bg-light-subtle">
+    <CForm onSubmit={handleSubmit(onFormSubmit)} className="connection-form p-3 border rounded bg-body-secondary-subtle">
       <h6 className="mb-3 fw-bold">{t('integrationHub.form.title', 'New Connection Details')}</h6>
       
       {submitError && (
@@ -63,10 +63,13 @@ export const ConnectionForm = ({ selectedProvider, onSubmit, isSubmitting, submi
       </div>
 
       {/* Dynamic Fields mapping over selectedProvider.fields */}
-      {selectedProvider.fields.map((field) => (
+      {selectedProvider.fields.map((field) => {
+        const isRequired = field.required !== false;
+        
+        return (
         <div className="mb-3" key={field.name}>
           <CFormLabel htmlFor={`credentials.${field.name}`} className="fw-semibold">
-            {field.label} <span className="text-danger">*</span>
+            {field.label} {isRequired && <span className="text-danger">*</span>}
           </CFormLabel>
           <CFormInput
             type={field.type || 'text'}
@@ -76,10 +79,12 @@ export const ConnectionForm = ({ selectedProvider, onSubmit, isSubmitting, submi
               fieldName: field.label,
             })}
             {...register(`credentials.${field.name}`, {
-              required: t('integrationHub.form.credentialRequired', {
-                defaultValue: `${field.label} is required`,
-                fieldName: field.label,
-              }),
+              required: isRequired 
+                ? t('integrationHub.form.credentialRequired', {
+                    defaultValue: `${field.label} is required`,
+                    fieldName: field.label,
+                  })
+                : false,
             })}
             invalid={!!errors.credentials?.[field.name]}
             disabled={isSubmitting}
@@ -90,7 +95,8 @@ export const ConnectionForm = ({ selectedProvider, onSubmit, isSubmitting, submi
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
 
       <div className="d-flex justify-content-end mt-4">
         <CButton type="submit" color="primary" disabled={isSubmitting} className="px-4">

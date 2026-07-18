@@ -90,7 +90,7 @@ export const NoticeBoardDetailsModal = ({ visible, notice, onClose }) => {
                 {t('noticeBoard.pinned', 'Pinned')}
               </CBadge>
             )}
-            <CBadge color="light" className="text-dark border small fw-semibold">
+            <CBadge color="light" className="text-body border small fw-semibold">
               {t(`noticeBoard.categories.${category}`, category)}
             </CBadge>
             <CBadge color={priorityColor} className="small">
@@ -120,15 +120,15 @@ export const NoticeBoardDetailsModal = ({ visible, notice, onClose }) => {
             </div>
           )}
 
-          <h3 className="fw-bold text-dark mb-3">{title}</h3>
+          <h3 className="fw-bold text-body mb-3">{title}</h3>
 
           {/* Metadata section */}
           <div
-            className="d-flex align-items-center gap-3 p-3 bg-light rounded text-secondary mb-4 flex-wrap small"
+            className="d-flex align-items-center gap-3 p-3 bg-body-secondary rounded text-secondary mb-4 flex-wrap small"
             style={{ borderRadius: '8px' }}
           >
             <div>
-              <span className="fw-semibold text-dark">
+              <span className="fw-semibold text-body">
                 {t('noticeBoard.postedBy', 'Posted by')}:
               </span>{' '}
               {creatorName}
@@ -138,7 +138,7 @@ export const NoticeBoardDetailsModal = ({ visible, notice, onClose }) => {
               style={{ width: '1px', height: '14px' }}
             />
             <div>
-              <span className="fw-semibold text-dark">
+              <span className="fw-semibold text-body">
                 {t('noticeBoard.postedOn', 'Date posted')}:
               </span>{' '}
               {new Date(createdAt).toLocaleDateString()}
@@ -148,7 +148,7 @@ export const NoticeBoardDetailsModal = ({ visible, notice, onClose }) => {
               style={{ width: '1px', height: '14px' }}
             />
             <div>
-              <span className="fw-semibold text-dark">
+              <span className="fw-semibold text-body">
                 {t('noticeBoard.expiresOn', 'Expiry Date')}:
               </span>{' '}
               {new Date(expiryDate).toLocaleDateString()}
@@ -166,14 +166,14 @@ export const NoticeBoardDetailsModal = ({ visible, notice, onClose }) => {
           {/* Uploaded Images Gallery */}
           {images && images.length > 0 && (
             <div className="border-top pt-3 mt-4">
-              <h6 className="fw-bold text-dark mb-2">
+              <h6 className="fw-bold text-body mb-2">
                 {t('noticeBoard.uploadedImages', 'Uploaded Images')}
               </h6>
               <div className="d-flex flex-wrap gap-2">
                 {images.map((img, idx) => (
                   <div
                     key={idx}
-                    className="border rounded p-1 bg-white cursor-pointer overflow-hidden"
+                    className="border rounded p-1 bg-body cursor-pointer overflow-hidden"
                     onClick={() => setActiveLightBoxImage(img.url)}
                     style={{
                       width: '80px',
@@ -202,7 +202,7 @@ export const NoticeBoardDetailsModal = ({ visible, notice, onClose }) => {
           {/* Attachments */}
           {hasAttachments && (
             <div className="border-top pt-3 mt-4">
-              <h6 className="fw-bold text-dark mb-2">
+              <h6 className="fw-bold text-body mb-2">
                 {t('noticeBoard.attachments', 'Attachments')}
               </h6>
               <div className="d-flex flex-column gap-2">

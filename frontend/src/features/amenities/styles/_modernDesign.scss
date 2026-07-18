@@ -721,3 +721,35 @@
     .search-bar-app .search-btn { height: 56px; margin-top: 8px;}
   }
 }
+
+/* ==========================================================================
+   Amenities OS Dark Theme Overrides
+   ========================================================================== */
+[data-coreui-theme='dark'] {
+  .amenity-os-theme {
+    --surface-bg: #212631;
+    --surface-card: #2a303d;
+    --surface-glass: rgba(42, 48, 61, 0.85);
+
+    --text-main: rgba(255, 255, 255, 0.87);
+    --text-muted: rgba(255, 255, 255, 0.6);
+    --text-light: rgba(255, 255, 255, 0.38);
+
+    --border-light: rgba(255, 255, 255, 0.1);
+    --border-focus: rgba(255, 255, 255, 0.2);
+
+    --success-bg: rgba(16, 185, 129, 0.15);
+    --warning-bg: rgba(245, 158, 11, 0.15);
+    --danger-bg: rgba(239, 68, 68, 0.15);
+    --info-bg: rgba(0, 132, 255, 0.15);
+    
+    .time-range-row input[type="time"] {
+      background-color: var(--surface-card);
+      color: var(--text-main);
+    }
+    
+    .qr-code-box, .app-card-h-bookmark {
+      background-color: var(--surface-card);
+    }
+  }
+}

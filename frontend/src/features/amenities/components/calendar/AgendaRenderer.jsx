@@ -4,7 +4,7 @@ import CalendarEventCard from './CalendarEventCard.jsx';
 const AgendaRenderer = memo(({ events, onEventClick, onDateSelect }) => {
   if (!events || events.length === 0) {
     return (
-      <div className="text-center p-5 border rounded bg-light">
+      <div className="text-center p-5 border rounded bg-body-secondary">
         <i className="fa-solid fa-calendar-xmark fs-1 text-muted mb-3"></i>
         <h5 className="text-muted">No events scheduled</h5>
       </div>

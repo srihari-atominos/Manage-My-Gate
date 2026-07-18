@@ -131,7 +131,7 @@ const MockPaymentModal = memo(({ visible, paymentIntent, onSuccess, onFailure, o
                       
                       <CCol xs={12} className="border-top pt-3 mt-3">
                         {paymentMethod === 'wallet' && (
-                          <div className="mb-3 p-3 bg-light rounded">
+                          <div className="mb-3 p-3 bg-body-secondary rounded">
                             <div className="d-flex justify-content-between align-items-center mb-1">
                               <span className="small fw-bold">Wallet Balance</span>
                               <span className="fw-semibold">₹{walletBalance.toFixed(2)}</span>

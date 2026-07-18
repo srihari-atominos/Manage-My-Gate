@@ -433,7 +433,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <span style={{ color: 'var(--ink-soft)' }} className="small">Resident & Unit</span>
-                  <span style={{ color: 'var(--ink)' }} className="fw-semibold">{complaint?.residentName || 'Resident'} - {complaint?.location?.tower ? `${complaint.location.tower}, ` : ''}{complaint?.location?.flat || 'N/A'}</span>
+                  <span style={{ color: 'var(--ink)' }} className="fw-semibold">{complaint?.residentName || complaint?.residentId?.username || 'Resident'} - {complaint?.location?.tower ? `${complaint.location.tower}, ` : ''}{complaint?.location?.flat || 'N/A'}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <span style={{ color: 'var(--ink-soft)' }} className="small">Category & Dept</span>

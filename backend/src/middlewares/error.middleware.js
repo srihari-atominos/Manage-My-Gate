@@ -40,6 +40,20 @@ export const errorHandler = (err, req, res, next) => {
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
 
+  // Handle MongoDB Duplicate Key Errors
+  else if (err.name === 'MongoServerError' && err.code === 11000) {
+    statusCode = 409; // Conflict
+    if (err.keyValue) {
+      const field = Object.keys(err.keyValue)[0];
+      const value = err.keyValue[field];
+      // Format field name nicely if needed, e.g. "phone" -> "Phone"
+      const formattedField = field.charAt(0).toUpperCase() + field.slice(1);
+      message = `${formattedField} '${value}' is already registered or in use.`;
+    } else {
+      message = 'A duplicate record already exists.';
+    }
+  }
+
   // Log error using Winston logger
   logger.error(`HTTP ${statusCode} - ${message}`, {
     statusCode,

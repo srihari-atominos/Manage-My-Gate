@@ -966,3 +966,45 @@
     100% { top: 0px; }
   }
 }
+
+/* ==========================================================================
+   Visitor OS Dark Theme Overrides
+   ========================================================================== */
+[data-coreui-theme='dark'] {
+  .visitor-os-theme {
+    --surface-bg: #212631;
+    --surface-card: #2a303d;
+    --surface-glass: rgba(42, 48, 61, 0.85);
+
+    --text-main: rgba(255, 255, 255, 0.87);
+    --text-muted: rgba(255, 255, 255, 0.6);
+    --text-light: rgba(255, 255, 255, 0.38);
+
+    --border-light: rgba(255, 255, 255, 0.1);
+    --border-focus: rgba(255, 255, 255, 0.2);
+
+    --success-bg: rgba(16, 185, 129, 0.15);
+    --warning-bg: rgba(245, 158, 11, 0.15);
+    --danger-bg: rgba(239, 68, 68, 0.15);
+    --info-bg: rgba(0, 132, 255, 0.15);
+    
+    .form-control, .visitor-top-nav-bar {
+      background-color: var(--surface-card);
+    }
+    .pending-item-card, .history-item-row, .history-item-type-badge, .badge-pass-id.id-proof-pass {
+      background-color: var(--surface-bg);
+      border-color: var(--border-light);
+    }
+    .blacklist-item-card {
+      background-color: var(--danger-bg);
+      border-color: rgba(239, 68, 68, 0.2);
+    }
+    .intercom-modal-card {
+      background-color: var(--surface-card);
+      border-color: var(--border-light);
+    }
+    .selection-radio-label {
+      background-color: var(--surface-card);
+    }
+  }
+}

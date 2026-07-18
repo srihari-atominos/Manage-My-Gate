@@ -11,6 +11,12 @@ import {
   loginWithGoogle,
   loginWithMicrosoft,
   registerUser,
+  requestOtp,
+  verifyOtpLogin,
+  requestPasswordReset,
+  verifyResetOtp as verifyResetOtpAction,
+  resetPassword as resetPasswordAction,
+  performLogout,
 } from '../store/authSlice'
 
 /**
@@ -30,8 +36,10 @@ export const useAuth = () => {
   const error = useSelector((state) => state.auth.error)
   const successMsg = useSelector((state) => state.auth.successMsg)
 
+  const otpSent = useSelector((state) => state.auth.otpSent)
+
   const logout = () => {
-    dispatch(logoutAction())
+    dispatch(performLogout())
   }
 
   const updateProfile = (formData) => {
@@ -79,8 +87,27 @@ export const useAuth = () => {
 
   const checkPermission = (permissionName) => {
     if (!currentUser) return false
-    if (currentUser.role === 'Super Admin' || currentUser.role === 'Platform Super Admin') return true
     return !!(currentUser.permissions && currentUser.permissions.includes(permissionName))
+  }
+
+  const sendOtp = (identifier, isEmail) => {
+    return dispatch(requestOtp({ identifier, isEmail }))
+  }
+
+  const verifyOtp = (identifier, code, isEmail) => {
+    return dispatch(verifyOtpLogin({ identifier, code, isEmail }))
+  }
+
+  const sendPasswordResetOtp = (identifier) => {
+    return dispatch(requestPasswordReset(identifier))
+  }
+
+  const verifyResetOtp = (identifier, code) => {
+    return dispatch(verifyResetOtpAction({ identifier, code }))
+  }
+
+  const resetAccountPassword = (identifier, code, newPassword) => {
+    return dispatch(resetPasswordAction({ identifier, code, newPassword }))
   }
 
   return {
@@ -98,6 +125,12 @@ export const useAuth = () => {
     loginMicrosoft,
     register,
     checkPermission,
+    otpSent,
+    sendOtp,
+    verifyOtp,
+    sendPasswordResetOtp,
+    verifyResetOtp,
+    resetAccountPassword,
   }
 }
 

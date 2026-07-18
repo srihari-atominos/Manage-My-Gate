@@ -94,7 +94,7 @@ class ComplaintRepository {
     return { data, total };
   }
 
-  async update(id, orgId, updateData) {
+  async update(id, orgId, updateData, session = null) {
     const hasOperators = Object.keys(updateData).some(key => key.startsWith('$'));
     let updateQuery;
     
@@ -118,7 +118,7 @@ class ComplaintRepository {
     return await Complaint.findOneAndUpdate(
       { _id: id, orgId },
       updateQuery,
-      { returnDocument: 'after', runValidators: true }
+      { returnDocument: 'after', runValidators: true, session }
     );
   }
 

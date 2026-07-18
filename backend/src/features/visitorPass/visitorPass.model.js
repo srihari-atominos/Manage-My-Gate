@@ -112,6 +112,11 @@ const visitorPassSchema = new mongoose.Schema(
         default: 0,
       },
     },
+    linkedComplaintId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Complaint',
+      index: true,
+    }
   },
   {
     timestamps: true,

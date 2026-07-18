@@ -22,6 +22,12 @@ export async function verify(credentials) {
     try {
       const errorJson = await response.json();
       errorDetail = errorJson.message || response.statusText;
+      
+      // If the API key is restricted to sending only, it means the key IS valid!
+      // We are just blocked from listing domains, which is fine for our use case.
+      if (errorDetail.toLowerCase().includes('restricted to only send emails')) {
+        return true;
+      }
     } catch {
       errorDetail = `HTTP ${response.status} ${response.statusText}`;
     }

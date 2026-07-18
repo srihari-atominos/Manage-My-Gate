@@ -26,7 +26,9 @@ export class UserController {
 
       const formatted = users.map((u) => ({
         id: u.id,
-        name: u.username,
+        username: u.username,
+        name: u.name || u.username,
+        phone: u.phone || '',
         email: u.email,
         role: u.role || '',
         status: u.status || 'Pending',
@@ -51,7 +53,9 @@ export class UserController {
       const { user, invitationToken } = await userService.inviteUser(email, orgId, villaId, residentType, roleName);
       const formatted = {
         id: user._id,
-        name: user.username,
+        username: user.username,
+        name: user.name || user.username,
+        phone: user.phone || '',
         email: user.email,
         role: roleName || '',
         status: user.status || 'Pending',

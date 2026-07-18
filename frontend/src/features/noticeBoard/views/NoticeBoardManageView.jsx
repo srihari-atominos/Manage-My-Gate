@@ -312,7 +312,7 @@ export const NoticeBoardManageView = () => {
                       <td>
                         <CBadge
                           color="light"
-                          className="text-dark border border-secondary border-opacity-25 small fw-semibold"
+                          className="text-body border border-secondary border-opacity-25 small fw-semibold"
                         >
                           {notice.category}
                         </CBadge>

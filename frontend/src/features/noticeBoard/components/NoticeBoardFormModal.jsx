@@ -312,7 +312,7 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
         scrollable
       >
         <CModalHeader className="border-bottom-0 pb-0">
-          <CModalTitle style={{ fontSize: '1.25rem', fontWeight: 700 }} className="text-dark">
+          <CModalTitle style={{ fontSize: '1.25rem', fontWeight: 700 }} className="text-body">
             {notice
               ? t('noticeBoard.form.editTitle', 'Edit Notice')
               : t('noticeBoard.form.createTitle', 'Create New Notice')}
@@ -383,8 +383,8 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
             </div>
 
             {/* Upload Images Section */}
-            <div className="mb-3 border rounded p-3 bg-light">
-              <CFormLabel className="small fw-semibold text-dark mb-2 d-block">
+            <div className="mb-3 border rounded p-3 bg-body-secondary">
+              <CFormLabel className="small fw-semibold text-body mb-2 d-block">
                 {t('noticeBoard.form.uploadImagesLabel', 'Upload Images')}
               </CFormLabel>
 
@@ -445,7 +445,7 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
                   {existingImages.map((img, idx) => (
                     <div
                       key={`existing-${idx}`}
-                      className="position-relative border rounded p-1 bg-white"
+                      className="position-relative border rounded p-1 bg-body"
                       style={{ width: '100px', height: '100px' }}
                     >
                       <img
@@ -503,7 +503,7 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
                     return (
                       <div
                         key={`new-${idx}`}
-                        className="position-relative border rounded p-1 bg-white"
+                        className="position-relative border rounded p-1 bg-body"
                         style={{ width: '100px', height: '100px' }}
                       >
                         <img
@@ -741,7 +741,7 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
         backdrop="static"
       >
         <CModalHeader className="border-bottom-0 pb-0">
-          <CModalTitle style={{ fontSize: '1.1rem', fontWeight: 700 }} className="text-dark">
+          <CModalTitle style={{ fontSize: '1.1rem', fontWeight: 700 }} className="text-body">
             {t('noticeBoard.camera.title', 'Capture Photo')}
           </CModalTitle>
         </CModalHeader>

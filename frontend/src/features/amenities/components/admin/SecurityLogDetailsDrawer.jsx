@@ -162,7 +162,7 @@ const SecurityLogDetailsDrawer = ({ log, onClose, show }) => {
             : 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)' }}
       >
         <div className="d-flex align-items-center gap-3">
-          <div className="rounded-circle bg-white bg-opacity-25 p-2">
+          <div className="rounded-circle bg-body bg-opacity-25 p-2">
             <i className={`fa-solid ${isSuccess ? 'fa-shield-check' : 'fa-shield-exclamation'} text-white fa-lg`}></i>
           </div>
           <div>

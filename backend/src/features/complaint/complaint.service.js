@@ -6,6 +6,8 @@ import { complaintEvents } from './complaint.events.js';
 import HttpError from '../../utils/httpError.utils.js';
 import mongoose from 'mongoose';
 import ComplaintSettings from '../complaintSettings/complaintSettings.model.js';
+import visitorPassService from '../visitorPass/visitorPass.service.js';
+import { messageBroker } from '../../utils/messageBroker.util.js';
 
 class ComplaintService {
   async generateComplaintNumber(orgId) {
@@ -274,89 +276,134 @@ class ComplaintService {
   }
 
   async assignTechnician(id, orgId, technicianId, technicianIds, assignmentType, technicianName, adminId, adminName, vendor, team, adminInstructions, preferredVisitDate, preferredVisitTime, metaData = {}, reassignmentReason = null) {
-    const complaint = await this.getComplaintById(id, orgId);
-    if (!complaint) throw new HttpError(404, 'Complaint not found');
-
-    if (['Closed', 'Completed'].includes(complaint.status)) {
-      throw new HttpError(400, 'Complaint is already closed or completed');
-    }
-    if (complaint.status === 'Cancelled') {
-      throw new HttpError(400, 'Complaint is cancelled');
-    }
-
-    // Duplicate Protection: Prevent assigning the same technician twice without changes.
-    const currentAssignedId = complaint.assignedTechnicianId?._id || complaint.assignedTechnicianId;
-    if (assignmentType !== 'broadcast' && technicianId && String(currentAssignedId) === String(technicianId)) {
-      throw new HttpError(400, 'Complaint is already assigned to this technician');
-    }
-
-    const isBroadcast = assignmentType === 'broadcast';
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    let updated, vendorPass = null;
+    let isReassignment, previousAssigneeName;
     
-    // Check if technicians exist if provided
-    if (!isBroadcast && technicianId) {
-      const technician = await technicianRepository.findById(technicianId, orgId);
-      if (!technician) throw new HttpError(404, 'Technician not found');
-      if (technician.status !== 'Active') throw new HttpError(400, 'Technician is inactive');
-    }
+    try {
+      const complaint = await this.getComplaintById(id, orgId);
+      if (!complaint) throw new HttpError(404, 'Complaint not found');
 
-    const isReassignment = !!complaint.assignedTechnicianId || !!complaint.vendor;
-    const previousAssigneeName = complaint.assignedTechnicianName || complaint.vendor || 'Unassigned';
-
-    let targetStatus = isBroadcast ? 'Waiting For Acceptance' : 'Assigned';
-    if (assignmentType === 'vendor') targetStatus = 'Assigned';
-
-    const timelineEvent = {
-      status: targetStatus,
-      action: isReassignment ? 'Complaint Reassigned' : (isBroadcast ? 'Broadcast Assignment Requested' : 'Complaint Assigned'),
-      userId: adminId,
-      userRole: 'Admin',
-      userName: adminName,
-      remarks: isBroadcast 
-        ? `Broadcast assignment requested to multiple technicians. ${adminInstructions ? `Instructions: ${adminInstructions}` : ''}`
-        : `Assigned to: ${technicianName || vendor}. ${adminInstructions ? `Instructions: ${adminInstructions}` : ''}`,
-      date: new Date(),
-      ipAddress: metaData.ipAddress,
-      browser: metaData.browser,
-      device: metaData.device
-    };
-
-    let targetUserId = null;
-    let targetBroadcastUserIds = [];
-
-    let targetPhone = null;
-
-    if (isBroadcast) {
-      if (technicianIds && technicianIds.length > 0) {
-        const technicians = await technicianRepository.findAll(orgId, { _id: { $in: technicianIds } });
-        targetBroadcastUserIds = technicians.map(t => t.userId).filter(id => id);
+      if (['Closed', 'Completed', 'Resolved', 'Cancelled'].includes(complaint.status)) {
+        throw new HttpError(400, `Cannot assign a ${complaint.status.toLowerCase()} complaint`);
       }
-    } else if (technicianId) {
-      const technician = await technicianRepository.findById(technicianId, orgId);
-      if (!technician) throw new HttpError(404, 'Technician not found');
-      if (technician.status !== 'Active') throw new HttpError(400, 'Technician is inactive');
-      targetUserId = technician.userId || null;
-      targetPhone = technician.phone || null;
+
+      const isBroadcast = assignmentType === 'broadcast';
+
+      if (isBroadcast) {
+        if (!technicianIds || technicianIds.length === 0) throw new HttpError(400, 'Must select at least one technician for broadcast');
+      } else if (assignmentType === 'vendor') {
+        if (!technicianName && !vendor) throw new HttpError(400, 'Vendor name is required');
+      } else {
+        if (!technicianId) throw new HttpError(400, 'Technician is required for direct assignment');
+        const technician = await technicianRepository.findById(technicianId, orgId);
+        if (!technician) throw new HttpError(404, 'Technician not found');
+        if (technician.status !== 'Active') throw new HttpError(400, 'Technician is inactive');
+      }
+
+      isReassignment = !!complaint.assignedTechnicianId || !!complaint.vendor;
+      previousAssigneeName = complaint.assignedTechnicianName || complaint.vendor || 'Unassigned';
+
+      let targetStatus = isBroadcast ? 'Waiting For Acceptance' : 'Assigned';
+      if (assignmentType === 'vendor') targetStatus = 'Assigned';
+
+      const timelineEvent = {
+        status: targetStatus,
+        action: isReassignment ? 'Complaint Reassigned' : (isBroadcast ? 'Broadcast Assignment Requested' : 'Complaint Assigned'),
+        userId: adminId,
+        userRole: 'Admin',
+        userName: adminName,
+        remarks: isBroadcast 
+          ? `Broadcast assignment requested to multiple technicians. ${adminInstructions ? `Instructions: ${adminInstructions}` : ''}`
+          : `Assigned to: ${technicianName || vendor}. ${adminInstructions ? `Instructions: ${adminInstructions}` : ''}`,
+        date: new Date(),
+        ipAddress: metaData.ipAddress,
+        browser: metaData.browser,
+        device: metaData.device
+      };
+
+      let targetUserId = null;
+      let targetBroadcastUserIds = [];
+      let targetPhone = null;
+
+      if (isBroadcast) {
+        if (technicianIds && technicianIds.length > 0) {
+          const technicians = await technicianRepository.findAll(orgId, { _id: { $in: technicianIds } });
+          targetBroadcastUserIds = technicians.map(t => t.userId).filter(id => id);
+        }
+      } else if (technicianId) {
+        const technician = await technicianRepository.findById(technicianId, orgId);
+        targetUserId = technician.userId || null;
+        targetPhone = technician.phone || null;
+      }
+
+      const updateFields = {
+        assignedTechnicianId: isBroadcast ? null : targetUserId,
+        assignedTechnicianName: isBroadcast ? null : (technicianName || null),
+        assignedTechnicianPhone: isBroadcast ? null : targetPhone,
+        vendor: isBroadcast ? null : (vendor || null),
+        team: team || null,
+        assignedBy: adminId,
+        assignedAt: new Date(),
+        status: targetStatus,
+        isBroadcast,
+        broadcastTechnicianIds: isBroadcast ? targetBroadcastUserIds : [],
+        $push: { timeline: timelineEvent }
+      };
+      if (preferredVisitDate) updateFields.preferredVisitDate = preferredVisitDate;
+      if (preferredVisitTime) updateFields.preferredVisitTime = preferredVisitTime;
+
+      updated = await complaintRepository.update(id, orgId, updateFields, session);
+
+      // Revoke any existing active/pending Vendor Passes for this complaint
+      const existingPass = await mongoose.model('VisitorPass').findOne({ 
+        linkedComplaintId: id, 
+        status: { $in: ['PENDING', 'ACTIVE'] } 
+      }).session(session);
+      
+      if (existingPass) {
+        await visitorPassService.revokePass(existingPass._id, session);
+      }
+
+      // Create new pass if Vendor assignment
+      if (assignmentType === 'vendor') {
+        const startDate = new Date();
+        const endDate = preferredVisitDate ? new Date(preferredVisitDate) : new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
+
+        const passData = {
+          orgId,
+          createdById: adminId,
+          passType: 'SERVICE',
+          status: 'PENDING',
+          linkedComplaintId: id,
+          visitorDetails: {
+            name: technicianName || vendor || 'Temporary Vendor',
+          },
+          validity: {
+            startDate,
+            endDate,
+            timeWindowStart: '00:00',
+            timeWindowEnd: '23:59',
+          },
+          usageLimit: {
+            maxUses: 1,
+            currentUses: 0
+          }
+        };
+
+        vendorPass = await visitorPassService.createPass(passData, session);
+      }
+
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
     }
 
-    const updateFields = {
-      assignedTechnicianId: isBroadcast ? null : targetUserId,
-      assignedTechnicianName: isBroadcast ? null : (technicianName || null),
-      assignedTechnicianPhone: isBroadcast ? null : targetPhone,
-      vendor: isBroadcast ? null : (vendor || null),
-      team: team || null,
-      assignedBy: adminId,
-      assignedAt: new Date(),
-      status: targetStatus,
-      isBroadcast,
-      broadcastTechnicianIds: isBroadcast ? targetBroadcastUserIds : [],
-      $push: { timeline: timelineEvent }
-    };
-    if (preferredVisitDate) updateFields.preferredVisitDate = preferredVisitDate;
-    if (preferredVisitTime) updateFields.preferredVisitTime = preferredVisitTime;
-
-    const updated = await complaintRepository.update(id, orgId, updateFields);
-
-    // Audit Logging
+    // Side Effects after commit
     if (auditLogService && auditLogService.logAction) {
       await auditLogService.logAction({
         orgId,
@@ -378,7 +425,12 @@ class ComplaintService {
     }
 
     complaintEvents.emit(isReassignment ? 'complaint.reassigned' : 'complaint.assigned', { orgId, complaint: updated, adminId, previousAssigneeName });
-    return updated;
+
+    if (vendorPass) {
+      messageBroker.publishEvent('VISITOR_PASS_CREATED', { pass: vendorPass, orgId });
+    }
+
+    return { complaint: updated, vendorPass };
   }
 
   async escalateComplaint(id, orgId, metaData = {}) {
