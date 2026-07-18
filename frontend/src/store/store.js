@@ -21,6 +21,8 @@ import blacklistReducer from '../features/visitorManagement/store/blacklistSlice
 import noticeBoardReducer from '../features/noticeBoard/store/noticeBoardSlice.js';
 import complaintReducer from '../features/complaints/store/complaintSlice.js';
 import complaintSettingsReducer from '../features/complaints/store/complaintSettingsSlice.js';
+import billingReducer from '../features/billing/store/billingSlice.js';
+import assessmentReducer from '../features/assessment/store/assessmentSlice.js';
 
 // Custom lightweight state logger middleware for development mode
 const stateLoggerMiddleware = (store) => (next) => (action) => {
@@ -59,6 +61,8 @@ export const store = configureStore({
     noticeBoard: noticeBoardReducer,
     complaints: complaintReducer,
     complaintSettings: complaintSettingsReducer,
+    billing: billingReducer,
+    assessment: assessmentReducer,
   },
   middleware: (getDefaultMiddleware) => {
     const middlewares = getDefaultMiddleware();

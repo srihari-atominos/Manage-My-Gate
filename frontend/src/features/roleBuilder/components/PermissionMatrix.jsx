@@ -53,7 +53,7 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
           <div key={category} className="permission-category-card">
             <div className="permission-card-header">
               <h6 className="permission-card-title">
-                {category.toLowerCase() === 'visitor' ? 'Visitor Management' : (category.toLowerCase() === 'amenities' ? 'Amenities & Bookings' : category.charAt(0).toUpperCase() + category.slice(1))} Permissions
+                {category.toLowerCase() === 'visitor' ? 'Visitor Management' : (category.toLowerCase() === 'amenities' ? 'Amenities & Bookings' : (category.toLowerCase() === 'billing' ? 'Billing & Invoices' : category.charAt(0).toUpperCase() + category.slice(1)))} Permissions
               </h6>
               {category.toLowerCase() !== 'visitor' && (
                 <CFormCheck
@@ -70,29 +70,54 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
               {perms.map((perm) => {
                 const permValue = perm.name || perm.code || perm._id
                 const idSafe = String(permValue).replace(/:/g, '-')
-                let isChecked = selectedIds.includes(permValue)
                 
+                let isChecked = selectedIds.includes(permValue)
                 if (category.toLowerCase() === 'visitor') {
                   isChecked = permValue === firstSelectedVisitorPerm
                 }
+                const isVisitor = category.toLowerCase() === 'visitor'
 
                 return (
                   <CCol xs={12} md={6} key={permValue}>
-                    <CFormCheck
-                      type={category.toLowerCase() === 'visitor' ? 'radio' : 'checkbox'}
-                      id={`perm-check-${idSafe}`}
-                      label={formatPermissionLabel(perm.name || String(permValue))}
-                      checked={isChecked}
-                      onChange={(e) => onTogglePermission(permValue, e.target.checked)}
-                      onClick={(e) => {
-                        // Allow deselecting radio button by clicking it again
-                        if (category.toLowerCase() === 'visitor' && isChecked) {
-                          // Prevent default to stop native radio behavior
-                          e.preventDefault()
-                          onTogglePermission(permValue, false)
-                        }
-                      }}
-                    />
+                    {isVisitor ? (
+                      // Use native radio input for visitor permissions to bypass CoreUI CFormCheck
+                      // aria-hidden focus blocking issues inside CModal
+                      <div className="form-check" style={{ cursor: 'pointer' }}>
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="visitor-permission-group-native"
+                          id={`perm-check-${idSafe}`}
+                          checked={isChecked}
+                          // Allow deselecting radio button by clicking it again
+                          onClick={(e) => {
+                            if (isChecked) {
+                              e.preventDefault()
+                              onTogglePermission(permValue, false)
+                            } else {
+                              onTogglePermission(permValue, true)
+                            }
+                          }}
+                          onChange={() => {}} // controlled: suppress React warning, logic is in onClick
+                          style={{ cursor: 'pointer' }}
+                        />
+                        <label
+                          className="form-check-label"
+                          htmlFor={`perm-check-${idSafe}`}
+                          style={{ cursor: 'pointer', userSelect: 'none' }}
+                        >
+                          {formatPermissionLabel(perm.name || String(permValue))}
+                        </label>
+                      </div>
+                    ) : (
+                      <CFormCheck
+                        type="checkbox"
+                        id={`perm-check-${idSafe}`}
+                        label={formatPermissionLabel(perm.name || String(permValue))}
+                        checked={isChecked}
+                        onChange={(e) => onTogglePermission(permValue, e.target.checked)}
+                      />
+                    )}
                   </CCol>
                 )
               })}

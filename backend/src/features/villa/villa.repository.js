@@ -139,6 +139,33 @@ export class VillaRepository {
    * @param {string|ObjectId} orgId
    * @param {ClientSession} [session]
    */
+  /**
+   * Returns all distinct, non-empty blockOrBuilding values for an org.
+   * Uses a single aggregation round-trip: $match → $group → $sort.
+   * @param {string|ObjectId} orgId
+   * @param {ClientSession} [session]
+   */
+  async getDistinctBlocks(orgId, session) {
+    if (!orgId) throw new Error('orgId is required');
+    const pipeline = [
+      {
+        $match: {
+          orgId: typeof orgId === 'string' ? new mongoose.Types.ObjectId(orgId) : orgId,
+          blockOrBuilding: { $exists: true, $ne: '' },
+        },
+      },
+      {
+        $group: { _id: '$blockOrBuilding' },
+      },
+      {
+        $sort: { _id: 1 },
+      },
+    ];
+    const query = session ? Villa.aggregate(pipeline).session(session) : Villa.aggregate(pipeline);
+    const results = await query;
+    return results.map((r) => r._id);
+  }
+
   async getOccupancyStats(orgId, session) {
     if (!orgId) throw new Error('orgId is required');
     const pipeline = [

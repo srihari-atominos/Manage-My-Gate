@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchVillasAsync,
   fetchVillaStatsAsync,
+  fetchVillaBlocksAsync,
   createVillaAsync,
   updateVillaAsync,
   deleteVillaAsync,
@@ -26,6 +27,8 @@ export const useVilla = () => {
 
   const {
     villas,
+    blocks,
+    blocksLoading,
     stats,
     searchQuery,
     blockFilter,
@@ -62,6 +65,7 @@ export const useVilla = () => {
   useEffect(() => {
     if (orgId) {
       dispatch(fetchVillaStatsAsync());
+      dispatch(fetchVillaBlocksAsync());
     }
   }, [dispatch, orgId]);
 
@@ -210,6 +214,8 @@ export const useVilla = () => {
 
   return {
     villas,
+    blocks,
+    blocksLoading,
     stats,
     searchQuery,
     blockFilter,

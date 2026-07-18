@@ -29,6 +29,20 @@ export class VillaController {
     }
   }
 
+  /**
+   * Returns all distinct block/building names for the active org.
+   * Powers the dynamic block filter dropdown on the frontend.
+   */
+  async getBlocks(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const blocks = await villaService.getDistinctBlocks(orgId);
+      res.success(blocks, 'Distinct blocks retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getById(req, res, next) {
     try {
       const { id } = req.params;

@@ -101,6 +101,18 @@ export class VillaService {
   }
 
   /**
+   * Returns all distinct, non-empty blockOrBuilding values for the org.
+   * @param {string} orgId
+   * @returns {Promise<string[]>} Sorted array of block names
+   */
+  async getDistinctBlocks(orgId) {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info(`getDistinctBlocks request received`, { orgId, correlationId });
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
+    return await villaRepository.getDistinctBlocks(orgId);
+  }
+
+  /**
    * Atomically assign primary resident to unit using a Mongoose Transaction.
    */
   async assignPrimaryResident(id, orgId, residentId) {
@@ -596,6 +608,48 @@ export class VillaService {
     } finally {
       await session.endSession();
     }
+  }
+
+  async getUnitsByVillaIds(ids, session = null) {
+    return await Villa.find({ _id: { $in: ids } }).session(session);
+  }
+
+  async getUnitsByOrgId(orgId, session = null) {
+    return await Villa.find({ orgId }).session(session);
+  }
+
+  async getUnitsByOwner(ownerId, session = null) {
+    return await Villa.find({
+      residents: {
+        $elemMatch: {
+          userId: ownerId,
+          residencyType: { $in: ['Resident Owner', 'Non-Resident Owner'] }
+        }
+      }
+    }).session(session);
+  }
+
+  async getUnitsByResidentUserIds(userIds, session = null) {
+    return await Villa.find({
+      'residents.userId': { $in: userIds }
+    }).session(session);
+  }
+
+  async getUnitsByBlockNames(blockNames, orgId, session = null) {
+    return await Villa.find({
+      orgId,
+      $or: [
+        { blockOrBuilding: { $in: blockNames } },
+        { block: { $in: blockNames } }
+      ]
+    }).session(session);
+  }
+
+  async getUnitsByTypes(types, orgId, session = null) {
+    return await Villa.find({
+      orgId,
+      type: { $in: types }
+    }).session(session);
   }
 }
 

@@ -440,6 +440,11 @@ export class UserService {
       failures,
     };
   }
+
+  async getUsersByIds(ids, session = null) {
+    const User = (await import('./user.model.js')).default;
+    return await User.find({ _id: { $in: ids } }).session(session);
+  }
 }
 
 export default new UserService();

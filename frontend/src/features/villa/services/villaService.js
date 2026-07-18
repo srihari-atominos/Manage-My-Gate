@@ -17,6 +17,15 @@ export const fetchVillas = async ({ page = 1, limit = 12, search = '', blockOrBu
 };
 
 /**
+ * Fetches all distinct block/building names for the community.
+ * Powers the dynamic block filter dropdown.
+ */
+export const fetchVillaBlocks = async () => {
+  const response = await apiClient.get('/villas/blocks');
+  return response.data;
+};
+
+/**
  * Fetches a single unit and its residents.
  */
 export const fetchVillaById = async (id) => {
@@ -106,6 +115,7 @@ export const removeResident = async (villaId, userId) => {
 
 export default {
   fetchVillas,
+  fetchVillaBlocks,
   fetchVillaById,
   createVilla,
   updateVilla,

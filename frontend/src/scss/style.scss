@@ -6,6 +6,8 @@
 @use "../features/userManagement/styles/userManagement";
 @use "../features/integrationHub/styles/integrationHub";
 @use "../features/villa/styles/villa";
+@use "../features/billing/styles/billing";
+@use "../features/assessment/styles/assessment";
 
 body {
   background-color: var(--cui-tertiary-bg);

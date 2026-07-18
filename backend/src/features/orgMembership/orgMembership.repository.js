@@ -40,6 +40,7 @@ export class OrgMembershipRepository {
       filterMatch.$or = [
         { 'user.username': { $regex: filters.search, $options: 'i' } },
         { 'user.email': { $regex: filters.search, $options: 'i' } },
+        { 'user.name': { $regex: filters.search, $options: 'i' } },
       ];
     }
     if (filters.roles && filters.roles.length > 0) {
@@ -136,8 +137,8 @@ export class OrgMembershipRepository {
               },
               status: '$user.status',
               villaId: '$villa._id',
-              villaNumber: '$villa.villaNumber',
-              villaBlock: '$villa.block',
+              villaNumber: '$villa.unitNumber',
+              villaBlock: '$villa.blockOrBuilding',
               residentType: '$residentType',
             },
           },

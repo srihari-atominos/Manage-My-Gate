@@ -78,27 +78,28 @@ export const useRoleForm = ({ role, visible, onSave }) => {
 
   const handleTogglePermission = (permValue, checked) => {
     const currentPermissions = getValues('permissions') || []
-    let newValue = checked
-      ? [...currentPermissions, permValue]
-      : currentPermissions.filter((p) => p !== permValue)
+    let newValue
 
-    // Enforce mutual exclusivity for visitor context permissions (single select)
-    if (checked && String(permValue).toLowerCase().startsWith('visitor:')) {
-      newValue = newValue.filter((p) => !String(p).toLowerCase().startsWith('visitor:') || p === permValue)
+    if (checked) {
+      if (String(permValue).toLowerCase().startsWith('visitor:')) {
+        // Replace all visitor permissions with the newly selected one
+        newValue = [
+          ...currentPermissions.filter((p) => !String(p).toLowerCase().startsWith('visitor:')),
+          permValue,
+        ]
+      } else {
+        newValue = [...currentPermissions, permValue]
+      }
+    } else {
+      // Remove permission
+      newValue = currentPermissions.filter((p) => p !== permValue)
     }
 
     setValue('permissions', newValue, { shouldDirty: true, shouldValidate: true })
   }
 
   const onSubmit = async (data) => {
-    const savedRole = await onSave(data)
-    
-    if (savedRole && savedRole.id) {
-      await dispatch(syncRolePermissionsAsync({ 
-        roleId: savedRole.id, 
-        permissionIds: data.permissions 
-      }))
-    }
+    await onSave(data)
   }
 
   return {

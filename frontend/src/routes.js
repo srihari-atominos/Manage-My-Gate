@@ -47,6 +47,10 @@ const AdminVisitorManagementViews = React.lazy(() => import('./features/visitorM
 const GuardVisitormanagementViews = React.lazy(() => import('./features/visitorManagement/views/GuardVisitormanagementViews'));
 const VisitorContextManager = React.lazy(() => import('./features/visitorManagement/views/VisitorContextManager'));
 
+// Financial Suite Views
+const BillingView = React.lazy(() => import('./features/billing/views/BillingView'));
+const AssessmentManagementView = React.lazy(() => import('./features/assessment/views/AssessmentManagementView'));
+
 
 
 
@@ -56,10 +60,10 @@ const VisitorContextManager = React.lazy(() => import('./features/visitorManagem
 export const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
-  { path: '/visitor-management', name: 'Visitor Management', element: VisitorContextManager },
-  { path: '/visitor-management-resident', name: 'Visitor Passes', element: ResidentVisitorManagementView },
-  { path: '/visitor-management-admin', name: 'Visitor Admin', element: AdminVisitorManagementViews },
-  { path: '/visitor-management-guard', name: 'Gate Console', element: GuardVisitormanagementViews },
+  { path: '/visitor-management', name: 'Visitor Management', element: VisitorContextManager, requiredPermission: ['visitor:resident', 'visitor:guard', 'visitor:admin'] },
+  { path: '/visitor-management-resident', name: 'Visitor Passes', element: ResidentVisitorManagementView, requiredPermission: 'visitor:resident' },
+  { path: '/visitor-management-admin', name: 'Visitor Admin', element: AdminVisitorManagementViews, requiredPermission: 'visitor:admin' },
+  { path: '/visitor-management-guard', name: 'Gate Console', element: GuardVisitormanagementViews, requiredPermission: 'visitor:guard' },
   { path: '/users', name: 'User Management', element: UserList, requiredPermission: 'users:read' },
   { path: '/villas', name: 'Unit Management', element: VillaManagementView, requiredPermission: 'villas:read' },
   { path: '/sample', name: 'Sample Feature', element: SampleFeature },
@@ -109,6 +113,10 @@ export const routes = [
   { path: '/admin/complaints/manage', name: 'Complaint Management', element: ComplaintManagement, requiredPermission: 'complaints:complaint_management' },
   { path: '/admin/complaints/staff', name: 'Staff & Vendors', element: StaffAndVendor, requiredPermission: 'complaints:staff' },
   { path: '/admin/complaints/assignee', name: 'Assignee', element: AssigneeView, requiredPermission: 'complaints:assignee' },
+
+  // Financial Suite Routes
+  { path: '/billing', name: 'Billing & Invoices', element: BillingView, requiredPermission: ['billing:dashboard', 'billing:assessment_manager', 'billing:action_center'] },
+  { path: '/assessments', name: 'Assessment Manager', element: AssessmentManagementView, requiredPermission: 'billing:assessment_manager' },
 ];
 
 export default routes;

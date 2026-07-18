@@ -262,6 +262,14 @@ export class OrganizationService {
         session
       );
 
+      // Update User roles array to include the newly created Community Admin role
+      const User = (await import('../user/user.model.js')).default;
+      await User.updateOne(
+        { _id: userId },
+        { $addToSet: { roles: adminRole._id } },
+        { session }
+      );
+
       await session.commitTransaction();
 
       // Outside the write transaction, generate the fresh token context

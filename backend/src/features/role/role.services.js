@@ -225,9 +225,14 @@ export class RoleService {
     }
     
     const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
-    const result = await rolePermissionService.updateRolePermissions(roleId, permissionIds);
+    await rolePermissionService.updateRolePermissions(roleId, permissionIds);
     roleEvents.emit('rolePermissionsUpdated', { roleId, permissionIds });
-    return result;
+    return await rolePermissionService.getPermissionsByRoleId(roleId);
+  }
+
+  async getRolesByIds(ids, session = null) {
+    const Role = (await import('./role.model.js')).default;
+    return await Role.find({ _id: { $in: ids } }).session(session);
   }
 }
 
