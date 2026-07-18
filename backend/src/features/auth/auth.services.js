@@ -152,8 +152,8 @@ export class AuthService {
 
     const villaInfo = selectedMembership?.villaId ? {
       id: selectedMembership.villaId._id.toString(),
-      villaNumber: selectedMembership.villaId.villaNumber,
-      block: selectedMembership.villaId.block,
+      villaNumber: selectedMembership.villaId.unitNumber,
+      block: selectedMembership.villaId.blockOrBuilding,
       intercom: selectedMembership.villaId.intercom,
       occupancyStatus: selectedMembership.villaId.occupancyStatus,
     } : null;

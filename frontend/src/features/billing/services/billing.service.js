@@ -46,6 +46,14 @@ export const billingService = {
   async settleInvoiceOffline(invoiceId, payload) {
     return await apiClient.patch(`/invoices/${invoiceId}/settle-offline`, payload);
   },
+
+  /**
+   * Clear/approve offline payment (Admin only).
+   * @param {string} invoiceId
+   */
+  async approveInvoiceOffline(invoiceId) {
+    return await apiClient.patch(`/invoices/${invoiceId}/approve`);
+  },
 };
 
 export default billingService;

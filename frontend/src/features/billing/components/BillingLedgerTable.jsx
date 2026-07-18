@@ -1,4 +1,16 @@
 import React, { useState, useMemo, memo, useCallback } from 'react';
+import toast from 'react-hot-toast';
+import {
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CButton,
+  CForm,
+  CFormLabel,
+  CFormInput
+} from '@coreui/react';
 
 /**
  * BillingLedgerTable
@@ -65,9 +77,9 @@ const LedgerRow = memo(({ invoice, onMarkPaid, onOfflineSettle }) => (
     <td className="billing-ledger__cell">
       <div className="d-flex align-items-center gap-2">
         <div className="billing-ledger__avatar">
-          {invoice.targetUser.charAt(0)}
+          {(invoice.targetUser || 'Unknown').charAt(0)}
         </div>
-        <span className="billing-ledger__user">{invoice.targetUser}</span>
+        <span className="billing-ledger__user">{invoice.targetUser || 'Unknown'}</span>
       </div>
     </td>
     <td className="billing-ledger__cell billing-ledger__cell--amount">
@@ -115,32 +127,54 @@ const BillingLedgerTable = memo(({
   loading = false,
   onPageChange,
   onSettleOffline,
+  onApproveOffline,
 }) => {
+  console.log('DEBUG [BillingLedgerTable] received props:', {
+    onApproveOfflineType: typeof onApproveOffline,
+    onSettleOfflineType: typeof onSettleOffline,
+  });
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  const handleMarkPaid = useCallback(async (invoiceId) => {
-    if (window.confirm("Mark this invoice as PAID?")) {
-      try {
-        await onSettleOffline(invoiceId, { offlineReference: "Marked paid by Admin", paymentMethod: 'CASH' });
-        alert('Invoice marked as paid successfully.');
-      } catch (err) {
-        alert('Failed to update invoice: ' + err.message);
-      }
-    }
-  }, [onSettleOffline]);
+  // Modal states
+  const [confirmPaidId, setConfirmPaidId] = useState(null);
+  const [settleInvoiceId, setSettleInvoiceId] = useState(null);
+  const [settleRef, setSettleRef] = useState('');
 
-  const handleOfflineSettle = useCallback(async (invoiceId) => {
-    const reference = window.prompt("Enter offline settlement transaction ID or reference (cheque or NEFT reference):");
-    if (reference) {
-      try {
-        await onSettleOffline(invoiceId, { offlineReference: reference, paymentMethod: 'CHEQUE' });
-        alert('Offline payment verified and recorded successfully.');
-      } catch (err) {
-        alert('Failed to settle invoice: ' + err.message);
-      }
+  const handleMarkPaid = useCallback((invoiceId) => {
+    setConfirmPaidId(invoiceId);
+  }, []);
+
+  const handleConfirmMarkPaid = async () => {
+    if (!confirmPaidId) return;
+    try {
+      await onApproveOffline(confirmPaidId);
+      toast.success('Invoice marked as paid successfully.');
+    } catch (err) {
+      toast.error('Failed to update invoice: ' + err.message);
+    } finally {
+      setConfirmPaidId(null);
     }
-  }, [onSettleOffline]);
+  };
+
+  const handleOfflineSettle = useCallback((invoiceId) => {
+    setSettleInvoiceId(invoiceId);
+    setSettleRef('');
+  }, []);
+
+  const handleConfirmOfflineSettle = async () => {
+    if (!settleInvoiceId || !settleRef.trim()) return;
+    try {
+      await onSettleOffline(settleInvoiceId, { offlineReference: settleRef, paymentMethod: 'CHEQUE' });
+      toast.success('Offline payment verified and recorded successfully.');
+    } catch (err) {
+      toast.error('Failed to settle invoice: ' + err.message);
+    } finally {
+      setSettleInvoiceId(null);
+      setSettleRef('');
+    }
+  };
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
@@ -166,7 +200,7 @@ const BillingLedgerTable = memo(({
           <i className="fa-solid fa-file-invoice billing-ledger__kpi-icon" />
           <div>
             <div className="billing-ledger__kpi-value">
-              {loading ? '…' : (kpis.totalCollected + kpis.totalUnpaidArrears) ? (kpis.grossDemand || 0) : 0}
+              {loading ? '…' : (kpis.grossDemandCount || 0)}
             </div>
             <div className="billing-ledger__kpi-label">Total Invoices</div>
           </div>
@@ -182,7 +216,7 @@ const BillingLedgerTable = memo(({
           <i className="fa-solid fa-circle-xmark billing-ledger__kpi-icon" />
           <div>
             <div className="billing-ledger__kpi-value">
-              {loading ? '…' : (kpis.totalUnpaidArrears - kpis.inTransitGateway)}
+              {loading ? '…' : kpis.totalUnpaidArrears}
             </div>
             <div className="billing-ledger__kpi-label">Unpaid</div>
           </div>
@@ -306,6 +340,58 @@ const BillingLedgerTable = memo(({
           </button>
         </div>
       </div>
+
+      {/* ── Confirm Mark Paid Modal ────────────────────────────────────── */}
+      <CModal visible={!!confirmPaidId} onClose={() => setConfirmPaidId(null)} alignment="center">
+        <CModalHeader>
+          <CModalTitle className="fw-semibold">Confirm Payment Clearance</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          Are you sure you want to mark this invoice as <strong>PAID</strong>? This will clear the outstanding balance.
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" size="sm" onClick={() => setConfirmPaidId(null)}>
+            Cancel
+          </CButton>
+          <CButton color="primary" size="sm" onClick={handleConfirmMarkPaid}>
+            Confirm Clear
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* ── Offline Settle Modal ───────────────────────────────────────── */}
+      <CModal visible={!!settleInvoiceId} onClose={() => { setSettleInvoiceId(null); setSettleRef(''); }} alignment="center">
+        <CModalHeader>
+          <CModalTitle className="fw-semibold">Enter Offline Settlement Details</CModalTitle>
+        </CModalHeader>
+        <CForm onSubmit={(e) => { e.preventDefault(); handleConfirmOfflineSettle(); }}>
+          <CModalBody>
+            <div className="mb-3">
+              <CFormLabel htmlFor="offline-ref" className="small fw-semibold">
+                Transaction ID / Reference Number (Cheque/NEFT) *
+              </CFormLabel>
+              <CFormInput
+                id="offline-ref"
+                type="text"
+                placeholder="e.g. CHQ-92842 or UTR-28194"
+                value={settleRef}
+                onChange={(e) => setSettleRef(e.target.value)}
+                required
+                autoFocus
+                size="sm"
+              />
+            </div>
+          </CModalBody>
+          <CModalFooter>
+            <CButton type="button" color="secondary" size="sm" onClick={() => { setSettleInvoiceId(null); setSettleRef(''); }}>
+              Cancel
+            </CButton>
+            <CButton type="submit" color="primary" size="sm" disabled={!settleRef.trim()}>
+              Record Settlement
+            </CButton>
+          </CModalFooter>
+        </CForm>
+      </CModal>
 
     </div>
   );

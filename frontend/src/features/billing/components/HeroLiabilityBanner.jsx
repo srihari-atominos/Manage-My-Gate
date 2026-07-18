@@ -1,4 +1,17 @@
 import React, { useState, memo } from 'react';
+import toast from 'react-hot-toast';
+import {
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CButton,
+  CForm,
+  CFormLabel,
+  CFormInput,
+  CFormSelect
+} from '@coreui/react';
 
 /**
  * HeroLiabilityBanner
@@ -33,26 +46,36 @@ const HeroLiabilityBanner = memo(({ activeDues = null, settleOffline }) => {
   const clearingAmount = clearingInvoice?.totalDue || 0;
   const clearingRef = clearingInvoice?.offlineReference || 'Cheque';
 
-  const handlePayNow = async () => {
+  const [payInvoice, setPayInvoice] = useState(null);
+  const [offlineRef, setOfflineRef] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('CHEQUE');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handlePayNow = () => {
     const firstUnpaid = unitBreakdown.find(inv => inv.status === 'UNPAID');
     if (!firstUnpaid) {
-      alert('You have no outstanding unpaid invoices!');
+      toast.error('You have no outstanding unpaid invoices!');
       return;
     }
+    setPayInvoice(firstUnpaid);
+    setOfflineRef('');
+    setPaymentMethod('CHEQUE');
+  };
 
-    const ref = window.prompt(
-      `Enter payment confirmation reference (cheque or NEFT reference) to settle invoice ${firstUnpaid.invoiceNumber} of ₹${firstUnpaid.totalDue.toLocaleString('en-IN')}:`
-    );
-    if (ref) {
-      try {
-        await settleOffline(firstUnpaid.invoiceId || firstUnpaid._id, {
-          offlineReference: ref,
-          paymentMethod: 'CHEQUE',
-        });
-        alert('Offline payment submitted successfully! Awaiting admin verification.');
-      } catch (err) {
-        alert('Failed to submit offline payment: ' + err.message);
-      }
+  const handleConfirmPay = async () => {
+    if (!payInvoice || !offlineRef.trim()) return;
+    setSubmitting(true);
+    try {
+      await settleOffline(payInvoice.invoiceId || payInvoice._id, {
+        offlineReference: offlineRef,
+        paymentMethod: paymentMethod,
+      });
+      toast.success('Offline payment submitted successfully! Awaiting admin verification.');
+      setPayInvoice(null);
+    } catch (err) {
+      toast.error('Failed to submit offline payment: ' + err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -124,6 +147,52 @@ const HeroLiabilityBanner = memo(({ activeDues = null, settleOffline }) => {
           )}
         </button>
       </div>
+
+      {/* ── Pay Now / Record Settlement Modal ─────────────────────────── */}
+      <CModal visible={!!payInvoice} onClose={() => setPayInvoice(null)} alignment="center">
+        <CModalHeader>
+          <CModalTitle className="fw-semibold">Submit Offline Payment Confirmation</CModalTitle>
+        </CModalHeader>
+        <CForm onSubmit={(e) => { e.preventDefault(); handleConfirmPay(); }}>
+          <CModalBody>
+            <div className="alert alert-info py-2 px-3 small mb-3">
+              You are clearing Invoice <strong>{payInvoice?.invoiceNumber}</strong> of <strong>₹{payInvoice?.totalDue?.toLocaleString('en-IN')}</strong>.
+            </div>
+
+            <div className="mb-3">
+              <CFormLabel htmlFor="pay-method" className="small fw-semibold">Payment Method</CFormLabel>
+              <CFormSelect id="pay-method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} size="sm">
+                <option value="CHEQUE">Cheque</option>
+                <option value="BANK_TRANSFER">Bank Transfer (NEFT/IMPS/UPI)</option>
+              </CFormSelect>
+            </div>
+
+            <div className="mb-3">
+              <CFormLabel htmlFor="pay-ref" className="small fw-semibold">
+                Transaction ID / Reference ID *
+              </CFormLabel>
+              <CFormInput
+                id="pay-ref"
+                type="text"
+                placeholder="e.g. UTR-932842 or CHQ-48192"
+                value={offlineRef}
+                onChange={(e) => setOfflineRef(e.target.value)}
+                required
+                autoFocus
+                size="sm"
+              />
+            </div>
+          </CModalBody>
+          <CModalFooter>
+            <CButton type="button" color="secondary" size="sm" onClick={() => setPayInvoice(null)} disabled={submitting}>
+              Cancel
+            </CButton>
+            <CButton type="submit" color="primary" size="sm" disabled={submitting || !offlineRef.trim()}>
+              {submitting ? 'Submitting...' : 'Submit Confirmation'}
+            </CButton>
+          </CModalFooter>
+        </CForm>
+      </CModal>
 
     </div>
   );

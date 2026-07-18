@@ -26,6 +26,21 @@ router.get(
 
 /**
  * @swagger
+ * /villas/blocks:
+ *   get:
+ *     summary: Get all distinct block/building names for the community (powers dynamic filter dropdown)
+ */
+router.get(
+  '/blocks',
+  correlationIdMiddleware,
+  isAuthenticated,
+  tenantContext,
+  authorizePermission('villas', 'read'),
+  villaController.getBlocks
+);
+
+/**
+ * @swagger
  * /villas/stats:
  *   get:
  *     summary: Get occupancy statistics for units

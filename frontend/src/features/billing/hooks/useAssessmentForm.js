@@ -47,10 +47,15 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
   const { saveAssessment, editAssessment } = useAssessment();
 
   // Dynamic Lists (with mock fallbacks)
+  // Dynamic Lists (with mock fallbacks)
   const [roles, setRoles]   = useState(MOCK_TENANT_ROLES);
   const [units, setUnits]   = useState(MOCK_UNITS);
   const [blocks, setBlocks] = useState(MOCK_BLOCKS);
   const [users, setUsers]   = useState(MOCK_USERS);
+
+  // Search States
+  const [userSearch, setUserSearch] = useState('');
+  const [unitSearch, setUnitSearch] = useState('');
 
   // Form Fields State
   const [name, setName]                 = useState('');
@@ -111,10 +116,10 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
     }
   }, [assessment]);
 
-  // Load live data on mount
+  // Load static or initial lists (roles, blocks) on mount
   useEffect(() => {
     let active = true;
-    const loadDynamicData = async () => {
+    const loadStaticData = async () => {
       try {
         const rolesRes = await fetchRoles({ page: 1, limit: 100 });
         if (active && rolesRes?.data) {
@@ -132,48 +137,76 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
         const villasRes = await fetchVillas({ page: 1, limit: 200 });
         if (active && villasRes?.data) {
           const villaList = villasRes.data;
-          if (villaList.length > 0) {
-            const formattedUnits = villaList.map(v => ({
-              _id: v._id,
-              label: `${v.villaNumber} - ${v.block}`,
-              sub: v.type || 'Unit',
-            }));
-            setUnits(formattedUnits);
-
-            const blockNames = [...new Set(villaList.map(v => v.block).filter(Boolean))];
-            const formattedBlocks = blockNames.map((bName, idx) => {
-              const count = villaList.filter(v => v.block === bName).length;
-              return {
-                _id: `block-${idx}`,
-                label: bName,
-                sub: `${count} Unit${count > 1 ? 's' : ''}`,
-              };
-            });
-            setBlocks(formattedBlocks);
-          }
+          const blockNames = [...new Set(villaList.map(v => v.block || v.blockOrBuilding).filter(Boolean))];
+          const formattedBlocks = blockNames.map((bName, idx) => {
+            const count = villaList.filter(v => (v.block || v.blockOrBuilding) === bName).length;
+            return {
+              _id: bName,
+              label: bName,
+              sub: `${count} Unit${count > 1 ? 's' : ''}`,
+            };
+          });
+          setBlocks(formattedBlocks);
         }
       } catch (err) {
-        console.error('Failed to fetch dynamic villas:', err);
+        console.error('Failed to fetch dynamic blocks:', err);
       }
+    };
 
+    loadStaticData();
+    return () => { active = false; };
+  }, []);
+
+  // Debounced User Search
+  useEffect(() => {
+    let active = true;
+    const delayDebounceFn = setTimeout(async () => {
       try {
-        const usersRes = await fetchUsers({ page: 1, limit: 150 });
+        const usersRes = await fetchUsers({ page: 1, limit: 150, search: userSearch });
         if (active && usersRes?.data) {
           const userList = usersRes.data.map(u => ({
-            _id: u._id,
+            _id: u._id || u.id,
             label: u.name || u.username,
             sub: u.email || 'Resident',
           }));
           setUsers(userList);
         }
       } catch (err) {
-        console.error('Failed to fetch dynamic users:', err);
+        console.error('Failed to fetch dynamic users on search:', err);
       }
-    };
+    }, 300);
 
-    loadDynamicData();
-    return () => { active = false; };
-  }, []);
+    return () => {
+      active = false;
+      clearTimeout(delayDebounceFn);
+    };
+  }, [userSearch]);
+
+  // Debounced Unit Search
+  useEffect(() => {
+    let active = true;
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const villasRes = await fetchVillas({ page: 1, limit: 200, search: unitSearch });
+        if (active && villasRes?.data) {
+          const villaList = villasRes.data;
+          const formattedUnits = villaList.map(v => ({
+            _id: v._id,
+            label: `${v.villaNumber || v.unitNumber || '—'} - ${v.block || v.blockOrBuilding || ''}`,
+            sub: v.type || 'Unit',
+          }));
+          setUnits(formattedUnits);
+        }
+      } catch (err) {
+        console.error('Failed to fetch dynamic villas on search:', err);
+      }
+    }, 300);
+
+    return () => {
+      active = false;
+      clearTimeout(delayDebounceFn);
+    };
+  }, [unitSearch]);
 
   // Handlers
   const handleTypeChange = useCallback((val) => {
@@ -250,7 +283,9 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
         billingCycle: isOneTime ? 'AD_HOC' : billingCycle,
         generationDay: isOneTime
           ? 'LAST_DAY_OF_MONTH'
-          : (genDayOption === 'LAST' ? 'LAST_DAY_OF_MONTH' : Number(customDay)),
+          : (genDayOption === 'LAST'
+              ? 'LAST_DAY_OF_MONTH'
+              : (genDayOption === 'FIRST' ? 1 : Number(customDay))),
         targetScope: {
           type: scopeType,
           scopeIds: scopeType === 'ALL_COMMUNITY' ? [] : selectedIds,
@@ -273,9 +308,9 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
       };
 
       if (assessment?._id) {
-        await editAssessment(assessment._id, payload);
+        await editAssessment(assessment._id, payload).unwrap();
       } else {
-        await saveAssessment(payload);
+        await saveAssessment(payload).unwrap();
       }
       if (onSuccess) onSuccess();
       onClose();
@@ -319,6 +354,8 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
     checkedRoles, setCheckedRoles,
     selectedIds, setSelectedIds,
     selectedUnitTypes, setSelectedUnitTypes,
+    userSearch, setUserSearch,
+    unitSearch, setUnitSearch,
 
     // Lists
     roles,

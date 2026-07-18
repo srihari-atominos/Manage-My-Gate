@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 const schema = yup.object().shape({
   unitNumber: yup.string().required('Unit number is required').trim(),
   blockOrBuilding: yup.string().optional(),
-  type: yup.string().oneOf(['Studio', 'Apartment', 'Villa', 'Penthouse'], 'Invalid type').default('Apartment'),
+  type: yup.string().oneOf(['Studio', 'Apartment', 'Villa', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex'], 'Invalid type').default('Apartment'),
   status: yup.string().oneOf(['Vacant', 'Occupied', 'Under Maintenance'], 'Invalid status').default('Vacant'),
   floorAreaSqFt: yup
     .number()
@@ -142,6 +142,11 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
               <option value="Apartment">{t('villas.types.Apartment', 'Apartment')}</option>
               <option value="Villa">{t('villas.types.Villa', 'Villa')}</option>
               <option value="Penthouse">{t('villas.types.Penthouse', 'Penthouse')}</option>
+              <option value="BHK1">{t('villas.types.BHK1', 'BHK1')}</option>
+              <option value="BHK2">{t('villas.types.BHK2', 'BHK2')}</option>
+              <option value="BHK3">{t('villas.types.BHK3', 'BHK3')}</option>
+              <option value="BHK4">{t('villas.types.BHK4', 'BHK4')}</option>
+              <option value="Duplex">{t('villas.types.Duplex', 'Duplex')}</option>
             </CFormSelect>
           </div>
 

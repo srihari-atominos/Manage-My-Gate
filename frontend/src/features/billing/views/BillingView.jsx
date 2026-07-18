@@ -1,5 +1,15 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import { useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import {
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CButton
+} from '@coreui/react';
 import BillingTopNav           from '../components/BillingTopNav.jsx';
 import AssessmentList          from '../components/AssessmentList.jsx';
 import AssessmentDetail        from '../components/AssessmentDetail.jsx';
@@ -8,6 +18,7 @@ import BillingDashboardView    from './BillingDashboardView.jsx';
 import ResidentActionCenterView from './ResidentActionCenterView.jsx';
 import { useAssessment }       from '../../assessment/hooks/useAssessment';
 import { useBillingSocket }    from '../hooks/useBillingSocket.js';
+import usePermission           from '../../../hooks/usePermission';
 import '../styles/_billing.scss';
 
 /**
@@ -18,11 +29,39 @@ import '../styles/_billing.scss';
  */
 export const BillingView = () => {
   const user = useSelector((state) => state.auth?.user);
-  useBillingSocket(user?.id || user?._id);
+  const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId);
+  useBillingSocket(user?.id || user?._id, activeOrgId);
 
-  const [activeTab, setActiveTab]         = useState('dashboard');
+  const hasDashboard = usePermission('billing', 'dashboard');
+  const hasActionCenter = usePermission('billing', 'action_center');
+  const hasAssessmentManager = usePermission('billing', 'assessment_manager');
+
+  const [searchParams] = useSearchParams();
+
+  // Dynamically resolve default tab based on user permissions
+  const defaultTab = hasDashboard 
+    ? 'dashboard' 
+    : (hasActionCenter ? 'action-center' : (hasAssessmentManager ? 'assessment-manager' : ''));
+
+  const [activeTab, setActiveTab]         = useState(defaultTab);
   const [isModalOpen, setIsModalOpen]     = useState(false);
   const [editingAssessment, setEditingAssessment] = useState(null);
+  const [deleteTargetTemplate, setDeleteTargetTemplate] = useState(null);
+
+  // Sync activeTab if defaultTab changes (e.g. on async auth hydration)
+  useEffect(() => {
+    if (defaultTab && !activeTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab, activeTab]);
+
+  // Sync activeTab from query param if provided (e.g. when clicked from notification)
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['dashboard', 'action-center', 'assessment-manager'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   const {
     assessmentsList: assessments,
@@ -32,7 +71,17 @@ export const BillingView = () => {
     loadAssessments,
     deleteTemplate,
     selectTemplate: setSelectedAssessment,
+    triggerBilling,
   } = useAssessment();
+
+  const handleRunBilling = useCallback(async (assessment) => {
+    try {
+      await triggerBilling(assessment._id).unwrap();
+      toast.success(`Successfully generated invoices for "${assessment.name}"!`);
+    } catch (err) {
+      toast.error(`Failed to run billing cycle: ${err}`);
+    }
+  }, [triggerBilling]);
 
   useEffect(() => {
     if (activeTab === 'assessment-manager') {
@@ -49,15 +98,21 @@ export const BillingView = () => {
     loadAssessments({ page });
   }, [loadAssessments]);
 
-  const handleDeleteAssessment = useCallback(async (assessment) => {
-    if (window.confirm(`Are you sure you want to delete the template "${assessment.name}"?`)) {
-      try {
-        await deleteTemplate(assessment._id);
-      } catch (err) {
-        console.error('Failed to delete assessment template:', err);
-      }
+  const handleDeleteAssessment = useCallback((assessment) => {
+    setDeleteTargetTemplate(assessment);
+  }, []);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetTemplate) return;
+    try {
+      await deleteTemplate(deleteTargetTemplate._id);
+      toast.success('Assessment template deleted successfully.');
+    } catch (err) {
+      toast.error('Failed to delete template: ' + err.message);
+    } finally {
+      setDeleteTargetTemplate(null);
     }
-  }, [deleteTemplate]);
+  };
 
   return (
     <div className="billing-module-wrapper billing-os-theme">
@@ -79,13 +134,13 @@ export const BillingView = () => {
         <div className="view active" id="view-billing">
 
           {/* ── Tab: Dashboard ─────────────────────────────────────────── */}
-          {activeTab === 'dashboard' && <BillingDashboardView />}
+          {activeTab === 'dashboard' && hasDashboard && <BillingDashboardView />}
 
           {/* ── Tab: Action Center ─────────────────────────────────────── */}
-          {activeTab === 'action-center' && <ResidentActionCenterView />}
+          {activeTab === 'action-center' && hasActionCenter && <ResidentActionCenterView />}
 
           {/* ── Tab: Assessment Manager ────────────────────────────────── */}
-          {activeTab === 'assessment-manager' && (
+          {activeTab === 'assessment-manager' && hasAssessmentManager && (
             <>
               {/* ── Toolbar: Create Button ────────────────────────────── */}
               <div className="billing-section-toolbar" style={{ justifyContent: 'flex-end' }}>
@@ -116,6 +171,7 @@ export const BillingView = () => {
                 <AssessmentDetail 
                   assessment={selectedAssessment}
                   onEdit={handleOpenEditModal}
+                  onRunBilling={handleRunBilling}
                 />
               </div>
             </>
@@ -123,6 +179,25 @@ export const BillingView = () => {
 
         </div>
       </div>
+
+      {/* ── Confirm Delete Template Modal ─────────────────────────────── */}
+      <CModal visible={!!deleteTargetTemplate} onClose={() => setDeleteTargetTemplate(null)} alignment="center">
+        <CModalHeader>
+          <CModalTitle className="fw-semibold text-danger">Delete Assessment Template</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          Are you sure you want to delete the template <strong>"{deleteTargetTemplate?.name}"</strong>? This action will archive or delete the template based on associated invoices history.
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" size="sm" onClick={() => setDeleteTargetTemplate(null)}>
+            Cancel
+          </CButton>
+          <CButton color="danger" size="sm" className="text-white" onClick={handleConfirmDelete}>
+            Delete
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
     </div>
   );
 };

@@ -23,7 +23,7 @@ const invoiceSchema = new mongoose.Schema(
     },
     unitId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Unit',
+      ref: 'Villa',
       required: [true, 'Unit ID is required'],
       index: true,
     },

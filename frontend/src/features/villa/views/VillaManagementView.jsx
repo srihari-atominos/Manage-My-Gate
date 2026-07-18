@@ -34,6 +34,8 @@ export const VillaManagementView = () => {
 
   const {
     villas,
+    blocks,
+    blocksLoading,
     stats,
     searchQuery,
     blockFilter,
@@ -146,11 +148,14 @@ export const VillaManagementView = () => {
                   value={blockFilter}
                   onChange={(e) => handleBlockChange(e.target.value)}
                   size="sm"
+                  disabled={blocksLoading}
                 >
                   <option value="">{t('villas.allBlocks', 'All Blocks')}</option>
-                  <option value="Block A">Block A</option>
-                  <option value="Block B">Block B</option>
-                  <option value="Block C">Block C</option>
+                  {blocks.map((block) => (
+                    <option key={block} value={block}>
+                      {block}
+                    </option>
+                  ))}
                 </CFormSelect>
               </CCol>
               <CCol md={2} sm={3} xs={6}>

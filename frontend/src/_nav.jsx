@@ -38,6 +38,7 @@ const _nav = [
     name: 'Visitor Management',
     to: '/visitor-management',
     icon: <CIcon icon={cilQrCode} customClassName="nav-icon" />,
+    requiredPermission: ['visitor:resident', 'visitor:guard', 'visitor:admin'],
   },
   {
     component: CNavItem,
@@ -120,14 +121,11 @@ const _nav = [
     icon: <CIcon icon={cilList} customClassName="nav-icon" />,
   },
   {
-    component: CNavTitle,
-    name: 'Financial Suite',
-  },
-  {
     component: CNavItem,
-    name: 'Billing',
+    name: 'Billing & Invoices',
     to: '/billing',
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
+    requiredPermission: ['billing:dashboard', 'billing:assessment_manager', 'billing:action_center'],
   },
 ];
 

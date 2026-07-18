@@ -14,7 +14,7 @@ import { cilPencil, cilCheckCircle, cilPeople, cilInfo } from '@coreui/icons';
  *   assessment {Object}  — selected assessment template object
  *   onConfigure {Function} — configure drawer callback
  */
-export const AssessmentDetail = memo(({ assessment = null, onEdit }) => {
+export const AssessmentDetail = memo(({ assessment = null, onEdit, onRunBilling }) => {
   const [allRoles, setAllRoles] = useState([]);
 
   useEffect(() => {
@@ -117,14 +117,24 @@ export const AssessmentDetail = memo(({ assessment = null, onEdit }) => {
             Details for {assessment.name}
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-outline-secondary btn-sm"
-          onClick={() => onEdit && onEdit(assessment)}
-          style={{ fontSize: '12px', fontWeight: '600', padding: '6px 12px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-        >
-          <CIcon icon={cilPencil} style={{ width: '12px', height: '12px' }} /> Edit Template
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => onRunBilling && onRunBilling(assessment)}
+            style={{ fontSize: '12px', fontWeight: '600', padding: '6px 12px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+          >
+            <i className="fa-solid fa-play" style={{ fontSize: '11px' }} /> Run Billing
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => onEdit && onEdit(assessment)}
+            style={{ fontSize: '12px', fontWeight: '600', padding: '6px 12px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+          >
+            <CIcon icon={cilPencil} style={{ width: '12px', height: '12px' }} /> Edit Template
+          </button>
+        </div>
       </div>
 
       {/* ── Detail Panel list ────────────────────────────────────────── */}

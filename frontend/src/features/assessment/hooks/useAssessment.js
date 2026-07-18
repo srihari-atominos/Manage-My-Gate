@@ -7,6 +7,7 @@ import {
   clearAssessmentError,
   setActiveTemplate,
   deleteAssessmentTemplate,
+  runBillingCycle,
 } from '../store/assessmentSlice.js';
 
 /**
@@ -72,6 +73,13 @@ export const useAssessment = () => {
     [dispatch]
   );
 
+  const triggerBilling = useCallback(
+    (id) => {
+      return dispatch(runBillingCycle(id));
+    },
+    [dispatch]
+  );
+
   return {
     // Redux Slice states
     assessmentsList,
@@ -87,6 +95,7 @@ export const useAssessment = () => {
     deleteTemplate,
     selectTemplate,
     resetAssessmentError,
+    triggerBilling,
   };
 };
 

@@ -164,6 +164,11 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
                 <option value="Apartment">{t('villas.types.Apartment', 'Apartment')}</option>
                 <option value="Villa">{t('villas.types.Villa', 'Villa')}</option>
                 <option value="Penthouse">{t('villas.types.Penthouse', 'Penthouse')}</option>
+                <option value="BHK1">{t('villas.types.BHK1', 'BHK1')}</option>
+                <option value="BHK2">{t('villas.types.BHK2', 'BHK2')}</option>
+                <option value="BHK3">{t('villas.types.BHK3', 'BHK3')}</option>
+                <option value="BHK4">{t('villas.types.BHK4', 'BHK4')}</option>
+                <option value="Duplex">{t('villas.types.Duplex', 'Duplex')}</option>
               </CFormSelect>
             </CCol>
           </CRow>

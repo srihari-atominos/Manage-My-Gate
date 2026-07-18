@@ -2,12 +2,19 @@
   overflow-y: auto !important;
 
   // Mobile (Default)
-  max-height: 45vh;
+  max-height: 35vh;
 
   // Desktop
   @media (min-width: 768px) {
-    max-height: 55vh;
+    max-height: 42vh;
   }
+}
+
+// Ensure modal body is scrollable since we removed the CModal `scrollable` prop
+// (that prop sets aria-hidden="true" on the modal, blocking radio button clicks)
+#role-form-modal .modal-body {
+  max-height: 75vh;
+  overflow-y: auto;
 }
 
 .role-builder-container {

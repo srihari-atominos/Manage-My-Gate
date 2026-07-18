@@ -33,6 +33,14 @@ export const assessmentService = {
   async deleteAssessment(id) {
     return await apiClient.delete(`/assessments/${id}`);
   },
+
+  /**
+   * Manually trigger billing run for an assessment template.
+   * @param {string} id
+   */
+  async runAssessment(id) {
+    return await apiClient.post(`/assessments/${id}/run`);
+  },
 };
 
 export default assessmentService;

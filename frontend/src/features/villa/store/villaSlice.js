@@ -21,6 +21,22 @@ export const fetchVillasAsync = createAsyncThunk(
   }
 );
 
+/**
+ * Fetches all distinct block names for the org from the backend.
+ * Used to populate the block filter dropdown dynamically.
+ */
+export const fetchVillaBlocksAsync = createAsyncThunk(
+  'villa/fetchVillaBlocks',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await villaService.fetchVillaBlocks();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch blocks');
+    }
+  }
+);
+
 export const fetchVillaByIdAsync = createAsyncThunk(
   'villa/fetchVillaById',
   async (id, { rejectWithValue }) => {
@@ -164,6 +180,8 @@ export const removeResidentThunk = createAsyncThunk(
 
 const initialState = {
   villas: [],
+  blocks: [],           // Dynamic list of distinct block names
+  blocksLoading: false,
   selectedVilla: null, // Holds { villa, residents }
   stats: {
     total: 0,
@@ -237,6 +255,17 @@ const villaSlice = createSlice({
       // Fetch Stats
       .addCase(fetchVillaStatsAsync.fulfilled, (state, action) => {
         state.stats = action.payload;
+      })
+      // Fetch Blocks (dynamic dropdown)
+      .addCase(fetchVillaBlocksAsync.pending, (state) => {
+        state.blocksLoading = true;
+      })
+      .addCase(fetchVillaBlocksAsync.fulfilled, (state, action) => {
+        state.blocksLoading = false;
+        state.blocks = Array.isArray(action.payload) ? action.payload : [];
+      })
+      .addCase(fetchVillaBlocksAsync.rejected, (state) => {
+        state.blocksLoading = false;
       })
       // Create/Batch generate/Update/Delete/Assign states updates
       .addCase(createVillaAsync.pending, (state) => {

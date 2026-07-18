@@ -2,6 +2,7 @@ import React from 'react';
 import { CNav, CNavItem, CNavLink } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilSpeedometer, cilWallet, cilSettings } from '@coreui/icons';
+import usePermission from '../../../hooks/usePermission';
 
 /**
  * BillingTopNav
@@ -10,11 +11,15 @@ import { cilSpeedometer, cilWallet, cilSettings } from '@coreui/icons';
  * Matches the same visual pattern used by VisitorTopNav.
  */
 export const BillingTopNav = ({ activeTab, onTabChange }) => {
+  const hasDashboard = usePermission('billing', 'dashboard');
+  const hasActionCenter = usePermission('billing', 'action_center');
+  const hasAssessmentManager = usePermission('billing', 'assessment_manager');
+
   const navItems = [
-    { id: 'dashboard',          name: 'Dashboard',          icon: cilSpeedometer },
-    { id: 'action-center',      name: 'Action Center',      icon: cilWallet      },
-    { id: 'assessment-manager', name: 'Assessment Manager', icon: cilSettings    },
-  ];
+    { id: 'dashboard',          name: 'Dashboard',          icon: cilSpeedometer,  show: hasDashboard },
+    { id: 'action-center',      name: 'Action Center',      icon: cilWallet,       show: hasActionCenter },
+    { id: 'assessment-manager', name: 'Assessment Manager', icon: cilSettings,     show: hasAssessmentManager },
+  ].filter(item => item.show);
 
   return (
     <div className="billing-top-nav-bar">

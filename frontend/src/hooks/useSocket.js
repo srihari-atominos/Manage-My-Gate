@@ -21,7 +21,13 @@ export const useSocket = (room) => {
 
     socket.on('connect', () => {
       if (room) {
-        socket.emit('join_room', room);
+        if (Array.isArray(room)) {
+          room.forEach((r) => {
+            if (r) socket.emit('join_room', r);
+          });
+        } else {
+          socket.emit('join_room', room);
+        }
       }
     });
 

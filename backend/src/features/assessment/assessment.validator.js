@@ -53,8 +53,15 @@ export const createAssessmentSchema = [
     .withMessage('Scope IDs must be an array'),
 
   body('targetScope.scopeIds.*')
-    .isMongoId()
-    .withMessage('Each Scope ID must be a valid Mongo ObjectId'),
+    .custom((value, { req }) => {
+      const type = req.body?.targetScope?.type;
+      if (type === 'SPECIFIC_UNITS' || type === 'SPECIFIC_USERS') {
+        if (!/^[0-9a-fA-F]{24}$/.test(value)) {
+          throw new Error('Each Scope ID must be a valid Mongo ObjectId');
+        }
+      }
+      return true;
+    }),
 
   body('targetScope.targetRoleIds')
     .optional()
@@ -124,7 +131,15 @@ export const updateAssessmentSchema = [
 
   body('targetScope.scopeIds.*')
     .optional()
-    .isMongoId(),
+    .custom((value, { req }) => {
+      const type = req.body?.targetScope?.type;
+      if (type === 'SPECIFIC_UNITS' || type === 'SPECIFIC_USERS') {
+        if (!/^[0-9a-fA-F]{24}$/.test(value)) {
+          throw new Error('Each Scope ID must be a valid Mongo ObjectId');
+        }
+      }
+      return true;
+    }),
 
   body('calculationMethod.type')
     .optional()

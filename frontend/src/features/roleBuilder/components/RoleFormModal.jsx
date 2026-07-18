@@ -57,7 +57,7 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
 
 
   return (
-    <CModal visible={visible} onClose={onClose} id="role-form-modal" alignment="center" size="lg" scrollable>
+    <CModal visible={visible} onClose={onClose} id="role-form-modal" alignment="center" size="lg">
       <CModalHeader>
         <CModalTitle className="modal-title-custom">
           {role ? `Edit Role - ${role.name}` : 'Create New Role'}

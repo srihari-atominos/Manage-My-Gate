@@ -200,6 +200,30 @@ export class AssessmentService {
       failedCount,
     };
   }
+
+  /**
+   * Manually trigger billing run for assessment template.
+   */
+  async runBilling(id, orgId) {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info('runBilling manually triggered', { id, orgId, correlationId });
+
+    const assessment = await assessmentRepository.findById(id);
+    if (!assessment) {
+      throw new HttpError(404, `Assessment template with ID ${id} not found`);
+    }
+
+    if (String(assessment.communityId) !== String(orgId)) {
+      throw new HttpError(403, 'Forbidden: Assessment template belongs to another organization');
+    }
+
+    const invoiceService = (await import('../invoice/invoice.services.js')).InvoiceService;
+    const invoiceServiceInst = new invoiceService();
+    const stats = await invoiceServiceInst.generateBatchInvoices(assessment);
+
+    logger.info('Manual billing run completed stats:', { id, stats, correlationId });
+    return stats;
+  }
 }
 
 export default new AssessmentService();

@@ -14,24 +14,34 @@ router.use(tenantContext);
 
 router.post(
   '/',
+  authorizePermission('billing', 'assessment_manager'),
   validate(createAssessmentSchema),
   assessmentController.create
 );
 
 router.get(
   '/',
+  authorizePermission('billing', 'assessment_manager'),
   assessmentController.getAll
 );
 
 router.patch(
   '/:id',
+  authorizePermission('billing', 'assessment_manager'),
   validate(updateAssessmentSchema),
   assessmentController.update
 );
 
 router.delete(
   '/:id',
+  authorizePermission('billing', 'assessment_manager'),
   assessmentController.delete
+);
+
+router.post(
+  '/:id/run',
+  authorizePermission('billing', 'assessment_manager'),
+  assessmentController.run
 );
 
 export default router;

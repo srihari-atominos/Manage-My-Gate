@@ -75,27 +75,26 @@ export const useRoleForm = ({ role, visible, onSave }) => {
   }
 
   const handleTogglePermission = (permValue, checked) => {
-    let newValue = checked
-      ? [...selectedPermissions, permValue]
-      : selectedPermissions.filter((p) => p !== permValue)
+    let newValue
 
-    // Enforce mutual exclusivity for visitor context permissions (single select)
     if (checked && permValue.startsWith('visitor:')) {
-      newValue = newValue.filter((p) => !p.startsWith('visitor:') || p === permValue)
+      // For visitor radio: replace ALL existing visitor permissions with only the newly selected one
+      newValue = [
+        ...selectedPermissions.filter((p) => !p.startsWith('visitor:')),
+        permValue,
+      ]
+    } else if (!checked) {
+      // Deselect (only applies to checkboxes — visitor radios always pass checked=true)
+      newValue = selectedPermissions.filter((p) => p !== permValue)
+    } else {
+      newValue = [...selectedPermissions, permValue]
     }
 
     setValue('permissions', newValue, { shouldDirty: true, shouldValidate: true })
   }
 
   const onSubmit = async (data) => {
-    const savedRole = await onSave(data)
-    
-    if (savedRole && savedRole.id) {
-      await dispatch(syncRolePermissionsAsync({ 
-        roleId: savedRole.id, 
-        permissionIds: data.permissions 
-      }))
-    }
+    await onSave(data)
   }
 
   return {

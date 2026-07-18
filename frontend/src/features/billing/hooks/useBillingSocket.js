@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
 import useSocket from '../../../hooks/useSocket.js';
 import { syncRealtimeInvoice } from '../store/billingSlice.js';
@@ -11,16 +11,24 @@ import logger from '../../../utils/logger.js';
  * and listeners for invoice billing events, conforming to the "Thin View" pattern.
  * 
  * @param {string} userId - The unique ID of the authenticated user to join user:${userId} room
+ * @param {string} orgId - The active organization context ID to join org:${orgId} room
  */
-export const useBillingSocket = (userId) => {
+export const useBillingSocket = (userId, orgId) => {
   const dispatch = useDispatch();
-  const room = userId ? `user:${userId}` : null;
-  const socket = useSocket(room);
+
+  const rooms = useMemo(() => {
+    const list = [];
+    if (userId) list.push(`user:${userId}`);
+    if (orgId) list.push(`org:${orgId}`);
+    return list;
+  }, [userId, orgId]);
+
+  const socket = useSocket(rooms);
 
   useEffect(() => {
     if (!socket) return;
 
-    logger.info(`Registering invoice real-time listeners for room: ${room}`);
+    logger.info(`Registering invoice real-time listeners for rooms: ${rooms.join(', ')}`);
 
     // Listeners for invoice updates
     socket.on('invoice_generated', (payload) => {
@@ -41,12 +49,12 @@ export const useBillingSocket = (userId) => {
 
     // Lifecycle Cleanup
     return () => {
-      logger.info(`Cleaning up invoice real-time listeners for room: ${room}`);
+      logger.info(`Cleaning up invoice real-time listeners for rooms: ${rooms.join(', ')}`);
       socket.off('invoice_generated');
       socket.off('invoice_status_updated');
       socket.off('INVOICE_UPDATED');
     };
-  }, [socket, dispatch, room]);
+  }, [socket, dispatch, rooms]);
 };
 
 export default useBillingSocket;

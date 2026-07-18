@@ -41,12 +41,25 @@ export class InvoiceController {
   }
 
   /**
+   * Approve a pending invoice offline payment.
+   */
+  async approvePayment(req, res, next) {
+    try {
+      const { id } = req.params;
+      const data = await invoiceService.approveOfflinePayment(id);
+      res.success(data, 'Offline payment cleared and verified successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Fetch aggregated community billing dashboard metrics.
    */
   async getDashboardKPIs(req, res, next) {
     try {
-      const { communityId } = req.query;
-      const data = await invoiceService.getDashboardKPIs(communityId);
+      const orgId = req.tenant.orgId;
+      const data = await invoiceService.getDashboardKPIs(orgId);
       res.success(data, 'Dashboard billing KPIs retrieved successfully');
     } catch (error) {
       next(error);

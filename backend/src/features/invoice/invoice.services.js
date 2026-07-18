@@ -19,10 +19,21 @@ export class InvoiceService {
 
     // 1. Fetch targeted units (Villas) based on scope
     let units = [];
-    if (assessment.targetScope.type === 'ALL_COMMUNITY') {
+    const scopeType = assessment.targetScope?.type || 'ALL_COMMUNITY';
+    const scopeIds = assessment.targetScope?.scopeIds || [];
+
+    if (scopeType === 'ALL_COMMUNITY') {
       units = await villaService.getUnitsByOrgId(assessment.communityId);
-    } else if (assessment.targetScope.scopeIds && assessment.targetScope.scopeIds.length > 0) {
-      units = await villaService.getUnitsByVillaIds(assessment.targetScope.scopeIds);
+    } else if (scopeType === 'SPECIFIC_UNITS') {
+      units = await villaService.getUnitsByVillaIds(scopeIds);
+    } else if (scopeType === 'SPECIFIC_USERS') {
+      units = await villaService.getUnitsByResidentUserIds(scopeIds);
+    } else if (scopeType === 'VILLA_BLOCK') {
+      units = await villaService.getUnitsByBlockNames(scopeIds, assessment.communityId);
+    } else if (scopeType === 'UNIT_TYPE') {
+      units = await villaService.getUnitsByTypes(scopeIds, assessment.communityId);
+    } else if (scopeIds.length > 0) {
+      units = await villaService.getUnitsByVillaIds(scopeIds);
     }
 
     logger.info(`Found ${units.length} candidate units matching assessment scope`);
@@ -49,7 +60,7 @@ export class InvoiceService {
       let targetUserId = null;
       
       // Occupancy Fallback Logic
-      const targetsTenant = targetRoleNames.includes('tenant');
+      const targetsTenant = targetRoleNames.some(name => name.includes('tenant'));
       if (targetsTenant && tenantResident && tenantResident.userId) {
         targetUserId = tenantResident.userId;
       } else if (ownerResident && ownerResident.userId) {
@@ -71,13 +82,22 @@ export class InvoiceService {
       } else if (calc.type === 'TIERED_BHK') {
         const uType = (unit.type || '').toLowerCase();
         if (uType === 'studio') baseAmount = calc.tieredRates.studio || 0;
+        else if (uType === 'bhk1') baseAmount = calc.tieredRates.bhk1 || 0;
+        else if (uType === 'bhk2' || uType === 'apartment') baseAmount = calc.tieredRates.bhk2 || 0;
+        else if (uType === 'bhk3') baseAmount = calc.tieredRates.bhk3 || 0;
+        else if (uType === 'bhk4' || uType === 'villa') baseAmount = calc.tieredRates.bhk4 || 0;
         else if (uType === 'penthouse') baseAmount = calc.tieredRates.penthouse || 0;
-        else if (uType === 'villa') baseAmount = calc.tieredRates.bhk4 || 0;
+        else if (uType === 'duplex') baseAmount = calc.tieredRates.duplex || 0;
         else baseAmount = calc.tieredRates.bhk2 || 0; // fallback standard
       }
 
       const taxAmount = 0; // simple snapshot tax
       const totalDue = baseAmount + taxAmount;
+
+      if (totalDue <= 0) {
+        logger.warn(`Skipping unit ${unit.unitNumber} - Total due amount is ₹0 (Calculation type: ${calc.type}, Unit type: ${unit.type}).`);
+        continue;
+      }
 
       // Set dueDate to +10 days by default
       const dueDate = new Date();
@@ -102,9 +122,15 @@ export class InvoiceService {
     // Process one-by-one to support safe duplicate skipping & precise event emission
     for (const invoiceData of invoicesToCreate) {
       try {
-        await invoiceRepository.createBatch([invoiceData]);
-        created++;
-        invoiceEventEmitter.emit(INVOICE_GENERATED, invoiceData);
+        const createdInvoices = await invoiceRepository.createBatch([invoiceData]);
+        if (createdInvoices && createdInvoices.length > 0) {
+          const insertedInvoice = createdInvoices[0];
+          created++;
+          const invoiceObj = insertedInvoice.toObject ? insertedInvoice.toObject() : insertedInvoice;
+          // Attach communityId for organization-wide socket broadcasting
+          invoiceObj.communityId = assessment.communityId;
+          invoiceEventEmitter.emit(INVOICE_GENERATED, invoiceObj);
+        }
       } catch (error) {
         if (error instanceof HttpError && error.statusCode === 409) {
           duplicatesSkipped++;
@@ -209,13 +235,35 @@ export class InvoiceService {
   }
 
   /**
+   * Approve/verify offline payment (Admin only).
+   */
+  async approveOfflinePayment(invoiceId) {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info('approveOfflinePayment called', { invoiceId, correlationId });
+
+    const updated = await invoiceRepository.updateStatusWithLock(
+      invoiceId,
+      'PAID',
+      {
+        paid_at: new Date(),
+        settled_at: new Date(),
+      }
+    );
+
+    invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, updated);
+
+    return updated;
+  }
+
+  /**
    * Fetch portfolio dues and compliance info for a persona.
    */
   async getUserDuesOverview(userContext) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    logger.info('getUserDuesOverview called', { userId: userContext._id, correlationId });
+    const resolvedUserId = userContext.id || userContext._id;
+    logger.info('getUserDuesOverview called', { userId: resolvedUserId, correlationId });
 
-    const personalDues = await invoiceRepository.getUserPortfolioDues(userContext._id);
+    const personalDues = await invoiceRepository.getUserPortfolioDues(resolvedUserId);
 
     const secondaryCompliance = [];
 
@@ -232,7 +280,7 @@ export class InvoiceService {
 
     if (isOwner) {
       // Find units owned by this user
-      const ownedUnits = await villaService.getUnitsByOwner(userContext._id);
+      const ownedUnits = await villaService.getUnitsByOwner(resolvedUserId);
       
       for (const unit of ownedUnits) {
         // Find if occupied by tenant

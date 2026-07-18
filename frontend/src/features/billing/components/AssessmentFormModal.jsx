@@ -305,11 +305,26 @@ const RecurringSubSection = memo(({
 ));
 RecurringSubSection.displayName = 'RecurringSubSection';
 
-const ScopeTable = memo(({ rows, selectedIds, onToggle, onSelectAll, onDeselectAll, searchPlaceholder }) => {
-  const [search, setSearch] = useState('');
+const ScopeTable = memo(({ rows, selectedIds, onToggle, onSelectAll, onDeselectAll, searchPlaceholder, search, onSearchChange }) => {
+  const [localSearch, setLocalSearch] = useState('');
+  
+  const currentSearch = onSearchChange !== undefined ? search : localSearch;
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    if (onSearchChange) {
+      onSearchChange(val);
+    } else {
+      setLocalSearch(val);
+    }
+  };
+
   const filtered = useMemo(
-    () => rows.filter(r => r.label.toLowerCase().includes(search.toLowerCase())),
-    [rows, search]
+    () => {
+      if (onSearchChange !== undefined) return rows;
+      return rows.filter(r => r.label.toLowerCase().includes(localSearch.toLowerCase()));
+    },
+    [rows, localSearch, onSearchChange]
   );
   const allSelected = filtered.length > 0 && filtered.every(r => selectedIds.includes(r._id));
 
@@ -325,7 +340,7 @@ const ScopeTable = memo(({ rows, selectedIds, onToggle, onSelectAll, onDeselectA
             position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)',
             color: '#94A3B8', fontSize: '12px', pointerEvents: 'none',
           }} />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+          <input type="text" value={currentSearch} onChange={handleSearchChange}
             placeholder={searchPlaceholder} style={{
               width: '100%', padding: '7px 10px 7px 30px', fontSize: '13px',
               border: '1px solid var(--border-light, #E2E8F0)', borderRadius: '7px',
@@ -360,7 +375,7 @@ const ScopeTable = memo(({ rows, selectedIds, onToggle, onSelectAll, onDeselectA
             color: 'var(--text-light, #94A3B8)', gap: '8px',
           }}>
             <i className="fa-solid fa-magnifying-glass" style={{ fontSize: '20px' }} />
-            <span style={{ fontSize: '13px' }}>No results for "{search}"</span>
+            <span style={{ fontSize: '13px' }}>No results for "{currentSearch}"</span>
           </div>
         ) : filtered.map((row, idx) => {
           const isChecked = selectedIds.includes(row._id);
@@ -419,6 +434,8 @@ const AssessmentFormModalInner = memo(({ onClose, onSuccess, assessment = null }
     showUTypeChips,
     activeErrors,
     hasErrors,
+    userSearch, setUserSearch,
+    unitSearch, setUnitSearch,
     handleTypeChange,
     handleBillingCycleChange,
     handleToggleDay,
@@ -742,6 +759,8 @@ const AssessmentFormModalInner = memo(({ onClose, onSuccess, assessment = null }
               rows={scopeRows} selectedIds={selectedIds}
               onToggle={handleToggleId} onSelectAll={handleSelectAll} onDeselectAll={handleDeselectAll}
               searchPlaceholder={scopeType === 'SPECIFIC_USERS' ? 'Search residents by name...' : 'Search units or villas...'}
+              search={scopeType === 'SPECIFIC_USERS' ? userSearch : (scopeType === 'SPECIFIC_UNITS' ? unitSearch : undefined)}
+              onSearchChange={scopeType === 'SPECIFIC_USERS' ? setUserSearch : (scopeType === 'SPECIFIC_UNITS' ? setUnitSearch : undefined)}
             />
           )}
 

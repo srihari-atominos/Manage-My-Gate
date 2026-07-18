@@ -37,10 +37,10 @@ export const fetchInvoicesGrid = createAsyncThunk(
       const innerData = body?.data || body;
       return {
         data: Array.isArray(innerData) ? innerData : (innerData?.data || []),
-        totalRecords: innerData?.totalRecords || 0,
-        currentPage: page || 1,
-        limit: limit || 10,
-        totalPages: innerData?.totalPages || 1,
+        totalRecords: innerData?.pagination?.totalRecords || innerData?.totalRecords || 0,
+        currentPage: innerData?.pagination?.currentPage || page || 1,
+        limit: innerData?.pagination?.limit || limit || 10,
+        totalPages: innerData?.pagination?.totalPages || innerData?.totalPages || 1,
       };
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch invoices grid');
@@ -77,9 +77,146 @@ export const submitOfflineSettlement = createAsyncThunk(
   }
 );
 
+export const clearOfflineSettlement = createAsyncThunk(
+  'billing/clearOfflineSettlement',
+  async (invoiceId, { rejectWithValue }) => {
+    try {
+      const response = await billingService.approveInvoiceOffline(invoiceId);
+      const body = response?.success !== undefined ? response : response?.data;
+      return body?.data || body;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to approve offline payment');
+    }
+  }
+);
+
+const performInvoiceSync = (state, updatedInvoice) => {
+  if (!updatedInvoice) return;
+
+  // Map fields to match what the grid expects
+  const targetUser = updatedInvoice.targetUserId
+    ? (updatedInvoice.targetUserId.name || updatedInvoice.targetUserId.username)
+    : (updatedInvoice.targetUser || '—');
+  
+  const unitNumber = updatedInvoice.unitId
+    ? (updatedInvoice.unitId.unitNumber || updatedInvoice.unitNumber || '—')
+    : (updatedInvoice.unitNumber || '—');
+
+  const dateVal = updatedInvoice.createdAt
+    ? new Date(updatedInvoice.createdAt).toISOString().split('T')[0]
+    : (updatedInvoice.date || new Date().toISOString().split('T')[0]);
+
+  const mappedInvoice = {
+    _id: updatedInvoice._id,
+    invoiceNumber: updatedInvoice.invoiceNumber,
+    date: dateVal,
+    unitNumber,
+    targetUser,
+    amount: updatedInvoice.totalDue || updatedInvoice.amount || 0,
+    currency: '₹',
+    status: updatedInvoice.status,
+    paymentMethod: updatedInvoice.paymentMethod || '—',
+    offlineReference: updatedInvoice.offlineReference || null,
+  };
+
+  // 1. Sync invoicesList grid
+  const index = state.invoicesList.findIndex((inv) => inv._id === updatedInvoice._id);
+  let oldStatus = null;
+  const amount = updatedInvoice.totalDue || updatedInvoice.amount || 0;
+
+  if (index !== -1) {
+    oldStatus = state.invoicesList[index].status;
+    state.invoicesList[index] = { ...state.invoicesList[index], ...mappedInvoice };
+  } else {
+    // Prepend new invoice to the list
+    state.invoicesList = [mappedInvoice, ...state.invoicesList];
+    state.pagination.totalRecords += 1;
+  }
+
+  // 2. Sync KPIs
+  const newStatus = updatedInvoice.status;
+  if (state.kpis) {
+    if (oldStatus) {
+      if (oldStatus !== newStatus) {
+        // Subtract from old status
+        if (oldStatus === 'PAID') {
+          state.kpis.totalCollected = Math.max(0, state.kpis.totalCollected - amount);
+        } else if (oldStatus === 'UNPAID') {
+          state.kpis.totalUnpaidArrears = Math.max(0, state.kpis.totalUnpaidArrears - amount);
+        } else if (oldStatus === 'VERIFICATION_PENDING') {
+          state.kpis.inTransitGateway = Math.max(0, state.kpis.inTransitGateway - amount);
+        }
+
+        // Add to new status
+        if (newStatus === 'PAID') {
+          state.kpis.totalCollected += amount;
+        } else if (newStatus === 'UNPAID') {
+          state.kpis.totalUnpaidArrears += amount;
+        } else if (newStatus === 'VERIFICATION_PENDING') {
+          state.kpis.inTransitGateway += amount;
+        }
+      }
+    } else {
+      // New invoice addition
+      state.kpis.grossDemand += amount;
+      state.kpis.grossDemandCount = (state.kpis.grossDemandCount || 0) + 1;
+      if (newStatus === 'PAID') {
+        state.kpis.totalCollected += amount;
+      } else if (newStatus === 'UNPAID') {
+        state.kpis.totalUnpaidArrears += amount;
+      } else if (newStatus === 'VERIFICATION_PENDING') {
+        state.kpis.inTransitGateway += amount;
+      }
+    }
+  }
+
+  // 2. Sync activeDues portfolio (if invoice becomes PAID, remove from active dues)
+  if (state.activeDues && state.activeDues.unitBreakdown) {
+    const breakdownIndex = state.activeDues.unitBreakdown.findIndex(
+      (item) => (item.invoiceId || item._id) === updatedInvoice._id
+    );
+
+    if (breakdownIndex !== -1) {
+      if (updatedInvoice.status === 'PAID') {
+        const removed = state.activeDues.unitBreakdown.splice(breakdownIndex, 1)[0];
+        state.activeDues.totalPortfolioDue = Math.max(
+          0,
+          state.activeDues.totalPortfolioDue - (removed.totalDue || 0)
+        );
+      } else {
+        state.activeDues.unitBreakdown[breakdownIndex] = {
+          ...state.activeDues.unitBreakdown[breakdownIndex],
+          status: updatedInvoice.status,
+          totalDue: updatedInvoice.totalDue || updatedInvoice.amount || 0,
+        };
+        // Recalculate total due
+        state.activeDues.totalPortfolioDue = state.activeDues.unitBreakdown.reduce(
+          (sum, item) => sum + (item.totalDue || 0),
+          0
+        );
+      }
+    } else if (updatedInvoice.status !== 'PAID') {
+      // Add to active dues
+      const newDue = {
+        invoiceId: updatedInvoice._id,
+        invoiceNumber: updatedInvoice.invoiceNumber,
+        unitId: updatedInvoice.unitId?._id || updatedInvoice.unitId,
+        unitNumber,
+        totalDue: updatedInvoice.totalDue || updatedInvoice.amount || 0,
+        billingPeriodString: updatedInvoice.billingPeriodString,
+        status: updatedInvoice.status,
+        dueDate: updatedInvoice.dueDate,
+      };
+      state.activeDues.unitBreakdown.push(newDue);
+      state.activeDues.totalPortfolioDue += newDue.totalDue;
+    }
+  }
+};
+
 const initialState = {
   kpis: {
     grossDemand: 0,
+    grossDemandCount: 0,
     totalCollected: 0,
     inTransitGateway: 0,
     totalUnpaidArrears: 0,
@@ -114,42 +251,7 @@ export const billingSlice = createSlice({
       state.error = null;
     },
     syncRealtimeInvoice: (state, action) => {
-      const updatedInvoice = action.payload;
-      if (!updatedInvoice) return;
-
-      // 1. Sync invoicesList grid
-      const index = state.invoicesList.findIndex((inv) => inv._id === updatedInvoice._id);
-      if (index !== -1) {
-        state.invoicesList[index] = { ...state.invoicesList[index], ...updatedInvoice };
-      }
-
-      // 2. Sync activeDues portfolio (if invoice becomes PAID, remove from active dues)
-      if (state.activeDues && state.activeDues.unitBreakdown) {
-        const breakdownIndex = state.activeDues.unitBreakdown.findIndex(
-          (item) => (item.invoiceId || item._id) === updatedInvoice._id
-        );
-
-        if (breakdownIndex !== -1) {
-          if (updatedInvoice.status === 'PAID') {
-            const removed = state.activeDues.unitBreakdown.splice(breakdownIndex, 1)[0];
-            state.activeDues.totalPortfolioDue = Math.max(
-              0,
-              state.activeDues.totalPortfolioDue - (removed.totalDue || 0)
-            );
-          } else {
-            state.activeDues.unitBreakdown[breakdownIndex] = {
-              ...state.activeDues.unitBreakdown[breakdownIndex],
-              status: updatedInvoice.status,
-              totalDue: updatedInvoice.totalDue,
-            };
-            // Recalculate total due
-            state.activeDues.totalPortfolioDue = state.activeDues.unitBreakdown.reduce(
-              (sum, item) => sum + (item.totalDue || 0),
-              0
-            );
-          }
-        }
-      }
+      performInvoiceSync(state, action.payload);
     },
   },
   extraReducers: (builder) => {
@@ -227,16 +329,23 @@ export const billingSlice = createSlice({
       })
       .addCase(submitOfflineSettlement.fulfilled, (state, action) => {
         state.loadingStates.settleInvoice = false;
-        // Sync the updated invoice
-        if (action.payload) {
-          const updated = action.payload;
-          const index = state.invoicesList.findIndex((inv) => inv._id === updated._id);
-          if (index !== -1) {
-            state.invoicesList[index] = { ...state.invoicesList[index], ...updated };
-          }
-        }
+        performInvoiceSync(state, action.payload);
       })
       .addCase(submitOfflineSettlement.rejected, (state, action) => {
+        state.loadingStates.settleInvoice = false;
+        state.error = action.payload;
+      })
+
+      // clearOfflineSettlement
+      .addCase(clearOfflineSettlement.pending, (state) => {
+        state.loadingStates.settleInvoice = true;
+        state.error = null;
+      })
+      .addCase(clearOfflineSettlement.fulfilled, (state, action) => {
+        state.loadingStates.settleInvoice = false;
+        performInvoiceSync(state, action.payload);
+      })
+      .addCase(clearOfflineSettlement.rejected, (state, action) => {
         state.loadingStates.settleInvoice = false;
         state.error = action.payload;
       });

@@ -34,3 +34,11 @@ export const offlineSettleSchema = [
     .isIn(['CHEQUE', 'NEFT', 'CASH'])
     .withMessage('Payment method must be one of CHEQUE, NEFT, or CASH'),
 ];
+
+export const approveInvoiceSchema = [
+  param('id')
+    .notEmpty()
+    .withMessage('Invoice ID path parameter is required')
+    .isMongoId()
+    .withMessage('Invoice ID must be a valid Mongo ObjectId'),
+];

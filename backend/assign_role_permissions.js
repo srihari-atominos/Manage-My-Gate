@@ -21,6 +21,7 @@ import { Permission }     from './src/features/permission/permission.model.js';
 import { RolePermission } from './src/features/rolePermission/rolePermission.model.js';
 import Role               from './src/features/role/role.model.js';
 import Organization       from './src/features/organization/organization.model.js';
+import { syncPermissions } from './src/utils/permissionSync.util.js';
 
 // ── Permission Matrices per Role ──────────────────────────
 // Format: 'feature:action'  (must exactly match permissions.json)
@@ -50,6 +51,8 @@ const ROLE_PERMISSIONS = {
     'visitor:admin', 'visitor:resident', 'visitor:guard',
     // Notices
     'notices:create', 'notices:read', 'notices:update', 'notices:delete',
+    // Billing
+    'billing:dashboard', 'billing:assessment_manager', 'billing:action_center',
   ],
 
   'Facility Manager': [
@@ -69,6 +72,8 @@ const ROLE_PERMISSIONS = {
     'notices:create', 'notices:read', 'notices:update',
     // Visitor — admin view
     'visitor:admin',
+    // Billing
+    'billing:dashboard', 'billing:action_center',
   ],
 
   'Security Guard': [
@@ -94,6 +99,8 @@ const ROLE_PERMISSIONS = {
     'visitor:resident',
     // Notices — read
     'notices:read',
+    // Billing
+    'billing:action_center',
   ],
 
   'Resident Tenant': [
@@ -108,6 +115,8 @@ const ROLE_PERMISSIONS = {
     'visitor:resident',
     // Notices — read
     'notices:read',
+    // Billing
+    'billing:action_center',
   ],
 
   'Family Member': [
@@ -127,6 +136,11 @@ async function run() {
 
   await mongoose.connect(MONGO_URI);
   console.log('✅  MongoDB connected.\n');
+
+  // Sync permissions first from permissions.json
+  console.log('⏳  Syncing permissions from permissions.json...');
+  await syncPermissions();
+  console.log('✔  Permissions synced successfully.\n');
 
   // 1. Load the org
   const org = await Organization.findOne({ name: ORG_NAME });

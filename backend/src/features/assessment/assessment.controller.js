@@ -6,7 +6,10 @@ export class AssessmentController {
    */
   async create(req, res, next) {
     try {
-      const data = await assessmentService.createAssessment(req.body);
+      const data = await assessmentService.createAssessment({
+        ...req.body,
+        communityId: req.tenant.orgId,
+      });
       res.success(data, 'Assessment template created successfully', 201);
     } catch (error) {
       next(error);
@@ -37,7 +40,11 @@ export class AssessmentController {
    */
   async getAll(req, res, next) {
     try {
-      const data = await assessmentService.getAssessments(req.query);
+      const query = {
+        ...req.query,
+        communityId: req.tenant.orgId,
+      };
+      const data = await assessmentService.getAssessments(query);
       res.success(data, 'Assessment templates retrieved successfully');
     } catch (error) {
       next(error);
@@ -52,6 +59,19 @@ export class AssessmentController {
       const { id } = req.params;
       const result = await assessmentService.deleteAssessment(id);
       res.success(result, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Manually trigger billing run for assessment template.
+   */
+  async run(req, res, next) {
+    try {
+      const { id } = req.params;
+      const data = await assessmentService.runBilling(id, req.tenant.orgId);
+      res.success(data, 'Manual billing run completed successfully');
     } catch (error) {
       next(error);
     }

@@ -225,6 +225,8 @@ export class RoleService {
     }
     
     const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+    await rolePermissionService.updateRolePermissions(roleId, permissionIds);
+    return await rolePermissionService.getPermissionsByRoleId(roleId);
   }
 
   async getRolesByIds(ids, session = null) {

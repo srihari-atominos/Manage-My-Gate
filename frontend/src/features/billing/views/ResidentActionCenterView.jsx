@@ -1,4 +1,4 @@
-import React, { memo, useEffect } from 'react';
+import React, { memo, useEffect, useMemo } from 'react';
 import HeroLiabilityBanner  from '../components/HeroLiabilityBanner';
 import TenantComplianceBadge from '../components/TenantComplianceBadge';
 import { useBilling } from '../hooks/useBilling';
@@ -66,8 +66,6 @@ const ResidentActionCenterView = memo(() => {
   );
 });
 
-// Helper imports hook needs useMemo
-import { useMemo } from 'react';
 
 ResidentActionCenterView.displayName = 'ResidentActionCenterView';
 

@@ -53,7 +53,7 @@ export class InvoiceRepository {
         $facet: {
           grossDemand: [
             { $match: { status: { $ne: 'CANCELLED' } } },
-            { $group: { _id: null, total: { $sum: '$totalDue' } } },
+            { $group: { _id: null, total: { $sum: '$totalDue' }, count: { $sum: 1 } } },
           ],
           totalCollected: [
             { $match: { status: 'PAID', paid_at: { $ne: null } } },
@@ -63,8 +63,12 @@ export class InvoiceRepository {
             { $match: { status: 'PAID', paid_at: { $ne: null }, settled_at: null } },
             { $group: { _id: null, total: { $sum: '$totalDue' } } },
           ],
+          pendingOffline: [
+            { $match: { status: 'VERIFICATION_PENDING' } },
+            { $group: { _id: null, total: { $sum: '$totalDue' } } },
+          ],
           totalUnpaidArrears: [
-            { $match: { status: { $in: ['UNPAID', 'VERIFICATION_PENDING'] } } },
+            { $match: { status: 'UNPAID' } },
             { $group: { _id: null, total: { $sum: '$totalDue' } } },
           ],
         },
@@ -73,11 +77,19 @@ export class InvoiceRepository {
 
     const kpis = result[0];
 
+    const grossDemand = kpis?.grossDemand[0]?.total || 0;
+    const grossDemandCount = kpis?.grossDemand[0]?.count || 0;
+    const totalCollected = kpis?.totalCollected[0]?.total || 0;
+    const inTransitGateway = kpis?.inTransitGateway[0]?.total || 0;
+    const pendingOffline = kpis?.pendingOffline[0]?.total || 0;
+    const totalUnpaidArrears = kpis?.totalUnpaidArrears[0]?.total || 0;
+
     return {
-      grossDemand: kpis?.grossDemand[0]?.total || 0,
-      totalCollected: kpis?.totalCollected[0]?.total || 0,
-      inTransitGateway: kpis?.inTransitGateway[0]?.total || 0,
-      totalUnpaidArrears: kpis?.totalUnpaidArrears[0]?.total || 0,
+      grossDemand,
+      grossDemandCount,
+      totalCollected,
+      inTransitGateway: inTransitGateway + pendingOffline,
+      totalUnpaidArrears,
     };
   }
 
@@ -160,8 +172,8 @@ export class InvoiceRepository {
     if (newStatus === 'PAID') {
       invoice.paid_at = paymentData.paid_at || new Date();
       invoice.settled_at = paymentData.settled_at || null;
-      invoice.paymentMethod = paymentData.paymentMethod || null;
-      invoice.offlineReference = paymentData.offlineReference || null;
+      invoice.paymentMethod = paymentData.paymentMethod || invoice.paymentMethod || null;
+      invoice.offlineReference = paymentData.offlineReference || invoice.offlineReference || null;
     } else if (newStatus === 'CANCELLED') {
       invoice.paid_at = null;
       invoice.settled_at = null;

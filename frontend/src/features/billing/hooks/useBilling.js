@@ -6,6 +6,7 @@ import {
   fetchInvoicesGrid,
   executeManualTrigger,
   submitOfflineSettlement,
+  clearOfflineSettlement,
   clearBillingError,
 } from '../store/billingSlice.js';
 
@@ -82,6 +83,13 @@ export const useBilling = () => {
     [dispatch]
   );
 
+  const approveOffline = useCallback(
+    (invoiceId) => {
+      return dispatch(clearOfflineSettlement(invoiceId));
+    },
+    [dispatch]
+  );
+
   const resetBillingError = useCallback(
     () => {
       dispatch(clearBillingError());
@@ -105,6 +113,7 @@ export const useBilling = () => {
     changeTablePage,
     triggerManualRun,
     settleOffline,
+    approveOffline,
     resetBillingError,
   };
 };

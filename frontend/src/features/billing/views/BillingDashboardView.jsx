@@ -9,6 +9,9 @@ import '../styles/_billing.scss';
  * Admin dashboard tab — community billing ledger with KPI strip and data grid.
  */
 const BillingDashboardView = memo(() => {
+  const billingData = useBilling();
+  console.log('DEBUG [BillingDashboardView] useBilling returned keys:', Object.keys(billingData));
+  
   const {
     kpis,
     invoicesList,
@@ -18,7 +21,8 @@ const BillingDashboardView = memo(() => {
     loadAdminDashboard,
     changeTablePage,
     settleOffline,
-  } = useBilling();
+    approveOffline,
+  } = billingData;
 
   useEffect(() => {
     if (activeOrgId) {
@@ -52,6 +56,7 @@ const BillingDashboardView = memo(() => {
         loading={loadingStates.fetchGrid || loadingStates.fetchKPIs}
         onPageChange={changeTablePage}
         onSettleOffline={settleOffline}
+        onApproveOffline={approveOffline}
       />
 
     </div>

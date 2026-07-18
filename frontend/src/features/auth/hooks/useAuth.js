@@ -80,6 +80,9 @@ export const useAuth = () => {
   const checkPermission = (permissionName) => {
     if (!currentUser) return false
     if (currentUser.role === 'Super Admin' || currentUser.role === 'Platform Super Admin') return true
+    if (Array.isArray(permissionName)) {
+      return permissionName.some((perm) => currentUser.permissions && currentUser.permissions.includes(perm))
+    }
     return !!(currentUser.permissions && currentUser.permissions.includes(permissionName))
   }
 

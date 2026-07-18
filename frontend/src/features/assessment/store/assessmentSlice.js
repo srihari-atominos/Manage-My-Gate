@@ -55,6 +55,19 @@ export const deleteAssessmentTemplate = createAsyncThunk(
   }
 );
 
+export const runBillingCycle = createAsyncThunk(
+  'assessment/runBillingCycle',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await assessmentService.runAssessment(id);
+      const body = response?.success !== undefined ? response : response?.data;
+      return body?.data || body;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to trigger manual billing run');
+    }
+  }
+);
+
 const initialState = {
   assessmentsList: [],
   activeTemplate: null,
@@ -146,6 +159,19 @@ export const assessmentSlice = createSlice({
         }
       })
       .addCase(deleteAssessmentTemplate.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // runBillingCycle
+      .addCase(runBillingCycle.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(runBillingCycle.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(runBillingCycle.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

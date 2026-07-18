@@ -12,15 +12,17 @@ const villaSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Unit number is required'],
       trim: true,
+      alias: 'villaNumber',
     },
     blockOrBuilding: {
       type: String,
       trim: true,
       default: '',
+      alias: 'block',
     },
     type: {
       type: String,
-      enum: ['Studio', 'Apartment', 'Villa', 'Penthouse'],
+      enum: ['Studio', 'Apartment', 'Villa', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex'],
       default: 'Apartment',
     },
     status: {
@@ -62,6 +64,8 @@ const villaSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
 
