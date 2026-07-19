@@ -55,7 +55,7 @@ export const useAuth = () => {
       const resultAction = await dispatch(acceptInvitation({ token, password }))
       if (acceptInvitation.fulfilled.match(resultAction)) {
         toast.success(t('auth.invite.success'))
-        navigate('/login')
+        navigate('/dashboard')
         return { success: true }
       } else {
         const errorMsg = resultAction.payload || t('auth.invite.error')
