@@ -28,6 +28,7 @@ export class AmenityBookingRepository {
     if (filters.status) matchStage.status = filters.status;
     if (filters.amenityId) matchStage.amenityId = new mongoose.Types.ObjectId(filters.amenityId);
     if (filters.date) matchStage.bookingDate = filters.date;
+    if (filters.bookingDate) matchStage.bookingDate = filters.bookingDate;
     if (filters.userId) matchStage.userId = new mongoose.Types.ObjectId(filters.userId);
     if (filters.checkedInBy) matchStage.checkedInBy = new mongoose.Types.ObjectId(filters.checkedInBy);
 
