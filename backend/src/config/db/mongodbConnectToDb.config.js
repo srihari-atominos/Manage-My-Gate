@@ -6,19 +6,22 @@ import logger from '../../utils/logger.utils.js';
  * Establishes a connection to the MongoDB database.
  * @returns {Promise<void>}
  */
-export const connectToDb = async () => {
-  try {
-    const connectionInstance = await mongoose.connect(config.mongodb.uri, { retryWrites: false });
-    logger.info(`MongoDB connected successfully! DB HOST: ${connectionInstance.connection.host}`);
+export const connectToDb = async (retries = 5, delayMs = 3000) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const connectionInstance = await mongoose.connect(config.mongodb.uri, {
+        retryWrites: false,
+        serverSelectionTimeoutMS: 10000,
+        connectTimeoutMS: 10000,
+      });
+      logger.info(`MongoDB connected successfully! DB HOST: ${connectionInstance.connection.host}`);
 
-    // Development Bypass for MongoDB Transactions
-    // Standalone instances do not support transactions, which crashes the app locally.
-    if (config.nodeEnv !== 'production') {
+      // Check MongoDB Topology to handle standalone database instances without crashing on transactions
       const topologyType = mongoose.connection.getClient().topology?.description?.type;
       const isStandalone = topologyType === 'Single' || topologyType === 'Unknown';
 
       if (isStandalone) {
-        logger.warn('Running on a Standalone MongoDB instance in development mode. Bypassing Mongoose Transactions to prevent crashes.');
+        logger.warn('Connected to a Standalone MongoDB instance. Enabling safe Mongoose transaction fallback to prevent transaction errors.');
         
         // Return a mock session to satisfy code that calls startTransaction()
         mongoose.startSession = async function() {
@@ -64,10 +67,15 @@ export const connectToDb = async () => {
           return originalInsertMany.apply(this, arguments);
         };
       }
+      return;
+    } catch (error) {
+      logger.error(`MongoDB connection attempt ${attempt}/${retries} FAILED: ${error.message}`);
+      if (attempt === retries) {
+        logger.error('All MongoDB connection retries exhausted. Server startup FAILED.');
+        process.exit(1);
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
-  } catch (error) {
-    logger.error('MongoDB connection FAILED: ', error);
-    process.exit(1);
   }
 };
 

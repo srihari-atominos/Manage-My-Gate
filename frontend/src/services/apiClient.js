@@ -76,7 +76,18 @@ apiClient.interceptors.response.use(
     }
 
     // Handle 401 Unauthorized globally with Silent Refresh
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    // Auth endpoints (login, register, refresh-token, etc.) must not trigger a silent refresh retry
+    const isAuthEndpoint = originalRequest && originalRequest.url && (
+      originalRequest.url.includes('/auth/login') ||
+      originalRequest.url.includes('/auth/refresh-token') ||
+      originalRequest.url.includes('/auth/register') ||
+      originalRequest.url.includes('/auth/forgot-password') ||
+      originalRequest.url.includes('/auth/reset-password') ||
+      originalRequest.url.includes('/auth/verify-phone') ||
+      originalRequest.url.includes('/auth/verify-email-otp')
+    );
+
+    if (error.response && error.response.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });

@@ -54,6 +54,7 @@ export const syncPermissions = async () => {
         name: 'System Platform',
         isPlatform: true,
         status: 'Active',
+        organizationType: 'Other',
       });
       logger.info(`Bootstrapped platform Organization: "System Platform" with ID: ${platformOrg._id}`);
     }
@@ -83,41 +84,55 @@ export const syncPermissions = async () => {
     }
 
     // 6. Bootstrap default Super Admin user using env credentials
-    const adminEmail = process.env.SUPER_ADMIN_EMAIL;
-    const adminUsername = process.env.SUPER_ADMIN_USERNAME;
-    const adminPassword = process.env.SUPER_ADMIN_PASSWORD;
+    const adminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@enterprise.com').trim().toLowerCase();
+    const adminUsername = (process.env.SUPER_ADMIN_USERNAME || 'superadmin').trim();
+    const adminPassword = process.env.SUPER_ADMIN_PASSWORD || 'SuperAdminPwd@123!';
 
-    if (!adminEmail || !adminUsername || !adminPassword) {
-      logger.warn('Super Admin environment credentials missing. Skipping Super Admin user bootstrapping.');
-      return;
+    const { hashPassword } = await import('./crypto.utils.js');
+    const User = (await import('../features/user/user.model.js')).default;
+
+    let userByEmail = await User.findOne({ email: adminEmail });
+    let userByUsername = await User.findOne({ username: adminUsername });
+
+    let targetUser = userByUsername || userByEmail;
+
+    // Remove conflicting second document if email and username belong to two different documents
+    if (userByEmail && userByUsername && userByEmail._id.toString() !== userByUsername._id.toString()) {
+      await User.deleteOne({ _id: userByEmail._id });
+      targetUser = userByUsername;
     }
 
-    let superAdminUser = await userService.getUserByEmail(adminEmail);
-
-    if (!superAdminUser) {
-      superAdminUser = await userService.createUser({
+    if (!targetUser) {
+      targetUser = await userService.createUser({
         email: adminEmail,
         username: adminUsername,
         password: adminPassword,
         status: 'Active',
+        roles: [superAdminRole._id],
       });
       logger.info(`Successfully bootstrapped default Super Admin user: email="${adminEmail}", username="${adminUsername}"`);
     } else {
-      if (superAdminUser.status !== 'Active') {
-        const User = (await import('../features/user/user.model.js')).default;
-        await User.updateOne({ _id: superAdminUser._id }, { status: 'Active' });
-        superAdminUser.status = 'Active';
-        logger.info('Updated existing Super Admin user status to "Active".');
-      }
-      logger.info('Super Admin user already bootstrapped.');
+      const hashedPassword = await hashPassword(adminPassword);
+      await User.updateOne(
+        { _id: targetUser._id },
+        { 
+          email: adminEmail,
+          username: adminUsername,
+          password: hashedPassword, 
+          status: 'Active', 
+          $addToSet: { roles: superAdminRole._id }
+        }
+      );
+      targetUser.status = 'Active';
+      logger.info(`Updated existing Super Admin user credentials: email="${adminEmail}", username="${adminUsername}"`);
     }
 
     // 7. Link Super Admin user to the Platform organization
     const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
-    let membership = await OrgMembership.findOne({ userId: superAdminUser._id, orgId: platformOrg._id });
+    let membership = await OrgMembership.findOne({ userId: targetUser._id, orgId: platformOrg._id });
     if (!membership) {
       await OrgMembership.create({
-        userId: superAdminUser._id,
+        userId: targetUser._id,
         orgId: platformOrg._id,
         roleIds: [superAdminRole._id],
         roleId: superAdminRole._id,

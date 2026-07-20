@@ -35,7 +35,7 @@ class MessageBroker {
       // Publisher client
       this.publisher = new Redis(redisUrl, {
         maxRetriesPerRequest: null,
-        enableOfflineQueue: false,
+        enableOfflineQueue: true,
         lazyConnect: false,
         retryStrategy: buildRetryStrategy('Publisher'),
       });
@@ -43,7 +43,7 @@ class MessageBroker {
       // Subscriber client
       this.subscriber = new Redis(redisUrl, {
         maxRetriesPerRequest: null,
-        enableOfflineQueue: false,
+        enableOfflineQueue: true,
         lazyConnect: false,
         retryStrategy: buildRetryStrategy('Subscriber'),
       });

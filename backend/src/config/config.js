@@ -34,8 +34,8 @@ export const config = {
   encryptionKey: process.env.ENCRYPTION_KEY,
   cors: {
     allowedOrigins: (() => {
-      const origins = process.env.ALLOWED_ORIGINS
-        ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+      let rawOrigins = process.env.ALLOWED_ORIGINS
+        ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim().replace(/\/+$/, ''))
         : [
             'http://localhost:3000',
             'http://localhost:3001',
@@ -49,22 +49,26 @@ export const config = {
             'http://[::1]:3001',
             'http://[::1]:5173'
           ];
+      if (process.env.CLIENT_URL) {
+        rawOrigins.push(process.env.CLIENT_URL.trim().replace(/\/+$/, ''));
+      }
       const host = process.env.HOST || 'localhost';
       const port = parseInt(process.env.PORT || '5000', 10);
-      origins.push(`http://${host}:${port}`);
-      origins.push(`http://127.0.0.1:${port}`);
+      rawOrigins.push(`http://${host}:${port}`);
+      rawOrigins.push(`http://127.0.0.1:${port}`);
       if (host !== 'localhost') {
-        origins.push(`http://localhost:${port}`);
+        rawOrigins.push(`http://localhost:${port}`);
       }
-      return [...new Set(origins)];
+      return [...new Set(rawOrigins.filter(Boolean))];
     })()
   },
   nodeEnv: process.env.NODE_ENV || 'development',
   avatarUploadPath: process.env.AVATAR_UPLOAD_PATH || 'uploads/avatars',
   sso: {
-    googleClientId: process.env.GOOGLE_CLIENT_ID,
-    microsoftClientId: process.env.MICROSOFT_CLIENT_ID,
-    microsoftTenantId: process.env.MICROSOFT_TENANT_ID || 'common',
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+    googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    microsoftClientId: process.env.MICROSOFT_CLIENT_ID || '',
+    microsoftTenantId: process.env.MICROSOFT_TENANT_ID || '',
   },
 };
 

@@ -16,7 +16,7 @@ import { MsalProvider } from '@azure/msal-react'
 
 const msalConfig = {
   auth: {
-    clientId: import.meta.env.VITE_MICROSOFT_CLIENT_ID || 'placeholder-ms-client-id',
+    clientId: import.meta.env.VITE_MICROSOFT_CLIENT_ID || '',
     authority: `https://login.microsoftonline.com/${import.meta.env.VITE_MICROSOFT_TENANT_ID || 'common'}`,
     redirectUri: window.location.origin,
   },
@@ -50,31 +50,25 @@ try {
   console.error('Failed to bootstrap workspace hydration from localStorage:', error)
 }
 
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
+const renderApp = () => (
+  <ErrorBoundary>
+    <Provider store={store}>
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <MsalProvider instance={msalInstance}>
+          <App />
+        </MsalProvider>
+      </GoogleOAuthProvider>
+    </Provider>
+  </ErrorBoundary>
+);
+
 // Initialize MSAL and then render the app
 msalInstance.initialize().then(() => {
-  createRoot(document.getElementById('root')).render(
-    <ErrorBoundary>
-      <Provider store={store}>
-        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'placeholder-google-client-id'}>
-          <MsalProvider instance={msalInstance}>
-            <App />
-          </MsalProvider>
-        </GoogleOAuthProvider>
-      </Provider>
-    </ErrorBoundary>,
-  )
+  createRoot(document.getElementById('root')).render(renderApp());
 }).catch(err => {
   console.error("MSAL Initialization failed:", err);
   // Render anyway so the rest of the app works, even if Microsoft SSO fails
-  createRoot(document.getElementById('root')).render(
-    <ErrorBoundary>
-      <Provider store={store}>
-        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'placeholder-google-client-id'}>
-          <MsalProvider instance={msalInstance}>
-            <App />
-          </MsalProvider>
-        </GoogleOAuthProvider>
-      </Provider>
-    </ErrorBoundary>,
-  )
+  createRoot(document.getElementById('root')).render(renderApp());
 });

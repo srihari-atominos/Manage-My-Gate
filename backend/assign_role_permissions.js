@@ -142,15 +142,11 @@ async function run() {
   await syncPermissions();
   console.log('✔  Permissions synced successfully.\n');
 
-  // 1. Load the org
-  const org = await Organization.findOne({ name: ORG_NAME });
-  if (!org) {
-    console.error(`❌  Organization "${ORG_NAME}" not found. Run seed_full_flow.js first.`);
-    process.exit(1);
-  }
-  console.log(`✔  Org found: ${org.name} [${org._id}]\n`);
+  // 1. Load all Orgs
+  const orgs = await Organization.find({});
+  console.log(`✔  Found ${orgs.length} organizations in DB.\n`);
 
-  // 2. Load all Permission documents into a lookup map  name → _id
+  // 2. Load all Permission documents into a lookup map name → _id
   const allPermissions = await Permission.find({}).lean();
   const permMap = {};
   for (const p of allPermissions) {
@@ -158,42 +154,44 @@ async function run() {
   }
   console.log(`✔  Loaded ${allPermissions.length} permissions from DB.\n`);
 
-  // 3. Load roles for this org
-  const orgRoles = await Role.find({ orgId: org._id }).lean();
-  console.log(`✔  Found ${orgRoles.length} roles in org.\n`);
-
-  // 4. Assign permissions per role
+  // 3. For each Org, process roles
   let totalMapped = 0;
   let totalSkipped = 0;
 
-  for (const role of orgRoles) {
-    const permNames = ROLE_PERMISSIONS[role.name];
-    if (!permNames) {
-      console.log(`⚠️   No permission matrix defined for role "${role.name}" — skipping.`);
-      continue;
-    }
+  for (const org of orgs) {
+    console.log(`🏢  Processing organization: "${org.name}" [${org._id}]`);
+    const orgRoles = await Role.find({ orgId: org._id }).lean();
+    console.log(`   Found ${orgRoles.length} roles.`);
 
-    console.log(`⏳  Assigning ${permNames.length} permissions to "${role.name}"…`);
-
-    // Remove existing mappings to avoid duplicates on re-run
-    await RolePermission.deleteMany({ roleId: role._id });
-
-    const mappings = [];
-    for (const pName of permNames) {
-      const permId = permMap[pName];
-      if (!permId) {
-        console.warn(`   ⚠️  Permission "${pName}" not found in DB — skipping.`);
-        totalSkipped++;
+    for (const role of orgRoles) {
+      const permNames = ROLE_PERMISSIONS[role.name];
+      if (!permNames) {
+        console.log(`   ⚠️   No permission matrix defined for role "${role.name}" — skipping.`);
         continue;
       }
-      mappings.push({ roleId: role._id, permissionId: permId });
-    }
 
-    if (mappings.length > 0) {
-      await RolePermission.insertMany(mappings, { ordered: false });
-      console.log(`   ✔  Inserted ${mappings.length} mappings for "${role.name}".`);
-      totalMapped += mappings.length;
+      console.log(`   ⏳  Assigning ${permNames.length} permissions to "${role.name}"…`);
+
+      // Remove existing mappings to avoid duplicates on re-run
+      await RolePermission.deleteMany({ roleId: role._id });
+
+      const mappings = [];
+      for (const pName of permNames) {
+        const permId = permMap[pName];
+        if (!permId) {
+          totalSkipped++;
+          continue;
+        }
+        mappings.push({ roleId: role._id, permissionId: permId });
+      }
+
+      if (mappings.length > 0) {
+        await RolePermission.insertMany(mappings, { ordered: false });
+        console.log(`      ✔  Inserted ${mappings.length} mappings for "${role.name}".`);
+        totalMapped += mappings.length;
+      }
     }
+    console.log('----------------------------------------------------');
   }
 
   console.log(`\n╔══════════════════════════════════════════╗`);

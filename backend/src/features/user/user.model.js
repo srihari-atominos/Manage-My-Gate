@@ -69,13 +69,7 @@ const userSchema = new mongoose.Schema(
         ref: 'Role',
         index: true,
       }],
-      required: [true, 'At least one role is required'],
-      validate: {
-        validator: function (v) {
-          return Array.isArray(v) && v.length > 0;
-        },
-        message: 'A user must have at least one role assigned.',
-      },
+      default: [],
     },
   },
   {
