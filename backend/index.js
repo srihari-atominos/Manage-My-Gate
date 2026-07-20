@@ -45,9 +45,10 @@ app.use(cors({
   credentials: true
 }));
 
-// Set up Helmet with CSP disabled for frontend integrations
+// Set up Helmet with CSP disabled for frontend integrations and allow popups for Google OAuth
 app.use(helmet({
-  contentSecurityPolicy: false
+  contentSecurityPolicy: false,
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
 }));
 
 // Standard body-parsers
