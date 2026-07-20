@@ -260,6 +260,7 @@ export class UserService {
         if (villa) {
           const alreadyAssigned = villa.residents.some(r => String(r.userId) === String(user._id));
           if (!alreadyAssigned) {
+            // Use in-memory push to residents array
             villa.residents.push({
               userId: user._id,
               residencyType,
@@ -267,11 +268,15 @@ export class UserService {
               assignedAt: new Date()
             });
           }
+
+          // In-memory occupancy status update
           if (residentType === 'Owner' || residentType === 'Tenant') {
             villa.status = 'Occupied';
           } else if (villa.status === 'Vacant') {
             villa.status = 'Occupied';
           }
+
+          // Single save execution
           await villa.save({ session });
         }
       }

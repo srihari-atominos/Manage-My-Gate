@@ -25,14 +25,17 @@ import {
 import { fetchVillaByIdAsync } from '../store/villaSlice';
 import { inviteUserAsync } from '../../userManagement/store/userSlice';
 import { fetchRolesAsync } from '../../roleBuilder/store/roleSlice';
+import { useAuth } from '../../auth/hooks/useAuth';
 import useVilla from '../hooks/useVilla';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../../services/apiClient';
 
-export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
+export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
+  const { checkPermission } = useAuth();
+  const canUpdate = checkPermission('villas:update');
   const { selectedVilla, selectedVillaLoading } = useSelector((state) => state.villa);
   const { roles } = useSelector((state) => state.roleBuilder || { roles: [] });
   const tenantRoles = roles ? roles.filter(r => r.isTenantRole).map(r => r.name) : [];
@@ -203,9 +206,21 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
       ) : (
         <>
           <CModalHeader>
-            <CModalTitle className="modal-title-custom">
-              {t('villas.details.titlePattern', { number: selectedVilla.villa.unitNumber, defaultValue: `${selectedVilla.villa.unitNumber} Details` })}
-            </CModalTitle>
+            <div className="d-flex align-items-center justify-content-between w-100 pe-3">
+              <CModalTitle className="modal-title-custom mb-0">
+                {t('villas.details.titlePattern', { number: selectedVilla.villa.unitNumber, defaultValue: `${selectedVilla.villa.unitNumber} Details` })}
+              </CModalTitle>
+              {canUpdate && onEdit && (
+                <CButton 
+                  color="primary" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => onEdit(selectedVilla.villa)}
+                >
+                  {t('villas.details.editUnit', 'Edit Details')}
+                </CButton>
+              )}
+            </div>
           </CModalHeader>
           <CModalBody>
             <CRow className="mb-4">
@@ -235,7 +250,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
             
             <CRow>
               {/* Left Column: Residents Directory */}
-              <CCol md={6} className="border-end pe-md-4">
+              <CCol md={canUpdate ? 6 : 12} className={canUpdate ? "border-end pe-md-4" : ""}>
                 <h5 className="mb-3 text-primary directory-header">
                   {t('villas.details.directory', 'Residents Directory')}
                 </h5>
@@ -285,8 +300,9 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                           </div>
 
                           {/* Residency Type Editor / Actions Panel */}
-                          <div className="mt-2 border-top pt-2">
-                            {isEditing ? (
+                          {canUpdate && (
+                            <div className="mt-2 border-top pt-2">
+                              {isEditing ? (
                               <div className="d-flex align-items-center gap-1">
                                   <CFormSelect
                                     size="sm"
@@ -359,8 +375,9 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                                   {t('villas.details.remove', 'Remove')}
                                 </CButton>
                               </div>
-                            )}
-                          </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -369,8 +386,9 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
               </CCol>
 
               {/* Right Column: Tabbed Assignment Controls */}
-              <CCol md={6} className="ps-md-4 mt-4 mt-md-0">
-                <CNav variant="tabs" className="mb-3">
+              {canUpdate && (
+                <CCol md={6} className="ps-md-4 mt-4 mt-md-0">
+                  <CNav variant="tabs" className="mb-3">
                   <CNavItem>
                     <CNavLink
                       active={activeTab === 1}
@@ -517,6 +535,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                   </div>
                 )}
               </CCol>
+              )}
             </CRow>
           </CModalBody>
           <CModalFooter>
@@ -534,6 +553,7 @@ VillaDetailsModal.propTypes = {
   visible: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   villaId: PropTypes.string,
+  onEdit: PropTypes.func,
 };
 
 export default VillaDetailsModal;

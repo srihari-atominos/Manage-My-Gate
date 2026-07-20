@@ -27,7 +27,7 @@ const villaSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Vacant', 'Occupied', 'Under Maintenance'],
+      enum: ['Vacant', 'Occupied', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent', 'Reserved'],
       default: 'Vacant',
     },
     primaryResidentId: {
@@ -37,6 +37,16 @@ const villaSchema = new mongoose.Schema(
     },
     floorAreaSqFt: {
       type: Number,
+      default: null,
+    },
+    metadata: {
+      floorPlan: { type: String, trim: true },
+      carpetAreaSqFt: { type: Number },
+      parkingSlots: [{ type: String, trim: true }]
+    },
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
       default: null,
     },
     residents: [
@@ -59,6 +69,24 @@ const villaSchema = new mongoose.Schema(
           type: Date,
           default: Date.now,
         },
+      }
+    ],
+    history: [
+      {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        residencyType: {
+          type: String,
+        },
+        moveInDate: {
+          type: Date,
+        },
+        moveOutDate: {
+          type: Date,
+        }
       }
     ],
   },

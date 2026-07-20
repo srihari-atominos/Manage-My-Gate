@@ -32,7 +32,7 @@ export const useAdminVisitorManagement = () => {
   const [serviceUsageType, setServiceUsageType] = useState('one_time');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 2;
+  const itemsPerPage = 5;
 
   // Redux Selectors
   const reduxPasses = useSelector(state => state.visitorPass.passes);
@@ -56,26 +56,25 @@ export const useAdminVisitorManagement = () => {
   }, [activeOrgId]);
 
   // Local fallback mock states
-  const [localPasses, setLocalPasses] = useState([
-    {
-      id: 'G-10029',
-      method: 'guest',
-      visitorName: 'Alice Smith',
-      details: 'Aadhaar Card: 8872-9018-1234',
-      validity: '08 Jul 2026 - 10 Jul 2026',
-      uses: '0 / 2',
-      status: 'ACTIVE'
-    },
-    {
-      id: 'G-10030',
-      method: 'guest',
-      visitorName: 'Robert Johnson',
-      details: 'Default Guest Pass',
-      validity: '08 Jul 2026 - 08 Jul 2026',
-      uses: '1 / 1',
-      status: 'EXPIRED'
-    }
-  ]);
+  const generateMockPasses = () => {
+    const methods = ['guest', 'group', 'cab_delivery', 'service'];
+    const mocks = [];
+    methods.forEach((method) => {
+      for (let i = 1; i <= 250; i++) {
+        mocks.push({
+          id: `${method.charAt(0).toUpperCase()}-${10000 + i}`,
+          method: method,
+          visitorName: `Mock ${method} Visitor ${i}`,
+          details: 'Mock Pass Details',
+          validity: '08 Jul 2026 - 10 Jul 2026',
+          uses: '0 / 2',
+          status: i % 5 === 0 ? 'EXPIRED' : 'ACTIVE'
+        });
+      }
+    });
+    return mocks;
+  };
+  const [localPasses, setLocalPasses] = useState(generateMockPasses());
 
   const [localWalkins] = useState([
     {
@@ -112,7 +111,7 @@ export const useAdminVisitorManagement = () => {
   }, [dispatch, activeOrgId]);
 
   // Merge state definitions
-  const passes = activeOrgId ? reduxPasses : localPasses;
+  const passes = [...(activeOrgId && reduxPasses ? reduxPasses : []), ...localPasses];
   const blacklist = activeOrgId ? reduxBlacklist : localBlacklist;
   const walkins = activeOrgId ? reduxPendingApprovals : localWalkins;
   const logs = activeOrgId ? reduxLogs : localLogs;

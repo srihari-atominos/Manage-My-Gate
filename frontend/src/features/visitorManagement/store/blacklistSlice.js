@@ -7,8 +7,8 @@ export const fetchBlacklist = createAsyncThunk(
     try {
       const response = await BlacklistAPI.getBlacklist(orgId, params);
       return {
-        data: response.data.data.data,
-        totalRecords: response.data.data.totalRecords,
+        data: response.data.data,
+        totalRecords: response.data.totalRecords,
         page: params?.page || 1,
         limit: params?.limit || 10
       };
@@ -23,7 +23,7 @@ export const addBlockProfile = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const response = await BlacklistAPI.addToBlacklist(payload);
-      return response.data.data;
+      return response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to ban visitor profile.');
     }
@@ -35,7 +35,7 @@ export const removeBlockProfile = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const response = await BlacklistAPI.removeFromBlacklist(id);
-      return { id, data: response.data.data };
+      return { id, data: response.data };
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to unban profile.');
     }

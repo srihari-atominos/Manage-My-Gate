@@ -584,7 +584,7 @@ export class VillaService {
       // 3. Clear User profile fields
       await User.updateOne(
         { _id: userId },
-        { $set: { villaId: null, residencyType: 'None' } }
+        { $set: { villaId: null, residencyType: 'None', roleId: null, roleIds: [] } }
       ).session(session);
 
       // 4. Clear OrgMembership fields

@@ -81,6 +81,12 @@ const invoiceSchema = new mongoose.Schema(
       },
       default: null,
     },
+    orgId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: [true, 'Organization (orgId) is required'],
+      index: true,
+    },
     offlineReference: {
       type: String,
       default: null,
@@ -98,6 +104,9 @@ invoiceSchema.index(
   { assessmentId: 1, targetUserId: 1, billingPeriodString: 1 },
   { unique: true }
 );
+
+// Add compound index for Dashboard Queries
+invoiceSchema.index({ orgId: 1, status: 1 });
 
 export const Invoice = mongoose.model('Invoice', invoiceSchema);
 export default Invoice;

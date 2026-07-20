@@ -15,11 +15,8 @@ import CIcon from '@coreui/icons-react';
 import { cilCloudDownload, cilCloudUpload, cilCheckCircle, cilWarning } from '@coreui/icons';
 import { useTranslation } from 'react-i18next';
 
-const TEMPLATE_CONTENT = `UnitNumber,BlockOrBuilding,Type,Email,ResidentType,Role
-Unit 101,Block A,Apartment,,,
-Unit 102,Block A,Apartment,resident.owner@example.com,Owner,Resident Owner
-Unit 103,Block B,Villa,resident.tenant@example.com,Tenant,Resident Tenant
-Unit 104,Block B,Penthouse,resident.family@example.com,Family,Family Member`;
+const TEMPLATE_CONTENT = `UnitNumber,BlockOrBuilding,Type,Email,ResidentType,Role`;
+
 
 const splitCSVLine = (line) => {
   const result = [];

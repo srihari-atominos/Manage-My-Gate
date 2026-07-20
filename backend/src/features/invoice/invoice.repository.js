@@ -257,7 +257,7 @@ export class InvoiceRepository {
                 unitNumber: '$unitInfo.unitNumber',
                 targetUser: { $ifNull: ['$userInfo.name', '$userInfo.username'] },
                 amount: '$totalDue',
-                currency: { $literal: '₹' },
+                currency: { $literal: 'USD' },
                 status: 1,
                 paymentMethod: { $ifNull: ['$paymentMethod', '—'] },
                 offlineReference: 1,

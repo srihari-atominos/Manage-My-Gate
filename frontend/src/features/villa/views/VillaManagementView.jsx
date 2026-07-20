@@ -16,6 +16,7 @@ import {
 import CIcon from '@coreui/icons-react';
 import { cilPlus, cilGrid } from '@coreui/icons';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../auth/hooks/useAuth';
 import useVilla from '../hooks/useVilla';
 import useVillaSocket from '../hooks/useVillaSocket';
 import VillaGrid from '../components/VillaGrid';
@@ -31,6 +32,8 @@ import '../styles/_villa.scss';
  */
 export const VillaManagementView = () => {
   const { t } = useTranslation();
+  const { checkPermission } = useAuth();
+  const canCreate = checkPermission('villas:create');
 
   const {
     villas,
@@ -171,34 +174,38 @@ export const VillaManagementView = () => {
                 </CFormSelect>
               </CCol>
               <CCol md={5} sm={12} xs={12} className="text-md-end text-center d-flex gap-2">
-                <CButton
-                  color="secondary"
-                  variant="outline"
-                  size="sm"
-                  onClick={openBulkUpload}
-                  className="w-100 fw-semibold d-flex align-items-center justify-content-center gap-1"
-                >
-                  <CIcon icon={cilPlus} size="sm" />
-                  <span>{t('villas.bulkUpload', 'Bulk Upload')}</span>
-                </CButton>
-                <CButton
-                  color="secondary"
-                  size="sm"
-                  onClick={() => openForm()}
-                  className="w-100 fw-semibold d-flex align-items-center justify-content-center gap-1"
-                >
-                  <CIcon icon={cilPlus} size="sm" />
-                  <span>{t('villas.createUnit', 'Create Unit')}</span>
-                </CButton>
-                <CButton
-                  color="primary"
-                  size="sm"
-                  onClick={openBatch}
-                  className="w-100 fw-semibold d-flex align-items-center justify-content-center gap-1"
-                >
-                  <CIcon icon={cilPlus} size="sm" />
-                  <span>{t('villas.batchGenerate', 'Batch Generate')}</span>
-                </CButton>
+                {canCreate && (
+                  <>
+                    <CButton
+                      color="secondary"
+                      variant="outline"
+                      size="sm"
+                      onClick={openBulkUpload}
+                      className="w-100 fw-semibold d-flex align-items-center justify-content-center gap-1"
+                    >
+                      <CIcon icon={cilPlus} size="sm" />
+                      <span>{t('villas.bulkUpload', 'Bulk Upload')}</span>
+                    </CButton>
+                    <CButton
+                      color="secondary"
+                      size="sm"
+                      onClick={() => openForm()}
+                      className="w-100 fw-semibold d-flex align-items-center justify-content-center gap-1"
+                    >
+                      <CIcon icon={cilPlus} size="sm" />
+                      <span>{t('villas.createUnit', 'Create Unit')}</span>
+                    </CButton>
+                    <CButton
+                      color="primary"
+                      size="sm"
+                      onClick={openBatch}
+                      className="w-100 fw-semibold d-flex align-items-center justify-content-center gap-1"
+                    >
+                      <CIcon icon={cilPlus} size="sm" />
+                      <span>{t('villas.batchGenerate', 'Batch Generate')}</span>
+                    </CButton>
+                  </>
+                )}
               </CCol>
             </CRow>
           </CCardBody>
@@ -219,9 +226,11 @@ export const VillaManagementView = () => {
               <CIcon icon={cilGrid} size="xl" className="text-muted mb-3 icon-opacity-30" />
               <h4>{t('villas.noVillas', 'No Units Configured')}</h4>
               <p className="text-muted mb-4">{t('villas.noVillasDesc', 'You can manually create or batch generate the community units grid.')}</p>
-              <CButton color="primary" size="sm" onClick={openBatch} className="fw-semibold">
-                {t('villas.generateVillas', 'Generate 54 Units')}
-              </CButton>
+              {canCreate && (
+                <CButton color="primary" size="sm" onClick={openBatch} className="fw-semibold">
+                  {t('villas.generateVillas', 'Generate 54 Units')}
+                </CButton>
+              )}
             </CCardBody>
           </CCard>
         ) : (
@@ -270,6 +279,10 @@ export const VillaManagementView = () => {
         visible={detailsVisible}
         onClose={closeDetails}
         villaId={selectedVillaId}
+        onEdit={(villa) => {
+          closeDetails();
+          openForm(villa);
+        }}
       />
 
       {/* Form Dialog (Create / Edit) */}

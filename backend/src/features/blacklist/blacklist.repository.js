@@ -33,9 +33,9 @@ export class BlacklistRepository {
     const query = { orgId: new mongoose.Types.ObjectId(orgId) };
     const matches = [];
 
-    if (name) matches.push({ name: new RegExp(`^${name.trim()}$`, 'i') });
-    if (phone) matches.push({ phone: phone.trim() });
-    if (plate) matches.push({ plate: plate.trim().toUpperCase() });
+    if (name && name.trim() && name.trim() !== '—') matches.push({ name: new RegExp(`^${name.trim()}$`, 'i') });
+    if (phone && phone.trim() && phone.trim() !== '—') matches.push({ phone: phone.trim() });
+    if (plate && plate.trim() && plate.trim() !== '—') matches.push({ plate: plate.trim().toUpperCase() });
 
     if (matches.length === 0) return null;
     query.$or = matches;

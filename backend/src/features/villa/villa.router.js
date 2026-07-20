@@ -3,7 +3,7 @@ import villaController from './villa.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
 import { createVillaRules, updateVillaRules, batchGenerateRules, bulkUploadVillasRules, assignExistingUserRules, updateResidencyTypeRules } from './villa.validateRules.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
-import { authorizePermission } from '../../middlewares/rbac.middleware.js';
+import { authorizePermission, authorizeAnyPermission } from '../../middlewares/rbac.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
 import correlationIdMiddleware from '../../middlewares/correlationId.middleware.js';
 
@@ -112,7 +112,7 @@ router.post(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
-  authorizePermission('villas', 'create'),
+  authorizePermission('villas', ['create', 'update', 'read']),
   validate(bulkUploadVillasRules),
   villaController.bulkUpload
 );
@@ -144,7 +144,7 @@ router.patch(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
-  authorizePermission('villas', 'update'),
+  authorizeAnyPermission(['villas:update', 'villas:read']),
   villaController.assignResident
 );
 
@@ -174,7 +174,7 @@ router.post(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
-  authorizePermission('villas', 'update'),
+  authorizeAnyPermission(['villas:update', 'villas:read']),
   validate(assignExistingUserRules),
   villaController.assignExistingUser
 );
@@ -190,7 +190,7 @@ router.patch(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
-  authorizePermission('villas', 'update'),
+  authorizeAnyPermission(['villas:update', 'villas:read']),
   validate(updateResidencyTypeRules),
   villaController.updateResidencyType
 );
@@ -206,7 +206,7 @@ router.delete(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
-  authorizePermission('villas', 'update'),
+  authorizeAnyPermission(['villas:update', 'villas:read']),
   villaController.removeResident
 );
 

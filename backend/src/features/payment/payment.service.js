@@ -78,7 +78,7 @@ class MockPaymentProvider {
    */
   async processRefund(paymentId, amount = null) {
     try {
-      const payment = await Payment.findById(paymentId);
+      const payment = await Payment.findOne({ gatewayTransactionId: paymentId });
       if (!payment) throw new HttpError(404, 'Payment not found');
       if (payment.status !== 'success') throw new HttpError(400, 'Only successful payments can be refunded');
 
