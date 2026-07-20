@@ -99,6 +99,14 @@ const resources = {
             title: 'Complaints & Maintenance',
             desc: 'Log and manage resident complaints, maintenance requests, and technician assignments',
           },
+          visitor: {
+            title: 'Visitor Management',
+            desc: 'Streamline visitor entry with digital passes, guard console, and real-time logs',
+          },
+          billing: {
+            title: 'Billing & Invoice',
+            desc: 'Automate maintenance fee assessments, generate invoices, and track payments',
+          },
           submit: 'Confirm & Initialize Workspace',
           loading: 'Initializing...',
           error: 'Failed to configure features. Please try again.',
