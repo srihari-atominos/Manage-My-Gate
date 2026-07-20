@@ -82,7 +82,14 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
 
   const handleFormSubmit = async (data) => {
     try {
-      await onSubmit(data);
+      const payload = { ...data };
+      if (payload.floorAreaSqFt === '') {
+        payload.floorAreaSqFt = null;
+      }
+      if (payload.blockOrBuilding === '') {
+        payload.blockOrBuilding = null;
+      }
+      await onSubmit(payload);
       reset();
       onClose();
     } catch (err) {

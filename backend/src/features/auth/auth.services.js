@@ -299,9 +299,9 @@ export class AuthService {
       // Use the standalone token service to validate and consume the token
       const userId = await tokenService.validateAndDeleteToken(rawToken, 'INVITATION', session);
 
-      // Check if user exists and is Pending
+      // Check if user exists and is Pending Verification
       const user = await userService.getUserById(userId, session);
-      if (user.status !== 'Pending') {
+      if (user.status !== 'Pending Verification') {
         throw new HttpError(400, 'User is already active or inactive.');
       }
 
@@ -312,6 +312,28 @@ export class AuthService {
       await userService.activateUser(userId, hashedPassword, session);
 
       await session.commitTransaction();
+
+      // Auto-login logic
+      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
+      const token = signToken(tokenPayload);
+      const refreshToken = await sessionService.createSession(user._id, {});
+
+      return {
+        token,
+        refreshToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          role: tokenPayload.role,
+          roles: tokenPayload.roles,
+          permissions: tokenPayload.permissions,
+          orgId: tokenPayload.orgId,
+          isPlatform: tokenPayload.isPlatform,
+          visitorContext: tokenPayload.visitorContext,
+        },
+        availableWorkspaces,
+      };
     } catch (error) {
       await session.abortTransaction();
       throw error;

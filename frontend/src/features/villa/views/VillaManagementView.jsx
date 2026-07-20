@@ -172,7 +172,7 @@ export const VillaManagementView = () => {
               </CCol>
               <CCol md={5} sm={12} xs={12} className="text-md-end text-center d-flex gap-2">
                 <CButton
-                  color="light"
+                  color="secondary"
                   variant="outline"
                   size="sm"
                   onClick={openBulkUpload}

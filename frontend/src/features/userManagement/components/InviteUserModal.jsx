@@ -131,7 +131,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
               id="invite-role-select"
               value={selectedRoleName}
               onChange={(e) => setSelectedRoleName(e.target.value)}
-              size="sm"
+              className="form-select-sm"
               required
               disabled={loadingRoles}
             >
@@ -145,25 +145,63 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
           </div>
 
           {isTenantRole && (
-            <div className="mb-3">
+            <div className="mb-3 position-relative">
               <CFormLabel htmlFor="invite-villa-select" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
                 Select Villa / Unit
               </CFormLabel>
-              <CFormSelect
-                id="invite-villa-select"
-                value={selectedVillaId}
-                onChange={(e) => setSelectedVillaId(e.target.value)}
-                size="sm"
-                required
-                disabled={loadingVillas}
-              >
-                <option value="">-- Choose a Villa --</option>
-                {villas.map((villa) => (
-                  <option key={villa._id} value={villa._id}>
-                    {villa.villaNumber} {villa.block ? `(${villa.block})` : ''}
-                  </option>
-                ))}
-              </CFormSelect>
+              <div className="dropdown w-100">
+                <button
+                  className="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center form-select-sm bg-white"
+                  type="button"
+                  data-coreui-toggle="dropdown"
+                  aria-expanded="false"
+                  disabled={loadingVillas}
+                  onClick={(e) => {
+                    const menu = e.currentTarget.nextElementSibling;
+                    if (menu.classList.contains('show')) {
+                      menu.classList.remove('show');
+                    } else {
+                      menu.classList.add('show');
+                    }
+                  }}
+                >
+                  {selectedVillaId 
+                    ? (() => {
+                        const v = villas.find(v => v._id === selectedVillaId);
+                        return v ? `${v.villaNumber} ${v.block ? `(${v.block})` : ''}` : '-- Choose a Villa --';
+                      })()
+                    : '-- Choose a Villa --'}
+                  <span className="caret"></span>
+                </button>
+                <ul className="dropdown-menu w-100 shadow-sm" style={{ maxHeight: '200px', overflowY: 'auto', position: 'absolute', zIndex: 9999 }}>
+                  <li>
+                    <button
+                      className="dropdown-item"
+                      type="button"
+                      onClick={(e) => {
+                        setSelectedVillaId('');
+                        e.currentTarget.closest('.dropdown-menu').classList.remove('show');
+                      }}
+                    >
+                      -- Choose a Villa --
+                    </button>
+                  </li>
+                  {villas.map((villa) => (
+                    <li key={villa._id}>
+                      <button
+                        className="dropdown-item"
+                        type="button"
+                        onClick={(e) => {
+                          setSelectedVillaId(villa._id);
+                          e.currentTarget.closest('.dropdown-menu').classList.remove('show');
+                        }}
+                      >
+                        {villa.villaNumber} {villa.block ? `(${villa.block})` : ''}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
 

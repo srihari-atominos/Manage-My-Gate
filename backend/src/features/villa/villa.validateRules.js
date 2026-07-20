@@ -1,11 +1,6 @@
 import { body } from 'express-validator';
 
 export const createVillaRules = [
-  body('orgId')
-    .notEmpty()
-    .withMessage('Organization ID (orgId) is required')
-    .isMongoId()
-    .withMessage('Organization ID must be a valid Mongo ID'),
   body('unitNumber')
     .notEmpty()
     .withMessage('Unit number is required')
@@ -13,16 +8,16 @@ export const createVillaRules = [
     .withMessage('Unit number must be a string')
     .trim(),
   body('blockOrBuilding')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isString()
     .withMessage('Block or building must be a string')
     .trim(),
   body('type')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(['Studio', 'Apartment', 'Villa', 'Penthouse'])
     .withMessage('Type must be one of: Studio, Apartment, Villa, Penthouse'),
   body('status')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(['Vacant', 'Occupied', 'Under Maintenance'])
     .withMessage('Status must be one of: Vacant, Occupied, Under Maintenance'),
   body('primaryResidentId')
@@ -34,7 +29,7 @@ export const createVillaRules = [
     })
     .withMessage('Primary resident ID must be a valid Mongo ID'),
   body('floorAreaSqFt')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .isNumeric()
     .withMessage('Floor area must be a number'),
 ];
@@ -48,16 +43,16 @@ export const updateVillaRules = [
     .notEmpty()
     .withMessage('Unit number cannot be empty'),
   body('blockOrBuilding')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isString()
     .withMessage('Block or building must be a string')
     .trim(),
   body('type')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(['Studio', 'Apartment', 'Villa', 'Penthouse'])
     .withMessage('Type must be one of: Studio, Apartment, Villa, Penthouse'),
   body('status')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(['Vacant', 'Occupied', 'Under Maintenance'])
     .withMessage('Status must be one of: Vacant, Occupied, Under Maintenance'),
   body('primaryResidentId')
@@ -69,7 +64,7 @@ export const updateVillaRules = [
     })
     .withMessage('Primary resident ID must be a valid Mongo ID'),
   body('floorAreaSqFt')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .isNumeric()
     .withMessage('Floor area must be a number'),
 ];
@@ -106,19 +101,19 @@ export const bulkUploadVillasRules = [
     .isString()
     .trim(),
   body('villas.*.blockOrBuilding')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isString()
     .trim(),
   body('villas.*.type')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(['Studio', 'Apartment', 'Villa', 'Penthouse'])
     .withMessage('Type must be one of: Studio, Apartment, Villa, Penthouse'),
   body('villas.*.status')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(['Vacant', 'Occupied', 'Under Maintenance'])
     .withMessage('Status must be one of: Vacant, Occupied, Under Maintenance'),
   body('villas.*.floorAreaSqFt')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isNumeric()
     .withMessage('Floor area must be a number'),
   body('villas.*.email')

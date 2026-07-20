@@ -35,8 +35,16 @@ export class AuthController {
   async acceptInvite(req, res, next) {
     try {
       const { token, password } = req.body;
-      await authService.acceptInvitation(token, password);
-      res.success(null, 'Invitation accepted and account activated successfully');
+      const data = await authService.acceptInvitation(token, password);
+      
+      if (data && data.token) {
+        setAuthCookie(res, data.token);
+      }
+      if (data && data.refreshToken) {
+        res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+      }
+
+      res.success(data, 'Invitation accepted and account activated successfully');
     } catch (error) {
       next(error);
     }

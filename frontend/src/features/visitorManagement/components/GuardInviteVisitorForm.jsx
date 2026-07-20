@@ -330,24 +330,78 @@ export const GuardInviteVisitorForm = ({
 
           {inviteMethod === 'villa' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Select Villa */}
-              <div>
+              <div className="position-relative">
                 <CFormLabel htmlFor="villa-select-box" style={{ fontWeight: '600', fontSize: '12px', color: 'var(--text-muted)' }}>
                   Select Destination Villa / Unit
                 </CFormLabel>
-                <CFormSelect
-                  id="villa-select-box"
-                  value={selectedVillaId}
-                  onChange={(e) => setSelectedVillaId(e.target.value)}
-                  disabled={loadingDirectory}
-                >
-                  <option value="">-- Choose a Villa --</option>
-                  {dbVillas.map(v => (
-                    <option key={v._id} value={v._id}>
-                      {v.villaNumber} {v.block ? `(${v.block})` : ''}
-                    </option>
-                  ))}
-                </CFormSelect>
+                <div className="dropdown w-100">
+                  <button
+                    id="villa-select-box"
+                    className="form-control text-start d-flex justify-content-between align-items-center bg-white"
+                    type="button"
+                    data-coreui-toggle="dropdown"
+                    aria-expanded="false"
+                    disabled={loadingDirectory}
+                    onClick={(e) => {
+                      const menu = e.currentTarget.nextElementSibling;
+                      if (menu.classList.contains('show')) {
+                        menu.classList.remove('show');
+                      } else {
+                        menu.classList.add('show');
+                      }
+                    }}
+                    style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '500', color: 'var(--text-main)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}
+                  >
+                    <span>
+                      {selectedVillaId 
+                        ? (() => {
+                            const v = dbVillas.find(v => v._id === selectedVillaId);
+                            return v ? `${v.villaNumber} ${v.block ? `(${v.block})` : ''}` : '-- Choose a Villa --';
+                          })()
+                        : '-- Choose a Villa --'}
+                    </span>
+                    <span className="caret" style={{ 
+                        display: 'inline-block',
+                        width: '0',
+                        height: '0',
+                        marginLeft: '4px',
+                        verticalAlign: 'middle',
+                        borderTop: '5px solid var(--text-muted)',
+                        borderRight: '5px solid transparent',
+                        borderLeft: '5px solid transparent'
+                     }}></span>
+                  </button>
+                  <ul className="dropdown-menu w-100 shadow-sm m-0 p-1" style={{ maxHeight: '220px', overflowY: 'auto', position: 'absolute', top: '100%', left: '0', zIndex: 9999, border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}>
+                    <li>
+                      <button
+                        className="dropdown-item"
+                        type="button"
+                        style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '6px' }}
+                        onClick={(e) => {
+                          setSelectedVillaId('');
+                          e.currentTarget.closest('.dropdown-menu').classList.remove('show');
+                        }}
+                      >
+                        -- Choose a Villa --
+                      </button>
+                    </li>
+                    {dbVillas.map((villa) => (
+                      <li key={villa._id}>
+                        <button
+                          className="dropdown-item"
+                          type="button"
+                          style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '6px' }}
+                          onClick={(e) => {
+                            setSelectedVillaId(villa._id);
+                            e.currentTarget.closest('.dropdown-menu').classList.remove('show');
+                          }}
+                        >
+                          {villa.villaNumber} {villa.block ? `(${villa.block})` : ''}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
 
               {/* Select Resident */}

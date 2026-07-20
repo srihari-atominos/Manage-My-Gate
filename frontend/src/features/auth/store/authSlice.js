@@ -134,9 +134,24 @@ export const updateProfile = createAsyncThunk(
 
 export const acceptInvitation = createAsyncThunk(
   'auth/acceptInvitation',
-  async ({ token, password }, { rejectWithValue }) => {
+  async ({ token, password }, { dispatch, rejectWithValue }) => {
     try {
       const response = await authService.acceptInvite({ token, password })
+      
+      const user = response.data?.user
+      const availableWorkspaces = response.data?.availableWorkspaces || []
+      
+      if (user) {
+        dispatch(
+          setActiveWorkspace({
+            activeOrganizationId: user.orgId,
+            activeRole: user.role,
+            allowedFeatures: user.permissions || [],
+            isPlatform: user.isPlatform || false,
+            availableWorkspaces: availableWorkspaces,
+          })
+        )
+      }
       return response
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to accept invitation')
@@ -483,7 +498,20 @@ const authSlice = createSlice({
       })
       .addCase(acceptInvitation.fulfilled, (state, action) => {
         state.loading = false
-        state.successMsg = action.payload.message || 'Password set successfully. Please log in.'
+        state.isAuthenticated = true
+        state.token = action.payload.data?.token
+        state.user = action.payload.data?.user
+        state.successMsg = action.payload.message || 'Password set successfully.'
+
+        if (action.payload.data?.token) {
+          localStorage.setItem('token', action.payload.data.token)
+        }
+        if (action.payload.data?.user) {
+          localStorage.setItem('user', JSON.stringify(action.payload.data.user))
+        }
+        if (action.payload.data?.availableWorkspaces) {
+          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+        }
       })
       .addCase(acceptInvitation.rejected, (state, action) => {
         state.loading = false
