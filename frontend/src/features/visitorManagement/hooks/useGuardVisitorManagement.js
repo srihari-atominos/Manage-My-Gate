@@ -98,12 +98,12 @@ export const useGuardVisitorManagement = () => {
     if (activeOrgId) {
       setLoadingDirectory(true);
       Promise.all([
-        apiClient.get('/villas?limit=100')
+        apiClient.get('/villas?limit=1000')
           .catch(err => {
             console.error('Failed to load villas in guard hook:', err);
             return { data: { data: [] } };
           }),
-        apiClient.get('/users?limit=100')
+        apiClient.get('/users?limit=1000')
           .catch(err => {
             console.error('Failed to load users in guard hook:', err);
             return { data: { data: [] } };

@@ -356,7 +356,9 @@ export const GuardInviteVisitorForm = ({
                       {selectedVillaId 
                         ? (() => {
                             const v = dbVillas.find(v => v._id === selectedVillaId);
-                            return v ? `${v.villaNumber} ${v.block ? `(${v.block})` : ''}` : '-- Choose a Villa --';
+                            const uName = v.unitNumber || v.villaNumber;
+                            const bName = v.blockOrBuilding || v.block;
+                            return v ? `${uName} ${bName ? `(${bName})` : ''}` : '-- Choose a Villa --';
                           })()
                         : '-- Choose a Villa --'}
                     </span>
@@ -396,7 +398,7 @@ export const GuardInviteVisitorForm = ({
                             e.currentTarget.closest('.dropdown-menu').classList.remove('show');
                           }}
                         >
-                          {villa.villaNumber} {villa.block ? `(${villa.block})` : ''}
+                          {villa.unitNumber || villa.villaNumber} {(villa.blockOrBuilding || villa.block) ? `(${villa.blockOrBuilding || villa.block})` : ''}
                         </button>
                       </li>
                     ))}
