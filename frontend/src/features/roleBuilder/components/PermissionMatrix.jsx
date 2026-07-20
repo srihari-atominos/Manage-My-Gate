@@ -13,6 +13,20 @@ const formatPermissionLabel = (permissionString) => {
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
+const getCategoryDisplayName = (category) => {
+  const map = {
+    visitor: 'Visitor Management',
+    amenities: 'Amenities & Bookings',
+    villas: 'Unit Management',
+    users: 'User Management',
+    notices: 'Notices Board',
+    integrations: 'Integrations Hub',
+    complaints: 'Complaints/Maintenance'
+  }
+  const key = category.toLowerCase()
+  return map[key] || (category.charAt(0).toUpperCase() + category.slice(1))
+}
+
 const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, onTogglePermission }) => {
   if (!groupedPermissions || Object.keys(groupedPermissions).length === 0) {
     return (
@@ -53,7 +67,7 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
           <div key={category} className="permission-category-card">
             <div className="permission-card-header">
               <h6 className="permission-card-title">
-                {category.toLowerCase() === 'visitor' ? 'Visitor Management' : (category.toLowerCase() === 'amenities' ? 'Amenities & Bookings' : category.charAt(0).toUpperCase() + category.slice(1))} Permissions
+                {getCategoryDisplayName(category)} Permissions
               </h6>
               {category.toLowerCase() !== 'visitor' && (
                 <CFormCheck
