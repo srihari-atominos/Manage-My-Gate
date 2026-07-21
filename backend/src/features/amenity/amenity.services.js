@@ -54,11 +54,12 @@ export class AmenityService {
         }
         
         if (a.maintenanceSchedules && a.maintenanceSchedules.length > 0) {
-          const hasActiveOrFutureMaintenance = a.maintenanceSchedules.some(maint => {
+          const hasActiveMaintenance = a.maintenanceSchedules.some(maint => {
+            const mStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
             const mEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
-            return mEnd >= now;
+            return now >= mStart && now <= mEnd;
           });
-          if (hasActiveOrFutureMaintenance) {
+          if (hasActiveMaintenance) {
             a.currentStatus = 'Under Maintenance';
           }
         }
@@ -356,6 +357,7 @@ export class AmenityService {
       let bookedByMe = false;
       let bookingId = null;
       let bookingStatus = null;
+      let myBookingsCount = 0;
 
       if (slotStart < new Date()) {
         status = 'Closed';
@@ -382,13 +384,15 @@ export class AmenityService {
           const bStart = new Date(`${dateStr}T${b.startTime}`);
           const bEnd = new Date(`${dateStr}T${b.endTime}`);
           if (slotStart < bEnd && slotEnd > bStart) {
-            overlappingBookings++;
+            overlappingBookings += (b.numberOfPersons || 1);
             if (userId && b.user && b.user._id && b.user._id.toString() === userId.toString()) {
               bookedByMe = true;
+              myBookingsCount += (b.numberOfPersons || 1);
               bookingId = b.bookingId || b._id;
               bookingStatus = b.status;
             } else if (userId && b.userId && b.userId.toString() === userId.toString()) {
               bookedByMe = true;
+              myBookingsCount += (b.numberOfPersons || 1);
               bookingId = b.bookingId || b._id;
               bookingStatus = b.status;
             }
@@ -406,6 +410,8 @@ export class AmenityService {
         price: price,
         status: status,
         bookedByMe,
+        myBookingsCount,
+        maxBookingsPerUser: amenity.maxBookingsPerUserPerSlot || 2, // It should be maxBookingsPerUserPerSlot but the model might have it as maxBookingsPerUserPerSlot right now based on my previous edit
         bookingId,
         bookingStatus
       };

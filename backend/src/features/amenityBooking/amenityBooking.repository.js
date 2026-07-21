@@ -14,13 +14,29 @@ export class AmenityBookingRepository {
     });
   }
 
-  async countUserBookingsOnDate(userId, orgId, date) {
-    return await AmenityBooking.countDocuments({
+  async countUserBookingsOnDate(userId, orgId, amenityId, date) {
+    const bookings = await AmenityBooking.find({
       userId,
       orgId,
+      amenityId,
       bookingDate: date,
-      status: { $ne: 'cancelled' } // pending, approved, rejected count? Prompt says maxBookingsPerUserPerDay, usually implies active intent
+      status: { $nin: ['cancelled', 'rejected'] }
     });
+    const uniqueSlots = new Set(bookings.map(b => `${b.startTime}-${b.endTime}`));
+    return uniqueSlots.size;
+  }
+
+  async isExistingSlot(userId, orgId, amenityId, date, startTime, endTime) {
+    const count = await AmenityBooking.countDocuments({
+      userId,
+      orgId,
+      amenityId,
+      bookingDate: date,
+      startTime,
+      endTime,
+      status: { $nin: ['cancelled', 'rejected'] }
+    });
+    return count > 0;
   }
 
   async findByOrgPaginated(orgId, filters = {}, skip = 0, limit = 10) {
@@ -70,6 +86,7 @@ export class AmenityBookingRepository {
                 deposit: '$pricingDetails.securityDeposit',
                 paymentMethod: 1,
                 rejectionReason: 1,
+                numberOfPersons: 1,
                 createdAt: 1,
                 'amenity._id': 1,
                 'amenity.name': 1,
@@ -102,7 +119,7 @@ export class AmenityBookingRepository {
 
     return await AmenityBooking.find(query)
       .sort({ bookingDate: -1, startTime: -1 })
-      .populate('amenityId', 'name type images')
+      .populate('amenityId', 'name type images location bookingRules pricing')
       .exec();
   }
 
@@ -112,9 +129,71 @@ export class AmenityBookingRepository {
       bookingDate: { $gte: startDate, $lte: endDate }
     })
     .populate('userId', 'name email profilePicture flatNumber building tower phoneNumber')
-    .populate('amenityId', 'name type images')
+    .populate('amenityId', 'name type images location bookingRules pricing')
     .sort({ bookingDate: 1, startTime: 1 })
     .lean();
+  }
+
+  async getAggregatedCalendarBookings(orgId, startDate, endDate) {
+    return await AmenityBooking.aggregate([
+      {
+        $match: {
+          orgId: new mongoose.Types.ObjectId(orgId),
+          bookingDate: { $gte: startDate, $lte: endDate },
+          status: { $in: ['approved', 'confirmed', 'checked-in'] }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: {
+            amenityId: '$amenityId',
+            bookingDate: '$bookingDate',
+            startTime: '$startTime',
+            endTime: '$endTime'
+          },
+          totalAttendees: {
+            $sum: { $ifNull: ['$numberOfPersons', 1] }
+          },
+          attendeeDetails: {
+            $push: {
+              userId: '$userId',
+              userName: '$user.name',
+              numberOfPersons: { $ifNull: ['$numberOfPersons', 1] }
+            }
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: 'amenities',
+          localField: '_id.amenityId',
+          foreignField: '_id',
+          as: 'amenity'
+        }
+      },
+      { $unwind: '$amenity' },
+      {
+        $project: {
+          _id: 0,
+          amenityId: '$_id.amenityId',
+          amenityName: '$amenity.name',
+          bookingDate: '$_id.bookingDate',
+          startTime: '$_id.startTime',
+          endTime: '$_id.endTime',
+          totalAttendees: 1,
+          attendeeDetails: 1
+        }
+      }
+    ]);
   }
 
   async countAllUpcomingBookings(orgId) {
@@ -149,9 +228,10 @@ export class AmenityBookingRepository {
       status: { $in: ['confirmed', 'checked-in'] },
       qrStatus: 'active'
     })
-    .populate('amenityId', 'name type images location')
+    .populate('amenityId', 'name type images location bookingRules pricing')
     .populate('userId', 'name')
-    .sort({ bookingDate: 1, startTime: 1 });
+    .sort({ bookingDate: 1, startTime: 1 })
+    .exec();
   }
 
   async findById(id, orgId) {

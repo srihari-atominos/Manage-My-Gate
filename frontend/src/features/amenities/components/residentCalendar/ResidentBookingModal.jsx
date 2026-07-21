@@ -53,8 +53,14 @@ const ResidentBookingModal = memo(({
     }
   };
 
+  const selectedAmenity = activeAmenities.find(a => a._id === selectedAmenityId);
+  const maxLimit = selectedAmenity?.maxBookingsPerUserPerSlot || 2;
+  const userBooked = selectedAmenity?.userBookedSlotsCount || 0; // Backend still provides this? Let's leave for now.
+  const remaining = Math.max(0, maxLimit - userBooked);
+  const hasReachedLimit = remaining <= 0;
+
   const handleSlotClick = (slot) => {
-    if (slot.status === 'Available') {
+    if (slot.status === 'Available' && !hasReachedLimit) {
       onSlotSelect(selectedAmenityId, selectedDate, slot);
       onClose(); // Close this modal so they proceed to confirmation
     }
@@ -96,6 +102,10 @@ const ResidentBookingModal = memo(({
 
         {selectedAmenityId && selectedDate && (
           <div>
+            <div className="alert alert-info py-2 small mb-3 d-flex align-items-center gap-2">
+              <i className="fa-solid fa-circle-info"></i>
+              <span><strong>Slot Limit:</strong> {maxLimit} spots per slot.</span>
+            </div>
             <h6 style={{ color: 'var(--text-muted)', marginBottom: '12px' }} className="small">Available Slots</h6>
             {slotsLoading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
@@ -113,7 +123,7 @@ const ResidentBookingModal = memo(({
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px' }}>
                   {allSlots.map((slot, index) => {
-                    const isAvailable = slot.status === 'Available';
+                    const isAvailable = slot.status === 'Available' && !hasReachedLimit;
                     return (
                       <div 
                         key={index} 
@@ -134,7 +144,9 @@ const ResidentBookingModal = memo(({
                         className={isAvailable ? 'slot-hover' : ''}
                       >
                         <div  className="fw-semibold small">{slot.startTime}</div>
-                        <span className={`small badge ${getStatusBadgeClass(slot.status)}`} style={{ padding: '4px 8px' }}>{slot.status}</span>
+                        <span className={`small badge ${getStatusBadgeClass(slot.status)}`} style={{ padding: '4px 8px' }}>
+                          {hasReachedLimit && slot.status === 'Available' ? 'Limit Reached' : slot.status}
+                        </span>
                       </div>
                     );
                   })}

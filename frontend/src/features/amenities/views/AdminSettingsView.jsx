@@ -109,6 +109,9 @@ const AdminSettingsView = () => {
                   <option value="Stripe Payments">Stripe Payments</option>
                   <option value="Razorpay">Razorpay</option>
                   <option value="PayU">PayU</option>
+                  <option value="Paytm">Paytm</option>
+                  <option value="Google Pay">Google Pay</option>
+                  <option value="Bank Account">Bank Account</option>
                 </select>
               </div>
               {settings.paymentConfig.provider !== 'None' && (
@@ -160,24 +163,6 @@ const AdminSettingsView = () => {
                   onChange={(e) => handleChange('bookingRules', 'cancellationWindowHours', Number(e.target.value))}
                   min="0"
                 />
-              </div>
-              <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'center' }}>
-                <input 
-                  type="checkbox" 
-                  style={{ width: '20px', height: '20px', cursor: 'pointer' }} 
-                  checked={settings.bookingRules.autoConfirmation}
-                  onChange={(e) => handleChange('bookingRules', 'autoConfirmation', e.target.checked)}
-                />
-                <label style={{ color: 'var(--text-main)', marginBottom: 0 }} className="fw-medium small">Enable auto confirmation</label>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'center' }}>
-                <input 
-                  type="checkbox" 
-                  style={{ width: '20px', height: '20px', cursor: 'pointer' }} 
-                  checked={settings.bookingRules.approvalRequired}
-                  onChange={(e) => handleChange('bookingRules', 'approvalRequired', e.target.checked)}
-                />
-                <label style={{ color: 'var(--text-main)', marginBottom: 0 }} className="fw-medium small">Approval Required</label>
               </div>
             </div>
 

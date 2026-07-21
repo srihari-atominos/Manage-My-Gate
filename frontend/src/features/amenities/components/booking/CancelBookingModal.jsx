@@ -28,9 +28,10 @@ const CancelBookingModal = ({ visible, onClose, onConfirm, booking, isSubmitting
     let amount = bookingDetails.totalPrice || bookingDetails.pricingDetails?.totalAmount || 0;
     let showCalculation = false;
 
-    if (bookingDetails.amenityRules?.isCancellationEnabled && bookingDetails.amenityRules?.cancellationRefundRules) {
+    const amenityRules = bookingDetails.amenityRules || bookingDetails.amenityId?.bookingRules;
+    if (amenityRules?.isCancellationEnabled && amenityRules?.cancellationRefundRules) {
       showCalculation = true;
-      const rules = [...bookingDetails.amenityRules.cancellationRefundRules].sort((a, b) => b.cancelBeforeHours - a.cancelBeforeHours);
+      const rules = [...amenityRules.cancellationRefundRules].sort((a, b) => b.cancelBeforeHours - a.cancelBeforeHours);
       
       const startDateTime = new Date(`${bookingDetails.date || bookingDetails.bookingDate}T${bookingDetails.startTime}`);
       const now = new Date();

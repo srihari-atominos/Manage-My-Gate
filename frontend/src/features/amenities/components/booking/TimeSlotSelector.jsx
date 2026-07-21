@@ -42,10 +42,14 @@ const TimeSlotSelector = memo(({ draft, availableSlots = [], slotsLoading, updat
             ) : (
               <div className="d-flex flex-wrap gap-3">
                 {availableSlots.map((slot, idx) => {
+                  const maxLimit = slot.maxBookingsPerUser || draft.amenity?.maxBookingsPerUserPerSlot || 2;
+                  const myCount = slot.myBookingsCount || 0;
+                  const canBookMore = myCount < maxLimit && slot.status === 'Available';
+                  
                   const isSelected = draft.startTime === slot.startTime;
-                  const isAvailable = slot.status === 'Available' && !slot.bookedByMe;
-                  const isBookedByMe = slot.bookedByMe;
-                  const isBooked = slot.status === 'Booked' && !slot.bookedByMe;
+                  const isAvailable = slot.status === 'Available' && canBookMore;
+                  const isBookedByMeFull = slot.bookedByMe && !canBookMore;
+                  const isBooked = slot.status === 'Booked';
                   const isClosed = slot.status === 'Closed';
                   const isMaintenance = slot.status === 'Maintenance';
 
@@ -60,12 +64,12 @@ const TimeSlotSelector = memo(({ draft, availableSlots = [], slotsLoading, updat
 
                   if (isSelected) {
                     borderColor = 'border-primary border-2 shadow-sm';
-                  } else if (isBookedByMe) {
+                  } else if (isBookedByMeFull) {
                     borderColor = 'border';
                     pillBg = 'bg-success bg-opacity-10';
                     pillText = 'text-success';
                     dotColor = 'bg-success';
-                    statusLabel = 'Booked by You';
+                    statusLabel = `Booked by You (${myCount}/${maxLimit})`;
                     cursor = 'not-allowed';
                     isDisabled = true;
                   } else if (isBooked) {
@@ -101,7 +105,7 @@ const TimeSlotSelector = memo(({ draft, availableSlots = [], slotsLoading, updat
                     pillBg = 'bg-success bg-opacity-10';
                     pillText = 'text-success';
                     dotColor = 'bg-success';
-                    statusLabel = 'Available';
+                    statusLabel = myCount > 0 ? `Booked by You (${myCount}/${maxLimit})` : 'Available';
                   }
 
                   return (
@@ -109,7 +113,7 @@ const TimeSlotSelector = memo(({ draft, availableSlots = [], slotsLoading, updat
                       key={idx}
                       className={`position-relative p-3 rounded-4 bg-body ${borderColor}`}
                       style={{ cursor, minWidth: '150px', transition: 'all 0.2s', opacity }}
-                      onClick={() => !isDisabled && updateDraft({ startTime: slot.startTime, endTime: slot.endTime, price: slot.price })}
+                      onClick={() => !isDisabled && updateDraft({ startTime: slot.startTime, endTime: slot.endTime, price: slot.price, myBookingsCount: slot.myBookingsCount || 0 })}
                     >
                       {isSelected && (
                         <div className="position-absolute bg-primary rounded-circle" style={{ width: '20px', height: '20px', top: '-8px', right: '-8px', border: '3px solid white' }}></div>

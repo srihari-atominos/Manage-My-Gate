@@ -71,8 +71,8 @@ const AmenityDetailsDrawer = ({ visible, onClose, amenity }) => {
             <div style={{ color: 'var(--text-muted)' }} className="fw-semibold small">Buffer Time</div>
             <div  className="fw-semibold small">{amenity.bookingRules?.bufferTimeMinutes || 0} mins</div>
 
-            <div style={{ color: 'var(--text-muted)' }} className="fw-semibold small">Max Bookings/Day</div>
-            <div  className="fw-semibold small">{amenity.bookingRules?.maxBookingsPerUserPerDay || 1}</div>
+            <div style={{ color: 'var(--text-muted)' }} className="fw-semibold small">Max Bookings/Slot</div>
+            <div  className="fw-semibold small">{amenity.maxBookingsPerUserPerSlot || 2}</div>
 
             {amenity.openDays && (
               <>

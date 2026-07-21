@@ -50,7 +50,7 @@ const StatusBadge = ({ scanType, status }) => {
 // ── Dashboard Stat Card ──────────────────────────────────────────────────────
 
 const StatCard = ({ label, value, icon, gradient }) => (
-  <div className="col-6 col-lg-3">
+  <div className="col-12 col-sm-6 col-md-4 col-xl-3">
     <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '16px', overflow: 'hidden' }}>
       <div className="card-body d-flex align-items-center gap-3 p-4">
         <div className="rounded-3 p-3 flex-shrink-0" style={{ background: gradient }}>
@@ -222,7 +222,7 @@ const SecurityLogsView = () => {
             <div className="table-responsive">
               <table className="table table-hover align-middle mb-0">
                 <thead style={{ background: '#f8fafc' }}>
-                  <tr className="small text-muted small fw-semibold" style={{ textTransform: 'uppercase' }}>
+                  <tr className="small text-muted small fw-semibold" style={{ textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     <th className="ps-4 py-3">RESIDENT</th>
                     <th className="py-3">AMENITY</th>
                     <th className="py-3">GUARD</th>

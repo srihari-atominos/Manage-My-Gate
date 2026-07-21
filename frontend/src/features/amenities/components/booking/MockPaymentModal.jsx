@@ -30,7 +30,7 @@ const MockPaymentModal = memo(({ visible, paymentIntent, onSuccess, onFailure, o
     }
   }, [visible]);
 
-  const amount = paymentIntent?.amount || 0;
+  const amount = paymentIntent?.amount || draft?.amount || 0;
   const isInsufficientWallet = paymentMethod === 'wallet' && walletBalance < amount;
 
   const processMockPayment = async (isSuccess) => {
@@ -115,6 +115,10 @@ const MockPaymentModal = memo(({ visible, paymentIntent, onSuccess, onFailure, o
                         <div className="fw-semibold">{draft?.duration || amenity?.bookingRules?.slotDurationMinutes || 60} Minutes</div>
                       </CCol>
                       <CCol xs={6}>
+                        <div className="small text-muted text-uppercase fw-bold mb-1">Persons</div>
+                        <div className="fw-semibold">{draft?.numberOfPersons || 1}</div>
+                      </CCol>
+                      <CCol xs={12}>
                         <div className="small text-muted text-uppercase fw-bold mb-1">Payment Method</div>
                         <CFormSelect 
                           size="sm"

@@ -63,9 +63,13 @@ const QrPassCard = memo(({ booking, onCancel }) => {
 
         <div className="p-4 flex-grow-1">
           <CRow className="g-3">
-            <CCol xs={12}>
+            <CCol xs={7}>
               <div className="small text-muted text-uppercase fw-bold mb-1">Valid On</div>
               <div className="fw-semibold">{formattedDate}</div>
+            </CCol>
+            <CCol xs={5} className="text-end">
+              <div className="small text-muted text-uppercase fw-bold mb-1">Persons</div>
+              <div className="fw-semibold">{booking.numberOfPersons || 1}</div>
             </CCol>
             <CCol xs={4}>
               <div className="small text-muted text-uppercase fw-bold mb-1">Entry</div>

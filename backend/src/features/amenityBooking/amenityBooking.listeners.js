@@ -64,6 +64,16 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_CREATED, async (booking) => {
   } else {
     await sendBookingNotification(booking, 'info', 'Booking Created', 'Your booking is pending approval.');
   }
+
+  try {
+    const { getIO } = await import('../../config/socket.js');
+    const io = getIO();
+    if (io) {
+      io.to(`org:${booking.orgId}`).emit('amenity_booking_created', booking);
+    }
+  } catch (e) {
+    logger.error('Failed to emit socket event for booking creation', e);
+  }
 });
 
 amenityBookingEventEmitter.on(AMENITY_BOOKING_REVIEWED, async (booking) => {
@@ -103,6 +113,7 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_CANCELLED, async (booking) => {
       if (booking.refundAmount === 0 && booking.paymentStatus === 'success') {
         io.to(`user:${booking.userId}`).emit('walletUpdated');
       }
+      io.to(`org:${booking.orgId}`).emit('amenity_booking_cancelled', booking);
     }
   } catch (e) {
     logger.error('Failed to emit socket event for booking cancellation', e);

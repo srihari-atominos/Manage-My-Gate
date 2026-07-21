@@ -53,6 +53,7 @@ const ResidentCalendarView = () => {
   const [bookingModalVisible, setBookingModalVisible] = useState(false);
   const [paymentIntent, setPaymentIntent] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedPersons, setSelectedPersons] = useState(1);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
 
   const dispatch = useDispatch();
@@ -133,16 +134,18 @@ const ResidentCalendarView = () => {
     setBookingModalVisible(true);
   };
 
-  const handleConfirmBooking = async () => {
+  const handleConfirmBooking = async (numberOfPersons = 1) => {
     if (!selectedSlot || !selectedAmenityId || !selectedCalendarDate) return;
     
+    setSelectedPersons(numberOfPersons);
     setIsSubmittingBooking(true);
     try {
       const payload = {
         amenityId: selectedAmenityId,
         bookingDate: selectedCalendarDate,
         startTime: selectedSlot.startTime,
-        endTime: selectedSlot.endTime
+        endTime: selectedSlot.endTime,
+        numberOfPersons
       };
       
       const response = await createBooking(payload);
@@ -184,10 +187,12 @@ const ResidentCalendarView = () => {
       startTime: selectedSlot.startTime,
       endTime: selectedSlot.endTime,
       duration: selectedSlot.duration,
+      numberOfPersons: selectedPersons,
       baseAmount: basePrice,
       tax: tax,
       deposit: deposit,
-      totalPrice: basePrice + tax + deposit
+      totalPrice: basePrice + tax + deposit,
+      myBookingsCount: selectedSlot.myBookingsCount || 0
     };
   })() : {};
 

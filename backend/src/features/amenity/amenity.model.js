@@ -46,7 +46,7 @@ const bookingRulesSchema = new mongoose.Schema({
     required: true,
     match: [/^([01]\d|2[0-3]):?([0-5]\d)$/, 'Please provide a valid time format (HH:MM)']
   },
-  maxBookingsPerUserPerDay: {
+  maxBookingsPerUserPerSlot: {
     type: Number,
     required: true,
     default: 1
@@ -143,6 +143,10 @@ const amenitySchema = new mongoose.Schema({
   isDeleted: {
     type: Boolean,
     default: false
+  },
+  maxBookingsPerUserPerSlot: {
+    type: Number,
+    default: 2
   }
 }, { timestamps: true });
 

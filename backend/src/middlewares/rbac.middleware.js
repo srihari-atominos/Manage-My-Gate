@@ -60,6 +60,7 @@ export const authorizePermission = (feature, action) => {
       });
 
       if (!hasPermission) {
+        console.error(`[RBAC DEBUG] 403 Forbidden. User has: ${userPermissions.join(',')}. Required ANY of actions for feature '${feature}': ${actions.join(',')}`);
         throw new HttpError(
           403,
           `Forbidden. You do not have permission to access this resource.`

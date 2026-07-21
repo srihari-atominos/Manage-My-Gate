@@ -282,13 +282,21 @@ export class UserService {
       }
 
       // Dynamically import tokenService to follow clean cross-feature flow
-      const tokenService = (await import('../token/token.services.js')).default;
-      const { invitationToken } = await tokenService.generateInvitationToken(user._id, session);
+      let invitationToken = null;
+      if (user.status === 'Pending Verification') {
+        const tokenService = (await import('../token/token.services.js')).default;
+        const result = await tokenService.generateInvitationToken(user._id, session);
+        invitationToken = result.invitationToken;
+      }
 
       await session.commitTransaction();
 
       // Dispatch event for asynchronous SMTP email transmission
-      userEvents.emit('USER_INVITED', { email: trimmedEmail, orgId, invitationToken });
+      if (invitationToken) {
+        userEvents.emit('USER_INVITED', { email: trimmedEmail, orgId, invitationToken });
+      } else {
+        userEvents.emit('USER_ADDED', { email: trimmedEmail, orgId });
+      }
       
       // Dispatch event for real-time frontend syncing
       userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'invited' });

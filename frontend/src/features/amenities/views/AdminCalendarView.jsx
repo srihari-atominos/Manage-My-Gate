@@ -8,6 +8,9 @@ import CalendarFilters from '../components/calendar/CalendarFilters.jsx';
 import CalendarEventDrawer from '../components/calendar/CalendarEventDrawer.jsx';
 import CalendarAnalytics from '../components/calendar/CalendarAnalytics.jsx';
 import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
+import CancelBookingModal from '../components/booking/CancelBookingModal.jsx';
+import { adminCancelBooking } from '../services/amenityBookingApi.js';
+import toast from 'react-hot-toast';
 import '../styles/_amenities.scss';
 
 const AdminCalendarView = () => {
@@ -31,6 +34,8 @@ const AdminCalendarView = () => {
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [bookingToCancel, setBookingToCancel] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     loadEvents();
@@ -39,6 +44,25 @@ const AdminCalendarView = () => {
   const handleEventClick = (event) => {
     setSelectedEvent(event);
     setDrawerVisible(true);
+  };
+
+  const handleCancelClick = (event) => {
+    setBookingToCancel(event.metadata);
+  };
+
+  const handleConfirmCancel = async (bookingId, reason) => {
+    try {
+      setIsCancelling(true);
+      await adminCancelBooking(bookingId, reason);
+      toast.success('Booking cancelled successfully');
+      setBookingToCancel(null);
+      setDrawerVisible(false); // Optionally close drawer
+      loadEvents(); // Refresh calendar
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to cancel booking');
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   const handleDateSelect = (dateStr) => {
@@ -97,6 +121,15 @@ const AdminCalendarView = () => {
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
         event={selectedEvent}
+        onCancelClick={handleCancelClick}
+      />
+
+      <CancelBookingModal 
+        visible={!!bookingToCancel} 
+        onClose={() => setBookingToCancel(null)} 
+        onConfirm={handleConfirmCancel} 
+        booking={bookingToCancel} 
+        isSubmitting={isCancelling} 
       />
       </div>
     </div>

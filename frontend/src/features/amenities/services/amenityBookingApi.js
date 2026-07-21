@@ -20,6 +20,11 @@ export const cancelBooking = async (id, reason) => {
   return response.data;
 };
 
+export const adminCancelBooking = async (id, reason) => {
+  const response = await apiClient.put(`/amenity-bookings/${id}/admin-cancel`, { reason });
+  return response.data;
+};
+
 export const checkInBooking = async (id) => {
   const response = await apiClient.post(`/amenity-bookings/${id}/checkin`);
   return response.data;
@@ -32,5 +37,12 @@ export const fetchRecentScans = async () => {
 
 export const fetchBookingQueue = async (params) => {
   const response = await apiClient.get('/amenity-bookings/queue', { params });
+  return response.data;
+};
+
+export const fetchAdminCalendar = async (startDate, endDate) => {
+  const response = await apiClient.get('/amenity-bookings/admin-calendar', {
+    params: { startDate, endDate }
+  });
   return response.data;
 };

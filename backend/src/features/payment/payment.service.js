@@ -4,6 +4,7 @@ import { paymentEventEmitter, PAYMENT_INITIATED, PAYMENT_SUCCESS, PAYMENT_FAILED
 import HttpError from '../../utils/httpError.utils.js';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger.utils.js';
+import mongoose from 'mongoose';
 
 class MockPaymentProvider {
   /**
@@ -30,7 +31,8 @@ class MockPaymentProvider {
         success: true,
         paymentId: payment._id,
         clientSecret: `mock_secret_${uuidv4()}`,
-        status: 'pending'
+        status: 'pending',
+        amount: amount
       };
     } catch (error) {
       logger.error('Failed to initiate mock payment', error);
@@ -78,7 +80,13 @@ class MockPaymentProvider {
    */
   async processRefund(paymentId, amount = null) {
     try {
-      const payment = await Payment.findOne({ gatewayTransactionId: paymentId });
+      // check both _id and gatewayTransactionId for robustness
+      const payment = await Payment.findOne({
+        $or: [
+          mongoose.Types.ObjectId.isValid(paymentId) ? { _id: paymentId } : { gatewayTransactionId: paymentId },
+          { gatewayTransactionId: paymentId }
+        ]
+      });
       if (!payment) throw new HttpError(404, 'Payment not found');
       if (payment.status !== 'success') throw new HttpError(400, 'Only successful payments can be refunded');
 

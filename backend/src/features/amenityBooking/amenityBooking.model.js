@@ -47,6 +47,10 @@ const amenityBookingSchema = new mongoose.Schema({
     enum: ['pending', 'approved', 'rejected', 'cancelled', 'confirmed', 'checked-in', 'completed'],
     default: 'pending'
   },
+  numberOfPersons: {
+    type: Number,
+    default: 1
+  },
   
   // Pricing & Payment
   pricingDetails: {

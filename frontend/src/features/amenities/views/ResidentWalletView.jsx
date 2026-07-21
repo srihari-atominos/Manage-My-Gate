@@ -59,11 +59,8 @@ const ResidentWalletView = () => {
             <p className="text-muted mt-1 mb-0">Balance: <span className="fw-bold">₹{balance?.toFixed(2) || '0.00'}</span></p>
           </div>
           <div>
-            <button className="btn btn-primary" style={{ marginRight: '16px' }} onClick={() => setShowAddMoney(!showAddMoney)}>
+            <button className="btn btn-primary" onClick={() => setShowAddMoney(!showAddMoney)}>
               {showAddMoney ? 'Cancel' : 'Add Money'}
-            </button>
-            <button className="btn btn-outline" style={{ border: 'none', background: 'transparent' }} onClick={() => navigate('/resident/amenities/history')}>
-              View All Bookings <i className="fa-solid fa-arrow-right" style={{ marginLeft: '8px' }}></i>
             </button>
           </div>
         </div>
