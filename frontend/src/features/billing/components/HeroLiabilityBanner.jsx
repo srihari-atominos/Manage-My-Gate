@@ -100,7 +100,7 @@ const HeroLiabilityBanner = memo(({
       {/* Breakdown */}
       <div className="hero-liability-card__breakdown">
         {unitBreakdown.length === 0 ? (
-          <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '13px', textAlign: 'center', padding: '10px 0' }}>
+          <div className="text-white-50 small text-center py-2">
             🎉 No outstanding dues. Good job!
           </div>
         ) : (

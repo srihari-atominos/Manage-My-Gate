@@ -166,7 +166,12 @@ export class InvoiceRepository {
    * @returns {Promise<import('mongoose').Document>}
    */
   async updateStatusWithLock(invoiceId, newStatus, paymentData = {}, session) {
-    const query = Invoice.findById(invoiceId);
+    const isObjId = mongoose.Types.ObjectId.isValid(invoiceId);
+    const filter = isObjId
+      ? { $or: [{ _id: invoiceId }, { invoiceNumber: invoiceId }] }
+      : { invoiceNumber: invoiceId };
+
+    const query = Invoice.findOne(filter);
     if (session) {
       query.session(session);
     }
@@ -307,6 +312,25 @@ export class InvoiceRepository {
         limit: take,
       },
     };
+  }
+
+  /**
+   * Check if there are active (unpaid or pending verification) invoices for an assessment template.
+   */
+  async hasActiveInvoices(assessmentId) {
+    const match = await Invoice.exists({
+      assessmentId,
+      status: { $in: ['UNPAID', 'VERIFICATION_PENDING'] },
+    });
+    return match !== null;
+  }
+
+  /**
+   * Check if any invoices exist for an assessment template.
+   */
+  async hasAnyInvoices(assessmentId) {
+    const match = await Invoice.exists({ assessmentId });
+    return match !== null;
   }
 }
 

@@ -3,9 +3,8 @@ import walletRepository from './wallet.repository.js';
 import { walletEventEmitter, WALLET_UPDATED, WALLET_TRANSACTION_CREATED } from './wallet.events.js';
 import { paymentEventEmitter, PAYMENT_SUCCESS, PAYMENT_REFUNDED } from '../payment/payment.events.js';
 import { amenityBookingEventEmitter, AMENITY_BOOKING_CONFIRMED } from '../amenityBooking/amenityBooking.events.js';
-import paymentRepository from '../payment/payment.repository.js';
 import invoiceService from '../invoice/invoice.services.js';
-import Invoice from '../invoice/invoice.model.js';
+import paymentService from '../payment/payment.service.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger from '../../utils/logger.utils.js';
 
@@ -104,11 +103,8 @@ class WalletService {
     session.startTransaction();
 
     try {
-      // 1. Fetch invoice inside session
-      const invoice = await Invoice.findById(invoiceId).session(session);
-      if (!invoice) {
-        throw new HttpError(404, 'Invoice not found');
-      }
+      // 1. Fetch invoice inside session via invoiceService (no direct model query)
+      const invoice = await invoiceService.getInvoiceById(invoiceId, session);
 
       if (invoice.targetUserId.toString() !== userId.toString()) {
         throw new HttpError(403, 'Unauthorized. Invoice does not belong to this user.');
@@ -150,8 +146,8 @@ class WalletService {
         settled_at: new Date(),
       }, session);
 
-      // 6. Record Payment entry for auditing
-      const paymentRecord = await paymentRepository.createPayment({
+      // 6. Record Payment entry for auditing via paymentService (no direct repository call)
+      const paymentRecord = await paymentService.recordPayment({
         orgId: targetOrgId,
         userId,
         referenceId: invoice._id,

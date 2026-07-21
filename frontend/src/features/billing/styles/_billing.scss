@@ -1282,6 +1282,206 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════════
+     Assessment Detail Component
+  ══════════════════════════════════════════════════════════════════════ */
+
+  .assessment-detail-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 480px;
+  }
+
+  .assessment-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    gap: 12px;
+  }
+
+  .assessment-detail-title {
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+  }
+
+  .assessment-detail-sub {
+    font-size: 12px;
+    color: var(--text-muted, #64748B);
+    margin-top: 4px;
+    margin-bottom: 0;
+  }
+
+  .assessment-detail-panel {
+    padding: 14px;
+    background: #F8FAFC;
+    border-radius: 12px;
+    border: 1px solid var(--border-light, #E2E8F0);
+  }
+
+  .assessment-detail-panel__label {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  .assessment-detail-panel__val {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-top: 4px;
+  }
+
+  .assessment-detail-footer {
+    margin-top: 20px;
+    border-top: 1px solid var(--border-light, #E2E8F0);
+    padding-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     Assessment Form Modal Inner & Scope Table
+  ══════════════════════════════════════════════════════════════════════ */
+
+  .assessment-form-input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border-light, #E2E8F0);
+    border-radius: 10px;
+    background: #F8FAFC;
+    color: var(--text-main, #0F172A);
+    outline: none;
+    transition: border-color 0.2s;
+
+    &--error {
+      border: 1.5px solid var(--danger, #EF4444);
+      background: #FFF5F5;
+    }
+  }
+
+  .assessment-form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--text-muted, #64748B);
+    margin-bottom: 7px;
+  }
+
+  .scope-table-wrap {
+    border: 1px solid var(--border-light, #E2E8F0);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .scope-table-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: #F8FAFC;
+    border-bottom: 1px solid var(--border-light, #E2E8F0);
+  }
+
+  .scope-table-search-icon {
+    position: absolute;
+    inset-inline-start: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94A3B8;
+    font-size: 12px;
+    pointer-events: none;
+  }
+
+  .scope-table-body {
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     Assessment List Component
+  ══════════════════════════════════════════════════════════════════════ */
+
+  .assessment-list-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 480px;
+  }
+
+  .assessment-item-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1.5px solid var(--border-light, #E2E8F0);
+    background: #F8FAFC;
+    cursor: pointer;
+    transition: all 0.18s ease;
+
+    &--selected {
+      border-color: var(--primary, #0084FF);
+      background: var(--primary-light, #E5F3FF);
+    }
+  }
+
+  .assessment-icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light, #E2E8F0);
+    background: #fff;
+    color: var(--text-muted, #64748B);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.18s;
+
+    &:hover {
+      border-color: var(--primary, #0084FF);
+      color: var(--primary, #0084FF);
+    }
+
+    &--danger:hover {
+      border-color: var(--danger, #EF4444);
+      color: var(--danger, #EF4444);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     Component Helper Utilities
+  ══════════════════════════════════════════════════════════════════════ */
+
+  .cursor-pointer { cursor: pointer; }
+  .max-w-150 { max-width: 150px; }
+  .max-w-240 { max-width: 240px; }
+
+  .icon-size-12 { width: 12px; height: 12px; }
+  .icon-size-14 { width: 14px; height: 14px; }
+  .icon-size-18 { width: 18px; height: 18px; }
+  .icon-size-20 { width: 20px; height: 20px; }
+  .icon-size-24 { width: 24px; height: 24px; }
+  .icon-size-36 { width: 36px; height: 36px; }
+  .avatar-size-64 { width: 64px; height: 64px; }
+  .avatar-size-26 { width: 26px; height: 26px; }
+  .avatar-size-18 { width: 18px; height: 18px; }
+  .avatar-size-8 { width: 8px; height: 8px; }
+
+  .input-w-90 { width: 90px; }
+  .input-w-140 { width: 140px; }
+  .input-w-160 { width: 160px; }
+
+  /* ══════════════════════════════════════════════════════════════════════
      Utility keyframe
   ══════════════════════════════════════════════════════════════════════ */
 

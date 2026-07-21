@@ -83,7 +83,13 @@ export const billingService = {
    * @param {Object} payload - { paymentId, razorpayPaymentId, razorpayOrderId, razorpaySignature }
    */
   async verifyRazorpayPayment(payload) {
-    return await apiClient.post('/payments/verify-signature', payload);
+    const formattedPayload = {
+      payment_id: payload.paymentId || payload.payment_id,
+      razorpay_payment_id: payload.razorpayPaymentId || payload.razorpay_payment_id,
+      razorpay_order_id: payload.razorpayOrderId || payload.razorpay_order_id,
+      razorpay_signature: payload.razorpaySignature || payload.razorpay_signature,
+    };
+    return await apiClient.post('/payments/verify-signature', formattedPayload);
   },
 };
 

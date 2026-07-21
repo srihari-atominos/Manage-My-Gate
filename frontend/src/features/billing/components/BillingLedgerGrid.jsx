@@ -1,5 +1,6 @@
 import React, { useState, memo, useCallback } from 'react';
 import PropTypes from 'prop-types';
+import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import {
   CModal,
@@ -11,10 +12,9 @@ import {
   CForm,
   CFormLabel,
   CFormInput,
-  CSpinner,
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
-import { cilCheckCircle, cilXCircle, cilClock, cilSearch, cilInbox } from '@coreui/icons';
+import { cilCheckCircle, cilXCircle, cilClock } from '@coreui/icons';
 import '../styles/_billing.scss';
 
 /**
@@ -98,7 +98,6 @@ const LedgerRow = memo(({ invoice, onMarkPaid, onOfflineSettle }) => (
       <CButton
         color="secondary"
         size="sm"
-        variant="outline"
         onClick={() => onOfflineSettle(invoice._id)}
       >
         Settle
@@ -110,11 +109,10 @@ const LedgerRow = memo(({ invoice, onMarkPaid, onOfflineSettle }) => (
 LedgerRow.displayName = 'LedgerRow';
 
 /**
- * Isolated Billing Ledger Data Grid Component.
- * Relies strictly on database-level pagination stored in Redux (billingSlice.js).
+ * Main BillingLedgerGrid Component
  */
-export const BillingLedgerGrid = memo(({
-  kpis = { grossDemand: 0, totalCollected: 0, inTransitGateway: 0, totalUnpaidArrears: 0, grossDemandCount: 0 },
+const BillingLedgerGrid = memo(({
+  kpis = { grossDemand: 0, totalCollected: 0, inTransitGateway: 0, totalUnpaidArrears: 0 },
   invoices = [],
   pagination = { currentPage: 1, totalPages: 1, totalRecords: 0, limit: 10 },
   loading = false,
@@ -126,6 +124,7 @@ export const BillingLedgerGrid = memo(({
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
+  // Modal states
   const [confirmPaidId, setConfirmPaidId] = useState(null);
   const [settleInvoiceId, setSettleInvoiceId] = useState(null);
   const [settleRef, setSettleRef] = useState('');
@@ -136,8 +135,17 @@ export const BillingLedgerGrid = memo(({
 
   const handleConfirmMarkPaid = async () => {
     if (!confirmPaidId || !onApproveOffline) return;
-    await onApproveOffline(confirmPaidId);
-    setConfirmPaidId(null);
+    try {
+      const res = await onApproveOffline(confirmPaidId);
+      if (res && typeof res.unwrap === 'function') {
+        await res.unwrap();
+      }
+      toast.success('Invoice marked as paid successfully.');
+    } catch (err) {
+      toast.error('Failed to clear invoice: ' + (err?.message || err || 'Unknown error'));
+    } finally {
+      setConfirmPaidId(null);
+    }
   };
 
   const handleOfflineSettle = useCallback((invoiceId) => {
@@ -147,9 +155,18 @@ export const BillingLedgerGrid = memo(({
 
   const handleConfirmOfflineSettle = async () => {
     if (!settleInvoiceId || !settleRef.trim() || !onSettleOffline) return;
-    await onSettleOffline(settleInvoiceId, { offlineReference: settleRef, paymentMethod: 'CHEQUE' });
-    setSettleInvoiceId(null);
-    setSettleRef('');
+    try {
+      const res = await onSettleOffline(settleInvoiceId, { offlineReference: settleRef, paymentMethod: 'CHEQUE' });
+      if (res && typeof res.unwrap === 'function') {
+        await res.unwrap();
+      }
+      toast.success('Offline payment recorded successfully.');
+    } catch (err) {
+      toast.error('Failed to record settlement: ' + (err?.message || err || 'Unknown error'));
+    } finally {
+      setSettleInvoiceId(null);
+      setSettleRef('');
+    }
   };
 
   const handleSearchChange = (e) => {
@@ -187,60 +204,65 @@ export const BillingLedgerGrid = memo(({
           <div className="billing-ledger__kpi-value">₹{loading ? '…' : (kpis.inTransitGateway || 0).toLocaleString('en-IN')}</div>
           <div className="billing-ledger__kpi-label">{t('billing.kpi.pending', 'Pending Clearance')}</div>
         </div>
+        <div className="billing-ledger__kpi-card billing-ledger__kpi-card--primary">
+          <div className="billing-ledger__kpi-value">₹{loading ? '…' : (kpis.grossDemand || 0).toLocaleString('en-IN')}</div>
+          <div className="billing-ledger__kpi-label">{t('billing.kpi.grossBilled', 'Total Billed')}</div>
+        </div>
       </div>
 
-      {/* Toolbar: Search & Filter Pills */}
-      <div className="billing-ledger__toolbar d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
-        <div className="billing-ledger__search-wrap position-relative">
-          <CFormInput
+      {/* Toolbar */}
+      <div className="billing-ledger__toolbar">
+        <div className="billing-ledger__search-wrap">
+          <i className="fa-solid fa-magnifying-glass billing-ledger__search-icon" />
+          <input
             type="text"
-            className="ps-4"
-            placeholder={t('billing.grid.searchPlaceholder', 'Search invoice, unit, or resident...')}
+            className="billing-ledger__search"
+            placeholder={t('billing.searchPlaceholder', 'Search invoice, unit, or resident…')}
             value={search}
             onChange={handleSearchChange}
           />
         </div>
 
-        <div className="billing-ledger__filter-pills d-flex gap-2">
+        <div className="billing-ledger__filter-pills">
           {['ALL', 'PAID', 'UNPAID', 'VERIFICATION_PENDING'].map((s) => (
-            <CButton
+            <button
               key={s}
-              size="sm"
-              color={statusFilter === s ? 'primary' : 'secondary'}
-              variant={statusFilter === s ? 'solid' : 'ghost'}
+              type="button"
+              className={`billing-ledger__filter-pill${statusFilter === s ? ' billing-ledger__filter-pill--active' : ''}`}
               onClick={() => handleStatusFilterChange(s)}
             >
               {s === 'ALL' ? 'All' : s === 'VERIFICATION_PENDING' ? 'Pending' : s.charAt(0) + s.slice(1).toLowerCase()}
-            </CButton>
+            </button>
           ))}
         </div>
       </div>
 
-      {/* Database Paginated Table */}
+      {/* Table */}
       <div className="billing-ledger__table-wrap position-relative">
         {loading && (
-          <div className="position-absolute top-0 bottom-0 start-0 end-0 bg-white bg-opacity-75 d-flex align-items-center justify-content-center z-3">
-            <CSpinner color="primary" />
+          <div className="position-absolute top-0 bottom-0 start-0 end-0 bg-white-75 d-flex align-items-center justify-content-center z-3">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
           </div>
         )}
-        <table className="billing-ledger__table table align-middle">
+        <table className="billing-ledger__table">
           <thead>
-            <tr>
-              <th>Invoice</th>
-              <th>Unit</th>
-              <th>Resident</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Method</th>
-              <th className="text-end">Actions</th>
+            <tr className="billing-ledger__thead-row">
+              <th className="billing-ledger__th">Invoice</th>
+              <th className="billing-ledger__th">Unit</th>
+              <th className="billing-ledger__th">Resident</th>
+              <th className="billing-ledger__th">Amount</th>
+              <th className="billing-ledger__th">Status</th>
+              <th className="billing-ledger__th">Method</th>
+              <th className="billing-ledger__th text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
             {invoices.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-4 text-muted">
-                  <CIcon icon={cilInbox} size="xl" className="mb-2 opacity-50" />
-                  <p className="mb-0">{t('billing.grid.empty', 'No invoices match your search parameters.')}</p>
+                <td colSpan={7} className="billing-ledger__empty text-center p-4">
+                  <p className="mt-2 mb-0 text-muted">No invoices match your search.</p>
                 </td>
               </tr>
             ) : (
@@ -257,66 +279,79 @@ export const BillingLedgerGrid = memo(({
         </table>
       </div>
 
-      {/* Database Pagination Footer */}
-      <div className="d-flex justify-content-between align-items-center mt-3 text-muted small">
-        <span>
+      {/* Pagination Footer */}
+      <div className="table-pagination-footer d-flex justify-content-between align-items-center mt-3">
+        <span className="text-muted small">
           Page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalRecords} total records)
         </span>
-        <div className="d-flex gap-2">
-          <CButton
-            color="secondary"
-            variant="outline"
-            size="sm"
+        <div className="d-flex gap-1">
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
             disabled={pagination.currentPage <= 1 || loading}
             onClick={() => onPageChange && onPageChange(pagination.currentPage - 1, { search, status: statusFilter })}
           >
             Previous
-          </CButton>
-          <CButton
-            color="secondary"
-            variant="outline"
-            size="sm"
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
             disabled={pagination.currentPage >= pagination.totalPages || loading}
             onClick={() => onPageChange && onPageChange(pagination.currentPage + 1, { search, status: statusFilter })}
           >
             Next
-          </CButton>
+          </button>
         </div>
       </div>
 
-      {/* Confirm Paid Modal */}
+      {/* Confirm Mark Paid Modal */}
       <CModal visible={!!confirmPaidId} onClose={() => setConfirmPaidId(null)} alignment="center">
         <CModalHeader>
           <CModalTitle className="fw-semibold">Confirm Payment Clearance</CModalTitle>
         </CModalHeader>
         <CModalBody>
-          Are you sure you want to mark this invoice as <strong>PAID</strong>?
+          Are you sure you want to mark this invoice as <strong>PAID</strong>? This will clear the outstanding balance.
         </CModalBody>
         <CModalFooter>
-          <CButton color="secondary" onClick={() => setConfirmPaidId(null)}>Cancel</CButton>
-          <CButton color="primary" onClick={handleConfirmMarkPaid}>Confirm Clear</CButton>
+          <CButton color="secondary" size="sm" onClick={() => setConfirmPaidId(null)}>
+            Cancel
+          </CButton>
+          <CButton color="primary" size="sm" onClick={handleConfirmMarkPaid}>
+            Confirm Clear
+          </CButton>
         </CModalFooter>
       </CModal>
 
       {/* Offline Settle Modal */}
-      <CModal visible={!!settleInvoiceId} onClose={() => setSettleInvoiceId(null)} alignment="center">
+      <CModal visible={!!settleInvoiceId} onClose={() => { setSettleInvoiceId(null); setSettleRef(''); }} alignment="center">
         <CModalHeader>
-          <CModalTitle className="fw-semibold">Record Offline Settlement</CModalTitle>
+          <CModalTitle className="fw-semibold">Enter Offline Settlement Details</CModalTitle>
         </CModalHeader>
         <CForm onSubmit={(e) => { e.preventDefault(); handleConfirmOfflineSettle(); }}>
           <CModalBody>
-            <CFormLabel className="fw-medium">Transaction ID / Reference Number *</CFormLabel>
-            <CFormInput
-              type="text"
-              placeholder="e.g. UTR-98241 or CHQ-12345"
-              value={settleRef}
-              onChange={(e) => setSettleRef(e.target.value)}
-              required
-            />
+            <div className="mb-3">
+              <CFormLabel htmlFor="offline-ref" className="small fw-semibold">
+                Transaction ID / Reference Number (Cheque/NEFT) *
+              </CFormLabel>
+              <CFormInput
+                id="offline-ref"
+                type="text"
+                placeholder="e.g. CHQ-92842 or UTR-28194"
+                value={settleRef}
+                onChange={(e) => setSettleRef(e.target.value)}
+                required
+                autoFocus
+                size="sm"
+              />
+            </div>
           </CModalBody>
           <CModalFooter>
-            <CButton color="secondary" onClick={() => setSettleInvoiceId(null)}>Cancel</CButton>
-            <CButton color="primary" type="submit" disabled={!settleRef.trim()}>Save Settlement</CButton>
+            <CButton type="button" color="secondary" size="sm" onClick={() => { setSettleInvoiceId(null); setSettleRef(''); }}>
+              Cancel
+            </CButton>
+            <CButton type="submit" color="primary" size="sm" disabled={!settleRef.trim()}>
+              Record Settlement
+            </CButton>
           </CModalFooter>
         </CForm>
       </CModal>
@@ -324,20 +359,16 @@ export const BillingLedgerGrid = memo(({
   );
 });
 
+BillingLedgerGrid.displayName = 'BillingLedgerGrid';
+
 BillingLedgerGrid.propTypes = {
   kpis: PropTypes.object,
   invoices: PropTypes.array,
-  pagination: PropTypes.shape({
-    currentPage: PropTypes.number,
-    totalPages: PropTypes.number,
-    totalRecords: PropTypes.number,
-    limit: PropTypes.number,
-  }),
+  pagination: PropTypes.object,
   loading: PropTypes.bool,
   onPageChange: PropTypes.func,
   onSettleOffline: PropTypes.func,
   onApproveOffline: PropTypes.func,
 };
 
-BillingLedgerGrid.displayName = 'BillingLedgerGrid';
 export default BillingLedgerGrid;

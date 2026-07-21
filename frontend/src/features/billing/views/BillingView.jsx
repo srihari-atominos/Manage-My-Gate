@@ -143,7 +143,7 @@ export const BillingView = () => {
           {activeTab === 'assessment-manager' && hasAssessmentManager && (
             <>
               {/* ── Toolbar: Create Button ────────────────────────────── */}
-              <div className="billing-section-toolbar" style={{ justifyContent: 'flex-end' }}>
+              <div className="billing-section-toolbar justify-content-end">
                 <button
                   className="btn btn-primary billing-create-btn"
                   onClick={() => setIsModalOpen(true)}

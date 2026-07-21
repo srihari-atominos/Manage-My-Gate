@@ -44,7 +44,7 @@ router.post(
 router.patch(
   '/:id/settle-offline',
   tenantContext,
-  authorizePermission('billing', 'action_center'),
+  authorizePermission('billing', ['action_center', 'dashboard', 'assessment_manager']),
   validate(offlineSettleSchema),
   invoiceController.settleOffline
 );
@@ -52,7 +52,7 @@ router.patch(
 router.patch(
   '/:id/approve',
   tenantContext,
-  authorizePermission('billing', 'assessment_manager'),
+  authorizePermission('billing', ['dashboard', 'assessment_manager']),
   validate(approveInvoiceSchema),
   invoiceController.approvePayment
 );

@@ -17,9 +17,10 @@ export const manualTriggerSchema = [
 export const offlineSettleSchema = [
   param('id')
     .notEmpty()
-    .withMessage('Invoice ID path parameter is required')
-    .isMongoId()
-    .withMessage('Invoice ID must be a valid Mongo ObjectId'),
+    .withMessage('Invoice ID or Number path parameter is required')
+    .isString()
+    .withMessage('Invoice ID must be a valid string')
+    .trim(),
 
   body('offlineReference')
     .notEmpty()
@@ -38,7 +39,8 @@ export const offlineSettleSchema = [
 export const approveInvoiceSchema = [
   param('id')
     .notEmpty()
-    .withMessage('Invoice ID path parameter is required')
-    .isMongoId()
-    .withMessage('Invoice ID must be a valid Mongo ObjectId'),
+    .withMessage('Invoice ID or Number path parameter is required')
+    .isString()
+    .withMessage('Invoice ID must be a valid string')
+    .trim(),
 ];

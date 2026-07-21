@@ -224,6 +224,13 @@ export class PaymentService {
     if (!orgId) throw new HttpError(400, 'Organization ID is required');
     return await paymentRepository.getRecentActivity(orgId, limit);
   }
+
+  /**
+   * Record payment entry transactionally
+   */
+  async recordPayment(data, session = null) {
+    return await paymentRepository.createPayment(data, session);
+  }
 }
 
 export default new PaymentService();

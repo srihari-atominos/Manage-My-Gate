@@ -84,7 +84,7 @@ const TenantComplianceBadge = memo(({ activeDues = null }) => {
 
       <div className="tenant-compliance-card__list">
         {arrears.length === 0 ? (
-          <div style={{ color: 'var(--text-muted, #64748B)', fontSize: '13px', textAlign: 'center', padding: '24px 16px' }}>
+          <div className="text-muted small text-center p-4">
             No tenant arrears recorded for your units.
           </div>
         ) : (

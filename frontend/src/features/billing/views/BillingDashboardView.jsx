@@ -1,5 +1,5 @@
 import React, { memo, useEffect } from 'react';
-import BillingLedgerGrid from '../components/BillingLedgerGrid.jsx';
+import BillingLedgerTable from '../components/BillingLedgerTable.jsx';
 import { useBilling } from '../hooks/useBilling';
 import '../styles/_billing.scss';
 
@@ -48,7 +48,7 @@ const BillingDashboardView = memo(() => {
         </div>
       </div>
 
-      <BillingLedgerGrid
+      <BillingLedgerTable
         kpis={kpis}
         invoices={invoicesList}
         pagination={pagination}
@@ -61,6 +61,7 @@ const BillingDashboardView = memo(() => {
     </div>
   );
 });
+
 BillingDashboardView.displayName = 'BillingDashboardView';
 
 export default BillingDashboardView;

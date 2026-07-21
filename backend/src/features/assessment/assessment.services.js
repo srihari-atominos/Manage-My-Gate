@@ -5,11 +5,21 @@ import userService from '../user/user.services.js';
 import roleService from '../role/role.services.js';
 import invoiceService from '../invoice/invoice.services.js';
 import Assessment from './assessment.model.js';
-import Invoice from '../invoice/invoice.model.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger, { loggerStorage } from '../../utils/logger.utils.js';
 
 export class AssessmentService {
+  /**
+   * Fetch assessment template by ID.
+   */
+  async getAssessmentById(id) {
+    const assessment = await assessmentRepository.findById(id);
+    if (!assessment) {
+      throw new HttpError(404, `Assessment template with ID ${id} not found`);
+    }
+    return assessment;
+  }
+
   /**
    * Validate scope IDs depending on targetScope.type and targetRoleIds depending on role exists.
    */
@@ -75,11 +85,8 @@ export class AssessmentService {
 
     const updatedAssessment = await assessmentRepository.updateTemplate(id, updateData);
 
-    // Check if there are active invoices for this assessment
-    const hasActiveInvoices = await Invoice.exists({
-      assessmentId: id,
-      status: { $in: ['UNPAID', 'VERIFICATION_PENDING'] },
-    }) !== null;
+    // Check if there are active invoices for this assessment via invoiceService
+    const hasActiveInvoices = await invoiceService.checkActiveInvoicesForAssessment(id);
 
     return {
       updatedAssessment,
@@ -147,8 +154,8 @@ export class AssessmentService {
       throw new HttpError(404, `Assessment template with ID ${id} not found`);
     }
 
-    // Check if any invoices are associated with this template
-    const hasInvoices = await Invoice.exists({ assessmentId: id }) !== null;
+    // Check if any invoices are associated with this template via invoiceService
+    const hasInvoices = await invoiceService.checkInvoicesExistForAssessment(id);
 
     if (hasInvoices) {
       // Soft delete: set isActive to false

@@ -91,8 +91,9 @@ export class InvoiceService {
         else baseAmount = calc.tieredRates.bhk2 || 0; // fallback standard
       }
 
+      baseAmount = Math.round(baseAmount * 100) / 100;
       const taxAmount = 0; // simple snapshot tax
-      const totalDue = baseAmount + taxAmount;
+      const totalDue = Math.round((baseAmount + taxAmount) * 100) / 100;
 
       if (totalDue <= 0) {
         logger.warn(`Skipping unit ${unit.unitNumber} - Total due amount is ₹0 (Calculation type: ${calc.type}, Unit type: ${unit.type}).`);
@@ -158,10 +159,8 @@ export class InvoiceService {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info('triggerManualBilling service called', { payload, correlationId });
 
-    const assessment = await Assessment.findById(payload.assessmentId);
-    if (!assessment) {
-      throw new HttpError(404, `Assessment template not found`);
-    }
+    const assessmentService = (await import('../assessment/assessment.services.js')).default;
+    const assessment = await assessmentService.getAssessmentById(payload.assessmentId);
 
     return await this.generateBatchInvoices(assessment);
   }
@@ -249,9 +248,17 @@ export class InvoiceService {
       { offlineReference }
     );
 
-    invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, updated);
+    const Invoice = (await import('./invoice.model.js')).default;
+    const populated = await Invoice.findById(updated._id)
+      .populate('targetUserId', 'name username email')
+      .populate('unitId', 'unitNumber')
+      .lean();
 
-    return updated;
+    const result = populated || (updated.toObject ? updated.toObject() : updated);
+
+    invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, result);
+
+    return result;
   }
 
   /**
@@ -270,9 +277,17 @@ export class InvoiceService {
       }
     );
 
-    invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, updated);
+    const Invoice = (await import('./invoice.model.js')).default;
+    const populated = await Invoice.findById(updated._id)
+      .populate('targetUserId', 'name username email')
+      .populate('unitId', 'unitNumber')
+      .lean();
 
-    return updated;
+    const result = populated || (updated.toObject ? updated.toObject() : updated);
+
+    invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, result);
+
+    return result;
   }
 
   /**
@@ -354,6 +369,33 @@ export class InvoiceService {
    */
   async getInvoices(orgId, query) {
     return await invoiceRepository.getInvoices(orgId, query);
+  }
+
+  /**
+   * Check if there are active invoices for an assessment template.
+   */
+  async checkActiveInvoicesForAssessment(assessmentId) {
+    return await invoiceRepository.hasActiveInvoices(assessmentId);
+  }
+
+  /**
+   * Check if any invoices exist for an assessment template.
+   */
+  async checkInvoicesExistForAssessment(assessmentId) {
+    return await invoiceRepository.hasAnyInvoices(assessmentId);
+  }
+
+  /**
+   * Fetch invoice by ID with optional transaction session.
+   */
+  async getInvoiceById(invoiceId, session = null) {
+    const query = Invoice.findById(invoiceId);
+    if (session) query.session(session);
+    const invoice = await query;
+    if (!invoice) {
+      throw new HttpError(404, 'Invoice not found');
+    }
+    return invoice;
   }
 }
 

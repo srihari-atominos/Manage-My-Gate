@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { CNav, CNavItem, CNavLink } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilSpeedometer, cilWallet, cilSettings } from '@coreui/icons';
@@ -23,16 +24,7 @@ export const BillingTopNav = ({ activeTab, onTabChange }) => {
 
   return (
     <div className="billing-top-nav-bar">
-      <CNav
-        variant="underline"
-        style={{
-          borderBottom: 'none',
-          gap: '16px',
-          flexWrap: 'nowrap',
-          minWidth: 'max-content',
-          paddingBottom: '4px',
-        }}
-      >
+      <CNav variant="underline" className="border-bottom-0 gap-3 flex-nowrap min-w-max pb-1">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -46,7 +38,7 @@ export const BillingTopNav = ({ activeTab, onTabChange }) => {
                 }}
                 className={`billing-top-nav-link ${isActive ? 'active' : ''}`}
               >
-                <CIcon icon={item.icon} size="lg" style={{ marginBottom: '4px' }} />
+                <CIcon icon={item.icon} size="lg" className="mb-1" />
                 {item.name}
               </CNavLink>
             </CNavItem>
@@ -55,6 +47,11 @@ export const BillingTopNav = ({ activeTab, onTabChange }) => {
       </CNav>
     </div>
   );
+};
+
+BillingTopNav.propTypes = {
+  activeTab: PropTypes.string.isRequired,
+  onTabChange: PropTypes.func.isRequired,
 };
 
 export default BillingTopNav;

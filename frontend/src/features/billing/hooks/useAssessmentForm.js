@@ -5,36 +5,6 @@ import { fetchRoles } from '../../roleBuilder/services/roleApi';
 import { fetchVillas } from '../../villa/services/villaService';
 import { fetchUsers } from '../../userManagement/services/userApi';
 
-const MOCK_UNITS = [
-  { _id: 'u1', label: 'Villa 101 - Block A', sub: '2BHK' },
-  { _id: 'u2', label: 'Villa 102 - Block A', sub: '3BHK' },
-  { _id: 'u3', label: 'Villa 201 - Block B', sub: '1BHK' },
-  { _id: 'u4', label: 'Villa 202 - Block B', sub: 'Studio' },
-  { _id: 'u5', label: 'Villa 301 - Block C', sub: 'Penthouse' },
-  { _id: 'u6', label: 'Villa 302 - Block C', sub: '2BHK' },
-];
-
-const MOCK_BLOCKS = [
-  { _id: 'b1', label: 'Block A - North Tower',       sub: '24 Units' },
-  { _id: 'b2', label: 'Block B - South Tower',       sub: '24 Units' },
-  { _id: 'b3', label: 'Phase 1 - East Avenue Villas', sub: '12 Villas' },
-];
-
-const MOCK_USERS = [
-  { _id: 'usr1', label: 'Ahmed Al-Rashid',  sub: 'Owner · Villa 101' },
-  { _id: 'usr2', label: 'Priya Nair',       sub: 'Tenant · Villa 102' },
-  { _id: 'usr3', label: 'James Thompson',   sub: 'Owner · Villa 201' },
-  { _id: 'usr4', label: 'Sara Al-Mansouri', sub: 'Tenant · Villa 202' },
-  { _id: 'usr5', label: 'David Chen',       sub: 'Owner · Villa 301' },
-  { _id: 'usr6', label: 'Fatima Al-Zaabi',  sub: 'Owner · Villa 302' },
-];
-
-const MOCK_TENANT_ROLES = [
-  { _id: 'role-1', name: 'Resident Owner',  isTenantRole: true },
-  { _id: 'role-2', name: 'Resident Tenant', isTenantRole: true },
-  { _id: 'role-3', name: 'Family Member',   isTenantRole: true },
-];
-
 /**
  * Custom Hook: useAssessmentForm
  * 
@@ -46,12 +16,11 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
   const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId);
   const { saveAssessment, editAssessment } = useAssessment();
 
-  // Dynamic Lists (with mock fallbacks)
-  // Dynamic Lists (with mock fallbacks)
-  const [roles, setRoles]   = useState(MOCK_TENANT_ROLES);
-  const [units, setUnits]   = useState(MOCK_UNITS);
-  const [blocks, setBlocks] = useState(MOCK_BLOCKS);
-  const [users, setUsers]   = useState(MOCK_USERS);
+  // Dynamic Lists
+  const [roles, setRoles]   = useState([]);
+  const [units, setUnits]   = useState([]);
+  const [blocks, setBlocks] = useState([]);
+  const [users, setUsers]   = useState([]);
 
   // Search States
   const [userSearch, setUserSearch] = useState('');
@@ -81,7 +50,7 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
   // Target Scope States
   const [scopeType, setScopeType]                 = useState('ALL_COMMUNITY');
   const [targetRole, setTargetRole]               = useState('BOTH');
-  const [checkedRoles, setCheckedRoles]           = useState(() => MOCK_TENANT_ROLES.map(r => r._id));
+  const [checkedRoles, setCheckedRoles]           = useState([]);
   const [selectedIds, setSelectedIds]             = useState([]);
   const [selectedUnitTypes, setSelectedUnitTypes] = useState([]);
 
@@ -91,6 +60,10 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
       setName(assessment.name || '');
       setType(assessment.type || 'RECURRING');
       setBillingCycle(assessment.billingCycle || 'MONTHLY');
+      setTriggerMode(assessment.triggerMode || 'IMMEDIATE');
+      setScheduledDateTime(assessment.scheduledDateTime || '');
+      setCollectionMethod(assessment.collectionMethod || 'LUMP_SUM');
+      setTotalInstallments(assessment.totalInstallments ? String(assessment.totalInstallments) : '');
 
       const day = assessment.generationDay;
       if (day === 'LAST_DAY_OF_MONTH') {
@@ -126,7 +99,10 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
           const tenantRoles = rolesRes.data.filter(r => r.isTenantRole === true);
           if (tenantRoles.length > 0) {
             setRoles(tenantRoles);
-            setCheckedRoles(tenantRoles.map(r => r._id || r.id));
+            // Fix race condition: Only auto-check all roles when creating new assessment
+            if (!assessment) {
+              setCheckedRoles(tenantRoles.map(r => r._id || r.id));
+            }
           }
         }
       } catch (err) {
@@ -155,7 +131,7 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
 
     loadStaticData();
     return () => { active = false; };
-  }, []);
+  }, [assessment]);
 
   // Debounced User Search
   useEffect(() => {
@@ -256,7 +232,7 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
         e.selectedDays = 'Please select at least one day of the week.';
       if (billingCycle !== 'WEEKLY' && genDayOption === 'CUSTOM') {
         const n = Number(customDay);
-        if (!customDay || n < 1 || n > 28) e.customDay = true;
+        if (!customDay || n < 1 || n > 31) e.customDay = true;
       }
       if (type === 'CAPITAL_REPAIR') {
         const n = Number(totalInstallments);
@@ -286,6 +262,10 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
           : (genDayOption === 'LAST'
               ? 'LAST_DAY_OF_MONTH'
               : (genDayOption === 'FIRST' ? 1 : Number(customDay))),
+        triggerMode,
+        scheduledDateTime: triggerMode === 'SCHEDULED' ? scheduledDateTime : undefined,
+        collectionMethod,
+        totalInstallments: collectionMethod === 'INSTALLMENT' ? Number(totalInstallments || 0) : undefined,
         targetScope: {
           type: scopeType,
           scopeIds: scopeType === 'ALL_COMMUNITY' ? [] : selectedIds,

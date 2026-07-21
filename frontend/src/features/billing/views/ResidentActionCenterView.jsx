@@ -34,11 +34,11 @@ const ResidentActionCenterView = memo(() => {
 
   if (loadingStates.fetchDues && (!activeDues?.unitBreakdown?.length && !activeDues?.secondaryCompliance?.length)) {
     return (
-      <div className="d-flex flex-column align-items-center justify-content-center" style={{ minHeight: '300px' }}>
-        <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
+      <div className="d-flex flex-column align-items-center justify-content-center py-5 my-5">
+        <div className="spinner-border text-primary spinner-border-lg" role="status">
           <span className="visually-hidden">Loading financials...</span>
         </div>
-        <span className="text-muted mt-3" style={{ fontSize: '13px', fontWeight: '600' }}>Fetching outstanding dues...</span>
+        <span className="text-muted mt-3 fw-semibold small">Fetching outstanding dues...</span>
       </div>
     );
   }

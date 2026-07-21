@@ -159,13 +159,25 @@ const performInvoiceSync = (state, updatedInvoice) => {
   };
 
   // 1. Sync invoicesList grid
-  const index = state.invoicesList.findIndex((inv) => inv._id === updatedInvoice._id);
+  const targetId = String(updatedInvoice._id || updatedInvoice.id || '');
+  const targetNum = String(updatedInvoice.invoiceNumber || '');
+
+  const index = state.invoicesList.findIndex(
+    (inv) =>
+      (targetId && String(inv._id || inv.id || '') === targetId) ||
+      (targetNum && String(inv.invoiceNumber || '') === targetNum)
+  );
   let oldStatus = null;
   const amount = updatedInvoice.totalDue || updatedInvoice.amount || 0;
 
   if (index !== -1) {
     oldStatus = state.invoicesList[index].status;
-    state.invoicesList[index] = { ...state.invoicesList[index], ...mappedInvoice };
+    state.invoicesList[index] = {
+      ...state.invoicesList[index],
+      ...mappedInvoice,
+      targetUser: mappedInvoice.targetUser !== '—' ? mappedInvoice.targetUser : state.invoicesList[index].targetUser,
+      unitNumber: mappedInvoice.unitNumber !== '—' ? mappedInvoice.unitNumber : state.invoicesList[index].unitNumber,
+    };
   } else {
     // Prepend new invoice to the list
     state.invoicesList = [mappedInvoice, ...state.invoicesList];
@@ -209,30 +221,23 @@ const performInvoiceSync = (state, updatedInvoice) => {
     }
   }
 
-  // 2. Sync activeDues portfolio (if invoice becomes PAID, remove from active dues)
-  if (state.activeDues && state.activeDues.unitBreakdown) {
+  // 3. Sync activeDues portfolio (if invoice becomes PAID, remove from active dues)
+  if (state.activeDues && Array.isArray(state.activeDues.unitBreakdown)) {
     const breakdownIndex = state.activeDues.unitBreakdown.findIndex(
-      (item) => (item.invoiceId || item._id) === updatedInvoice._id
+      (item) =>
+        (targetId && String(item.invoiceId || item._id || '') === targetId) ||
+        (targetNum && String(item.invoiceNumber || '') === targetNum)
     );
 
     if (breakdownIndex !== -1) {
       if (updatedInvoice.status === 'PAID') {
-        const removed = state.activeDues.unitBreakdown.splice(breakdownIndex, 1)[0];
-        state.activeDues.totalPortfolioDue = Math.max(
-          0,
-          state.activeDues.totalPortfolioDue - (removed.totalDue || 0)
-        );
+        state.activeDues.unitBreakdown.splice(breakdownIndex, 1);
       } else {
         state.activeDues.unitBreakdown[breakdownIndex] = {
           ...state.activeDues.unitBreakdown[breakdownIndex],
           status: updatedInvoice.status,
           totalDue: updatedInvoice.totalDue || updatedInvoice.amount || 0,
         };
-        // Recalculate total due
-        state.activeDues.totalPortfolioDue = state.activeDues.unitBreakdown.reduce(
-          (sum, item) => sum + (item.totalDue || 0),
-          0
-        );
       }
     } else if (updatedInvoice.status !== 'PAID') {
       // Add to active dues
