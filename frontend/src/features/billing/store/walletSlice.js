@@ -19,6 +19,31 @@ export const fetchWalletBalance = createAsyncThunk(
   }
 );
 
+export const createRazorpayOrder = createAsyncThunk(
+  'wallet/createRazorpayOrder',
+  async ({ amount }, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.post('/wallet/create-order', { amount });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create order');
+    }
+  }
+);
+
+export const verifyRazorpayPayment = createAsyncThunk(
+  'wallet/verifyRazorpayPayment',
+  async (paymentData, { rejectWithValue, dispatch }) => {
+    try {
+      const response = await apiClient.post('/wallet/verify-payment', paymentData);
+      dispatch(fetchWalletBalance());
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Payment verification failed');
+    }
+  }
+);
+
 const initialState = {
   balance: 0,
   activePasses: [],
@@ -57,6 +82,16 @@ export const walletSlice = createSlice({
         }
       })
       .addCase(fetchWalletBalance.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(createRazorpayOrder.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(createRazorpayOrder.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(createRazorpayOrder.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });

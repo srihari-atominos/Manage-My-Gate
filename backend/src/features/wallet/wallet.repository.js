@@ -45,6 +45,16 @@ class WalletRepository {
     }
     return null;
   }
+
+  async createRazorpayTransaction(data, session = null) {
+    const transaction = new WalletTransaction({
+      ...data,
+      paymentMethod: 'razorpay',
+      referenceType: 'Recharge',
+      type: 'Credit'
+    });
+    return await transaction.save(session ? { session } : undefined);
+  }
 }
 
 export default new WalletRepository();

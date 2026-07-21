@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMyWallet, addMoney, payInvoice } from './wallet.controller.js';
+import { getMyWallet, addMoney, payInvoice, createOrder, verifyPayment } from './wallet.controller.js';
 import { isAuthenticated } from '../../middlewares/auth.middleware.js';
 import { authorizeAnyPermission } from '../../middlewares/rbac.middleware.js';
 
@@ -11,5 +11,7 @@ router.use(isAuthenticated);
 router.get('/', authorizeAnyPermission(['billing:wallet', 'amenities:wallet']), getMyWallet);
 router.post('/add-money', authorizeAnyPermission(['billing:wallet', 'amenities:wallet']), addMoney);
 router.post('/pay-invoice', authorizeAnyPermission(['billing:wallet', 'amenities:wallet']), payInvoice);
+router.post('/create-order', authorizeAnyPermission(['billing:wallet', 'amenities:wallet']), createOrder);
+router.post('/verify-payment', authorizeAnyPermission(['billing:wallet', 'amenities:wallet']), verifyPayment);
 
 export default router;

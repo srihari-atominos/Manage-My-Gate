@@ -22,6 +22,14 @@ const walletTransactionSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  razorpay_order_id: {
+    type: String,
+    default: null
+  },
+  razorpay_payment_id: {
+    type: String,
+    default: null
+  },
   type: {
     type: String,
     enum: ['Debit', 'Credit'],

@@ -7,6 +7,14 @@ import invoiceService from '../invoice/invoice.services.js';
 import paymentService from '../payment/payment.service.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger from '../../utils/logger.utils.js';
+import crypto from 'crypto';
+import Razorpay from 'razorpay';
+
+// Initialize Razorpay
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID || 'dummy_key',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummy_secret',
+});
 
 class WalletService {
   constructor() {
@@ -219,6 +227,56 @@ class WalletService {
       activePasses,
       transactionHistory
     };
+  }
+
+  async createRechargeOrder(userId, amount) {
+    const options = {
+      amount: amount * 100, // Razorpay works in paise
+      currency: "INR",
+      receipt: `recharge_rcptid_${userId}_${Date.now()}`
+    };
+
+    try {
+      const order = await razorpay.orders.create(options);
+      return order;
+    } catch (error) {
+      logger.error('Failed to create Razorpay order', error);
+      throw new HttpError(500, 'Failed to create Razorpay order');
+    }
+  }
+
+  async verifyPaymentSignature(userId, orgId, paymentData) {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = paymentData;
+
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'dummy_secret')
+      .update(body.toString())
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      throw new HttpError(400, 'Invalid payment signature');
+    }
+
+    // Update wallet balance
+    await walletRepository.updateBalance(userId, orgId, amount);
+    
+    // Log transaction
+    const transaction = await walletRepository.createRazorpayTransaction({
+      orgId,
+      userId,
+      transactionId: `TXN-${razorpay_payment_id}`,
+      amount,
+      paymentStatus: 'success',
+      razorpay_order_id,
+      razorpay_payment_id,
+      description: 'Wallet Recharge via Razorpay'
+    });
+
+    walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId });
+    walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
+
+    return transaction;
   }
 }
 

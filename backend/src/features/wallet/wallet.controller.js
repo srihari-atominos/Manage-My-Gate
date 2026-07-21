@@ -60,3 +60,24 @@ export const payInvoice = async (req, res, next) => {
     next(error);
   }
 };
+
+export const createOrder = async (req, res, next) => {
+  try {
+    const { amount } = req.body;
+    const userId = req.user.id || req.user._id;
+    const order = await walletService.createRechargeOrder(userId, amount);
+    res.status(200).json({ success: true, data: order });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyPayment = async (req, res, next) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const transaction = await walletService.verifyPaymentSignature(userId, req.user.orgId, req.body);
+    res.status(200).json({ success: true, data: transaction });
+  } catch (error) {
+    next(error);
+  }
+};
