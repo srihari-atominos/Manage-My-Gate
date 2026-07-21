@@ -6,11 +6,8 @@ import integrationHubService from '../integrationHub/integrationHub.service.js';
 import { formatINR } from './utils/currency.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger from '../../utils/logger.utils.js';
-<<<<<<< HEAD
 import { v4 as uuidv4 } from 'uuid';
-=======
 import mongoose from 'mongoose';
->>>>>>> develop
 
 export class PaymentService {
   /**
@@ -59,7 +56,6 @@ export class PaymentService {
       return {
         success: true,
         paymentId: payment._id,
-<<<<<<< HEAD
         orderId: orderPayload.orderId,
         amount: payment.amount,
         amountFormatted: formatINR(payment.amount),
@@ -67,11 +63,6 @@ export class PaymentService {
         status: payment.status,
         gateway: payment.gateway,
         rawOrder: orderPayload.rawOrder,
-=======
-        clientSecret: `mock_secret_${uuidv4()}`,
-        status: 'pending',
-        amount: amount
->>>>>>> develop
       };
     } catch (error) {
       logger.error('Failed to create payment order', { error: error.message, stack: error.stack });
