@@ -39,17 +39,7 @@ const ResidentBookingList = ({ events, onEventClick, onBookClick, loading }) => 
   }
 
   if (!events || events.length === 0) {
-    return (
-      <div className="rbl-wrapper">
-        <div className="rbl-empty-state">
-          <div className="rbl-empty-icon">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><line x1="9" y1="16" x2="15" y2="16"></line></svg>
-          </div>
-          <h5 className="rbl-empty-title">No bookings found for this month.</h5>
-          <p className="rbl-empty-sub">Book your first amenity to get started.</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (

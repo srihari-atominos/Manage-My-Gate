@@ -55,17 +55,13 @@ const DateDetailsPanel = memo(({
 
       <div className="ddp-body">
         {/* ── Section 1: Existing Bookings ── */}
-        <div className="ddp-card">
-          <div className="ddp-card__title">
-            <i className="fa-regular fa-calendar-check me-2" style={{ color: '#0084FF' }}></i>
-            Your Bookings
-            {dateBookings.length > 0 && (
+        {dateBookings.length > 0 && (
+          <div className="ddp-card">
+            <div className="ddp-card__title">
+              <i className="fa-regular fa-calendar-check me-2" style={{ color: '#0084FF' }}></i>
+              Your Bookings
               <span className="ddp-count-pill">{dateBookings.length}</span>
-            )}
-          </div>
-          {dateBookings.length === 0 ? (
-            <p className="ddp-empty-text">No bookings on this date.</p>
-          ) : (
+            </div>
             <div className="ddp-booking-list">
               {dateBookings.map(b => (
                 <div key={b.id} className="ddp-booking-row">
@@ -82,8 +78,8 @@ const DateDetailsPanel = memo(({
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* ── Section 2: Book an Amenity ── */}
         <div className="ddp-card">
