@@ -60,6 +60,7 @@ export const authorizePermission = (feature, action) => {
       });
 
       if (!hasPermission) {
+        console.error(`[RBAC DEBUG] 403 Forbidden. User has: ${userPermissions.join(',')}. Required ANY of actions for feature '${feature}': ${actions.join(',')}`);
         throw new HttpError(
           403,
           `Forbidden. You do not have permission to access this resource.`
@@ -73,4 +74,36 @@ export const authorizePermission = (feature, action) => {
   };
 };
 
+/**
+ * Permission-Based Access Control middleware for multiple distinct permissions.
+ * Checks if the user has AT LEAST ONE of the specified full permissions (e.g., ['users:create', 'villas:read']).
+ */
+export const authorizeAnyPermission = (permissionsArray) => {
+  return (req, res, next) => {
+    try {
+      if (!req.user) {
+        throw new HttpError(401, 'Unauthorized. Authentication required.');
+      }
+      if (req.user.role === 'Super Admin' || req.user.role === 'Platform Super Admin') {
+        return next();
+      }
+
+      const userPermissions = (req.user.permissions || []).map(mapPermission);
+
+      const hasPermission = permissionsArray.some(p => {
+        return userPermissions.includes(mapPermission(p));
+      });
+
+      if (!hasPermission) {
+        throw new HttpError(403, `Forbidden. You do not have permission to access this resource.`);
+      }
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
 export default authorizePermission;
+

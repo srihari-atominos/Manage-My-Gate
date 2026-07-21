@@ -224,9 +224,7 @@ export class AssessmentService {
       throw new HttpError(403, 'Forbidden: Assessment template belongs to another organization');
     }
 
-    const invoiceService = (await import('../invoice/invoice.services.js')).InvoiceService;
-    const invoiceServiceInst = new invoiceService();
-    const stats = await invoiceServiceInst.generateBatchInvoices(assessment);
+    const stats = await invoiceService.generateBatchInvoices(assessment);
 
     logger.info('Manual billing run completed stats:', { id, stats, correlationId });
     return stats;

@@ -10,6 +10,9 @@ const AdminMaintenanceView = () => {
   const { maintenanceList, items: amenities, loading, error, successMsg } = useSelector(state => state.amenities);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
 
   useEffect(() => {
     dispatch(fetchMaintenanceList());
@@ -47,6 +50,12 @@ const AdminMaintenanceView = () => {
     }
   };
 
+  const totalItems = maintenanceList?.length || 0;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const actualEndIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedTasks = maintenanceList?.slice(startIndex, actualEndIndex) || [];
+
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
       <AmenitiesTopNav />
@@ -77,7 +86,7 @@ const AdminMaintenanceView = () => {
                   ) : maintenanceList.length === 0 ? (
                     <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>No maintenance scheduled.</td></tr>
                   ) : (
-                    maintenanceList.map(task => (
+                    paginatedTasks.map(task => (
                       <tr key={task._id}>
                         <td  className="fw-bold">{task.amenityName}</td>
                         <td>{task.title}</td>
@@ -98,6 +107,30 @@ const AdminMaintenanceView = () => {
                 </tbody>
               </table>
             </div>
+
+            {totalItems > 0 && (
+              <div className="card-footer bg-body border-top d-flex justify-content-between align-items-center p-3">
+                <div className="text-muted small">
+                  {startIndex + 1}-{actualEndIndex} of {totalItems}
+                </div>
+                <div className="d-flex gap-2">
+                  <button 
+                    className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" 
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                  >
+                    <i className="fa-solid fa-chevron-left"></i> Prev
+                  </button>
+                  <button 
+                    className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" 
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                  >
+                    Next <i className="fa-solid fa-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

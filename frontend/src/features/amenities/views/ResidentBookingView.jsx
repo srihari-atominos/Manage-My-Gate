@@ -49,8 +49,8 @@ const ResidentBookingView = () => {
     );
   }
 
-  const handleFinalConfirm = async () => {
-    await confirmBooking();
+  const handleFinalConfirm = async (numberOfPersons = 1) => {
+    await confirmBooking(numberOfPersons);
     setConfirmationVisible(false);
   };
 

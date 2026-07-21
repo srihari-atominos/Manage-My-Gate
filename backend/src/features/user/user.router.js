@@ -3,7 +3,7 @@ import userController from './user.controller.js'
 import { validate } from '../../middlewares/validator.middleware.js'
 import { inviteUserRules, bulkInviteUserRules, updateUserRolesRules, updateProfileRules } from './user.validateRules.js'
 import isAuthenticated from '../../middlewares/auth.middleware.js'
-import { authorizePermission } from '../../middlewares/rbac.middleware.js'
+import { authorizePermission, authorizeAnyPermission } from '../../middlewares/rbac.middleware.js'
 import { upload, imageSignatureValidator } from './middlewares/upload.middleware.js'
 import tenantContext from '../../middlewares/tenant.middleware.js'
 
@@ -55,7 +55,7 @@ router.get(
 router.post(
   '/invite',
   tenantContext,
-  authorizePermission('users', 'create'),
+  authorizeAnyPermission(['users:create', 'villas:read']),
   validate(inviteUserRules),
   userController.inviteUser
 )

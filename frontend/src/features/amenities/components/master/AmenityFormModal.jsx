@@ -20,7 +20,6 @@ const schema = yup.object().shape({
     closeTime: yup.string().matches(/^([01]\d|2[0-3]):?([0-5]\d)$/, 'Invalid time format').required('Required'),
     slotDurationMinutes: yup.number().typeError('Must be a number').min(15, 'Min 15 min').required('Required'),
     bufferTimeMinutes: yup.number().typeError('Must be a number').min(0, 'Min 0'),
-    maxBookingsPerUserPerDay: yup.number().typeError('Must be a number').min(1, 'Min 1').required('Required'),
     advanceBookingDays: yup.number().typeError('Must be a number').min(0, 'Min 0'),
     isCancellationEnabled: yup.boolean().default(false),
     cancellationRefundRules: yup.array().of(yup.object().shape({
@@ -30,6 +29,7 @@ const schema = yup.object().shape({
   }),
   openDays: yup.array().of(yup.number()).min(1, 'Select at least one day'),
   images: yup.array().of(yup.string()),
+  maxBookingsPerUserPerSlot: yup.number().typeError('Must be a number').min(1, 'Min 1').default(2).required('Required'),
 });
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -40,9 +40,9 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
   const { control, handleSubmit, reset, setValue, watch, formState: { isSubmitting, isDirty, errors } } = useForm({
     resolver: yupResolver(schema),
     defaultValues: initialData || {
-      name: '', type: 'Event Space', location: '', description: '', capacity: 50, status: 'active',
+      name: '', type: 'Event Space', location: '', description: '', capacity: 50, status: 'active', maxBookingsPerUserPerSlot: 2,
       pricing: { pricingType: 'hourly', baseRate: 500, securityDeposit: 0 },
-      bookingRules: { openTime: '08:00', closeTime: '21:00', slotDurationMinutes: 60, bufferTimeMinutes: 0, maxBookingsPerUserPerDay: 1, advanceBookingDays: 7, isCancellationEnabled: false, cancellationRefundRules: [] },
+      bookingRules: { openTime: '08:00', closeTime: '21:00', slotDurationMinutes: 60, bufferTimeMinutes: 0, advanceBookingDays: 7, isCancellationEnabled: false, cancellationRefundRules: [] },
       openDays: [0, 1, 2, 3, 4, 5, 6],
       images: []
     }
@@ -62,9 +62,9 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
         setImagePreview(initialData.images && initialData.images.length > 0 ? initialData.images[0] : null);
       } else {
         reset({ 
-          name: '', type: 'Event Space', location: '', description: '', capacity: 50, status: 'active',
+          name: '', type: 'Event Space', location: '', description: '', capacity: 50, status: 'active', maxBookingsPerUserPerSlot: 2,
           pricing: { pricingType: 'hourly', baseRate: 500, securityDeposit: 0 },
-          bookingRules: { openTime: '08:00', closeTime: '21:00', slotDurationMinutes: 60, bufferTimeMinutes: 0, maxBookingsPerUserPerDay: 1, advanceBookingDays: 7, isCancellationEnabled: false, cancellationRefundRules: [] },
+          bookingRules: { openTime: '08:00', closeTime: '21:00', slotDurationMinutes: 60, bufferTimeMinutes: 0, advanceBookingDays: 7, isCancellationEnabled: false, cancellationRefundRules: [] },
           openDays: [0, 1, 2, 3, 4, 5, 6],
           images: []
         });
@@ -171,10 +171,10 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                 )} />
               </div>
               <div className="form-group">
-                <label className="form-label">Max Bookings/User/Day *</label>
-                <Controller name="bookingRules.maxBookingsPerUserPerDay" control={control} render={({ field, fieldState }) => (
+                <label className="form-label text-uppercase">Max Bookings/User/Per Slots *</label>
+                <Controller name="maxBookingsPerUserPerSlot" control={control} render={({ field, fieldState }) => (
                   <>
-                    <input type="number" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. 1" {...field} />
+                    <input type="number" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. 2" {...field} />
                     {fieldState.error && <span className="text-danger small">{fieldState.error.message}</span>}
                   </>
                 )} />

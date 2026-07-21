@@ -163,12 +163,12 @@ export class AuthService {
 
     let visitorContext = 'None';
     if (permissions && permissions.length > 0) {
-      if (permissions.includes('visitor:resident')) {
-        visitorContext = 'Resident';
+      if (permissions.includes('visitor:admin')) {
+        visitorContext = 'Admin';
       } else if (permissions.includes('visitor:guard')) {
         visitorContext = 'Guard';
-      } else if (permissions.includes('visitor:admin')) {
-        visitorContext = 'Admin';
+      } else if (permissions.includes('visitor:resident')) {
+        visitorContext = 'Resident';
       }
     }
 

@@ -7,7 +7,7 @@ import '../styles/_amenities.scss';
 
 
 const AdminLedgersView = () => {
-  const { bookings, loading, search, handleSearchChange } = useAdminLedgers();
+  const { bookings, loading, search, handleSearchChange, pagination, handlePageChange } = useAdminLedgers();
 
   const handleExport = () => {
     const table = document.getElementById('bookings-ledger');
@@ -97,6 +97,31 @@ const AdminLedgersView = () => {
                 </tbody>
               </table>
             </div>
+            
+            {pagination && pagination.totalRecords > 0 && (
+              <div className="card-footer bg-body border-top d-flex justify-content-between align-items-center p-3">
+                <div className="text-muted small">
+                  {(pagination.currentPage - 1) * 10 + 1}-
+                  {Math.min(pagination.currentPage * 10, pagination.totalRecords)} of {pagination.totalRecords}
+                </div>
+                <div className="d-flex gap-2">
+                  <button 
+                    className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" 
+                    disabled={pagination.currentPage <= 1}
+                    onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  >
+                    <i className="fa-solid fa-chevron-left"></i> Prev
+                  </button>
+                  <button 
+                    className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" 
+                    disabled={pagination.currentPage >= pagination.totalPages}
+                    onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  >
+                    Next <i className="fa-solid fa-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

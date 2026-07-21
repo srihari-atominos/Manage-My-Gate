@@ -30,7 +30,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
   useEffect(() => {
     if (visible) {
       setLoadingVillas(true)
-      apiClient.get('/villas?limit=100')
+      apiClient.get('/villas?limit=1000')
         .then(res => {
           setVillas(res.data?.data || [])
         })
@@ -168,7 +168,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
                   {selectedVillaId 
                     ? (() => {
                         const v = villas.find(v => v._id === selectedVillaId);
-                        return v ? `${v.villaNumber} ${v.block ? `(${v.block})` : ''}` : '-- Choose a Villa --';
+                        return v ? `${v.unitNumber} ${v.blockOrBuilding ? `(${v.blockOrBuilding})` : ''}` : '-- Choose a Villa --';
                       })()
                     : '-- Choose a Villa --'}
                   <span className="caret"></span>
@@ -196,7 +196,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
                           e.currentTarget.closest('.dropdown-menu').classList.remove('show');
                         }}
                       >
-                        {villa.villaNumber} {villa.block ? `(${villa.block})` : ''}
+                        {villa.unitNumber} {villa.blockOrBuilding ? `(${villa.blockOrBuilding})` : ''}
                       </button>
                     </li>
                   ))}

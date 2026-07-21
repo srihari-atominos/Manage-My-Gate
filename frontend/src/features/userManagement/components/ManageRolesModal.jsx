@@ -16,7 +16,7 @@ import {
 import usePermission from '../../../hooks/usePermission'
 
 const schema = yup.object().shape({
-  selectedRoles: yup.array().of(yup.string().required()).required('Roles selection is required'),
+  selectedRole: yup.string().required('Role selection is required'),
 })
 
 /**
@@ -31,7 +31,7 @@ const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] 
   const { reset, watch, setValue, handleSubmit, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
-      selectedRoles: [],
+      selectedRole: '',
     },
   })
 
@@ -41,28 +41,22 @@ const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] 
       const userRoles = typeof user.role === 'string'
         ? user.role.split(',').map((r) => r.trim()).filter(Boolean)
         : []
-      reset({ selectedRoles: userRoles })
+      reset({ selectedRole: userRoles.length > 0 ? userRoles[0] : '' })
     } else if (!visible) {
-      reset({ selectedRoles: [] })
+      reset({ selectedRole: '' })
     }
   }, [user, visible, reset])
 
-  const selectedRoles = watch('selectedRoles') || []
+  const selectedRole = watch('selectedRole')
 
-  const handleCheckboxChange = (role, checked) => {
+  const handleRoleChange = (role) => {
     if (!hasPermission) return
-    let newRoles
-    if (checked) {
-      newRoles = [...selectedRoles, role]
-    } else {
-      newRoles = selectedRoles.filter((r) => r !== role)
-    }
-    setValue('selectedRoles', newRoles, { shouldValidate: true, shouldDirty: true })
+    setValue('selectedRole', role, { shouldValidate: true, shouldDirty: true })
   }
 
   const onSubmit = (data) => {
     if (!hasPermission) return
-    onSave(user.id, data.selectedRoles)
+    onSave(user.id, [data.selectedRole])
   }
 
   return (
@@ -91,23 +85,25 @@ const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] 
 
           <div className="d-flex flex-column gap-2 mb-3">
             {availableRoles.map((role) => {
-              const isChecked = selectedRoles.includes(role)
+              const isChecked = selectedRole === role
               return (
                 <CFormCheck
                   key={role}
-                  id={`role-checkbox-${role.replace(/\s+/g, '-').toLowerCase()}`}
+                  type="radio"
+                  name="roleSelection"
+                  id={`role-radio-${role.replace(/\s+/g, '-').toLowerCase()}`}
                   label={role}
                   checked={isChecked}
                   disabled={!hasPermission}
-                  onChange={(e) => handleCheckboxChange(role, e.target.checked)}
+                  onChange={() => handleRoleChange(role)}
                 />
               )
             })}
           </div>
 
-          {errors.selectedRoles && (
+          {errors.selectedRole && (
             <div className="text-danger small mt-1" id="roles-validation-error">
-              {errors.selectedRoles.message}
+              {errors.selectedRole.message}
             </div>
           )}
         </CModalBody>

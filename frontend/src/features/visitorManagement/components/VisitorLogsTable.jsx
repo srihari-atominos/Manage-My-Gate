@@ -10,7 +10,7 @@ export const VisitorLogsTable = ({ logs }) => {
   // Filter logs based on search and drop-downs
   const filteredLogs = logs.filter(log => {
     const name = log.visitorName || log.snapshot?.visitorName || '';
-    const destination = log.villa || (log.passId?.villaId?.villaNumber || '');
+    const destination = log.villa || (log.passId?.villaId?.unitNumber || log.passId?.villaId?.villaNumber || '');
     const guardName = log.guard || log.guardId?.name || '';
     const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           destination.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -110,7 +110,7 @@ export const VisitorLogsTable = ({ logs }) => {
                   const logId = log.id || log._id;
                   const name = log.visitorName || log.snapshot?.visitorName || '—';
                   const type = log.type || (log.entryType === 'PRE_APPROVED' ? 'guest' : 'walk-in');
-                  const villa = log.villa || (log.passId?.villaId?.villaNumber || 'Villa Gate');
+                  const villa = log.villa || (log.passId?.villaId?.unitNumber || log.passId?.villaId?.villaNumber || 'Villa Gate');
                   const resident = log.resident || log.residentId?.name || '—';
                   
                   const checkIn = log.checkIn || (log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—');

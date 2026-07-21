@@ -1,4 +1,4 @@
-﻿import React, { memo } from 'react';
+import React, { memo } from 'react';
 import { CCard, CCardBody, CCardImage, CButton } from '@coreui/react';
 import AvailabilityBadge from './AvailabilityBadge.jsx';
 import PriceDisplay from './PriceDisplay.jsx';
@@ -13,8 +13,13 @@ const ResidentAmenityCard = memo(({ amenity, onBook }) => {
           style={{ height: '220px', objectFit: 'cover' }} 
           alt={amenity.name}
         />
-        <div className="position-absolute top-0 end-0 p-3">
+        <div className="position-absolute top-0 end-0 p-3 d-flex flex-column gap-2 align-items-end">
           <AvailabilityBadge isAvailable={true} />
+          {amenity.maxBookingsPerUserPerSlot && (
+             <span className="badge bg-dark shadow-sm">
+                Your Booked Slots: {amenity.userBookedSlotsCount || 0} / {amenity.maxBookingsPerUserPerSlot}
+             </span>
+          )}
         </div>
       </div>
       

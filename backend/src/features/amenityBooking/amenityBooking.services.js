@@ -27,6 +27,10 @@ export class AmenityBookingService {
     return await amenityBookingRepository.findEventsForCalendar(orgId, startDate, endDate);
   }
 
+  async getAggregatedCalendarBookings(orgId, startDate, endDate) {
+    return await amenityBookingRepository.getAggregatedCalendarBookings(orgId, startDate, endDate);
+  }
+
   async getActivePasses(userId, orgId) {
     const activeBookings = await amenityBookingRepository.getActivePasses(userId, orgId);
     
@@ -96,11 +100,7 @@ export class AmenityBookingService {
       throw new HttpError(400, `Booking must be within operating hours (${amenity.bookingRules.openTime} to ${amenity.bookingRules.closeTime})`);
     }
 
-    // 9. Existing Booking Validation (max per day)
-    const userBookings = await amenityBookingRepository.countUserBookingsOnDate(userId, orgId, bookingDate);
-    if (userBookings >= amenity.bookingRules.maxBookingsPerUserPerDay) {
-      throw new HttpError(400, `You have reached the maximum number of bookings per day for this amenity.`);
-    }
+
 
     // 12. Booking Window Validation
     const diffTime = Math.abs(bookingDateTimeStart - now);
@@ -111,18 +111,29 @@ export class AmenityBookingService {
 
     // 8, 10 & 11. Overlapping Slot, Buffer Time, and Capacity Validation
     const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime);
-    if (conflicts.length >= amenity.capacity) {
-      throw new HttpError(400, 'The amenity is at full capacity for the selected time slot.');
+    const currentlyBookedSpots = conflicts.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
+    const requestedSpots = parseInt(bookingData.numberOfPersons || 1, 10);
+    const remainingCapacity = amenity.capacity - currentlyBookedSpots;
+    if (requestedSpots > remainingCapacity) {
+      if (remainingCapacity <= 0) {
+        throw new HttpError(400, 'The amenity is at full capacity for the selected time slot.');
+      } else {
+        throw new HttpError(400, `The amenity remaining capacity for the selected time slot is ${remainingCapacity}.`);
+      }
     }
     
     // Validate if the same user has already booked an overlapping slot (duplicate booking)
-    const duplicateUserBooking = conflicts.find(b => b.userId.toString() === userId.toString());
-    if (duplicateUserBooking) {
+    // We allow overlap ONLY if it's the EXACT same slot, so they can add more members (capped by maxBookingsPerUserPerSlot in controller).
+    const overlappingOtherSlot = conflicts.find(b => 
+      b.userId.toString() === userId.toString() && 
+      (b.startTime !== startTime || b.endTime !== endTime)
+    );
+    if (overlappingOtherSlot) {
       throw new HttpError(400, 'You already have a booking that overlaps with this time slot');
     }
 
     // 13. Pricing Calculation
-    const pricingDetails = this._calculatePricing(amenity, bookingDateTimeStart, bookingDateTimeEnd);
+    const pricingDetails = this._calculatePricing(amenity, bookingDateTimeStart, bookingDateTimeEnd, bookingData.numberOfPersons || 1);
     const totalAmount = pricingDetails.totalAmount;
     const deposit = pricingDetails.securityDeposit;
 
@@ -130,13 +141,14 @@ export class AmenityBookingService {
     let finalStatus = 'pending';
     let requiresPayment = totalAmount > 0;
 
-    if (!requiresPayment && !amenity.requiresApproval) {
+    if (!requiresPayment) {
       finalStatus = 'confirmed';
     }
 
     const newBookingData = {
       ...bookingData,
       status: finalStatus,
+      paymentStatus: requiresPayment ? 'pending' : 'success',
       pricingDetails,
       totalPrice: totalAmount,
       deposit
@@ -168,7 +180,7 @@ export class AmenityBookingService {
     };
   }
 
-  _calculatePricing(amenity, startDateTime, endDateTime) {
+  _calculatePricing(amenity, startDateTime, endDateTime, numberOfPersons = 1) {
     const durationHours = (endDateTime - startDateTime) / (1000 * 60 * 60);
     const baseRate = amenity.pricing?.baseRate || amenity.ratePerHour || 0;
     
@@ -178,7 +190,7 @@ export class AmenityBookingService {
       multiplier = amenity.pricing?.weekendRateMultiplier || 1.0;
     }
     
-    const baseAmount = baseRate * durationHours * multiplier;
+    const baseAmount = baseRate * durationHours * multiplier * numberOfPersons;
     const taxAmount = baseAmount * ((amenity.pricing?.taxPercentage || 0) / 100);
     const securityDeposit = amenity.pricing?.securityDeposit || 0;
     const totalAmount = baseAmount + taxAmount + securityDeposit;
@@ -195,7 +207,7 @@ export class AmenityBookingService {
   }
 
   async createManualBooking(bookingData) {
-    const { orgId, amenityId, userId, bookingDate, startTime, endTime, paymentStatus = 'paid' } = bookingData;
+    const { orgId, amenityId, userId, bookingDate, startTime, endTime, paymentStatus = 'success' } = bookingData;
     
     // Resident membership check
     const userService = (await import('../user/user.services.js')).default;
@@ -213,11 +225,19 @@ export class AmenityBookingService {
     
     // Amenity availability check
     const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime);
-    if (conflicts.length >= amenity.capacity) {
-      throw new HttpError(400, 'The amenity is at full capacity for the selected time slot.');
+    const currentlyBookedSpots = conflicts.reduce((sum, b) => sum + (b.numberOfPersons || 1), 0);
+    const requestedSpots = parseInt(bookingData.numberOfPersons || 1, 10);
+    const remainingCapacity = amenity.capacity - currentlyBookedSpots;
+    
+    if (requestedSpots > remainingCapacity) {
+      if (remainingCapacity <= 0) {
+        throw new HttpError(400, 'The amenity is at full capacity for the selected time slot.');
+      } else {
+        throw new HttpError(400, `The amenity remaining capacity for the selected time slot is ${remainingCapacity}.`);
+      }
     }
     
-    const pricingDetails = this._calculatePricing(amenity, bookingDateTimeStart, bookingDateTimeEnd);
+    const pricingDetails = this._calculatePricing(amenity, bookingDateTimeStart, bookingDateTimeEnd, bookingData.numberOfPersons || 1);
     
     const newBookingData = {
       ...bookingData,
@@ -258,11 +278,11 @@ export class AmenityBookingService {
     return updated;
   }
 
-  async cancelBooking(bookingId, userId, orgId, reason = '') {
+  async cancelBooking(bookingId, userId, orgId, reason = '', isAdmin = false) {
     const booking = await amenityBookingRepository.findById(bookingId, orgId);
     if (!booking) throw new HttpError(404, 'Booking not found');
     
-    if (booking.userId.toString() !== userId.toString()) {
+    if (!isAdmin && booking.userId.toString() !== userId.toString()) {
       throw new HttpError(403, 'You can only cancel your own bookings');
     }
     

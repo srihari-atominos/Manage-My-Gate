@@ -125,12 +125,21 @@ const DateDetailsPanel = memo(({
                   {/* Slot Grid */}
                   <div className="ddp-slot-grid">
                     {allSlots.map((slot, i) => {
+                      const maxLimit = slot.maxBookingsPerUser || selectedAmenity?.maxBookingsPerUserPerSlot || 2;
+                      const myCount = slot.myBookingsCount || 0;
+                      const canBookMore = myCount < maxLimit && slot.status === 'Available';
+
                       const cfg = getStatusCfg(slot);
-                      const isAvailable = slot.status === 'Available' && !slot.bookedByMe;
+                      const isAvailable = slot.status === 'Available' && canBookMore;
                       const isSelected = selectedSlot?.startTime === slot.startTime && selectedSlot?.endTime === slot.endTime;
                       
                       let cardClass = isAvailable ? 'ddp-slot-card--available' : 'ddp-slot-card--disabled';
                       if (isSelected) cardClass += ' ddp-slot-card--selected';
+                      
+                      let badgeLabel = cfg.label;
+                      if (slot.bookedByMe) {
+                         badgeLabel = `Booked by You (${myCount}/${maxLimit})`;
+                      }
                       
                       const slotCard = (
                         <div
@@ -164,7 +173,7 @@ const DateDetailsPanel = memo(({
                               color: isSelected ? '#ffffff' : cfg.color }}
                           >
                             {!isSelected && <span className="ddp-badge-dot" style={{ background: cfg.color }}></span>}
-                            {isSelected ? 'Selected' : cfg.label}
+                            {isSelected ? 'Selected' : badgeLabel}
                           </div>
                         </div>
                       );

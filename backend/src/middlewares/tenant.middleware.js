@@ -47,6 +47,7 @@ export const tenantContext = (optionsOrReq, res, next) => {
 
         // If target tenant context orgId does not match user's active token orgId, access is forbidden
         if (orgIdHeader !== req.user.orgId) {
+          console.error(`[TENANT DEBUG] 403 Forbidden. Header: ${orgIdHeader}, Token: ${req.user.orgId}`);
           throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
         }
 

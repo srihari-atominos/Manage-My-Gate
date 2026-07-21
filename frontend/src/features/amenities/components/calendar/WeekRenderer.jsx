@@ -16,7 +16,7 @@ const WeekRenderer = memo(({ currentDate, events = [], onEventClick }) => {
   const hourHeight = 60; // 60px per hour
 
   const getEventsForDay = (dateObj) => {
-    const dateStr = dateObj.toISOString().split('T')[0];
+    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
     return events.filter(e => e.date === dateStr);
   };
 

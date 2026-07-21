@@ -31,6 +31,10 @@ export const useAdminCalendar = () => {
       
       const curr = new Date(currentDate);
       
+      const formatDate = (dateObj) => {
+        return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+      };
+      
       if (viewMode === 'month') {
         const year = curr.getFullYear();
         const month = curr.getMonth();
@@ -38,19 +42,19 @@ export const useAdminCalendar = () => {
         const start = new Date(year, month, 1);
         // end of month
         const end = new Date(year, month + 1, 0);
-        startDate = start.toISOString().split('T')[0];
-        endDate = end.toISOString().split('T')[0];
+        startDate = formatDate(start);
+        endDate = formatDate(end);
       } else if (viewMode === 'week') {
         const day = curr.getDay();
         const start = new Date(curr);
         start.setDate(curr.getDate() - day);
         const end = new Date(start);
         end.setDate(start.getDate() + 6);
-        startDate = start.toISOString().split('T')[0];
-        endDate = end.toISOString().split('T')[0];
+        startDate = formatDate(start);
+        endDate = formatDate(end);
       } else {
         // Day view
-        startDate = curr.toISOString().split('T')[0];
+        startDate = formatDate(curr);
         endDate = startDate;
       }
 
@@ -80,7 +84,7 @@ export const useAdminCalendar = () => {
     
     return bookingQueue.map(event => ({
       ...event,
-      title: event.title,
+      title: event.status === 'cancelled' ? `${event.title} (Cancelled)` : event.title,
       subtitle: event.subtitle,
       colorKey: event.type === 'maintenance' ? 'rejected' 
               : event.type === 'operating_hours' ? 'default' 
@@ -92,7 +96,8 @@ export const useAdminCalendar = () => {
 
   // Apply filters
   const filteredEvents = useMemo(() => {
-    return rawEvents.filter(event => {
+    const validEvents = rawEvents.filter(event => {
+      if (event.status === 'cancelled') return false; // Hide cancelled events
       if (filters.amenityId && event.amenityId !== filters.amenityId) return false;
       if (filters.status && event.status !== filters.status) return false;
       if (filters.paymentStatus && event.paymentStatus !== filters.paymentStatus) return false;
@@ -106,7 +111,30 @@ export const useAdminCalendar = () => {
       }
       return true;
     });
-  }, [rawEvents, filters]);
+
+    if (viewMode === 'month') return validEvents;
+
+    // Group overlapping events for day/week view
+    const groups = {};
+    validEvents.forEach(e => {
+      const key = `${e.amenityId}-${e.date}-${e.start}-${e.end}`;
+      const persons = e.metadata?.numberOfPersons || 1;
+      
+      if (!groups[key]) {
+        groups[key] = { ...e, isGroup: true, subEvents: [e], totalPersons: persons };
+      } else {
+        groups[key].subEvents.push(e);
+        groups[key].totalPersons += persons;
+      }
+      
+      const count = groups[key].subEvents.length;
+      const amenityTitle = e.amenityName || (e.title && e.title.split('(')[0].trim()) || 'Booking';
+      groups[key].title = `${amenityTitle} (${groups[key].totalPersons} Users)`;
+      groups[key].subtitle = count > 1 ? `${count} Bookings` : e.subtitle;
+    });
+    
+    return Object.values(groups);
+  }, [rawEvents, filters, viewMode]);
 
   const visibleEvents = filteredEvents;
 

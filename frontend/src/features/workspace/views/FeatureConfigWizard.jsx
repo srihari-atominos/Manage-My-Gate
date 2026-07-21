@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CContainer, CRow, CCol, CCard, CCardBody, CButton, CAlert, CSpinner } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
-import { cilUser, cilShieldAlt, cilLayers, cilHome, cilBuilding, cilList, cilSettings } from '@coreui/icons';
+import { cilUser, cilShieldAlt, cilLayers, cilHome, cilBuilding, cilList, cilSettings, cilAddressBook, cilMoney } from '@coreui/icons';
 import useFeatureConfigWizard from '../hooks/useFeatureConfigWizard.js';
 
 import SetupWorkspace from '../components/SetupWorkspace.jsx';
@@ -71,6 +71,18 @@ export const FeatureConfigWizard = () => {
       titleKey: 'workspace.wizard.complaints.title',
       descKey: 'workspace.wizard.complaints.desc',
       icon: cilSettings,
+    },
+    {
+      id: 'visitor',
+      titleKey: 'workspace.wizard.visitor.title',
+      descKey: 'workspace.wizard.visitor.desc',
+      icon: cilAddressBook,
+    },
+    {
+      id: 'billing',
+      titleKey: 'workspace.wizard.billing.title',
+      descKey: 'workspace.wizard.billing.desc',
+      icon: cilMoney,
     },
   ];
 

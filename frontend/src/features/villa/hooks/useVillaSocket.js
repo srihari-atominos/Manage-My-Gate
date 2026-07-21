@@ -11,13 +11,16 @@ export const useVillaSocket = (orgId) => {
   useEffect(() => {
     if (!orgId) return;
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
-    logger.info(`Initializing real-time villa socket connection for org room: org:${orgId}`);
-    
-    socketRef.current = io(socketUrl, {
-      withCredentials: true,
-      transports: ['websocket', 'polling'],
-    });
+    // Prevent duplicate connections on remount
+    if (!socketRef.current) {
+      const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+      logger.info(`Initializing real-time villa socket connection for org room: org:${orgId}`);
+      
+      socketRef.current = io(socketUrl, {
+        withCredentials: true,
+        transports: ['websocket', 'polling'],
+      });
+    }
 
     const socket = socketRef.current;
 
@@ -58,6 +61,7 @@ export const useVillaSocket = (orgId) => {
       socket.off('resident_assigned');
       socket.off('resident_type_updated');
       socket.disconnect();
+      socketRef.current = null; // Reset ref on unmount
     };
   }, [dispatch, orgId]);
 };

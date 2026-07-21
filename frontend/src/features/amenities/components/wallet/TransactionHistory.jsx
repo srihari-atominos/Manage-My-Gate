@@ -1,7 +1,10 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { CCard, CCardBody, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell, CBadge } from '@coreui/react';
 
 const TransactionHistory = memo(({ transactions = [], loading }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   if (!loading && transactions.length === 0) {
     return (
       <CCard className="border-0 shadow-sm">
@@ -26,6 +29,12 @@ const TransactionHistory = memo(({ transactions = [], loading }) => {
     return type === 'Credit' ? <CBadge color="success">Credit</CBadge> : <CBadge color="danger">Debit</CBadge>;
   };
 
+  const totalItems = transactions.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentTransactions = transactions.slice(startIndex, startIndex + itemsPerPage);
+  const actualEndIndex = Math.min(startIndex + itemsPerPage, totalItems);
+
   return (
     <CCard className="border-0 shadow-sm mb-4">
       <CCardBody className="p-0" style={{ overflowX: 'auto' }}>
@@ -43,7 +52,7 @@ const TransactionHistory = memo(({ transactions = [], loading }) => {
             </CTableRow>
           </CTableHead>
           <CTableBody>
-            {transactions.map((txn) => (
+            {currentTransactions.map((txn) => (
               <CTableRow key={txn._id}>
                 <CTableDataCell className="small">
                   {new Date(txn.createdAt).toLocaleDateString('en-GB')} <br/>
@@ -65,6 +74,30 @@ const TransactionHistory = memo(({ transactions = [], loading }) => {
           </CTableBody>
         </CTable>
       </CCardBody>
+      
+      {totalItems > 0 && (
+        <div className="card-footer bg-body border-top d-flex justify-content-between align-items-center p-3">
+          <div className="text-muted small">
+            {startIndex + 1}-{actualEndIndex} of {totalItems}
+          </div>
+          <div className="d-flex gap-2">
+            <button 
+              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" 
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => p - 1)}
+            >
+              <i className="fa-solid fa-chevron-left"></i> Prev
+            </button>
+            <button 
+              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" 
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => p + 1)}
+            >
+              Next <i className="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+      )}
     </CCard>
   );
 });

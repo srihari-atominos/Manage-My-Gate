@@ -32,7 +32,7 @@ const amenitySettingsSchema = new mongoose.Schema({
     bookingCheckIn: { type: Boolean, default: true }
   },
   paymentConfig: {
-    provider: { type: String, enum: ['Stripe Payments', 'Razorpay', 'PayU', 'None'], default: 'None' },
+    provider: { type: String, enum: ['Stripe Payments', 'Razorpay', 'PayU', 'Paytm', 'Google Pay', 'Bank Account', 'None'], default: 'None' },
     publicKey: { type: String, default: '' },
     secretKey: { type: String, default: '' }
   }

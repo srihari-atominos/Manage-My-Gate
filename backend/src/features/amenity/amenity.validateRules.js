@@ -15,7 +15,7 @@ export const createAmenityRules = [
   body('bookingRules.slotDurationMinutes').isInt({ min: 1 }).withMessage('Slot duration must be a positive integer'),
   body('bookingRules.openTime').matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid open time format (HH:MM)'),
   body('bookingRules.closeTime').matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid close time format (HH:MM)'),
-  body('bookingRules.maxBookingsPerUserPerDay').isInt({ min: 1 }).withMessage('Max bookings must be a positive integer'),
+  body('maxBookingsPerUserPerSlot').isInt({ min: 1 }).withMessage('Max bookings must be a positive integer'),
   body('bookingRules.advanceBookingDays').isInt({ min: 0 }).withMessage('Advance booking days cannot be negative'),
   body('status').optional().isIn(['active', 'inactive']).withMessage('Invalid status'),
 ];
@@ -35,7 +35,7 @@ export const updateAmenityRules = [
   body('bookingRules.slotDurationMinutes').optional().isInt({ min: 1 }).withMessage('Slot duration must be a positive integer'),
   body('bookingRules.openTime').optional().matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid open time format (HH:MM)'),
   body('bookingRules.closeTime').optional().matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid close time format (HH:MM)'),
-  body('bookingRules.maxBookingsPerUserPerDay').optional().isInt({ min: 1 }).withMessage('Max bookings must be a positive integer'),
+  body('maxBookingsPerUserPerSlot').optional().isInt({ min: 1 }).withMessage('Max bookings must be a positive integer'),
   body('bookingRules.advanceBookingDays').optional().isInt({ min: 0 }).withMessage('Advance booking days cannot be negative'),
   body('status').optional().isIn(['active', 'inactive']).withMessage('Invalid status'),
 ];

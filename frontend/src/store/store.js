@@ -13,6 +13,7 @@ import auditLogReducer from '../features/auditLog/store/auditLogSlice.js';
 import messageTemplateReducer from '../features/messageTemplate/store/messageTemplateSlice.js';
 import villaReducer from '../features/villa/store/villaSlice.js';
 import amenityReducer from '../features/amenities/store/amenitySlice.js';
+import amenityBookingReducer from '../features/amenities/store/amenityBookingSlice.js';
 import dashboardReducer from '../features/amenities/store/dashboardSlice.js';
 import securityLogReducer from '../features/amenities/store/securityLogSlice.js';
 import visitorPassReducer from '../features/visitorManagement/store/visitorPassSlice.js';
@@ -54,6 +55,7 @@ export const store = configureStore({
     messageTemplate: messageTemplateReducer,
     villa: villaReducer,
     amenities: amenityReducer,
+    amenityBooking: amenityBookingReducer,
     amenitiesDashboard: dashboardReducer,
     securityLogs: securityLogReducer,
     visitorPass: visitorPassReducer,

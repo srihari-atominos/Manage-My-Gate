@@ -260,6 +260,7 @@ export class UserService {
         if (villa) {
           const alreadyAssigned = villa.residents.some(r => String(r.userId) === String(user._id));
           if (!alreadyAssigned) {
+            // Use in-memory push to residents array
             villa.residents.push({
               userId: user._id,
               residencyType,
@@ -267,23 +268,35 @@ export class UserService {
               assignedAt: new Date()
             });
           }
+
+          // In-memory occupancy status update
           if (residentType === 'Owner' || residentType === 'Tenant') {
             villa.status = 'Occupied';
           } else if (villa.status === 'Vacant') {
             villa.status = 'Occupied';
           }
+
+          // Single save execution
           await villa.save({ session });
         }
       }
 
       // Dynamically import tokenService to follow clean cross-feature flow
-      const tokenService = (await import('../token/token.services.js')).default;
-      const { invitationToken } = await tokenService.generateInvitationToken(user._id, session);
+      let invitationToken = null;
+      if (user.status === 'Pending Verification') {
+        const tokenService = (await import('../token/token.services.js')).default;
+        const result = await tokenService.generateInvitationToken(user._id, session);
+        invitationToken = result.invitationToken;
+      }
 
       await session.commitTransaction();
 
       // Dispatch event for asynchronous SMTP email transmission
-      userEvents.emit('USER_INVITED', { email: trimmedEmail, orgId, invitationToken });
+      if (invitationToken) {
+        userEvents.emit('USER_INVITED', { email: trimmedEmail, orgId, invitationToken });
+      } else {
+        userEvents.emit('USER_ADDED', { email: trimmedEmail, orgId });
+      }
       
       // Dispatch event for real-time frontend syncing
       userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'invited' });

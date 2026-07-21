@@ -87,6 +87,12 @@ const invoiceSchema = new mongoose.Schema(
       },
       default: null,
     },
+    orgId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: [true, 'Organization (orgId) is required'],
+      index: true,
+    },
     offlineReference: {
       type: String,
       default: null,
@@ -108,6 +114,8 @@ invoiceSchema.index(
 // Multi-tenant query partitioning indexes
 invoiceSchema.index({ communityId: 1, status: 1 });
 invoiceSchema.index({ communityId: 1, targetUserId: 1 });
+// Add compound index for Dashboard Queries
+invoiceSchema.index({ orgId: 1, status: 1 });
 
 export const Invoice = mongoose.model('Invoice', invoiceSchema);
 export default Invoice;

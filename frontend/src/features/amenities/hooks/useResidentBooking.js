@@ -90,7 +90,7 @@ export const useResidentBooking = (initialAmenityId) => {
     };
   }, [step, draft.bookingDate, draft.amenityId, dispatch, token, user]);
 
-  const confirmBooking = async () => {
+  const confirmBooking = async (numberOfPersons = 1) => {
     setStep('submitting');
     setErrorMsg('');
     try {
@@ -98,7 +98,8 @@ export const useResidentBooking = (initialAmenityId) => {
         amenityId: draft.amenityId,
         bookingDate: draft.bookingDate,
         startTime: draft.startTime,
-        endTime: draft.endTime
+        endTime: draft.endTime,
+        numberOfPersons
       };
       
       const response = await createBooking(payload);

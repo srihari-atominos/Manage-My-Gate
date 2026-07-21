@@ -109,6 +109,7 @@ class AmenityDashboardService {
         amenityId: b.amenityId?._id,
         amenityName: b.amenityId?.name,
         amenityImage: b.amenityId?.images?.[0] || null,
+        numberOfPersons: b.numberOfPersons || 1,
         
         // Resident info
         residentId: b.userId?._id,

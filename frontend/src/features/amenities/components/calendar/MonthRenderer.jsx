@@ -52,9 +52,10 @@ const MonthRenderer = memo(({ currentDate, events = [], onDateSelect, selectedDa
       <div className="rcv-days-grid">
         {days.map((day, index) => {
           const bookings = getDayBookings(day);
+          const activeBookings = bookings.filter(b => !['cancelled', 'rejected'].includes(b.status));
           const todayFlag = day && isToday(day);
           const selectedFlag = day && isSelected(day);
-          const hasBookings = bookings.length > 0;
+          const hasBookings = activeBookings.length > 0;
 
           return (
             <div
@@ -78,7 +79,7 @@ const MonthRenderer = memo(({ currentDate, events = [], onDateSelect, selectedDa
                     <div className="rcv-booking-dot-row">
                       <span className="rcv-booking-badge">
                         <i className="small fa-solid fa-circle-check" ></i>
-                        &nbsp;{bookings.length}
+                        &nbsp;{activeBookings.length}
                       </span>
                     </div>
                   )}

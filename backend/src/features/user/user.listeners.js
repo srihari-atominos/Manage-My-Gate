@@ -77,3 +77,53 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken }) => {
     logger.error(`Asynchronous invitation email dispatch failed: ${error.message}`);
   }
 });
+
+const DEFAULT_ADDED_BODY = `
+<div style="font-family: sans-serif; padding: 20px; color: #333;">
+  <h2>Workspace Update</h2>
+  <p>You have been added to a new workspace/community.</p>
+  <p>Please log in to your account to access it.</p>
+</div>
+`;
+
+userEvents.on('USER_ADDED', async ({ email, orgId }) => {
+  try {
+    const smtpConnection = await integrationHubService.findSmtpConnection(orgId);
+
+    if (!smtpConnection) {
+      logger.warn(`SMTP integration is not configured for organization ${orgId}. USER_ADDED email not sent.`);
+      return;
+    }
+
+    const template = await messageTemplateService.getTemplateByPurpose(orgId, 'email', 'user_added');
+
+    const subject = template?.subject || 'You have been added to a new Workspace';
+    const bodyTemplate = template?.body || DEFAULT_ADDED_BODY;
+
+    const credentials = await integrationHubService.getDecryptedCredentialsById(smtpConnection._id);
+
+    const transporter = nodemailer.createTransport({
+      host: credentials.host,
+      port: parseInt(credentials.port, 10),
+      secure: parseInt(credentials.port, 10) === 465,
+      auth: {
+        user: credentials.authUsername,
+        pass: credentials.authPassword,
+      },
+    });
+
+    const mailOptions = {
+      from: credentials.authUsername,
+      to: email,
+      subject,
+      html: bodyTemplate,
+      ...(template?.cc && { cc: template.cc }),
+      ...(template?.bcc && { bcc: template.bcc }),
+    };
+
+    await transporter.sendMail(mailOptions);
+    logger.info(`USER_ADDED email successfully sent to ${email} via SMTP.`);
+  } catch (error) {
+    logger.error(`Asynchronous USER_ADDED email dispatch failed: ${error.message}`);
+  }
+});

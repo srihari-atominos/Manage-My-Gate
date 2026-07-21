@@ -609,7 +609,7 @@ async function seed() {
     bufferTimeMinutes:       15,
     openTime:                '06:00',
     closeTime:               '22:00',
-    maxBookingsPerUserPerDay: 2,
+    maxBookingsPerUserPerSlot: 2,
     advanceBookingDays:      7,
     minAdvanceBookingHours:  2,
     isCancellationEnabled:   true,

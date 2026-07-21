@@ -206,7 +206,10 @@ class WalletService {
       qrPayload: b.qrCode,
       qrStatus: b.qrStatus,
       status: b.status,
-      paymentStatus: b.paymentStatus
+      paymentStatus: b.paymentStatus,
+      pricingDetails: b.pricingDetails,
+      amenityRules: b.amenityId?.bookingRules,
+      numberOfPersons: b.numberOfPersons || 1
     }));
 
     const transactionHistory = transactions.map(t => t.toObject());
