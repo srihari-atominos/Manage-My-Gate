@@ -104,6 +104,7 @@ export class InvoiceService {
       dueDate.setUTCDate(dueDate.getUTCDate() + 10);
 
       invoicesToCreate.push({
+        communityId: assessment.communityId,
         assessmentId: assessment._id,
         targetUserId,
         unitId: unit._id, // Villa collection maps to unitId
@@ -114,6 +115,7 @@ export class InvoiceService {
         dueDate,
         status: 'UNPAID',
       });
+
     }
 
     let created = 0;
@@ -214,6 +216,24 @@ export class InvoiceService {
       success: true,
       invoice: updated,
     };
+  }
+
+  /**
+   * Settle invoice payment transactionally with session and OCC support.
+   */
+  async settleInvoicePayment(invoiceId, paymentData = {}, session = null) {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info('settleInvoicePayment called', { invoiceId, paymentData, correlationId });
+
+    const updated = await invoiceRepository.updateStatusWithLock(
+      invoiceId,
+      'PAID',
+      paymentData,
+      session
+    );
+
+    invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, updated);
+    return updated;
   }
 
   /**

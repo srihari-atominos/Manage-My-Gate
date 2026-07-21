@@ -10,8 +10,9 @@ export const connectRules = [
     .notEmpty()
     .withMessage('Provider is required')
     .toLowerCase()
-    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral'])
-    .withMessage('Invalid provider. Allowed values: openai, twilio, resend, smtp, firebase, messagecentral'),
+    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral', 'banking', 'razorpay'])
+    .withMessage('Invalid provider. Allowed values: openai, twilio, resend, smtp, firebase, messagecentral, banking, razorpay'),
+
 
   body('accountLabel')
     .trim()
@@ -171,7 +172,51 @@ export const connectRules = [
     .trim()
     .isString()
     .withMessage('Environment must be a valid string'),
+
+  // Banking Vault validation rules
+  body('credentials.accountName')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'banking')
+    .trim()
+    .notEmpty()
+    .withMessage('Account Name (accountName) is required for Banking Vault')
+    .isString()
+    .withMessage('Account Name must be a valid string'),
+
+  body('credentials.accountNumber')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'banking')
+    .trim()
+    .notEmpty()
+    .withMessage('Account Number (accountNumber) is required for Banking Vault')
+    .matches(/^\d{9,18}$/)
+    .withMessage('Account Number must be a numeric string between 9 and 18 digits'),
+
+  body('credentials.ifscCode')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'banking')
+    .trim()
+    .toUpperCase()
+    .notEmpty()
+    .withMessage('IFSC Code (ifscCode) is required for Banking Vault')
+    .matches(/^[A-Z]{4}0[A-Z0-9]{6}$/)
+    .withMessage('IFSC Code must be a valid 11-character Indian Financial System Code format (e.g. SBIN0001234)'),
+
+  // Razorpay validation rules
+  body('credentials.keyId')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'razorpay')
+    .trim()
+    .notEmpty()
+    .withMessage('Key ID (keyId) is required for Razorpay integration')
+    .isString()
+    .withMessage('Key ID must be a valid string'),
+
+  body('credentials.keySecret')
+    .if((value, { req }) => req.body.provider?.toLowerCase() === 'razorpay')
+    .trim()
+    .notEmpty()
+    .withMessage('Key Secret (keySecret) is required for Razorpay integration')
+    .isString()
+    .withMessage('Key Secret must be a valid string'),
 ];
+
 
 /**
  * Validation rules for disconnecting (deleting) an integration connection.
@@ -215,8 +260,9 @@ export const listRules = [
     .optional()
     .trim()
     .toLowerCase()
-    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral'])
+    .isIn(['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral', 'banking', 'razorpay'])
     .withMessage('Invalid provider filter'),
+
 ];
 
 export default {

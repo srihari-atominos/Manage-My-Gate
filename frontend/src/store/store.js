@@ -23,6 +23,7 @@ import complaintReducer from '../features/complaints/store/complaintSlice.js';
 import complaintSettingsReducer from '../features/complaints/store/complaintSettingsSlice.js';
 import billingReducer from '../features/billing/store/billingSlice.js';
 import assessmentReducer from '../features/assessment/store/assessmentSlice.js';
+import walletReducer from '../features/billing/store/walletSlice.js';
 
 // Custom lightweight state logger middleware for development mode
 const stateLoggerMiddleware = (store) => (next) => (action) => {
@@ -63,6 +64,7 @@ export const store = configureStore({
     complaintSettings: complaintSettingsReducer,
     billing: billingReducer,
     assessment: assessmentReducer,
+    wallet: walletReducer,
   },
   middleware: (getDefaultMiddleware) => {
     const middlewares = getDefaultMiddleware();

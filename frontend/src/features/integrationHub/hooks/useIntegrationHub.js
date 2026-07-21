@@ -6,6 +6,8 @@ import {
   connectIntegration as createConnection,
   updateLabel,
   disconnectIntegration as deleteConnection,
+  getBankDetails as fetchBankDetails,
+  saveBankDetails as saveBankDetailsAction,
   clearError,
 } from '../store/integrationHubSlice.js';
 
@@ -17,7 +19,7 @@ export const useIntegrationHub = () => {
   const dispatch = useDispatch();
 
   // Redux state selectors
-  const { catalog, connections, pagination, isLoading, error } = useSelector(
+  const { catalog, connections, bankDetails, pagination, isLoading, error } = useSelector(
     (state) => state.integrationHub
   );
 
@@ -26,11 +28,13 @@ export const useIntegrationHub = () => {
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
 
-  // Auto-fetch catalog on mount
+  // Auto-fetch catalog and bank details on mount
   useEffect(() => {
     dispatch(fetchCatalog());
+    dispatch(fetchBankDetails());
   }, [dispatch]);
 
   // Auto-fetch connections whenever the selected provider changes
@@ -101,7 +105,6 @@ export const useIntegrationHub = () => {
 
   /**
    * Handle deleting/disconnecting a connection
-   * Gracefully catches and returns error strings (such as 409 conflict checks)
    */
   const handleDeleteConnection = useCallback(async (id) => {
     try {
@@ -118,10 +121,23 @@ export const useIntegrationHub = () => {
       return { success: true, data: result };
     } catch (err) {
       console.error('Delete connection error:', err);
-      // Surface the exact error message so the UI view can trigger a toast
       return { success: false, error: err };
     }
   }, [dispatch, selectedProvider, pagination.currentPage, pagination.limit]);
+
+  /**
+   * Handle saving bank details and gateway credentials
+   */
+  const handleSaveBankDetails = useCallback(async (bankFormData) => {
+    try {
+      const result = await dispatch(saveBankDetailsAction(bankFormData)).unwrap();
+      setIsBankModalOpen(false);
+      return { success: true, data: result };
+    } catch (err) {
+      console.error('Save bank details error:', err);
+      return { success: false, error: err };
+    }
+  }, [dispatch]);
 
   /**
    * Clear error state
@@ -134,6 +150,7 @@ export const useIntegrationHub = () => {
     // Redux State
     catalog,
     connections,
+    bankDetails,
     pagination,
     isLoading,
     error,
@@ -147,6 +164,8 @@ export const useIntegrationHub = () => {
     setIsModalOpen,
     isCreateModalOpen,
     setIsCreateModalOpen,
+    isBankModalOpen,
+    setIsBankModalOpen,
     isMaximized,
     setIsMaximized,
 
@@ -156,6 +175,7 @@ export const useIntegrationHub = () => {
     handleCreateConnection,
     handleUpdateLabel,
     handleDeleteConnection,
+    handleSaveBankDetails,
     handleClearError,
   };
 };

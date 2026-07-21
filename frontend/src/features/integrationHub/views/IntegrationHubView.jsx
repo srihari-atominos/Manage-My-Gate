@@ -1,11 +1,27 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CFormInput, CRow, CCol, CAlert, CToast, CToastBody, CToastHeader, CToaster } from '@coreui/react';
+import {
+  CFormInput,
+  CRow,
+  CCol,
+  CAlert,
+  CToast,
+  CToastBody,
+  CToastHeader,
+  CToaster,
+  CButton,
+  CCard,
+  CCardBody,
+  CBadge,
+} from '@coreui/react';
+import CIcon from '@coreui/icons-react';
+import { cilBank, cilSettings, cilCheckCircle, cilWarning } from '@coreui/icons';
 import PageHeader from '../../../components/common/PageHeader';
 import useIntegrationHub from '../hooks/useIntegrationHub.js';
 import ProviderCard from '../components/ProviderCard.jsx';
 import ProviderConnectionsModal from '../components/ProviderConnectionsModal.jsx';
 import CreateConnectionModal from '../components/CreateConnectionModal.jsx';
+import BankDetailsFormModal from '../components/BankDetailsFormModal.jsx';
 import '../styles/_integrationHub.scss';
 
 /**
@@ -18,6 +34,7 @@ export const IntegrationHubView = () => {
     // Redux State
     catalog,
     connections,
+    bankDetails,
     pagination,
     isLoading,
     error,
@@ -31,6 +48,8 @@ export const IntegrationHubView = () => {
     setIsModalOpen,
     isCreateModalOpen,
     setIsCreateModalOpen,
+    isBankModalOpen,
+    setIsBankModalOpen,
     isMaximized,
     setIsMaximized,
 
@@ -40,6 +59,7 @@ export const IntegrationHubView = () => {
     handleCreateConnection,
     handleUpdateLabel,
     handleDeleteConnection,
+    handleSaveBankDetails,
     handleClearError,
   } = useIntegrationHub();
 
@@ -116,6 +136,23 @@ export const IntegrationHubView = () => {
     }
   };
 
+  const handleBankDetailsSubmit = async (bankFormData) => {
+    setActionLoading(true);
+    setActionError(null);
+    const result = await handleSaveBankDetails(bankFormData);
+    setActionLoading(false);
+    if (result.success) {
+      showToast(
+        t('integrationHub.toast.bankSuccess', 'Bank details & credentials saved successfully!'),
+        'success'
+      );
+      return true;
+    } else {
+      setActionError(result.error);
+      return false;
+    }
+  };
+
   return (
     <div className="p-4" style={{ maxWidth: '1200px', margin: '0 auto' }}>
       {/* Page Header */}
@@ -129,6 +166,53 @@ export const IntegrationHubView = () => {
           {error}
         </CAlert>
       )}
+
+      {/* Bank & Gateway Credential Management Card */}
+      <CCard className="mb-4 bank-details-card">
+        <CCardBody className="p-4">
+          <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+            <div className="d-flex align-items-center mb-3 mb-md-0">
+              <div className="bank-card-icon me-3">
+                <CIcon icon={cilBank} size="xl" />
+              </div>
+              <div className="text-start">
+                <div className="d-flex align-items-center gap-2">
+                  <h5 className="fw-bold mb-1">
+                    {t('integrationHub.bankCard.title', 'Bank & Gateway Settlement Account')}
+                  </h5>
+                  {bankDetails?.isConfigured ? (
+                    <CBadge color="success" className="d-flex align-items-center gap-1">
+                      <CIcon icon={cilCheckCircle} size="sm" />
+                      {t('integrationHub.bankCard.statusConfigured', 'Configured')}
+                    </CBadge>
+                  ) : (
+                    <CBadge color="warning" className="d-flex align-items-center gap-1">
+                      <CIcon icon={cilWarning} size="sm" />
+                      {t('integrationHub.bankCard.statusPending', 'Action Required')}
+                    </CBadge>
+                  )}
+                </div>
+                <p className="text-muted small mb-0">
+                  {bankDetails?.isConfigured
+                    ? `${bankDetails.bankName || 'Bank'} • A/C: ****${(bankDetails.accountNumber || '').slice(-4)} • IFSC: ${bankDetails.ifscCode || '—'}`
+                    : t('integrationHub.bankCard.subtitle', 'Configure community bank account & Razorpay merchant API keys to process automated billing.')}
+                </p>
+              </div>
+            </div>
+
+            <CButton
+              color="primary"
+              className="d-flex align-items-center gap-2 px-3 py-2 ms-auto ms-md-0"
+              onClick={() => setIsBankModalOpen(true)}
+            >
+              <CIcon icon={cilSettings} />
+              {bankDetails?.isConfigured
+                ? t('integrationHub.bankCard.editBtn', 'Manage Bank & Gateway')
+                : t('integrationHub.bankCard.setupBtn', 'Configure Bank Account')}
+            </CButton>
+          </div>
+        </CCardBody>
+      </CCard>
 
       {/* Search Input */}
       <div className="relative w-full md:max-w-md lg:max-w-lg mb-4">
@@ -184,6 +268,19 @@ export const IntegrationHubView = () => {
           setActionError(null);
         }}
         onCreateConnection={handleConnectionCreate}
+        isLoading={actionLoading || isLoading}
+        actionError={actionError}
+      />
+
+      {/* Bank Account & Gateway Credentials Modal */}
+      <BankDetailsFormModal
+        isOpen={isBankModalOpen}
+        onClose={() => {
+          setIsBankModalOpen(false);
+          setActionError(null);
+        }}
+        initialValues={bankDetails}
+        onSubmit={handleBankDetailsSubmit}
         isLoading={actionLoading || isLoading}
         actionError={actionError}
       />

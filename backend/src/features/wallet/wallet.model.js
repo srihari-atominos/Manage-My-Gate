@@ -42,7 +42,7 @@ const walletTransactionSchema = new mongoose.Schema({
   },
   referenceType: {
     type: String,
-    enum: ['AmenityBooking', 'Refund', 'Other'],
+    enum: ['AmenityBooking', 'Refund', 'Invoice', 'Recharge', 'Other'],
     default: 'AmenityBooking'
   },
   referenceId: {

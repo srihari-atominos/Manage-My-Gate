@@ -49,10 +49,27 @@ export const deleteConnection = async (id) => {
   return await apiClient.delete(`/integrations/${id}`);
 };
 
+/**
+ * Fetch organization bank and gateway details.
+ */
+export const fetchBankDetails = async () => {
+  return await apiClient.get('/integrations/bank-details');
+};
+
+/**
+ * Save / update organization bank and gateway details.
+ * @param {object} payload - Bank details and gateway credentials
+ */
+export const saveBankDetails = async (payload) => {
+  return await apiClient.post('/integrations/bank-details', payload);
+};
+
 export default {
   fetchCatalog,
   fetchConnections,
   createConnection,
   updateConnectionLabel,
   deleteConnection,
+  fetchBankDetails,
+  saveBankDetails,
 };

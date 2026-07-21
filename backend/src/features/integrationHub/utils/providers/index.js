@@ -4,6 +4,8 @@ import { verify as verifyResend } from './resend.handler.js';
 import { verify as verifySMTP } from './smtp.handler.js';
 import { verify as verifyFirebase } from './firebase.handler.js';
 import { verify as verifyMessageCentral } from './messageCentral.handler.js';
+import { verify as verifyBanking } from './banking.handler.js';
+import { verify as verifyRazorpay } from './razorpay.handler.js';
 
 const providerHandlers = {
   openai: verifyOpenAI,
@@ -12,11 +14,13 @@ const providerHandlers = {
   smtp: verifySMTP,
   firebase: verifyFirebase,
   messagecentral: verifyMessageCentral,
+  banking: verifyBanking,
+  razorpay: verifyRazorpay,
 };
 
 /**
  * Strategy Gatekeeper mapping incoming provider requests to correct verification handler.
- * @param {string} provider - Provider key (openai, twilio, resend)
+ * @param {string} provider - Provider key (openai, twilio, resend, banking, razorpay, etc.)
  * @param {object} credentials - Key-value pair credential payload
  * @returns {Promise<boolean>}
  */
@@ -27,7 +31,7 @@ export async function verifyProviderConnection(provider, credentials) {
 
   const handler = providerHandlers[provider.toLowerCase()];
   if (!handler) {
-    throw new Error(`Unsupported provider: ${provider}. Supported providers are: openai, twilio, resend, smtp, firebase, messageCentral`);
+    throw new Error(`Unsupported provider: ${provider}. Supported providers are: openai, twilio, resend, smtp, firebase, messagecentral, banking, razorpay`);
   }
 
   return await handler(credentials);

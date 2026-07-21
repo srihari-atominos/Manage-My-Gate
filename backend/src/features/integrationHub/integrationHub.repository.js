@@ -117,17 +117,28 @@ export class IntegrationHubRepository {
   }
 
   /**
+   * Find an active connection for an organization by provider key.
+   * @param {string} orgId - Organization ID
+   * @param {string} provider - Provider key (e.g. 'razorpay', 'smtp')
+   * @param {import('mongoose').ClientSession} [session] - Optional session
+   * @returns {Promise<object|null>}
+   */
+  async findConnectionByOrgAndProvider(orgId, provider, session = null) {
+    return await IntegrationHub.findOne({
+      orgId,
+      provider: provider.toLowerCase(),
+      status: 'connected',
+    }).session(session || null);
+  }
+
+  /**
    * Find an active SMTP connection for an organization.
    * @param {string} orgId - Organization ID
    * @param {import('mongoose').ClientSession} [session] - Optional session
    * @returns {Promise<object|null>}
    */
   async findSmtpConnection(orgId, session = null) {
-    return await IntegrationHub.findOne({
-      orgId,
-      provider: 'smtp',
-      status: 'connected',
-    }).session(session || null);
+    return await this.findConnectionByOrgAndProvider(orgId, 'smtp', session);
   }
 }
 

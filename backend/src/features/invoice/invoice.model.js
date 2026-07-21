@@ -9,6 +9,12 @@ const invoiceSchema = new mongoose.Schema(
       required: [true, 'Invoice number is required'],
       default: uuidv4,
     },
+    communityId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: [true, 'Community ID is required'],
+      index: true,
+    },
     assessmentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Assessment',
@@ -76,8 +82,8 @@ const invoiceSchema = new mongoose.Schema(
     paymentMethod: {
       type: String,
       enum: {
-        values: ['UPI', 'CARD', 'NETBANKING', 'CHEQUE', 'NEFT', 'CASH'],
-        message: 'Payment method must be UPI, CARD, NETBANKING, CHEQUE, NEFT, or CASH',
+        values: ['UPI', 'CARD', 'NETBANKING', 'CHEQUE', 'NEFT', 'CASH', 'WALLET', 'RAZORPAY'],
+        message: 'Payment method must be UPI, CARD, NETBANKING, CHEQUE, NEFT, CASH, WALLET, or RAZORPAY',
       },
       default: null,
     },
@@ -99,5 +105,10 @@ invoiceSchema.index(
   { unique: true }
 );
 
+// Multi-tenant query partitioning indexes
+invoiceSchema.index({ communityId: 1, status: 1 });
+invoiceSchema.index({ communityId: 1, targetUserId: 1 });
+
 export const Invoice = mongoose.model('Invoice', invoiceSchema);
 export default Invoice;
+

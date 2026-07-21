@@ -74,6 +74,23 @@ export class PaymentRepository {
     }));
   }
 
+  async createPayment(data, session = null) {
+    const payment = new Payment(data);
+    return await payment.save(session ? { session } : undefined);
+  }
+
+  async findByGatewayTransactionId(gatewayTransactionId, session = null) {
+    const query = Payment.findOne({ gatewayTransactionId });
+    if (session) query.session(session);
+    return await query;
+  }
+
+  async findById(paymentId, session = null) {
+    const query = Payment.findById(paymentId);
+    if (session) query.session(session);
+    return await query;
+  }
+
   async getRecentActivity(orgId, limit = 10) {
     return await Payment.find({ orgId }).sort({ updatedAt: -1 }).limit(limit).populate('userId', 'name email');
   }

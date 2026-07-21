@@ -1,25 +1,51 @@
 import Payment from './payment.model.js';
 import paymentRepository from './payment.repository.js';
 import { paymentEventEmitter, PAYMENT_INITIATED, PAYMENT_SUCCESS, PAYMENT_FAILED, PAYMENT_REFUNDED } from './payment.events.js';
+import { getPaymentProvider } from './providers/index.js';
+import integrationHubService from '../integrationHub/integrationHub.service.js';
+import { formatINR } from './utils/currency.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
-import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger.utils.js';
+import { v4 as uuidv4 } from 'uuid';
 
-class MockPaymentProvider {
+export class PaymentService {
   /**
-   * Initializes a payment intent
+   * Initiate a payment order using the configured provider strategy
    */
-  async initiatePayment({ orgId, userId, referenceId, referenceType, amount, currency = 'USD' }) {
+  async createPaymentOrder({ orgId, userId, referenceId, referenceType, amount, currency = 'INR', gateway = null }) {
     try {
+      if (!orgId || !userId || !referenceId || !amount) {
+        throw new HttpError(400, 'orgId, userId, referenceId, and amount are required.');
+      }
+
+      const activeGateway = (gateway || process.env.PAYMENT_PROVIDER || 'mock').toLowerCase();
+      logger.info(`Initiating payment order via '${activeGateway}' strategy`, { orgId, userId, amount, currency });
+
+      // Fetch active tenant's credentials via integrationHubService (Zero cross-feature repository access)
+      let credentials = {};
+      if (activeGateway !== 'mock') {
+        credentials = await integrationHubService.getDecryptedCredentials(orgId, activeGateway);
+      }
+
+      const provider = getPaymentProvider(activeGateway);
+      
+      const receipt = `rcpt_${uuidv4().replace(/-/g, '').substring(0, 12)}`;
+      const orderPayload = await provider.createOrder(
+        { amount, currency, receipt, notes: { orgId, userId, referenceId, referenceType } },
+        credentials
+      );
+
+      // Save payment record in DB (persisting amount in Rupees)
       const payment = new Payment({
         orgId,
         userId,
         referenceId,
         referenceType,
-        amount,
-        currency,
+        amount, // Stored in Rupees
+        currency: currency.toUpperCase(),
         status: 'pending',
-        gateway: 'mock'
+        gateway: activeGateway,
+        gatewayTransactionId: orderPayload.orderId,
       });
 
       await payment.save();
@@ -29,18 +55,126 @@ class MockPaymentProvider {
       return {
         success: true,
         paymentId: payment._id,
-        clientSecret: `mock_secret_${uuidv4()}`,
-        status: 'pending'
+        orderId: orderPayload.orderId,
+        amount: payment.amount,
+        amountFormatted: formatINR(payment.amount),
+        currency: payment.currency,
+        status: payment.status,
+        gateway: payment.gateway,
+        rawOrder: orderPayload.rawOrder,
       };
     } catch (error) {
-      logger.error('Failed to initiate mock payment', error);
-      throw new HttpError(500, 'Failed to initialize payment');
+      logger.error('Failed to create payment order', { error: error.message, stack: error.stack });
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(500, `Payment order creation failed: ${error.message}`);
     }
   }
 
   /**
-   * Simulates a webhook or a direct call to process the payment
-   * Typically, the frontend calls this to simulate "Payment Success" or "Payment Failed"
+   * Verify payment signature and mark payment as success or failed
+   */
+  async verifyPaymentSignature({ orgId, paymentId, orderId, razorpayPaymentId, razorpaySignature }) {
+    try {
+      const payment = await Payment.findById(paymentId);
+      if (!payment) throw new HttpError(404, 'Payment record not found.');
+
+      const activeGateway = payment.gateway || 'mock';
+      let credentials = {};
+      if (activeGateway !== 'mock') {
+        credentials = await integrationHubService.getDecryptedCredentials(orgId || payment.orgId, activeGateway);
+      }
+
+      const provider = getPaymentProvider(activeGateway);
+      const verification = await provider.verifySignature(
+        {
+          orderId: orderId || payment.gatewayTransactionId,
+          paymentId: razorpayPaymentId,
+          signature: razorpaySignature,
+        },
+        credentials
+      );
+
+      if (verification.isValid) {
+        payment.status = 'success';
+        payment.gatewayTransactionId = razorpayPaymentId || payment.gatewayTransactionId;
+        payment.errorReason = null;
+        await payment.save();
+
+        paymentEventEmitter.emit(PAYMENT_SUCCESS, payment);
+
+        logger.info('Payment signature verification successful', { paymentId: payment._id, orderId });
+
+        return {
+          success: true,
+          message: 'Payment verified successfully',
+          payment,
+        };
+      } else {
+        payment.status = 'failed';
+        payment.errorReason = 'Invalid payment gateway signature';
+        await payment.save();
+
+        paymentEventEmitter.emit(PAYMENT_FAILED, payment);
+
+        logger.warn('Payment signature verification failed', { paymentId: payment._id, orderId });
+
+        throw new HttpError(400, 'Invalid payment gateway signature.');
+      }
+    } catch (error) {
+      logger.error('Error verifying payment signature', { error: error.message });
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(500, `Signature verification failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Process refund via strategy provider
+   */
+  async processRefund(paymentId, amount = null, notes = {}) {
+    try {
+      const payment = await Payment.findById(paymentId);
+      if (!payment) throw new HttpError(404, 'Payment not found');
+      if (payment.status !== 'success') throw new HttpError(400, 'Only successful payments can be refunded');
+
+      const activeGateway = payment.gateway || 'mock';
+      let credentials = {};
+      if (activeGateway !== 'mock') {
+        credentials = await integrationHubService.getDecryptedCredentials(payment.orgId, activeGateway);
+      }
+
+      const provider = getPaymentProvider(activeGateway);
+      const refundAmount = amount !== null ? amount : payment.amount;
+
+      const refundResult = await provider.refund(
+        {
+          paymentId: payment.gatewayTransactionId || payment._id.toString(),
+          amount: refundAmount,
+          notes,
+        },
+        credentials
+      );
+
+      payment.status = 'refunded';
+      await payment.save();
+
+      paymentEventEmitter.emit(PAYMENT_REFUNDED, payment);
+
+      logger.info('Payment refunded successfully', { paymentId: payment._id, refundId: refundResult.refundId });
+
+      return {
+        success: true,
+        payment,
+        refund: refundResult,
+      };
+    } catch (error) {
+      logger.error('Error processing refund', { error: error.message });
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(500, `Refund failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Legacy / Mock Callback Simulation
    */
   async simulatePaymentCallback(paymentId, isSuccess, errorReason = null, paymentMethod = 'wallet') {
     try {
@@ -68,29 +202,7 @@ class MockPaymentProvider {
 
       return payment;
     } catch (error) {
-      logger.error('Error simulating payment callback', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Process a refund
-   */
-  async processRefund(paymentId, amount = null) {
-    try {
-      const payment = await Payment.findById(paymentId);
-      if (!payment) throw new HttpError(404, 'Payment not found');
-      if (payment.status !== 'success') throw new HttpError(400, 'Only successful payments can be refunded');
-
-      // Simulating refund delay
-      payment.status = 'refunded';
-      await payment.save();
-
-      paymentEventEmitter.emit(PAYMENT_REFUNDED, payment);
-
-      return payment;
-    } catch (error) {
-      logger.error('Error processing refund', error);
+      logger.error('Error simulating payment callback', { error: error.message });
       throw error;
     }
   }
@@ -114,4 +226,4 @@ class MockPaymentProvider {
   }
 }
 
-export default new MockPaymentProvider();
+export default new PaymentService();

@@ -10,68 +10,72 @@ import {
   CForm,
   CFormLabel,
   CFormInput,
-  CFormSelect
+  CFormSelect,
 } from '@coreui/react';
+import PaymentCheckoutModal from './PaymentCheckoutModal.jsx';
 
 /**
  * HeroLiabilityBanner
  *
  * Prominent financial summary card for residents.
- * Displays total outstanding liability with a breakdown and Pay Now CTA.
- * Supports an "interim clearing" state that disables the button and shows cheque status.
- *
- * Props: all sourced from local mock data — no API wiring.
+ * Displays live total outstanding liability with unit breakdown and Pay Now / Checkout CTAs.
  */
-
-// ── Mock data ─────────────────────────────────────────────────────────────
-
-const MOCK_LIABILITY = {
-  totalOutstanding:  14000,
-  baseMaintenance:    7000,
-  carriedArrears:     7000,
-  currency:          '₹',
-  clearingCheque:    '#44892',
-  clearingAmount:     7000,
-};
-
-// ── Component ─────────────────────────────────────────────────────────────
-
-const HeroLiabilityBanner = memo(({ activeDues = null, settleOffline }) => {
+const HeroLiabilityBanner = memo(({
+  activeDues = null,
+  settleOffline,
+  walletBalance = 0,
+  payInvoiceWallet,
+  payInvoiceRazorpay,
+  verifyRazorpay,
+  loadingStates = {},
+}) => {
   const totalOutstanding = activeDues?.totalPortfolioDue || 0;
   const unitBreakdown = activeDues?.unitBreakdown || [];
 
   // Determine if there is any cheque/offline payment currently clearing (VERIFICATION_PENDING)
-  const clearingInvoice = unitBreakdown.find(inv => inv.status === 'VERIFICATION_PENDING');
+  const clearingInvoice = unitBreakdown.find((inv) => inv.status === 'VERIFICATION_PENDING');
   const isClearing = !!clearingInvoice;
   const clearingAmount = clearingInvoice?.totalDue || 0;
   const clearingRef = clearingInvoice?.offlineReference || 'Cheque';
 
-  const [payInvoice, setPayInvoice] = useState(null);
+  const [checkoutInvoice, setCheckoutInvoice] = useState(null);
+  const [payOfflineInvoice, setPayOfflineInvoice] = useState(null);
   const [offlineRef, setOfflineRef] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CHEQUE');
   const [submitting, setSubmitting] = useState(false);
 
   const handlePayNow = () => {
-    const firstUnpaid = unitBreakdown.find(inv => inv.status === 'UNPAID');
+    const firstUnpaid = unitBreakdown.find((inv) => inv.status === 'UNPAID');
     if (!firstUnpaid) {
       toast.error('You have no outstanding unpaid invoices!');
       return;
     }
-    setPayInvoice(firstUnpaid);
+    setCheckoutInvoice(firstUnpaid);
+  };
+
+  const handleOpenOfflineModal = () => {
+    const firstUnpaid = unitBreakdown.find((inv) => inv.status === 'UNPAID');
+    if (!firstUnpaid) {
+      toast.error('You have no outstanding unpaid invoices!');
+      return;
+    }
+    setPayOfflineInvoice(firstUnpaid);
     setOfflineRef('');
     setPaymentMethod('CHEQUE');
   };
 
-  const handleConfirmPay = async () => {
-    if (!payInvoice || !offlineRef.trim()) return;
+  const handleConfirmOfflinePay = async () => {
+    if (!payOfflineInvoice || !offlineRef.trim()) return;
     setSubmitting(true);
     try {
-      await settleOffline(payInvoice.invoiceId || payInvoice._id, {
-        offlineReference: offlineRef,
-        paymentMethod: paymentMethod,
-      });
+      if (settleOffline) {
+        await settleOffline(payOfflineInvoice.invoiceId || payOfflineInvoice._id, {
+          offlineReference: offlineRef,
+          paymentMethod: paymentMethod,
+        });
+      }
       toast.success('Offline payment submitted successfully! Awaiting admin verification.');
-      setPayInvoice(null);
+      setPayOfflineInvoice(null);
     } catch (err) {
       toast.error('Failed to submit offline payment: ' + err.message);
     } finally {
@@ -81,7 +85,6 @@ const HeroLiabilityBanner = memo(({ activeDues = null, settleOffline }) => {
 
   return (
     <div className={`hero-liability-card${isClearing ? ' hero-liability-card--clearing' : ''}`}>
-
       {/* Top label */}
       <div className="hero-liability-card__eyebrow">
         <i className="fa-solid fa-wallet me-2" />
@@ -127,10 +130,10 @@ const HeroLiabilityBanner = memo(({ activeDues = null, settleOffline }) => {
       )}
 
       {/* Actions */}
-      <div className="hero-liability-card__actions">
+      <div className="hero-liability-card__actions d-flex gap-2">
         <button
           type="button"
-          className="hero-liability-card__pay-btn"
+          className="hero-liability-card__pay-btn flex-grow-1"
           disabled={isClearing || totalOutstanding === 0}
           onClick={handlePayNow}
         >
@@ -146,17 +149,39 @@ const HeroLiabilityBanner = memo(({ activeDues = null, settleOffline }) => {
             </>
           )}
         </button>
+
+        {totalOutstanding > 0 && !isClearing && (
+          <button
+            type="button"
+            className="btn btn-outline-light btn-sm"
+            onClick={handleOpenOfflineModal}
+          >
+            Offline Cheque
+          </button>
+        )}
       </div>
 
-      {/* ── Pay Now / Record Settlement Modal ─────────────────────────── */}
-      <CModal visible={!!payInvoice} onClose={() => setPayInvoice(null)} alignment="center">
+      {/* ── Online Checkout Modal (Wallet / Razorpay) ─────────────────── */}
+      <PaymentCheckoutModal
+        isOpen={!!checkoutInvoice}
+        onClose={() => setCheckoutInvoice(null)}
+        invoice={checkoutInvoice}
+        walletBalance={walletBalance}
+        onPayWithWallet={payInvoiceWallet}
+        onPayWithRazorpay={payInvoiceRazorpay}
+        onVerifyRazorpay={verifyRazorpay}
+        isLoading={loadingStates.settleInvoice}
+      />
+
+      {/* ── Pay Offline / Record Settlement Modal ─────────────────────────── */}
+      <CModal visible={!!payOfflineInvoice} onClose={() => setPayOfflineInvoice(null)} alignment="center">
         <CModalHeader>
           <CModalTitle className="fw-semibold">Submit Offline Payment Confirmation</CModalTitle>
         </CModalHeader>
-        <CForm onSubmit={(e) => { e.preventDefault(); handleConfirmPay(); }}>
+        <CForm onSubmit={(e) => { e.preventDefault(); handleConfirmOfflinePay(); }}>
           <CModalBody>
             <div className="alert alert-info py-2 px-3 small mb-3">
-              You are clearing Invoice <strong>{payInvoice?.invoiceNumber}</strong> of <strong>₹{payInvoice?.totalDue?.toLocaleString('en-IN')}</strong>.
+              You are clearing Invoice <strong>{payOfflineInvoice?.invoiceNumber}</strong> of <strong>₹{payOfflineInvoice?.totalDue?.toLocaleString('en-IN')}</strong>.
             </div>
 
             <div className="mb-3">
@@ -184,7 +209,7 @@ const HeroLiabilityBanner = memo(({ activeDues = null, settleOffline }) => {
             </div>
           </CModalBody>
           <CModalFooter>
-            <CButton type="button" color="secondary" size="sm" onClick={() => setPayInvoice(null)} disabled={submitting}>
+            <CButton type="button" color="secondary" size="sm" onClick={() => setPayOfflineInvoice(null)} disabled={submitting}>
               Cancel
             </CButton>
             <CButton type="submit" color="primary" size="sm" disabled={submitting || !offlineRef.trim()}>
@@ -193,10 +218,9 @@ const HeroLiabilityBanner = memo(({ activeDues = null, settleOffline }) => {
           </CModalFooter>
         </CForm>
       </CModal>
-
     </div>
   );
 });
-HeroLiabilityBanner.displayName = 'HeroLiabilityBanner';
 
+HeroLiabilityBanner.displayName = 'HeroLiabilityBanner';
 export default HeroLiabilityBanner;

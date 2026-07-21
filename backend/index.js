@@ -50,8 +50,13 @@ app.use(helmet({
   contentSecurityPolicy: false
 }));
 
-// Standard body-parsers
-app.use(express.json({ limit: '10mb' }));
+// Standard body-parsers with rawBody capture for webhooks
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Cookie parser

@@ -1,0 +1,282 @@
+import React, { useState } from 'react';
+import PropTypes from 'prop-types';
+import { useTranslation } from 'react-i18next';
+import {
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CButton,
+  CFormCheck,
+  CAlert,
+  CSpinner,
+  CBadge,
+} from '@coreui/react';
+import CIcon from '@coreui/icons-react';
+import { cilWallet, cilCreditCard, cilCheckCircle, cilWarning } from '@coreui/icons';
+import '../styles/_billing.scss';
+
+/**
+ * Dynamically load the Razorpay checkout.js script if not already present on window.
+ */
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
+/**
+ * Isolated Resident Payment Checkout Modal.
+ * Offers dual payment selection: Razorpay (INR) and Digital Wallet.
+ */
+export const PaymentCheckoutModal = ({
+  isOpen,
+  onClose,
+  invoice,
+  walletBalance,
+  onPayWithWallet,
+  onPayWithRazorpay,
+  onVerifyRazorpay,
+  isLoading,
+  actionError,
+}) => {
+  const { t } = useTranslation();
+  const [paymentMethod, setPaymentMethod] = useState('WALLET');
+  const [scriptLoading, setScriptLoading] = useState(false);
+  const [localError, setLocalError] = useState(null);
+
+  if (!invoice) return null;
+
+  const totalAmount = invoice.totalDue || invoice.amount || 0;
+  const isWalletInsufficient = walletBalance < totalAmount;
+
+  const handleCheckoutSubmit = async () => {
+    setLocalError(null);
+
+    if (paymentMethod === 'WALLET') {
+      if (isWalletInsufficient) {
+        setLocalError(t('billing.checkout.insufficientBalance', 'Insufficient wallet balance. Please recharge your wallet or choose Razorpay.'));
+        return;
+      }
+      if (onPayWithWallet) {
+        const result = await onPayWithWallet(invoice.invoiceId || invoice._id);
+        if (result?.success || !result?.error) {
+          onClose();
+        }
+      }
+    } else if (paymentMethod === 'RAZORPAY') {
+      setScriptLoading(true);
+      const scriptLoaded = await loadRazorpayScript();
+      setScriptLoading(false);
+
+      if (!scriptLoaded) {
+        setLocalError(t('billing.checkout.scriptError', 'Failed to load Razorpay payment gateway script. Check connection.'));
+        return;
+      }
+
+      if (onPayWithRazorpay) {
+        const orderResult = await onPayWithRazorpay(invoice.invoiceId || invoice._id, totalAmount);
+        if (orderResult?.error) {
+          setLocalError(orderResult.error);
+          return;
+        }
+
+        const orderData = orderResult?.data || orderResult?.payload || orderResult;
+
+        const options = {
+          key: orderData.keyId || orderData.razorpayKeyId,
+          amount: orderData.amount,
+          currency: orderData.currency || 'INR',
+          name: 'ManageMyGate Billing',
+          description: `Settlement for Invoice #${invoice.invoiceNumber || 'INV-001'}`,
+          order_id: orderData.orderId || orderData.id,
+          handler: async (response) => {
+            if (onVerifyRazorpay) {
+              const verifyResult = await onVerifyRazorpay({
+                paymentId: orderData.paymentId,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpaySignature: response.razorpay_signature,
+              });
+              if (verifyResult?.success || !verifyResult?.error) {
+                onClose();
+              }
+            }
+          },
+          prefill: {
+            name: invoice.targetUser || '',
+          },
+          theme: {
+            color: '#321fdb',
+          },
+        };
+
+        const razorpayInstance = new window.Razorpay(options);
+        razorpayInstance.open();
+      }
+    }
+  };
+
+  return (
+    <CModal
+      visible={isOpen}
+      onClose={onClose}
+      backdrop="static"
+      alignment="center"
+      size="md"
+      className="payment-checkout-modal"
+    >
+      <CModalHeader closeButton>
+        <CModalTitle className="fw-bold">
+          {t('billing.checkout.modalTitle', 'Invoice Settlement')}
+        </CModalTitle>
+      </CModalHeader>
+
+      <CModalBody className="p-4">
+        {(actionError || localError) && (
+          <CAlert color="danger" className="mb-4">
+            {actionError || localError}
+          </CAlert>
+        )}
+
+        {/* Invoice Summary Card */}
+        <div className="p-3 mb-4 rounded border bg-light text-start">
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="text-muted small">{t('billing.checkout.invoiceLabel', 'Invoice Number')}</span>
+            <span className="fw-bold text-primary">{invoice.invoiceNumber}</span>
+          </div>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="text-muted small">{t('billing.checkout.unitLabel', 'Unit / Flat')}</span>
+            <span className="fw-medium">{invoice.unitNumber || '—'}</span>
+          </div>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="text-muted small">{t('billing.checkout.periodLabel', 'Period')}</span>
+            <span className="fw-medium">{invoice.billingPeriodString || 'Current'}</span>
+          </div>
+          <hr className="my-2" />
+          <div className="d-flex justify-content-between align-items-center">
+            <span className="fw-bold">{t('billing.checkout.totalAmount', 'Total Amount Due')}</span>
+            <h4 className="fw-bold text-success mb-0">₹{totalAmount.toLocaleString('en-IN')}</h4>
+          </div>
+        </div>
+
+        {/* Payment Method Selector */}
+        <h6 className="fw-bold mb-3 text-start">{t('billing.checkout.selectMethodTitle', 'Select Payment Method')}</h6>
+
+        {/* Option 1: Digital Wallet */}
+        <div
+          className={`p-3 border rounded mb-3 cursor-pointer text-start transition-all ${
+            paymentMethod === 'WALLET' ? 'border-primary bg-primary bg-opacity-10' : ''
+          }`}
+          onClick={() => setPaymentMethod('WALLET')}
+        >
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center gap-3">
+              <CFormCheck
+                type="radio"
+                name="paymentMethod"
+                id="method-wallet"
+                checked={paymentMethod === 'WALLET'}
+                onChange={() => setPaymentMethod('WALLET')}
+              />
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilWallet} size="lg" className="text-primary" />
+                <div>
+                  <div className="fw-semibold">{t('billing.checkout.walletOptionTitle', 'Digital Wallet Balance')}</div>
+                  <div className="text-muted small">
+                    {t('billing.checkout.availableBalance', 'Available Balance:')}{' '}
+                    <strong className={isWalletInsufficient ? 'text-danger' : 'text-success'}>
+                      ₹{walletBalance.toLocaleString('en-IN')}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {isWalletInsufficient && (
+              <CBadge color="danger" className="d-flex align-items-center gap-1">
+                <CIcon icon={cilWarning} size="sm" />
+                {t('billing.checkout.insufficientBadge', 'Insufficient')}
+              </CBadge>
+            )}
+          </div>
+        </div>
+
+        {/* Option 2: Razorpay Online */}
+        <div
+          className={`p-3 border rounded cursor-pointer text-start transition-all ${
+            paymentMethod === 'RAZORPAY' ? 'border-primary bg-primary bg-opacity-10' : ''
+          }`}
+          onClick={() => setPaymentMethod('RAZORPAY')}
+        >
+          <div className="d-flex align-items-center gap-3">
+            <CFormCheck
+              type="radio"
+              name="paymentMethod"
+              id="method-razorpay"
+              checked={paymentMethod === 'RAZORPAY'}
+              onChange={() => setPaymentMethod('RAZORPAY')}
+            />
+            <div className="d-flex align-items-center gap-2">
+              <CIcon icon={cilCreditCard} size="lg" className="text-primary" />
+              <div>
+                <div className="fw-semibold">{t('billing.checkout.razorpayOptionTitle', 'Razorpay (Cards, UPI, Net Banking)')}</div>
+                <div className="text-muted small">{t('billing.checkout.razorpayOptionSub', 'Instant online payment via official Razorpay SDK')}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CModalBody>
+
+      <CModalFooter>
+        <CButton color="secondary" variant="ghost" onClick={onClose} disabled={isLoading || scriptLoading}>
+          {t('billing.checkout.cancel', 'Cancel')}
+        </CButton>
+        <CButton
+          color="primary"
+          onClick={handleCheckoutSubmit}
+          disabled={isLoading || scriptLoading || (paymentMethod === 'WALLET' && isWalletInsufficient)}
+        >
+          {isLoading || scriptLoading ? (
+            <>
+              <CSpinner size="sm" aria-hidden="true" className="me-2" />
+              {t('billing.checkout.processing', 'Processing...')}
+            </>
+          ) : (
+            t('billing.checkout.payNowBtn', 'Confirm & Pay ₹{{amount}}', { amount: totalAmount.toLocaleString('en-IN') })
+          )}
+        </CButton>
+      </CModalFooter>
+    </CModal>
+  );
+};
+
+PaymentCheckoutModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  invoice: PropTypes.object,
+  walletBalance: PropTypes.number,
+  onPayWithWallet: PropTypes.func,
+  onPayWithRazorpay: PropTypes.func,
+  onVerifyRazorpay: PropTypes.func,
+  isLoading: PropTypes.bool,
+  actionError: PropTypes.string,
+};
+
+PaymentCheckoutModal.defaultProps = {
+  invoice: null,
+  walletBalance: 0,
+  isLoading: false,
+  actionError: null,
+};
+
+export default PaymentCheckoutModal;

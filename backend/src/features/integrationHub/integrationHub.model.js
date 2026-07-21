@@ -18,6 +18,10 @@ const credentialSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Initialization vector (iv) is required'],
     },
+    authTag: {
+      type: String,
+      required: false,
+    },
   },
   { _id: false }
 );
@@ -42,9 +46,10 @@ const integrationHubSchema = new mongoose.Schema(
     provider: {
       type: String,
       required: [true, 'Provider name is required'],
-      enum: ['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral'],
+      enum: ['openai', 'twilio', 'resend', 'smtp', 'firebase', 'messagecentral', 'banking', 'razorpay'],
       trim: true,
     },
+
     accountLabel: {
       type: String,
       required: [true, 'Account label is required'],

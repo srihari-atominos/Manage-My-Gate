@@ -123,3 +123,28 @@ th.sticky {
   color: var(--cui-body-color) !important;
 }
 
+/* Bank Details Feature Styling */
+.bank-details-card {
+  border-radius: 12px;
+  background-color: var(--cui-body-bg);
+  border: 1px solid var(--cui-border-color);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+
+  .bank-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(var(--cui-primary-rgb), 0.1);
+    color: var(--cui-primary);
+  }
+}
+
+.bank-details-modal {
+  .modal-content {
+    border-radius: 12px;
+  }
+}
+

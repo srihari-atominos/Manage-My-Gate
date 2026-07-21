@@ -130,7 +130,25 @@ export class IntegrationHubController {
             { name: 'environment', label: 'Environment', type: 'text', required: false },
           ],
         },
+        {
+          id: 'banking',
+          name: 'Banking Vault',
+          fields: [
+            { name: 'accountName', label: 'Account Holder Name', type: 'text' },
+            { name: 'accountNumber', label: 'Account Number', type: 'text' },
+            { name: 'ifscCode', label: 'IFSC Code (e.g. SBIN0001234)', type: 'text' },
+          ],
+        },
+        {
+          id: 'razorpay',
+          name: 'Razorpay Gateway',
+          fields: [
+            { name: 'keyId', label: 'Key ID', type: 'text' },
+            { name: 'keySecret', label: 'Key Secret', type: 'password' },
+          ],
+        },
       ];
+
       res.success(catalog, 'Integration catalog retrieved successfully', 200);
     } catch (error) {
       next(error);

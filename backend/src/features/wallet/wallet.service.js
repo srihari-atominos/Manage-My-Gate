@@ -1,7 +1,12 @@
+import mongoose from 'mongoose';
 import walletRepository from './wallet.repository.js';
-import amenityBookingRepository from '../amenityBooking/amenityBooking.repository.js';
+import { walletEventEmitter, WALLET_UPDATED, WALLET_TRANSACTION_CREATED } from './wallet.events.js';
 import { paymentEventEmitter, PAYMENT_SUCCESS, PAYMENT_REFUNDED } from '../payment/payment.events.js';
 import { amenityBookingEventEmitter, AMENITY_BOOKING_CONFIRMED } from '../amenityBooking/amenityBooking.events.js';
+import paymentRepository from '../payment/payment.repository.js';
+import invoiceService from '../invoice/invoice.services.js';
+import Invoice from '../invoice/invoice.model.js';
+import HttpError from '../../utils/httpError.utils.js';
 import logger from '../../utils/logger.utils.js';
 
 class WalletService {
@@ -14,14 +19,7 @@ class WalletService {
     amenityBookingEventEmitter.on(AMENITY_BOOKING_CONFIRMED, async ({ booking, paymentMethod, amount }) => {
       try {
         await this.createBookingTransaction(booking, 'Debit', amount || booking.totalPrice, paymentMethod, 'success');
-        
-        // Emit Socket Event after transaction creation
-        const { getIO } = await import('../../config/socket.js');
-        const io = getIO();
-        if (io) {
-          io.to(`user:${booking.userId}`).emit('paymentSuccess'); // Inform frontend that wallet is ready
-          io.to(`user:${booking.userId}`).emit('bookingUpdated'); 
-        }
+        walletEventEmitter.emit(WALLET_UPDATED, { userId: booking.userId, orgId: booking.orgId });
       } catch (e) {
         logger.error('Error creating wallet transaction for confirmed booking', e);
       }
@@ -31,15 +29,11 @@ class WalletService {
     paymentEventEmitter.on(PAYMENT_REFUNDED, async (payment) => {
       if (payment.referenceType === 'AmenityBooking') {
         try {
-          const booking = await amenityBookingRepository.findById(payment.referenceId, payment.orgId);
+          const amenityBookingService = (await import('../amenityBooking/amenityBooking.services.js')).default;
+          const booking = await amenityBookingService.getBookingById(payment.referenceId, payment.orgId);
           if (booking) {
             await this.createBookingTransaction(booking, 'Credit', payment.amount, payment.paymentMethod, 'refunded');
-            const { getIO } = await import('../../config/socket.js');
-            const io = getIO();
-            if (io) {
-              io.to(`user:${booking.userId}`).emit('paymentRefunded');
-              io.to(`user:${booking.userId}`).emit('bookingUpdated');
-            }
+            walletEventEmitter.emit(WALLET_UPDATED, { userId: booking.userId, orgId: booking.orgId });
           }
         } catch (e) {
           logger.error('Error creating wallet transaction for refund', e);
@@ -73,6 +67,7 @@ class WalletService {
       await walletRepository.updateBalance(booking.userId, booking.orgId, delta);
     }
 
+    walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
     return transaction;
   }
 
@@ -89,32 +84,119 @@ class WalletService {
     };
 
     const transaction = await walletRepository.createTransaction(transactionData);
-    await walletRepository.updateBalance(userId, orgId, amount);
+    const updatedWallet = await walletRepository.updateBalance(userId, orgId, amount);
 
-    try {
-      const { getIO } = await import('../../config/socket.js');
-      const io = getIO();
-      if (io) {
-        io.to(`user:${userId}`).emit('walletUpdated');
-      }
-    } catch (e) {
-      logger.error('Error emitting wallet update', e);
-    }
+    walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
+    walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
 
     return transaction;
+  }
+
+  /**
+   * Pay open invoice dues using user's digital wallet balance within a Mongoose Transaction.
+   */
+  async payInvoiceWithWallet({ userId, orgId, invoiceId }) {
+    if (!userId || !invoiceId) {
+      throw new HttpError(400, 'User ID and Invoice ID are required');
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // 1. Fetch invoice inside session
+      const invoice = await Invoice.findById(invoiceId).session(session);
+      if (!invoice) {
+        throw new HttpError(404, 'Invoice not found');
+      }
+
+      if (invoice.targetUserId.toString() !== userId.toString()) {
+        throw new HttpError(403, 'Unauthorized. Invoice does not belong to this user.');
+      }
+
+      if (invoice.status === 'PAID') {
+        throw new HttpError(400, 'Invoice is already paid');
+      }
+
+      const amountDue = invoice.totalDue;
+      const targetOrgId = orgId || invoice.communityId;
+
+      // 2. Fetch wallet and verify balance
+      const wallet = await walletRepository.getWallet(userId, targetOrgId, session);
+      if (!wallet || wallet.balance < amountDue) {
+        throw new HttpError(400, `Insufficient wallet balance. Total due is ₹${amountDue}, but current wallet balance is ₹${wallet ? wallet.balance : 0}.`);
+      }
+
+      // 3. Deduct balance from wallet
+      const updatedWallet = await walletRepository.updateBalance(userId, targetOrgId, -amountDue, session);
+
+      // 4. Create wallet debit transaction
+      const walletTxn = await walletRepository.createTransaction({
+        orgId: targetOrgId,
+        userId,
+        type: 'Debit',
+        amount: amountDue,
+        paymentMethod: 'WALLET',
+        paymentStatus: 'success',
+        referenceType: 'Invoice',
+        referenceId: invoice._id,
+        description: `Payment for Invoice #${invoice.invoiceNumber}`
+      }, session);
+
+      // 5. Settle Invoice using InvoiceService (passing session)
+      const updatedInvoice = await invoiceService.settleInvoicePayment(invoiceId, {
+        paymentMethod: 'WALLET',
+        paid_at: new Date(),
+        settled_at: new Date(),
+      }, session);
+
+      // 6. Record Payment entry for auditing
+      const paymentRecord = await paymentRepository.createPayment({
+        orgId: targetOrgId,
+        userId,
+        referenceId: invoice._id,
+        referenceType: 'Invoice',
+        amount: amountDue,
+        currency: 'INR',
+        status: 'success',
+        gateway: 'mock',
+        paymentMethod: 'WALLET',
+        gatewayTransactionId: walletTxn.transactionId
+      }, session);
+
+      // Commit transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      // Emit decoupled Node events
+      paymentEventEmitter.emit(PAYMENT_SUCCESS, paymentRecord);
+      walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId: targetOrgId, balance: updatedWallet.balance });
+      walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, walletTxn);
+
+      return {
+        success: true,
+        message: 'Invoice paid successfully using digital wallet balance',
+        payment: paymentRecord,
+        invoice: updatedInvoice,
+        walletBalance: updatedWallet.balance
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      logger.error('Error settling invoice via wallet:', error);
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(500, `Wallet invoice settlement failed: ${error.message}`);
+    }
   }
 
   async getWalletData(userId, orgId) {
     const wallet = await walletRepository.getWallet(userId, orgId);
     let transactions = await walletRepository.getTransactions(userId, orgId);
     
-    // Cross-feature fetch for active passes
-    const amenityServiceModule = await import('../amenityBooking/amenityBooking.services.js');
-    const amenityBookingService = amenityServiceModule.default;
-    
+    // Cross-feature fetch for active passes via service
+    const amenityBookingService = (await import('../amenityBooking/amenityBooking.services.js')).default;
     const activeBookings = await amenityBookingService.getActivePasses(userId, orgId);
     
-    // Format passes for the frontend
     const activePasses = activeBookings.map(b => ({
       _id: b._id,
       bookingId: b.bookingId,

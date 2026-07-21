@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import integrationHubRepository from './integrationHub.repository.js';
 import { verifyProviderConnection } from './utils/providers/index.js';
-import { encrypt, decrypt } from './utils/crypto.util.js';
+import { encrypt, decrypt, encryptGCM, decryptGCM } from './utils/crypto.util.js';
 import HttpError from '../../utils/httpError.utils.js';
 
 /**
@@ -12,7 +12,8 @@ export class IntegrationHubService {
    * Connect an integration by validating the connection and saving the credentials.
    * @param {string} userId - User identifier (who configured the integration)
    * @param {string} orgId - Organization identifier (which owns the integration)
-   * @param {string} provider - Provider key (openai, twilio, resend)
+   * @param {string} provider - Provider key (openai, twilio, resend, banking, razorpay)
+   * @param {string} accountLabel - Human readable label
    * @param {object} credentials - Key-value pair of raw credentials
    * @returns {Promise<object>} Sanitized integration record details
    */
@@ -21,24 +22,39 @@ export class IntegrationHubService {
       throw new HttpError(400, 'User ID, Organization ID, provider, accountLabel, and credentials are required.');
     }
 
-    // 1. Verify connection against the provider API
+    // 1. Verify connection against the provider API / validation rules
     try {
       await verifyProviderConnection(provider, credentials);
     } catch (err) {
       throw new HttpError(400, err.message);
     }
 
-    // 2. Encrypt all credentials securely
+    // 2. Encrypt all credentials securely using AES-256-GCM for banking/razorpay and CBC for legacy
+    const providerLower = provider.toLowerCase();
+    const useGCM = ['banking', 'razorpay'].includes(providerLower);
+
     const encryptedCredentials = Object.entries(credentials).map(([key, value]) => {
-      if (!value) {
+      if (value === undefined || value === null || value === '') {
         throw new HttpError(400, `Value for credential key "${key}" cannot be empty.`);
       }
-      const { encryptedValue, iv } = encrypt(value);
-      return {
-        key,
-        encryptedValue,
-        iv,
-      };
+      const strVal = String(value);
+
+      if (useGCM) {
+        const { encryptedValue, iv, authTag } = encryptGCM(strVal);
+        return {
+          key,
+          encryptedValue,
+          iv,
+          authTag,
+        };
+      } else {
+        const { encryptedValue, iv } = encrypt(strVal);
+        return {
+          key,
+          encryptedValue,
+          iv,
+        };
+      }
     });
 
     // 3. Database transaction for atomic persistence
@@ -48,7 +64,7 @@ export class IntegrationHubService {
       const connection = await integrationHubRepository.upsertConnection(
         userId,
         orgId,
-        provider.toLowerCase(),
+        providerLower,
         accountLabel,
         encryptedCredentials,
         'connected',
@@ -56,7 +72,7 @@ export class IntegrationHubService {
       );
       await session.commitTransaction();
 
-      // Return sanitized output (never return encryptedValue or iv to client)
+      // Return sanitized output (never return encryptedValue, iv, or authTag to client)
       return {
         id: connection._id,
         provider: connection.provider,
@@ -210,7 +226,7 @@ export class IntegrationHubService {
 
   /**
    * Retrieve and decrypt credentials for a specific connection.
-   * Strictly for internal cross-feature use.
+   * Strictly for internal cross-feature use. Supports both GCM and CBC decryption.
    * @param {string} connectionId - ID of the connection
    * @returns {Promise<object>} Raw decrypted credentials key-value object
    */
@@ -226,10 +242,52 @@ export class IntegrationHubService {
 
     const decryptedCredentials = {};
     for (const cred of connection.credentials) {
-      decryptedCredentials[cred.key] = decrypt(cred.encryptedValue, cred.iv);
+      if (cred.authTag) {
+        decryptedCredentials[cred.key] = decryptGCM(cred.encryptedValue, cred.iv, cred.authTag);
+      } else {
+        decryptedCredentials[cred.key] = decrypt(cred.encryptedValue, cred.iv);
+      }
     }
 
     return decryptedCredentials;
+  }
+
+  /**
+   * Retrieve and decrypt credentials for an organization by provider key.
+   * Strictly for internal cross-feature use by payment and other services.
+   * @param {string} orgId - Organization ID
+   * @param {string} [provider='razorpay'] - Provider key
+   * @returns {Promise<object>} Raw decrypted credentials key-value object
+   */
+  async getDecryptedCredentials(orgId, provider = 'razorpay') {
+    if (!orgId) {
+      throw new HttpError(400, 'Organization ID is required.');
+    }
+
+    const connection = await integrationHubRepository.findConnectionByOrgAndProvider(orgId, provider);
+    let decryptedCredentials = {};
+
+    if (connection && connection.credentials) {
+      for (const cred of connection.credentials) {
+        if (cred.authTag) {
+          decryptedCredentials[cred.key] = decryptGCM(cred.encryptedValue, cred.iv, cred.authTag);
+        } else {
+          decryptedCredentials[cred.key] = decrypt(cred.encryptedValue, cred.iv);
+        }
+      }
+    }
+
+    // Fallback to process.env if keyId / keySecret not present in tenant DB record
+    const keyId = decryptedCredentials.keyId || decryptedCredentials.key_id || process.env.RAZORPAY_KEY_ID || '';
+    const keySecret = decryptedCredentials.keySecret || decryptedCredentials.key_secret || process.env.RAZORPAY_KEY_SECRET || '';
+
+    return {
+      ...decryptedCredentials,
+      keyId,
+      keySecret,
+      key_id: keyId,
+      key_secret: keySecret,
+    };
   }
 
   /**

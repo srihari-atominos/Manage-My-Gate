@@ -38,3 +38,25 @@ export const addMoney = async (req, res, next) => {
     next(error);
   }
 };
+
+export const payInvoice = async (req, res, next) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const orgId = req.user.orgId;
+    const { invoiceId } = req.body;
+
+    if (!invoiceId) {
+      return res.status(400).json({ success: false, message: 'invoiceId is required' });
+    }
+
+    const result = await walletService.payInvoiceWithWallet({ userId, orgId, invoiceId });
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};

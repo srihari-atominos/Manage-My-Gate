@@ -7,8 +7,12 @@ import {
   executeManualTrigger,
   submitOfflineSettlement,
   clearOfflineSettlement,
+  payWithWallet,
+  createRazorpayOrder,
+  verifyRazorpaySignature,
   clearBillingError,
 } from '../store/billingSlice.js';
+import { fetchWalletBalance } from '../store/walletSlice.js';
 
 /**
  * Custom Hook: useBilling
@@ -23,6 +27,7 @@ export const useBilling = () => {
   const { kpis, activeDues, invoicesList, pagination, loadingStates, error } = useSelector(
     (state) => state.billing
   );
+  const walletBalance = useSelector((state) => state.wallet?.balance || 0);
   const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId);
 
   // 2. Action dispatchers wrapped in useCallback to prevent unnecessary UI re-renders
@@ -40,7 +45,15 @@ export const useBilling = () => {
 
   const loadResidentDues = useCallback(
     () => {
+      dispatch(fetchWalletBalance());
       return dispatch(fetchMyDues());
+    },
+    [dispatch]
+  );
+
+  const loadWalletBalance = useCallback(
+    () => {
+      return dispatch(fetchWalletBalance());
     },
     [dispatch]
   );
@@ -90,6 +103,27 @@ export const useBilling = () => {
     [dispatch]
   );
 
+  const payInvoiceWallet = useCallback(
+    (invoiceId) => {
+      return dispatch(payWithWallet(invoiceId));
+    },
+    [dispatch]
+  );
+
+  const payInvoiceRazorpay = useCallback(
+    (invoiceId, amount) => {
+      return dispatch(createRazorpayOrder({ invoiceId, amount }));
+    },
+    [dispatch]
+  );
+
+  const verifyRazorpay = useCallback(
+    (verificationData) => {
+      return dispatch(verifyRazorpaySignature(verificationData));
+    },
+    [dispatch]
+  );
+
   const resetBillingError = useCallback(
     () => {
       dispatch(clearBillingError());
@@ -105,15 +139,20 @@ export const useBilling = () => {
     pagination,
     loadingStates,
     error,
+    walletBalance,
     activeOrgId,
 
     // Dispatcher methods
     loadAdminDashboard,
     loadResidentDues,
+    loadWalletBalance,
     changeTablePage,
     triggerManualRun,
     settleOffline,
     approveOffline,
+    payInvoiceWallet,
+    payInvoiceRazorpay,
+    verifyRazorpay,
     resetBillingError,
   };
 };

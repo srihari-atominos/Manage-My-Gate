@@ -19,7 +19,7 @@ const paymentSchema = new mongoose.Schema({
   },
   referenceType: {
     type: String,
-    enum: ['AmenityBooking', 'MaintenanceFee', 'Other'],
+    enum: ['AmenityBooking', 'MaintenanceFee', 'Invoice', 'Other'],
     default: 'AmenityBooking'
   },
   amount: {

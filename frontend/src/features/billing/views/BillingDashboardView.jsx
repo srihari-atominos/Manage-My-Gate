@@ -1,5 +1,5 @@
 import React, { memo, useEffect } from 'react';
-import BillingLedgerTable from '../components/BillingLedgerTable';
+import BillingLedgerGrid from '../components/BillingLedgerGrid.jsx';
 import { useBilling } from '../hooks/useBilling';
 import '../styles/_billing.scss';
 
@@ -10,7 +10,6 @@ import '../styles/_billing.scss';
  */
 const BillingDashboardView = memo(() => {
   const billingData = useBilling();
-  console.log('DEBUG [BillingDashboardView] useBilling returned keys:', Object.keys(billingData));
   
   const {
     kpis,
@@ -49,7 +48,7 @@ const BillingDashboardView = memo(() => {
         </div>
       </div>
 
-      <BillingLedgerTable
+      <BillingLedgerGrid
         kpis={kpis}
         invoices={invoicesList}
         pagination={pagination}

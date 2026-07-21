@@ -32,7 +32,16 @@ export class InvoiceRepository {
    * @returns {Promise<{ grossDemand: number, totalCollected: number, inTransitGateway: number, totalUnpaidArrears: number }>}
    */
   async getDashboardKPIs(communityId) {
+    const communityObjId = new mongoose.Types.ObjectId(communityId);
     const result = await Invoice.aggregate([
+      {
+        $match: {
+          $or: [
+            { communityId: communityObjId },
+            { communityId: { $exists: false } }
+          ]
+        }
+      },
       {
         $lookup: {
           from: 'assessments',
@@ -46,7 +55,10 @@ export class InvoiceRepository {
       },
       {
         $match: {
-          'assessment.communityId': new mongoose.Types.ObjectId(communityId),
+          $or: [
+            { communityId: communityObjId },
+            { 'assessment.communityId': communityObjId }
+          ]
         },
       },
       {
@@ -191,6 +203,7 @@ export class InvoiceRepository {
     const { page = 1, limit = 10, status, search } = query;
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const take = parseInt(limit, 10);
+    const communityObjId = new mongoose.Types.ObjectId(orgId);
 
     const matchConditions = {};
     if (status && status !== 'ALL') {
@@ -210,6 +223,14 @@ export class InvoiceRepository {
 
     const result = await Invoice.aggregate([
       {
+        $match: {
+          $or: [
+            { communityId: communityObjId, ...matchConditions },
+            { communityId: { $exists: false } }
+          ]
+        }
+      },
+      {
         $lookup: {
           from: 'assessments',
           localField: 'assessmentId',
@@ -220,10 +241,14 @@ export class InvoiceRepository {
       { $unwind: '$assessment' },
       {
         $match: {
-          'assessment.communityId': new mongoose.Types.ObjectId(orgId),
+          $or: [
+            { communityId: communityObjId },
+            { 'assessment.communityId': communityObjId }
+          ],
           ...matchConditions,
         },
       },
+
       {
         $lookup: {
           from: 'users',

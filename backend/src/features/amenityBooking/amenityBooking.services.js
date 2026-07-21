@@ -333,6 +333,7 @@ export class AmenityBookingService {
     return active.length > 0;
   }
 
+  async getBookingById(bookingId, orgId) { return await amenityBookingRepository.findById(bookingId, orgId); }
   async getKpiStats(orgId) { return await amenityBookingRepository.getKpiStats(orgId); }
   async getRevenueStats(orgId) { return await amenityBookingRepository.getRevenueStats(orgId); }
   async getOccupancyStats(orgId) { return await amenityBookingRepository.getOccupancyStats(orgId); }

@@ -11,7 +11,16 @@ import '../styles/_billing.scss';
  * Renders the HeroLiabilityBanner and TenantComplianceBadge in a responsive grid.
  */
 const ResidentActionCenterView = memo(() => {
-  const { activeDues, loadResidentDues, settleOffline, loadingStates } = useBilling();
+  const {
+    activeDues,
+    loadResidentDues,
+    settleOffline,
+    walletBalance,
+    payInvoiceWallet,
+    payInvoiceRazorpay,
+    verifyRazorpay,
+    loadingStates,
+  } = useBilling();
 
   useEffect(() => {
     loadResidentDues();
@@ -53,7 +62,15 @@ const ResidentActionCenterView = memo(() => {
       <div className="resident-action-center__grid">
         {/* Column 1 — Hero card (left / top on mobile) */}
         <div className="resident-action-center__col resident-action-center__col--hero">
-          <HeroLiabilityBanner activeDues={activeDues} settleOffline={settleOffline} />
+          <HeroLiabilityBanner
+            activeDues={activeDues}
+            settleOffline={settleOffline}
+            walletBalance={walletBalance}
+            payInvoiceWallet={payInvoiceWallet}
+            payInvoiceRazorpay={payInvoiceRazorpay}
+            verifyRazorpay={verifyRazorpay}
+            loadingStates={loadingStates}
+          />
         </div>
 
         {/* Column 2 — Tenant compliance (right / bottom on mobile) */}

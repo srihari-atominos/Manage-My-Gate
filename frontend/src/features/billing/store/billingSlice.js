@@ -90,6 +90,45 @@ export const clearOfflineSettlement = createAsyncThunk(
   }
 );
 
+export const payWithWallet = createAsyncThunk(
+  'billing/payWithWallet',
+  async (invoiceId, { rejectWithValue }) => {
+    try {
+      const response = await billingService.payInvoiceWithWallet(invoiceId);
+      const body = response?.success !== undefined ? response : response?.data;
+      return body?.data || body;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to pay invoice with wallet');
+    }
+  }
+);
+
+export const createRazorpayOrder = createAsyncThunk(
+  'billing/createRazorpayOrder',
+  async ({ invoiceId, amount }, { rejectWithValue }) => {
+    try {
+      const response = await billingService.createRazorpayOrder(invoiceId, amount);
+      const body = response?.success !== undefined ? response : response?.data;
+      return body?.data || body;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to create payment order');
+    }
+  }
+);
+
+export const verifyRazorpaySignature = createAsyncThunk(
+  'billing/verifyRazorpaySignature',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const response = await billingService.verifyRazorpayPayment(payload);
+      const body = response?.success !== undefined ? response : response?.data;
+      return body?.data || body;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Payment verification failed');
+    }
+  }
+);
+
 const performInvoiceSync = (state, updatedInvoice) => {
   if (!updatedInvoice) return;
 
@@ -346,6 +385,38 @@ export const billingSlice = createSlice({
         performInvoiceSync(state, action.payload);
       })
       .addCase(clearOfflineSettlement.rejected, (state, action) => {
+        state.loadingStates.settleInvoice = false;
+        state.error = action.payload;
+      })
+
+      // payWithWallet
+      .addCase(payWithWallet.pending, (state) => {
+        state.loadingStates.settleInvoice = true;
+        state.error = null;
+      })
+      .addCase(payWithWallet.fulfilled, (state, action) => {
+        state.loadingStates.settleInvoice = false;
+        if (action.payload?.invoice) {
+          performInvoiceSync(state, action.payload.invoice);
+        }
+      })
+      .addCase(payWithWallet.rejected, (state, action) => {
+        state.loadingStates.settleInvoice = false;
+        state.error = action.payload;
+      })
+
+      // verifyRazorpaySignature
+      .addCase(verifyRazorpaySignature.pending, (state) => {
+        state.loadingStates.settleInvoice = true;
+        state.error = null;
+      })
+      .addCase(verifyRazorpaySignature.fulfilled, (state, action) => {
+        state.loadingStates.settleInvoice = false;
+        if (action.payload?.invoice) {
+          performInvoiceSync(state, action.payload.invoice);
+        }
+      })
+      .addCase(verifyRazorpaySignature.rejected, (state, action) => {
         state.loadingStates.settleInvoice = false;
         state.error = action.payload;
       });

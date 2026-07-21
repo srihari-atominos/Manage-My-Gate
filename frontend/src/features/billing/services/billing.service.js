@@ -54,6 +54,37 @@ export const billingService = {
   async approveInvoiceOffline(invoiceId) {
     return await apiClient.patch(`/invoices/${invoiceId}/approve`);
   },
+
+  /**
+   * Settle invoice payment using resident digital wallet balance.
+   * @param {string} invoiceId
+   */
+  async payInvoiceWithWallet(invoiceId) {
+    return await apiClient.post('/wallet/pay-invoice', { invoiceId });
+  },
+
+  /**
+   * Create Razorpay payment order for an invoice.
+   * @param {string} invoiceId
+   * @param {number} amount
+   */
+  async createRazorpayOrder(invoiceId, amount) {
+    return await apiClient.post('/payments/create-order', {
+      referenceId: invoiceId,
+      referenceType: 'Invoice',
+      amount,
+      currency: 'INR',
+      gateway: 'razorpay',
+    });
+  },
+
+  /**
+   * Verify Razorpay cryptographic signature.
+   * @param {Object} payload - { paymentId, razorpayPaymentId, razorpayOrderId, razorpaySignature }
+   */
+  async verifyRazorpayPayment(payload) {
+    return await apiClient.post('/payments/verify-signature', payload);
+  },
 };
 
 export default billingService;

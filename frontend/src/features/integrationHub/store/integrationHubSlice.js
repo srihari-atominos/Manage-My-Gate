@@ -73,6 +73,34 @@ export const disconnectIntegration = createAsyncThunk(
   }
 );
 
+export const getBankDetails = createAsyncThunk(
+  'integrationHub/getBankDetails',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await integrationHubService.fetchBankDetails();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to fetch bank details'
+      );
+    }
+  }
+);
+
+export const saveBankDetails = createAsyncThunk(
+  'integrationHub/saveBankDetails',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const response = await integrationHubService.saveBankDetails(payload);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to save bank details'
+      );
+    }
+  }
+);
+
 const initialState = {
   catalog: [],
   connections: [
@@ -83,6 +111,16 @@ const initialState = {
     { id: '5', _id: '5', provider: 'sendgrid', accountLabel: 'SendGrid Transactional', status: 'connected', createdAt: '2026-06-17T10:20:00.000Z' },
     { id: '6', _id: '6', provider: 'stripe', accountLabel: 'Stripe Live Payments', status: 'connected', createdAt: '2026-06-17T10:25:00.000Z' },
   ],
+  bankDetails: {
+    accountHolderName: '',
+    bankName: '',
+    accountNumber: '',
+    ifscCode: '',
+    accountType: 'Current',
+    razorpayKeyId: '',
+    razorpayKeySecret: '',
+    isConfigured: false,
+  },
   pagination: {
     totalRecords: 6,
     currentPage: 1,
@@ -173,6 +211,42 @@ export const integrationHubSlice = createSlice({
         state.connections = state.connections.filter((c) => c.id !== action.payload);
       })
       .addCase(disconnectIntegration.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+
+      // getBankDetails
+      .addCase(getBankDetails.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(getBankDetails.fulfilled, (state, action) => {
+        state.isLoading = false;
+        if (action.payload) {
+          state.bankDetails = {
+            ...action.payload,
+            isConfigured: true,
+          };
+        }
+      })
+      .addCase(getBankDetails.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+
+      // saveBankDetails
+      .addCase(saveBankDetails.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(saveBankDetails.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.bankDetails = {
+          ...action.payload,
+          isConfigured: true,
+        };
+      })
+      .addCase(saveBankDetails.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });
