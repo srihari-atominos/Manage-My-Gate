@@ -106,6 +106,7 @@ export class InvoiceService {
 
       invoicesToCreate.push({
         communityId: assessment.communityId,
+        orgId: assessment.communityId, // added for multi-tenant index
         assessmentId: assessment._id,
         targetUserId,
         unitId: unit._id, // Villa collection maps to unitId
