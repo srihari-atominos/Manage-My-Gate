@@ -58,7 +58,7 @@ export const BillingLedgerRow = memo(({ invoice, onMarkPaid, onOfflineSettle }) 
     </td>
     <td className="billing-ledger__cell billing-ledger__cell--amount">
       <span className="billing-ledger__amount">
-        {invoice.currency}{(invoice.amount || 0).toLocaleString('en-IN')}
+        {invoice.currency === 'INR' ? '₹' : invoice.currency}{(invoice.amount || 0).toLocaleString('en-IN')}
       </span>
     </td>
     <td className="billing-ledger__cell">

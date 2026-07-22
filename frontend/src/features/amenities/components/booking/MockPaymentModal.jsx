@@ -2,10 +2,12 @@ import React, { memo, useState, useEffect } from 'react';
 import { CModal, CModalHeader, CModalTitle, CModalBody, CSpinner, CButton, CRow, CCol, CCard, CCardBody, CFormSelect } from '@coreui/react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { simulatePayment } from '../../services/paymentApi.js';
 import { fetchMyWallet } from '../../services/walletApi.js';
 
 const MockPaymentModal = memo(({ visible, paymentIntent, onSuccess, onFailure, onClose, draft, amenity }) => {
+  const { t } = useTranslation();
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('wallet');
   const [walletBalance, setWalletBalance] = useState(0);
@@ -125,11 +127,8 @@ const MockPaymentModal = memo(({ visible, paymentIntent, onSuccess, onFailure, o
                           value={paymentMethod}
                           onChange={(e) => setPaymentMethod(e.target.value)}
                         >
-                          <option value="wallet">My Wallet</option>
-                          <option value="paytm">Paytm</option>
-                          <option value="google_pay">Google Pay</option>
-                          <option value="credit_card">Credit Card</option>
-                          <option value="upi">UPI</option>
+                          <option value="wallet">{t('payment.method.wallet', 'My Wallet')}</option>
+                          <option value="razorpay">{t('payment.method.razorpay', 'Razorpay (Cards, UPI, Net Banking)')}</option>
                         </CFormSelect>
                       </CCol>
                       

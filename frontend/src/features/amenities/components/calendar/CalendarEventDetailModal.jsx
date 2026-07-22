@@ -5,7 +5,7 @@ const CalendarEventDetailModal = ({ visible, onClose, eventDetails }) => {
   if (!eventDetails) return null;
 
   return (
-    <CModal visible={visible} onClose={onClose} size="lg" backdrop="static">
+    <CModal visible={visible} onClose={onClose} size="lg" backdrop="static" className="amenity-os-theme">
       <CModalHeader>
         <CModalTitle>
           {eventDetails.amenityName} ({eventDetails.startTime} - {eventDetails.endTime})

@@ -3,6 +3,7 @@ import invoiceController from './invoice.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
 import { manualTriggerSchema, offlineSettleSchema, approveInvoiceSchema } from './invoice.validator.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
+import './invoice.listeners.js';
 import { authorizePermission } from '../../middlewares/rbac.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
 

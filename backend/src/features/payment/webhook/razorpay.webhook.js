@@ -68,11 +68,11 @@ export const handleRazorpayWebhook = async (req, res, next) => {
       const amountRupees = amountPaise / 100;
       const notes = paymentEntity.notes || {};
 
-      const invoiceId = notes.invoiceId || notes.referenceId;
+      const referenceId = notes.referenceId || notes.invoiceId;
       const orgId = notes.orgId || notes.communityId;
       const userId = notes.userId || notes.targetUserId;
 
-      if (!invoiceId) {
+      if (!referenceId) {
         logger.info('Razorpay webhook received for non-invoice payment or general order', { orderId, razorpayPaymentId });
         return res.status(200).json({ success: true, message: 'Webhook received' });
       }
@@ -82,62 +82,65 @@ export const handleRazorpayWebhook = async (req, res, next) => {
       session.startTransaction();
 
       try {
-        // Fetch invoice inside session for OCC check
-        const invoice = await Invoice.findById(invoiceId).session(session);
-        if (!invoice) {
+        // Fetch the Payment record via gatewayTransactionId
+        const paymentRecord = await paymentRepository.findByGatewayTransactionId(orderId, session);
+        if (!paymentRecord) {
           await session.abortTransaction();
           session.endSession();
-          logger.warn(`Webhook invoice not found: ${invoiceId}`);
-          return res.status(404).json({ success: false, message: 'Invoice not found' });
+          logger.warn(`Webhook payment record not found for transaction: ${orderId}`);
+          return res.status(404).json({ success: false, message: 'Payment record not found' });
         }
 
-        // Optimistic Concurrency & Idempotency check: prevent double-crediting if duplicate webhook arrives
-        if (invoice.status === 'PAID') {
+        // Idempotency check: if paymentRecord is already success, return early
+        if (paymentRecord.status === 'success') {
           await session.abortTransaction();
           session.endSession();
-          logger.info(`Invoice ${invoiceId} already settled (PAID). Idempotent response returned.`);
-          return res.status(200).json({ success: true, message: 'Webhook processed. Invoice already settled.' });
+          logger.info(`Payment transaction ${orderId} already settled (success). Idempotent response returned.`);
+          return res.status(200).json({ success: true, message: 'Webhook processed. Payment already settled.' });
         }
 
-        const targetOrgId = orgId || invoice.communityId;
-        const targetUserId = userId || invoice.targetUserId;
+        if (paymentRecord.referenceType === 'Invoice') {
+          const invoice = await Invoice.findById(paymentRecord.referenceId).session(session);
+          if (!invoice) {
+            await session.abortTransaction();
+            session.endSession();
+            logger.warn(`Webhook invoice not found: ${paymentRecord.referenceId}`);
+            return res.status(404).json({ success: false, message: 'Invoice not found' });
+          }
 
-        // Transactional settlement of Invoice with OCC
-        const updatedInvoice = await invoiceService.settleInvoicePayment(
-          invoiceId,
-          {
-            paymentMethod: 'RAZORPAY',
-            paid_at: new Date(),
-            settled_at: new Date(),
-            offlineReference: razorpayPaymentId,
-          },
-          session
-        );
+          // Optimistic Concurrency & Idempotency check: prevent double-crediting if duplicate webhook arrives
+          if (invoice.status === 'PAID') {
+            await session.abortTransaction();
+            session.endSession();
+            logger.info(`Invoice ${paymentRecord.referenceId} already settled (PAID). Idempotent response returned.`);
+            return res.status(200).json({ success: true, message: 'Webhook processed. Invoice already settled.' });
+          }
 
-        // Transactional creation of Payment record
-        let paymentRecord = await paymentRepository.findByGatewayTransactionId(orderId, session);
-        if (paymentRecord) {
-          paymentRecord.status = 'success';
-          paymentRecord.gatewayTransactionId = razorpayPaymentId || orderId;
-          paymentRecord.paymentMethod = 'RAZORPAY';
-          await paymentRecord.save({ session });
-        } else {
-          paymentRecord = await paymentRepository.createPayment(
+          // Transactional settlement of Invoice with OCC
+          await invoiceService.settleInvoicePayment(
+            paymentRecord.referenceId,
             {
-              orgId: targetOrgId,
-              userId: targetUserId,
-              referenceId: invoice._id,
-              referenceType: 'Invoice',
-              amount: amountRupees || invoice.totalDue,
-              currency: paymentEntity.currency || 'INR',
-              status: 'success',
-              gateway: 'razorpay',
               paymentMethod: 'RAZORPAY',
-              gatewayTransactionId: razorpayPaymentId || orderId,
+              paid_at: new Date(),
+              settled_at: new Date(),
+              offlineReference: razorpayPaymentId,
             },
             session
           );
+        } else if (paymentRecord.referenceType === 'AmenityBooking') {
+          const amenityBookingService = (await import('../../amenityBooking/amenityBooking.services.js')).default;
+          await amenityBookingService.settleBookingPayment(
+            paymentRecord.referenceId,
+            payload,
+            session
+          );
         }
+
+        // Shared logic: update the Payment record's status to 'success', call await payment.save({ session }), and commit the transaction.
+        paymentRecord.status = 'success';
+        paymentRecord.gatewayTransactionId = razorpayPaymentId || orderId;
+        paymentRecord.paymentMethod = 'RAZORPAY';
+        await paymentRecord.save({ session });
 
         // Commit transaction
         await session.commitTransaction();
@@ -148,8 +151,8 @@ export const handleRazorpayWebhook = async (req, res, next) => {
 
         return res.status(200).json({
           success: true,
-          message: 'Razorpay webhook processed and invoice settled successfully',
-          data: { invoiceId, paymentId: paymentRecord._id },
+          message: 'Razorpay webhook processed and payment settled successfully',
+          data: { referenceId: paymentRecord.referenceId, paymentId: paymentRecord._id },
         });
       } catch (txnError) {
         await session.abortTransaction();

@@ -244,9 +244,9 @@ export class AmenityBookingRepository {
     return await AmenityBooking.findOne(query).populate('amenityId');
   }
 
-  async create(bookingData) {
+  async create(bookingData, session = null) {
     const booking = new AmenityBooking(bookingData);
-    return await booking.save();
+    return await booking.save(session ? { session } : undefined);
   }
 
   async updateStatus(id, orgId, status, reviewData = {}) {

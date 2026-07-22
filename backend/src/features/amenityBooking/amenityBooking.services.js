@@ -54,130 +54,193 @@ export class AmenityBookingService {
   }
 
   async createBooking(bookingData) {
-    const { orgId, amenityId, userId, bookingDate, startTime, endTime } = bookingData;
-    
-    // 1 & 2. Tenant and User validation is implicitly handled by auth middlewares or caller
-    
-    // 3. Amenity Validation
-    const amenityService = (await import('../amenity/amenity.services.js')).default;
-    const amenity = await amenityService.getAmenityById(amenityId, orgId);
-    if (!amenity) throw new HttpError(404, 'Amenity not found');
-    
-    // 4. Amenity Status Validation
-    if (amenity.status !== 'active') {
-      throw new HttpError(400, `Cannot book this amenity as its status is ${amenity.status}`);
-    }
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    const bookingDateTimeStart = new Date(`${bookingDate}T${startTime}`);
-    const bookingDateTimeEnd = new Date(`${bookingDate}T${endTime}`);
-    const now = new Date();
+    try {
+      const { orgId, amenityId, userId, bookingDate, startTime, endTime } = bookingData;
+      
+      // 3. Amenity Validation
+      const amenityService = (await import('../amenity/amenity.services.js')).default;
+      const amenity = await amenityService.getAmenityById(amenityId, orgId);
+      if (!amenity) throw new HttpError(404, 'Amenity not found');
+      
+      // 4. Amenity Status Validation
+      if (amenity.status !== 'active') {
+        throw new HttpError(400, `Cannot book this amenity as its status is ${amenity.status}`);
+      }
 
-    if (bookingDateTimeStart < now) {
-      throw new HttpError(400, 'Cannot book in the past');
-    }
+      const bookingDateTimeStart = new Date(`${bookingDate}T${startTime}`);
+      const bookingDateTimeEnd = new Date(`${bookingDate}T${endTime}`);
+      const now = new Date();
 
-    // 5. Maintenance Validation
-    if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
-      for (const maint of amenity.maintenanceSchedules) {
-        const maintStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
-        const maintEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
-        if (bookingDateTimeStart < maintEnd && bookingDateTimeEnd > maintStart) {
-          throw new HttpError(400, 'Amenity is under maintenance during this time slot');
+      if (bookingDateTimeStart < now) {
+        throw new HttpError(400, 'Cannot book in the past');
+      }
+
+      // 5. Maintenance Validation
+      if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
+        for (const maint of amenity.maintenanceSchedules) {
+          const maintStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
+          const maintEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
+          if (bookingDateTimeStart < maintEnd && bookingDateTimeEnd > maintStart) {
+            throw new HttpError(400, 'Amenity is under maintenance during this time slot');
+          }
         }
       }
-    }
 
-    // 6. Holiday / Weekly Off Validation
-    const dayOfWeek = bookingDateTimeStart.getDay();
-    if (amenity.bookingRules.weeklyOffDays && amenity.bookingRules.weeklyOffDays.includes(dayOfWeek)) {
-      throw new HttpError(400, 'Amenity is closed on this day of the week');
-    }
-
-    // 7. Operating Hours Validation
-    const openTimeParsed = new Date(`${bookingDate}T${amenity.bookingRules.openTime}`);
-    const closeTimeParsed = new Date(`${bookingDate}T${amenity.bookingRules.closeTime}`);
-    if (bookingDateTimeStart < openTimeParsed || bookingDateTimeEnd > closeTimeParsed) {
-      throw new HttpError(400, `Booking must be within operating hours (${amenity.bookingRules.openTime} to ${amenity.bookingRules.closeTime})`);
-    }
-
-
-
-    // 12. Booking Window Validation
-    const diffTime = Math.abs(bookingDateTimeStart - now);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (diffDays > amenity.bookingRules.advanceBookingDays) {
-      throw new HttpError(400, `Cannot book more than ${amenity.bookingRules.advanceBookingDays} days in advance`);
-    }
-
-    // 8, 10 & 11. Overlapping Slot, Buffer Time, and Capacity Validation
-    const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime);
-    const currentlyBookedSpots = conflicts.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
-    const requestedSpots = parseInt(bookingData.numberOfPersons || 1, 10);
-    const remainingCapacity = amenity.capacity - currentlyBookedSpots;
-    if (requestedSpots > remainingCapacity) {
-      if (remainingCapacity <= 0) {
-        throw new HttpError(400, 'The amenity is at full capacity for the selected time slot.');
-      } else {
-        throw new HttpError(400, `The amenity remaining capacity for the selected time slot is ${remainingCapacity}.`);
+      // 6. Holiday / Weekly Off Validation
+      const dayOfWeek = bookingDateTimeStart.getDay();
+      if (amenity.bookingRules.weeklyOffDays && amenity.bookingRules.weeklyOffDays.includes(dayOfWeek)) {
+        throw new HttpError(400, 'Amenity is closed on this day of the week');
       }
+
+      // 7. Operating Hours Validation
+      const openTimeParsed = new Date(`${bookingDate}T${amenity.bookingRules.openTime}`);
+      const closeTimeParsed = new Date(`${bookingDate}T${amenity.bookingRules.closeTime}`);
+      if (bookingDateTimeStart < openTimeParsed || bookingDateTimeEnd > closeTimeParsed) {
+        throw new HttpError(400, `Booking must be within operating hours (${amenity.bookingRules.openTime} to ${amenity.bookingRules.closeTime})`);
+      }
+
+      // 12. Booking Window Validation
+      const diffTime = Math.abs(bookingDateTimeStart - now);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > amenity.bookingRules.advanceBookingDays) {
+        throw new HttpError(400, `Cannot book more than ${amenity.bookingRules.advanceBookingDays} days in advance`);
+      }
+
+      // 8, 10 & 11. Overlapping Slot, Buffer Time, and Capacity Validation
+      const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime);
+      const currentlyBookedSpots = conflicts.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
+      const requestedSpots = parseInt(bookingData.numberOfPersons || 1, 10);
+      const remainingCapacity = amenity.capacity - currentlyBookedSpots;
+      if (requestedSpots > remainingCapacity) {
+        if (remainingCapacity <= 0) {
+          throw new HttpError(400, 'The amenity is at full capacity for the selected time slot.');
+        } else {
+          throw new HttpError(400, `The amenity remaining capacity for the selected time slot is ${remainingCapacity}.`);
+        }
+      }
+      
+      // Validate if the same user has already booked an overlapping slot (duplicate booking)
+      const overlappingOtherSlot = conflicts.find(b => 
+        b.userId.toString() === userId.toString() && 
+        (b.startTime !== startTime || b.endTime !== endTime)
+      );
+      if (overlappingOtherSlot) {
+        throw new HttpError(400, 'You already have a booking that overlaps with this time slot');
+      }
+
+      // 13. Pricing Calculation
+      const pricingDetails = bookingData.pricingDetails || this._calculatePricing(amenity, bookingDateTimeStart, bookingDateTimeEnd, bookingData.numberOfPersons || 1);
+      const totalAmount = pricingDetails.totalAmount;
+      const deposit = pricingDetails.securityDeposit;
+
+      // 14. Create Pending Booking
+      let finalStatus = 'pending';
+      let requiresPayment = totalAmount > 0;
+
+      if (!requiresPayment) {
+        finalStatus = 'confirmed';
+      }
+
+      const newBookingData = {
+        ...bookingData,
+        status: finalStatus,
+        paymentStatus: requiresPayment ? 'pending' : 'success',
+        pricingDetails,
+        totalPrice: totalAmount,
+        deposit
+      };
+
+      const booking = await amenityBookingRepository.create(newBookingData, session);
+      
+      let paymentResult = null;
+      if (requiresPayment) {
+        paymentResult = await paymentService.createPaymentOrder({
+          orgId,
+          userId,
+          referenceId: booking._id,
+          referenceType: 'AmenityBooking',
+          amount: totalAmount,
+          currency: 'INR'
+        }, session);
+
+        booking.paymentStatus = 'pending';
+        booking.paymentId = paymentResult.paymentId;
+        await booking.save({ session });
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      amenityBookingEventEmitter.emit(AMENITY_BOOKING_CREATED, booking);
+      
+      return {
+        booking,
+        paymentIntent: paymentResult
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
     }
-    
-    // Validate if the same user has already booked an overlapping slot (duplicate booking)
-    // We allow overlap ONLY if it's the EXACT same slot, so they can add more members (capped by maxBookingsPerUserPerSlot in controller).
-    const overlappingOtherSlot = conflicts.find(b => 
-      b.userId.toString() === userId.toString() && 
-      (b.startTime !== startTime || b.endTime !== endTime)
-    );
-    if (overlappingOtherSlot) {
-      throw new HttpError(400, 'You already have a booking that overlaps with this time slot');
+  }
+
+  async generateAccessQRCode(bookingId, session = null) {
+    const AmenityBooking = (await import('./amenityBooking.model.js')).default;
+    const booking = await AmenityBooking.findById(bookingId).session(session);
+    if (!booking) {
+      const HttpError = (await import('../../utils/httpError.utils.js')).default;
+      throw new HttpError(404, 'Booking not found');
+    }
+    const QRCode = (await import('qrcode')).default;
+    const bookingIdStr = booking.bookingId || `BKG-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+    const qrData = JSON.stringify({
+      bookingId: booking._id,
+      displayId: bookingIdStr,
+      userId: booking.userId,
+      amenityId: booking.amenityId?._id || booking.amenityId
+    });
+    const qrCodeUrl = await QRCode.toDataURL(qrData);
+    return { qrCodeUrl, bookingIdStr };
+  }
+
+  async settleBookingPayment(bookingId, paymentData, session) {
+    const AmenityBooking = (await import('./amenityBooking.model.js')).default;
+    const booking = await AmenityBooking.findById(bookingId).session(session);
+    if (!booking) {
+      const HttpError = (await import('../../utils/httpError.utils.js')).default;
+      throw new HttpError(404, 'Booking not found');
     }
 
-    // 13. Pricing Calculation
-    const pricingDetails = this._calculatePricing(amenity, bookingDateTimeStart, bookingDateTimeEnd, bookingData.numberOfPersons || 1);
-    const totalAmount = pricingDetails.totalAmount;
-    const deposit = pricingDetails.securityDeposit;
-
-    // 14. Create Pending Booking
-    let finalStatus = 'pending';
-    let requiresPayment = totalAmount > 0;
-
-    if (!requiresPayment) {
-      finalStatus = 'confirmed';
+    if (booking.paymentStatus === 'success') {
+      return booking;
     }
 
-    const newBookingData = {
-      ...bookingData,
-      status: finalStatus,
-      paymentStatus: requiresPayment ? 'pending' : 'success',
-      pricingDetails,
-      totalPrice: totalAmount,
-      deposit
-    };
+    const { qrCodeUrl, bookingIdStr } = await this.generateAccessQRCode(booking._id, session);
+    const qrExpiresAt = new Date(`${booking.bookingDate}T${booking.endTime}`);
 
-    const booking = await amenityBookingRepository.create(newBookingData);
-    
-    // 15. Payment Processing (Initialize Mock Provider if required)
-    let paymentResult = null;
-    if (requiresPayment) {
-      paymentResult = await paymentService.initiatePayment({
-        orgId,
-        userId,
-        referenceId: booking._id,
-        referenceType: 'AmenityBooking',
-        amount: totalAmount
-      });
+    // Robust extraction: support both standard paymentData object and raw Razorpay payload
+    const paymentEntity = paymentData?.payment?.entity || paymentData?.order?.entity || {};
+    const gatewayTransactionId = paymentData.gatewayTransactionId || paymentEntity.id || paymentData.id || 'unknown_txn';
+    const paymentMethod = paymentData.paymentMethod || paymentEntity.method || paymentData.method || 'RAZORPAY';
 
-      booking.paymentStatus = 'pending';
-      booking.paymentId = paymentResult.paymentId;
-      await booking.save();
+    booking.paymentStatus = 'success';
+    booking.status = 'confirmed';
+    booking.paymentId = gatewayTransactionId;
+    booking.paymentMethod = paymentMethod;
+    booking.qrCode = qrCodeUrl;
+    booking.qrStatus = 'active';
+    booking.qrGeneratedAt = new Date();
+    booking.qrExpiresAt = qrExpiresAt;
+    if (!booking.bookingId) {
+      booking.bookingId = bookingIdStr;
     }
 
-    amenityBookingEventEmitter.emit(AMENITY_BOOKING_CREATED, booking);
-    
-    return {
-      booking,
-      paymentIntent: paymentResult
-    };
+    await booking.save({ session });
+    return booking;
   }
 
   _calculatePricing(amenity, startDateTime, endDateTime, numberOfPersons = 1) {

@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
+import toast from 'react-hot-toast';
 import { getAmenities } from '../store/amenitySlice.js';
+import { bookingConfirmed } from '../store/amenityBookingSlice.js';
 
 /**
  * Custom hook to manage the real-time Socket.io connection for Amenities
@@ -33,11 +35,21 @@ export const useAmenitySocket = (params = {}) => {
       if (user.orgId) {
         socket.emit('join_room', `org:${user.orgId}`);
       }
+      // Join user's personal private room for direct booking updates
+      const userId = user._id || user.id;
+      if (userId) {
+        socket.emit('join_room', `user:${userId}`);
+      }
     });
 
     const handleUpdate = () => {
       // Dispatch action to refresh global amenities list
       dispatch(getAmenities(paramsRef.current));
+    };
+
+    const handleBookingConfirmed = (booking) => {
+      dispatch(bookingConfirmed(booking));
+      toast.success(`Booking for ${booking.amenityId?.name || 'Amenity'} is confirmed!`);
     };
 
     // Amenity Events
@@ -50,6 +62,7 @@ export const useAmenitySocket = (params = {}) => {
     socket.on('booking:updated', handleUpdate);
     socket.on('booking:status_updated', handleUpdate);
     socket.on('booking:cancelled', handleUpdate);
+    socket.on('AMENITY_BOOKING_CONFIRMED', handleBookingConfirmed);
 
     return () => {
       socket.off('amenity:created', handleUpdate);
@@ -59,6 +72,7 @@ export const useAmenitySocket = (params = {}) => {
       socket.off('booking:updated', handleUpdate);
       socket.off('booking:status_updated', handleUpdate);
       socket.off('booking:cancelled', handleUpdate);
+      socket.off('AMENITY_BOOKING_CONFIRMED', handleBookingConfirmed);
       socket.disconnect();
     };
   }, [dispatch, user]);

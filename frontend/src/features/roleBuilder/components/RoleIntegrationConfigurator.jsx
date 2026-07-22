@@ -23,6 +23,10 @@ const PROVIDERS = [
   { id: 'twilio', name: 'Twilio SMS', icon: '📱' },
   { id: 'openai', name: 'OpenAI (AI)', icon: '🤖' },
   { id: 'resend', name: 'Resend Email', icon: '✉️' },
+  { id: 'firebase', name: 'Firebase', icon: '🔥' },
+  { id: 'messagecentral', name: 'Message Central', icon: '💬' },
+  { id: 'banking', name: 'Bank Details', icon: '🏦' },
+  { id: 'razorpay', name: 'Razorpay', icon: '💳' },
 ]
 
 /**

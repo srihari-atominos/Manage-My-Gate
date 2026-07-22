@@ -24,6 +24,15 @@ const ResidentActionCenterView = memo(() => {
 
   useEffect(() => {
     loadResidentDues();
+
+    const handleRefresh = () => {
+      loadResidentDues();
+    };
+
+    window.addEventListener('billing:refreshDues', handleRefresh);
+    return () => {
+      window.removeEventListener('billing:refreshDues', handleRefresh);
+    };
   }, [loadResidentDues]);
 
   const currentPeriod = useMemo(() => {

@@ -230,6 +230,18 @@ class WalletService {
   }
 
   async createRechargeOrder(userId, amount) {
+    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'dummy_key';
+
+    if (isMock) {
+      logger.info('Creating Mock Razorpay Recharge Order', { userId, amount });
+      return {
+        id: `order_mock_${Math.random().toString(36).substring(2, 15)}`,
+        amount: amount * 100, // Razorpay works in paise
+        currency: "INR",
+        status: "created"
+      };
+    }
+
     const options = {
       amount: amount * 100, // Razorpay works in paise
       currency: "INR",
@@ -248,6 +260,37 @@ class WalletService {
   async verifyPaymentSignature(userId, orgId, paymentData) {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = paymentData;
 
+    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'dummy_key';
+
+    if (isMock) {
+      logger.info('Verifying Mock Razorpay Signature', { userId, orgId, paymentData });
+      if (razorpay_signature === 'invalid_mock_signature') {
+        throw new HttpError(400, 'Invalid payment signature');
+      }
+
+      const numericAmount = Number(amount);
+
+      // Update wallet balance
+      const updatedWallet = await walletRepository.updateBalance(userId, orgId, numericAmount);
+
+      // Log transaction
+      const transaction = await walletRepository.createRazorpayTransaction({
+        orgId,
+        userId,
+        transactionId: `TXN-${razorpay_payment_id || 'mock_' + Date.now()}`,
+        amount: numericAmount,
+        paymentStatus: 'success',
+        razorpay_order_id: razorpay_order_id || `order_mock_${Date.now()}`,
+        razorpay_payment_id: razorpay_payment_id || `pay_mock_${Date.now()}`,
+        description: 'Wallet Recharge via Mock Razorpay'
+      });
+
+      walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
+      walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
+
+      return transaction;
+    }
+
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'dummy_secret')
@@ -258,22 +301,24 @@ class WalletService {
       throw new HttpError(400, 'Invalid payment signature');
     }
 
+    const numericAmount = Number(amount);
+
     // Update wallet balance
-    await walletRepository.updateBalance(userId, orgId, amount);
+    const updatedWallet = await walletRepository.updateBalance(userId, orgId, numericAmount);
     
     // Log transaction
     const transaction = await walletRepository.createRazorpayTransaction({
       orgId,
       userId,
       transactionId: `TXN-${razorpay_payment_id}`,
-      amount,
+      amount: numericAmount,
       paymentStatus: 'success',
       razorpay_order_id,
       razorpay_payment_id,
       description: 'Wallet Recharge via Razorpay'
     });
 
-    walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId });
+    walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
     walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
 
     return transaction;

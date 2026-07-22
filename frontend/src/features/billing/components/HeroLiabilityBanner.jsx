@@ -164,7 +164,16 @@ const HeroLiabilityBanner = memo(({
       {/* ── Online Checkout Modal (Wallet / Razorpay) ─────────────────── */}
       <PaymentCheckoutModal
         isOpen={!!checkoutInvoice}
-        onClose={() => setCheckoutInvoice(null)}
+        onClose={(success) => {
+          setCheckoutInvoice(null);
+          // If the payment succeeded, tell the parent component to reload dues
+          if (success === true && window.dispatchEvent) {
+            // Alternatively, dispatch an event or rely on Redux.
+            // Since we don't have loadResidentDues passed as prop to HeroLiabilityBanner currently,
+            // we will dispatch a custom DOM event that ResidentActionCenterView can listen to.
+            window.dispatchEvent(new CustomEvent('billing:refreshDues'));
+          }
+        }}
         invoice={checkoutInvoice}
         walletBalance={walletBalance}
         onPayWithWallet={payInvoiceWallet}

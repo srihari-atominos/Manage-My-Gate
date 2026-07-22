@@ -75,25 +75,56 @@ export const PaymentCheckoutModal = ({
       }
     } else if (paymentMethod === 'RAZORPAY') {
       setScriptLoading(true);
-      const scriptLoaded = await loadRazorpayScript();
-      setScriptLoading(false);
-
-      if (!scriptLoaded) {
-        setLocalError(t('billing.checkout.scriptError', 'Failed to load Razorpay payment gateway script. Check connection.'));
-        return;
-      }
 
       if (onPayWithRazorpay) {
         const orderResult = await onPayWithRazorpay(invoice.invoiceId || invoice._id, totalAmount);
         if (orderResult?.error) {
           setLocalError(orderResult.error);
+          setScriptLoading(false);
           return;
         }
 
         const orderData = orderResult?.data || orderResult?.payload || orderResult;
+        const keyId = orderData.keyId || orderData.razorpayKeyId;
+        const isMock = !keyId || keyId.includes('dummy') || keyId === 'rzp_test_12345';
+
+        if (isMock) {
+          // Mock Payment Flow
+          await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate loading delay
+          const confirmPayment = window.confirm(t('billing.checkout.mockConfirm', `[Mock Mode] Confirm payment of ₹${totalAmount}?`));
+          
+          if (confirmPayment) {
+            if (onVerifyRazorpay) {
+              const verifyResult = await onVerifyRazorpay({
+                paymentId: orderData.paymentId,
+                razorpayPaymentId: `pay_mock_${Date.now()}`,
+                razorpayOrderId: orderData.orderId || orderData.id,
+                razorpaySignature: `sig_mock_${Date.now()}`,
+              });
+              if (verifyResult?.meta?.requestStatus === 'fulfilled' || (verifyResult && !verifyResult.error && verifyResult.success !== false)) {
+                onClose(true);
+              } else {
+                setLocalError(t('billing.checkout.verificationFailed', 'Mock verification failed.'));
+              }
+            }
+          } else {
+            setLocalError(t('billing.checkout.cancelled', 'Payment cancelled by user.'));
+          }
+          setScriptLoading(false);
+          return;
+        }
+
+        // Real Razorpay Flow
+        const scriptLoaded = await loadRazorpayScript();
+        setScriptLoading(false);
+
+        if (!scriptLoaded) {
+          setLocalError(t('billing.checkout.scriptError', 'Failed to load Razorpay payment gateway script. Check connection.'));
+          return;
+        }
 
         const options = {
-          key: orderData.keyId || orderData.razorpayKeyId,
+          key: keyId,
           amount: orderData.amount,
           currency: orderData.currency || 'INR',
           name: 'ManageMyGate Billing',
@@ -107,8 +138,8 @@ export const PaymentCheckoutModal = ({
                 razorpayOrderId: response.razorpay_order_id,
                 razorpaySignature: response.razorpay_signature,
               });
-              if (verifyResult?.success || !verifyResult?.error) {
-                onClose();
+              if (verifyResult?.meta?.requestStatus === 'fulfilled' || (verifyResult && !verifyResult.error && verifyResult.success !== false)) {
+                onClose(true);
               }
             }
           },
@@ -122,6 +153,8 @@ export const PaymentCheckoutModal = ({
 
         const razorpayInstance = new window.Razorpay(options);
         razorpayInstance.open();
+      } else {
+        setScriptLoading(false);
       }
     }
   };

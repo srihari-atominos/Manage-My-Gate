@@ -36,7 +36,7 @@ const startServer = async () => {
     const server = http.createServer(app);
 
     // 4. Initialize Socket.io server
-    initSocket(server);
+    await initSocket(server);
 
     // 5. Start the app on the designated port
     const port = config.port;

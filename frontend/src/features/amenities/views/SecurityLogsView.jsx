@@ -144,17 +144,15 @@ const SecurityLogsView = () => {
           <div className="card-header bg-body border-bottom px-4 py-3" style={{ borderRadius: '16px 16px 0 0' }}>
             <div className="row g-2 align-items-center">
               <div className="col-12 col-md-3">
-                <div className="input-group">
-                  <span className="input-group-text bg-body-secondary border-end-0 text-muted">
-                    <i className="fa-solid fa-search"></i>
-                  </span>
+                <div className="position-relative">
+                  <i className="fa-solid fa-search position-absolute text-muted" style={{ left: '16px', top: '50%', transform: 'translateY(-50%)' }}></i>
                   <input
                     type="text"
-                    className="form-control bg-body-secondary border-start-0 ps-0"
+                    className="form-control bg-body-secondary"
                     placeholder="Search resident, amenity, guard..."
                     value={filters.search || ''}
                     onChange={(e) => handleFilterChange('search', e.target.value)}
-                    style={{ borderRadius: '0 8px 8px 0' }}
+                    style={{ borderRadius: '8px', paddingLeft: '44px' }}
                   />
                 </div>
               </div>

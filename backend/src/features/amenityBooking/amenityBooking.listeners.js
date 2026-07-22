@@ -158,30 +158,31 @@ paymentEventEmitter.on(PAYMENT_SUCCESS, async (payment) => {
   if (payment.referenceType !== 'AmenityBooking') return;
 
   try {
-    const booking = await amenityBookingRepository.findById(payment.referenceId, payment.orgId);
+    const amenityBookingService = (await import('./amenityBooking.services.js')).default;
+    
+    // Call the service to update status to confirmed, generate QR code, and update DB
+    const settledBooking = await amenityBookingService.settleBookingPayment(payment.referenceId, payment, null);
+
+    const AmenityBooking = (await import('./amenityBooking.model.js')).default;
+    const booking = await AmenityBooking.findById(payment.referenceId).populate(['amenityId', 'userId']);
+    
     if (booking) {
-      // 1. Generate QR Code
-      const bookingIdStr = booking.bookingId || generateBookingId();
-      const qrData = JSON.stringify({ bookingId: booking._id, displayId: bookingIdStr, userId: booking.userId, amenityId: booking.amenityId?._id || booking.amenityId });
-      const qrCodeUrl = await QRCode.toDataURL(qrData);
-      const qrExpiresAt = new Date(`${booking.bookingDate}T${booking.endTime}`);
-
-      // 2. Update booking status
-      await amenityBookingRepository.updateStatus(booking._id, booking.orgId, 'confirmed', {
-        paymentStatus: 'success',
-        bookingId: bookingIdStr,
-        qrCode: qrCodeUrl,
-        qrStatus: 'active',
-        qrGeneratedAt: new Date(),
-        qrExpiresAt
-      });
-
-      const updatedBooking = await amenityBookingRepository.findById(booking._id, booking.orgId);
-      amenityBookingEventEmitter.emit(AMENITY_BOOKING_CONFIRMED, { booking: updatedBooking, paymentMethod: payment.paymentMethod || 'wallet', amount: payment.amount });
-
-      // 3. Send Notification
+      const { getIO } = await import('../../config/socket.js');
+      const io = getIO();
+      if (io) {
+        const userIdStr = booking.userId?._id?.toString() || booking.userId?.toString();
+        const orgIdStr = booking.orgId?.toString();
+        io.to('user:' + userIdStr).to('org:' + orgIdStr).emit('AMENITY_BOOKING_CONFIRMED', booking);
+        // Also emit wallet update in case they need to refresh their active passes
+        io.to('user:' + userIdStr).emit('walletUpdated');
+      }
+      
+      // Send Notification
       await sendBookingNotification(booking, 'alert', 'Payment Successful', 'Your booking is now confirmed. View your QR code in your Wallet.');
       logger.info(`Successfully processed payment and confirmed booking ${booking._id}`);
+      
+      // We must also trigger the AMENITY_BOOKING_CONFIRMED event internally so wallet transactions get created for successful gateway payments
+      amenityBookingEventEmitter.emit(AMENITY_BOOKING_CONFIRMED, { booking, paymentMethod: payment.paymentMethod || 'RAZORPAY', amount: payment.amount });
     }
   } catch (err) {
     logger.error('Failed to handle PAYMENT_SUCCESS for amenity booking', err);

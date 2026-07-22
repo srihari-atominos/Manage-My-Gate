@@ -12,14 +12,17 @@ let io = null;
  * @param {import('http').Server} httpServer - The HTTP/HTTPS server instance
  * @returns {Server} The initialized Socket.io Server instance
  */
-export const initSocket = (httpServer) => {
+import { createAdapter } from '@socket.io/redis-adapter';
+import { createClient } from 'redis';
+
+export const initSocket = async (httpServer) => {
   if (io) {
     logger.warn('Socket.io server already initialized.');
     return io;
   }
 
   // Parse ALLOWED_ORIGINS or CLIENT_URL for CORS. Defaults to frontend default port.
-  const envOrigins = process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL || 'http://localhost:5173';
+  const envOrigins = process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL || 'http://localhost:5173,http://localhost:3000';
   const allowedOrigins = envOrigins.split(',').map((url) => url.trim());
 
   logger.info(`Initializing Socket.io with allowed origins: ${allowedOrigins.join(', ')}`);
@@ -30,10 +33,26 @@ export const initSocket = (httpServer) => {
       methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
       credentials: true,
     },
-    // Production-ready timeouts
+    // Production-ready timeouts and transports
     pingTimeout: 60000,   // 60 seconds
     pingInterval: 25000,   // 25 seconds
+    transports: ['websocket', 'polling']
   });
+
+  // Production Redis Adapter for cluster support
+  if (process.env.REDIS_URL) {
+    try {
+      const pubClient = createClient({ url: process.env.REDIS_URL });
+      const subClient = pubClient.duplicate();
+
+      await Promise.all([pubClient.connect(), subClient.connect()]);
+      
+      io.adapter(createAdapter(pubClient, subClient));
+      logger.info('Socket.io Redis adapter enabled and connected successfully');
+    } catch (error) {
+      logger.error('Failed to initialize Socket.io Redis adapter. Falling back to in-memory adapter.', error);
+    }
+  }
 
   io.on('connection', (socket) => {
     logger.info(`Socket client connected: ${socket.id}`);

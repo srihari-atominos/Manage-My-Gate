@@ -67,7 +67,7 @@ const ResidentBookingModal = memo(({
   };
 
   return (
-    <CModal visible={visible} onClose={onClose} alignment="center" size="lg">
+    <CModal visible={visible} onClose={onClose} alignment="center" size="lg" className="amenity-os-theme">
       <CModalHeader>
         <CModalTitle>Book an Amenity</CModalTitle>
       </CModalHeader>

@@ -146,9 +146,9 @@
   .badge-info { background: var(--info-bg); color: var(--info); }
 
   // Other components from previous views (kept intact for safety)
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); z-index: 1055; align-items: flex-start; justify-content: center; padding: 40px 20px; overflow-y: auto; }
   .modal-overlay.active { display: flex; }
-  .modal-box { background: var(--surface-card); border-radius: var(--radius-xl); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-float); animation: fadeIn 0.25s ease; border: 1px solid var(--border-light);}
+  .modal-box { background: var(--surface-card); border-radius: var(--radius-xl); width: 100%; max-width: 560px; margin: auto; box-shadow: var(--shadow-float); animation: fadeIn 0.25s ease; border: 1px solid var(--border-light); overflow: hidden; }
   .modal-header { padding: 24px 32px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
   .modal-body { padding: 32px; }
   .modal-footer { padding: 20px 32px; border-top: 1px solid var(--border-light); display: flex; justify-content: flex-end; gap: 16px; background: var(--surface-bg);}
