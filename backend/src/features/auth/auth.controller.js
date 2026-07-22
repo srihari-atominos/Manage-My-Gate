@@ -50,6 +50,24 @@ export class AuthController {
     }
   }
 
+  async acceptInviteWithSSO(req, res, next) {
+    try {
+      const { inviteToken, ssoCredential, provider } = req.body;
+      const data = await authService.acceptInvitationWithSSO(inviteToken, ssoCredential, provider);
+      
+      if (data && data.token) {
+        setAuthCookie(res, data.token);
+      }
+      if (data && data.refreshToken) {
+        res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+      }
+
+      res.success(data, 'Invitation accepted via SSO and account activated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async switchContext(req, res, next) {
     try {
       const { targetOrgId, targetRole } = req.body;
@@ -103,7 +121,7 @@ export class AuthController {
       const { phone, code } = req.body;
       const deviceInfo = {
         deviceName: req.headers['user-agent'],
-        browser: 'Browser', // parse user agent in a real app
+        browser: 'Browser',
         os: 'OS',
         ipAddress: req.ip,
       };
@@ -167,7 +185,6 @@ export class AuthController {
   async verifyResetPasswordOtp(req, res, next) {
     try {
       const { identifier, code } = req.body;
-      // We pass false to deleteOnSuccess so the OTP is kept for the final resetPassword step
       const otpService = (await import('../otp/otp.services.js')).default;
       await otpService.verifyOTP(identifier, code, 'RESET', null, false);
       res.success(null, 'OTP verified successfully');
@@ -177,7 +194,6 @@ export class AuthController {
   }
 
   async refreshToken(req, res, next) {
-    // delegate to session controller
     return sessionController.refreshToken(req, res, next);
   }
 
@@ -188,7 +204,7 @@ export class AuthController {
       if (userId) {
         await authService.logout(userId, token);
       }
-      res.clearCookie('accessToken');
+      res.clearCookie('token');
       res.clearCookie('refreshToken');
       res.success(null, 'Logged out successfully');
     } catch (error) {

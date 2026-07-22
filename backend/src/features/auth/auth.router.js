@@ -1,7 +1,21 @@
 import { Router } from 'express';
 import authController from './auth.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
-import { loginRules, registerRules, acceptInviteRules, switchContextRules, ssoVerifyRules } from './auth.validateRules.js';
+import { 
+  loginRules, 
+  registerRules, 
+  acceptInviteRules, 
+  switchContextRules, 
+  ssoVerifyRules,
+  phoneLoginRules,
+  phoneVerifyRules,
+  emailOtpLoginRules,
+  emailOtpVerifyRules,
+  forgotPasswordRules,
+  verifyResetPasswordOtpRules,
+  resetPasswordRules,
+  acceptInviteSsoRules
+} from './auth.validateRules.js';
 import { isAuthenticated } from '../../middlewares/auth.middleware.js';
 import { authLimiter, otpLimiter } from '../../middlewares/rateLimiter.middleware.js';
 
@@ -114,6 +128,40 @@ router.post('/accept-invite', validate(acceptInviteRules), authController.accept
 
 /**
  * @swagger
+ * /auth/accept-invite/sso:
+ *   post:
+ *     summary: Accept user invitation via SSO provider
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - inviteToken
+ *               - ssoCredential
+ *               - provider
+ *             properties:
+ *               inviteToken:
+ *                 type: string
+ *                 description: Decodable JWT invitation token containing user context
+ *               ssoCredential:
+ *                 type: string
+ *                 description: Identity token from SSO provider
+ *               provider:
+ *                 type: string
+ *                 enum: [google, microsoft]
+ *     responses:
+ *       200:
+ *         description: Invitation accepted and user activated via SSO.
+ *       400:
+ *         description: Validation error.
+ */
+router.post('/accept-invite/sso', validate(acceptInviteSsoRules), authController.acceptInviteWithSSO);
+
+/**
+ * @swagger
  * /auth/roles:
  *   get:
  *     summary: Get all roles available for registration dropdown
@@ -157,14 +205,14 @@ router.post('/switch-context', isAuthenticated, validate(switchContextRules), au
 router.post('/google', authLimiter, validate(ssoVerifyRules), authController.googleLogin);
 router.post('/microsoft', authLimiter, validate(ssoVerifyRules), authController.microsoftLogin);
 
-// New OTP & Verification Routes
-router.post('/login/phone', otpLimiter, authController.initiatePhoneLogin);
-router.post('/login/phone/verify', authLimiter, authController.verifyPhoneLogin);
-router.post('/login/email-otp', otpLimiter, authController.initiateEmailOtpLogin);
-router.post('/login/email-otp/verify', authLimiter, authController.verifyEmailOtpLogin);
-router.post('/forgot-password', otpLimiter, authController.forgotPassword);
-router.post('/forgot-password/verify-otp', authLimiter, authController.verifyResetPasswordOtp);
-router.post('/reset-password', authLimiter, authController.resetPassword);
+// OTP & Verification Routes with validation schemas
+router.post('/login/phone', otpLimiter, validate(phoneLoginRules), authController.initiatePhoneLogin);
+router.post('/login/phone/verify', authLimiter, validate(phoneVerifyRules), authController.verifyPhoneLogin);
+router.post('/login/email-otp', otpLimiter, validate(emailOtpLoginRules), authController.initiateEmailOtpLogin);
+router.post('/login/email-otp/verify', authLimiter, validate(emailOtpVerifyRules), authController.verifyEmailOtpLogin);
+router.post('/forgot-password', otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
+router.post('/forgot-password/verify-otp', authLimiter, validate(verifyResetPasswordOtpRules), authController.verifyResetPasswordOtp);
+router.post('/reset-password', authLimiter, validate(resetPasswordRules), authController.resetPassword);
 
 // Session Routes
 router.post('/refresh-token', authController.refreshToken);

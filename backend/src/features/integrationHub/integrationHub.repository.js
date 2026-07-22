@@ -140,6 +140,19 @@ export class IntegrationHubRepository {
   async findSmtpConnection(orgId, session = null) {
     return await this.findConnectionByOrgAndProvider(orgId, 'smtp', session);
   }
+
+  /**
+   * Find a connection by provider and status globally (not scoped to an organization).
+   * @param {string} provider - Provider key
+   * @param {import('mongoose').ClientSession} [session] - Optional session
+   * @returns {Promise<object|null>}
+   */
+  async findGlobalConnectionByProvider(provider, session = null) {
+    return await IntegrationHub.findOne({
+      provider: provider.toLowerCase(),
+      status: 'connected',
+    }).session(session || null);
+  }
 }
 
 export default new IntegrationHubRepository();

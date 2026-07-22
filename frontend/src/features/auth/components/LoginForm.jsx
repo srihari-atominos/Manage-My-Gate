@@ -25,6 +25,38 @@ import {
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilLockLocked, cilUser, cilScreenSmartphone } from '@coreui/icons';
+import '../styles/_auth.scss';
+
+/**
+ * LoginFormErrorBoundary Component
+ * Isolates runtime UI crashes in the LoginForm.
+ */
+class LoginFormErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('LoginForm Error Boundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="auth-error-boundary-container p-4 text-center">
+          <h3 className="text-danger">Something went wrong.</h3>
+          <p>Please try reloading the page.</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /**
  * Standard Login Form component.
@@ -37,7 +69,7 @@ export const LoginForm = () => {
   const { handlePostAuthRedirect, isAuthenticated, loading, error } = useAuthRouting();
   const { login, loginGoogle, loginMicrosoft, sendOtp, verifyOtp, otpSent, clearStatus } = useAuth();
   
-  const [loginMethod, setLoginMethod] = useState('password'); // 'password', 'phone', 'email' (email OTP is hidden but preserved)
+  const [loginMethod, setLoginMethod] = useState('password'); // 'password', 'phone', 'email'
   const [forgotModalVisible, setForgotModalVisible] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   
@@ -51,6 +83,7 @@ export const LoginForm = () => {
     handleSubmit,
     watch,
     setValue,
+    clearErrors,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -96,9 +129,9 @@ export const LoginForm = () => {
         // Automatically recover from MSAL's notoriously sticky interaction_in_progress bug
         if (err.errorCode === 'interaction_in_progress' || (err.message && err.message.includes('interaction_in_progress'))) {
           sessionStorage.clear();
-          toast.error('Stuck Microsoft session cleared! Please click the button one more time.');
+          toast.error(t('auth.login.msalStuckCleared', 'Stuck Microsoft session cleared! Please click the button one more time.'));
         } else {
-          toast.error(`Microsoft login failed: ${err.message || 'Unknown error'}`);
+          toast.error(t('auth.login.msalFailed', 'Microsoft login failed: {{error}}', { error: err.message || 'Unknown error' }));
         }
       });
     });
@@ -118,7 +151,10 @@ export const LoginForm = () => {
       } else {
         localStorage.removeItem('rememberedEmail');
       }
-      login({ login: data.login.trim(), password: data.password });
+      const res = await login({ login: data.login.trim(), password: data.password });
+      if (res?.success) {
+        handlePostAuthRedirect();
+      }
     } else {
       const isEmail = loginMethod === 'email';
       const identifier = loginMethod === 'phone' ? `${countryCode} ${data.login.trim()}` : data.login.trim();
@@ -126,52 +162,71 @@ export const LoginForm = () => {
       if (!otpSent) {
         await handleSendOtp(identifier, isEmail);
       } else {
-        await verifyOtp(identifier, otpCode, isEmail);
+        const res = await verifyOtp(identifier, otpCode, isEmail);
+        if (res?.success) {
+          handlePostAuthRedirect();
+        }
       }
     }
   };
 
   return (
-    <div style={styles.container}>
-      <CCardGroup style={styles.cardGroup}>
+    <div className="login-container">
+      <CCardGroup className="login-card-group">
         {/* Left Side: Login Form */}
-        <CCard style={styles.leftCard}>
-          <CCardBody style={styles.cardBody}>
+        <CCard className="login-left-card">
+          <CCardBody className="login-card-body">
             <CForm onSubmit={handleSubmit(onSubmit)}>
-              <h1 style={styles.title}>{t('auth.login.title', { defaultValue: 'Welcome Back' })}</h1>
-              <p style={styles.subtitle}>{t('auth.login.subtitle', { defaultValue: 'Choose your preferred sign-in method.' })}</p>
+              <h1 className="login-title">{t('auth.login.title', 'Welcome Back')}</h1>
+              <p className="login-subtitle">{t('auth.login.subtitle', 'Choose your preferred sign-in method.')}</p>
 
-              <div style={styles.methodToggle}>
+              <div className="login-method-toggle">
                 <button
                   type="button"
-                  style={loginMethod === 'password' ? styles.methodTabActive : styles.methodTab}
+                  className={`login-method-tab ${loginMethod === 'password' ? 'active' : ''}`}
                   onClick={() => { 
                     setLoginMethod('password'); 
                     clearStatus(); 
                     setOtpTimer(0); 
                     setOtpCode(''); 
                     setValue('login', localStorage.getItem('rememberedEmail') || '');
+                    clearErrors();
                   }}
                 >
-                  Email Login
+                  {t('auth.login.passwordTab', 'Password Login')}
                 </button>
                 <button
                   type="button"
-                  style={loginMethod === 'phone' ? styles.methodTabActive : styles.methodTab}
+                  className={`login-method-tab ${loginMethod === 'phone' ? 'active' : ''}`}
                   onClick={() => { 
                     setLoginMethod('phone'); 
                     clearStatus(); 
                     setOtpTimer(0); 
                     setOtpCode(''); 
                     setValue('login', '');
+                    clearErrors();
                   }}
                 >
-                  Mobile Login
+                  {t('auth.login.mobileTab', 'Mobile Login')}
+                </button>
+                <button
+                  type="button"
+                  className={`login-method-tab ${loginMethod === 'email' ? 'active' : ''}`}
+                  onClick={() => { 
+                    setLoginMethod('email'); 
+                    clearStatus(); 
+                    setOtpTimer(0); 
+                    setOtpCode(''); 
+                    setValue('login', '');
+                    clearErrors();
+                  }}
+                >
+                  {t('auth.login.emailOtpTab', 'Email OTP')}
                 </button>
               </div>
 
               {error && (
-                <CAlert color="danger" style={styles.alert}>
+                <CAlert color="danger" className="login-alert">
                   {error}
                 </CAlert>
               )}
@@ -180,15 +235,15 @@ export const LoginForm = () => {
                 <CInputGroup>
                   {loginMethod === 'phone' ? (
                     <>
-                      <CInputGroupText style={styles.leftInputIconText}>
-                        <CIcon icon={cilScreenSmartphone} style={styles.icon} />
+                      <CInputGroupText className="login-input-icon-text">
+                        <CIcon icon={cilScreenSmartphone} className="login-icon" />
                       </CInputGroupText>
                       <CFormSelect
-                        style={styles.countryCodeSelect}
+                        className="login-country-select"
                         value={countryCode}
                         onChange={(e) => setCountryCode(e.target.value)}
                         disabled={loading || otpSent}
-                        aria-label="Country Code"
+                        aria-label={t('auth.login.countryCodeLabel', 'Country Code')}
                       >
                         <option value="+1">+1 (US)</option>
                         <option value="+44">+44 (UK)</option>
@@ -198,21 +253,21 @@ export const LoginForm = () => {
                       </CFormSelect>
                     </>
                   ) : (
-                    <CInputGroupText style={styles.leftInputIconText}>
-                      <CIcon icon={cilUser} style={styles.icon} />
+                    <CInputGroupText className="login-input-icon-text">
+                      <CIcon icon={cilUser} className="login-icon" />
                     </CInputGroupText>
                   )}
                   <CFormInput
-                    style={styles.leftInput}
+                    className="login-input"
                     placeholder={
-                      loginMethod === 'password' ? t('auth.login.usernamePlaceholder', { defaultValue: 'Email Address' }) :
-                      loginMethod === 'email' ? 'Email Address' : 'Mobile Number'
+                      loginMethod === 'password' ? t('auth.login.usernamePlaceholder', 'Email Address') :
+                      loginMethod === 'email' ? t('auth.login.emailPlaceholder', 'Email Address') : t('auth.login.mobilePlaceholder', 'Mobile Number')
                     }
                     autoComplete="username"
                     disabled={loading || otpSent}
                     autoFocus
                     {...register('login', {
-                      required: t('auth.login.loginRequired', { defaultValue: 'Identifier is required.' }),
+                      required: t('auth.login.loginRequired', 'Identifier is required.'),
                     })}
                   />
                 </CInputGroup>
@@ -224,28 +279,28 @@ export const LoginForm = () => {
               {loginMethod === 'password' && (
                 <div className="mb-4">
                   <CInputGroup>
-                    <CInputGroupText style={styles.leftInputIconText}>
-                      <CIcon icon={cilLockLocked} style={styles.icon} />
+                    <CInputGroupText className="login-input-icon-text">
+                      <CIcon icon={cilLockLocked} className="login-icon" />
                     </CInputGroupText>
                     <CFormInput
-                      style={styles.leftInput}
+                      className="login-input"
                       type={showPassword ? 'text' : 'password'}
-                      placeholder={t('auth.login.passwordPlaceholder', { defaultValue: 'Password' })}
+                      placeholder={t('auth.login.passwordPlaceholder', 'Password')}
                       autoComplete="current-password"
                       disabled={loading}
                       {...register('password', {
-                        required: t('auth.login.passwordRequired', { defaultValue: 'Password is required.' }),
-                        minLength: {
+                        required: loginMethod === 'password' ? t('auth.login.passwordRequired', 'Password is required.') : false,
+                        minLength: loginMethod === 'password' ? {
                           value: 6,
-                          message: t('auth.login.passwordLength', { defaultValue: 'Password must be at least 6 characters long.' }),
-                        },
+                          message: t('auth.login.passwordLength', 'Password must be at least 6 characters long.'),
+                        } : undefined,
                       })}
                     />
                     <CInputGroupText 
                       onClick={() => setShowPassword(!showPassword)} 
                       style={{ cursor: 'pointer', background: '#f3f4f6', border: '1px solid #d1d5db', color: '#6b7280', fontSize: '13px' }}
                     >
-                      {showPassword ? 'Hide' : 'Show'}
+                      {showPassword ? t('auth.login.hide', 'Hide') : t('auth.login.show', 'Show')}
                     </CInputGroupText>
                   </CInputGroup>
                   {errors.password && (
@@ -257,10 +312,10 @@ export const LoginForm = () => {
               {loginMethod !== 'password' && otpSent && (
                 <div className="mb-4">
                   <CInputGroup>
-                    <CInputGroupText style={styles.leftInputIconText}>OTP</CInputGroupText>
+                    <CInputGroupText className="login-input-icon-text">OTP</CInputGroupText>
                     <CFormInput
-                      style={styles.leftInput}
-                      placeholder="Enter 6-digit Code"
+                      className="login-input"
+                      placeholder={t('auth.login.otpPlaceholder', 'Enter 6-digit Code')}
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value)}
                       disabled={loading}
@@ -278,7 +333,7 @@ export const LoginForm = () => {
                         handleSendOtp(identifier, isEmail);
                       }}
                     >
-                      {otpTimer > 0 ? `Resend OTP in ${otpTimer}s` : 'Resend OTP'}
+                      {otpTimer > 0 ? `${t('auth.login.resendOtpIn', 'Resend OTP in')} ${otpTimer}s` : t('auth.login.resendOtp', 'Resend OTP')}
                     </CButton>
                   </div>
                 </div>
@@ -289,30 +344,30 @@ export const LoginForm = () => {
                   <CCol xs={6}>
                     <CFormCheck 
                       id="rememberMe" 
-                      label="Remember Me" 
+                      label={t('auth.login.rememberMe', 'Remember Me')} 
                       checked={rememberMe} 
                       onChange={(e) => setRememberMe(e.target.checked)} 
                     />
                   </CCol>
                   <CCol xs={6} className="text-end">
-                    <CButton color="link" className="px-0 text-decoration-none" style={styles.forgotLink} onClick={() => setForgotModalVisible(true)}>
-                      {t('auth.login.forgotPassword', { defaultValue: 'Forgot password?' })}
+                    <CButton color="link" className="px-0 text-decoration-none login-forgot-link" onClick={() => setForgotModalVisible(true)}>
+                      {t('auth.login.forgotPassword', 'Forgot password?')}
                     </CButton>
                   </CCol>
                 </CRow>
               )}
 
               <div className="d-grid mb-1">
-                <CButton type="submit" color="primary" style={styles.submitButton} disabled={loading}>
+                <CButton type="submit" color="primary" className="login-submit-btn" disabled={loading}>
                   {loading ? <CSpinner size="sm" variant="grow" /> : 
-                   (loginMethod !== 'password' && !otpSent) ? 'Send OTP' : t('auth.login.submit', { defaultValue: 'Login' })}
+                   (loginMethod !== 'password' && !otpSent) ? t('auth.login.sendOtp', 'Send OTP') : t('auth.login.submit', 'Login')}
                 </CButton>
               </div>
 
-              <div style={styles.dividerContainer}>
-                <div style={styles.dividerLine}></div>
-                <span style={styles.dividerText}>or continue with</span>
-                <div style={styles.dividerLine}></div>
+              <div className="login-divider">
+                <div className="login-divider-line"></div>
+                <span className="login-divider-text">{t('auth.login.orContinueWith', 'or continue with')}</span>
+                <div className="login-divider-line"></div>
               </div>
 
               <CRow className="g-3 align-items-center justify-content-center">
@@ -332,17 +387,17 @@ export const LoginForm = () => {
                   <button
                     type="button"
                     onClick={handleMicrosoftLogin}
-                    style={styles.ssoButton}
+                    className="login-sso-btn"
                     disabled={loading}
                   >
                     {/* Official Microsoft 4-square SVG */}
-                    <svg style={styles.ssoIcon} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23">
+                    <svg className="login-sso-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23">
                       <path fill="#f35325" d="M1 1h10v10H1z"/>
                       <path fill="#81bc06" d="M12 1h10v10H12z"/>
                       <path fill="#05a6f0" d="M1 12h10v10H1z"/>
                       <path fill="#ffba08" d="M12 12h10v10H12z"/>
                     </svg>
-                    Continue with Microsoft
+                    {t('auth.login.continueWithMicrosoft', 'Continue with Microsoft')}
                   </button>
                 </CCol>
               </CRow>
@@ -351,22 +406,20 @@ export const LoginForm = () => {
         </CCard>
 
         {/* Right Side: Promotional Panel */}
-        <CCard style={styles.rightCard}>
-          <CCardBody style={styles.rightCardBody}>
+        <CCard className="login-right-card">
+          <CCardBody className="login-right-card-body">
             <div>
-              <h2 style={styles.rightTitle}>{t('auth.login.promoTitle', { defaultValue: 'Enterprise Workspace Platform' })}</h2>
-              <p style={styles.rightText}>
-                {t('auth.login.promoText', {
-                  defaultValue: 'Access your secure organization workspace, manage team privileges, configure third-party API integrations, and view full audit records in one unified dashboard.',
-                })}
+              <h2 className="login-right-title">{t('auth.login.promoTitle', 'Enterprise Workspace Platform')}</h2>
+              <p className="login-right-text">
+                {t('auth.login.promoText', 'Access your secure organization workspace, manage team privileges, configure third-party API integrations, and view full audit records in one unified dashboard.')}
               </p>
               <div className="d-grid mt-4">
                 <CButton
                   color="light"
-                  style={styles.registerButton}
+                  className="login-register-btn"
                   onClick={() => navigate('/register')}
                 >
-                  {t('auth.login.registerNow', { defaultValue: 'Register Now!' })}
+                  {t('auth.login.registerNow', 'Register Now!')}
                 </CButton>
               </div>
             </div>
@@ -375,222 +428,14 @@ export const LoginForm = () => {
       </CCardGroup>
       
       <ForgotPasswordModal visible={forgotModalVisible} setVisible={setForgotModalVisible} />
-
     </div>
   );
 };
 
-const styles = {
-  container: {
-    width: '100%',
-    maxWidth: '960px',
-    margin: '0 auto',
-  },
-  cardGroup: {
-    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
-    borderRadius: '24px',
-    overflow: 'hidden',
-    border: '1px solid rgba(255, 255, 255, 0.18)',
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
-  },
-  leftCard: {
-    background: 'rgba(255, 255, 255, 0.7)',
-    border: 'none',
-    padding: '40px 40px',
-    color: '#2d3748', // Dark slate for better contrast
-    flex: '1 1 50%',
-  },
-  rightCard: {
-    background: 'rgba(155, 202, 248, 0.3)', // Sky blue tint from the background
-    border: 'none',
-    padding: '40px 32px',
-    color: '#1a202c',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: '0 0 40%',
-  },
-  cardBody: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    padding: '0',
-  },
-  methodToggle: {
-    display: 'flex',
-    gap: '0',
-    marginBottom: '24px',
-    background: 'rgba(0, 0, 0, 0.05)',
-    borderRadius: '10px',
-    padding: '4px',
-    border: '1px solid rgba(255, 255, 255, 0.5)',
-  },
-  methodTab: {
-    flex: 1,
-    padding: '9px 12px',
-    fontSize: '14px',
-    fontWeight: '500',
-    border: 'none',
-    background: 'transparent',
-    color: '#6b7280',
-    borderRadius: '7px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  methodTabActive: {
-    flex: 1,
-    padding: '9px 12px',
-    fontSize: '14px',
-    fontWeight: '600',
-    border: 'none',
-    background: '#ffffff',
-    color: '#1d4ed8',
-    borderRadius: '7px',
-    cursor: 'pointer',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-    transition: 'all 0.2s',
-  },
-  rightCardBody: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    textAlign: 'center',
-    height: '100%',
-    width: '100%',
-  },
-  title: {
-    fontSize: '32px',
-    fontWeight: '800',
-    color: '#2b6cb0', // Deep blue to match sky theme
-    marginBottom: '8px',
-    letterSpacing: '-0.025em',
-    fontFamily: '"Outfit", "Inter", sans-serif',
-  },
-  subtitle: {
-    color: '#4a5568',
-    fontSize: '15px',
-    marginBottom: '24px',
-    fontFamily: '"Inter", sans-serif',
-  },
-  leftInputIconText: {
-    background: 'rgba(255, 255, 255, 0.7)',
-    border: '1px solid rgba(0, 0, 0, 0.1)',
-    borderRight: 'none',
-    color: '#4b5563',
-  },
-  icon: {
-    width: '18px',
-    height: '18px',
-    color: '#4b5563',
-  },
-  leftInput: {
-    background: 'rgba(255, 255, 255, 0.7)',
-    border: '1px solid rgba(0, 0, 0, 0.1)',
-    color: '#1f2937',
-    padding: '12px',
-  },
-  countryCodeSelect: {
-    background: 'rgba(255, 255, 255, 0.7)',
-    border: '1px solid rgba(0, 0, 0, 0.1)',
-    color: '#1f2937',
-    padding: '12px 8px',
-    maxWidth: '90px',
-    borderRight: 'none',
-    borderTopRightRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  alert: {
-    borderRadius: '8px',
-    fontSize: '14px',
-    marginBottom: '20px',
-  },
-  submitButton: {
-    background: 'linear-gradient(135deg, #4299e1 0%, #2b6cb0 100%)', // Lighter to darker sky blue
-    border: 'none',
-    padding: '12px',
-    fontSize: '16px',
-    fontWeight: '700',
-    borderRadius: '8px',
-    boxShadow: '0 4px 12px rgba(43, 108, 176, 0.3)',
-    color: '#ffffff',
-  },
-  forgotLink: {
-    color: '#4299e1',
-    textDecoration: 'none',
-    fontSize: '14px',
-    fontWeight: '600',
-  },
-  rightTitle: {
-    fontSize: '28px',
-    fontWeight: '800',
-    marginBottom: '16px',
-    letterSpacing: '-0.025em',
-    color: '#2b6cb0', // Matching deep blue
-    fontFamily: '"Outfit", "Inter", sans-serif',
-  },
-  rightText: {
-    color: '#2d3748', // Darker text for readability
-    fontSize: '15px',
-    lineHeight: '1.6',
-    marginBottom: '20px',
-    fontWeight: '500',
-    fontFamily: '"Inter", sans-serif',
-  },
-  registerButton: {
-    background: '#2b6cb0', // Match deep blue theme
-    color: '#ffffff',
-    border: 'none',
-    padding: '12px',
-    fontSize: '16px',
-    fontWeight: '600',
-    borderRadius: '8px',
-    boxShadow: '0 4px 12px rgba(43, 108, 176, 0.4)',
-    transition: 'all 0.2s',
-  },
-  dividerContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: '24px 0 16px 0',
-  },
-  dividerLine: {
-    flex: 1,
-    height: '1px',
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  dividerText: {
-    padding: '0 12px',
-    color: '#6b7280',
-    fontSize: '12px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    fontWeight: '500',
-    whiteSpace: 'nowrap',
-  },
-  ssoButton: {
-    width: '100%',
-    background: 'rgba(255, 255, 255, 0.7)',
-    color: '#374151',
-    border: '1px solid rgba(0, 0, 0, 0.1)',
-    padding: '10px 14px',
-    fontSize: '14px',
-    fontWeight: '500',
-    borderRadius: '8px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '44px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-    transition: 'background 0.2s, box-shadow 0.2s',
-    cursor: 'pointer',
-    gap: '10px',
-  },
-  ssoIcon: {
-    width: '20px',
-    height: '20px',
-    flexShrink: 0,
-  },
-};
-
-export default LoginForm;
+export default function LoginFormWithBoundary(props) {
+  return (
+    <LoginFormErrorBoundary>
+      <LoginForm {...props} />
+    </LoginFormErrorBoundary>
+  );
+}

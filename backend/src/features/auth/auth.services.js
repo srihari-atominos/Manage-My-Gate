@@ -2,12 +2,13 @@ import userService from '../user/user.services.js';
 import roleService from '../role/role.services.js';
 import rolePermissionService from '../rolePermission/rolePermission.services.js';
 import { comparePassword } from '../../utils/crypto.utils.js';
-import { signToken } from '../../utils/jwt.utils.js';
+import { signToken, verifyToken } from '../../utils/jwt.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
 import tokenService from '../token/token.services.js';
 import otpService from '../otp/otp.services.js';
 import sessionService from '../session/session.services.js';
 import userIdentityService from '../userIdentity/userIdentity.services.js';
+import integrationHubService from '../integrationHub/integrationHub.service.js';
 import config from '../../config/config.js';
 import authEvents from './auth.events.js';
 
@@ -20,18 +21,56 @@ export class AuthService {
   async register(registerData) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
+    
+    // --- TRANSACTION BOUNDARY START ---
+    // Wrap the user creation process in a transaction to ensure database consistency.
     session.startTransaction();
 
     try {
-      const { email, username, password, phone } = registerData;
+      const { email, password, phone } = registerData;
 
-      // 1. Dynamically import services to adhere to encapsulation and prevent circular dependency
-      const userService = (await import('../user/user.services.js')).default;
+      // Extract name from registerData
+      let nameToUse = registerData.name || (registerData.firstName || registerData.lastName ? `${registerData.firstName || ''} ${registerData.lastName || ''}`.trim() : '');
+      nameToUse = nameToUse.trim();
 
-      // 2. Create the User (passing session)
-      const newUser = await userService.createUser({ email, username, password, phone, status: 'Active' }, session);
+      // Derive username: prioritize name, fallback to email prefix
+      let derivedUsername;
+      if (nameToUse) {
+        derivedUsername = nameToUse.replace(/[^a-zA-Z0-9]/g, '');
+      } else if (registerData.username) {
+        derivedUsername = registerData.username.replace(/[^a-zA-Z0-9]/g, '');
+      } else {
+        derivedUsername = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
+      }
+
+      // Ensure length bounds
+      if (derivedUsername.length < 3) {
+        derivedUsername = 'user' + Math.floor(100 + Math.random() * 900);
+      } else if (derivedUsername.length > 30) {
+        derivedUsername = derivedUsername.substring(0, 30);
+      }
+
+      // Check if username exists, and generate a unique one if so
+      let usernameExists = await userService.getUserByEmailOrUsername(derivedUsername, session).catch(() => null);
+      let uniqueUsername = derivedUsername;
+      while (usernameExists) {
+        const suffix = Math.floor(1000 + Math.random() * 9000).toString();
+        uniqueUsername = derivedUsername;
+        if (uniqueUsername.length + suffix.length > 30) {
+          uniqueUsername = uniqueUsername.substring(0, 30 - suffix.length);
+        }
+        uniqueUsername = `${uniqueUsername}${suffix}`;
+        usernameExists = await userService.getUserByEmailOrUsername(uniqueUsername, session).catch(() => null);
+      }
+
+      // Create the User (passing session for transactional execution)
+      const newUser = await userService.createUser(
+        { email, username: uniqueUsername, password, phone, name: nameToUse || undefined, status: 'Active' },
+        session
+      );
 
       await session.commitTransaction();
+      // --- TRANSACTION BOUNDARY END ---
 
       // Return standard user/token payload with null/empty tenant context
       const tokenPayload = {
@@ -45,6 +84,10 @@ export class AuthService {
       };
 
       const token = signToken(tokenPayload);
+
+      // Emit internal event on successful user registration/auth write
+      authEvents.emit('USER_CREATED', { userId: newUser._id, provider: 'local' });
+      authEvents.emit('LOGIN_SUCCESS', { userId: newUser._id, method: 'local_register' });
 
       return {
         token,
@@ -109,19 +152,19 @@ export class AuthService {
 
       const roles = [];
       if (selectedMembership.roleIds && selectedMembership.roleIds.length > 0) {
-        roles.push(...selectedMembership.roleIds);
+        roles.push(...selectedMembership.roleIds.filter(Boolean));
       } else if (selectedMembership.roleId) {
         roles.push(selectedMembership.roleId);
       }
 
-      const roleNames = roles.map(r => r.name);
+      const roleNames = roles.map(r => r?.name).filter(Boolean);
 
       if (targetRole) {
         if (!roleNames.includes(targetRole)) {
           throw new HttpError(400, `User does not have role '${targetRole}' in this organization.`);
         }
         roleName = targetRole;
-        const activeRoleObj = roles.find(r => r.name === roleName);
+        const activeRoleObj = roles.find(r => r?.name === roleName);
         if (activeRoleObj) {
           const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
           permissions = permissionsList.map((permission) => permission.name);
@@ -129,7 +172,7 @@ export class AuthService {
       } else {
         roleName = roleNames.length > 0 ? roleNames[0] : null;
         if (roleName) {
-          const activeRoleObj = roles.find(r => r.name === roleName);
+          const activeRoleObj = roles.find(r => r?.name === roleName);
           if (activeRoleObj) {
             const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
             permissions = permissionsList.map((permission) => permission.name);
@@ -141,15 +184,17 @@ export class AuthService {
     const availableWorkspaces = activeMemberships.map((m) => {
       const roles = [];
       if (m.roleIds && m.roleIds.length > 0) {
-        roles.push(...m.roleIds);
+        roles.push(...m.roleIds.filter(Boolean));
       } else if (m.roleId) {
         roles.push(m.roleId);
       }
+      const validRoles = roles.filter(Boolean);
       return {
         orgId: m.orgId._id.toString(),
         name: m.orgId.name,
         isPlatform: m.orgId.isPlatform || false,
-        roleName: roles.map(r => r.name).join(', ') || null,
+        roleName: validRoles.map(r => r.name).join(', ') || null,
+        roles: validRoles.map(r => r.name),
       };
     });
 
@@ -221,6 +266,9 @@ export class AuthService {
     const deviceInfo = loginData.deviceInfo || {};
     const refreshToken = await sessionService.createSession(user._id, deviceInfo);
 
+    // Emit event for successful login write operation
+    authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'credentials' });
+
     // 6. Return response payload matching new structure
     return {
       token,
@@ -254,7 +302,7 @@ export class AuthService {
     const user = await userService.getUserById(userId);
 
     // Resolve context for the target organization
-    const { tokenPayload } = await this.getScopedTokenPayload(user, targetOrgId, targetRole);
+    const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgId, targetRole);
 
     // Generate fresh JWT token
     const token = signToken(tokenPayload);
@@ -276,6 +324,7 @@ export class AuthService {
         villaBlock: tokenPayload.villaBlock,
         residentType: tokenPayload.residentType,
       },
+      availableWorkspaces,
     };
   }
 
@@ -294,6 +343,9 @@ export class AuthService {
   async acceptInvitation(rawToken, password) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
+    
+    // --- TRANSACTION BOUNDARY START ---
+    // Encapsulate invitation validation, deletion, and activation in a single database transaction.
     session.startTransaction();
     try {
       // Use the standalone token service to validate and consume the token
@@ -311,12 +363,19 @@ export class AuthService {
       // Perform user activation via user service
       await userService.activateUser(userId, hashedPassword, session);
 
-      await session.commitTransaction();
+      // Auto-login session creation (inside transaction for atomic flow validation)
+      const refreshToken = await sessionService.createSession(user._id, {}, session);
 
-      // Auto-login logic
+      await session.commitTransaction();
+      // --- TRANSACTION BOUNDARY END ---
+
+      // Auto-login logic (read scopes are done outside transaction block)
       const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
       const token = signToken(tokenPayload);
-      const refreshToken = await sessionService.createSession(user._id, {});
+
+      // Emit event for successful activation and login write operations
+      authEvents.emit('USER_ACTIVATED', { userId: user._id });
+      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'invitation' });
 
       return {
         token,
@@ -479,12 +538,12 @@ export class AuthService {
         user = await this._updateExistingSsoUser(user, identityData, session);
       }
 
+      const refreshToken = await sessionService.createSession(user._id, {}, session);
       await session.commitTransaction();
 
       // Resolve scoped token and workspaces
       const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
       const token = signToken(tokenPayload);
-      const refreshToken = await sessionService.createSession(user._id, {}); // device info should ideally come from client
       
       authEvents.emit('PROVIDER_LOGIN', { userId: user._id, provider });
       authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: provider });
@@ -513,28 +572,19 @@ export class AuthService {
       await session.endSession();
     }
   }
+
+  /**
+   * Initiates the phone login process by verifying user existence and sending local/Firebase OTP.
+   * @param {string} phone - User phone number
+   */
   async initiatePhoneLogin(phone) {
-    // 1. Fetch user by phone
-    const userService = (await import('../user/user.services.js')).default;
-    const mongoose = (await import('mongoose')).default;
-    const User = (await import('../user/user.model.js')).default;
-    
-    const trimmedPhone = phone.trim();
-    const basePhone = trimmedPhone.replace(/^\+\d+\s*/, '');
-
-    const orConditions = [{ phone: trimmedPhone }];
-    if (basePhone) {
-      orConditions.push({ phone: basePhone });
-    }
-
-    const user = await User.findOne({ $or: orConditions });
+    const user = await userService.getUserByPhone(phone);
     if (!user) {
       throw new HttpError(404, 'No account found with this phone number.');
     }
 
-    // 2. Check for Firebase Integration
-    const IntegrationHub = (await import('../integrationHub/integrationHub.model.js')).default;
-    const firebaseIntegration = await IntegrationHub.findOne({ provider: 'firebase', status: 'connected' });
+    // Check for Firebase Integration globally
+    const firebaseIntegration = await integrationHubService.getGlobalConnectionByProvider('firebase');
 
     if (firebaseIntegration) {
       // Proxy request to Google Identity Toolkit
@@ -568,90 +618,109 @@ export class AuthService {
     // Fallback: Generate local OTP
     const plainCode = await otpService.createOTP(phone, 'LOGIN');
 
-    // 3. Emit event for SMS delivery
+    // Emit event for SMS delivery
     authEvents.emit('OTP_SENT', { identifier: phone, code: plainCode, type: 'SMS' });
 
     return { message: 'OTP sent successfully' };
   }
 
+  /**
+   * Verifies the phone login OTP and generates JWT tokens.
+   * @param {string} phone - User phone number
+   * @param {string} code - OTP verification code
+   * @param {object} deviceInfo - Client device meta
+   */
   async verifyPhoneLogin(phone, code, deviceInfo) {
-    const User = (await import('../user/user.model.js')).default;
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
     
-    // 1. Verify OTP
-    const otpResult = await otpService.verifyOTP(phone, code, 'LOGIN');
+    // --- TRANSACTION BOUNDARY START ---
+    // Encapsulate OTP validation (via external Firebase if needed) and session registration.
+    session.startTransaction();
 
-    if (otpResult && otpResult.sessionInfo) {
-      // This was a Firebase managed OTP
-      const IntegrationHub = (await import('../integrationHub/integrationHub.model.js')).default;
-      const firebaseIntegration = await IntegrationHub.findOne({ provider: 'firebase', status: 'connected' });
-      if (!firebaseIntegration) throw new HttpError(400, 'Firebase configuration missing.');
-      
-      const { decrypt } = await import('../integrationHub/utils/crypto.util.js');
-      const apiKeyCred = firebaseIntegration.credentials.find(c => c.key === 'apiKey');
-      const apiKey = decrypt(apiKeyCred.encryptedValue, apiKeyCred.iv);
+    try {
+      // 1. Verify OTP
+      const otpResult = await otpService.verifyOTP(phone, code, 'LOGIN');
 
-      const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionInfo: otpResult.sessionInfo, code }),
-      });
+      if (otpResult && otpResult.sessionInfo) {
+        // This was a Firebase managed OTP
+        const firebaseIntegration = await integrationHubService.getGlobalConnectionByProvider('firebase', session);
+        if (!firebaseIntegration) throw new HttpError(400, 'Firebase configuration missing.');
+        
+        const { decrypt } = await import('../integrationHub/utils/crypto.util.js');
+        const apiKeyCred = firebaseIntegration.credentials.find(c => c.key === 'apiKey');
+        const apiKey = decrypt(apiKeyCred.encryptedValue, apiKeyCred.iv);
 
-      if (!response.ok) {
-        const responseData = await response.json();
-        throw new HttpError(400, `Firebase Verification Failed: ${responseData.error?.message || response.statusText}`);
+        const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber?key=${apiKey}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionInfo: otpResult.sessionInfo, code }),
+        });
+
+        if (!response.ok) {
+          const responseData = await response.json();
+          throw new HttpError(400, `Firebase Verification Failed: ${responseData.error?.message || response.statusText}`);
+        }
       }
+
+      // 2. Fetch user
+      const user = await userService.getUserByPhone(phone, session);
+      if (!user) {
+        throw new HttpError(404, 'User not found.');
+      }
+
+      if (user.status !== 'Active') {
+        throw new HttpError(403, `Account is ${user.status}`);
+      }
+
+      // Mark phone as verified if not already
+      if (!user.phoneVerified) {
+        await userService.updateUser(user._id, { phoneVerified: true }, session);
+      }
+
+      // 3. Generate session refresh token
+      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
+
+      await session.commitTransaction();
+      // --- TRANSACTION BOUNDARY END ---
+
+      // Scoped token and available workspaces resolved outside the transaction context
+      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
+      const token = signToken(tokenPayload);
+
+      // Emit event on successful login
+      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'phone' });
+
+      return {
+        token,
+        refreshToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          role: tokenPayload.role,
+          roles: tokenPayload.roles,
+          permissions: tokenPayload.permissions,
+          orgId: tokenPayload.orgId,
+          isPlatform: tokenPayload.isPlatform,
+          visitorContext: tokenPayload.visitorContext,
+        },
+        availableWorkspaces,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
     }
-
-    // 2. Fetch user
-    const trimmedPhone = phone.trim();
-    const basePhone = trimmedPhone.replace(/^\+\d+\s*/, '');
-
-    const orConditions = [{ phone: trimmedPhone }];
-    if (basePhone) {
-      orConditions.push({ phone: basePhone });
-    }
-
-    const user = await User.findOne({ $or: orConditions });
-    if (!user) {
-      throw new HttpError(404, 'User not found.');
-    }
-
-    if (user.status !== 'Active') {
-      throw new HttpError(403, `Account is ${user.status}`);
-    }
-
-    // Mark phone as verified if not already
-    if (!user.phoneVerified) {
-      user.phoneVerified = true;
-      await user.save();
-    }
-
-    // 3. Generate tokens
-    const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
-    const token = signToken(tokenPayload);
-    const refreshToken = await sessionService.createSession(user._id, deviceInfo);
-
-    return {
-      token,
-      refreshToken,
-      user: {
-        id: user._id,
-        email: user.email,
-        username: user.username,
-        role: tokenPayload.role,
-        roles: tokenPayload.roles,
-        permissions: tokenPayload.permissions,
-        orgId: tokenPayload.orgId,
-        isPlatform: tokenPayload.isPlatform,
-        visitorContext: tokenPayload.visitorContext,
-      },
-      availableWorkspaces,
-    };
   }
 
+  /**
+   * Initiates the email login process by checking user existence and sending OTP.
+   * @param {string} email - User email address
+   */
   async initiateEmailOtpLogin(email) {
-    const userService = (await import('../user/user.services.js')).default;
     const user = await userService.getUserByEmail(email);
     
     if (!user) {
@@ -664,61 +733,77 @@ export class AuthService {
     return { message: 'OTP sent successfully' };
   }
 
+  /**
+   * Verifies the email login OTP and registers session.
+   * @param {string} email - User email address
+   * @param {string} code - OTP verification code
+   * @param {object} deviceInfo - Client device meta
+   */
   async verifyEmailOtpLogin(email, code, deviceInfo) {
-    const userService = (await import('../user/user.services.js')).default;
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
     
-    await otpService.verifyOTP(email, code, 'LOGIN');
+    // --- TRANSACTION BOUNDARY START ---
+    // Encapsulate email OTP validation, user activation verification, and session setup.
+    session.startTransaction();
 
-    const user = await userService.getUserByEmail(email);
-    if (!user) {
-      throw new HttpError(404, 'User not found.');
+    try {
+      await otpService.verifyOTP(email, code, 'LOGIN');
+
+      const user = await userService.getUserByEmail(email, session);
+      if (!user) {
+        throw new HttpError(404, 'User not found.');
+      }
+
+      if (user.status !== 'Active') {
+        throw new HttpError(403, `Account is ${user.status}`);
+      }
+
+      if (!user.emailVerified) {
+        await userService.updateUser(user._id, { emailVerified: true }, session);
+      }
+
+      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
+
+      await session.commitTransaction();
+      // --- TRANSACTION BOUNDARY END ---
+
+      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
+      const token = signToken(tokenPayload);
+
+      // Emit event on successful login
+      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'email_otp' });
+
+      return {
+        token,
+        refreshToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          role: tokenPayload.role,
+          roles: tokenPayload.roles,
+          permissions: tokenPayload.permissions,
+          orgId: tokenPayload.orgId,
+          isPlatform: tokenPayload.isPlatform,
+          visitorContext: tokenPayload.visitorContext,
+        },
+        availableWorkspaces,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
     }
-
-    if (user.status !== 'Active') {
-      throw new HttpError(403, `Account is ${user.status}`);
-    }
-
-    if (!user.emailVerified) {
-      user.emailVerified = true;
-      await user.save();
-    }
-
-    const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
-    const token = signToken(tokenPayload);
-    const refreshToken = await sessionService.createSession(user._id, deviceInfo);
-
-    return {
-      token,
-      refreshToken,
-      user: {
-        id: user._id,
-        email: user.email,
-        username: user.username,
-        role: tokenPayload.role,
-        roles: tokenPayload.roles,
-        permissions: tokenPayload.permissions,
-        orgId: tokenPayload.orgId,
-        isPlatform: tokenPayload.isPlatform,
-        visitorContext: tokenPayload.visitorContext,
-      },
-      availableWorkspaces,
-    };
   }
 
+  /**
+   * Initiates password recovery process by generating a verification OTP.
+   * @param {string} identifier - User email or phone number
+   */
   async forgotPassword(identifier) {
-    const User = (await import('../user/user.model.js')).default;
-    const trimmedIdentifier = identifier.trim();
-    const basePhone = trimmedIdentifier.replace(/^\+\d+\s*/, '');
-
-    const orConditions = [
-      { email: trimmedIdentifier.toLowerCase() }, 
-      { phone: trimmedIdentifier }
-    ];
-    if (basePhone) {
-      orConditions.push({ phone: basePhone });
-    }
-
-    const user = await User.findOne({ $or: orConditions });
+    const user = await userService.getUserByEmailOrPhone(identifier);
 
     if (!user) {
       throw new HttpError(404, 'No account found with this identifier.');
@@ -732,68 +817,155 @@ export class AuthService {
     return { message: 'Password reset OTP sent' };
   }
 
+  /**
+   * Confirms password reset using valid OTP and revokes previous sessions for security.
+   * @param {string} identifier - User email or phone
+   * @param {string} code - OTP verification code
+   * @param {string} newPassword - Selected new password
+   */
   async resetPassword(identifier, code, newPassword) {
-    const User = (await import('../user/user.model.js')).default;
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
     
-    await otpService.verifyOTP(identifier, code, 'RESET');
+    // --- TRANSACTION BOUNDARY START ---
+    // Enforce atomic password updates, verification checks, and session cleanup.
+    session.startTransaction();
 
-    const trimmedIdentifier = identifier.trim();
-    const basePhone = trimmedIdentifier.replace(/^\+\d+\s*/, '');
+    try {
+      await otpService.verifyOTP(identifier, code, 'RESET');
 
-    const orConditions = [
-      { email: trimmedIdentifier.toLowerCase() }, 
-      { phone: trimmedIdentifier }
-    ];
-    if (basePhone) {
-      orConditions.push({ phone: basePhone });
+      const user = await userService.getUserByEmailOrPhone(identifier, session);
+      if (!user) {
+        throw new HttpError(404, 'User not found.');
+      }
+
+      const { hashPassword } = await import('../../utils/crypto.utils.js');
+      const hashedPassword = await hashPassword(newPassword);
+      
+      const updateData = { password: hashedPassword };
+      if (identifier.includes('@')) {
+        updateData.emailVerified = true;
+      } else {
+        updateData.phoneVerified = true;
+      }
+
+      await userService.updateUser(user._id, updateData, session);
+
+      // Revoke all existing sessions to enforce security after password reset
+      await sessionService.revokeAllUserSessions(user._id, null, session);
+
+      await session.commitTransaction();
+      // --- TRANSACTION BOUNDARY END ---
+
+      // Emit event for successful password update
+      authEvents.emit('PASSWORD_RESET', { userId: user._id });
+
+      return true;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
     }
-
-    const user = await User.findOne({ $or: orConditions });
-
-    if (!user) {
-      throw new HttpError(404, 'User not found.');
-    }
-
-    const { hashPassword } = await import('../../utils/crypto.utils.js');
-    user.password = await hashPassword(newPassword);
-    
-    // Auto-verify if they successfully reset password via OTP
-    if (identifier.includes('@')) {
-      user.emailVerified = true;
-    } else {
-      user.phoneVerified = true;
-    }
-
-    await user.save();
-
-    // Revoke all existing sessions to enforce security after password reset
-    await sessionService.revokeAllUserSessions(user._id);
-    
-    authEvents.emit('PASSWORD_RESET', { userId: user._id });
-
-    return true;
   }
 
+  /**
+   * Standard logout, revokes active session.
+   * @param {string} userId - User identifier
+   * @param {string} refreshTokenStr - Refresh token JWT string
+   */
   async logout(userId, refreshTokenStr) {
     if (refreshTokenStr) {
-      const { verifyRefreshToken } = await import('../../utils/jwt.utils.js');
-      const { comparePassword } = await import('../../utils/crypto.utils.js');
-      const Session = (await import('../session/session.model.js')).default;
+      // Delegate session revocation to the session service to preserve domain encapsulation
+      await sessionService.revokeSessionByToken(userId, refreshTokenStr);
+    }
+  }
 
-      try {
-        const payload = verifyRefreshToken(refreshTokenStr);
-        const sessions = await Session.find({ userId, status: 'Active' });
-        
-        for (const sessionDoc of sessions) {
-          if (await comparePassword(payload.jti, sessionDoc.refreshToken)) {
-            sessionDoc.status = 'Revoked';
-            await sessionDoc.save();
-            break;
-          }
-        }
-      } catch (err) {
-        // Ignore token errors during logout
+  /**
+   * Accepts a workspace invitation using SSO (Google or Microsoft).
+   * @param {string} inviteToken - Decodable JWT invitation token containing user context
+   * @param {string} ssoCredential - Provider credential token (ID token)
+   * @param {string} provider - SSO Provider ('google' or 'microsoft')
+   */
+  async acceptInvitationWithSSO(inviteToken, ssoCredential, provider) {
+    // 1. Verify SSO token using provider adapters through UserIdentityService
+    const identityData = await userIdentityService.verifyAndNormalizeProviderToken(provider, ssoCredential);
+    const ssoEmail = identityData.providerEmail;
+
+    // 2. Database transaction for atomic operations
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    
+    // --- TRANSACTION BOUNDARY START ---
+    // Wrap activation, identity linkage, and session registration in an atomic transaction.
+    session.startTransaction();
+
+    try {
+      // Validate and consume the invitation token in the database
+      const userId = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
+
+      // Fetch user to ensure they exist and status is Pending Verification
+      const user = await userService.getUserById(userId, session);
+      if (user.status !== 'Pending Verification') {
+        throw new HttpError(400, 'User is already active or inactive.');
       }
+
+      if (!user.email || ssoEmail.toLowerCase() !== user.email.toLowerCase()) {
+        throw new HttpError(403, 'Email in SSO token does not match the invitation email.');
+      }
+
+      // Generate a random password, hash it, and activate user
+      const { v4: uuidv4 } = await import('uuid');
+      const { hashPassword } = await import('../../utils/crypto.utils.js');
+      const randomPassword = uuidv4();
+      const hashedPassword = await hashPassword(randomPassword);
+
+      // Call userService.activateUser to activate user and set password
+      await userService.activateUser(userId, hashedPassword, session);
+
+      // Call userIdentityService.createIdentity to link SSO identity
+      if (typeof userIdentityService.createIdentity === 'function') {
+        await userIdentityService.createIdentity(userId, identityData, session);
+      } else {
+        await userIdentityService.linkIdentity(userId, identityData, session);
+      }
+
+      // Call sessionService.createSession to create active login session
+      const refreshToken = await sessionService.createSession(userId, {}, session);
+
+      await session.commitTransaction();
+      // --- TRANSACTION BOUNDARY END ---
+
+      // Resolve scoped token and workspaces (outside transaction)
+      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
+      const token = signToken(tokenPayload);
+
+      // Emit events for successful login/auth write operations
+      authEvents.emit('PROVIDER_LOGIN', { userId: user._id, provider });
+      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: provider });
+      authEvents.emit('USER_ACTIVATED', { userId: user._id });
+
+      return {
+        token,
+        refreshToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          role: tokenPayload.role,
+          roles: tokenPayload.roles,
+          permissions: tokenPayload.permissions,
+          orgId: tokenPayload.orgId,
+          isPlatform: tokenPayload.isPlatform,
+          visitorContext: tokenPayload.visitorContext,
+        },
+        availableWorkspaces,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
     }
   }
 }

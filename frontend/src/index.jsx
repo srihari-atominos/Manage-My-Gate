@@ -34,14 +34,18 @@ try {
   const savedUserStr = localStorage.getItem('user')
   if (savedUserStr) {
     const savedUser = JSON.parse(savedUserStr)
-    if (savedUser && Array.isArray(savedUser.organizations) && savedUser.organizations.length > 0) {
-      const firstOrg = savedUser.organizations[0]
+    if (savedUser && savedUser.orgId) {
+      const cachedWorkspacesStr = localStorage.getItem('availableWorkspaces')
+      const cachedWorkspaces = cachedWorkspacesStr ? JSON.parse(cachedWorkspacesStr) : []
+      const matchedOrg = cachedWorkspaces.find((w) => w.orgId === savedUser.orgId)
       store.dispatch(
         setActiveWorkspace({
-          activeOrganizationId: firstOrg.id,
-          activeRole: firstOrg.role,
-          allowedFeatures: firstOrg.allowedFeatures || [],
-          organizationName: firstOrg.name,
+          activeOrganizationId: savedUser.orgId,
+          activeRole: savedUser.role,
+          allowedFeatures: savedUser.permissions || [],
+          isPlatform: savedUser.isPlatform || false,
+          organizationName: matchedOrg ? matchedOrg.name : null,
+          availableWorkspaces: cachedWorkspaces,
         })
       )
     }

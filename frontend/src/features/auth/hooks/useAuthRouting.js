@@ -37,9 +37,9 @@ export const useAuthRouting = () => {
     }
 
     // 2. Intent-Based Login/Signup:
-    // If the intent parameter is set to "create", route directly to workspace setup
-    if (intent === 'create') {
-      navigate('/workspace-setup');
+    // If the intent parameter is set to "create" or "create-org", route directly to workspace setup
+    if (intent === 'create' || intent === 'create-org') {
+      navigate('/workspace-setup?intent=create');
       return;
     }
 

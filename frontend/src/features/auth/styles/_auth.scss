@@ -43,6 +43,10 @@
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.06);
   padding: 32px 24px;
+
+  .login-divider-line {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
 }
 
 .accept-invite-title {
@@ -127,5 +131,282 @@
   padding: 40px 24px;
   text-align: center;
   color: #ffffff;
+}
+
+.accept-invite-sso-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.accept-invite-sso-btn {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  cursor: pointer;
+  gap: 10px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+  }
+}
+
+/* Login Page Styling */
+.login-container {
+  width: 100%;
+  max-width: 960px;
+  margin-inline: auto;
+}
+
+.login-card-group {
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.login-left-card {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border: none !important;
+  padding: 40px !important;
+  color: #2d3748 !important;
+  flex: 1 1 50%;
+}
+
+.login-right-card {
+  background: rgba(155, 202, 248, 0.3) !important;
+  border: none !important;
+  padding: 40px 32px !important;
+  color: #1a202c !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 40% !important;
+}
+
+.login-card-body {
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 !important;
+}
+
+.login-method-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.login-method-tab {
+  flex: 1;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &.active {
+    font-weight: 600;
+    background: #ffffff;
+    color: #1d4ed8;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.login-right-card-body {
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  width: 100%;
+  padding: 0 !important;
+}
+
+.login-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #2b6cb0;
+  margin-bottom: 8px;
+  letter-spacing: -0.025em;
+  font-family: "Outfit", "Inter", sans-serif;
+}
+
+.login-subtitle {
+  color: #4a5568;
+  font-size: 15px;
+  margin-bottom: 24px;
+  font-family: "Inter", sans-serif;
+}
+
+.login-input-icon-text {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  border-inline-end: none !important;
+  color: #4b5563 !important;
+}
+
+.login-icon {
+  width: 18px;
+  height: 18px;
+  color: #4b5563;
+}
+
+.login-input {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: #1f2937 !important;
+  padding: 12px !important;
+}
+
+.login-country-select {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: #1f2937 !important;
+  padding: 12px 8px !important;
+  max-width: 90px !important;
+  border-inline-end: none !important;
+  border-start-end-radius: 0 !important;
+  border-end-end-radius: 0 !important;
+}
+
+.login-alert {
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  margin-bottom: 20px !important;
+}
+
+.login-submit-btn {
+  background: linear-gradient(135deg, #4299e1 0%, #2b6cb0 100%) !important;
+  border: none !important;
+  padding: 12px !important;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(43, 108, 176, 0.3) !important;
+  color: #ffffff !important;
+
+  &:hover {
+    opacity: 0.95;
+  }
+}
+
+.login-forgot-link {
+  color: #4299e1 !important;
+  text-decoration: none !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+
+  &:hover {
+    text-decoration: underline !important;
+  }
+}
+
+.login-right-title {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 16px;
+  letter-spacing: -0.025em;
+  color: #2b6cb0;
+  font-family: "Outfit", "Inter", sans-serif;
+}
+
+.login-right-text {
+  color: #2d3748;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  font-weight: 500;
+  font-family: "Inter", sans-serif;
+}
+
+.login-register-btn {
+  background: #2b6cb0 !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 12px !important;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(43, 108, 176, 0.4) !important;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #23538a !important;
+  }
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 24px 0 16px 0;
+}
+
+.login-divider-line {
+  flex: 1;
+  height: 1px;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.login-divider-text {
+  padding-inline: 12px;
+  color: #6b7280;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.login-sso-btn {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.7) !important;
+  color: #374151 !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  padding: 10px 14px !important;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: background 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  gap: 10px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.95) !important;
+  }
+}
+
+.login-sso-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 

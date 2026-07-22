@@ -458,6 +458,18 @@ export class UserService {
     const User = (await import('./user.model.js')).default;
     return await User.find({ _id: { $in: ids } }).session(session);
   }
+
+  async getUserByPhone(phone, session = null) {
+    return await userRepository.findByPhone(phone, session);
+  }
+
+  async getUserByEmailOrPhone(identifier, session = null) {
+    const trimmed = identifier.trim();
+    if (trimmed.includes('@')) {
+      return await userRepository.findByEmail(trimmed.toLowerCase(), session);
+    }
+    return await userRepository.findByPhone(trimmed, session);
+  }
 }
 
 export default new UserService();

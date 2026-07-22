@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +8,7 @@ import {
   updateProfile as updateProfileAction,
   clearStatus as clearStatusAction,
   acceptInvitation,
+  acceptSsoInvitation,
   loginUser,
   loginWithGoogle,
   loginWithMicrosoft,
@@ -32,11 +34,24 @@ export const useAuth = () => {
 
   const currentUser = useSelector((state) => state.auth.user)
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
+  const token = useSelector((state) => state.auth.token)
   const loading = useSelector((state) => state.auth.loading)
   const error = useSelector((state) => state.auth.error)
   const successMsg = useSelector((state) => state.auth.successMsg)
 
   const otpSent = useSelector((state) => state.auth.otpSent)
+
+  useEffect(() => {
+    const handleStorageChange = (event) => {
+      if (event.key === 'auth_logout' && isAuthenticated) {
+        dispatch(logoutAction())
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [dispatch, isAuthenticated])
 
   const logout = () => {
     dispatch(performLogout())
@@ -69,16 +84,58 @@ export const useAuth = () => {
     }
   }
 
-  const login = (credentials) => {
-    return dispatch(loginUser(credentials))
+  const login = async (credentials) => {
+    const resultAction = await dispatch(loginUser(credentials))
+    if (loginUser.fulfilled.match(resultAction)) {
+      return { success: true, payload: resultAction.payload }
+    }
+    return { success: false, error: resultAction.payload }
   }
 
-  const loginGoogle = (credential) => {
-    return dispatch(loginWithGoogle(credential))
+  const loginGoogle = async (credential) => {
+    const resultAction = await dispatch(loginWithGoogle(credential))
+    if (loginWithGoogle.fulfilled.match(resultAction)) {
+      const data = resultAction.payload?.data
+      const workspaces = data?.workspaces || data?.availableWorkspaces || []
+      const navigateTo = workspaces.length === 0 ? '/workspace-setup' : '/dashboard'
+      navigate(navigateTo)
+      return { success: true, navigateTo }
+    }
+    return { success: false, error: resultAction.payload }
   }
 
-  const loginMicrosoft = (idToken) => {
-    return dispatch(loginWithMicrosoft(idToken))
+  const loginMicrosoft = async (idToken) => {
+    const resultAction = await dispatch(loginWithMicrosoft(idToken))
+    if (loginWithMicrosoft.fulfilled.match(resultAction)) {
+      const data = resultAction.payload?.data
+      const workspaces = data?.workspaces || data?.availableWorkspaces || []
+      const navigateTo = workspaces.length === 0 ? '/workspace-setup' : '/dashboard'
+      navigate(navigateTo)
+      return { success: true, navigateTo }
+    }
+    return { success: false, error: resultAction.payload }
+  }
+
+  const handleAcceptSsoInvitation = async (inviteToken, ssoCredential, provider) => {
+    try {
+      const resultAction = await dispatch(acceptSsoInvitation({ inviteToken, ssoCredential, provider }))
+      if (acceptSsoInvitation.fulfilled.match(resultAction)) {
+        const data = resultAction.payload?.data
+        const workspaces = data?.workspaces || data?.availableWorkspaces || []
+        const navigateTo = workspaces.length === 0 ? '/workspace-setup' : '/dashboard'
+        toast.success(t('auth.invite.success'))
+        navigate(navigateTo)
+        return { success: true, navigateTo }
+      } else {
+        const errorMsg = resultAction.payload || t('auth.invite.error')
+        toast.error(errorMsg)
+        return { success: false, error: errorMsg }
+      }
+    } catch (err) {
+      const fallbackMsg = t('auth.invite.error')
+      toast.error(fallbackMsg)
+      return { success: false, error: fallbackMsg }
+    }
   }
 
   const register = (userData) => {
@@ -98,8 +155,12 @@ export const useAuth = () => {
     return dispatch(requestOtp({ identifier, isEmail }))
   }
 
-  const verifyOtp = (identifier, code, isEmail) => {
-    return dispatch(verifyOtpLogin({ identifier, code, isEmail }))
+  const verifyOtp = async (identifier, code, isEmail) => {
+    const resultAction = await dispatch(verifyOtpLogin({ identifier, code, isEmail }))
+    if (verifyOtpLogin.fulfilled.match(resultAction)) {
+      return { success: true, payload: resultAction.payload }
+    }
+    return { success: false, error: resultAction.payload }
   }
 
   const sendPasswordResetOtp = (identifier) => {
@@ -117,6 +178,7 @@ export const useAuth = () => {
   return {
     currentUser,
     isAuthenticated,
+    token,
     loading,
     error,
     successMsg,
@@ -124,6 +186,7 @@ export const useAuth = () => {
     updateProfile,
     clearStatus,
     handleAcceptInvitation,
+    handleAcceptSsoInvitation,
     login,
     loginGoogle,
     loginMicrosoft,

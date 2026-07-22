@@ -70,6 +70,23 @@ export class UserRepository {
   async delete(id, session) {
     return await User.findByIdAndDelete(id, session ? { session } : undefined);
   }
+
+  /**
+   * Find a user by phone or its normalized/base phone.
+   * @param {string} phone
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async findByPhone(phone, session) {
+    const trimmedPhone = phone.trim();
+    const basePhone = trimmedPhone.replace(/^\+\d+\s*/, '');
+
+    const orConditions = [{ phone: trimmedPhone }];
+    if (basePhone) {
+      orConditions.push({ phone: basePhone });
+    }
+
+    return await User.findOne({ $or: orConditions }).session(session || null);
+  }
 }
 
 export default new UserRepository();

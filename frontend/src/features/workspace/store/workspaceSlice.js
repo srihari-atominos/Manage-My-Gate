@@ -35,6 +35,7 @@ export const workspaceSlice = createSlice({
 
       if (availableWorkspaces) {
         state.availableWorkspaces = availableWorkspaces;
+        localStorage.setItem('availableWorkspaces', JSON.stringify(availableWorkspaces));
       }
 
       // Update organizationName based on the matching workspace in availableWorkspaces

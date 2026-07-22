@@ -34,24 +34,26 @@ const processQueue = (error, token = null) => {
 // Request Interceptor: Inject Token and Correlation ID
 apiClient.interceptors.request.use(
   async (config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
+    // Generate and inject a unique Request Correlation ID
+    config.headers['X-Request-ID'] = uuidv4()
     
     // Dynamically import store to prevent circular dependency crashes during application bootstrap
     try {
       const { store } = await import('../store/store.js')
       const state = store.getState()
+      
+      const token = state.auth?.token || localStorage.getItem('token')
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+      
       if (state.workspace && state.workspace.activeOrganizationId) {
         config.headers['x-organization-id'] = state.workspace.activeOrganizationId
       }
     } catch (err) {
-      console.error('Failed to inject x-organization-id in request interceptor:', err)
+      console.error('Failed to inject headers in request interceptor:', err)
     }
     
-    // Generate and inject a unique Request Correlation ID
-    config.headers['X-Request-ID'] = uuidv4()
     return config
   },
   (error) => Promise.reject(error)
@@ -84,7 +86,9 @@ apiClient.interceptors.response.use(
       originalRequest.url.includes('/auth/forgot-password') ||
       originalRequest.url.includes('/auth/reset-password') ||
       originalRequest.url.includes('/auth/verify-phone') ||
-      originalRequest.url.includes('/auth/verify-email-otp')
+      originalRequest.url.includes('/auth/verify-email-otp') ||
+      originalRequest.url.includes('/auth/accept-invite') ||
+      originalRequest.url.includes('/auth/accept_invite')
     );
 
     if (error.response && error.response.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
@@ -107,7 +111,15 @@ apiClient.interceptors.response.use(
         
         if (res.status === 200 || res.status === 201) {
           const newToken = res.data.token;
-          localStorage.setItem('token', newToken);
+          
+          try {
+            const { store } = await import('../store/store.js')
+            const { updateTokenAndUser } = await import('../features/auth/store/authSlice.js')
+            store.dispatch(updateTokenAndUser({ token: newToken }))
+          } catch (dispatchErr) {
+            console.error('Failed to update refreshed token in store:', dispatchErr)
+          }
+
           apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newToken;
           originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
           

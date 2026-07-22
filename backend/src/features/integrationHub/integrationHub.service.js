@@ -302,6 +302,19 @@ export class IntegrationHubService {
     }
     return await integrationHubRepository.findSmtpConnection(orgId, session);
   }
+
+  /**
+   * Get connection by provider and status globally (not scoped to an organization).
+   * @param {string} provider - Provider key
+   * @param {import('mongoose').ClientSession} [session] - Optional session
+   * @returns {Promise<object|null>}
+   */
+  async getGlobalConnectionByProvider(provider, session = null) {
+    if (!provider) {
+      throw new HttpError(400, 'Provider is required.');
+    }
+    return await integrationHubRepository.findGlobalConnectionByProvider(provider, session);
+  }
 }
 
 export default new IntegrationHubService();

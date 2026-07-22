@@ -12,14 +12,31 @@ To deploy the application, you first need to build the Docker images locally and
 - Docker installed and running on your local machine.
 - Logged in to your Docker registry: `docker login` (default registry namespace is `atocash`).
 
+#### 1. Backend Build and Push
 ```bash
-# 1. Build and Push Backend Image
 cd backend
-docker build -t atocash/manage-my-gate-server:latest . && docker push atocash/manage-my-gate-server:latest
+docker build --no-cache -t atocash/manage-my-gate-server:latest .
+docker push atocash/manage-my-gate-server:latest
+```
 
-# 2. Build and Push Frontend Image (Vite compiles environment variables at build-time)
+#### 2. Frontend Build and Push (Vite compiles environment variables at build-time)
+
+**Single-Line (Recommended for Windows PowerShell / Command Prompt):**
+```bash
 cd ../frontend
-docker build -t atocash/manage-my-gate-client:latest --build-arg VITE_API_URL="https://managemygate.e3esg.com/api" --build-arg VITE_GOOGLE_CLIENT_ID="your_google_client_id_here" --build-arg VITE_MICROSOFT_CLIENT_ID="your_microsoft_client_id_here" --build-arg VITE_MICROSOFT_TENANT_ID="your_microsoft_tenant_id_here" . && docker push atocash/manage-my-gate-client:latest
+docker build --no-cache -t atocash/manage-my-gate-client:latest --build-arg VITE_API_URL="https://managemygate.e3esg.com/api" --build-arg VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID_HERE" --build-arg VITE_MICROSOFT_CLIENT_ID="20c2e0b1-683b-446e-a5f4-aa30876357f7" --build-arg VITE_MICROSOFT_TENANT_ID="fd65b6d3-b789-4884-a69a-4ccf71e38700" .
+docker push atocash/manage-my-gate-client:latest
+```
+
+**Linux / macOS / Git Bash (Multi-line with `\`):**
+```bash
+cd ../frontend
+docker build --no-cache -t atocash/manage-my-gate-client:latest \
+  --build-arg VITE_API_URL="https://managemygate.e3esg.com/api" \
+  --build-arg VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID_HERE" \
+  --build-arg VITE_MICROSOFT_CLIENT_ID="20c2e0b1-683b-446e-a5f4-aa30876357f7" \
+  --build-arg VITE_MICROSOFT_TENANT_ID="fd65b6d3-b789-4884-a69a-4ccf71e38700" .
+docker push atocash/manage-my-gate-client:latest
 ```
 
 ---
@@ -88,10 +105,10 @@ SUPER_ADMIN_USERNAME=superadmin
 SUPER_ADMIN_PASSWORD=your_secure_superadmin_password_here
 
 # Enterprise SSO Credentials (Google & Microsoft)
-GOOGLE_CLIENT_ID=your_google_client_id_here
-GOOGLE_CLIENT_SECRET=your_google_client_secret_here
-MICROSOFT_CLIENT_ID=your_microsoft_client_id_here
-MICROSOFT_TENANT_ID=your_microsoft_tenant_id_here
+GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE
+GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET_HERE
+MICROSOFT_CLIENT_ID=20c2e0b1-683b-446e-a5f4-aa30876357f7
+MICROSOFT_TENANT_ID=fd65b6d3-b789-4884-a69a-4ccf71e38700
 
 # Application Settings
 NODE_ENV=production
@@ -104,11 +121,23 @@ EOF
 Transfer the `docker-compose.yml` file from your local project to `/opt/manage-my-gate` on the server.
 
 ### 3.3. Start Services
-Pull the latest images from the registry and start the containers:
 
+#### Option A: Pull Pre-built Images from Registry (Local Build Workflow)
 ```bash
-# Pull latest images
+# Pull latest images from Docker Hub
 docker-compose pull
+
+# Start containers in detached mode
+docker-compose up -d
+```
+
+#### Option B: Build Images Directly on Hosted Server (Git Pull Workflow)
+```bash
+# Pull latest code from remote repository
+git pull upstream develop
+
+# Build Docker images locally on server (--no-cache ensures Vite bakes updated .env build arguments)
+docker-compose build --no-cache
 
 # Start containers in detached mode
 docker-compose up -d
@@ -127,11 +156,20 @@ docker-compose up -d
 ## 5. Maintenance Commands
 
 ### 🔄 Updating the Application
-1. Build and push new images locally (Step 1).
-2. On the server, run:
+
+#### Option A: Docker Registry Push/Pull Update
 ```bash
+# On server: pull updated pre-built images and restart containers
 docker-compose pull
 docker-compose up -d
+```
+
+#### Option B: In-Place Server Source Code Build Update
+```bash
+# On server: pull latest code, rebuild images without cache, and restart containers
+git pull upstream develop
+docker-compose down
+docker-compose up -d --build --force-recreate
 ```
 
 ### 🛑 Stopping the Application

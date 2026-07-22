@@ -159,6 +159,33 @@ export const acceptInvitation = createAsyncThunk(
   }
 )
 
+export const acceptSsoInvitation = createAsyncThunk(
+  'auth/acceptSsoInvitation',
+  async ({ inviteToken, ssoCredential, provider }, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await authService.acceptSsoInvite({ inviteToken, ssoCredential, provider })
+      
+      const user = response.data?.user
+      const availableWorkspaces = response.data?.availableWorkspaces || []
+      
+      if (user) {
+        dispatch(
+          setActiveWorkspace({
+            activeOrganizationId: user.orgId,
+            activeRole: user.role,
+            allowedFeatures: user.permissions || [],
+            isPlatform: user.isPlatform || false,
+            availableWorkspaces: availableWorkspaces,
+          })
+        )
+      }
+      return response
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to accept SSO invitation')
+    }
+  }
+)
+
 export const switchWorkspaceContext = createAsyncThunk(
   'auth/switchWorkspaceContext',
   async (arg, { dispatch, rejectWithValue }) => {
@@ -168,6 +195,7 @@ export const switchWorkspaceContext = createAsyncThunk(
       
       const token = response.data?.token
       const user = response.data?.user
+      const availableWorkspaces = response.data?.availableWorkspaces || []
       
       dispatch(updateTokenAndUser({ token, user }))
       
@@ -178,6 +206,7 @@ export const switchWorkspaceContext = createAsyncThunk(
             activeRole: user.role,
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
+            availableWorkspaces: availableWorkspaces,
           })
         )
       }
@@ -313,13 +342,13 @@ export const performLogout = createAsyncThunk(
   }
 )
 
-const token = localStorage.getItem('token')
-const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null
+const tokenFromStorage = localStorage.getItem('token') || null
+const userFromStorage = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null
 
 const initialState = {
-  isAuthenticated: !!token,
-  user: user,
-  token: token,
+  isAuthenticated: !!(tokenFromStorage || userFromStorage),
+  user: userFromStorage,
+  token: tokenFromStorage,
   loading: false,
   error: null,
   successMsg: null,
@@ -333,6 +362,7 @@ const authSlice = createSlice({
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       localStorage.removeItem('availableWorkspaces')
+      localStorage.setItem('auth_logout', Date.now().toString())
       state.isAuthenticated = false
       state.user = null
       state.token = null
@@ -517,6 +547,33 @@ const authSlice = createSlice({
         state.loading = false
         state.error = action.payload || 'Failed to accept invitation'
       })
+      // Accept SSO Invitation
+      .addCase(acceptSsoInvitation.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(acceptSsoInvitation.fulfilled, (state, action) => {
+        state.loading = false
+        state.isAuthenticated = true
+        state.token = action.payload.data?.token
+        state.user = action.payload.data?.user
+        state.successMsg = action.payload.message || 'SSO Invitation accepted successfully.'
+
+        if (action.payload.data?.token) {
+          localStorage.setItem('token', action.payload.data.token)
+        }
+        if (action.payload.data?.user) {
+          localStorage.setItem('user', JSON.stringify(action.payload.data.user))
+        }
+        if (action.payload.data?.availableWorkspaces) {
+          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+        }
+      })
+      .addCase(acceptSsoInvitation.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Failed to accept SSO invitation'
+      })
       // Switch Workspace Context
       .addCase(switchWorkspaceContext.pending, (state) => {
         state.loading = true
@@ -525,7 +582,19 @@ const authSlice = createSlice({
       })
       .addCase(switchWorkspaceContext.fulfilled, (state, action) => {
         state.loading = false
+        state.token = action.payload.data?.token || action.payload.token || state.token
+        state.user = action.payload.data?.user || action.payload.user || state.user
         state.successMsg = action.payload.message || 'Switched workspace context successfully!'
+        
+        if (state.token) {
+          localStorage.setItem('token', state.token)
+        }
+        if (state.user) {
+          localStorage.setItem('user', JSON.stringify(state.user))
+        }
+        if (action.payload.data?.availableWorkspaces) {
+          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+        }
       })
       .addCase(switchWorkspaceContext.rejected, (state, action) => {
         state.loading = false

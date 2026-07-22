@@ -75,7 +75,7 @@ export const RegisterForm = () => {
     if (isLoginMode) {
       navigate('/register');
     } else {
-      navigate('/login');
+      navigate('/login?intent=create-org');
     }
   };
 

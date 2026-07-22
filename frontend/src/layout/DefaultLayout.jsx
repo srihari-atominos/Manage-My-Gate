@@ -50,7 +50,7 @@ const DefaultLayout = () => {
   useWalkInListener()
 
   // Redirect to login if not authenticated
-  if (!token) {
+  if (!token && !user) {
     return <Navigate to="/login" replace />
   }
 

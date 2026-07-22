@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import { useComplaints } from '../hooks/useComplaints';
 import ComplaintTopNav from '../components/ComplaintTopNav';
 import '../styles/_complaints.scss';
@@ -7,6 +8,7 @@ import { useComplaintAnalyticsSocket } from '../hooks/useComplaintAnalyticsSocke
 const PerformanceAnalytics = () => {
   useComplaintAnalyticsSocket();
   const { dashboardAnalytics: data, loadDashboardAnalytics, isLoading } = useComplaints();
+  const token = useSelector((state) => state.auth.token);
 
   useEffect(() => {
     loadDashboardAnalytics({});
@@ -34,7 +36,6 @@ const PerformanceAnalytics = () => {
               <p style={{ color: 'var(--text-muted)', margin: 0 }} className="fw-medium">Helpdesk efficiency metrics and feedback</p>
             </div>
             <button className="btn btn-secondary" onClick={() => {
-                const token = localStorage.getItem('token');
                 window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:5002'}/api/complaints/export?auth_token=${token}`, '_blank');
               }}>
               <i className="fa-solid fa-file-export" style={{ marginRight: '8px' }}></i> Export Report

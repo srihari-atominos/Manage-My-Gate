@@ -42,9 +42,12 @@ export const useComplaints = (filters = {}, options = {}) => {
     return () => clearTimeout(debounce);
   }, [dispatch, JSON.stringify(filters), options.disableAutoFetch]);
 
+  const token = useSelector((state) => state.auth.token);
+
   useEffect(() => {
+    if (!token) return;
+
     // Socket initialization for real-time updates
-    const token = localStorage.getItem('token');
     socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002', {
       auth: { token }
     });
@@ -80,7 +83,7 @@ export const useComplaints = (filters = {}, options = {}) => {
       socket.off('complaint_escalated', handleUpdate);
       socket.disconnect();
     };
-  }, [dispatch, JSON.stringify(filters)]);
+  }, [dispatch, JSON.stringify(filters), token]);
 
   const loadDashboardAnalytics = async (filterParams) => {
     return await dispatch(fetchDashboardAnalytics(filterParams)).unwrap();

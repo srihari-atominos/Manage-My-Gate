@@ -86,6 +86,16 @@ export class UserIdentityService {
   async unlinkIdentity(userId, provider, session = null) {
     return await UserIdentity.findOneAndDelete({ userId, provider }).session(session);
   }
+
+  /**
+   * Wrapper for linkIdentity to match required SSO Invitation flow interface.
+   * @param {string} userId - Internal user ID
+   * @param {object} identityData - Provider details
+   * @param {object} [session] - Mongoose session
+   */
+  async createIdentity(userId, identityData, session = null) {
+    return await this.linkIdentity(userId, identityData, session);
+  }
 }
 
 export default new UserIdentityService();

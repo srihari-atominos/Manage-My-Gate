@@ -119,8 +119,7 @@ export const useFeatureConfig = () => {
       }
 
       setLoading(false);
-      window.location.hash = '#/dashboard';
-      window.location.reload();
+      navigate('/dashboard');
     } catch (err) {
       setLoading(false);
       setError(err.message || 'workspace.wizard.error');

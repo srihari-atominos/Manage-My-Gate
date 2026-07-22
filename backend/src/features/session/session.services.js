@@ -103,12 +103,12 @@ export class SessionService {
   /**
    * Revokes all active sessions for a user, except optionally the current one.
    */
-  async revokeAllUserSessions(userId, exceptSessionId = null) {
+  async revokeAllUserSessions(userId, exceptSessionId = null, session = null) {
     const query = { userId, status: 'Active' };
     if (exceptSessionId) {
       query._id = { $ne: exceptSessionId };
     }
-    await Session.updateMany(query, { status: 'Revoked' });
+    await Session.updateMany(query, { status: 'Revoked' }).session(session || null);
     authEvents.emit('SESSION_REVOKED', { userId, multiple: true });
   }
 
@@ -119,6 +119,30 @@ export class SessionService {
     return await Session.find({ userId, status: 'Active' })
       .select('-refreshToken')
       .sort({ lastActivity: -1 });
+  }
+
+  /**
+   * Revoke session based on refresh token.
+   * @param {string} userId - User identifier
+   * @param {string} refreshTokenStr - Refresh token JWT string
+   * @param {import('mongoose').ClientSession} [session] - Optional session
+   */
+  async revokeSessionByToken(userId, refreshTokenStr, session = null) {
+    try {
+      const payload = verifyRefreshToken(refreshTokenStr);
+      const sessions = await Session.find({ userId, status: 'Active' }).session(session || null);
+      
+      for (const sessionDoc of sessions) {
+        if (await comparePassword(payload.jti, sessionDoc.refreshToken)) {
+          sessionDoc.status = 'Revoked';
+          await sessionDoc.save(session ? { session } : undefined);
+          authEvents.emit('SESSION_REVOKED', { userId, sessionId: sessionDoc._id });
+          break;
+        }
+      }
+    } catch (err) {
+      // Ignore token errors during logout/revocation
+    }
   }
 }
 

@@ -71,6 +71,14 @@ export const revokeAllSessions = async () => {
   return await apiClient.delete('/session/all');
 };
 
+export const emailOtpLogin = async (payload) => {
+  return await apiClient.post('/auth/login/email-otp', payload);
+};
+
+export const acceptSsoInvite = async (payload) => {
+  return await apiClient.post('/auth/accept-invite/sso', payload);
+};
+
 export default {
   login,
   register,
@@ -89,4 +97,6 @@ export default {
   fetchSessions,
   revokeSession,
   revokeAllSessions,
+  emailOtpLogin,
+  acceptSsoInvite,
 };
