@@ -38,13 +38,13 @@ export const ResidentDashboard = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
-  useEffect(() => {
+  const fetchAnnouncements = () => {
     setAnnouncementsLoading(true)
     apiClient
       .get('/dashboard-feed/announcements')
       .then((res) => {
-        setAnnouncements(res.data || [])
-        setCurrentPage(1)
+        setAnnouncements(res.data?.data || [])
+        // Keep current page unless it's out of bounds after an update, but usually let's not reset to 1 automatically on interval
       })
       .catch((err) => {
         console.error('Failed to load dashboard announcements', err)
@@ -52,6 +52,12 @@ export const ResidentDashboard = () => {
       .finally(() => {
         setAnnouncementsLoading(false)
       })
+  }
+
+  useEffect(() => {
+    fetchAnnouncements()
+    const intervalId = setInterval(fetchAnnouncements, 30000)
+    return () => clearInterval(intervalId)
   }, [])
 
   const formatRelativeTime = (isoDate, timeString = '') => {

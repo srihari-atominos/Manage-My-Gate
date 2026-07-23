@@ -67,15 +67,17 @@ const ResidentHistoryView = () => {
     }
   };
 
-  const getPaymentStatusBadge = (status) => {
-    switch (status) {
-      case 'success': return <span className="badge badge-success text-white">Paid</span>;
-      case 'pending': return <span className="badge badge-warning text-body">Unpaid</span>;
-      case 'failed': return <span className="badge badge-danger text-white">Failed</span>;
-      case 'refunded': return <span className="badge badge-info text-white">Refunded</span>;
-      case 'partial_refund': return <span className="badge bg-purple text-white">Partial Refund</span>;
-      default: return null;
-    }
+  const getPaymentStatusBadge = (status, bookingStatus) => {
+    if (['success', 'completed', 'paid'].includes(status)) return <span className="badge badge-success text-white">Paid</span>;
+    if (status === 'failed') return <span className="badge badge-danger text-white">Failed</span>;
+    if (status === 'refunded') return <span className="badge badge-info text-white">Refunded</span>;
+    if (status === 'partial_refund') return <span className="badge bg-purple text-white">Partial Refund</span>;
+    
+    // Inference for missing or pending
+    if (bookingStatus === 'confirmed') return <span className="badge badge-success text-white">Paid</span>;
+    if (bookingStatus === 'cancelled') return <span className="badge badge-info text-white">Refunded</span>;
+    
+    return <span className="badge badge-warning text-body">Unpaid</span>;
   };
 
   const handleConfirmCancel = async (bookingId, reason) => {
@@ -156,7 +158,7 @@ const ResidentHistoryView = () => {
                               <div><span className="text-muted">Out:</span> {new Date(booking.checkOutTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                             ) : ''}
                           </td>
-                          <td>{getPaymentStatusBadge(booking.paymentStatus)}</td>
+                          <td>{getPaymentStatusBadge(booking.paymentStatus, booking.status)}</td>
                           <td>{getQrStatusBadge(booking.qrStatus, booking.status)}</td>
                           <td>
                             {['pending', 'confirmed'].includes(booking.status) && (

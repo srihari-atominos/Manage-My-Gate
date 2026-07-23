@@ -2,7 +2,7 @@ import AmenityBooking from './amenityBooking.model.js';
 import mongoose from 'mongoose';
 
 export class AmenityBookingRepository {
-  async findConflicts(orgId, amenityId, date, startTime, endTime) {
+  async findConflicts(orgId, amenityId, date, startTime, endTime, session = null) {
     return await AmenityBooking.find({
       orgId,
       amenityId,
@@ -11,22 +11,22 @@ export class AmenityBookingRepository {
       $or: [
         { startTime: { $lt: endTime }, endTime: { $gt: startTime } }
       ]
-    });
+    }).session(session);
   }
 
-  async countUserBookingsOnDate(userId, orgId, amenityId, date) {
+  async countUserBookingsOnDate(userId, orgId, amenityId, date, session = null) {
     const bookings = await AmenityBooking.find({
       userId,
       orgId,
       amenityId,
       bookingDate: date,
       status: { $nin: ['cancelled', 'rejected'] }
-    });
+    }).session(session);
     const uniqueSlots = new Set(bookings.map(b => `${b.startTime}-${b.endTime}`));
     return uniqueSlots.size;
   }
 
-  async isExistingSlot(userId, orgId, amenityId, date, startTime, endTime) {
+  async isExistingSlot(userId, orgId, amenityId, date, startTime, endTime, session = null) {
     const count = await AmenityBooking.countDocuments({
       userId,
       orgId,
@@ -35,7 +35,7 @@ export class AmenityBookingRepository {
       startTime,
       endTime,
       status: { $nin: ['cancelled', 'rejected'] }
-    });
+    }).session(session);
     return count > 0;
   }
 
@@ -239,14 +239,14 @@ export class AmenityBookingRepository {
     .exec();
   }
 
-  async findById(id, orgId) {
+  async findById(id, orgId, session = null) {
     const query = { orgId };
     if (mongoose.Types.ObjectId.isValid(id)) {
       query.$or = [{ _id: id }, { bookingId: id }];
     } else {
       query.bookingId = id;
     }
-    return await AmenityBooking.findOne(query).populate('amenityId');
+    return await AmenityBooking.findOne(query).session(session).populate('amenityId');
   }
 
   async create(bookingData, session = null) {
@@ -254,7 +254,7 @@ export class AmenityBookingRepository {
     return await booking.save(session ? { session } : undefined);
   }
 
-  async updateStatus(id, orgId, status, reviewData = {}) {
+  async updateStatus(id, orgId, status, reviewData = {}, session = null) {
     const query = { orgId };
     if (mongoose.Types.ObjectId.isValid(id)) {
       query.$or = [{ _id: id }, { bookingId: id }];
@@ -264,7 +264,7 @@ export class AmenityBookingRepository {
     return await AmenityBooking.findOneAndUpdate(
       query,
       { $set: { status, ...reviewData } },
-      { returnDocument: 'after' }
+      { returnDocument: 'after', session }
     ).populate('amenityId userId');
   }
 

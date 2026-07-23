@@ -224,7 +224,6 @@ const PerformanceAnalytics = () => {
                <div style={{ textAlign: 'center', color: 'var(--ink-faint)' }}>No feedback available.</div>
             )}
           </div>
-          </div>
         </div>
       </div>
     </div>

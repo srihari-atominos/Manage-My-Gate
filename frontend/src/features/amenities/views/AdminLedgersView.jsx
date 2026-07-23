@@ -86,8 +86,8 @@ const AdminLedgersView = () => {
                         </td>
                         <td>
                           <div  className="fw-bold">₹{b.pricingDetails?.totalAmount || b.totalPrice || 0}</div>
-                          <div style={{ color: 'var(--text-muted)' }} className="fw-medium small">
-                            {b.paymentStatus === 'success' || b.paymentStatus === 'completed' || b.paymentStatus === 'paid' ? 'Paid' : (b.paymentStatus || 'Pending')}
+                          <div style={{ color: 'var(--text-muted)', textTransform: 'capitalize' }} className="fw-medium small">
+                            {b.paymentStatus === 'success' || b.paymentStatus === 'completed' || b.paymentStatus === 'paid' || b.status === 'confirmed' ? 'Paid' : b.status === 'cancelled' ? 'Refunded' : (b.paymentStatus || 'Pending')}
                           </div>
                         </td>
                         <td>{getStatusBadge(b.status)}</td>

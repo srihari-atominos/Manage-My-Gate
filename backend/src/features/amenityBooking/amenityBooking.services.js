@@ -140,7 +140,7 @@ export class AmenityBookingService {
       }
 
       // 8, 10 & 11. Overlapping Slot, Buffer Time, and Capacity Validation
-      const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime);
+      const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime, session);
       
       // Daily pricing is exclusive per day regardless of capacity
       if (amenity.pricing?.pricingType === 'daily' && conflicts.length > 0) {
@@ -307,147 +307,174 @@ export class AmenityBookingService {
   }
 
   async createManualBooking(bookingData) {
-    let { orgId, amenityId, userId, bookingDate, startTime, endTime, paymentStatus = 'success' } = bookingData;
-    
-    // Resident membership check
-    const userService = (await import('../user/user.services.js')).default;
-    const user = await userService.getUserById(userId);
-    if (!user || user.orgId.toString() !== orgId.toString()) {
-      throw new HttpError(400, 'Resident not found in this organization');
-    }
-    
-    const amenityService = (await import('../amenity/amenity.services.js')).default;
-    const amenity = await amenityService.getAmenityById(amenityId, orgId);
-    if (!amenity) throw new HttpError(404, 'Amenity not found');
-    
-    if (amenity.pricing?.pricingType === 'daily') {
-      startTime = amenity.bookingRules?.openTime;
-      endTime = amenity.bookingRules?.closeTime;
-      bookingData.startTime = startTime;
-      bookingData.endTime = endTime;
-    }
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    const moment = (await import('moment-timezone')).default;
-    const TIMEZONE = 'Asia/Kolkata';
-
-    const bookingDateTimeStart = moment.tz(`${bookingDate}T${startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
-    let bookingDateTimeEnd = moment.tz(`${bookingDate}T${endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
-    
-    if (bookingDateTimeEnd < bookingDateTimeStart) {
-      bookingDateTimeEnd = moment(bookingDateTimeEnd).add(1, 'days').toDate();
-    }
-    
-    // Amenity availability check
-    const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime);
-    
-    // Daily pricing is exclusive per day regardless of capacity
-    if (amenity.pricing?.pricingType === 'daily' && conflicts.length > 0) {
-      throw new HttpError(409, 'This amenity is already booked for the selected day');
-    }
-    const currentlyBookedSpots = conflicts.reduce((sum, b) => sum + (b.numberOfPersons || 1), 0);
-    const requestedSpots = parseInt(bookingData.numberOfPersons || 1, 10);
-    const remainingCapacity = amenity.capacity - currentlyBookedSpots;
-    
-    if (requestedSpots > remainingCapacity) {
-      if (remainingCapacity <= 0) {
-        throw new HttpError(400, 'The amenity is at full capacity for the selected time slot.');
-      } else {
-        throw new HttpError(400, `The amenity remaining capacity for the selected time slot is ${remainingCapacity}.`);
+    try {
+      let { orgId, amenityId, userId, bookingDate, startTime, endTime, paymentStatus = 'success' } = bookingData;
+      
+      // Resident membership check
+      const userService = (await import('../user/user.services.js')).default;
+      const user = await userService.getUserById(userId, session);
+      if (!user || user.orgId.toString() !== orgId.toString()) {
+        throw new HttpError(400, 'Resident not found in this organization');
       }
-    }
-    
-    const pricingDetails = this._calculatePricing(amenity, bookingDateTimeStart, bookingDateTimeEnd, bookingData.numberOfPersons || 1);
-    
-    const newBookingData = {
-      ...bookingData,
-      status: 'confirmed',
-      paymentStatus: paymentStatus,
-      pricingDetails,
-      totalPrice: pricingDetails.totalAmount,
-      deposit: pricingDetails.securityDeposit,
-      isManual: true
-    };
+      
+      const amenityService = (await import('../amenity/amenity.services.js')).default;
+      const amenity = await amenityService.getAmenityById(amenityId, orgId, session);
+      if (!amenity) throw new HttpError(404, 'Amenity not found');
+      
+      if (amenity.pricing?.pricingType === 'daily') {
+        startTime = amenity.bookingRules?.openTime;
+        endTime = amenity.bookingRules?.closeTime;
+        bookingData.startTime = startTime;
+        bookingData.endTime = endTime;
+      }
 
-    const booking = await amenityBookingRepository.create(newBookingData);
-    
-    // Generate QR automatically since it's confirmed
-    amenityBookingEventEmitter.emit(AMENITY_BOOKING_CREATED, booking);
-    
-    return booking;
+      const moment = (await import('moment-timezone')).default;
+      const TIMEZONE = 'Asia/Kolkata';
+
+      const bookingDateTimeStart = moment.tz(`${bookingDate}T${startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      let bookingDateTimeEnd = moment.tz(`${bookingDate}T${endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      
+      if (bookingDateTimeEnd < bookingDateTimeStart) {
+        bookingDateTimeEnd = moment(bookingDateTimeEnd).add(1, 'days').toDate();
+      }
+      
+      // Amenity availability check
+      const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime, session);
+      
+      // Daily pricing is exclusive per day regardless of capacity
+      if (amenity.pricing?.pricingType === 'daily' && conflicts.length > 0) {
+        throw new HttpError(409, 'This amenity is already booked for the selected day');
+      }
+      const currentlyBookedSpots = conflicts.reduce((sum, b) => sum + (b.numberOfPersons || 1), 0);
+      const requestedSpots = parseInt(bookingData.numberOfPersons || 1, 10);
+      const remainingCapacity = amenity.capacity - currentlyBookedSpots;
+      
+      if (requestedSpots > remainingCapacity) {
+        if (remainingCapacity <= 0) {
+          throw new HttpError(400, 'The amenity is at full capacity for the selected time slot.');
+        } else {
+          throw new HttpError(400, `The amenity remaining capacity for the selected time slot is ${remainingCapacity}.`);
+        }
+      }
+      
+      const pricingDetails = this._calculatePricing(amenity, bookingDateTimeStart, bookingDateTimeEnd, bookingData.numberOfPersons || 1);
+      
+      const newBookingData = {
+        ...bookingData,
+        status: 'confirmed',
+        paymentStatus: paymentStatus,
+        pricingDetails,
+        totalPrice: pricingDetails.totalAmount,
+        deposit: pricingDetails.securityDeposit,
+        isManual: true
+      };
+
+      const booking = await amenityBookingRepository.create(newBookingData, session);
+      
+      await session.commitTransaction();
+      session.endSession();
+      
+      // Generate QR automatically since it's confirmed
+      amenityBookingEventEmitter.emit(AMENITY_BOOKING_CREATED, booking);
+      
+      return booking;
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
   }
 
 
   async cancelBooking(bookingId, userId, orgId, reason = '', isAdmin = false) {
-    const booking = await amenityBookingRepository.findById(bookingId, orgId);
-    if (!booking) throw new HttpError(404, 'Booking not found');
-    
-    if (!isAdmin && booking.userId.toString() !== userId.toString()) {
-      throw new HttpError(403, 'You can only cancel your own bookings');
-    }
-    
-    if (['rejected', 'cancelled', 'checked-in', 'completed'].includes(booking.status)) {
-      throw new HttpError(400, 'Booking cannot be cancelled in its current state');
-    }
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // 1. Load the Amenity bookingRules
-    const amenityService = (await import('../amenity/amenity.services.js')).default;
-    const amenity = await amenityService.getAmenityById(booking.amenityId, orgId);
-    
-    let refundPercentage = 100; // default to full refund if no rules
-    let refundAmount = booking.pricingDetails?.totalAmount || booking.totalPrice || 0;
-
-    // 2. Read cancellationRefundRules
-    if (amenity?.bookingRules?.isCancellationEnabled && amenity.bookingRules.cancellationRefundRules?.length > 0) {
-      const rules = [...amenity.bookingRules.cancellationRefundRules].sort((a, b) => b.cancelBeforeHours - a.cancelBeforeHours);
+    try {
+      const booking = await amenityBookingRepository.findById(bookingId, orgId, session);
+      if (!booking) throw new HttpError(404, 'Booking not found');
       
-      const moment = (await import('moment-timezone')).default;
-      const TIMEZONE = 'Asia/Kolkata';
-      
-      const bookingStartDateTime = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
-      const now = moment().tz(TIMEZONE);
-      const remainingHours = moment.duration(bookingStartDateTime.diff(now)).asHours();
-
-      // Find the applicable rule
-      const applicableRule = rules.find(rule => remainingHours >= rule.cancelBeforeHours);
-      
-      if (applicableRule) {
-        refundPercentage = applicableRule.refundPercentage;
-      } else {
-        // If remaining hours is less than the smallest rule, refund is 0%
-        refundPercentage = 0;
+      if (!isAdmin && booking.userId.toString() !== userId.toString()) {
+        throw new HttpError(403, 'You can only cancel your own bookings');
       }
       
-      refundAmount = (refundAmount * refundPercentage) / 100;
-    }
-
-    // 3. Process Refund logic if payment was success
-    let newPaymentStatus = booking.paymentStatus;
-    if (booking.paymentStatus === 'success' && booking.paymentId) {
-      const paymentService = (await import('../payment/payment.service.js')).default;
-      if (refundAmount > 0) {
-        await paymentService.processRefund(booking.paymentId, refundAmount);
-        newPaymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
+      if (['rejected', 'cancelled', 'checked-in', 'completed'].includes(booking.status)) {
+        throw new HttpError(400, 'Booking cannot be cancelled in its current state');
       }
-      // If refundAmount is 0, we do not call processRefund, but we update the paymentStatus manually
-      if (refundAmount === 0) {
-        newPaymentStatus = 'success'; // Kept as success, or maybe 'no_refund' ? Wait, the requirement says "Payment Status Updated".
+
+      // 1. Load the Amenity bookingRules
+      const amenityService = (await import('../amenity/amenity.services.js')).default;
+      const amenity = await amenityService.getAmenityById(booking.amenityId, orgId, session);
+      
+      let refundPercentage = 100; // default to full refund if no rules
+      let refundAmount = booking.pricingDetails?.totalAmount || booking.totalPrice || 0;
+
+      // 2. Read cancellationRefundRules
+      if (amenity?.bookingRules?.isCancellationEnabled && amenity.bookingRules.cancellationRefundRules?.length > 0) {
+        const rules = [...amenity.bookingRules.cancellationRefundRules].sort((a, b) => b.cancelBeforeHours - a.cancelBeforeHours);
+        
+        const moment = (await import('moment-timezone')).default;
+        const TIMEZONE = 'Asia/Kolkata';
+        
+        const bookingStartDateTime = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
+        const now = moment().tz(TIMEZONE);
+        const remainingHours = moment.duration(bookingStartDateTime.diff(now)).asHours();
+
+        // Find the applicable rule
+        const applicableRule = rules.find(rule => remainingHours >= rule.cancelBeforeHours);
+        
+        if (applicableRule) {
+          refundPercentage = applicableRule.refundPercentage;
+        } else {
+          // If remaining hours is less than the smallest rule, refund is 0%
+          refundPercentage = 0;
+        }
+        
+        refundAmount = (refundAmount * refundPercentage) / 100;
       }
+
+      // 3. Process Refund logic if payment was success
+      let newPaymentStatus = booking.paymentStatus;
+      if (booking.paymentStatus === 'success' && booking.paymentId) {
+        const paymentService = (await import('../payment/payment.service.js')).default;
+        if (refundAmount > 0) {
+          await paymentService.processRefund(booking.paymentId, refundAmount, session);
+          newPaymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
+        }
+        // If refundAmount is 0, we do not call processRefund, but we update the paymentStatus manually
+        if (refundAmount === 0) {
+          newPaymentStatus = 'success'; // Kept as success, or maybe 'no_refund' ? Wait, the requirement says "Payment Status Updated".
+        }
+      }
+
+      const cancelUpdateData = {
+        status: 'cancelled',
+        paymentStatus: newPaymentStatus,
+        qrStatus: 'expired',
+        cancellationReason: reason,
+        cancelledAt: new Date(),
+        cancelledBy: userId,
+        refundPercentage,
+        refundAmount
+      };
+
+      const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, 'cancelled', cancelUpdateData, session);
+      
+      await session.commitTransaction();
+      session.endSession();
+
+      amenityBookingEventEmitter.emit(AMENITY_BOOKING_CANCELLED, updated);
+      return updated;
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
     }
-
-    const cancelUpdateData = {
-      status: 'cancelled',
-      paymentStatus: newPaymentStatus,
-      qrStatus: 'expired',
-      cancellationReason: reason,
-      cancelledAt: new Date(),
-      cancelledBy: userId,
-      refundPercentage,
-      refundAmount
-    };
-
-    const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, 'cancelled', cancelUpdateData);
-    amenityBookingEventEmitter.emit(AMENITY_BOOKING_CANCELLED, updated);
-    return updated;
   }
 
   async hasPendingOrApprovedFutureBookings(amenityId, orgId) {

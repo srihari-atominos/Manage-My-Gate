@@ -145,10 +145,10 @@ const navigate = useNavigate();
     // Legacy mapping for broken URLs already in the DB
     if (finalActionUrl.startsWith('/complaints/')) {
       finalActionUrl = '/complaints';
-    } else if (finalActionUrl.startsWith('/admin/complaints')) {
-      finalActionUrl = '/complaints';
     } else if (finalActionUrl === '/assignee') {
       finalActionUrl = '/admin/complaints/assignee';
+    } else if (finalActionUrl.startsWith('/admin/complaints') && finalActionUrl !== '/admin/complaints/assignee') {
+      finalActionUrl = '/complaints';
     } else if (finalActionUrl === '/resident/notice-board') {
       finalActionUrl = '/notices/board';
     } else if (finalActionUrl.startsWith('#/')) {
