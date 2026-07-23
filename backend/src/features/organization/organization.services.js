@@ -75,13 +75,31 @@ export class OrganizationService {
 
       // Generate a new token if userId is provided
       let token = null;
+      let userObj = null;
       if (userId) {
         const authService = (await import('../auth/auth.services.js')).default;
         const user = await authService.getUserById(userId);
-        token = await authService.generateToken(user, orgId);
+        const { tokenPayload, permissions } = await authService.getScopedTokenPayload(user, orgId);
+        const { signToken } = await import('../../utils/jwt.utils.js');
+        token = signToken(tokenPayload);
+        userObj = {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          role: tokenPayload.role,
+          roles: tokenPayload.roles,
+          permissions,
+          orgId: tokenPayload.orgId,
+          isPlatform: tokenPayload.isPlatform,
+          visitorContext: tokenPayload.visitorContext,
+          villaId: tokenPayload.villaId,
+          villaNumber: tokenPayload.villaNumber,
+          villaBlock: tokenPayload.villaBlock,
+          residentType: tokenPayload.residentType,
+        };
       }
 
-      return token ? { organization: updatedOrg, token } : updatedOrg;
+      return token ? { organization: updatedOrg, token, user: userObj } : updatedOrg;
     } catch (error) {
       if (localSession && localSession.inTransaction()) {
         await localSession.abortTransaction();

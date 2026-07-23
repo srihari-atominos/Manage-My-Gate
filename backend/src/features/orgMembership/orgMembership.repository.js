@@ -21,6 +21,7 @@ export class OrgMembershipRepository {
       .populate({ path: 'roleId', select: 'name' })
       .populate({ path: 'roleIds', select: 'name' })
       .populate({ path: 'villaId' })
+      .populate({ path: 'units.villaId' })
       .session(session || null);
   }
 
@@ -207,6 +208,7 @@ export class OrgMembershipRepository {
   async findByUserIdAndOrgIdWithPopulate(userId, orgId, session = null) {
     return await OrgMembership.findOne({ userId, orgId })
       .populate({ path: 'villaId' })
+      .populate({ path: 'units.villaId' })
       .session(session);
   }
 }

@@ -26,17 +26,31 @@ const orgMembershipSchema = new mongoose.Schema(
         ref: 'Role',
       }
     ],
+    // Deprecated: Use units array instead. Kept for backward compatibility.
     villaId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Villa',
       required: false,
       default: null,
     },
+    // Deprecated: Use units array instead. Kept for backward compatibility.
     residentType: {
       type: String,
-      enum: ['Owner', 'Tenant', 'Family', 'Guest', 'None'],
       default: 'None',
     },
+    units: [
+      {
+        villaId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Villa',
+          required: true,
+        },
+        residentType: {
+          type: String,
+          default: 'None',
+        },
+      }
+    ],
     status: {
       type: String,
       enum: ['Pending', 'Active'],

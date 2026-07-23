@@ -195,77 +195,111 @@ export class UserService {
       // Resolve roles if roleName is provided
       let roleIds = [];
       let calculatedResidentType = residentType;
+      let role = null;
       if (roleName) {
         const roleService = (await import('../role/role.services.js')).default;
-        const role = await roleService.getRoleByName(roleName, orgId, session);
+        role = await roleService.getRoleByName(roleName, orgId, session);
         if (role) {
           roleIds.push(role._id);
-          // Auto-determine residentType if it is 'None' or empty based on role name keywords
+          // If residentType is missing or 'None', default it directly to the dynamic role name
           if (!calculatedResidentType || calculatedResidentType === 'None') {
-            const lowerRoleName = role.name.toLowerCase();
-            if (lowerRoleName.includes('owner')) {
-              calculatedResidentType = 'Owner';
-            } else if (lowerRoleName.includes('tenant')) {
-              calculatedResidentType = 'Tenant';
-            } else if (lowerRoleName.includes('family')) {
-              calculatedResidentType = 'Family';
-            }
+            calculatedResidentType = role.name;
           }
         } else {
           throw new HttpError(400, `Role '${roleName}' not found in this community.`);
         }
       }
 
+      // Setup units array update
+      let membershipUnits = [];
+      if (existingMembership && existingMembership.units) {
+        membershipUnits = [...existingMembership.units];
+      }
+
+      if (villaId) {
+        const unitIndex = membershipUnits.findIndex(u => u.villaId && u.villaId.toString() === villaId.toString());
+        if (unitIndex > -1) {
+          membershipUnits[unitIndex].residentType = calculatedResidentType;
+        } else {
+          membershipUnits.push({ villaId, residentType: calculatedResidentType });
+        }
+      }
+
+      // Sync root fields to units[0]
+      let rootVillaId = null;
+      let rootResidentType = 'None';
+      if (membershipUnits.length > 0) {
+        rootVillaId = membershipUnits[0].villaId;
+        rootResidentType = membershipUnits[0].residentType;
+      } else if (villaId) {
+        rootVillaId = villaId;
+        rootResidentType = calculatedResidentType;
+      }
+
       if (existingMembership) {
         // Update the existing pending membership with new role, villa, and resident type details
         existingMembership.roleIds = roleIds;
         existingMembership.roleId = roleIds[0] || null;
-        existingMembership.villaId = villaId || null;
-        existingMembership.residentType = calculatedResidentType;
+        existingMembership.villaId = rootVillaId;
+        existingMembership.residentType = rootResidentType;
+        existingMembership.units = membershipUnits;
         await existingMembership.save({ session });
       } else {
         // Create membership with villa association and roles (explicitly Pending status)
+        const initialUnits = villaId ? [{ villaId, residentType: calculatedResidentType }] : [];
         await orgMembershipService.createMembership({
           userId: user._id,
           orgId,
           roleIds,
           roleId: roleIds[0] || null,
-          villaId: villaId || null,
-          residentType: calculatedResidentType,
+          villaId: rootVillaId,
+          residentType: rootResidentType,
+          units: initialUnits,
           status: 'Pending'
         }, session);
       }
 
-      // Sync user profile with villa and residencyType (must be one of: 'Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff')
-      let residencyType = 'Tenant';
-      const normalizedRole = roleName ? roleName.toLowerCase() : '';
-      if (normalizedRole.includes('owner') && normalizedRole.includes('non')) {
-        residencyType = 'Non-Resident Owner';
-      } else if (normalizedRole.includes('owner')) {
-        residencyType = 'Resident Owner';
-      } else if (normalizedRole.includes('tenant')) {
-        residencyType = 'Tenant';
-      } else if (normalizedRole.includes('family')) {
-        residencyType = 'Family Member';
-      } else if (normalizedRole.includes('staff')) {
-        residencyType = 'Staff';
-      } else {
-        // Fallback to residentType mapping
-        if (calculatedResidentType === 'Owner') {
-          residencyType = 'Resident Owner';
-        } else if (calculatedResidentType === 'Family') {
-          residencyType = 'Family Member';
-        } else if (calculatedResidentType === 'Guest') {
-          residencyType = 'Staff';
+      // Sync user profile with villa and residencyType
+      const userResidencyType = roleName || calculatedResidentType || 'None';
+
+      // Dynamically calculate a baseSystemType for mitigation/recommendation
+      let baseSystemType = 'Tenant';
+      if (role) {
+        if (role.isTenantRole === true) {
+          baseSystemType = 'Tenant';
+        } else {
+          const lowerRoleName = role.name.toLowerCase();
+          if (lowerRoleName.includes('owner') && lowerRoleName.includes('non')) {
+            baseSystemType = 'Non-Resident Owner';
+          } else if (lowerRoleName.includes('owner')) {
+            baseSystemType = 'Resident Owner';
+          } else if (lowerRoleName.includes('tenant')) {
+            baseSystemType = 'Tenant';
+          } else if (lowerRoleName.includes('family')) {
+            baseSystemType = 'Family Member';
+          } else if (lowerRoleName.includes('staff')) {
+            baseSystemType = 'Staff';
+          } else {
+            if (calculatedResidentType === 'Owner') {
+              baseSystemType = 'Resident Owner';
+            } else if (calculatedResidentType === 'Family') {
+              baseSystemType = 'Family Member';
+            } else if (calculatedResidentType === 'Guest') {
+              baseSystemType = 'Staff';
+            }
+          }
         }
       }
 
-      await userRepository.update(user._id, { villaId, residencyType }, session);
+      await userRepository.update(user._id, { villaId: rootVillaId, residencyType: userResidencyType }, session);
 
       // Add to Villa residents array via villa service to respect boundaries
       if (villaId) {
         const villaService = (await import('../villa/villa.services.js')).default;
-        await villaService.assignResidentToVilla(villaId, user._id, residencyType, session);
+        // RECOMMENDATION: Eventually update the InvoiceService and other strict-string services
+        // to check role.isTenantRole or a baseSystemType classification (calculated as: ${baseSystemType})
+        // rather than strictly matching residencyType strings like 'Tenant' or 'Resident Owner'.
+        await villaService.assignResidentToVilla(villaId, user._id, userResidencyType, session);
       }
 
       // Always generate an invitationToken with orgId (for both new and existing users)
@@ -273,10 +307,20 @@ export class UserService {
       const result = await tokenService.generateInvitationToken(user._id, orgId, session);
       const invitationToken = result.invitationToken;
 
-      await session.commitTransaction();
+      // Insert transactional outbox event for async email processing
+      const OutboxEvent = (await import('../outbox/outboxEvent.model.js')).default;
+      await OutboxEvent.create(
+        [
+          {
+            eventType: 'USER_INVITED',
+            payload: { email: trimmedEmail, orgId, invitationToken },
+            status: 'PENDING',
+          },
+        ],
+        { session }
+      );
 
-      // Dispatch event for asynchronous SMTP email transmission
-      userEvents.emit('USER_INVITED', { email: trimmedEmail, orgId, invitationToken });
+      await session.commitTransaction();
       
       // Dispatch event for real-time frontend syncing
       userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'invited' });

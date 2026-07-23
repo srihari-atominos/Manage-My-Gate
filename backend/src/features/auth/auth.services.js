@@ -150,6 +150,7 @@ export class AuthService {
     let permissions = [];
     let orgId = null;
     let isPlatform = false;
+    let activeRoleObj = null;
 
     if (selectedMembership) {
       orgId = selectedMembership.orgId._id.toString();
@@ -169,7 +170,7 @@ export class AuthService {
           throw new HttpError(400, `User does not have role '${targetRole}' in this organization.`);
         }
         roleName = targetRole;
-        const activeRoleObj = roles.find(r => r?.name === roleName);
+        activeRoleObj = roles.find(r => r?.name === roleName);
         if (activeRoleObj) {
           const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
           permissions = permissionsList.map((permission) => permission.name);
@@ -177,7 +178,7 @@ export class AuthService {
       } else {
         roleName = roleNames.length > 0 ? roleNames[0] : null;
         if (roleName) {
-          const activeRoleObj = roles.find(r => r?.name === roleName);
+          activeRoleObj = roles.find(r => r?.name === roleName);
           if (activeRoleObj) {
             const permissionsList = await rolePermissionService.getPermissionsByRoleId(activeRoleObj._id);
             permissions = permissionsList.map((permission) => permission.name);
@@ -203,13 +204,50 @@ export class AuthService {
       };
     });
 
-    const villaInfo = selectedMembership?.villaId ? {
-      id: selectedMembership.villaId._id.toString(),
-      villaNumber: selectedMembership.villaId.unitNumber,
-      block: selectedMembership.villaId.blockOrBuilding,
-      intercom: selectedMembership.villaId.intercom,
-      occupancyStatus: selectedMembership.villaId.status,
+    // Resolve primary unit (fallback to units[0] or the root villaId)
+    let primaryUnit = null;
+    if (selectedMembership) {
+      if (selectedMembership.units && selectedMembership.units.length > 0) {
+        primaryUnit = selectedMembership.units[0];
+      } else if (selectedMembership.villaId) {
+        primaryUnit = {
+          villaId: selectedMembership.villaId,
+          residentType: selectedMembership.residentType || 'None'
+        };
+      }
+    }
+
+    const villaInfo = primaryUnit?.villaId ? {
+      id: primaryUnit.villaId._id ? primaryUnit.villaId._id.toString() : primaryUnit.villaId.toString(),
+      villaNumber: primaryUnit.villaId.unitNumber || '',
+      block: primaryUnit.villaId.blockOrBuilding || '',
+      intercom: primaryUnit.villaId.intercom || '',
+      occupancyStatus: primaryUnit.villaId.status || '',
+      residentType: primaryUnit.residentType || 'None',
     } : null;
+
+    const accessibleUnits = [];
+    if (selectedMembership) {
+      if (selectedMembership.units && selectedMembership.units.length > 0) {
+        for (const unit of selectedMembership.units) {
+          if (unit.villaId) {
+            accessibleUnits.push({
+              villaId: unit.villaId._id ? unit.villaId._id.toString() : unit.villaId.toString(),
+              villaNumber: unit.villaId.unitNumber || '',
+              block: unit.villaId.blockOrBuilding || '',
+              residentType: unit.residentType || 'None'
+            });
+          }
+        }
+      } else if (selectedMembership.villaId) {
+        accessibleUnits.push({
+          villaId: selectedMembership.villaId._id ? selectedMembership.villaId._id.toString() : selectedMembership.villaId.toString(),
+          villaNumber: selectedMembership.villaId.unitNumber || '',
+          block: selectedMembership.villaId.blockOrBuilding || '',
+          residentType: selectedMembership.residentType || 'None'
+        });
+      }
+    }
 
     let visitorContext = 'None';
     if (permissions && permissions.length > 0) {
@@ -228,16 +266,18 @@ export class AuthService {
         email: user.email,
         username: user.username,
         role: roleName,
+        roleId: activeRoleObj ? activeRoleObj._id.toString() : null,
         roles: selectedMembership ? (selectedMembership.roleIds && selectedMembership.roleIds.length > 0 ? selectedMembership.roleIds.map(r => r.name) : (selectedMembership.roleId ? [selectedMembership.roleId.name] : [])) : [],
-        permissions,
         orgId,
         isPlatform,
         visitorContext,
         villaId: villaInfo ? villaInfo.id : null,
         villaNumber: villaInfo ? villaInfo.villaNumber : '',
         villaBlock: villaInfo ? villaInfo.block : '',
-        residentType: selectedMembership?.residentType || 'None',
+        residentType: villaInfo ? villaInfo.residentType : (selectedMembership?.residentType || 'None'),
+        accessibleUnits,
       },
+      permissions,
       availableWorkspaces,
     };
   }
@@ -290,7 +330,7 @@ export class AuthService {
     }
 
     // 3. Resolve context and available workspaces
-    const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
+    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
 
     // 4. Generate JWT token
     const token = signToken(tokenPayload);
@@ -312,7 +352,7 @@ export class AuthService {
         username: user.username,
         role: tokenPayload.role,
         roles: tokenPayload.roles,
-        permissions: tokenPayload.permissions,
+        permissions: permissions,
         orgId: tokenPayload.orgId,
         isPlatform: tokenPayload.isPlatform,
         visitorContext: tokenPayload.visitorContext,
@@ -335,7 +375,7 @@ export class AuthService {
     const user = await userService.getUserById(userId);
 
     // Resolve context for the target organization
-    const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgId, targetRole);
+    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgId, targetRole);
 
     // Generate fresh JWT token
     const token = signToken(tokenPayload);
@@ -348,7 +388,7 @@ export class AuthService {
         username: user.username,
         role: tokenPayload.role,
         roles: tokenPayload.roles,
-        permissions: tokenPayload.permissions,
+        permissions: permissions,
         orgId: tokenPayload.orgId,
         isPlatform: tokenPayload.isPlatform,
         visitorContext: tokenPayload.visitorContext,
@@ -409,7 +449,7 @@ export class AuthService {
       // --- TRANSACTION BOUNDARY END ---
 
       // Auto-login logic (read scopes are done outside transaction block)
-      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
+      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user);
       const token = signToken(tokenPayload);
 
       // Emit event for successful activation and login write operations
@@ -425,7 +465,7 @@ export class AuthService {
           username: user.username,
           role: tokenPayload.role,
           roles: tokenPayload.roles,
-          permissions: tokenPayload.permissions,
+          permissions: permissions,
           orgId: tokenPayload.orgId,
           isPlatform: tokenPayload.isPlatform,
           visitorContext: tokenPayload.visitorContext,
@@ -609,7 +649,7 @@ export class AuthService {
       await session.commitTransaction();
 
       // Resolve scoped token and workspaces
-      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
+      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
       const token = signToken(tokenPayload);
       
       authEvents.emit('PROVIDER_LOGIN', { userId: user._id, provider });
@@ -624,7 +664,7 @@ export class AuthService {
           username: user.username,
           role: tokenPayload.role,
           roles: tokenPayload.roles,
-          permissions: tokenPayload.permissions,
+          permissions: permissions,
           orgId: tokenPayload.orgId,
           isPlatform: tokenPayload.isPlatform,
           visitorContext: tokenPayload.visitorContext,
@@ -757,7 +797,7 @@ export class AuthService {
       // --- TRANSACTION BOUNDARY END ---
 
       // Scoped token and available workspaces resolved outside the transaction context
-      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
+      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user);
       const token = signToken(tokenPayload);
 
       // Emit event on successful login
@@ -772,7 +812,7 @@ export class AuthService {
           username: user.username,
           role: tokenPayload.role,
           roles: tokenPayload.roles,
-          permissions: tokenPayload.permissions,
+          permissions: permissions,
           orgId: tokenPayload.orgId,
           isPlatform: tokenPayload.isPlatform,
           visitorContext: tokenPayload.visitorContext,
@@ -843,7 +883,7 @@ export class AuthService {
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
 
-      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
+      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user);
       const token = signToken(tokenPayload);
 
       // Emit event on successful login
@@ -858,7 +898,7 @@ export class AuthService {
           username: user.username,
           role: tokenPayload.role,
           roles: tokenPayload.roles,
-          permissions: tokenPayload.permissions,
+          permissions: permissions,
           orgId: tokenPayload.orgId,
           isPlatform: tokenPayload.isPlatform,
           visitorContext: tokenPayload.visitorContext,
@@ -1026,7 +1066,7 @@ export class AuthService {
       // --- TRANSACTION BOUNDARY END ---
 
       // Resolve scoped token and workspaces (outside transaction)
-      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(activatedUser);
+      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(activatedUser);
       const token = signToken(tokenPayload);
 
       // Emit events for successful login/auth write operations
@@ -1043,7 +1083,7 @@ export class AuthService {
           username: activatedUser.username,
           role: tokenPayload.role,
           roles: tokenPayload.roles,
-          permissions: tokenPayload.permissions,
+          permissions: permissions,
           orgId: tokenPayload.orgId,
           isPlatform: tokenPayload.isPlatform,
           visitorContext: tokenPayload.visitorContext,

@@ -2,6 +2,34 @@ import HttpError from '../utils/httpError.utils.js';
 import { mapPermission } from '../utils/permissionMapper.js';
 
 /**
+ * Helper to dynamically resolve user permissions from the cache or database.
+ */
+const getPermissionsForUser = async (user) => {
+  if (!user) return [];
+  
+  let roleId = user.roleId;
+  
+  // Fallback to query roleId if not present in token
+  if (!roleId && user.role && user.orgId) {
+    try {
+      const roleService = (await import('../features/role/role.services.js')).default;
+      const role = await roleService.getRoleByName(user.role, user.orgId);
+      if (role) {
+        roleId = role._id.toString();
+      }
+    } catch (err) {
+      console.error('[RBAC MIDDLEWARE] Graceful fallback role lookup failed:', err.message);
+    }
+  }
+
+  if (!roleId) return [];
+
+  const rolePermissionService = (await import('../features/rolePermission/rolePermission.services.js')).default;
+  const permissionsList = await rolePermissionService.getPermissionsByRoleId(roleId);
+  return permissionsList.map((p) => p.name);
+};
+
+/**
  * Role-Based Access Control middleware.
  * @param {string[]} allowedRoles - Roles allowed to access the route
  */
@@ -27,19 +55,16 @@ export const authorizeRoles = (...allowedRoles) => {
  * Permission-Based Access Control middleware.
  * Checks if the user has 'Super Admin' role or has the specified feature-action permission.
  *
- * Backward-compatible: normalises both the required permission and the user's stored
- * permissions through mapPermission so that legacy dot-format names (e.g. amenities.read)
- * stored in role documents are equivalent to the canonical colon-format (amenities:read).
- *
  * @param {string} feature - The resource feature (e.g., 'users', 'roles', 'amenities')
  * @param {string} action - The action type (e.g., 'create', 'read', 'manage_bookings')
  */
 export const authorizePermission = (feature, action) => {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     try {
       if (!req.user) {
         throw new HttpError(401, 'Unauthorized. Authentication required.');
       }
+      
       // Super Admin bypasses all permission checks
       if (req.user.role === 'Super Admin' || req.user.role === 'Platform Super Admin') {
         console.log(`[RBAC DEBUG] User ${req.user.username} is ${req.user.role}. Bypassing check.`);
@@ -47,13 +72,12 @@ export const authorizePermission = (feature, action) => {
       }
 
       // Normalise all user permissions through the mapper before comparing
-      const userPermissions = (req.user.permissions || []).map(mapPermission);
+      const permissions = await getPermissionsForUser(req.user);
+      const userPermissions = permissions.map(mapPermission);
 
       const actions = Array.isArray(action) ? action : [action];
       console.log(`[RBAC DEBUG] Checking ${feature}:${actions.join(',')} for user ${req.user.username} (Role: ${req.user.role}). Permissions count: ${userPermissions.length}`);
-      if (userPermissions.length < 50) {
-          console.log(`[RBAC DEBUG] User permissions: ${userPermissions.join(', ')}`);
-      }
+      
       const hasPermission = actions.some(act => {
         const requiredPermission = mapPermission(`${feature}:${act}`);
         return userPermissions.includes(requiredPermission);
@@ -79,7 +103,7 @@ export const authorizePermission = (feature, action) => {
  * Checks if the user has AT LEAST ONE of the specified full permissions (e.g., ['users:create', 'villas:read']).
  */
 export const authorizeAnyPermission = (permissionsArray) => {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     try {
       if (!req.user) {
         throw new HttpError(401, 'Unauthorized. Authentication required.');
@@ -88,7 +112,8 @@ export const authorizeAnyPermission = (permissionsArray) => {
         return next();
       }
 
-      const userPermissions = (req.user.permissions || []).map(mapPermission);
+      const permissions = await getPermissionsForUser(req.user);
+      const userPermissions = permissions.map(mapPermission);
 
       const hasPermission = permissionsArray.some(p => {
         return userPermissions.includes(mapPermission(p));
@@ -106,4 +131,3 @@ export const authorizeAnyPermission = (permissionsArray) => {
 };
 
 export default authorizePermission;
-
