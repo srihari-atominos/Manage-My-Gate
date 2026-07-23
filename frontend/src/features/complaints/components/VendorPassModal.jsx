@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import config from '../../../config/config.js';
 import QRCode from 'react-qr-code';
 import { closeVendorPassModal } from '../store/complaintSlice';
 
@@ -14,7 +15,7 @@ const VendorPassModal = () => {
   };
 
   // Construct absolute deep link for the pass
-  const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
+  const baseUrl = config.publicUrl;
   const passUrl = `${baseUrl}/verify-pass/${generatedVendorPass.shortKey || generatedVendorPass._id}`;
   
   // Prepare share text

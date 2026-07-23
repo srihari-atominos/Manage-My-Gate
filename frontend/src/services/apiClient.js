@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { v4 as uuidv4 } from 'uuid'
 import { toast } from 'react-hot-toast'
+import config from '../config/config.js'
 
 /**
  * Global API Client
@@ -10,7 +11,7 @@ import { toast } from 'react-hot-toast'
  * and intercepts 401 Unauthorized responses to perform automatic logout.
  */
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: config.apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },

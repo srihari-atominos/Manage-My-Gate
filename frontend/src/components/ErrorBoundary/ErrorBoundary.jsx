@@ -1,5 +1,6 @@
 import React from 'react';
 import logger from '../../utils/logger.js';
+import config from '../../config/config.js';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -59,7 +60,7 @@ class ErrorBoundary extends React.Component {
             </div>
 
             {/* Developer Details Accordion */}
-            {import.meta.env.DEV && (
+            {config.isDev && (
               <details style={styles.details}>
                 <summary style={styles.summary}>Technical details for developers</summary>
                 <div style={styles.detailsContent}>

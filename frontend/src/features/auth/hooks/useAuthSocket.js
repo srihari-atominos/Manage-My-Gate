@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
+import config from '../../../config/config.js';
 import { logout } from '../store/authSlice';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +29,7 @@ export const useAuthSocket = () => {
       return;
     }
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+    const socketUrl = config.socketUrl;
     
     // Connect to WebSocket with token authentication
     const socket = io(socketUrl, {

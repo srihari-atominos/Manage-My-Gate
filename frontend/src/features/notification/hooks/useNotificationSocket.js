@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { io } from 'socket.io-client';
+import config from '../../../config/config.js';
 import { addRealTimeNotification } from '../store/notificationSlice.js';
 
 /**
@@ -18,7 +19,7 @@ export const useNotificationSocket = (userId) => {
     }
 
     // Resolve socket URL from environment configuration with backend fallback
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+    const socketUrl = config.socketUrl;
 
     const socket = io(socketUrl, {
       withCredentials: true,

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
+import config from '../../../config/config.js';
 
 /**
  * Booking-specific socket hook for the My Bookings page.
@@ -19,7 +20,7 @@ export const useResidentBookingSocket = (onRefresh) => {
   useEffect(() => {
     if (!user) return;
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+    const socketUrl = config.socketUrl;
 
     const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],

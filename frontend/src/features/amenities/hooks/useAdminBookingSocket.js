@@ -3,13 +3,15 @@ import { useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 
+import config from '../../../config/config.js';
+
 const useAdminBookingSocket = (onRefreshNeeded) => {
   const { user } = useSelector((state) => state.auth || {});
 
   useEffect(() => {
     if (!user) return;
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+    const socketUrl = config.socketUrl;
     
     const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],

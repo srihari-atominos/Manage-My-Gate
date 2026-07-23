@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import config from '../../../config/config.js';
 import { useComplaints } from '../hooks/useComplaints';
 import ComplaintTopNav from '../components/ComplaintTopNav';
 import '../styles/_complaints.scss';
@@ -36,7 +37,7 @@ const PerformanceAnalytics = () => {
               <p style={{ color: 'var(--text-muted)', margin: 0 }} className="fw-medium">Helpdesk efficiency metrics and feedback</p>
             </div>
             <button className="btn btn-secondary" onClick={() => {
-                window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:5002'}/api/complaints/export?auth_token=${token}`, '_blank');
+                window.open(`${config.apiUrl}/complaints/export?auth_token=${token}`, '_blank');
               }}>
               <i className="fa-solid fa-file-export" style={{ marginRight: '8px' }}></i> Export Report
             </button>

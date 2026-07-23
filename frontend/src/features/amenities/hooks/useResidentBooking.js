@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import config from '../../../config/config.js';
 import { getAmenities, fetchAllAmenitySlots } from '../store/amenitySlice.js';
 import { createBooking } from '../services/amenityBookingApi.js';
 import { useNavigate } from 'react-router-dom';
@@ -79,8 +80,8 @@ export const useResidentBooking = (initialAmenityId) => {
   };
 
   useEffect(() => {
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5002';
-    const socket = io(backendUrl, { auth: { token } });
+    const socketUrl = config.socketUrl;
+    const socket = io(socketUrl, { auth: { token } });
 
     socket.on('connect', () => {
       const userId = user.id || user._id;

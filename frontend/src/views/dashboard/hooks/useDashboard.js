@@ -1,4 +1,5 @@
 import { useSelector } from 'react-redux';
+import config from '../../../config/config.js';
 import { CNavTitle } from '@coreui/react';
 import { useAuth } from '../../../features/auth/hooks/useAuth';
 import navigation from '../../../_nav';
@@ -144,7 +145,7 @@ export const useDashboard = () => {
 
   return {
     groups,
-    appName: import.meta.env.VITE_APP_NAME || 'Portal'
+    appName: config.appName
   };
 };
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import config from '../../config/config.js'
 import {
   CDropdown,
   CDropdownDivider,
@@ -54,7 +55,7 @@ const AppHeaderDropdown = () => {
   }
 
   // Derive dynamic backend static base URL
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5002/api'
+  const apiBase = config.apiUrl
   const backendHost = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase
   const avatarUrl = currentUser?.avatar ? `${backendHost}/${currentUser.avatar.startsWith('/') ? currentUser.avatar.substring(1) : currentUser.avatar}` : null
 

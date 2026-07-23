@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import config from '../../../config/config.js';
 import { fetchMyWallet, addMoneyToWallet } from '../services/walletApi.js';
 import toast from 'react-hot-toast';
 import io from 'socket.io-client'; // Assuming standard setup or adjust if there's a custom hook
@@ -62,9 +63,9 @@ export const useResidentWallet = () => {
 
   // Set up socket listener for real-time updates
   useEffect(() => {
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+    const socketUrl = config.socketUrl;
     // Using a generic connection for demo, in real app use the central socket context if available
-    const socket = io(backendUrl, {
+    const socket = io(socketUrl, {
       auth: { token }
     });
 

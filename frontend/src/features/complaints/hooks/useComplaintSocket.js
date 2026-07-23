@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { io } from 'socket.io-client';
+import config from '../../../config/config.js';
 import { updateComplaintInList, addComplaintToList, fetchDashboardAnalytics } from '../store/complaintSlice';
 import { updateSettingsLocally } from '../store/complaintSettingsSlice';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+const SOCKET_URL = config.socketUrl;
 
 export const useComplaintSocket = (token) => {
   const dispatch = useDispatch();

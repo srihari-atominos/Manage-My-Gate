@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 
+import config from '../config/config.js';
+
 /**
  * Global Socket hook
  * Manages standard socket connection setup.
@@ -9,7 +11,7 @@ export const useSocket = (room) => {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    const socketUrl = config.socketUrl;
     
     socketRef.current = io(socketUrl, {
       withCredentials: true,

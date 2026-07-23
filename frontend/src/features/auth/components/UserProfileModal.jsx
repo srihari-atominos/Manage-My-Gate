@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
+import config from '../../../config/config.js'
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
@@ -92,7 +93,7 @@ const UserProfileModal = ({ visible, onClose }) => {
   }
 
   // Derive static asset base URL
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5002/api'
+  const apiBase = config.apiUrl
   const backendHost = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase
   const existingAvatarUrl = currentUser?.avatar ? `${backendHost}/${currentUser.avatar.startsWith('/') ? currentUser.avatar.substring(1) : currentUser.avatar}` : null
 

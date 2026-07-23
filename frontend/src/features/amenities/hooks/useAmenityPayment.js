@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
+import config from '../../../config/config.js';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { verifyRazorpaySignature } from '../services/paymentApi.js';
@@ -26,7 +27,7 @@ export const useAmenityPayment = () => {
   const processPayment = useCallback(async ({ paymentIntent, onSuccess, onFailure }) => {
     setLoading(true);
     try {
-      const isMock = !import.meta.env.VITE_RAZORPAY_KEY || import.meta.env.VITE_RAZORPAY_KEY === 'rzp_test_mockkey';
+      const isMock = !config.razorpayKey || config.razorpayKey === 'rzp_test_mockkey';
 
       if (isMock) {
         // Wait 1.5 seconds to show the loading spinner "Connecting to payment gateway..."
@@ -68,7 +69,7 @@ export const useAmenityPayment = () => {
       }
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY,
+        key: config.razorpayKey,
         amount: Math.round(paymentIntent.amount * 100), // in paise
         currency: paymentIntent.currency || 'INR',
         name: t('payment.org_name', 'Gated Community'),

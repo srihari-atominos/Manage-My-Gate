@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import config from '../../../config/config.js';
 import { createRazorpayOrder, verifyRazorpayPayment } from '../store/walletSlice';
 import { Modal, Button, Form, Spinner, Alert } from 'react-bootstrap';
 
@@ -32,7 +33,7 @@ const WalletRechargeModal = ({ show, onHide }) => {
       const order = orderAction.payload.data || orderAction.payload;
 
       const options = {
-        key: process.env.REACT_APP_RAZORPAY_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_YOUR_KEY', 
+        key: config.razorpayKeyId, 
         amount: order.amount,
         currency: order.currency,
         name: 'Gated Community Wallet',

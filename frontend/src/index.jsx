@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { Provider } from 'react-redux'
 import 'core-js'
 
+import config from './config/config.js'
 import App from './App'
 import store from './store/store'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
@@ -16,8 +17,8 @@ import { MsalProvider } from '@azure/msal-react'
 
 const msalConfig = {
   auth: {
-    clientId: import.meta.env.VITE_MICROSOFT_CLIENT_ID || '',
-    authority: `https://login.microsoftonline.com/${import.meta.env.VITE_MICROSOFT_TENANT_ID || 'common'}`,
+    clientId: config.microsoftClientId,
+    authority: `https://login.microsoftonline.com/${config.microsoftTenantId}`,
     redirectUri: window.location.origin,
   },
   cache: {
@@ -54,7 +55,7 @@ try {
   console.error('Failed to bootstrap workspace hydration from localStorage:', error)
 }
 
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+const googleClientId = config.googleClientId;
 
 const renderApp = () => (
   <ErrorBoundary>

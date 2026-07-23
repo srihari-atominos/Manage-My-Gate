@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
+import config from '../../../config/config.js';
 import { 
   fetchComplaints, 
   fetchComplaintDetails,
@@ -48,7 +49,7 @@ export const useComplaints = (filters = {}, options = {}) => {
     if (!token) return;
 
     // Socket initialization for real-time updates
-    socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002', {
+    socketRef.current = io(config.socketUrl, {
       auth: { token }
     });
 

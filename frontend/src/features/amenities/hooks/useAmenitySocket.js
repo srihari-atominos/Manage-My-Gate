@@ -4,12 +4,13 @@ import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { getAmenities } from '../store/amenitySlice.js';
 import { bookingConfirmed } from '../store/amenityBookingSlice.js';
+import config from '../../../config/config.js';
 
 /**
  * Custom hook to manage the real-time Socket.io connection for Amenities
  * Listens for amenity and booking changes to dispatch Redux updates.
  */
-export const useAmenitySocket = (params = {}) => {
+export const useAmenitySocket = (params = {}, onUpdate) => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth || {});
   
@@ -23,7 +24,7 @@ export const useAmenitySocket = (params = {}) => {
     if (!user) return;
 
     // Resolve socket URL from environment configuration with backend fallback
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+    const socketUrl = config.socketUrl;
     
     const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],

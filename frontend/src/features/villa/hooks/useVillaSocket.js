@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { io } from 'socket.io-client';
+import config from '../../../config/config.js';
 import { fetchVillasAsync, fetchVillaStatsAsync } from '../store/villaSlice';
 import logger from '../../../utils/logger';
 
@@ -13,7 +14,7 @@ export const useVillaSocket = (orgId) => {
 
     // Prevent duplicate connections on remount
     if (!socketRef.current) {
-      const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+      const socketUrl = config.socketUrl;
       logger.info(`Initializing real-time villa socket connection for org room: org:${orgId}`);
       
       socketRef.current = io(socketUrl, {

@@ -103,6 +103,7 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=${VITE_API_URL:-/api}
+        - VITE_SOCKET_URL=${VITE_SOCKET_URL:-}
         - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-your_google_client_id_here}
         - VITE_MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID:-your_microsoft_client_id_here}
         - VITE_MICROSOFT_TENANT_ID=${MICROSOFT_TENANT_ID:-your_microsoft_tenant_id_here}

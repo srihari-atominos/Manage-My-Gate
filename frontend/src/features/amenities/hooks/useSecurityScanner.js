@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import config from '../../../config/config.js';
 import { checkInBooking, fetchRecentScans } from '../services/amenityBookingApi.js';
 import io from 'socket.io-client';
 
@@ -78,8 +79,8 @@ export const useSecurityScanner = () => {
   useEffect(() => {
     loadRecentScans();
     
-    const backendUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
-    const socket = io(backendUrl, {
+    const socketUrl = config.socketUrl;
+    const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       withCredentials: true
     });

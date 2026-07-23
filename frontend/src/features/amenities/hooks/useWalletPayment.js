@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
+import config from '../../../config/config.js';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { createWalletRechargeOrder, verifyWalletRechargePayment } from '../services/walletApi.js';
@@ -26,7 +27,7 @@ export const useWalletPayment = () => {
   const rechargeWallet = useCallback(async (amountVal, onSuccess, onFailure) => {
     setLoading(true);
     try {
-      const isMock = !import.meta.env.VITE_RAZORPAY_KEY || import.meta.env.VITE_RAZORPAY_KEY === 'rzp_test_mockkey';
+      const isMock = !config.razorpayKey || config.razorpayKey === 'rzp_test_mockkey';
 
       if (isMock) {
         // 1. Create order on backend (mock order)
@@ -80,7 +81,7 @@ export const useWalletPayment = () => {
       const orderData = orderRes.data;
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY,
+        key: config.razorpayKey,
         amount: orderData.amount,
         currency: orderData.currency || 'INR',
         name: t('payment.org_name', 'Gated Community'),

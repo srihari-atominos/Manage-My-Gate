@@ -37,7 +37,9 @@ const stateLoggerMiddleware = (store) => (next) => (action) => {
   return result;
 };
 
-const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
+import config from '../config/config.js';
+
+const isDev = config.isDev;
 
 export const store = configureStore({
   reducer: {

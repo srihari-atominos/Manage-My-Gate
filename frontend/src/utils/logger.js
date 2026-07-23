@@ -1,4 +1,6 @@
-const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
+import config from '../config/config.js';
+
+const isDev = config.isDev;
 
 /**
  * Sends a structured error report to a mock monitoring service (e.g., Sentry, Datadog).

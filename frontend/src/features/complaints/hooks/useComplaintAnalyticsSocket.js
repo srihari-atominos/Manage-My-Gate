@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
+import config from '../../../config/config.js';
 import { fetchDashboardAnalytics } from '../store/complaintSlice.js';
 
 /**
@@ -13,7 +14,7 @@ export const useComplaintAnalyticsSocket = () => {
   useEffect(() => {
     if (!user) return;
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+    const socketUrl = config.socketUrl;
     
     const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
