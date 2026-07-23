@@ -32,6 +32,8 @@ import technicianRouter from '../features/technician/technician.router.js';
 
 const router = Router();
 
+import dashboardFeedRouter from '../features/dashboardFeed/dashboardFeed.routes.js';
+
 // Mount feature routers here
 router.use('/sample', sampleFeatureRouter);
 router.use('/auth', authRouter);
@@ -44,6 +46,7 @@ router.use('/audit-logs', auditLogRouter);
 router.use('/notices', noticeBoardRouter);
 router.use('/assessments', assessmentRouter);
 router.use('/invoices', invoiceRouter);
+router.use('/dashboard-feed', dashboardFeedRouter);
 
 router.use('/templates', messageTemplateRouter);
 router.use('/villas', villaRouter);

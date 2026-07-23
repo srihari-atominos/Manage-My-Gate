@@ -25,9 +25,14 @@ export const useNotificationSocket = (userId) => {
       transports: ['websocket', 'polling'],
     });
 
-    socket.on('connect', () => {
+    const joinRoom = () => {
       socket.emit('join_room', `user:${userId}`);
-    });
+    };
+
+    if (socket.connected) {
+      joinRoom();
+    }
+    socket.on('connect', joinRoom);
 
     socket.on('INCOMING_NOTIFICATION', (payload) => {
       dispatch(addRealTimeNotification(payload));

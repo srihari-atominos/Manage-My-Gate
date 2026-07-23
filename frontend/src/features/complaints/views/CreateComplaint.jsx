@@ -394,8 +394,9 @@ const CreateComplaint = () => {
       setShowSuccess(true);
       setShowDuplicateWarning(false);
     } catch (err) {
-      if (err?.status === 409 || err === 409 || err?.message?.includes('duplicate')) {
-        setDuplicateTicketData(err?.data?.duplicateTicket || null);
+      const errorMsg = err?.message?.toLowerCase() || '';
+      if (err?.status === 409 || err === 409 || errorMsg.includes('duplicate') || errorMsg.includes('similar') || errorMsg.includes('spam')) {
+        setDuplicateTicketData(err?.details?.duplicateTicket || null);
         setShowDuplicateWarning(true);
       } else {
         toast.error('Failed to submit ticket');

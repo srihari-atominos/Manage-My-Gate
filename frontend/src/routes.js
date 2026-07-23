@@ -50,9 +50,7 @@ const VisitorContextManager = React.lazy(() => import('./features/visitorManagem
 // Financial Suite Views
 const BillingView = React.lazy(() => import('./features/billing/views/BillingView'));
 const AssessmentManagementView = React.lazy(() => import('./features/assessment/views/AssessmentManagementView'));
-
-
-
+const DashboardDeepLinkRedirector = React.lazy(() => import('./views/dashboard/components/DashboardDeepLinkRedirector'));
 
 /**
  * Application Routes configuration mapping paths to lazy-loaded components.
@@ -60,6 +58,8 @@ const AssessmentManagementView = React.lazy(() => import('./features/assessment/
 export const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
+  { path: '/dashboard/community-notices/:id', name: 'Notice Deep Link', element: DashboardDeepLinkRedirector },
+  { path: '/dashboard/maintenance/:id', name: 'Maintenance Deep Link', element: DashboardDeepLinkRedirector },
   { path: '/visitor-management', name: 'Visitor Management', element: VisitorContextManager, requiredPermission: ['visitor:resident', 'visitor:guard', 'visitor:admin'] },
   { path: '/visitor-management-resident', name: 'Visitor Passes', element: ResidentVisitorManagementView, requiredPermission: 'visitor:resident' },
   { path: '/visitor-management-admin', name: 'Visitor Admin', element: AdminVisitorManagementViews, requiredPermission: 'visitor:admin' },

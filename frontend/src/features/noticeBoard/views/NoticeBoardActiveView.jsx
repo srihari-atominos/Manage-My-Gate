@@ -11,8 +11,11 @@ import EmptyState from '../components/EmptyState.jsx'
 import { useTranslation } from 'react-i18next'
 import '../styles/_noticeBoard.scss'
 
+import { useLocation } from 'react-router-dom'
+
 export const NoticeBoardActiveView = () => {
   const { t } = useTranslation()
+  const location = useLocation()
 
   const {
     notices,
@@ -38,6 +41,23 @@ export const NoticeBoardActiveView = () => {
   useEffect(() => {
     initializeResidentBoard()
   }, [initializeResidentBoard])
+
+  // Handle deep link from dashboard feed
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const openNoticeId = params.get('openNoticeId');
+    
+    if (openNoticeId && notices && notices.length > 0) {
+      const targetNotice = notices.find(n => n._id === openNoticeId);
+      if (targetNotice) {
+        selectNotice(targetNotice);
+        setDetailsModalVisible(true);
+        if (!targetNotice.isReadByUser) {
+          markAsRead(targetNotice._id);
+        }
+      }
+    }
+  }, [location.search, notices, selectNotice, markAsRead]);
 
   const handleDetailsClick = (notice) => {
     selectNotice(notice)

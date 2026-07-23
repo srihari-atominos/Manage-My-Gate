@@ -226,7 +226,11 @@ export class NoticeBoardService {
       await session.commitTransaction();
 
       // Emit event
-      noticeEvents.emit('NOTICE_UPDATED', updatedNotice);
+      if (notice.status !== 'Published' && updatedNotice.status === 'Published') {
+        noticeEvents.emit('NOTICE_PUBLISHED', updatedNotice);
+      } else {
+        noticeEvents.emit('NOTICE_UPDATED', updatedNotice);
+      }
 
       return updatedNotice;
     } catch (error) {

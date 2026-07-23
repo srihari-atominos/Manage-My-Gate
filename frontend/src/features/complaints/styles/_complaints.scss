@@ -448,15 +448,16 @@
     padding: 20px;
   }
   .complaint-modal {
-    display: block;
+    display: flex; flex-direction: column;
     background: var(--surface); width: 90%; max-width: 560px; border-radius: var(--radius-xl);
     box-shadow: var(--shadow-float); z-index: 10000; position: relative;
-    max-height: 90vh; overflow-y: auto; animation: fadeIn 0.25s ease;
+    max-height: 90vh; overflow: hidden; animation: fadeIn 0.25s ease;
     border: 1px solid var(--border);
   }
   .complaint-modal-header {
     display: flex; justify-content: space-between; align-items: center;
     padding: 24px 32px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
   }
   .complaint-modal-title { font-size: 18px; font-weight: 700; color: var(--ink); margin: 0; }
   .complaint-modal-close {
@@ -464,11 +465,11 @@
     transition: all 0.2s;
   }
   .complaint-modal-close:hover { color: var(--critical); transform: rotate(90deg); }
-  .complaint-modal-body { padding: 32px; }
+  .complaint-modal-body { padding: 32px; overflow-y: auto; flex: 1; }
   .complaint-modal-footer {
     padding: 20px 32px; border-top: 1px solid var(--border);
     display: flex; justify-content: flex-end; gap: 16px; background: var(--bg);
-    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    flex-shrink: 0;
   }
 
   .form-group { margin-bottom: 20px; }

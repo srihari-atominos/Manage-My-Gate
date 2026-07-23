@@ -73,7 +73,7 @@ const AdminLedgersView = () => {
                       <tr key={b._id} data-status={b.status}>
                         <td style={{ color: 'var(--primary)' }} className="fw-bold">#{b.bookingId || b._id.substring(b._id.length - 4).toUpperCase()}</td>
                         <td>
-                          <div  className="fw-bold">{b.userId?.name || 'Unknown Resident'}</div>
+                          <div  className="fw-bold">{b.userId?.name || b.userId?.username || 'Unknown Resident'}</div>
                           <div style={{ color: 'var(--text-muted)' }} className="fw-medium small">
                             {b.userId?.flatNumber ? `Flat ${b.userId.flatNumber}` : ''}{b.userId?.building ? `, ${b.userId.building}` : ''}
                           </div>

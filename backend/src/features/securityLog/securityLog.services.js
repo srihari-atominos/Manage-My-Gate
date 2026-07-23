@@ -20,7 +20,7 @@ class SecurityLogService {
       bookingId: booking?._id,
       bookingReference: booking?.bookingId,
       userId: booking?.userId?._id || booking?.userId,
-      residentName: booking?.userId?.name || 'Unknown',
+      residentName: booking?.userId?.name || booking?.userId?.username || 'Unknown',
       residentPhoto: booking?.userId?.profilePicture,
       amenityId: booking?.amenityId?._id || booking?.amenityId,
       amenityName: booking?.amenityId?.name,

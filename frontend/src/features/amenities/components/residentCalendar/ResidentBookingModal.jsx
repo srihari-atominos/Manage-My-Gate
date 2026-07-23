@@ -76,30 +76,50 @@ const ResidentBookingModal = memo(({
       </CModalHeader>
       <CModalBody style={{ minHeight: '300px' }}>
         
-        <div className="row mb-4">
-          <div className="col-md-6 mb-3 mb-md-0">
-            <label className="fw-medium form-label" >Select Date</label>
-            <input 
-              type="date" 
-              className="form-control" 
-              value={selectedDate} 
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{ borderRadius: '8px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
-            />
-          </div>
-          <div className="col-md-6">
-            <label className="fw-medium form-label" >Select Amenity</label>
-            <select 
-              className="form-control" 
-              value={selectedAmenityId} 
-              onChange={(e) => setSelectedAmenityId(e.target.value)}
-              style={{ borderRadius: '8px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
-            >
-              <option value="">-- Choose Amenity --</option>
-              {activeAmenities.map(a => (
-                <option key={a._id} value={a._id}>{a.name}</option>
-              ))}
-            </select>
+        <div className="mb-4">
+          <label className="fw-medium form-label" >Select Date</label>
+          <input 
+            type="date" 
+            className="form-control" 
+            value={selectedDate} 
+            onChange={(e) => setSelectedDate(e.target.value)}
+            style={{ borderRadius: '8px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', maxWidth: '250px' }}
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="fw-medium form-label mb-2" >Select Amenity</label>
+          <select 
+            className="form-control mb-3" 
+            value={selectedAmenityId} 
+            onChange={(e) => setSelectedAmenityId(e.target.value)}
+            style={{ borderRadius: '8px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', maxWidth: '300px' }}
+          >
+            <option value="">-- Choose Amenity --</option>
+            {activeAmenities.map(a => (
+              <option key={a._id} value={a._id}>{a.name}</option>
+            ))}
+          </select>
+
+          <div className="d-flex flex-wrap gap-2">
+            {activeAmenities.map(a => (
+              <button
+                key={a._id}
+                onClick={() => setSelectedAmenityId(a._id)}
+                className={`btn btn-sm rounded-pill px-3 py-2 d-flex align-items-center gap-2 ${selectedAmenityId === a._id ? 'btn-primary shadow-sm' : 'btn-outline-secondary'}`}
+                style={{ 
+                  backgroundColor: selectedAmenityId !== a._id ? 'var(--bg-secondary)' : '',
+                  border: selectedAmenityId === a._id ? 'none' : '1px solid var(--border-light)',
+                  transition: 'all 0.2s',
+                  fontWeight: selectedAmenityId === a._id ? '600' : '400'
+                }}
+              >
+                {a.name}
+              </button>
+            ))}
+            {activeAmenities.length === 0 && (
+              <span className="text-muted small">No amenities available</span>
+            )}
           </div>
         </div>
 

@@ -39,6 +39,11 @@ export const useResidentBookingSocket = (onRefresh) => {
     };
 
     // Booking lifecycle events
+    socket.on('amenity_booking_created', handleRefresh);
+    socket.on('amenity_booking_cancelled', handleRefresh);
+    socket.on('amenity_booking_checked_in', handleRefresh);
+    socket.on('bookingUpdated', handleRefresh);
+    socket.on('bookingCompleted', handleRefresh);
     socket.on('booking:created', handleRefresh);
     socket.on('booking:updated', handleRefresh);
     socket.on('booking:cancelled', handleRefresh);
@@ -51,6 +56,11 @@ export const useResidentBookingSocket = (onRefresh) => {
     socket.on('payment:failed', handleRefresh);
 
     return () => {
+      socket.off('amenity_booking_created', handleRefresh);
+      socket.off('amenity_booking_cancelled', handleRefresh);
+      socket.off('amenity_booking_checked_in', handleRefresh);
+      socket.off('bookingUpdated', handleRefresh);
+      socket.off('bookingCompleted', handleRefresh);
       socket.off('booking:created', handleRefresh);
       socket.off('booking:updated', handleRefresh);
       socket.off('booking:cancelled', handleRefresh);

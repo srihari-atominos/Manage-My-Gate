@@ -88,12 +88,17 @@ export class AmenityBookingRepository {
                 rejectionReason: 1,
                 numberOfPersons: 1,
                 createdAt: 1,
-                'amenity._id': 1,
-                'amenity.name': 1,
-                'amenity.type': 1,
-                'user._id': 1,
-                'user.name': 1,
-                'user.email': 1
+                userId: {
+                  _id: '$user._id',
+                  name: '$user.name',
+                  username: '$user.username',
+                  email: '$user.email'
+                },
+                amenityId: {
+                  _id: '$amenity._id',
+                  name: '$amenity.name',
+                  type: '$amenity.type'
+                }
               }
             }
           ]
@@ -166,7 +171,7 @@ export class AmenityBookingRepository {
           attendeeDetails: {
             $push: {
               userId: '$userId',
-              userName: '$user.name',
+              userName: { $ifNull: ['$user.name', '$user.username'] },
               numberOfPersons: { $ifNull: ['$numberOfPersons', 1] }
             }
           }
@@ -214,9 +219,9 @@ export class AmenityBookingRepository {
       ]
     })
     .sort({ checkInTime: -1 })
-    .populate('userId', 'name email profilePicture')
+    .populate('userId', 'name username email profilePicture')
     .populate('amenityId', 'name images')
-    .populate('checkedInBy', 'name')
+    .populate('checkedInBy', 'name username')
     .limit(20)
     .lean();
   }
@@ -274,7 +279,8 @@ export class AmenityBookingRepository {
   }
 
   async getKpiStats(orgId) {
-    const today = new Date().toISOString().split('T')[0];
+    const kNow = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    const today = `${kNow.getFullYear()}-${String(kNow.getMonth() + 1).padStart(2, '0')}-${String(kNow.getDate()).padStart(2, '0')}`;
     const matchOrg = { orgId: new mongoose.Types.ObjectId(orgId) };
     const kpis = await AmenityBooking.aggregate([
       { $match: { ...matchOrg, bookingDate: today, status: { $ne: 'cancelled' } } },
@@ -342,17 +348,17 @@ export class AmenityBookingRepository {
    */
   async getDashboardAggregation(orgId) {
     const orgObjId = new mongoose.Types.ObjectId(orgId);
-    const today = new Date().toISOString().split('T')[0];
+    const kNow = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    const today = `${kNow.getFullYear()}-${String(kNow.getMonth() + 1).padStart(2, '0')}-${String(kNow.getDate()).padStart(2, '0')}`;
     
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    const weekStart = startOfWeek.toISOString().split('T')[0];
+    const startOfWeek = new Date(kNow);
+    startOfWeek.setDate(kNow.getDate() - kNow.getDay());
+    const weekStart = `${startOfWeek.getFullYear()}-${String(startOfWeek.getMonth() + 1).padStart(2, '0')}-${String(startOfWeek.getDate()).padStart(2, '0')}`;
     
-    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthStart = `${kNow.getFullYear()}-${String(kNow.getMonth() + 1).padStart(2, '0')}-01`;
+    const prevMonthDate = new Date(kNow.getFullYear(), kNow.getMonth() - 1, 1);
     const prevMonthStart = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}-01`;
-    const prevMonthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const prevMonthEnd = `${kNow.getFullYear()}-${String(kNow.getMonth() + 1).padStart(2, '0')}-01`;
 
     const result = await AmenityBooking.aggregate([
       { $match: { orgId: orgObjId } },

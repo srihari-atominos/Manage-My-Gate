@@ -365,11 +365,19 @@ export class UserService {
     try {
       const user = await this.getUserById(id, session);
 
-      const payload = {};
-      if (name !== undefined) payload.name = name;
-      if (phone !== undefined) payload.phone = phone;
+      const payload = { $set: {}, $unset: {} };
+      if (name !== undefined) payload.$set.name = name;
+      
+      if (phone !== undefined) {
+        if (phone.trim() === '') {
+          payload.$unset.phone = 1;
+        } else {
+          payload.$set.phone = phone.trim();
+        }
+      }
+
       if (avatarFilename !== undefined) {
-        payload.avatar = `public/uploads/avatars/${avatarFilename}`;
+        payload.$set.avatar = `public/uploads/avatars/${avatarFilename}`;
 
         // Delete old avatar from disk if it exists
         if (user.avatar) {
@@ -382,6 +390,9 @@ export class UserService {
           }
         }
       }
+
+      if (Object.keys(payload.$set).length === 0) delete payload.$set;
+      if (Object.keys(payload.$unset).length === 0) delete payload.$unset;
 
       const updatedUser = await userRepository.update(id, payload, session);
       await session.commitTransaction();

@@ -88,7 +88,7 @@ const DateDetailsPanel = memo(({
           </div>
 
           <select
-            className="ddp-select"
+            className="ddp-select mb-3"
             value={selectedAmenityId || ''}
             onChange={(e) => onAmenitySelect(e.target.value)}
           >
@@ -97,6 +97,28 @@ const DateDetailsPanel = memo(({
               <option key={a._id} value={a._id}>{a.name}</option>
             ))}
           </select>
+
+          <div className="d-flex flex-wrap gap-2 mb-3">
+            {activeAmenities.map(a => (
+              <button
+                key={a._id}
+                onClick={() => onAmenitySelect(selectedAmenityId === a._id ? '' : a._id)}
+                className={`btn btn-sm rounded-pill px-3 py-1 d-flex align-items-center gap-2 ${selectedAmenityId === a._id ? 'btn-primary shadow-sm' : 'btn-outline-secondary'}`}
+                style={{ 
+                  backgroundColor: selectedAmenityId !== a._id ? 'var(--bg-secondary, #F8FAFC)' : '',
+                  border: selectedAmenityId === a._id ? 'none' : '1px solid var(--border-light, #E2E8F0)',
+                  transition: 'all 0.2s',
+                  fontWeight: selectedAmenityId === a._id ? '600' : '400',
+                  color: selectedAmenityId !== a._id ? '#475569' : ''
+                }}
+              >
+                {a.name}
+              </button>
+            ))}
+            {activeAmenities.length === 0 && (
+              <span className="text-muted small">No amenities available</span>
+            )}
+          </div>
 
           {selectedAmenityId && (
             <>

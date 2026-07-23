@@ -274,10 +274,7 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
 
   const onSubmit = async (data) => {
     try {
-      if (selectedFiles.length === 0 && existingImages.length === 0) {
-        setValidationError(t('noticeBoard.form.noImageSelected', 'At least one image is required.'))
-        return
-      }
+
       const formDataToSend = new FormData()
       formDataToSend.append('title', data.title)
       formDataToSend.append('description', data.description)
@@ -459,6 +456,28 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
                         }}
                       />
 
+                      {/* Persistent Remove Button */}
+                      <CButton
+                        color="danger"
+                        size="sm"
+                        className="position-absolute p-0 rounded-circle d-flex align-items-center justify-content-center text-white"
+                        style={{
+                          top: '-6px',
+                          right: '-6px',
+                          width: '20px',
+                          height: '20px',
+                          fontSize: '10px',
+                          zIndex: 10
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeExistingImage(idx);
+                        }}
+                        title="Remove"
+                      >
+                        <i className="fa-solid fa-xmark"></i>
+                      </CButton>
+
                       {/* Hover action overlay */}
                       <div
                         className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center gap-1 opacity-0 bg-dark bg-opacity-50"
@@ -482,16 +501,6 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
                           style={{ fontSize: '10px' }}
                         >
                           <i className="fa-solid fa-eye"></i>
-                        </CButton>
-                        <CButton
-                          color="danger"
-                          size="sm"
-                          className="px-1.5 py-0.5 text-white"
-                          onClick={() => removeExistingImage(idx)}
-                          title="Remove"
-                          style={{ fontSize: '10px' }}
-                        >
-                          <i className="fa-solid fa-trash"></i>
                         </CButton>
                       </div>
                     </div>
@@ -517,6 +526,28 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
                           }}
                         />
 
+                        {/* Persistent Remove Button */}
+                        <CButton
+                          color="danger"
+                          size="sm"
+                          className="position-absolute p-0 rounded-circle d-flex align-items-center justify-content-center text-white"
+                          style={{
+                            top: '-6px',
+                            right: '-6px',
+                            width: '20px',
+                            height: '20px',
+                            fontSize: '10px',
+                            zIndex: 10
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeSelectedFile(idx);
+                          }}
+                          title="Remove"
+                        >
+                          <i className="fa-solid fa-xmark"></i>
+                        </CButton>
+
                         {/* Hover action overlay */}
                         <div
                           className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center gap-1 opacity-0 bg-dark bg-opacity-50"
@@ -540,16 +571,6 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
                             style={{ fontSize: '10px' }}
                           >
                             <i className="fa-solid fa-eye"></i>
-                          </CButton>
-                          <CButton
-                            color="danger"
-                            size="sm"
-                            className="px-1.5 py-0.5 text-white"
-                            onClick={() => removeSelectedFile(idx)}
-                            title="Remove"
-                            style={{ fontSize: '10px' }}
-                          >
-                            <i className="fa-solid fa-trash"></i>
                           </CButton>
                         </div>
                       </div>

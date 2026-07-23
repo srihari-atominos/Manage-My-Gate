@@ -16,7 +16,8 @@ class ComplaintService {
     const includeYear = settings?.ticketFormat?.includeYear !== false;
     const seqLength = settings?.ticketFormat?.sequenceLength || 6;
     
-    const lastComplaint = await complaintRepository.findAll(orgId, {}, { skip: 0, limit: 1 }, { createdAt: -1 });
+    // Sort by complaintNumber descending to always get the highest ticket number, avoiding unique key collisions
+    const lastComplaint = await complaintRepository.findAll(orgId, {}, { skip: 0, limit: 1 }, { complaintNumber: -1 });
     let nextNum = 1;
     if (lastComplaint.data.length > 0) {
       const lastComplaintNumber = lastComplaint.data[0].complaintNumber;
@@ -334,7 +335,20 @@ class ComplaintService {
         }
       } else if (technicianId) {
         const technician = await technicianRepository.findById(technicianId, orgId);
-        targetUserId = technician.userId || null;
+        
+        // Self-heal dangling pointers (if user was recreated)
+        const userService = (await import('../user/user.services.js')).default;
+        const currentUser = technician.email ? await userService.getUserByEmail(technician.email) : null;
+        
+        if (currentUser) {
+          targetUserId = currentUser._id;
+          if (String(technician.userId) !== String(targetUserId)) {
+            await technicianRepository.update(technicianId, orgId, { userId: targetUserId });
+          }
+        } else {
+          targetUserId = technician.userId || null;
+        }
+        
         targetPhone = technician.phone || null;
       }
 

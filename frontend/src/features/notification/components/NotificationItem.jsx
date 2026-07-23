@@ -149,6 +149,8 @@ const navigate = useNavigate();
       finalActionUrl = '/complaints';
     } else if (finalActionUrl === '/assignee') {
       finalActionUrl = '/admin/complaints/assignee';
+    } else if (finalActionUrl === '/resident/notice-board') {
+      finalActionUrl = '/notices/board';
     } else if (finalActionUrl.startsWith('#/')) {
       finalActionUrl = finalActionUrl.replace('#', '');
     }

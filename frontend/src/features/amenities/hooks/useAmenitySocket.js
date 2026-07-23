@@ -58,6 +58,10 @@ export const useAmenitySocket = (params = {}) => {
     socket.on('amenity:deleted', handleUpdate);
 
     // Booking Events that could affect availability
+    socket.on('amenity_booking_created', handleUpdate);
+    socket.on('amenity_booking_cancelled', handleUpdate);
+    socket.on('amenity_booking_checked_in', handleUpdate);
+    socket.on('bookingUpdated', handleUpdate);
     socket.on('booking:created', handleUpdate);
     socket.on('booking:updated', handleUpdate);
     socket.on('booking:status_updated', handleUpdate);
@@ -68,6 +72,10 @@ export const useAmenitySocket = (params = {}) => {
       socket.off('amenity:created', handleUpdate);
       socket.off('amenity:updated', handleUpdate);
       socket.off('amenity:deleted', handleUpdate);
+      socket.off('amenity_booking_created', handleUpdate);
+      socket.off('amenity_booking_cancelled', handleUpdate);
+      socket.off('amenity_booking_checked_in', handleUpdate);
+      socket.off('bookingUpdated', handleUpdate);
       socket.off('booking:created', handleUpdate);
       socket.off('booking:updated', handleUpdate);
       socket.off('booking:status_updated', handleUpdate);
