@@ -126,8 +126,9 @@ export const bulkUploadVillasRules = [
     .trim(),
   body('villas.*.residentType')
     .optional()
-    .isIn(['Owner', 'Tenant', 'Family', 'Guest', 'None'])
-    .withMessage('Resident type must be one of: Owner, Tenant, Family, Guest, None'),
+    .isString()
+    .withMessage('Resident type must be a string')
+    .trim(),
   body('villas.*.roleName')
     .optional()
     .isString()
@@ -143,16 +144,18 @@ export const assignExistingUserRules = [
   body('residencyType')
     .notEmpty()
     .withMessage('Residency type (residencyType) is required')
-    .isIn(['Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff'])
-    .withMessage('Residency type must be one of: Resident Owner, Tenant, Family Member, Non-Resident Owner, Staff'),
+    .isString()
+    .withMessage('Residency type must be a string')
+    .trim(),
 ];
 
 export const updateResidencyTypeRules = [
   body('residencyType')
     .notEmpty()
     .withMessage('Residency type (residencyType) is required')
-    .isIn(['Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff'])
-    .withMessage('Residency type must be one of: Resident Owner, Tenant, Family Member, Non-Resident Owner, Staff'),
+    .isString()
+    .withMessage('Residency type must be a string')
+    .trim(),
 ];
 
 export default {

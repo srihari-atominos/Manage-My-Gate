@@ -75,15 +75,33 @@ export class OrganizationService {
 
       // Generate a new token if userId is provided
       let token = null;
+      let userObj = null;
       if (userId) {
         const authService = (await import('../auth/auth.services.js')).default;
         const user = await authService.getUserById(userId);
-        token = await authService.generateToken(user, orgId);
+        const { tokenPayload, permissions } = await authService.getScopedTokenPayload(user, orgId);
+        const { signToken } = await import('../../utils/jwt.utils.js');
+        token = signToken(tokenPayload);
+        userObj = {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          role: tokenPayload.role,
+          roles: tokenPayload.roles,
+          permissions,
+          orgId: tokenPayload.orgId,
+          isPlatform: tokenPayload.isPlatform,
+          visitorContext: tokenPayload.visitorContext,
+          villaId: tokenPayload.villaId,
+          villaNumber: tokenPayload.villaNumber,
+          villaBlock: tokenPayload.villaBlock,
+          residentType: tokenPayload.residentType,
+        };
       }
 
-      return token ? { organization: updatedOrg, token } : updatedOrg;
+      return token ? { organization: updatedOrg, token, user: userObj } : updatedOrg;
     } catch (error) {
-      if (localSession) {
+      if (localSession && localSession.inTransaction()) {
         await localSession.abortTransaction();
       }
       throw error;
@@ -135,10 +153,14 @@ export class OrganizationService {
 
       return updatedOrg;
     } catch (error) {
-      await localSession.abortTransaction();
+      if (localSession && localSession.inTransaction()) {
+        await localSession.abortTransaction();
+      }
       throw error;
     } finally {
-      await localSession.endSession();
+      if (localSession) {
+        await localSession.endSession();
+      }
     }
   }
 
@@ -160,15 +182,7 @@ export class OrganizationService {
 
     const session = await mongoose.startSession();
     session.startTransaction();
-
     try {
-      if (password) {
-        const userService = (await import('../user/user.services.js')).default;
-        const { hashPassword } = await import('../../utils/crypto.utils.js');
-        const hashedPassword = await hashPassword(password);
-        await userService.updateUser(userId, { password: hashedPassword }, session);
-      }
-
       // 1. Create Organization
       const orgPayload = {
         name: trimmedName,
@@ -258,17 +272,13 @@ export class OrganizationService {
       // 3. Create the Organization Membership linking user, org, and role
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       await orgMembershipService.createMembership(
-        { userId, orgId: newOrg._id, roleIds: [adminRole._id] },
+        { userId, orgId: newOrg._id, roleIds: [adminRole._id], status: 'Active' },
         session
       );
 
-      // Update User roles array to include the newly created Community Admin role
-      const User = (await import('../user/user.model.js')).default;
-      await User.updateOne(
-        { _id: userId },
-        { $addToSet: { roles: adminRole._id } },
-        { session }
-      );
+      // Update User roles array via user service to respect boundaries
+      const userService = (await import('../user/user.services.js')).default;
+      await userService.updateUserRoles(userId, newOrg._id, ['Community Admin'], session);
 
       await session.commitTransaction();
 
@@ -294,10 +304,14 @@ export class OrganizationService {
         availableWorkspaces,
       };
     } catch (error) {
-      await session.abortTransaction();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
-      await session.endSession();
+      if (session) {
+        await session.endSession();
+      }
     }
   }
 }

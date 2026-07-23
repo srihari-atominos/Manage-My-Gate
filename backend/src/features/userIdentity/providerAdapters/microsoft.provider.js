@@ -31,20 +31,31 @@ export class MicrosoftProvider {
         getKey,
         {
           audience: config.sso.microsoftClientId,
-          issuer: [
-            'https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0', // Personal accounts tenant
-            // If enterprise tenants are allowed, their specific issuer URLs would be added here, or dynamically checked
-          ],
           ignoreExpiration: false,
         },
         (err, decoded) => {
           if (err) {
-            // For multitenant apps, issuer checking can be complex. If it fails due to issuer, 
-            // we can catch and re-verify without issuer if we want to allow any tenant.
-            // For now, if we get an error, we reject.
             reject(new HttpError(401, `Invalid Microsoft Token: ${err.message}`));
           } else {
-            resolve(decoded);
+            const iss = decoded?.iss;
+            const tenantId = config.sso.microsoftTenantId;
+            let isValidIssuer = false;
+
+            if (tenantId && tenantId !== 'common' && tenantId !== 'organizations' && tenantId !== 'consumers') {
+              isValidIssuer = (
+                iss === `https://login.microsoftonline.com/${tenantId}/v2.0` ||
+                iss === `https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0`
+              );
+            } else {
+              const match = iss ? iss.match(/^https:\/\/login\.microsoftonline\.com\/([^/]+)\/v2\.0$/) : null;
+              isValidIssuer = !!match;
+            }
+
+            if (!isValidIssuer) {
+              reject(new HttpError(401, `Invalid Microsoft Token: Issuer '${iss}' is not allowed.`));
+            } else {
+              resolve(decoded);
+            }
           }
         }
       );

@@ -33,6 +33,7 @@ const DefaultLayout = React.lazy(() => import('./layout/DefaultLayout'))
 const Login = React.lazy(() => import('./views/pages/login/Login'))
 const Register = React.lazy(() => import('./views/pages/register/Register'))
 const AcceptInvitePage = React.lazy(() => import('./views/pages/acceptInvite/AcceptInvitePage'))
+const InviteHandler = React.lazy(() => import('./views/pages/invite/InviteHandler'))
 const Page404 = React.lazy(() => import('./views/pages/page404/Page404'))
 const Page500 = React.lazy(() => import('./views/pages/page500/Page500'))
 const GetStarted = React.lazy(() => import('./views/pages/getStarted/GetStarted'))
@@ -96,6 +97,7 @@ const App = () => {
             <Route exact path="/start" name="Get Started Page" element={<GetStarted />} />
             <Route exact path="/accept-invite/:token" name="Accept Invitation Page" element={<AcceptInvitePage />} />
             <Route exact path="/accept-invite" name="Accept Invitation Page" element={<AcceptInvitePage />} />
+            <Route exact path="/invite" name="Invite Handler" element={<InviteHandler />} />
             <Route exact path="/404" name="Page 404" element={<Page404 />} />
             <Route exact path="/500" name="Page 500" element={<Page500 />} />
             <Route

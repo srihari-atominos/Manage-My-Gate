@@ -651,6 +651,42 @@ export class VillaService {
       type: { $in: types }
     }).session(session);
   }
+
+  async removeUserFromAllVillasInOrg(userId, orgId, session = null) {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info(`removeUserFromAllVillasInOrg request received`, { userId, orgId, correlationId });
+    await Villa.updateMany(
+      { orgId, 'residents.userId': userId },
+      { $pull: { residents: { userId: userId } } }
+    ).session(session);
+  }
+
+  async assignResidentToVilla(villaId, userId, residencyType, session = null) {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info(`assignResidentToVilla request received`, { villaId, userId, residencyType, correlationId });
+
+    const villa = await Villa.findById(villaId).session(session);
+    if (villa) {
+      const alreadyAssigned = villa.residents.some(r => String(r.userId) === String(userId));
+      if (!alreadyAssigned) {
+        villa.residents.push({
+          userId,
+          residencyType,
+          isPrimary: false,
+          assignedAt: new Date()
+        });
+      }
+
+      // Update occupancy status
+      if (residencyType.includes('Owner') || residencyType.includes('Tenant') || residencyType.includes('Family')) {
+        villa.status = 'Occupied';
+      } else if (villa.status === 'Vacant') {
+        villa.status = 'Occupied';
+      }
+
+      await villa.save({ session });
+    }
+  }
 }
 
 export default new VillaService();

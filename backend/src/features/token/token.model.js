@@ -7,6 +7,12 @@ const tokenSchema = new mongoose.Schema(
       ref: 'User',
       required: [true, 'User ID is required'],
     },
+    orgId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: false,
+      default: null,
+    },
     token: {
       type: String,
       required: [true, 'Token is required'],

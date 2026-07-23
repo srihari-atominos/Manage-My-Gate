@@ -35,8 +35,16 @@ export class OrgMembershipService {
     return await orgMembershipRepository.updateRoles(userId, orgId, roleIds, session);
   }
 
+  async updateStatus(userId, orgId, status, session = null) {
+    return await orgMembershipRepository.updateStatus(userId, orgId, status, session);
+  }
+
   async deleteMembershipsByUserId(userId, session = null) {
     return await orgMembershipRepository.deleteByUserId(userId, session);
+  }
+
+  async deleteMembership(userId, orgId, session = null) {
+    return await orgMembershipRepository.deleteByUserIdAndOrgId(userId, orgId, session);
   }
 
   async clearRoleFromMemberships(roleId, session = null) {

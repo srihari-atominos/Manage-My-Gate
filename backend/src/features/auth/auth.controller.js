@@ -32,6 +32,16 @@ export class AuthController {
     }
   }
 
+  async validateInvite(req, res, next) {
+    try {
+      const token = req.query.token;
+      const data = await authService.validateInvite(token);
+      res.success(data, 'Invitation token validated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async acceptInvite(req, res, next) {
     try {
       const { token, password } = req.body;
@@ -84,8 +94,8 @@ export class AuthController {
 
   async googleLogin(req, res, next) {
     try {
-      const { token } = req.body;
-      const data = await authService.loginWithGoogle(token);
+      const { token, inviteToken } = req.body;
+      const data = await authService.loginWithGoogle(token, inviteToken);
       setAuthCookie(res, data.token);
       res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
       res.success(data, 'Google login successful');
@@ -96,8 +106,8 @@ export class AuthController {
 
   async microsoftLogin(req, res, next) {
     try {
-      const { token } = req.body;
-      const data = await authService.loginWithMicrosoft(token);
+      const { token, inviteToken } = req.body;
+      const data = await authService.loginWithMicrosoft(token, inviteToken);
       setAuthCookie(res, data.token);
       res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
       res.success(data, 'Microsoft login successful');
@@ -185,8 +195,7 @@ export class AuthController {
   async verifyResetPasswordOtp(req, res, next) {
     try {
       const { identifier, code } = req.body;
-      const otpService = (await import('../otp/otp.services.js')).default;
-      await otpService.verifyOTP(identifier, code, 'RESET', null, false);
+      await authService.verifyResetPasswordOtp(identifier, code);
       res.success(null, 'OTP verified successfully');
     } catch (error) {
       next(error);

@@ -58,7 +58,6 @@ const villaSchema = new mongoose.Schema(
         },
         residencyType: {
           type: String,
-          enum: ['Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff'],
           default: 'Tenant',
         },
         isPrimary: {

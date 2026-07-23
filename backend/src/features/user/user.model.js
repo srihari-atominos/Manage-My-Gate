@@ -60,7 +60,6 @@ const userSchema = new mongoose.Schema(
     },
     residencyType: {
       type: String,
-      enum: ['Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff', 'None'],
       default: 'None',
     },
     roles: {
@@ -77,5 +76,5 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-export const User = mongoose.model('User', userSchema);
+export const User = mongoose.models.User || mongoose.model('User', userSchema);
 export default User;

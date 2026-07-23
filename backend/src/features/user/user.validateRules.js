@@ -20,8 +20,9 @@ export const inviteUserRules = [
     .withMessage('Villa ID must be a valid Mongo ID'),
   body('residentType')
     .optional()
-    .isIn(['Owner', 'Tenant', 'Family', 'Guest', 'None'])
-    .withMessage('Resident type must be one of: Owner, Tenant, Family, Guest, None'),
+    .isString()
+    .withMessage('Resident type must be a string')
+    .trim(),
   body('roleName')
     .optional()
     .isString()
@@ -69,8 +70,9 @@ export const bulkInviteUserRules = [
     .trim(),
   body('invitations.*.residentType')
     .optional()
-    .isIn(['Owner', 'Tenant', 'Family', 'Guest', 'None'])
-    .withMessage('Resident type must be one of: Owner, Tenant, Family, Guest, None'),
+    .isString()
+    .withMessage('Resident type must be a string')
+    .trim(),
   body('invitations.*.roleName')
     .notEmpty()
     .withMessage('Role name is required')

@@ -48,12 +48,30 @@ export class NoticeBoardController {
       }
 
       // Extract permissions to restrict residents to Published notices only
-      const userPermissions = (req.user.permissions || []).map((p) => p.replace(':', '.'))
+      let permissions = [];
+      if (req.user.roleId) {
+        const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+        const permissionsList = await rolePermissionService.getPermissionsByRoleId(req.user.roleId);
+        permissions = permissionsList.map((p) => p.name);
+      } else if (req.user.role && req.tenant?.orgId) {
+        try {
+          const roleService = (await import('../role/role.services.js')).default;
+          const role = await roleService.getRoleByName(req.user.role, req.tenant.orgId);
+          if (role) {
+            const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+            const permissionsList = await rolePermissionService.getPermissionsByRoleId(role._id);
+            permissions = permissionsList.map((p) => p.name);
+          }
+        } catch (err) {
+          console.error('[NoticeBoard Controller] Fallback permission resolution failed:', err.message);
+        }
+      }
+      const userPermissions = permissions.map((p) => p.replace(':', '.'));
       const hasCreatePermission =
         req.user.role === 'Super Admin' ||
         req.user.role === 'Platform Super Admin' ||
         userPermissions.includes('notices.create') ||
-        userPermissions.includes('notices:create')
+        userPermissions.includes('notices:create');
       const restrictToPublished = !hasCreatePermission
 
       // Extract filters and search parameters

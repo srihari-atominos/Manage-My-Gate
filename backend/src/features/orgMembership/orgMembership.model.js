@@ -1,4 +1,7 @@
 import mongoose from 'mongoose';
+import '../organization/organization.model.js';
+import '../role/role.model.js';
+import '../villa/villa.model.js';
 
 const orgMembershipSchema = new mongoose.Schema(
   {
@@ -23,16 +26,35 @@ const orgMembershipSchema = new mongoose.Schema(
         ref: 'Role',
       }
     ],
+    // Deprecated: Use units array instead. Kept for backward compatibility.
     villaId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Villa',
       required: false,
       default: null,
     },
+    // Deprecated: Use units array instead. Kept for backward compatibility.
     residentType: {
       type: String,
-      enum: ['Owner', 'Tenant', 'Family', 'Guest', 'None'],
       default: 'None',
+    },
+    units: [
+      {
+        villaId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Villa',
+          required: true,
+        },
+        residentType: {
+          type: String,
+          default: 'None',
+        },
+      }
+    ],
+    status: {
+      type: String,
+      enum: ['Pending', 'Active'],
+      default: 'Pending',
     },
   },
   {
@@ -42,5 +64,5 @@ const orgMembershipSchema = new mongoose.Schema(
 
 orgMembershipSchema.index({ userId: 1, orgId: 1 }, { unique: true });
 
-export const OrgMembership = mongoose.model('OrgMembership', orgMembershipSchema);
+export const OrgMembership = mongoose.models.OrgMembership || mongoose.model('OrgMembership', orgMembershipSchema);
 export default OrgMembership;

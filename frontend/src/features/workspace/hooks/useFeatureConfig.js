@@ -87,35 +87,10 @@ export const useFeatureConfig = () => {
         })
       );
 
-      // If a new token is returned, update Redux and LocalStorage
-      if (newToken) {
-        try {
-          const base64Url = newToken.split('.')[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const jsonPayload = decodeURIComponent(
-            window.atob(base64)
-              .split('')
-              .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-              .join('')
-          );
-          const decoded = JSON.parse(jsonPayload);
-
-          if (decoded) {
-            const updatedUser = {
-              ...currentUser,
-              id: decoded.id,
-              email: decoded.email,
-              username: decoded.username,
-              role: decoded.role,
-              permissions: decoded.permissions,
-              orgId: decoded.orgId,
-              isPlatformAdmin: decoded.isPlatformAdmin,
-            };
-            dispatch(updateTokenAndUser({ token: newToken, user: updatedUser }));
-          }
-        } catch (decodeErr) {
-          console.error('Failed to decode fresh JWT token:', decodeErr);
-        }
+      // Update Redux and LocalStorage if updated user data and token are returned
+      const updatedUser = dataPayload?.user;
+      if (newToken && updatedUser) {
+        dispatch(updateTokenAndUser({ token: newToken, user: updatedUser }));
       }
 
       setLoading(false);

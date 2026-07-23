@@ -21,6 +21,7 @@ export class OrgMembershipRepository {
       .populate({ path: 'roleId', select: 'name' })
       .populate({ path: 'roleIds', select: 'name' })
       .populate({ path: 'villaId' })
+      .populate({ path: 'units.villaId' })
       .session(session || null);
   }
 
@@ -47,7 +48,7 @@ export class OrgMembershipRepository {
       filterMatch['rolesPopulated.name'] = { $in: filters.roles };
     }
     if (filters.status && filters.status.length > 0) {
-      filterMatch['user.status'] = { $in: filters.status };
+      filterMatch['status'] = { $in: filters.status };
     }
 
     const pipeline = [
@@ -135,7 +136,7 @@ export class OrgMembershipRepository {
                   else: { $ifNull: [{ $arrayElemAt: ['$rolePopulatedFallback.name', 0] }, ''] }
                 }
               },
-              status: '$user.status',
+              status: '$status',
               villaId: '$villa._id',
               villaNumber: '$villa.unitNumber',
               villaBlock: '$villa.blockOrBuilding',
@@ -165,9 +166,24 @@ export class OrgMembershipRepository {
     );
   }
 
+  async updateStatus(userId, orgId, status, session = null) {
+    return await OrgMembership.findOneAndUpdate(
+      { userId, orgId },
+      { status },
+      { returnDocument: 'after', runValidators: true, session: session || null }
+    );
+  }
+
   async deleteByUserId(userId, session) {
     return await OrgMembership.deleteMany(
       { userId },
+      session ? { session } : undefined
+    );
+  }
+
+  async deleteByUserIdAndOrgId(userId, orgId, session = null) {
+    return await OrgMembership.deleteOne(
+      { userId, orgId },
       session ? { session } : undefined
     );
   }
@@ -192,6 +208,7 @@ export class OrgMembershipRepository {
   async findByUserIdAndOrgIdWithPopulate(userId, orgId, session = null) {
     return await OrgMembership.findOne({ userId, orgId })
       .populate({ path: 'villaId' })
+      .populate({ path: 'units.villaId' })
       .session(session);
   }
 }
