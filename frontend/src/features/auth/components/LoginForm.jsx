@@ -127,7 +127,8 @@ export const LoginForm = () => {
   const { instance: msalInstance } = useMsal();
 
   const handleMicrosoftLogin = () => {
-    import('react-hot-toast').then(({ toast }) => {
+    let retries = 0;
+    const triggerLogin = () => {
       msalInstance.loginPopup({
         scopes: ['openid', 'profile', 'user.read'],
       })
@@ -139,14 +140,22 @@ export const LoginForm = () => {
       .catch((err) => {
         console.error('Microsoft login failed:', err);
         // Automatically recover from MSAL's notoriously sticky interaction_in_progress bug
-        if (err.errorCode === 'interaction_in_progress' || (err.message && err.message.includes('interaction_in_progress'))) {
+        if (
+          (err.errorCode === 'interaction_in_progress' || (err.message && err.message.includes('interaction_in_progress'))) &&
+          retries < 3
+        ) {
+          retries++;
           sessionStorage.clear();
-          toast.error(t('auth.login.msalStuckCleared', 'Stuck Microsoft session cleared! Please click the button one more time.'));
+          triggerLogin();
         } else {
-          toast.error(t('auth.login.msalFailed', 'Microsoft login failed: {{error}}', { error: err.message || 'Unknown error' }));
+          import('react-hot-toast').then(({ toast }) => {
+            toast.error(t('auth.login.msalFailed', 'Microsoft login failed: {{error}}', { error: err.message || 'Unknown error' }));
+          });
         }
       });
-    });
+    };
+
+    triggerLogin();
   };
 
   const handleSendOtp = async (identifier, isEmail) => {

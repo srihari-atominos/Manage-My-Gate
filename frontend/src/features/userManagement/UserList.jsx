@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useMemo } from 'react'
-import { CBadge, CAlert, CButton } from '@coreui/react'
+import { CBadge, CAlert, CButton, CSpinner } from '@coreui/react'
 import { toast } from 'react-hot-toast'
 
 // Import generic layout components
@@ -63,6 +63,7 @@ const UserList = () => {
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showBulkInviteModal, setShowBulkInviteModal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(null)
 
   // ── Handlers ──
 
@@ -72,7 +73,7 @@ const UserList = () => {
       const token = response.invitationToken
       if (token) {
         const clientUrl = window.location.origin + window.location.pathname
-        const inviteLink = `${clientUrl}#/accept-invite/${token}`
+        const inviteLink = `${clientUrl}#/invite?token=${token}`
         toast((t) => (
           <div className="d-flex align-items-center gap-2">
             <span style={{ fontSize: '0.8rem' }}>
@@ -99,9 +100,23 @@ const UserList = () => {
     setShowInviteModal(false)
   }
 
-  const handleDeleteClick = (user) => {
+  const handleResendInvite = (user) => {
+    handleSendInvite({
+      email: user.email,
+      villaId: user.villaId || null,
+      residentType: user.residentType || 'None',
+      roleName: user.role || null,
+    })
+  }
+
+  const handleDeleteClick = async (user) => {
     if (window.confirm(`Delete user "${user.name}"? This action cannot be undone.`)) {
-      deleteUser(user.id)
+      try {
+        setIsDeleting(user.id)
+        await deleteUser(user.id)
+      } finally {
+        setIsDeleting(null)
+      }
     }
   }
 
@@ -199,8 +214,24 @@ const UserList = () => {
   // ── Render Actions for Data Grid ──
   const renderRowActions = (user) => {
     const isSelf = user.id === currentUserId
+    const isPending = user.status === 'Pending'
     return (
       <div className="d-flex gap-2">
+        {/* Resend Invite — mail icon (only for pending users) */}
+        {isPending && (
+          <ActionIconButton
+            id={`resend-invite-${user.id}`}
+            color="success"
+            onClick={() => handleResendInvite(user)}
+            title={`Resend invitation to ${user.name}`}
+            icon={
+              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <polyline points="22,6 12,13 2,6" />
+              </svg>
+            }
+          />
+        )}
         {/* Manage Roles — key icon */}
         <ActionIconButton
           id={`manage-roles-${user.id}`}
@@ -220,15 +251,19 @@ const UserList = () => {
           color="danger"
           onClick={() => handleDeleteClick(user)}
           title={isSelf ? 'You cannot modify your own account.' : `Delete ${user.name}`}
-          disabled={isSelf}
+          disabled={isSelf || isDeleting === user.id}
           icon={
-            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6" />
-              <path d="M14 11v6" />
-              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-            </svg>
+            isDeleting === user.id ? (
+              <CSpinner size="sm" style={{ width: '13px', height: '13px' }} />
+            ) : (
+              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6" />
+                <path d="M14 11v6" />
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+              </svg>
+            )
           }
         />
       </div>

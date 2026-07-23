@@ -104,10 +104,14 @@ export class AuthService {
         availableWorkspaces: [],
       };
     } catch (error) {
-      await session.abortTransaction();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
-      await session.endSession();
+      if (session) {
+        await session.endSession();
+      }
     }
   }
 
@@ -121,13 +125,14 @@ export class AuthService {
     const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
     const memberships = await orgMembershipService.getUserMemberships(user._id);
 
-    // Active memberships only (where organization status is Active)
-    const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active');
+    // Active memberships only (where organization status is Active and membership status is Active)
+    const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active' && m.status === 'Active');
 
     let selectedMembership = null;
+    const targetOrgIdStr = targetOrgId ? targetOrgId.toString() : null;
 
-    if (targetOrgId) {
-      selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgId);
+    if (targetOrgIdStr) {
+      selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgIdStr);
       if (!selectedMembership) {
         throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
       }
@@ -250,6 +255,18 @@ export class AuthService {
       throw new HttpError(401, 'Invalid credentials. User not found.');
     }
 
+    if (user.status === 'Suspended' || user.status === 'Blocked') {
+      throw new HttpError(403, `Your account has been ${user.status.toLowerCase()}. Please contact support.`);
+    }
+
+    if (user.status === 'Pending Verification' && !inviteToken) {
+      throw new HttpError(403, 'Your account is pending verification. Please accept your workspace invitation first.');
+    }
+
+    if (!user.password) {
+      throw new HttpError(401, 'Invalid credentials. Password is not set for this account.');
+    }
+
     // 2. Verify password with bcrypt compare
     const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
@@ -259,16 +276,16 @@ export class AuthService {
     // 2b. Process invitation token if provided during login
     let targetOrgIdFromInvite = null;
     if (inviteToken) {
-      const crypto = (await import('crypto')).default;
-      const hashedToken = crypto.createHash('sha256').update(inviteToken).digest('hex');
-      const tokenRepository = (await import('../token/token.repository.js')).default;
-      const tokenDoc = await tokenRepository.findOne({ token: hashedToken, type: 'INVITATION' });
-
-      if (tokenDoc && tokenDoc.userId.toString() === user._id.toString()) {
-        targetOrgIdFromInvite = tokenDoc.orgId;
+      try {
+        const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION');
+        targetOrgIdFromInvite = orgId;
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-        await orgMembershipService.updateStatus(user._id, tokenDoc.orgId, 'Active');
-        await tokenRepository.deleteOne({ _id: tokenDoc._id });
+        await orgMembershipService.updateStatus(user._id, orgId, 'Active');
+      } catch (tokenError) {
+        if (user.status === 'Pending Verification') {
+          throw tokenError;
+        }
+        console.warn('Login processed with invalid or expired invite token for active user:', tokenError.message);
       }
     }
 
@@ -416,10 +433,14 @@ export class AuthService {
         availableWorkspaces,
       };
     } catch (error) {
-      await session.abortTransaction();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
-      await session.endSession();
+      if (session) {
+        await session.endSession();
+      }
     }
   }
 
@@ -440,18 +461,26 @@ export class AuthService {
   /**
    * Verifies Google token, finds or registers the user, and logs them in.
    * @param {string} googleToken - The Google ID token
+   * @param {string} [inviteToken=null] - Optional invitation token
    */
-  async loginWithGoogle(googleToken) {
+  async loginWithGoogle(googleToken, inviteToken = null) {
     const identityData = await userIdentityService.verifyAndNormalizeProviderToken('google', googleToken);
+    if (inviteToken) {
+      identityData.inviteToken = inviteToken;
+    }
     return await this._handleSsoAuthentication(identityData);
   }
 
   /**
    * Verifies Microsoft token, finds or registers the user, and logs them in.
    * @param {string} microsoftToken - The Microsoft ID token (JWT)
+   * @param {string} [inviteToken=null] - Optional invitation token
    */
-  async loginWithMicrosoft(microsoftToken) {
+  async loginWithMicrosoft(microsoftToken, inviteToken = null) {
     const identityData = await userIdentityService.verifyAndNormalizeProviderToken('microsoft', microsoftToken);
+    if (inviteToken) {
+      identityData.inviteToken = inviteToken;
+    }
     return await this._handleSsoAuthentication(identityData);
   }
 
@@ -563,16 +592,16 @@ export class AuthService {
       // Process invitation token if provided during SSO login
       let targetOrgIdFromInvite = null;
       if (inviteToken) {
-        const crypto = (await import('crypto')).default;
-        const hashedToken = crypto.createHash('sha256').update(inviteToken).digest('hex');
-        const tokenRepository = (await import('../token/token.repository.js')).default;
-        const tokenDoc = await tokenRepository.findOne({ token: hashedToken, type: 'INVITATION' }, session);
-
-        if (tokenDoc && tokenDoc.userId.toString() === user._id.toString()) {
-          targetOrgIdFromInvite = tokenDoc.orgId;
+        try {
+          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
+          targetOrgIdFromInvite = orgId;
           const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-          await orgMembershipService.updateStatus(user._id, tokenDoc.orgId, 'Active', session);
-          await tokenRepository.deleteOne({ _id: tokenDoc._id }, session);
+          await orgMembershipService.updateStatus(user._id, orgId, 'Active', session);
+        } catch (tokenError) {
+          if (user.status === 'Pending Verification') {
+            throw tokenError;
+          }
+          console.warn('SSO login processed with invalid or expired invite token for active user:', tokenError.message);
         }
       }
 
@@ -604,10 +633,14 @@ export class AuthService {
       };
     } catch (error) {
       authEvents.emit('LOGIN_FAILED', { email: email, reason: error.message, method: provider });
-      await session.abortTransaction();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
-      await session.endSession();
+      if (session) {
+        await session.endSession();
+      }
     }
   }
 
@@ -747,10 +780,14 @@ export class AuthService {
         availableWorkspaces,
       };
     } catch (error) {
-      await session.abortTransaction();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
-      await session.endSession();
+      if (session) {
+        await session.endSession();
+      }
     }
   }
 
@@ -829,10 +866,14 @@ export class AuthService {
         availableWorkspaces,
       };
     } catch (error) {
-      await session.abortTransaction();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
-      await session.endSession();
+      if (session) {
+        await session.endSession();
+      }
     }
   }
 
@@ -900,10 +941,14 @@ export class AuthService {
 
       return true;
     } catch (error) {
-      await session.abortTransaction();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
-      await session.endSession();
+      if (session) {
+        await session.endSession();
+      }
     }
   }
 
@@ -959,7 +1004,7 @@ export class AuthService {
       const hashedPassword = await hashPassword(randomPassword);
 
       // Call userService.activateUser to activate user and set password
-      await userService.activateUser(userId, hashedPassword, session);
+      const activatedUser = await userService.activateUser(userId, hashedPassword, session);
 
       // Update OrgMembership status to Active for this organization
       if (orgId) {
@@ -981,21 +1026,21 @@ export class AuthService {
       // --- TRANSACTION BOUNDARY END ---
 
       // Resolve scoped token and workspaces (outside transaction)
-      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
+      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(activatedUser);
       const token = signToken(tokenPayload);
 
       // Emit events for successful login/auth write operations
-      authEvents.emit('PROVIDER_LOGIN', { userId: user._id, provider });
-      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: provider });
-      authEvents.emit('USER_ACTIVATED', { userId: user._id });
+      authEvents.emit('PROVIDER_LOGIN', { userId: activatedUser._id, provider });
+      authEvents.emit('LOGIN_SUCCESS', { userId: activatedUser._id, method: provider });
+      authEvents.emit('USER_ACTIVATED', { userId: activatedUser._id });
 
       return {
         token,
         refreshToken,
         user: {
-          id: user._id,
-          email: user.email,
-          username: user.username,
+          id: activatedUser._id,
+          email: activatedUser.email,
+          username: activatedUser.username,
           role: tokenPayload.role,
           roles: tokenPayload.roles,
           permissions: tokenPayload.permissions,
@@ -1006,11 +1051,41 @@ export class AuthService {
         availableWorkspaces,
       };
     } catch (error) {
-      await session.abortTransaction();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
-      await session.endSession();
+      if (session) {
+        await session.endSession();
+      }
     }
+  }
+
+  async validateInvite(token) {
+    if (!token) {
+      throw new HttpError(400, 'Invitation token is required.');
+    }
+    const tokenDoc = await tokenService.getInvitationToken(token, 'INVITATION');
+    if (!tokenDoc) {
+      throw new HttpError(400, 'Invalid or expired invitation token.');
+    }
+
+    const user = await userService.getUserById(tokenDoc.userId);
+    if (!user) {
+      throw new HttpError(404, 'Associated user not found.');
+    }
+
+    return {
+      valid: true,
+      isExisting: user.status === 'Active',
+      email: user.email,
+      orgId: tokenDoc.orgId,
+    };
+  }
+
+  async verifyResetPasswordOtp(identifier, code) {
+    return await otpService.verifyOTP(identifier, code, 'RESET', null, false);
   }
 }
 

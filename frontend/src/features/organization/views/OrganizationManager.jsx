@@ -39,7 +39,11 @@ export const OrganizationManager = () => {
   } = useOrganizationManager();
 
   useEffect(() => {
-    fetchOrgs(1, 10);
+    const controller = new AbortController();
+    fetchOrgs(1, 10, { signal: controller.signal });
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   const handlePageChange = (newPage) => {

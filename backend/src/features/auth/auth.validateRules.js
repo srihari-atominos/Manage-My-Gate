@@ -92,6 +92,11 @@ export const ssoVerifyRules = [
     .isString()
     .withMessage('Token must be a string')
     .trim(),
+  body('inviteToken')
+    .optional()
+    .isString()
+    .withMessage('Invite token must be a string')
+    .trim(),
 ];
 
 /**

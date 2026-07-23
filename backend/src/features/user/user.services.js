@@ -133,25 +133,21 @@ export class UserService {
     }
   }
 
-  async deleteUser(id) {
+  async deleteUserFromOrg(id, orgId) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
       await this.getUserById(id, session); // Throws if user doesn't exist
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-      await orgMembershipService.deleteMembershipsByUserId(id, session);
+      await orgMembershipService.deleteMembership(id, orgId, session);
 
-      // Remove user from any Villa residents arrays they might be in
-      const VillaModel = (await import('../villa/villa.model.js')).default;
-      await VillaModel.updateMany(
-        { 'residents.userId': id },
-        { $pull: { residents: { userId: id } } }
-      ).session(session);
+      // Remove user from any Villa residents arrays they might be in within this organization
+      const villaService = (await import('../villa/villa.services.js')).default;
+      await villaService.removeUserFromAllVillasInOrg(id, orgId, session);
 
-      const deletedUser = await userRepository.delete(id, session);
       await session.commitTransaction();
       userEvents.emit('USER_UPDATED', { userId: id, action: 'deleted' });
-      return deletedUser;
+      return { id };
     } catch (error) {
       await session.abortTransaction();
       throw error;
@@ -191,25 +187,28 @@ export class UserService {
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       const existingMembership = await orgMembershipService.getMembership(user._id, orgId, session);
       if (existingMembership) {
-        throw new HttpError(400, 'User is already a member of this community.');
+        if (existingMembership.status !== 'Pending') {
+          throw new HttpError(400, 'User is already a member of this community.');
+        }
       }
 
       // Resolve roles if roleName is provided
       let roleIds = [];
+      let calculatedResidentType = residentType;
       if (roleName) {
         const roleService = (await import('../role/role.services.js')).default;
         const role = await roleService.getRoleByName(roleName, orgId, session);
         if (role) {
           roleIds.push(role._id);
           // Auto-determine residentType if it is 'None' or empty based on role name keywords
-          if (!residentType || residentType === 'None') {
+          if (!calculatedResidentType || calculatedResidentType === 'None') {
             const lowerRoleName = role.name.toLowerCase();
             if (lowerRoleName.includes('owner')) {
-              residentType = 'Owner';
+              calculatedResidentType = 'Owner';
             } else if (lowerRoleName.includes('tenant')) {
-              residentType = 'Tenant';
+              calculatedResidentType = 'Tenant';
             } else if (lowerRoleName.includes('family')) {
-              residentType = 'Family';
+              calculatedResidentType = 'Family';
             }
           }
         } else {
@@ -217,16 +216,25 @@ export class UserService {
         }
       }
 
-      // Create membership with villa association and roles (explicitly Pending status)
-      await orgMembershipService.createMembership({
-        userId: user._id,
-        orgId,
-        roleIds,
-        roleId: roleIds[0] || null,
-        villaId: villaId || null,
-        residentType,
-        status: 'Pending'
-      }, session);
+      if (existingMembership) {
+        // Update the existing pending membership with new role, villa, and resident type details
+        existingMembership.roleIds = roleIds;
+        existingMembership.roleId = roleIds[0] || null;
+        existingMembership.villaId = villaId || null;
+        existingMembership.residentType = calculatedResidentType;
+        await existingMembership.save({ session });
+      } else {
+        // Create membership with villa association and roles (explicitly Pending status)
+        await orgMembershipService.createMembership({
+          userId: user._id,
+          orgId,
+          roleIds,
+          roleId: roleIds[0] || null,
+          villaId: villaId || null,
+          residentType: calculatedResidentType,
+          status: 'Pending'
+        }, session);
+      }
 
       // Sync user profile with villa and residencyType (must be one of: 'Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff')
       let residencyType = 'Tenant';
@@ -243,43 +251,21 @@ export class UserService {
         residencyType = 'Staff';
       } else {
         // Fallback to residentType mapping
-        if (residentType === 'Owner') {
+        if (calculatedResidentType === 'Owner') {
           residencyType = 'Resident Owner';
-        } else if (residentType === 'Family') {
+        } else if (calculatedResidentType === 'Family') {
           residencyType = 'Family Member';
-        } else if (residentType === 'Guest') {
+        } else if (calculatedResidentType === 'Guest') {
           residencyType = 'Staff';
         }
       }
 
       await userRepository.update(user._id, { villaId, residencyType }, session);
 
-      // Add to Villa residents array if villaId is provided
+      // Add to Villa residents array via villa service to respect boundaries
       if (villaId) {
-        const VillaModel = (await import('../villa/villa.model.js')).default;
-        const villa = await VillaModel.findOne({ _id: villaId, orgId }).session(session);
-        if (villa) {
-          const alreadyAssigned = villa.residents.some(r => String(r.userId) === String(user._id));
-          if (!alreadyAssigned) {
-            // Use in-memory push to residents array
-            villa.residents.push({
-              userId: user._id,
-              residencyType,
-              isPrimary: false,
-              assignedAt: new Date()
-            });
-          }
-
-          // In-memory occupancy status update
-          if (residentType === 'Owner' || residentType === 'Tenant') {
-            villa.status = 'Occupied';
-          } else if (villa.status === 'Vacant') {
-            villa.status = 'Occupied';
-          }
-
-          // Single save execution
-          await villa.save({ session });
-        }
+        const villaService = (await import('../villa/villa.services.js')).default;
+        await villaService.assignResidentToVilla(villaId, user._id, residencyType, session);
       }
 
       // Always generate an invitationToken with orgId (for both new and existing users)
@@ -304,9 +290,14 @@ export class UserService {
     }
   }
 
-  async updateUserRoles(userId, orgId, roles) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+  async updateUserRoles(userId, orgId, roles, session = null) {
+    let localSession = null;
+    if (!session) {
+      localSession = await mongoose.startSession();
+      localSession.startTransaction();
+    }
+    const currentSession = session || localSession;
+
     try {
       const roleService = (await import('../role/role.services.js')).default;
       const roleIds = [];
@@ -315,7 +306,7 @@ export class UserService {
       const roleNames = Array.isArray(roles) ? roles : [roles].filter(Boolean);
       
       for (const name of roleNames) {
-        const role = await roleService.getRoleByName(name, orgId, session);
+        const role = await roleService.getRoleByName(name, orgId, currentSession);
         if (role) {
           roleIds.push(role._id);
           foundRoleNames.push(role.name);
@@ -325,19 +316,25 @@ export class UserService {
       }
 
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-      const updatedMembership = await orgMembershipService.updateMembershipRole(userId, orgId, roleIds, session);
+      const updatedMembership = await orgMembershipService.updateMembershipRole(userId, orgId, roleIds, currentSession);
       if (!updatedMembership) {
         throw new HttpError(404, 'User organization membership not found.');
       }
       
-      await session.commitTransaction();
+      if (localSession) {
+        await localSession.commitTransaction();
+      }
       userEvents.emit('USER_UPDATED', { userId, orgId, action: 'roles_updated' });
       return { id: userId, roles: foundRoleNames };
     } catch (error) {
-      await session.abortTransaction();
+      if (localSession) {
+        await localSession.abortTransaction();
+      }
       throw error;
     } finally {
-      await session.endSession();
+      if (localSession) {
+        await localSession.endSession();
+      }
     }
   }
 

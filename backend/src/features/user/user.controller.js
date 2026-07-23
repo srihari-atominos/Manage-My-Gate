@@ -74,11 +74,12 @@ export class UserController {
    */
   async deleteUser(req, res, next) {
     try {
-      const { id } = req.params
-      await userService.deleteUser(id)
-      res.success({ id }, 'User deleted successfully')
+      const { id } = req.params;
+      const orgId = req.tenant.orgId;
+      await userService.deleteUserFromOrg(id, orgId);
+      res.success({ id }, 'User deleted successfully');
     } catch (error) {
-      next(error)
+      next(error);
     }
   }
 

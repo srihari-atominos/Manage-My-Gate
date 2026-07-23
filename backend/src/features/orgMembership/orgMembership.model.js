@@ -1,4 +1,7 @@
 import mongoose from 'mongoose';
+import '../organization/organization.model.js';
+import '../role/role.model.js';
+import '../villa/villa.model.js';
 
 const orgMembershipSchema = new mongoose.Schema(
   {
@@ -47,5 +50,5 @@ const orgMembershipSchema = new mongoose.Schema(
 
 orgMembershipSchema.index({ userId: 1, orgId: 1 }, { unique: true });
 
-export const OrgMembership = mongoose.model('OrgMembership', orgMembershipSchema);
+export const OrgMembership = mongoose.models.OrgMembership || mongoose.model('OrgMembership', orgMembershipSchema);
 export default OrgMembership;

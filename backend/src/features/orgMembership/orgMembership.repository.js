@@ -47,7 +47,7 @@ export class OrgMembershipRepository {
       filterMatch['rolesPopulated.name'] = { $in: filters.roles };
     }
     if (filters.status && filters.status.length > 0) {
-      filterMatch['user.status'] = { $in: filters.status };
+      filterMatch['status'] = { $in: filters.status };
     }
 
     const pipeline = [
@@ -135,7 +135,7 @@ export class OrgMembershipRepository {
                   else: { $ifNull: [{ $arrayElemAt: ['$rolePopulatedFallback.name', 0] }, ''] }
                 }
               },
-              status: '$user.status',
+              status: '$status',
               villaId: '$villa._id',
               villaNumber: '$villa.unitNumber',
               villaBlock: '$villa.blockOrBuilding',
@@ -176,6 +176,13 @@ export class OrgMembershipRepository {
   async deleteByUserId(userId, session) {
     return await OrgMembership.deleteMany(
       { userId },
+      session ? { session } : undefined
+    );
+  }
+
+  async deleteByUserIdAndOrgId(userId, orgId, session = null) {
+    return await OrgMembership.deleteOne(
+      { userId, orgId },
       session ? { session } : undefined
     );
   }

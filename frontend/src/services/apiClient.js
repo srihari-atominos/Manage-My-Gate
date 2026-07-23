@@ -136,7 +136,7 @@ apiClient.interceptors.response.use(
         } catch (dispatchErr) {
           console.error('Failed to trigger automatic logout on 401', dispatchErr)
         }
-        window.location.hash = '#/login'
+        window.location.href = window.location.pathname + '#/login'
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

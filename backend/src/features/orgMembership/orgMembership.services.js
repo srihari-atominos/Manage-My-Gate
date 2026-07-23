@@ -43,6 +43,10 @@ export class OrgMembershipService {
     return await orgMembershipRepository.deleteByUserId(userId, session);
   }
 
+  async deleteMembership(userId, orgId, session = null) {
+    return await orgMembershipRepository.deleteByUserIdAndOrgId(userId, orgId, session);
+  }
+
   async clearRoleFromMemberships(roleId, session = null) {
     return await orgMembershipRepository.clearRoleFromMemberships(roleId, session);
   }
