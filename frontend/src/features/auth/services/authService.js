@@ -19,12 +19,14 @@ export const createWorkspace = async (workspaceData) => {
   return await apiClient.post('/organizations/setup', workspaceData);
 };
 
-export const loginWithGoogle = async (token) => {
-  return await apiClient.post('/auth/google', { token });
+export const loginWithGoogle = async (payload) => {
+  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
+  return await apiClient.post('/auth/google', body);
 };
 
-export const loginWithMicrosoft = async (token) => {
-  return await apiClient.post('/auth/microsoft', { token });
+export const loginWithMicrosoft = async (payload) => {
+  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
+  return await apiClient.post('/auth/microsoft', body);
 };
 
 export const initiatePhoneLogin = async (phone) => {

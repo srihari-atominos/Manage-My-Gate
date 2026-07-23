@@ -6,7 +6,7 @@
  */
 export const generateInviteLink = (invitationToken) => {
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  return `${clientUrl}/#/accept-invite/${invitationToken}`;
+  return `${clientUrl}/#/invite?token=${invitationToken}`;
 };
 
 export default {

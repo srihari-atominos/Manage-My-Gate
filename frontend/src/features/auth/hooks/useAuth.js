@@ -92,8 +92,9 @@ export const useAuth = () => {
     return { success: false, error: resultAction.payload }
   }
 
-  const loginGoogle = async (credential) => {
-    const resultAction = await dispatch(loginWithGoogle(credential))
+  const loginGoogle = async (credential, inviteToken) => {
+    const payload = typeof credential === 'object' ? credential : { token: credential, inviteToken }
+    const resultAction = await dispatch(loginWithGoogle(payload))
     if (loginWithGoogle.fulfilled.match(resultAction)) {
       const data = resultAction.payload?.data
       const workspaces = data?.workspaces || data?.availableWorkspaces || []
@@ -104,8 +105,9 @@ export const useAuth = () => {
     return { success: false, error: resultAction.payload }
   }
 
-  const loginMicrosoft = async (idToken) => {
-    const resultAction = await dispatch(loginWithMicrosoft(idToken))
+  const loginMicrosoft = async (idToken, inviteToken) => {
+    const payload = typeof idToken === 'object' ? idToken : { token: idToken, inviteToken }
+    const resultAction = await dispatch(loginWithMicrosoft(payload))
     if (loginWithMicrosoft.fulfilled.match(resultAction)) {
       const data = resultAction.payload?.data
       const workspaces = data?.workspaces || data?.availableWorkspaces || []

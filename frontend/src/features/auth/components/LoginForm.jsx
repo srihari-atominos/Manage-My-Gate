@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuthRouting from '../hooks/useAuthRouting.js';
 import useAuth from '../hooks/useAuth.js';
 import ForgotPasswordModal from './ForgotPasswordModal.jsx';
@@ -66,9 +66,13 @@ class LoginFormErrorBoundary extends React.Component {
 export const LoginForm = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { handlePostAuthRedirect, isAuthenticated, loading, error } = useAuthRouting();
   const { login, loginGoogle, loginMicrosoft, sendOtp, verifyOtp, otpSent, clearStatus } = useAuth();
   
+  const inviteTokenParam = searchParams.get('invite_token');
+  const emailParam = searchParams.get('email');
+
   const [loginMethod, setLoginMethod] = useState('password'); // 'password', 'phone', 'email'
   const [forgotModalVisible, setForgotModalVisible] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -87,10 +91,18 @@ export const LoginForm = () => {
     formState: { errors },
   } = useForm({
     defaultValues: {
-      login: localStorage.getItem('rememberedEmail') || '',
+      login: emailParam ? decodeURIComponent(emailParam) : (localStorage.getItem('rememberedEmail') || ''),
       password: '',
     },
   });
+
+  // Automatically pre-fill email if invite query param is present
+  useEffect(() => {
+    if (emailParam) {
+      setValue('login', decodeURIComponent(emailParam));
+      setLoginMethod('password');
+    }
+  }, [emailParam, setValue]);
 
   // Automatically handle routing updates post-authentication
   useEffect(() => {
@@ -121,7 +133,7 @@ export const LoginForm = () => {
       })
       .then((response) => {
         if (response && response.idToken) {
-          loginMicrosoft(response.idToken);
+          loginMicrosoft(response.idToken, inviteTokenParam);
         }
       })
       .catch((err) => {
@@ -151,7 +163,11 @@ export const LoginForm = () => {
       } else {
         localStorage.removeItem('rememberedEmail');
       }
-      const res = await login({ login: data.login.trim(), password: data.password });
+      const res = await login({
+        login: data.login.trim(),
+        password: data.password,
+        inviteToken: inviteTokenParam || undefined,
+      });
       if (res?.success) {
         handlePostAuthRedirect();
       }
@@ -374,7 +390,7 @@ export const LoginForm = () => {
                 <CCol xs={12} sm={6} className="d-flex justify-content-center">
                   <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                     <GoogleLogin
-                      onSuccess={credentialResponse => loginGoogle(credentialResponse.credential)}
+                      onSuccess={credentialResponse => loginGoogle(credentialResponse.credential, inviteTokenParam)}
                       onError={() => console.error('Google Sign-In failed')}
                       type="standard"
                       theme="outline"

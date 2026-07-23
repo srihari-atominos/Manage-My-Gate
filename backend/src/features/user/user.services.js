@@ -217,14 +217,15 @@ export class UserService {
         }
       }
 
-      // Create membership with villa association and roles
+      // Create membership with villa association and roles (explicitly Pending status)
       await orgMembershipService.createMembership({
         userId: user._id,
         orgId,
         roleIds,
         roleId: roleIds[0] || null,
         villaId: villaId || null,
-        residentType
+        residentType,
+        status: 'Pending'
       }, session);
 
       // Sync user profile with villa and residencyType (must be one of: 'Resident Owner', 'Tenant', 'Family Member', 'Non-Resident Owner', 'Staff')
@@ -281,22 +282,15 @@ export class UserService {
         }
       }
 
-      // Dynamically import tokenService to follow clean cross-feature flow
-      let invitationToken = null;
-      if (user.status === 'Pending Verification') {
-        const tokenService = (await import('../token/token.services.js')).default;
-        const result = await tokenService.generateInvitationToken(user._id, session);
-        invitationToken = result.invitationToken;
-      }
+      // Always generate an invitationToken with orgId (for both new and existing users)
+      const tokenService = (await import('../token/token.services.js')).default;
+      const result = await tokenService.generateInvitationToken(user._id, orgId, session);
+      const invitationToken = result.invitationToken;
 
       await session.commitTransaction();
 
       // Dispatch event for asynchronous SMTP email transmission
-      if (invitationToken) {
-        userEvents.emit('USER_INVITED', { email: trimmedEmail, orgId, invitationToken });
-      } else {
-        userEvents.emit('USER_ADDED', { email: trimmedEmail, orgId });
-      }
+      userEvents.emit('USER_INVITED', { email: trimmedEmail, orgId, invitationToken });
       
       // Dispatch event for real-time frontend syncing
       userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'invited' });

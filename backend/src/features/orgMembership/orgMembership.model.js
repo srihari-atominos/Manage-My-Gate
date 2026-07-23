@@ -34,6 +34,11 @@ const orgMembershipSchema = new mongoose.Schema(
       enum: ['Owner', 'Tenant', 'Family', 'Guest', 'None'],
       default: 'None',
     },
+    status: {
+      type: String,
+      enum: ['Pending', 'Active'],
+      default: 'Pending',
+    },
   },
   {
     timestamps: true,

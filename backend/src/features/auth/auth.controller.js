@@ -32,6 +32,41 @@ export class AuthController {
     }
   }
 
+  async validateInvite(req, res, next) {
+    try {
+      const token = req.query.token;
+      if (!token) {
+        throw new (await import('../../utils/httpError.utils.js')).default(400, 'Invitation token is required.');
+      }
+      const crypto = (await import('crypto')).default;
+      const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+      const tokenRepository = (await import('../token/token.repository.js')).default;
+      const tokenDoc = await tokenRepository.findOne({ token: hashedToken, type: 'INVITATION' });
+      if (!tokenDoc) {
+        throw new (await import('../../utils/httpError.utils.js')).default(400, 'Invalid or expired invitation token.');
+      }
+
+      const userService = (await import('../user/user.services.js')).default;
+      const user = await userService.getUserById(tokenDoc.userId);
+      if (!user) {
+        throw new (await import('../../utils/httpError.utils.js')).default(404, 'Associated user not found.');
+      }
+
+      res.success(
+        {
+          valid: true,
+          isExisting: user.status === 'Active',
+          email: user.email,
+          orgId: tokenDoc.orgId,
+        },
+        'Invitation token validated successfully'
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async acceptInvite(req, res, next) {
     try {
       const { token, password } = req.body;

@@ -165,6 +165,14 @@ export class OrgMembershipRepository {
     );
   }
 
+  async updateStatus(userId, orgId, status, session = null) {
+    return await OrgMembership.findOneAndUpdate(
+      { userId, orgId },
+      { status },
+      { returnDocument: 'after', runValidators: true, session: session || null }
+    );
+  }
+
   async deleteByUserId(userId, session) {
     return await OrgMembership.deleteMany(
       { userId },

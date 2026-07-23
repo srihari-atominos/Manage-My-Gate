@@ -174,6 +174,26 @@ router.get('/roles', authController.getRoles);
 
 /**
  * @swagger
+ * /auth/validate-invite:
+ *   get:
+ *     summary: Validate an invitation token and check if the associated user exists
+ *     security: []
+ *     parameters:
+ *       - in: query
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Token is valid.
+ *       400:
+ *         description: Invalid token.
+ */
+router.get('/validate-invite', authController.validateInvite);
+
+/**
+ * @swagger
  * /auth/switch-context:
  *   post:
  *     summary: Switch active workspace context

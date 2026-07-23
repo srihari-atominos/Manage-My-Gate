@@ -242,7 +242,7 @@ export class AuthService {
    * @param {object} loginData - Payload containing login (email/username) and password
    */
   async login(loginData) {
-    const { login, password } = loginData;
+    const { login, password, inviteToken } = loginData;
 
     // 1. Fetch user by email or username
     const user = await userService.getUserByEmailOrUsername(login);
@@ -256,8 +256,24 @@ export class AuthService {
       throw new HttpError(401, 'Invalid credentials. Incorrect password.');
     }
 
+    // 2b. Process invitation token if provided during login
+    let targetOrgIdFromInvite = null;
+    if (inviteToken) {
+      const crypto = (await import('crypto')).default;
+      const hashedToken = crypto.createHash('sha256').update(inviteToken).digest('hex');
+      const tokenRepository = (await import('../token/token.repository.js')).default;
+      const tokenDoc = await tokenRepository.findOne({ token: hashedToken, type: 'INVITATION' });
+
+      if (tokenDoc && tokenDoc.userId.toString() === user._id.toString()) {
+        targetOrgIdFromInvite = tokenDoc.orgId;
+        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+        await orgMembershipService.updateStatus(user._id, tokenDoc.orgId, 'Active');
+        await tokenRepository.deleteOne({ _id: tokenDoc._id });
+      }
+    }
+
     // 3. Resolve context and available workspaces
-    const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
+    const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
 
     // 4. Generate JWT token
     const token = signToken(tokenPayload);
@@ -349,7 +365,7 @@ export class AuthService {
     session.startTransaction();
     try {
       // Use the standalone token service to validate and consume the token
-      const userId = await tokenService.validateAndDeleteToken(rawToken, 'INVITATION', session);
+      const { userId, orgId } = await tokenService.validateAndDeleteToken(rawToken, 'INVITATION', session);
 
       // Check if user exists and is Pending Verification
       const user = await userService.getUserById(userId, session);
@@ -362,6 +378,12 @@ export class AuthService {
 
       // Perform user activation via user service
       await userService.activateUser(userId, hashedPassword, session);
+
+      // Update OrgMembership status to Active for this organization
+      if (orgId) {
+        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+        await orgMembershipService.updateStatus(userId, orgId, 'Active', session);
+      }
 
       // Auto-login session creation (inside transaction for atomic flow validation)
       const refreshToken = await sessionService.createSession(user._id, {}, session);
@@ -511,7 +533,7 @@ export class AuthService {
    * @private
    */
   async _handleSsoAuthentication(identityData) {
-    const { providerEmail: email, provider, providerId } = identityData;
+    const { providerEmail: email, provider, providerId, inviteToken } = identityData;
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -538,11 +560,27 @@ export class AuthService {
         user = await this._updateExistingSsoUser(user, identityData, session);
       }
 
+      // Process invitation token if provided during SSO login
+      let targetOrgIdFromInvite = null;
+      if (inviteToken) {
+        const crypto = (await import('crypto')).default;
+        const hashedToken = crypto.createHash('sha256').update(inviteToken).digest('hex');
+        const tokenRepository = (await import('../token/token.repository.js')).default;
+        const tokenDoc = await tokenRepository.findOne({ token: hashedToken, type: 'INVITATION' }, session);
+
+        if (tokenDoc && tokenDoc.userId.toString() === user._id.toString()) {
+          targetOrgIdFromInvite = tokenDoc.orgId;
+          const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+          await orgMembershipService.updateStatus(user._id, tokenDoc.orgId, 'Active', session);
+          await tokenRepository.deleteOne({ _id: tokenDoc._id }, session);
+        }
+      }
+
       const refreshToken = await sessionService.createSession(user._id, {}, session);
       await session.commitTransaction();
 
       // Resolve scoped token and workspaces
-      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user);
+      const { tokenPayload, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
       const token = signToken(tokenPayload);
       
       authEvents.emit('PROVIDER_LOGIN', { userId: user._id, provider });
@@ -902,7 +940,7 @@ export class AuthService {
 
     try {
       // Validate and consume the invitation token in the database
-      const userId = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
+      const { userId, orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
 
       // Fetch user to ensure they exist and status is Pending Verification
       const user = await userService.getUserById(userId, session);
@@ -922,6 +960,12 @@ export class AuthService {
 
       // Call userService.activateUser to activate user and set password
       await userService.activateUser(userId, hashedPassword, session);
+
+      // Update OrgMembership status to Active for this organization
+      if (orgId) {
+        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+        await orgMembershipService.updateStatus(userId, orgId, 'Active', session);
+      }
 
       // Call userIdentityService.createIdentity to link SSO identity
       if (typeof userIdentityService.createIdentity === 'function') {
