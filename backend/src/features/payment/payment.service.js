@@ -139,7 +139,10 @@ export class PaymentService {
    */
   async processRefund(paymentId, amount = null, notes = {}) {
     try {
-      const payment = await Payment.findById(paymentId);
+      const payment = mongoose.Types.ObjectId.isValid(paymentId) 
+        ? await Payment.findById(paymentId) 
+        : await Payment.findOne({ gatewayTransactionId: paymentId });
+      
       if (!payment) throw new HttpError(404, 'Payment not found');
       if (payment.status !== 'success') throw new HttpError(400, 'Only successful payments can be refunded');
 

@@ -2,6 +2,7 @@ import React, { memo, useState, useEffect } from 'react';
 import { CModal, CModalHeader, CModalTitle, CModalBody, CSpinner } from '@coreui/react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAllAmenitySlots } from '../../store/amenitySlice.js';
+import { useTranslation } from 'react-i18next';
 
 const ResidentBookingModal = memo(({ 
   visible, 
@@ -9,6 +10,7 @@ const ResidentBookingModal = memo(({
   amenities, 
   onSlotSelect 
 }) => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const { allSlots, slotsLoading } = useSelector(state => state.amenities);
 
@@ -58,6 +60,7 @@ const ResidentBookingModal = memo(({
   const userBooked = selectedAmenity?.userBookedSlotsCount || 0; // Backend still provides this? Let's leave for now.
   const remaining = Math.max(0, maxLimit - userBooked);
   const hasReachedLimit = remaining <= 0;
+  const isDaily = selectedAmenity?.pricing?.pricingType === 'daily';
 
   const handleSlotClick = (slot) => {
     if (slot.status === 'Available' && !hasReachedLimit) {
@@ -102,6 +105,43 @@ const ResidentBookingModal = memo(({
 
         {selectedAmenityId && selectedDate && (
           <div>
+            {isDaily ? (
+              slotsLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+                  <CSpinner size="sm" />
+                </div>
+              ) : (
+                <div className="alert alert-success d-flex flex-column gap-3">
+                  <div className="d-flex align-items-center mb-2">
+                    <i className="fa-solid fa-clock me-2"></i>
+                    <strong>Operating Hours: {selectedAmenity.bookingRules?.openTime} - {selectedAmenity.bookingRules?.closeTime}</strong>
+                  </div>
+                  <div className="d-flex align-items-center mb-3">
+                    <i className="fa-solid fa-money-bill me-2"></i>
+                    <strong>Daily Price: {selectedAmenity.pricing?.baseRate || 0}</strong>
+                  </div>
+                  {allSlots && allSlots[0] && allSlots[0].status !== 'Available' ? (
+                     <div className="text-danger small">
+                       <i className="fa-solid fa-triangle-exclamation me-1"></i>
+                       {t('This amenity is not available or already fully booked for the selected date.', 'This amenity is not available or already fully booked for the selected date.')}
+                     </div>
+                  ) : (
+                    <div className="text-end">
+                      <button 
+                        className="btn btn-primary btn-sm"
+                        onClick={() => {
+                           onSlotSelect(selectedAmenityId, selectedDate, { startTime: selectedAmenity.bookingRules?.openTime, endTime: selectedAmenity.bookingRules?.closeTime, status: 'Available' });
+                           onClose();
+                        }}
+                      >
+                        {t('Confirm Booking', 'Confirm Booking')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            ) : (
+              <>
             <div className="alert alert-info py-2 small mb-3 d-flex align-items-center gap-2">
               <i className="fa-solid fa-circle-info"></i>
               <span><strong>Slot Limit:</strong> {maxLimit} spots per slot.</span>
@@ -156,6 +196,8 @@ const ResidentBookingModal = memo(({
               <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px', background: 'var(--bg-secondary)', borderRadius: '8px' }} className="small">
                 No slots generated for this date.
               </div>
+            )}
+            </>
             )}
           </div>
         )}

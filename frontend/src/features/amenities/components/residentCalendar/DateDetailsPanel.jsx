@@ -106,6 +106,55 @@ const DateDetailsPanel = memo(({
                     <CPlaceholder key={i} animation="glow" style={{ height: '80px', borderRadius: '12px' }} />
                   ))}
                 </div>
+              ) : selectedAmenity?.pricing?.pricingType === 'daily' ? (
+                <div className="ddp-card shadow-sm mt-3 mb-2" style={{ background: '#F8FAFC', border: '1px solid #0084FF', padding: '16px', animation: 'fadeIn 0.3s ease-out' }}>
+                  <div className="fs-6 ddp-card__title" style={{ marginBottom: '12px' }}>
+                    Day-Based Booking Summary
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }} className="small">
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#64748B' }}>Amenity</span>
+                      <strong style={{ color: '#0F172A' }}>{selectedAmenity.name}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#64748B' }}>Date</span>
+                      <strong style={{ color: '#0F172A' }}>{formattedDate}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#64748B' }}>Operating Hours</span>
+                      <strong style={{ color: '#0F172A' }}>{selectedAmenity.bookingRules?.openTime} - {selectedAmenity.bookingRules?.closeTime}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '8px', marginTop: '4px' }}>
+                      <span style={{ color: '#64748B' }}>Daily Rate</span>
+                      <strong style={{ color: '#0F172A' }} className="fs-6">
+                        {selectedAmenity.pricing?.baseRate > 0 ? `₹${selectedAmenity.pricing.baseRate}` : 'Free'}
+                      </strong>
+                    </div>
+                  </div>
+                  {allSlots && allSlots[0] && (allSlots[0].status !== 'Available' || (allSlots[0].myBookingsCount >= (selectedAmenity.maxBookingsPerUserPerSlot || 1))) ? (
+                     <div className="text-danger small mt-3 fw-medium" style={{ background: '#FEE2E2', padding: '8px 12px', borderRadius: '8px' }}>
+                       <i className="fa-solid fa-triangle-exclamation me-1"></i>
+                       This amenity is {allSlots[0].status === 'Available' ? 'already booked by you' : allSlots[0].status.toLowerCase()} for the selected date.
+                     </div>
+                  ) : (
+                    <button 
+                      className="fw-semibold btn btn-primary w-100 mt-3" 
+                      style={{ padding: '10px' }}
+                      onClick={() => {
+                        const slotToBook = (allSlots && allSlots[0]) ? allSlots[0] : {
+                          startTime: selectedAmenity.bookingRules?.openTime,
+                          endTime: selectedAmenity.bookingRules?.closeTime,
+                          price: selectedAmenity.pricing?.baseRate,
+                          status: 'Available'
+                        };
+                        onSlotSelect(slotToBook);
+                        onBookNow();
+                      }}
+                    >
+                      Book Full Day
+                    </button>
+                  )}
+                </div>
               ) : allSlots && allSlots.length > 0 ? (
                 <>
                   {/* Legend */}
@@ -161,7 +210,9 @@ const DateDetailsPanel = memo(({
                           <div className="ddp-slot-time">{slot.startTime}</div>
                           <div className="ddp-slot-meta">
                             <span className="ddp-slot-end">{slot.endTime}</span>
-                            <span className="ddp-slot-duration">{slot.duration || selectedAmenity.bookingRules?.slotDurationMinutes || 60}m</span>
+                            {selectedAmenity?.pricing?.pricingType !== 'daily' && (
+                              <span className="ddp-slot-duration">{slot.duration || selectedAmenity.bookingRules?.slotDurationMinutes || 60}m</span>
+                            )}
                           </div>
                           <div
                             className="ddp-slot-badge"
@@ -200,10 +251,12 @@ const DateDetailsPanel = memo(({
                                   <span style={{ color: '#64748B' }}>Time</span>
                                   <strong style={{ color: '#0F172A' }}>{selectedSlot.startTime} - {selectedSlot.endTime}</strong>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <span style={{ color: '#64748B' }}>Duration</span>
-                                  <strong style={{ color: '#0F172A' }}>{selectedSlot.duration || selectedAmenity.bookingRules?.slotDurationMinutes || 60} Minutes</strong>
-                                </div>
+                                {selectedAmenity?.pricing?.pricingType !== 'daily' && (
+                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ color: '#64748B' }}>Duration</span>
+                                    <strong style={{ color: '#0F172A' }}>{selectedSlot.duration || selectedAmenity.bookingRules?.slotDurationMinutes || 60} Minutes</strong>
+                                  </div>
+                                )}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '8px', marginTop: '4px' }}>
                                   <span style={{ color: '#64748B' }}>Booking Amount</span>
                                   <strong style={{ color: '#0F172A' }} className="fs-6">
@@ -264,7 +317,7 @@ const DateDetailsPanel = memo(({
                 <span>Currently Under Maintenance</span>
               </div>
             )}
-            {selectedAmenity.bookingRules?.slotDurationMinutes && (
+            {selectedAmenity.bookingRules?.slotDurationMinutes && selectedAmenity?.pricing?.pricingType !== 'daily' && (
               <div className="ddp-info-row">
                 <i className="fa-regular fa-hourglass-half ddp-info-icon"></i>
                 <span>Slot Duration: <strong>{selectedAmenity.bookingRules?.slotDurationMinutes} min</strong></span>

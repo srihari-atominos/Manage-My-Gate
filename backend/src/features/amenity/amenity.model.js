@@ -6,7 +6,8 @@ const pricingSchema = new mongoose.Schema({
   peakRateMultiplier: { type: Number, default: 1.0 }, // e.g. 1.5x for peak hours
   weekendRateMultiplier: { type: Number, default: 1.0 },
   holidayRateMultiplier: { type: Number, default: 1.0 },
-  securityDeposit: { type: Number, default: 0 },
+  securityDeposit: { type: Number, default: 0, min: [0, 'Security deposit cannot be negative'] },
+  securityDepositDescription: { type: String, default: null },
   taxPercentage: { type: Number, default: 0 },
   cancellationChargePercentage: { type: Number, default: 0 }, // % to deduct on cancellation
   dynamicPricingEnabled: { type: Boolean, default: false }
@@ -123,10 +124,6 @@ const amenitySchema = new mongoose.Schema({
     required: [true, 'Amenity capacity is required'],
     min: [1, 'Capacity must be at least 1'],
   },
-  requiresApproval: {
-    type: Boolean,
-    default: true
-  },
   bookingRules: {
     type: bookingRulesSchema,
     required: [true, 'Booking rules are required']
@@ -146,7 +143,8 @@ const amenitySchema = new mongoose.Schema({
   },
   maxBookingsPerUserPerSlot: {
     type: Number,
-    default: 2
+    default: 2,
+    min: [1, 'Max bookings per user must be at least 1']
   }
 }, { timestamps: true });
 

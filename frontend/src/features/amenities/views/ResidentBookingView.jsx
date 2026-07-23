@@ -94,7 +94,7 @@ const ResidentBookingView = () => {
           />
         )}
 
-        {step === 'time' && (
+        {step === 'time' && amenity?.pricing?.pricingType !== 'daily' && (
           <TimeSlotSelector 
             draft={draft} 
             availableSlots={availableSlots}
@@ -103,6 +103,27 @@ const ResidentBookingView = () => {
             onBack={goBack}
             errorMsg={errorMsg}
           />
+        )}
+
+        {step === 'time' && amenity?.pricing?.pricingType === 'daily' && (
+          <div className="card p-4 mb-4">
+            <h5 className="mb-3">Daily Booking Details</h5>
+            <div className="alert alert-success d-flex flex-column gap-2 mb-0">
+              <div className="d-flex align-items-center">
+                <i className="fa-solid fa-clock me-2"></i>
+                <strong>Operating Hours: {amenity.bookingRules?.openTime} - {amenity.bookingRules?.closeTime}</strong>
+              </div>
+              <div className="d-flex align-items-center">
+                <i className="fa-solid fa-money-bill me-2"></i>
+                <strong>Daily Price: {amenity.pricing?.baseRate || 0}</strong>
+              </div>
+            </div>
+            <div className="d-flex justify-content-start pt-3 border-top mt-4">
+              <button className="btn btn-outline-secondary px-4 rounded-pill" onClick={goBack}>
+                <i className="fa-solid fa-arrow-left me-2"></i> Back
+              </button>
+            </div>
+          </div>
         )}
 
         {step === 'time' && draft.startTime && draft.endTime && (

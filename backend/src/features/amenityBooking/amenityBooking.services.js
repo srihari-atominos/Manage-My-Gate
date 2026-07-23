@@ -1,5 +1,5 @@
 import amenityBookingRepository from './amenityBooking.repository.js';
-import { amenityBookingEventEmitter, AMENITY_BOOKING_CREATED, AMENITY_BOOKING_REVIEWED, AMENITY_BOOKING_CANCELLED, AMENITY_BOOKING_CHECKED_IN, AMENITY_BOOKING_DENIED } from './amenityBooking.events.js';
+import { amenityBookingEventEmitter, AMENITY_BOOKING_CREATED, AMENITY_BOOKING_CANCELLED, AMENITY_BOOKING_CHECKED_IN, AMENITY_BOOKING_DENIED } from './amenityBooking.events.js';
 import HttpError from '../../utils/httpError.utils.js';
 import paymentService from '../payment/payment.service.js';
 
@@ -34,14 +34,21 @@ export class AmenityBookingService {
   async getActivePasses(userId, orgId) {
     const activeBookings = await amenityBookingRepository.getActivePasses(userId, orgId);
     
-    // Lazy expiration logic
-    const now = new Date();
+    const moment = (await import('moment-timezone')).default;
+    const TIMEZONE = 'Asia/Kolkata';
+    const now = moment().tz(TIMEZONE);
     const validPasses = [];
     
     for (const booking of activeBookings) {
       if (booking.bookingDate && booking.endTime) {
-        const bookingEnd = new Date(`${booking.bookingDate}T${booking.endTime}`);
-        if (now > bookingEnd) {
+        let bookingEnd = moment.tz(`${booking.bookingDate}T${booking.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
+        const bookingStart = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
+        
+        if (bookingEnd.isBefore(bookingStart)) {
+           bookingEnd.add(1, 'days');
+        }
+        
+        if (now.isAfter(bookingEnd)) {
           // Expire it
           await amenityBookingRepository.updateStatus(booking._id, orgId, booking.status, { qrStatus: 'expired' });
           continue; // skip returning it
@@ -59,7 +66,7 @@ export class AmenityBookingService {
     session.startTransaction();
 
     try {
-      const { orgId, amenityId, userId, bookingDate, startTime, endTime } = bookingData;
+      let { orgId, amenityId, userId, bookingDate, startTime, endTime } = bookingData;
       
       // 3. Amenity Validation
       const amenityService = (await import('../amenity/amenity.services.js')).default;
@@ -71,9 +78,24 @@ export class AmenityBookingService {
         throw new HttpError(400, `Cannot book this amenity as its status is ${amenity.status}`);
       }
 
-      const bookingDateTimeStart = new Date(`${bookingDate}T${startTime}`);
-      const bookingDateTimeEnd = new Date(`${bookingDate}T${endTime}`);
-      const now = new Date();
+      if (amenity.pricing?.pricingType === 'daily') {
+        startTime = amenity.bookingRules?.openTime;
+        endTime = amenity.bookingRules?.closeTime;
+        bookingData.startTime = startTime;
+        bookingData.endTime = endTime;
+      }
+
+      const moment = (await import('moment-timezone')).default;
+      const TIMEZONE = 'Asia/Kolkata';
+
+      const bookingDateTimeStart = moment.tz(`${bookingDate}T${startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      let bookingDateTimeEnd = moment.tz(`${bookingDate}T${endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      
+      if (bookingDateTimeEnd < bookingDateTimeStart) {
+        bookingDateTimeEnd = moment(bookingDateTimeEnd).add(1, 'days').toDate();
+      }
+
+      const now = moment().tz(TIMEZONE).toDate();
 
       if (bookingDateTimeStart < now) {
         throw new HttpError(400, 'Cannot book in the past');
@@ -97,10 +119,17 @@ export class AmenityBookingService {
       }
 
       // 7. Operating Hours Validation
-      const openTimeParsed = new Date(`${bookingDate}T${amenity.bookingRules.openTime}`);
-      const closeTimeParsed = new Date(`${bookingDate}T${amenity.bookingRules.closeTime}`);
-      if (bookingDateTimeStart < openTimeParsed || bookingDateTimeEnd > closeTimeParsed) {
-        throw new HttpError(400, `Booking must be within operating hours (${amenity.bookingRules.openTime} to ${amenity.bookingRules.closeTime})`);
+      if (amenity.pricing?.pricingType !== 'daily') {
+        const openTimeParsed = moment.tz(`${bookingDate}T${amenity.bookingRules.openTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        let closeTimeParsed = moment.tz(`${bookingDate}T${amenity.bookingRules.closeTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        
+        if (closeTimeParsed < openTimeParsed) {
+          closeTimeParsed = moment(closeTimeParsed).add(1, 'days').toDate();
+        }
+
+        if (bookingDateTimeStart < openTimeParsed || bookingDateTimeEnd > closeTimeParsed) {
+          throw new HttpError(400, `Booking must be within operating hours (${amenity.bookingRules.openTime} to ${amenity.bookingRules.closeTime})`);
+        }
       }
 
       // 12. Booking Window Validation
@@ -112,9 +141,15 @@ export class AmenityBookingService {
 
       // 8, 10 & 11. Overlapping Slot, Buffer Time, and Capacity Validation
       const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime);
+      
+      // Daily pricing is exclusive per day regardless of capacity
+      if (amenity.pricing?.pricingType === 'daily' && conflicts.length > 0) {
+        throw new HttpError(409, 'This amenity is already booked for the selected day');
+      }
       const currentlyBookedSpots = conflicts.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
       const requestedSpots = parseInt(bookingData.numberOfPersons || 1, 10);
       const remainingCapacity = amenity.capacity - currentlyBookedSpots;
+      
       if (requestedSpots > remainingCapacity) {
         if (remainingCapacity <= 0) {
           throw new HttpError(400, 'The amenity is at full capacity for the selected time slot.');
@@ -229,6 +264,7 @@ export class AmenityBookingService {
 
     booking.paymentStatus = 'success';
     booking.status = 'confirmed';
+    
     booking.paymentId = gatewayTransactionId;
     booking.paymentMethod = paymentMethod;
     booking.qrCode = qrCodeUrl;
@@ -244,7 +280,8 @@ export class AmenityBookingService {
   }
 
   _calculatePricing(amenity, startDateTime, endDateTime, numberOfPersons = 1) {
-    const durationHours = (endDateTime - startDateTime) / (1000 * 60 * 60);
+    const isDaily = amenity.pricing?.pricingType === 'daily';
+    const durationMultiplier = isDaily ? 1 : ((endDateTime - startDateTime) / (1000 * 60 * 60));
     const baseRate = amenity.pricing?.baseRate || amenity.ratePerHour || 0;
     
     const dayOfWeek = startDateTime.getDay();
@@ -253,7 +290,7 @@ export class AmenityBookingService {
       multiplier = amenity.pricing?.weekendRateMultiplier || 1.0;
     }
     
-    const baseAmount = baseRate * durationHours * multiplier * numberOfPersons;
+    const baseAmount = baseRate * durationMultiplier * multiplier * numberOfPersons;
     const taxAmount = baseAmount * ((amenity.pricing?.taxPercentage || 0) / 100);
     const securityDeposit = amenity.pricing?.securityDeposit || 0;
     const totalAmount = baseAmount + taxAmount + securityDeposit;
@@ -270,7 +307,7 @@ export class AmenityBookingService {
   }
 
   async createManualBooking(bookingData) {
-    const { orgId, amenityId, userId, bookingDate, startTime, endTime, paymentStatus = 'success' } = bookingData;
+    let { orgId, amenityId, userId, bookingDate, startTime, endTime, paymentStatus = 'success' } = bookingData;
     
     // Resident membership check
     const userService = (await import('../user/user.services.js')).default;
@@ -283,11 +320,30 @@ export class AmenityBookingService {
     const amenity = await amenityService.getAmenityById(amenityId, orgId);
     if (!amenity) throw new HttpError(404, 'Amenity not found');
     
-    const bookingDateTimeStart = new Date(`${bookingDate}T${startTime}`);
-    const bookingDateTimeEnd = new Date(`${bookingDate}T${endTime}`);
+    if (amenity.pricing?.pricingType === 'daily') {
+      startTime = amenity.bookingRules?.openTime;
+      endTime = amenity.bookingRules?.closeTime;
+      bookingData.startTime = startTime;
+      bookingData.endTime = endTime;
+    }
+
+    const moment = (await import('moment-timezone')).default;
+    const TIMEZONE = 'Asia/Kolkata';
+
+    const bookingDateTimeStart = moment.tz(`${bookingDate}T${startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+    let bookingDateTimeEnd = moment.tz(`${bookingDate}T${endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+    
+    if (bookingDateTimeEnd < bookingDateTimeStart) {
+      bookingDateTimeEnd = moment(bookingDateTimeEnd).add(1, 'days').toDate();
+    }
     
     // Amenity availability check
     const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime);
+    
+    // Daily pricing is exclusive per day regardless of capacity
+    if (amenity.pricing?.pricingType === 'daily' && conflicts.length > 0) {
+      throw new HttpError(409, 'This amenity is already booked for the selected day');
+    }
     const currentlyBookedSpots = conflicts.reduce((sum, b) => sum + (b.numberOfPersons || 1), 0);
     const requestedSpots = parseInt(bookingData.numberOfPersons || 1, 10);
     const remainingCapacity = amenity.capacity - currentlyBookedSpots;
@@ -320,26 +376,6 @@ export class AmenityBookingService {
     return booking;
   }
 
-  async reviewBooking(bookingId, orgId, decision, reviewerId, rejectionReason = '') {
-    const validDecisions = ['approved', 'rejected'];
-    if (!validDecisions.includes(decision)) {
-      throw new HttpError(400, 'Decision must be approved or rejected');
-    }
-
-    const booking = await amenityBookingRepository.findById(bookingId, orgId);
-    if (!booking) throw new HttpError(404, 'Booking not found');
-    if (booking.status !== 'pending') throw new HttpError(400, 'Can only review pending bookings');
-
-    const reviewData = {
-      reviewedBy: reviewerId,
-      reviewedAt: new Date(),
-      rejectionReason: decision === 'rejected' ? rejectionReason : null
-    };
-
-    const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, decision, reviewData);
-    amenityBookingEventEmitter.emit(AMENITY_BOOKING_REVIEWED, updated);
-    return updated;
-  }
 
   async cancelBooking(bookingId, userId, orgId, reason = '', isAdmin = false) {
     const booking = await amenityBookingRepository.findById(bookingId, orgId);
@@ -364,9 +400,12 @@ export class AmenityBookingService {
     if (amenity?.bookingRules?.isCancellationEnabled && amenity.bookingRules.cancellationRefundRules?.length > 0) {
       const rules = [...amenity.bookingRules.cancellationRefundRules].sort((a, b) => b.cancelBeforeHours - a.cancelBeforeHours);
       
-      const bookingStartDateTime = new Date(`${booking.bookingDate}T${booking.startTime}`);
-      const now = new Date();
-      const remainingHours = (bookingStartDateTime - now) / (1000 * 60 * 60);
+      const moment = (await import('moment-timezone')).default;
+      const TIMEZONE = 'Asia/Kolkata';
+      
+      const bookingStartDateTime = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
+      const now = moment().tz(TIMEZONE);
+      const remainingHours = moment.duration(bookingStartDateTime.diff(now)).asHours();
 
       // Find the applicable rule
       const applicableRule = rules.find(rule => remainingHours >= rule.cancelBeforeHours);
@@ -567,7 +606,9 @@ export class AmenityBookingService {
       throw new HttpError(404, 'Booking not found.');
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const moment = (await import('moment-timezone')).default;
+    const TIMEZONE = 'Asia/Kolkata';
+    const today = moment().tz(TIMEZONE).format('YYYY-MM-DD');
     
     // 4. Booking Status Cancelled
     if (booking.status === 'cancelled') {
@@ -619,16 +660,19 @@ export class AmenityBookingService {
     };
     
     // 7. Booking Time (Start Time <= Current Time <= End Time)
-    const now = new Date();
-    const currentMins = now.getHours() * 60 + now.getMinutes();
+    const now = moment().tz(TIMEZONE);
     
-    const startMins = parseTimeStr(booking.startTime);
-    const endMins = parseTimeStr(booking.endTime);
+    const checkInStart = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
+    let checkInEnd = moment.tz(`${booking.bookingDate}T${booking.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
     
-    if (currentMins < startMins) {
+    if (checkInEnd.isBefore(checkInStart)) {
+      checkInEnd.add(1, 'days');
+    }
+    
+    if (now.isBefore(checkInStart)) {
       throw emitDenied('Resident is too early for this booking.');
     }
-    if (currentMins > endMins) {
+    if (now.isAfter(checkInEnd)) {
       throw emitDenied('Booking time has expired.');
     }
 
@@ -661,8 +705,9 @@ export class AmenityBookingService {
   }
 
   async getRecentScans(orgId) {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const moment = (await import('moment-timezone')).default;
+    const TIMEZONE = 'Asia/Kolkata';
+    const startOfDay = moment().tz(TIMEZONE).startOf('day').toDate();
     
     const scans = await amenityBookingRepository.getRecentScans(orgId, startOfDay);
 

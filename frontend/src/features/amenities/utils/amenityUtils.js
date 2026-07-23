@@ -4,11 +4,8 @@
  * @returns {string} Formatted currency string
  */
 export const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: 0,
-  }).format(amount || 0);
+  const num = amount || 0;
+  return `₹${num.toLocaleString('en-IN')}`;
 };
 
 /**

@@ -70,9 +70,17 @@ const ManualBookingModal = ({ visible, onClose, onSuccess }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const selectedAmenity = amenities.find(a => a._id === formData.amenityId);
+  const isDaily = selectedAmenity?.pricing?.pricingType === 'daily';
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    submitManualBooking(formData);
+    const payload = { ...formData };
+    if (isDaily) {
+      payload.startTime = selectedAmenity.bookingRules?.openTime;
+      payload.endTime = selectedAmenity.bookingRules?.closeTime;
+    }
+    submitManualBooking(payload);
   };
 
   return (
@@ -113,16 +121,33 @@ const ManualBookingModal = ({ visible, onClose, onSuccess }) => {
             <CFormInput type="date" name="bookingDate" value={formData.bookingDate} onChange={handleChange} required />
           </div>
 
-          <div className="row">
-            <div className="col-6 mb-3">
-              <CFormLabel>Start Time</CFormLabel>
-              <CFormInput type="time" name="startTime" value={formData.startTime} onChange={handleChange} required />
+          {isDaily ? (
+            <div className="mb-3">
+              <div className="alert alert-success py-2 m-0 text-center">
+                <div className="d-flex flex-column align-items-center">
+                  <div className="mb-1">
+                    <i className="fa-solid fa-clock me-2"></i>
+                    <strong>Operating Hours: {selectedAmenity?.bookingRules?.openTime} - {selectedAmenity?.bookingRules?.closeTime}</strong>
+                  </div>
+                  <div>
+                    <i className="fa-solid fa-money-bill me-2"></i>
+                    <strong>Daily Price: {selectedAmenity?.pricing?.baseRate || 0}</strong>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="col-6 mb-3">
-              <CFormLabel>End Time</CFormLabel>
-              <CFormInput type="time" name="endTime" value={formData.endTime} onChange={handleChange} required />
+          ) : (
+            <div className="row">
+              <div className="col-6 mb-3">
+                <CFormLabel>Start Time</CFormLabel>
+                <CFormInput type="time" name="startTime" value={formData.startTime} onChange={handleChange} required={!isDaily} />
+              </div>
+              <div className="col-6 mb-3">
+                <CFormLabel>End Time</CFormLabel>
+                <CFormInput type="time" name="endTime" value={formData.endTime} onChange={handleChange} required={!isDaily} />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="mb-3">
             <CFormLabel>Payment Status Override</CFormLabel>

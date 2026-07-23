@@ -18,7 +18,7 @@ const schema = yup.object().shape({
   bookingRules: yup.object().shape({
     openTime: yup.string().matches(/^([01]\d|2[0-3]):?([0-5]\d)$/, 'Invalid time format').required('Required'),
     closeTime: yup.string().matches(/^([01]\d|2[0-3]):?([0-5]\d)$/, 'Invalid time format').required('Required'),
-    slotDurationMinutes: yup.number().typeError('Must be a number').min(15, 'Min 15 min').required('Required'),
+    slotDurationMinutes: yup.number().typeError('Must be a number').nullable().transform((v, o) => o === '' ? null : v),
     bufferTimeMinutes: yup.number().typeError('Must be a number').min(0, 'Min 0'),
     advanceBookingDays: yup.number().typeError('Must be a number').min(0, 'Min 0'),
     isCancellationEnabled: yup.boolean().default(false),
@@ -29,7 +29,18 @@ const schema = yup.object().shape({
   }),
   openDays: yup.array().of(yup.number()).min(1, 'Select at least one day'),
   images: yup.array().of(yup.string()),
-  maxBookingsPerUserPerSlot: yup.number().typeError('Must be a number').min(1, 'Min 1').default(2).required('Required'),
+  maxBookingsPerUserPerSlot: yup.number().typeError('Must be a number').nullable().transform((v, o) => o === '' ? null : v),
+}).test('conditional-validation', null, function (value) {
+  const isDaily = value.pricing?.pricingType === 'daily';
+  if (!isDaily) {
+    if (value.maxBookingsPerUserPerSlot === undefined || value.maxBookingsPerUserPerSlot === null || value.maxBookingsPerUserPerSlot < 1) {
+      return this.createError({ path: 'maxBookingsPerUserPerSlot', message: 'Min 1' });
+    }
+    if (value.bookingRules?.slotDurationMinutes === undefined || value.bookingRules?.slotDurationMinutes === null || value.bookingRules.slotDurationMinutes < 15) {
+      return this.createError({ path: 'bookingRules.slotDurationMinutes', message: 'Min 15 min' });
+    }
+  }
+  return true;
 });
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -54,6 +65,7 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
   });
 
   const isCancellationEnabled = watch('bookingRules.isCancellationEnabled');
+  const pricingType = watch('pricing.pricingType');
 
   useEffect(() => {
     if (visible) {
@@ -170,11 +182,11 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                   </>
                 )} />
               </div>
-              <div className="form-group">
-                <label className="form-label text-uppercase">Max Bookings/User/Per Slots *</label>
+              <div className="form-group" style={{ opacity: pricingType === 'daily' ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                <label className="form-label text-uppercase">Max Bookings/User/Per Slots {pricingType !== 'daily' && '*'}</label>
                 <Controller name="maxBookingsPerUserPerSlot" control={control} render={({ field, fieldState }) => (
                   <>
-                    <input type="number" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. 2" {...field} />
+                    <input type="number" min="1" onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }} className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. 2" {...field} disabled={pricingType === 'daily'} style={{ backgroundColor: pricingType === 'daily' ? '#f1f5f9' : '', cursor: pricingType === 'daily' ? 'not-allowed' : 'auto' }} />
                     {fieldState.error && <span className="text-danger small">{fieldState.error.message}</span>}
                   </>
                 )} />
@@ -182,38 +194,48 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
             </div>
 
             <div className="form-row-grid form-row-grid-3">
-              <div className="form-group">
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column' }}>
                 <label className="form-label">Pricing Type *</label>
                 <Controller name="pricing.pricingType" control={control} render={({ field, fieldState }) => (
-                  <>
+                  <div style={{ marginTop: 'auto' }}>
                     <select className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} {...field}>
                       <option value="hourly">Hourly</option>
                       <option value="daily">Daily</option>
-                      <option value="session">Session</option>
-                      <option value="fixed">Fixed</option>
                     </select>
                     {fieldState.error && <span className="text-danger small">{fieldState.error.message}</span>}
-                  </>
+                  </div>
                 )} />
               </div>
-              <div className="form-group">
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column' }}>
                 <label className="form-label">Base Rate (₹) *</label>
                 <Controller name="pricing.baseRate" control={control} render={({ field, fieldState }) => (
-                  <>
+                  <div style={{ marginTop: 'auto' }}>
                     <input type="number" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. 500" {...field} />
                     {fieldState.error && <span className="text-danger small">{fieldState.error.message}</span>}
-                  </>
+                  </div>
                 )} />
               </div>
-              <div className="form-group">
-                <label className="form-label">Security Deposit (₹)</label>
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column' }}>
+                <label className="form-label">
+                  Security Deposit (₹) <span className="text-muted fw-normal" style={{ fontSize: '11px', display: 'block' }}>(Fixed Amount)</span>
+                </label>
                 <Controller name="pricing.securityDeposit" control={control} render={({ field, fieldState }) => (
-                  <>
+                  <div style={{ marginTop: 'auto' }}>
                     <input type="number" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. 0" {...field} />
                     {fieldState.error && <span className="text-danger small">{fieldState.error.message}</span>}
-                  </>
+                  </div>
                 )} />
               </div>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '16px', marginBottom: '24px' }}>
+              <label className="form-label text-uppercase">Security Deposit Description</label>
+              <Controller name="pricing.securityDepositDescription" control={control} render={({ field, fieldState }) => (
+                <>
+                  <input type="text" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. Refundable upon inspection" {...field} value={field.value || ''} />
+                  {fieldState.error && <span className="text-danger small">{fieldState.error.message}</span>}
+                </>
+              )} />
             </div>
 
             <div className="form-group">
@@ -273,11 +295,11 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
             </div>
 
             <div className="form-row-grid">
-              <div className="form-group">
-                <label className="form-label">Slot Duration (Mins) *</label>
+              <div className="form-group" style={{ opacity: pricingType === 'daily' ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+                <label className="form-label">Slot Duration (Mins) {pricingType !== 'daily' && '*'}</label>
                 <Controller name="bookingRules.slotDurationMinutes" control={control} render={({ field, fieldState }) => (
                   <>
-                    <input type="number" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} placeholder="60" {...field} />
+                    <input type="number" className={`form-control ${fieldState.error ? 'is-invalid' : ''}`} placeholder="60" {...field} disabled={pricingType === 'daily'} style={{ backgroundColor: pricingType === 'daily' ? '#f1f5f9' : '', cursor: pricingType === 'daily' ? 'not-allowed' : 'auto' }} />
                     {fieldState.error && <span className="text-danger small">{fieldState.error.message}</span>}
                   </>
                 )} />
@@ -332,7 +354,7 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                           <div className="col-5">
                             <Controller name={`bookingRules.cancellationRefundRules.${index}.cancelBeforeHours`} control={control} render={({ field, fieldState }) => (
                               <>
-                                <input type="number" className={`form-control form-control-sm ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. 24" {...field} />
+                                <input type="number" min="0" className={`form-control form-control-sm ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. 24" {...field} />
                                 {fieldState.error && <span className="text-danger small">{fieldState.error.message}</span>}
                               </>
                             )} />
@@ -340,14 +362,14 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                           <div className="col-5">
                             <Controller name={`bookingRules.cancellationRefundRules.${index}.refundPercentage`} control={control} render={({ field, fieldState }) => (
                               <>
-                                <input type="number" className={`form-control form-control-sm ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. 100" {...field} />
+                                <input type="number" min="0" max="100" onInput={(e) => { if (e.target.value > 100) e.target.value = 100; if (e.target.value < 0) e.target.value = 0; }} className={`form-control form-control-sm ${fieldState.error ? 'is-invalid' : ''}`} placeholder="e.g. 100" {...field} />
                                 {fieldState.error && <span className="text-danger small">{fieldState.error.message}</span>}
                               </>
                             )} />
                           </div>
                           <div className="col-2 text-center">
-                            <button type="button" className="btn btn-sm btn-danger text-white" onClick={() => removeRule(index)}>
-                              <i className="fa-solid fa-trash"></i>
+                            <button type="button" className="btn btn-sm btn-danger text-white px-2 py-1" onClick={() => removeRule(index)}>
+                              Remove
                             </button>
                           </div>
                         </div>

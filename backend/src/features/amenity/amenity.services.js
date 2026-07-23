@@ -32,9 +32,11 @@ export class AmenityService {
       });
     }
 
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const currentTime = now.toTimeString().substring(0, 5);
+    const moment = (await import('moment-timezone')).default;
+    const TIMEZONE = 'Asia/Kolkata';
+    const now = moment().tz(TIMEZONE);
+    const today = now.format('YYYY-MM-DD');
+    const currentTime = now.format('HH:mm');
     const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
     
     amenities = await Promise.all(amenities.map(async (amenity) => {
@@ -42,22 +44,33 @@ export class AmenityService {
       
       if (a.status === 'active') {
         a.currentStatus = 'Available';
-        const dayOfWeek = now.getDay();
+        const dayOfWeek = now.day();
         if (a.bookingRules?.weeklyOffDays?.includes(dayOfWeek)) {
           a.currentStatus = 'Closed';
         } else {
           const openTime = a.bookingRules?.openTime || '00:00';
           const closeTime = a.bookingRules?.closeTime || '23:59';
-          if (currentTime < openTime || currentTime > closeTime) {
+          
+          let isOpen = false;
+          if (closeTime < openTime) {
+             // Operates past midnight
+             isOpen = currentTime >= openTime || currentTime <= closeTime;
+          } else {
+             isOpen = currentTime >= openTime && currentTime <= closeTime;
+          }
+          
+          if (!isOpen) {
             a.currentStatus = 'Closed';
           }
         }
         
         if (a.maintenanceSchedules && a.maintenanceSchedules.length > 0) {
           const hasActiveMaintenance = a.maintenanceSchedules.some(maint => {
-            const mStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
-            const mEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
-            return now >= mStart && now <= mEnd;
+            const mStart = moment.tz(`${maint.startDate}T${maint.startTime || '00:00'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+            let mEnd = moment.tz(`${maint.endDate}T${maint.endTime || '23:59'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+            if (mEnd < mStart) mEnd = moment(mEnd).add(1, 'days').toDate();
+            const nowDt = now.toDate();
+            return nowDt >= mStart && nowDt <= mEnd;
           });
           if (hasActiveMaintenance) {
             a.currentStatus = 'Under Maintenance';
@@ -66,7 +79,8 @@ export class AmenityService {
         
         if (a.currentStatus === 'Available') {
           const conflicts = await amenityBookingRepository.findConflicts(orgId, a._id, today, currentTime, currentTime);
-          if (conflicts.length >= a.capacity) {
+          const occupied = conflicts.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
+          if (occupied >= a.capacity) {
             a.currentStatus = 'Fully Booked';
           }
         }
@@ -176,8 +190,10 @@ export class AmenityService {
     const amenity = await this.getAmenityById(id, orgId);
     if (amenity.status !== 'active') return [];
 
-    const targetDate = new Date(dateStr);
-    const dayOfWeek = targetDate.getDay();
+    const moment = (await import('moment-timezone')).default;
+    const TIMEZONE = 'Asia/Kolkata';
+    const targetDate = moment.tz(dateStr, 'YYYY-MM-DD', TIMEZONE).startOf('day');
+    const dayOfWeek = targetDate.day();
 
     // 1. Weekly Off Check
     if (amenity.bookingRules?.weeklyOffDays?.includes(dayOfWeek)) {
@@ -187,24 +203,55 @@ export class AmenityService {
     // 2. Maintenance Check
     if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
       for (const maint of amenity.maintenanceSchedules) {
-        const start = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
-        const end = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
+        const start = moment.tz(`${maint.startDate}T${maint.startTime || '00:00'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        let end = moment.tz(`${maint.endDate}T${maint.endTime || '23:59'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        if (end < start) end = moment(end).add(1, 'days').toDate();
+        
         // If the entire day is blocked by maintenance
-        if (start <= targetDate && end >= new Date(targetDate.getTime() + 86400000)) {
+        if (start <= targetDate.toDate() && end >= moment(targetDate).add(1, 'days').toDate()) {
            // Basic check. A more precise check happens per slot later
            // return [];
         }
       }
     }
 
-    // 3. Generate base slots from openTime to closeTime
+    // 3. Daily Pricing Bypass
+    if (amenity.pricing?.pricingType === 'daily') {
+      const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
+      const existingBookings = await amenityBookingRepository.findByOrgPaginated(orgId, {
+        amenityId: id,
+        bookingDate: dateStr,
+        status: { $in: ['pending', 'approved', 'confirmed', 'checked-in'] }
+      }, 0, 1000);
+      
+      const bookings = existingBookings.data;
+      const bookedSpots = bookings.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
+      const isBooked = bookedSpots >= amenity.capacity;
+      
+      let multiplier = 1.0;
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        multiplier = amenity.pricing?.weekendRateMultiplier || 1.0;
+      }
+      
+      return [{
+        startTime: amenity.bookingRules?.openTime || '00:00',
+        endTime: amenity.bookingRules?.closeTime || '23:59',
+        status: isBooked ? 'Booked' : 'Available',
+        price: (amenity.pricing?.baseRate || 0) * multiplier
+      }];
+    }
+
+    // 4. Generate base hourly slots from openTime to closeTime
     const openTime = amenity.bookingRules?.openTime || '06:00';
     const closeTime = amenity.bookingRules?.closeTime || '22:00';
     const durationMins = amenity.bookingRules?.slotDurationMinutes || 60;
     const bufferMins = amenity.bookingRules?.bufferTimeMinutes || 0;
 
-    const startMs = new Date(`${dateStr}T${openTime}`).getTime();
-    const endMs = new Date(`${dateStr}T${closeTime}`).getTime();
+    const startMs = moment.tz(`${dateStr}T${openTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).valueOf();
+    let endMs = moment.tz(`${dateStr}T${closeTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).valueOf();
+    if (endMs < startMs) {
+      endMs = moment.tz(`${dateStr}T${closeTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).add(1, 'days').valueOf();
+    }
     
     let currentMs = startMs;
     const allSlots = [];
@@ -212,10 +259,10 @@ export class AmenityService {
     while (currentMs + (durationMins * 60000) <= endMs) {
       const slotEndMs = currentMs + (durationMins * 60000);
       
-      const sDate = new Date(currentMs);
-      const eDate = new Date(slotEndMs);
+      const sDate = moment(currentMs).tz(TIMEZONE);
+      const eDate = moment(slotEndMs).tz(TIMEZONE);
       
-      const formatTime = (d) => d.toTimeString().substring(0, 5);
+      const formatTime = (m) => m.format('HH:mm');
       
       allSlots.push({
         startTime: formatTime(sDate),
@@ -244,15 +291,16 @@ export class AmenityService {
     
     // 5. Filter out slots that overlap with maintenance or exceed capacity
     const availableSlots = allSlots.filter(slot => {
-      const slotStart = new Date(`${dateStr}T${slot.startTime}`);
-      const slotEnd = new Date(`${dateStr}T${slot.endTime}`);
+      const slotStart = moment.tz(`${dateStr}T${slot.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      const slotEnd = moment.tz(`${dateStr}T${slot.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
 
       // Check maintenance
       let inMaintenance = false;
       if (amenity.maintenanceSchedules) {
         for (const maint of amenity.maintenanceSchedules) {
-          const mStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
-          const mEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
+          const mStart = moment.tz(`${maint.startDate}T${maint.startTime || '00:00'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+          let mEnd = moment.tz(`${maint.endDate}T${maint.endTime || '23:59'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+          if (mEnd < mStart) mEnd = moment(mEnd).add(1, 'days').toDate();
           if (slotStart < mEnd && slotEnd > mStart) {
             inMaintenance = true;
             break;
@@ -264,10 +312,11 @@ export class AmenityService {
       // Check capacity
       let overlappingBookings = 0;
       for (const b of bookings) {
-        const bStart = new Date(`${dateStr}T${b.startTime}`);
-        const bEnd = new Date(`${dateStr}T${b.endTime}`);
+        const bStart = moment.tz(`${dateStr}T${b.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        let bEnd = moment.tz(`${dateStr}T${b.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        if (bEnd < bStart) bEnd = moment(bEnd).add(1, 'days').toDate();
         if (slotStart < bEnd && slotEnd > bStart) {
-          overlappingBookings++;
+          overlappingBookings += parseInt(b.numberOfPersons || 1, 10);
         }
       }
 
@@ -276,7 +325,7 @@ export class AmenityService {
       }
 
       // Past time check (don't return slots in the past if date is today)
-      if (slotStart < new Date()) {
+      if (slotStart < moment().tz(TIMEZONE).toDate()) {
         return false;
       }
 
@@ -302,26 +351,100 @@ export class AmenityService {
   async getAllSlots(id, orgId, dateStr, userId) {
     const amenity = await this.getAmenityById(id, orgId);
     
-    const targetDate = new Date(dateStr);
-    const dayOfWeek = targetDate.getDay();
+    const moment = (await import('moment-timezone')).default;
+    const TIMEZONE = 'Asia/Kolkata';
+    const targetDate = moment.tz(dateStr, 'YYYY-MM-DD', TIMEZONE).startOf('day');
+    const dayOfWeek = targetDate.day();
     const isWeeklyOff = amenity.bookingRules?.weeklyOffDays?.includes(dayOfWeek);
+
+    if (amenity.pricing?.pricingType === 'daily') {
+      const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
+      const existingBookings = await amenityBookingRepository.findByOrgPaginated(orgId, {
+        amenityId: id,
+        bookingDate: dateStr,
+        status: { $in: ['pending', 'approved', 'confirmed', 'checked-in'] }
+      }, 0, 1000);
+      
+      const bookings = existingBookings.data;
+      const bookedSpots = bookings.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
+      const isBooked = bookedSpots >= amenity.capacity;
+      
+      let multiplier = 1.0;
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        multiplier = amenity.pricing?.weekendRateMultiplier || 1.0;
+      }
+      
+      let status = isBooked ? 'Booked' : 'Available';
+      
+      // Basic maintenance/weekly off check for daily
+      if (isWeeklyOff || amenity.status !== 'active') {
+        status = 'Closed';
+      } else if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
+        for (const maint of amenity.maintenanceSchedules) {
+          const mStart = moment.tz(`${maint.startDate}T00:00`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+          const mEnd = moment.tz(`${maint.endDate}T23:59`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+          if (targetDate.toDate() >= mStart && targetDate.toDate() <= mEnd) {
+            status = 'Maintenance';
+            break;
+          }
+        }
+      }
+      
+      const today = moment().tz(TIMEZONE).startOf('day');
+      if (targetDate.isBefore(today)) {
+        status = 'Closed';
+      }
+
+      let bookedByMe = false;
+      let bookingId = null;
+      let bookingStatus = null;
+      let myBookingsCount = 0;
+
+      for (const b of bookings) {
+        if (userId && b.user && b.user._id && b.user._id.toString() === userId.toString()) {
+          bookedByMe = true;
+          myBookingsCount += (b.numberOfPersons || 1);
+          bookingId = b.bookingId || b._id;
+          bookingStatus = b.status;
+        } else if (userId && b.userId && b.userId.toString() === userId.toString()) {
+          bookedByMe = true;
+          myBookingsCount += (b.numberOfPersons || 1);
+          bookingId = b.bookingId || b._id;
+          bookingStatus = b.status;
+        }
+      }
+
+      return [{
+        startTime: amenity.bookingRules?.openTime || '00:00',
+        endTime: amenity.bookingRules?.closeTime || '23:59',
+        status,
+        price: (amenity.pricing?.baseRate || 0) * multiplier,
+        bookedByMe,
+        bookingId,
+        bookingStatus,
+        myBookingsCount
+      }];
+    }
 
     const openTime = amenity.bookingRules?.openTime || '06:00';
     const closeTime = amenity.bookingRules?.closeTime || '22:00';
     const durationMins = amenity.bookingRules?.slotDurationMinutes || 60;
     const bufferMins = amenity.bookingRules?.bufferTimeMinutes || 0;
 
-    const startMs = new Date(`${dateStr}T${openTime}`).getTime();
-    const endMs = new Date(`${dateStr}T${closeTime}`).getTime();
+    const startMs = moment.tz(`${dateStr}T${openTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).valueOf();
+    let endMs = moment.tz(`${dateStr}T${closeTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).valueOf();
+    if (endMs < startMs) {
+      endMs = moment.tz(`${dateStr}T${closeTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).add(1, 'days').valueOf();
+    }
     
     let currentMs = startMs;
     const allSlots = [];
     
     while (currentMs + (durationMins * 60000) <= endMs) {
       const slotEndMs = currentMs + (durationMins * 60000);
-      const sDate = new Date(currentMs);
-      const eDate = new Date(slotEndMs);
-      const formatTime = (d) => d.toTimeString().substring(0, 5);
+      const sDate = moment(currentMs).tz(TIMEZONE);
+      const eDate = moment(slotEndMs).tz(TIMEZONE);
+      const formatTime = (m) => m.format('HH:mm');
       
       allSlots.push({
         startTime: formatTime(sDate),
@@ -350,8 +473,8 @@ export class AmenityService {
     const price = baseRate * durationHours * multiplier;
 
     return allSlots.map(slot => {
-      const slotStart = new Date(`${dateStr}T${slot.startTime}`);
-      const slotEnd = new Date(`${dateStr}T${slot.endTime}`);
+      const slotStart = moment.tz(`${dateStr}T${slot.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      const slotEnd = moment.tz(`${dateStr}T${slot.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
       
       let status = 'Available';
       let bookedByMe = false;
@@ -359,14 +482,15 @@ export class AmenityService {
       let bookingStatus = null;
       let myBookingsCount = 0;
 
-      if (slotStart < new Date()) {
+      if (slotStart < moment().tz(TIMEZONE).toDate()) {
         status = 'Closed';
       }
 
       if (amenity.maintenanceSchedules) {
         for (const maint of amenity.maintenanceSchedules) {
-          const mStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
-          const mEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
+          const mStart = moment.tz(`${maint.startDate}T${maint.startTime || '00:00'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+          let mEnd = moment.tz(`${maint.endDate}T${maint.endTime || '23:59'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+          if (mEnd < mStart) mEnd = moment(mEnd).add(1, 'days').toDate();
           if (slotStart < mEnd && slotEnd > mStart) {
             status = 'Maintenance';
             break;
@@ -381,8 +505,9 @@ export class AmenityService {
       if (status === 'Available') {
         let overlappingBookings = 0;
         for (const b of bookings) {
-          const bStart = new Date(`${dateStr}T${b.startTime}`);
-          const bEnd = new Date(`${dateStr}T${b.endTime}`);
+          const bStart = moment.tz(`${dateStr}T${b.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+          let bEnd = moment.tz(`${dateStr}T${b.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+          if (bEnd < bStart) bEnd = moment(bEnd).add(1, 'days').toDate();
           if (slotStart < bEnd && slotEnd > bStart) {
             overlappingBookings += (b.numberOfPersons || 1);
             if (userId && b.user && b.user._id && b.user._id.toString() === userId.toString()) {
@@ -448,17 +573,22 @@ export class AmenityService {
 
     for (const amenity of amenities) {
       // 1. Weekly Off Check
-      const targetDate = new Date(dateStr);
-      if (amenity.bookingRules?.weeklyOffDays?.includes(targetDate.getDay())) {
+      const moment = (await import('moment-timezone')).default;
+      const TIMEZONE = 'Asia/Kolkata';
+      const targetDate = moment.tz(dateStr, 'YYYY-MM-DD', TIMEZONE).startOf('day');
+      if (amenity.bookingRules?.weeklyOffDays?.includes(targetDate.day())) {
         continue;
       }
 
-      const slotStart = new Date(`${dateStr}T${startTime}`);
-      const slotEnd = new Date(`${dateStr}T${endTime}`);
+      const slotStart = moment.tz(`${dateStr}T${startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      let slotEnd = moment.tz(`${dateStr}T${endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      if (slotEnd < slotStart) slotEnd = moment(slotEnd).add(1, 'days').toDate();
 
       // 2. Operating hours check
-      const openTimeParsed = new Date(`${dateStr}T${amenity.bookingRules?.openTime || '00:00'}`);
-      const closeTimeParsed = new Date(`${dateStr}T${amenity.bookingRules?.closeTime || '23:59'}`);
+      const openTimeParsed = moment.tz(`${dateStr}T${amenity.bookingRules?.openTime || '00:00'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      let closeTimeParsed = moment.tz(`${dateStr}T${amenity.bookingRules?.closeTime || '23:59'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      if (closeTimeParsed < openTimeParsed) closeTimeParsed = moment(closeTimeParsed).add(1, 'days').toDate();
+      
       if (slotStart < openTimeParsed || slotEnd > closeTimeParsed) {
         continue;
       }
@@ -467,8 +597,10 @@ export class AmenityService {
       let inMaintenance = false;
       if (amenity.maintenanceSchedules) {
         for (const maint of amenity.maintenanceSchedules) {
-          const mStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
-          const mEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
+          const mStart = moment.tz(`${maint.startDate}T${maint.startTime || '00:00'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+          let mEnd = moment.tz(`${maint.endDate}T${maint.endTime || '23:59'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+          if (mEnd < mStart) mEnd = moment(mEnd).add(1, 'days').toDate();
+          
           if (slotStart < mEnd && slotEnd > mStart) {
             inMaintenance = true;
             break;
@@ -479,8 +611,9 @@ export class AmenityService {
 
       // 4. Booking conflicts check
       const conflicts = await amenityBookingRepository.findConflicts(orgId, amenity._id, dateStr, startTime, endTime);
+      const occupied = conflicts.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
       
-      if (conflicts.length < amenity.capacity) {
+      if (occupied < amenity.capacity) {
         const a = amenity.toObject ? amenity.toObject() : amenity;
         a.currentStatus = 'Available';
         availableAmenities.push(a);
@@ -520,13 +653,17 @@ export class AmenityService {
     const amenity = await this.getAmenityById(amenityId, orgId);
     if (!amenity) throw new HttpError(404, 'Amenity not found');
 
-    const mStart = new Date(`${maintenanceData.startDate}T${maintenanceData.startTime || '00:00'}`);
-    const mEnd = new Date(`${maintenanceData.endDate}T${maintenanceData.endTime || '23:59'}`);
+    const moment = (await import('moment-timezone')).default;
+    const TIMEZONE = 'Asia/Kolkata';
+    const mStart = moment.tz(`${maintenanceData.startDate}T${maintenanceData.startTime || '00:00'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+    let mEnd = moment.tz(`${maintenanceData.endDate}T${maintenanceData.endTime || '23:59'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+    if (mEnd < mStart) mEnd = moment(mEnd).add(1, 'days').toDate();
 
     if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
       for (const maint of amenity.maintenanceSchedules) {
-        const existingStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
-        const existingEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
+        const existingStart = moment.tz(`${maint.startDate}T${maint.startTime || '00:00'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        let existingEnd = moment.tz(`${maint.endDate}T${maint.endTime || '23:59'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        if (existingEnd < existingStart) existingEnd = moment(existingEnd).add(1, 'days').toDate();
         if (mStart < existingEnd && mEnd > existingStart) {
           throw new HttpError(400, 'A maintenance schedule already exists that overlaps with the requested time.');
         }
@@ -537,8 +674,9 @@ export class AmenityService {
     const activeBookings = await amenityBookingRepository.findActiveBookingsByAmenity(amenityId, orgId);
     
     for (const booking of activeBookings) {
-      const bStart = new Date(`${booking.bookingDate}T${booking.startTime}`);
-      const bEnd = new Date(`${booking.bookingDate}T${booking.endTime}`);
+      const bStart = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      let bEnd = moment.tz(`${booking.bookingDate}T${booking.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      if (bEnd < bStart) bEnd = moment(bEnd).add(1, 'days').toDate();
       if (mStart < bEnd && mEnd > bStart) {
         throw new HttpError(400, `Cannot schedule maintenance. An active booking exists on ${booking.bookingDate} (${booking.startTime} - ${booking.endTime}).`);
       }
@@ -556,14 +694,18 @@ export class AmenityService {
     const amenity = await this.getAmenityById(amenityId, orgId);
     if (!amenity) throw new HttpError(404, 'Amenity not found');
 
-    const mStart = new Date(`${maintenanceData.startDate}T${maintenanceData.startTime || '00:00'}`);
-    const mEnd = new Date(`${maintenanceData.endDate}T${maintenanceData.endTime || '23:59'}`);
+    const moment = (await import('moment-timezone')).default;
+    const TIMEZONE = 'Asia/Kolkata';
+    const mStart = moment.tz(`${maintenanceData.startDate}T${maintenanceData.startTime || '00:00'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+    let mEnd = moment.tz(`${maintenanceData.endDate}T${maintenanceData.endTime || '23:59'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+    if (mEnd < mStart) mEnd = moment(mEnd).add(1, 'days').toDate();
 
     if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
       for (const maint of amenity.maintenanceSchedules) {
         if (maint._id.toString() === maintenanceId.toString()) continue;
-        const existingStart = new Date(`${maint.startDate}T${maint.startTime || '00:00'}`);
-        const existingEnd = new Date(`${maint.endDate}T${maint.endTime || '23:59'}`);
+        const existingStart = moment.tz(`${maint.startDate}T${maint.startTime || '00:00'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        let existingEnd = moment.tz(`${maint.endDate}T${maint.endTime || '23:59'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        if (existingEnd < existingStart) existingEnd = moment(existingEnd).add(1, 'days').toDate();
         if (mStart < existingEnd && mEnd > existingStart) {
           throw new HttpError(400, 'A maintenance schedule already exists that overlaps with the requested time.');
         }
@@ -574,8 +716,9 @@ export class AmenityService {
     const activeBookings = await amenityBookingRepository.findActiveBookingsByAmenity(amenityId, orgId);
     
     for (const booking of activeBookings) {
-      const bStart = new Date(`${booking.bookingDate}T${booking.startTime}`);
-      const bEnd = new Date(`${booking.bookingDate}T${booking.endTime}`);
+      const bStart = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      let bEnd = moment.tz(`${booking.bookingDate}T${booking.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+      if (bEnd < bStart) bEnd = moment(bEnd).add(1, 'days').toDate();
       if (mStart < bEnd && mEnd > bStart) {
         throw new HttpError(400, `Cannot schedule maintenance. An active booking exists on ${booking.bookingDate} (${booking.startTime} - ${booking.endTime}).`);
       }

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import amenityBookingController from './amenityBooking.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
-import { createBookingRules, reviewBookingRules, manualBookingRules } from './amenityBooking.validateRules.js';
+import { createBookingRules, manualBookingRules } from './amenityBooking.validateRules.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import { authorizePermission } from '../../middlewares/rbac.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
@@ -21,7 +21,7 @@ router.put('/:id/cancel', authorizePermission('amenities', 'my_booking'), amenit
 router.get('/admin-calendar', authorizePermission('amenities', 'admin_calander'), amenityBookingController.getAdminCalendar);
 router.post('/manual', authorizePermission('amenities', 'dashboard'), validate(manualBookingRules), amenityBookingController.createManualBooking);
 router.get('/queue', authorizePermission('amenities', 'dashboard'), amenityBookingController.getQueue);
-router.put('/:id/review', authorizePermission('amenities', 'dashboard'), validate(reviewBookingRules), amenityBookingController.reviewBooking);
+
 router.put('/:id/admin-cancel', authorizePermission('amenities', 'admin_calander'), amenityBookingController.adminCancelBooking);
 
 // Analytics routes

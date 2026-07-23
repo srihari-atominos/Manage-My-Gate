@@ -11,11 +11,25 @@ export const createAmenityRules = [
   body('openDays').optional().isArray().withMessage('openDays must be an array of integers'),
   body('openDays.*').optional().isInt({ min: 0, max: 6 }).withMessage('openDays must be 0-6'),
   body('capacity').isInt({ min: 1 }).withMessage('Capacity must be a positive integer'),
-  body('requiresApproval').optional().isBoolean(),
-  body('bookingRules.slotDurationMinutes').isInt({ min: 1 }).withMessage('Slot duration must be a positive integer'),
+  body('pricing.securityDepositDescription').optional({ checkFalsy: true }).isString().trim(),
+  body('bookingRules.slotDurationMinutes').custom((value, { req }) => {
+    if (req.body.pricing?.pricingType !== 'daily') {
+      if (!value || parseInt(value, 10) < 15) {
+        throw new Error('Slot duration must be at least 15 mins for slot-based amenities');
+      }
+    }
+    return true;
+  }),
   body('bookingRules.openTime').matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid open time format (HH:MM)'),
   body('bookingRules.closeTime').matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid close time format (HH:MM)'),
-  body('maxBookingsPerUserPerSlot').isInt({ min: 1 }).withMessage('Max bookings must be a positive integer'),
+  body('maxBookingsPerUserPerSlot').custom((value, { req }) => {
+    if (req.body.pricing?.pricingType !== 'daily') {
+      if (!value || parseInt(value, 10) < 1) {
+        throw new Error('Max bookings must be at least 1 for slot-based amenities');
+      }
+    }
+    return true;
+  }),
   body('bookingRules.advanceBookingDays').isInt({ min: 0 }).withMessage('Advance booking days cannot be negative'),
   body('status').optional().isIn(['active', 'inactive']).withMessage('Invalid status'),
 ];
@@ -31,11 +45,25 @@ export const updateAmenityRules = [
   body('openDays').optional().isArray().withMessage('openDays must be an array of integers'),
   body('openDays.*').optional().isInt({ min: 0, max: 6 }).withMessage('openDays must be 0-6'),
   body('capacity').optional().isInt({ min: 1 }).withMessage('Capacity must be a positive integer'),
-  body('requiresApproval').optional().isBoolean(),
-  body('bookingRules.slotDurationMinutes').optional().isInt({ min: 1 }).withMessage('Slot duration must be a positive integer'),
+  body('pricing.securityDepositDescription').optional({ checkFalsy: true }).isString().trim(),
+  body('bookingRules.slotDurationMinutes').custom((value, { req }) => {
+    if (req.body.pricing?.pricingType !== 'daily') {
+      if (value !== undefined && (!value || parseInt(value, 10) < 15)) {
+        throw new Error('Slot duration must be at least 15 mins for slot-based amenities');
+      }
+    }
+    return true;
+  }),
   body('bookingRules.openTime').optional().matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid open time format (HH:MM)'),
   body('bookingRules.closeTime').optional().matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid close time format (HH:MM)'),
-  body('maxBookingsPerUserPerSlot').optional().isInt({ min: 1 }).withMessage('Max bookings must be a positive integer'),
+  body('maxBookingsPerUserPerSlot').custom((value, { req }) => {
+    if (req.body.pricing?.pricingType !== 'daily') {
+      if (value !== undefined && (!value || parseInt(value, 10) < 1)) {
+        throw new Error('Max bookings must be at least 1 for slot-based amenities');
+      }
+    }
+    return true;
+  }),
   body('bookingRules.advanceBookingDays').optional().isInt({ min: 0 }).withMessage('Advance booking days cannot be negative'),
   body('status').optional().isIn(['active', 'inactive']).withMessage('Invalid status'),
 ];

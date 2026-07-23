@@ -53,10 +53,23 @@ export const useResidentBooking = (initialAmenityId) => {
       setErrorMsg('Please select a date first.');
       return;
     }
-    // Fetch slots when moving to time step
-    // Fetch all slots when moving to time step
-    dispatch(fetchAllAmenitySlots({ id: draft.amenityId, date: draft.bookingDate }));
-    setStep('time');
+    
+    if (amenity?.pricing?.pricingType === 'daily') {
+      const baseRate = amenity.pricing?.baseRate || 0;
+      const deposit = amenity.pricing?.securityDeposit || 0;
+      updateDraft({
+        startTime: amenity.bookingRules?.openTime,
+        endTime: amenity.bookingRules?.closeTime,
+        price: baseRate,
+        deposit: deposit,
+        baseAmount: baseRate
+      });
+      setStep('time');
+    } else {
+      // Fetch slots when moving to time step
+      dispatch(fetchAllAmenitySlots({ id: draft.amenityId, date: draft.bookingDate }));
+      setStep('time');
+    }
   };
 
   const goBack = () => {

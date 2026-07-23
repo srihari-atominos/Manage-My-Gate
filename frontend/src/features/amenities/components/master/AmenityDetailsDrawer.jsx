@@ -53,7 +53,14 @@ const AmenityDetailsDrawer = ({ visible, onClose, amenity }) => {
             <div  className="fw-semibold small">₹{rate.toLocaleString()} ({pricingType})</div>
 
             <div style={{ color: 'var(--text-muted)' }} className="fw-semibold small">Security Deposit</div>
-            <div  className="fw-semibold small">₹{deposit.toLocaleString()}</div>
+            <div  className="fw-semibold small">
+              ₹{deposit.toLocaleString()}
+              {amenity.pricing?.securityDepositDescription && (
+                <div className="text-muted" style={{ fontSize: '11px', marginTop: '2px', fontWeight: 'normal' }}>
+                  {amenity.pricing.securityDepositDescription}
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={{ height: '1px', background: 'var(--border-light)', margin: '0 0 20px' }}></div>

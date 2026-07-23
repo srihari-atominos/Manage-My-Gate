@@ -49,7 +49,8 @@ const amenityBookingSchema = new mongoose.Schema({
   },
   numberOfPersons: {
     type: Number,
-    default: 1
+    default: 1,
+    min: [1, 'Number of persons must be at least 1']
   },
   
   // Pricing & Payment

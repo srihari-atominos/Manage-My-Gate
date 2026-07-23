@@ -96,20 +96,6 @@ export class AmenityBookingController {
     }
   }
 
-  async reviewBooking(req, res, next) {
-    try {
-      const { id } = req.params;
-      const { decision, rejectionReason } = req.body;
-      const orgId = req.tenant.orgId;
-      const reviewerId = req.user.id;
-      
-      const reviewed = await amenityBookingService.reviewBooking(id, orgId, decision, reviewerId, rejectionReason);
-      res.success(reviewed, `Booking ${decision} successfully`);
-    } catch (error) {
-      next(error);
-    }
-  }
-
   async cancelBooking(req, res, next) {
     try {
       const { id } = req.params;

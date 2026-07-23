@@ -1,4 +1,4 @@
-import { amenityBookingEventEmitter, AMENITY_BOOKING_CREATED, AMENITY_BOOKING_REVIEWED, AMENITY_BOOKING_CANCELLED, AMENITY_BOOKING_CHECKED_IN, AMENITY_BOOKING_COMPLETED, AMENITY_BOOKING_CONFIRMED } from './amenityBooking.events.js';
+import { amenityBookingEventEmitter, AMENITY_BOOKING_CREATED, AMENITY_BOOKING_CANCELLED, AMENITY_BOOKING_CHECKED_IN, AMENITY_BOOKING_COMPLETED, AMENITY_BOOKING_CONFIRMED } from './amenityBooking.events.js';
 import { paymentEventEmitter, PAYMENT_SUCCESS, PAYMENT_FAILED, PAYMENT_REFUNDED } from '../payment/payment.events.js';
 import amenityBookingRepository from './amenityBooking.repository.js';
 import notificationService from '../notification/notification.service.js';
@@ -76,14 +76,7 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_CREATED, async (booking) => {
   }
 });
 
-amenityBookingEventEmitter.on(AMENITY_BOOKING_REVIEWED, async (booking) => {
-  logBookingEvent('AMENITY_BOOKING_REVIEWED', booking);
-  if (booking.status === 'approved') {
-    await sendBookingNotification(booking, 'alert', 'Booking Approved', 'Your booking was approved. Proceed to payment if required.');
-  } else if (booking.status === 'rejected') {
-    await sendBookingNotification(booking, 'alert', 'Booking Rejected', `Your booking was rejected. Reason: ${booking.rejectionReason}`);
-  }
-});
+
 
 amenityBookingEventEmitter.on(AMENITY_BOOKING_CANCELLED, async (booking) => {
   logBookingEvent('AMENITY_BOOKING_CANCELLED', booking);

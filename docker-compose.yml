@@ -5,6 +5,7 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER:-manageadmin}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-ManageAdminPwd@123}
+      - TZ=${TZ:-Asia/Kolkata}
     ports:
       - "${DB_PORT_EXTERNAL:-27019}:27017"
     volumes:
@@ -33,6 +34,8 @@ services:
   mongodb-rs-init:
     image: mongo:latest
     container_name: mmg-mongodb-rs-init
+    environment:
+      - TZ=${TZ:-Asia/Kolkata}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -84,6 +87,7 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://managemygate.e3esg.com,http://localhost:3004,http://localhost:3000,http://127.0.0.1:3004,http://127.0.0.1:3000}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - NODE_ENV=${NODE_ENV:-production}
+      - TZ=${TZ:-Asia/Kolkata}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -105,6 +109,8 @@ services:
     container_name: mmg-frontend
     ports:
       - "${CLIENT_PORT:-3004}:80"
+    environment:
+      - TZ=${TZ:-Asia/Kolkata}
     depends_on:
       - backend
     networks:
@@ -126,6 +132,7 @@ services:
       - ME_CONFIG_BASICAUTH_USERNAME=${ME_BASICAUTH_USER:-admin}
       - ME_CONFIG_BASICAUTH_PASSWORD=${ME_BASICAUTH_PASS:-admin123}
       - ME_CONFIG_SITE_BASEURL=${ME_CONFIG_SITE_BASEURL:-}
+      - TZ=${TZ:-Asia/Kolkata}
     depends_on:
       mongodb:
         condition: service_healthy

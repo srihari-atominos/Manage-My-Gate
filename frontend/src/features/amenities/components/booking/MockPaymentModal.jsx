@@ -114,7 +114,11 @@ const MockPaymentModal = memo(({ visible, paymentIntent, onSuccess, onFailure, o
                       </CCol>
                       <CCol xs={6}>
                         <div className="small text-muted text-uppercase fw-bold mb-1">Duration</div>
-                        <div className="fw-semibold">{draft?.duration || amenity?.bookingRules?.slotDurationMinutes || 60} Minutes</div>
+                        <div className="fw-semibold">
+                          {amenity?.pricing?.pricingType === 'daily' 
+                            ? 'Full Day' 
+                            : `${draft?.duration || amenity?.bookingRules?.slotDurationMinutes || 60} Minutes`}
+                        </div>
                       </CCol>
                       <CCol xs={6}>
                         <div className="small text-muted text-uppercase fw-bold mb-1">Persons</div>

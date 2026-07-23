@@ -25,23 +25,27 @@ const BookingSummary = memo(({ amenity, draft, onConfirm, onBack }) => {
               <div>
                 <p className="text-uppercase text-muted small fw-bold mb-1">Time</p>
                 <p className="fs-5">{draft.startTime} - {draft.endTime}</p>
-                <p className="text-muted small mt-1">Duration: {(() => {
-                  if (!draft.startTime || !draft.endTime) return '';
-                  const parseTime = (timeStr) => {
-                    const [time, modifier] = timeStr.split(' ');
-                    let [hours, minutes] = time.split(':').map(Number);
-                    if (modifier === 'PM' && hours < 12) hours += 12;
-                    if (modifier === 'AM' && hours === 12) hours = 0;
-                    return hours * 60 + minutes;
-                  };
-                  try {
-                    const startMins = parseTime(draft.startTime);
-                    const endMins = parseTime(draft.endTime);
-                    let diff = endMins - startMins;
-                    if (diff < 0) diff += 24 * 60;
-                    return `${diff} Minutes`;
-                  } catch(e) { return ''; }
-                })()}</p>
+                {amenity?.pricing?.pricingType === 'daily' ? (
+                  <p className="text-muted small mt-1">Duration: Full Day</p>
+                ) : (
+                  <p className="text-muted small mt-1">Duration: {(() => {
+                    if (!draft.startTime || !draft.endTime) return '';
+                    const parseTime = (timeStr) => {
+                      const [time, modifier] = timeStr.split(' ');
+                      let [hours, minutes] = time.split(':').map(Number);
+                      if (modifier === 'PM' && hours < 12) hours += 12;
+                      if (modifier === 'AM' && hours === 12) hours = 0;
+                      return hours * 60 + minutes;
+                    };
+                    try {
+                      const startMins = parseTime(draft.startTime);
+                      const endMins = parseTime(draft.endTime);
+                      let diff = endMins - startMins;
+                      if (diff < 0) diff += 24 * 60;
+                      return `${diff} Minutes`;
+                    } catch(e) { return ''; }
+                  })()}</p>
+                )}
               </div>
             </div>
 
