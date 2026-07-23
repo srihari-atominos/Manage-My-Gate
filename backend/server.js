@@ -6,6 +6,7 @@ import './src/features/user/user.listeners.js';
 import './src/features/securityLog/securityLog.listeners.js';
 import './src/features/complaint/complaint.listeners.js';
 import './src/features/technician/technician.listeners.js';
+import './src/features/workspace/workspace.listeners.js';
 import connectToDb from './src/config/db/mongodbConnectToDb.config.js';
 import { initSocket } from './src/config/socket.js';
 import initializePassport from './src/features/auth/passport/passport.init.js';

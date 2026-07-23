@@ -7,6 +7,7 @@ import notificationRouter from '../features/notification/notification.router.js'
 import integrationHubRouter from '../features/integrationHub/integrationHub.router.js';
 import organizationRouter from '../features/organization/organization.router.js';
 import auditLogRouter from '../features/auditLog/auditLog.router.js';
+import workspaceRouter from '../features/workspace/workspace.router.js';
 
 import messageTemplateRouter from '../features/messageTemplate/messageTemplate.router.js';
 import villaRouter from '../features/villa/villa.router.js';
@@ -39,6 +40,7 @@ router.use('/notifications', notificationRouter);
 router.use('/integrations', integrationHubRouter);
 router.use('/organizations', organizationRouter);
 router.use('/audit-logs', auditLogRouter);
+router.use('/workspaces', workspaceRouter);
 router.use('/notices', noticeBoardRouter);
 
 router.use('/templates', messageTemplateRouter);

@@ -1,0 +1,12 @@
+/* _noticeBoard.scss */
+
+/* Standalone Pin Wobble Animation */
+@keyframes pin-wobble-visual {
+  0% { transform: rotate(-12deg); }
+  100% { transform: rotate(18deg); }
+}
+
+.notice-pin-indicator {
+  display: inline-block;
+  animation: pin-wobble-visual 1.2s ease-in-out infinite alternate;
+}

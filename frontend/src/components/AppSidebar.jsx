@@ -76,17 +76,24 @@ const AppSidebar = () => {
    * - CNavItem: kept if no requiredPermission OR requiredPermission is in allowedFeatures AND user has permission.
    * Super-admin platform items are handled via the isPlatform gate.
    */
+  const isFeatureEnabled = (perm) => {
+    if (isPlatform) return true;
+    const featurePart = perm.split(':')[0];
+    if (featurePart === 'workspaces') return true;
+    return allowedFeatures.includes(featurePart) || allowedFeatures.includes(perm);
+  };
+
   const isPermitted = (item) => {
     if (!item.requiredPermission) {
       return true;
     }
     
     if (Array.isArray(item.requiredPermission)) {
-      const isAllowed = isPlatform || item.requiredPermission.some(perm => checkPermission(perm));
+      const isAllowed = isPlatform || item.requiredPermission.some(perm => isFeatureEnabled(perm) && checkPermission(perm));
       return isAllowed;
     }
 
-    const isAllowed = isPlatform || checkPermission(item.requiredPermission);
+    const isAllowed = isPlatform || (isFeatureEnabled(item.requiredPermission) && checkPermission(item.requiredPermission));
     return isAllowed;
   };
 
