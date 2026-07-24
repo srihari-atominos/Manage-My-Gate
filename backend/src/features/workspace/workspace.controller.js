@@ -146,7 +146,7 @@ export class WorkspaceController {
     }
   }
 
-<<<<<<< HEAD
+
   // --- Members ---
 
   async getMembers(req, res, next) {

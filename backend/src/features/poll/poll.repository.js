@@ -94,7 +94,13 @@ const getPopulateCreatorStages = () => [
     $addFields: {
       'createdBy': {
         _id: '$createdBy',
-        name: { $ifNull: ['$creator_info.name', 'Unknown'] },
+        name: { 
+          $cond: [
+            { $and: [ { $ne: ['$creator_info.name', null] }, { $ne: ['$creator_info.name', ''] } ] },
+            '$creator_info.name',
+            { $ifNull: ['$creator_info.username', 'Unknown'] }
+          ]
+        },
         unit: { $ifNull: ['$villa_info.villaNumber', ''] }
       }
     }
