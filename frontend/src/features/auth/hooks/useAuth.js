@@ -149,18 +149,23 @@ export const useAuth = () => {
   const checkPermission = (permissionName) => {
     if (!currentUser) return false
 
-    if (permissionName && !isPlatform) {
-      const featurePart = permissionName.split(':')[0]
-      if (featurePart !== 'workspaces') {
-        const isEnabled = allowedFeatures.includes(featurePart) || allowedFeatures.includes(permissionName)
-        if (!isEnabled) return false
-      }
+    if (currentUser.role === 'Super Admin' || currentUser.role === 'Platform Super Admin') return true
+
+    const isPermEnabledInWorkspace = (perm) => {
+      if (!perm || isPlatform) return true
+      const featurePart = perm.split(':')[0]
+      if (featurePart === 'workspaces') return true
+      return allowedFeatures.includes(featurePart) || allowedFeatures.includes(perm)
     }
 
-    if (currentUser.role === 'Super Admin' || currentUser.role === 'Platform Super Admin') return true
     if (Array.isArray(permissionName)) {
-      return permissionName.some((perm) => currentUser.permissions && currentUser.permissions.includes(perm))
+      return permissionName.some(
+        (perm) => isPermEnabledInWorkspace(perm) && currentUser.permissions?.includes(perm)
+      )
     }
+
+    if (!isPermEnabledInWorkspace(permissionName)) return false
+
     return !!(currentUser.permissions && currentUser.permissions.includes(permissionName))
   }
 
