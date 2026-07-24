@@ -71,8 +71,14 @@ export class WorkspaceRepository {
     );
   }
 
-
-
+  // --- Activity Log Operations ---
+  async addActivityLog(workspaceId, logData, session = null) {
+    return await Workspace.findByIdAndUpdate(
+      workspaceId,
+      { $push: { activityLogs: logData } },
+      { returnDocument: 'after', new: true, ...(session ? { session } : {}) }
+    );
+  }
 }
 
 export default new WorkspaceRepository();

@@ -110,7 +110,41 @@ export const removeModule = createAsyncThunk(
   }
 );
 
+export const loadWorkspaceMembers = createAsyncThunk(
+  'workspace/loadWorkspaceMembers',
+  async (workspaceId, { rejectWithValue }) => {
+    try {
+      const response = await workspaceApi.getWorkspaceMembers(workspaceId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to load workspace members');
+    }
+  }
+);
 
+export const addMember = createAsyncThunk(
+  'workspace/addMember',
+  async ({ workspaceId, identifier }, { rejectWithValue }) => {
+    try {
+      const response = await workspaceApi.addWorkspaceMember(workspaceId, identifier);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to add member');
+    }
+  }
+);
+
+export const removeMember = createAsyncThunk(
+  'workspace/removeMember',
+  async ({ workspaceId, userId }, { rejectWithValue }) => {
+    try {
+      const response = await workspaceApi.removeWorkspaceMember(workspaceId, userId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to remove member');
+    }
+  }
+);
 
 export const loadCurrentModules = createAsyncThunk(
   'workspace/loadCurrentModules',
@@ -140,6 +174,7 @@ const initialState = {
 
   activeWorkspaceDetails: null,
   workspaceModules: [],
+  workspaceMembers: [],
   workspaceActivityLogs: [],
   modules: [],
 };
@@ -185,6 +220,7 @@ export const workspaceSlice = createSlice({
       state.error = null;
       state.activeWorkspaceDetails = null;
       state.workspaceModules = [];
+      state.workspaceMembers = [];
       state.workspaceActivityLogs = [];
       state.modules = [];
     },
@@ -203,6 +239,7 @@ export const workspaceSlice = createSlice({
         state.error = null;
         state.activeWorkspaceDetails = null;
         state.workspaceModules = [];
+        state.workspaceMembers = [];
         state.workspaceActivityLogs = [];
         state.modules = [];
       })
@@ -231,6 +268,7 @@ export const workspaceSlice = createSlice({
         const details = action.payload?.data;
         state.activeWorkspaceDetails = details;
         state.workspaceModules = details?.modules || [];
+        state.workspaceMembers = details?.members || [];
         state.workspaceActivityLogs = details?.activityLogs || [];
       })
       .addCase(getWorkspaceDetails.rejected, (state, action) => {
@@ -259,6 +297,7 @@ export const workspaceSlice = createSlice({
         state.loading = false;
         state.activeWorkspaceDetails = null;
         state.workspaceModules = [];
+        state.workspaceMembers = [];
         state.workspaceActivityLogs = [];
       })
       .addCase(removeWorkspace.rejected, (state, action) => {
@@ -329,7 +368,43 @@ export const workspaceSlice = createSlice({
         state.loading = false;
         state.error = action.payload || 'Failed to delete module';
       })
-
+      // loadWorkspaceMembers
+      .addCase(loadWorkspaceMembers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadWorkspaceMembers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.workspaceMembers = action.payload?.data || [];
+      })
+      .addCase(loadWorkspaceMembers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Failed to load workspace members';
+      })
+      // addMember
+      .addCase(addMember.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(addMember.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(addMember.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Failed to add member';
+      })
+      // removeMember
+      .addCase(removeMember.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(removeMember.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(removeMember.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Failed to remove member';
+      })
       // loadCurrentModules
       .addCase(loadCurrentModules.pending, (state) => {
         state.loading = true;

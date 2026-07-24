@@ -24,6 +24,12 @@ export const createWorkspaceRules = [
     .isIn(['Active', 'Inactive', 'Pending'])
     .withMessage('Status must be Active, Inactive, or Pending'),
 
+  body('organizationName')
+    .optional()
+    .isString()
+    .withMessage('Organization name must be a string')
+    .trim(),
+
   body('timeZone')
     .optional()
     .isString()
@@ -46,12 +52,6 @@ export const createWorkspaceRules = [
     .optional()
     .isString()
     .withMessage('Contact phone must be a string')
-    .trim(),
-
-  body('location')
-    .optional()
-    .isString()
-    .withMessage('Location must be a string')
     .trim(),
 ];
 
@@ -73,6 +73,12 @@ export const updateWorkspaceRules = [
     .isIn(['Active', 'Inactive', 'Pending'])
     .withMessage('Status must be Active, Inactive, or Pending'),
 
+  body('organizationName')
+    .optional()
+    .isString()
+    .withMessage('Organization name must be a string')
+    .trim(),
+
   body('timeZone')
     .optional()
     .isString()
@@ -95,12 +101,6 @@ export const updateWorkspaceRules = [
     .optional()
     .isString()
     .withMessage('Contact phone must be a string')
-    .trim(),
-
-  body('location')
-    .optional()
-    .isString()
-    .withMessage('Location must be a string')
     .trim(),
 ];
 
@@ -230,5 +230,14 @@ export const workspaceAndModuleIdParamRules = [
   param('moduleId')
     .isMongoId()
     .withMessage('Module ID must be a valid Mongo ID'),
+];
+
+export const addMemberRules = [
+  body('identifier')
+    .notEmpty()
+    .withMessage('Identifier is required')
+    .isString()
+    .withMessage('Identifier must be a string')
+    .trim(),
 ];
 

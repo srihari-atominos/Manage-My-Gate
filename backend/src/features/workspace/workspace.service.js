@@ -37,6 +37,7 @@ export class WorkspaceService {
     // Assign default modules and metadata
     const workspacePayload = {
       ...workspaceData,
+      organizationName: workspaceData.organizationName || org.name,
       createdBy: actorId,
       modules: DEFAULT_MODULES,
       activityLogs: [
@@ -70,6 +71,15 @@ export class WorkspaceService {
       throw new HttpError(403, 'Forbidden. You do not have access to this workspace.');
     }
 
+    // Self-healing: backfill organizationName if missing
+    if (!workspace.organizationName && workspace.organizationId) {
+      const org = await Organization.findById(workspace.organizationId).session(session);
+      if (org) {
+        workspace.organizationName = org.name;
+        await workspace.save({ validateBeforeSave: false });
+      }
+    }
+
     return workspace;
   }
 
@@ -90,6 +100,12 @@ export class WorkspaceService {
       if (existing) {
         throw new HttpError(409, 'Workspace already exists.');
       }
+    }
+
+    // Sync Organization Name
+    if (updateData.organizationName && workspace.organizationId) {
+      const organizationService = (await import('../organization/organization.services.js')).default;
+      await organizationService.updateOrganizationName(workspace.organizationId.toString(), updateData.organizationName, session);
     }
 
     const payload = {
