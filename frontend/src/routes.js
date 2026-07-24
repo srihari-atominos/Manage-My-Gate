@@ -73,7 +73,7 @@ export const routes = [
   { path: '/notifications', name: 'Notifications', element: NotificationView },
   { path: '/integrations', name: 'Integration Hub', element: IntegrationHubView, requiredPermission: 'integrations:read' },
   { path: '/workspace-setup', name: 'Workspace Setup', element: FeatureConfigWizard },
-  { path: '/workspace/settings', name: 'Workspace Settings', element: WorkspaceDetailsView, requiredPermission: 'workspaces:read' },
+  { path: '/workspace/settings', name: 'Workspace Settings', element: WorkspaceDetailsView },
   { path: '/super-admin/organizations', name: 'Organization Manager', element: OrganizationManager, requirePlatform: true },
   { path: '/super-admin/audit-logs', name: 'Audit Logs', element: AuditLogViewer, requirePlatform: true },
   { path: '/notices', name: 'Notice Board', element: NoticeBoardRedirector },

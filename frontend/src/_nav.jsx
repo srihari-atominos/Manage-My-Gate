@@ -118,7 +118,6 @@ const _nav = [
     name: 'Workspace Settings',
     to: '/workspace/settings',
     icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
-    requiredPermission: 'workspaces:read',
   },
   {
     component: CNavItem,
