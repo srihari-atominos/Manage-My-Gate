@@ -274,6 +274,36 @@ export class WorkspaceService {
   }
 
 
+  // --- Settings & Activity Logs ---
+
+  async getSettings(workspaceId, orgId = null, isPlatform = false, session = null) {
+    const workspace = await this.getWorkspaceById(workspaceId, orgId, isPlatform, session);
+    return workspace.settings || {};
+  }
+
+  async updateSettings(workspaceId, orgId = null, isPlatform = false, settingsData, actorId, session = null) {
+    const workspace = await this.getWorkspaceById(workspaceId, orgId, isPlatform, session);
+    const updated = await workspaceRepository.update(workspaceId, { settings: settingsData }, session);
+
+    await workspaceRepository.addActivityLog(workspaceId, {
+      action: 'Settings Updated',
+      performedBy: actorId,
+      details: 'Workspace settings updated.',
+    }, session);
+
+    workspaceEvents.emit('SETTINGS_UPDATED', {
+      actorId,
+      targetId: workspaceId,
+    });
+
+    return updated.settings;
+  }
+
+  async getActivityLogs(workspaceId, orgId = null, isPlatform = false, session = null) {
+    const workspace = await this.getWorkspaceById(workspaceId, orgId, isPlatform, session);
+    return workspace.activityLogs || [];
+  }
+
   // --- Current Workspace bootstrap (self-healing) ---
 
   async getCurrentWorkspaceModules(orgId, actorId, session = null) {

@@ -40,6 +40,9 @@ router.patch('/:workspaceId/modules/:moduleId/toggle', allowedManagers, validate
 router.patch('/:workspaceId/modules/reorder', allowedManagers, validate(workspaceIdParamRules.concat(reorderModulesRules)), workspaceController.reorderModules);
 router.delete('/:workspaceId/modules/:moduleId', allowedManagers, validate(workspaceAndModuleIdParamRules), workspaceController.deleteModule);
 
-// Settings & Activity Logs endpoints have been removed as part of Workspace Settings module deletion
+// Settings & Activity Logs
+router.get('/:workspaceId/settings', allowedManagers, workspaceController.getSettings);
+router.put('/:workspaceId/settings', allowedManagers, workspaceController.updateSettings);
+router.get('/:workspaceId/activity', allowedManagers, workspaceController.getActivityLogs);
 
 export default router;

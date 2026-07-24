@@ -8,6 +8,7 @@ const UserList = React.lazy(() => import('./features/userManagement/UserList'));
 const NotificationView = React.lazy(() => import('./features/notification/views/NotificationView'));
 const IntegrationHubView = React.lazy(() => import('./features/integrationHub/views/IntegrationHubView'));
 const FeatureConfigWizard = React.lazy(() => import('./features/workspace/views/FeatureConfigWizard'));
+const WorkspaceDetailsView = React.lazy(() => import('./features/workspace/views/WorkspaceDetailsView'));
 const VillaManagementView = React.lazy(() => import('./features/villa/views/VillaManagementView'));
 const OrganizationManager = React.lazy(() => import('./features/organization/views/OrganizationManager'));
 const AuditLogViewer = React.lazy(() => import('./features/auditLog/views/AuditLogViewer'));
@@ -72,6 +73,7 @@ export const routes = [
   { path: '/notifications', name: 'Notifications', element: NotificationView },
   { path: '/integrations', name: 'Integration Hub', element: IntegrationHubView, requiredPermission: 'integrations:read' },
   { path: '/workspace-setup', name: 'Workspace Setup', element: FeatureConfigWizard },
+  { path: '/workspace/settings', name: 'Workspace Settings', element: WorkspaceDetailsView, requiredPermission: 'workspaces:read' },
   { path: '/super-admin/organizations', name: 'Organization Manager', element: OrganizationManager, requirePlatform: true },
   { path: '/super-admin/audit-logs', name: 'Audit Logs', element: AuditLogViewer, requirePlatform: true },
   { path: '/notices', name: 'Notice Board', element: NoticeBoardRedirector },

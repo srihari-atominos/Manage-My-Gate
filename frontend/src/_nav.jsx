@@ -113,7 +113,13 @@ const _nav = [
       'complaints:assignee'
     ],
   },
-
+  {
+    component: CNavItem,
+    name: 'Workspace Settings',
+    to: '/workspace/settings',
+    icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
+    requiredPermission: 'workspaces:read',
+  },
   {
     component: CNavItem,
     name: 'Organization Manager',
