@@ -37,6 +37,6 @@
   },
   {
     "feature": "workspaces",
-    "actions": ["read", "write"]
+    "actions": ["create", "read", "update", "delete", "manage_modules", "manage_members"]
   }
 ]
