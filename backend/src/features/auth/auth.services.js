@@ -125,8 +125,8 @@ export class AuthService {
     const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
     const memberships = await orgMembershipService.getUserMemberships(user._id);
 
-    // Active memberships only (where organization status is Active and membership status is Active)
-    const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active' && m.status === 'Active');
+    // Active memberships only (where organization status is Active and membership status is Active or missing for legacy documents)
+    const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active' && (m.status === 'Active' || !m.status));
 
     let selectedMembership = null;
     const targetOrgIdStr = targetOrgId ? targetOrgId.toString() : null;

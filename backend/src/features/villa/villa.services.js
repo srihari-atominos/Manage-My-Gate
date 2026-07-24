@@ -338,7 +338,7 @@ export class VillaService {
 
         if (trimmedEmail) {
           try {
-            if (!['Owner', 'Tenant', 'Family'].includes(residentType)) {
+            if (!['Owner', 'Tenant', 'Family', 'Family Member', 'Resident Owner'].includes(residentType)) {
               throw new Error(`Invalid resident type '${residentType}' for user invitation.`);
             }
             if (!roleName) {

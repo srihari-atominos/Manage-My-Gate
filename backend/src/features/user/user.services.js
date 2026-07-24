@@ -309,16 +309,12 @@ export class UserService {
 
       // Insert transactional outbox event for async email processing
       const OutboxEvent = (await import('../outbox/outboxEvent.model.js')).default;
-      await OutboxEvent.create(
-        [
-          {
-            eventType: 'USER_INVITED',
-            payload: { email: trimmedEmail, orgId, invitationToken },
-            status: 'PENDING',
-          },
-        ],
-        { session }
-      );
+      const outboxEvent = new OutboxEvent({
+        eventType: 'USER_INVITED',
+        payload: { email: trimmedEmail, orgId, invitationToken },
+        status: 'PENDING',
+      });
+      await outboxEvent.save({ session });
 
       await session.commitTransaction();
       

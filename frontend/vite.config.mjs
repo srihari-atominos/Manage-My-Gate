@@ -26,7 +26,7 @@ export default defineConfig(() => {
       extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.scss'],
     },
     server: {
-      port: 3000,
+      port: 3004,
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups'
       },

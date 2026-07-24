@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import PropTypes from 'prop-types';
+import React, { useState, useRef } from 'react'
+import PropTypes from 'prop-types'
 import {
   CModal,
   CModalHeader,
@@ -10,69 +10,151 @@ import {
   CAlert,
   CSpinner,
   CBadge,
-} from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilCloudDownload, cilCloudUpload, cilCheckCircle, cilWarning } from '@coreui/icons';
-import { useTranslation } from 'react-i18next';
+} from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilCloudDownload, cilCloudUpload, cilCheckCircle, cilWarning } from '@coreui/icons'
+import { useTranslation } from 'react-i18next'
+import * as XLSX from 'xlsx'
+import { downloadBulkUploadTemplate } from '../services/villaService'
 
-const TEMPLATE_CONTENT = `UnitNumber,BlockOrBuilding,Type,Email,ResidentType,Role`;
+const parseXLSX = (arrayBuffer) => {
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+  const sheetName = workbook.SheetNames.find((s) => s === 'Upload Data') || workbook.SheetNames[0]
+  const sheet = workbook.Sheets[sheetName]
+  const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 })
 
+  if (jsonData.length < 2) return []
 
-const splitCSVLine = (line) => {
-  const result = [];
-  let current = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
-      result.push(current.trim());
-      current = '';
+  const headers = (jsonData[0] || []).map((h) => (h || '').toString().trim().toLowerCase())
+
+  const parsed = []
+  for (let i = 1; i < jsonData.length; i++) {
+    const values = jsonData[i]
+    if (!values || values.length === 0 || (values.length === 1 && !values[0])) continue
+
+    const row = {}
+    headers.forEach((header, index) => {
+      let key = header
+      if (header.includes('unitnumber') || header.includes('unit number')) key = 'unitNumber'
+      else if (
+        header.includes('blockorbuilding') ||
+        header.includes('block') ||
+        header.includes('building')
+      )
+        key = 'blockOrBuilding'
+      else if (header.includes('email')) key = 'email'
+      else if (header.includes('residenttype') || header.includes('resident type'))
+        key = 'residentType'
+      else if (
+        header.includes('unit type') ||
+        header.includes('type') ||
+        header.includes('configuration')
+      )
+        key = 'type'
+      else if (header.includes('floor area') || header.includes('sq ft') || header.includes('area'))
+        key = 'floorAreaSqFt'
+      else if (header.includes('occupancy status') || header.includes('status'))
+        key = 'status'
+      else if (header.includes('role')) key = 'roleName'
+
+      row[key] =
+        values[index] !== undefined && values[index] !== null ? values[index].toString().trim() : ''
+    })
+
+    row.isValidVilla = !!row.unitNumber
+
+    if (row.email) {
+      row.isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)
+      row.isValidResidentType = [
+        'Owner',
+        'Tenant',
+        'Family Member',
+        'Resident Owner',
+        'Family',
+      ].some((t) => (row.residentType || '').includes(t))
+      // Fallback to determine roleName from residentType if not provided
+      if (!row.roleName && row.residentType) {
+        if (row.residentType.includes('Owner')) row.roleName = 'Resident Owner'
+        else if (row.residentType.includes('Tenant')) row.roleName = 'Resident Tenant'
+        else if (row.residentType.includes('Family')) row.roleName = 'Family Member'
+      }
+      row.isValidRole = !!row.roleName
     } else {
-      current += char;
+      row.isValidEmail = true
+      row.isValidResidentType = true
+      row.isValidRole = true
     }
-  }
-  result.push(current.trim());
-  return result;
-};
 
-const parseCSV = (text) => {
-  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    row.isValid = row.isValidVilla && row.isValidEmail && row.isValidResidentType && row.isValidRole
+    parsed.push(row)
+  }
+  return parsed
+}
+
+const parseCSV = (csvText) => {
+  const lines = csvText.split(/\r?\n/).filter(line => line.trim());
   if (lines.length < 2) return [];
 
-  const headers = splitCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+  // Simple CSV parser that handles quotes
+  const parseLine = (line) => {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"' && line[i+1] === '"') {
+        current += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current);
+    return result;
+  };
+
+  const headers = parseLine(lines[0]).map(h => (h || '').toString().trim().toLowerCase());
   
   const parsed = [];
   for (let i = 1; i < lines.length; i++) {
-    const values = splitCSVLine(lines[i]);
-    if (values.length === 0 || (values.length === 1 && !values[0])) continue;
+    const values = parseLine(lines[i]);
+    if (!values || values.length === 0 || (values.length === 1 && !values[0])) continue;
 
     const row = {};
     headers.forEach((header, index) => {
       let key = header;
-      if (header === 'unitnumber' || header === 'unit number' || header === 'villanumber' || header === 'villa number') key = 'unitNumber';
-      else if (header === 'blockorbuilding' || header === 'block' || header === 'building') key = 'blockOrBuilding';
-      else if (header === 'type' || header === 'configuration') key = 'type';
-      else if (header === 'email') key = 'email';
-      else if (header === 'residenttype' || header === 'resident type') key = 'residentType';
-      else if (header === 'role') key = 'roleName';
+      if (header.includes('unitnumber') || header.includes('unit number')) key = 'unitNumber';
+      else if (header.includes('blockorbuilding') || header.includes('block') || header.includes('building')) key = 'blockOrBuilding';
+      else if (header.includes('email')) key = 'email';
+      else if (header.includes('residenttype') || header.includes('resident type')) key = 'residentType';
+      else if (header.includes('unit type') || header.includes('type') || header.includes('configuration')) key = 'type';
+      else if (header.includes('floor area') || header.includes('sq ft') || header.includes('area')) key = 'floorAreaSqFt';
+      else if (header.includes('occupancy status') || header.includes('status')) key = 'status';
+      else if (header.includes('role')) key = 'roleName';
 
-      row[key] = values[index] || '';
+      row[key] = values[index] !== undefined && values[index] !== null ? values[index].toString().trim() : '';
     });
 
     row.isValidVilla = !!row.unitNumber;
-
     if (row.email) {
       row.isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email);
-      row.isValidResidentType = ['Owner', 'Tenant', 'Family'].includes(row.residentType);
+      row.isValidResidentType = ['Owner', 'Tenant', 'Family Member', 'Resident Owner', 'Family'].some((t) => (row.residentType || '').includes(t));
+      if (!row.roleName && row.residentType) {
+        if (row.residentType.includes('Owner')) row.roleName = 'Resident Owner';
+        else if (row.residentType.includes('Tenant')) row.roleName = 'Resident Tenant';
+        else if (row.residentType.includes('Family')) row.roleName = 'Family Member';
+      }
       row.isValidRole = !!row.roleName;
     } else {
       row.isValidEmail = true;
       row.isValidResidentType = true;
       row.isValidRole = true;
     }
-
     row.isValid = row.isValidVilla && row.isValidEmail && row.isValidResidentType && row.isValidRole;
     parsed.push(row);
   }
@@ -80,118 +162,124 @@ const parseCSV = (text) => {
 };
 
 export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
-  const { t } = useTranslation();
-  const [parsedRows, setParsedRows] = useState([]);
-  const [fileName, setFileName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState(null);
-  const [errorMsg, setErrorMsg] = useState('');
-  const fileInputRef = useRef(null);
+  const { t } = useTranslation()
+  const [parsedRows, setParsedRows] = useState([])
+  const [fileName, setFileName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [results, setResults] = useState(null)
+  const [errorMsg, setErrorMsg] = useState('')
+  const fileInputRef = useRef(null)
 
-  const handleDownloadTemplate = () => {
-    const blob = new Blob([TEMPLATE_CONTENT], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'bulk_upload_units_template.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const handleDownloadTemplate = async () => {
+    try {
+      const blob = await downloadBulkUploadTemplate()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', 'bulk_upload_units_template.csv')
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (err) {
+      console.error('Download Template Error:', err)
+      setErrorMsg(t('villas.bulk.downloadError', 'Failed to download template.'))
+    }
+  }
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const processFile = (file) => {
+    setFileName(file.name)
+    setErrorMsg('')
+    setResults(null)
 
-    setFileName(file.name);
-    setErrorMsg('');
-    setResults(null);
-
-    const reader = new FileReader();
+    const reader = new FileReader()
     reader.onload = (event) => {
       try {
-        const text = event.target.result;
-        const rows = parseCSV(text);
-        if (rows.length === 0) {
-          setErrorMsg(t('villas.bulk.emptyError', 'The uploaded file is empty or missing headers.'));
+        let rows = []
+        if (file.name.endsWith('.csv')) {
+          rows = parseCSV(event.target.result)
         } else {
-          setParsedRows(rows);
+          rows = parseXLSX(event.target.result)
+        }
+        if (rows.length === 0) {
+          setErrorMsg(t('villas.bulk.emptyError', 'The uploaded file is empty or missing headers.'))
+        } else {
+          setParsedRows(rows)
         }
       } catch (err) {
-        setErrorMsg(t('villas.bulk.parseError', 'Failed to parse CSV file.'));
+        console.error('File parsing error:', err);
+        setErrorMsg(t('villas.bulk.parseError', 'Failed to parse file: ') + err.message)
       }
-    };
-    reader.readAsText(file);
-  };
+    }
+    
+    if (file.name.endsWith('.csv')) {
+      reader.readAsText(file)
+    } else {
+      reader.readAsArrayBuffer(file)
+    }
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    processFile(file)
+  }
 
   const handleDragOver = (e) => {
-    e.preventDefault();
-  };
+    e.preventDefault()
+  }
 
   const handleDrop = (e) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file && file.type === 'text/csv') {
-      setFileName(file.name);
-      setErrorMsg('');
-      setResults(null);
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const text = event.target.result;
-          const rows = parseCSV(text);
-          setParsedRows(rows);
-        } catch (err) {
-          setErrorMsg(t('villas.bulk.parseError', 'Failed to parse CSV file.'));
-        }
-      };
-      reader.readAsText(file);
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.csv'))) {
+      processFile(file)
     } else {
-      setErrorMsg(t('villas.bulk.invalidType', 'Please upload a valid CSV file.'));
+      setErrorMsg(t('villas.bulk.invalidType', 'Please upload a valid Excel (.xlsx) or CSV (.csv) file.'))
     }
-  };
+  }
 
   const handleSubmit = async () => {
-    const validRows = parsedRows.filter(r => r.isValid);
+    const validRows = parsedRows.filter((r) => r.isValid)
     if (validRows.length === 0) {
-      setErrorMsg(t('villas.bulk.noValidRows', 'No valid rows found to upload.'));
-      return;
+      setErrorMsg(t('villas.bulk.noValidRows', 'No valid rows found to upload.'))
+      return
     }
 
-    setLoading(true);
-    setErrorMsg('');
+    setLoading(true)
+    setErrorMsg('')
     try {
-      const payload = validRows.map(r => ({
+      const payload = validRows.map((r) => ({
         unitNumber: r.unitNumber,
         blockOrBuilding: r.blockOrBuilding || undefined,
         type: r.type || 'Apartment',
+        status: r.status || 'Vacant',
+        floorAreaSqFt: r.floorAreaSqFt ? parseFloat(r.floorAreaSqFt) : undefined,
         email: r.email || undefined,
         residentType: r.email ? r.residentType : undefined,
         roleName: r.email ? r.roleName : undefined,
-      }));
-      const res = await onBulkUpload(payload);
-      setResults(res);
-      setParsedRows([]);
-      setFileName('');
+      }))
+      const res = await onBulkUpload(payload)
+      setResults(res)
+      setParsedRows([])
+      setFileName('')
     } catch (err) {
-      setErrorMsg(err.message || t('villas.bulk.failed', 'Bulk unit upload request failed.'));
+      setErrorMsg(err.message || t('villas.bulk.failed', 'Bulk unit upload request failed.'))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleClose = () => {
-    setParsedRows([]);
-    setFileName('');
-    setResults(null);
-    setErrorMsg('');
-    onClose();
-  };
+    setParsedRows([])
+    setFileName('')
+    setResults(null)
+    setErrorMsg('')
+    onClose()
+  }
 
-  const validCount = parsedRows.filter(r => r.isValid).length;
-  const invalidCount = parsedRows.length - validCount;
+  const validCount = parsedRows.filter((r) => r.isValid).length
+  const invalidCount = parsedRows.length - validCount
 
   return (
     <CModal
@@ -211,10 +299,13 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
         {!fileName && !parsedRows.length && !results && (
           <div className="mb-4 text-center p-4 border rounded-3 bg-body-secondary">
             <h5 className="fw-semibold mb-2 section-title">
-              {t('villas.bulk.step1Title', '1. Download CSV Template')}
+              {t('villas.bulk.step1Title', '1. Download Excel Template')}
             </h5>
             <p className="text-muted small mb-3">
-              {t('villas.bulk.step1Desc', 'Use our template to upload your community units grid. If you supply resident emails, invitations will be sent automatically.')}
+              {t(
+                'villas.bulk.step1Desc',
+                'Use our template to upload your community units grid. If you supply resident emails, invitations will be sent automatically.',
+              )}
             </p>
             <CButton
               color="primary"
@@ -238,7 +329,9 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
         {!results && (
           <div className="mb-4">
             <h5 className="fw-semibold mb-3 section-title">
-              {fileName ? t('villas.bulk.uploadedFile', 'Uploaded File') : t('villas.bulk.step2Title', '2. Upload CSV File')}
+              {fileName
+                ? t('villas.bulk.uploadedFile', 'Uploaded File')
+                : t('villas.bulk.step2Title', '2. Upload Excel File')}
             </h5>
             <div
               className="p-4 border rounded-3 text-center bg-body-secondary bulk-dropzone pointer-clickable"
@@ -248,7 +341,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
             >
               <input
                 type="file"
-                accept=".csv"
+                accept=".xlsx,.csv"
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 className="d-none"
@@ -257,12 +350,21 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
               {fileName ? (
                 <div>
                   <div className="fw-semibold text-primary mb-1">{fileName}</div>
-                  <div className="text-muted small">{t('villas.bulk.replaceDesc', 'Click or drag another file to replace')}</div>
+                  <div className="text-muted small">
+                    {t('villas.bulk.replaceDesc', 'Click or drag another file to replace')}
+                  </div>
                 </div>
               ) : (
                 <div>
-                  <div className="fw-semibold mb-1">{t('villas.bulk.dropzoneTitle', 'Click to Upload or Drag & Drop File')}</div>
-                  <div className="text-muted small">{t('villas.bulk.dropzoneDesc', 'CSV files only. Maximum file size 2MB.')}</div>
+                  <div className="fw-semibold mb-1">
+                    {t('villas.bulk.dropzoneTitle', 'Click to Upload or Drag & Drop File')}
+                  </div>
+                  <div className="text-muted small">
+                    {t(
+                      'villas.bulk.dropzoneDesc',
+                      'Excel (.xlsx) files only. Maximum file size 2MB.',
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -276,8 +378,14 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
                 {t('villas.bulk.step3Title', '3. Preview Uploaded List')}
               </h5>
               <div className="d-flex gap-2">
-                <CBadge color="success">{validCount} {t('villas.bulk.valid', 'Valid')}</CBadge>
-                {invalidCount > 0 && <CBadge color="danger">{invalidCount} {t('villas.bulk.invalid', 'Invalid')}</CBadge>}
+                <CBadge color="success">
+                  {validCount} {t('villas.bulk.valid', 'Valid')}
+                </CBadge>
+                {invalidCount > 0 && (
+                  <CBadge color="danger">
+                    {invalidCount} {t('villas.bulk.invalid', 'Invalid')}
+                  </CBadge>
+                )}
               </div>
             </div>
 
@@ -285,21 +393,29 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
               <table className="table table-hover align-middle mb-0 small">
                 <thead className="table-light sticky-top">
                   <tr>
-                    <th scope="col" className="ps-3">{t('villas.bulk.tableUnit', 'Unit Number')}</th>
-                    <th scope="col">{t('villas.bulk.tableBlock', 'Block')}</th>
-                    <th scope="col">{t('villas.bulk.tableType', 'Type')}</th>
-                    <th scope="col">{t('villas.bulk.tableEmail', 'Resident Email')}</th>
-                    <th scope="col">{t('villas.bulk.tableTypeLabel', 'Resident Type')}</th>
-                    <th scope="col">{t('villas.bulk.tableRole', 'Role')}</th>
-                    <th scope="col" className="pe-3 text-center">{t('villas.bulk.tableStatus', 'Status')}</th>
+                    <th scope="col" className="ps-3">{t('villas.bulk.csvUnitNumber', 'Unit Number')}</th>
+                    <th scope="col">{t('villas.bulk.csvBlock', 'Block/Building')}</th>
+                    <th scope="col">{t('villas.bulk.csvUnitType', 'Unit Type')}</th>
+                    <th scope="col">{t('villas.bulk.csvFloorArea', 'Floor Area (Sq.Ft)')}</th>
+                    <th scope="col">{t('villas.bulk.csvStatus', 'Occupancy Status')}</th>
+                    <th scope="col">{t('villas.bulk.csvEmail', 'Email')}</th>
+                    <th scope="col">{t('villas.bulk.csvResidentType', 'Resident Type')}</th>
+                    <th scope="col">{t('villas.bulk.csvRole', 'Role')}</th>
+                    <th scope="col" className="pe-3 text-center">
+                      {t('villas.bulk.tableValidation', 'Validation')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {parsedRows.map((row, idx) => (
                     <tr key={idx} className={row.isValid ? '' : 'table-warning-row'}>
-                      <td className="ps-3 fw-bold text-primary">{row.unitNumber || <span className="text-danger">Missing</span>}</td>
+                      <td className="ps-3 fw-bold text-primary">
+                        {row.unitNumber || <span className="text-danger">Missing</span>}
+                      </td>
                       <td>{row.blockOrBuilding || <span className="text-muted">—</span>}</td>
                       <td>{row.type || <span className="text-muted">—</span>}</td>
+                      <td>{row.floorAreaSqFt || <span className="text-muted">—</span>}</td>
+                      <td>{row.status || <span className="text-muted">—</span>}</td>
                       <td>{row.email || <span className="text-muted">—</span>}</td>
                       <td>{row.residentType || <span className="text-muted">—</span>}</td>
                       <td>{row.roleName || <span className="text-muted">—</span>}</td>
@@ -307,9 +423,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
                         {row.isValid ? (
                           <CBadge color="success">{t('villas.bulk.valid', 'Valid')}</CBadge>
                         ) : (
-                          <CBadge color="danger">
-                            {t('villas.bulk.fixRow', 'Fix Row')}
-                          </CBadge>
+                          <CBadge color="danger">{t('villas.bulk.fixRow', 'Fix Row')}</CBadge>
                         )}
                       </td>
                     </tr>
@@ -322,32 +436,42 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
 
         {results && (
           <div className="upload-results">
-            <CAlert color={results.failureCount === 0 ? 'success' : 'warning'} className="mb-4 py-3">
+            <CAlert
+              color={results.failureCount === 0 ? 'success' : 'warning'}
+              className="mb-4 py-3"
+            >
               <div className="d-flex align-items-center gap-2 mb-2">
                 <CIcon icon={results.failureCount === 0 ? cilCheckCircle : cilWarning} size="xl" />
-                <h6 className="fw-semibold mb-0">{t('villas.bulk.completed', 'Bulk Unit Upload Completed')}</h6>
+                <h6 className="fw-semibold mb-0">
+                  {t('villas.bulk.completed', 'Bulk Unit Upload Completed')}
+                </h6>
               </div>
               <p className="mb-0 small">
                 {t('villas.bulk.resultSummary', {
                   count: results.successCount,
                   total: results.total,
-                  defaultValue: `Successfully processed ${results.successCount} of ${results.total} units.`
+                  defaultValue: `Successfully processed ${results.successCount} of ${results.total} units.`,
                 })}
               </p>
             </CAlert>
 
             {results.successes.length > 0 && (
               <div className="mb-4">
-                <h6 className="fw-semibold text-success mb-2 fs-smaller">{t('villas.bulk.processed', 'Successfully Processed:')}</h6>
+                <h6 className="fw-semibold text-success mb-2 fs-smaller">
+                  {t('villas.bulk.processed', 'Successfully Processed:')}
+                </h6>
                 <div className="list-group rounded-3 bulk-list-container-lg">
                   {results.successes.map((s, idx) => (
-                    <div key={idx} className="list-group-item d-flex justify-content-between align-items-center py-2 small">
+                    <div
+                      key={idx}
+                      className="list-group-item d-flex justify-content-between align-items-center py-2 small"
+                    >
                       <div>
                         <span className="fw-bold text-primary">{s.unitNumber}</span>
                         <span className="text-muted ms-2">({s.action})</span>
                         {s.email && (
                           <div className="text-muted bulk-text-xxs">
-                            Resident: <span className="fw-semibold">{s.email}</span> 
+                            Resident: <span className="fw-semibold">{s.email}</span>
                             {s.userInvited ? (
                               <span className="text-success ms-1">✓ Invited</span>
                             ) : (
@@ -370,7 +494,10 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
                 </h6>
                 <div className="list-group rounded-3 bulk-list-container">
                   {results.failures.map((f, idx) => (
-                    <div key={idx} className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-body-secondary-danger">
+                    <div
+                      key={idx}
+                      className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-body-secondary-danger"
+                    >
                       <div className="ms-2 me-auto">
                         <div className="fw-semibold text-body">{f.unitNumber}</div>
                         <span className="text-muted bulk-text-xxs">Reason: {f.error}</span>
@@ -386,12 +513,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
       </CModalBody>
 
       <CModalFooter className="border-0 pt-0">
-        <CButton
-          color="light"
-          size="sm"
-          onClick={handleClose}
-          disabled={loading}
-        >
+        <CButton color="light" size="sm" onClick={handleClose} disabled={loading}>
           {results ? t('villas.bulk.close', 'Close') : t('villas.bulk.cancel', 'Cancel')}
         </CButton>
         {!results && parsedRows.length > 0 && (
@@ -410,20 +532,23 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
               </>
             ) : (
               <>
-                {t('villas.bulk.uploadCount', { count: validCount, defaultValue: `Upload ${validCount} Units` })}
+                {t('villas.bulk.uploadCount', {
+                  count: validCount,
+                  defaultValue: `Upload ${validCount} Units`,
+                })}
               </>
             )}
           </CButton>
         )}
       </CModalFooter>
     </CModal>
-  );
-};
+  )
+}
 
 BulkUploadVillasModal.propTypes = {
   visible: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onBulkUpload: PropTypes.func.isRequired,
-};
+}
 
-export default BulkUploadVillasModal;
+export default BulkUploadVillasModal

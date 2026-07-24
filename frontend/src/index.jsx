@@ -56,6 +56,11 @@ try {
 }
 
 const googleClientId = config.googleClientId;
+console.log('====== GOOGLE SSO DEBUG INFO ======');
+console.log('Current Browser Origin:', window.location.origin);
+console.log('Using Client ID:', googleClientId);
+console.log('If these do not EXACTLY match Google Cloud Console, it will fail with 403.');
+console.log('===================================');
 
 const renderApp = () => (
   <ErrorBoundary>

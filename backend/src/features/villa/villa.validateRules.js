@@ -106,12 +106,12 @@ export const bulkUploadVillasRules = [
     .trim(),
   body('villas.*.type')
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['Studio', 'Apartment', 'Villa', 'Penthouse'])
-    .withMessage('Type must be one of: Studio, Apartment, Villa, Penthouse'),
+    .isIn(['1BHA', '2BHA', '3BHA', 'Villa', 'Studio', 'Apartment', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex'])
+    .withMessage('Type must be a valid unit type (e.g., 1BHA, 2BHA, 3BHA, Villa)'),
   body('villas.*.status')
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['Vacant', 'Occupied', 'Under Maintenance'])
-    .withMessage('Status must be one of: Vacant, Occupied, Under Maintenance'),
+    .isIn(['Occupied', 'Vacant', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent', 'Reserved'])
+    .withMessage('Status must be Occupied or Vacant'),
   body('villas.*.floorAreaSqFt')
     .optional({ nullable: true, checkFalsy: true })
     .isNumeric()
@@ -125,14 +125,9 @@ export const bulkUploadVillasRules = [
     .withMessage('Please provide a valid email address')
     .trim(),
   body('villas.*.residentType')
-    .optional()
-    .isString()
-    .withMessage('Resident type must be a string')
-    .trim(),
-  body('villas.*.roleName')
-    .optional()
-    .isString()
-    .trim(),
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(['Family Member', 'Resident Owner', 'Tenant'])
+    .withMessage('Resident type must be Family Member, Resident Owner, or Tenant'),
 ];
 
 export const assignExistingUserRules = [

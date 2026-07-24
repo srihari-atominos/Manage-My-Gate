@@ -1,4 +1,5 @@
 import villaService from './villa.services.js';
+import ExcelJS from 'exceljs';
 
 export class VillaController {
   async getAll(req, res, next) {
@@ -166,6 +167,46 @@ export class VillaController {
       const orgId = req.tenant.orgId;
       const villa = await villaService.removeResident(id, userId, orgId);
       res.success(villa, 'Resident removed successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async downloadBulkUploadTemplate(req, res, next) {
+    try {
+      const headers = [
+        'UnitNumber(101,102,103)',
+        'BlockOrBuilding',
+        'Unit Type(1BHA,2BHA,3BHA,Villa)',
+        'Floor Area (Sq Ft)',
+        'Occupancy Status(Occupied,Vacant)',
+        'Email',
+        'ResidentType(Family Member,Resident Owner,Tenant)',
+        'Role(Admin,Owner,Tenant,Family Member,Security)'
+      ];
+
+      const exampleRow = [
+        '101',
+        'Block A',
+        '3BHA',
+        '1500',
+        'Occupied',
+        'resident@example.com',
+        'Resident Owner',
+        'Owner'
+      ];
+
+      const escapeCSV = (arr) => arr.map(val => `"${val}"`).join(',');
+
+      const csvContent = [
+        escapeCSV(headers),
+        escapeCSV(exampleRow)
+      ].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="bulk_upload_units_template.csv"');
+      
+      res.send(csvContent);
     } catch (error) {
       next(error);
     }
