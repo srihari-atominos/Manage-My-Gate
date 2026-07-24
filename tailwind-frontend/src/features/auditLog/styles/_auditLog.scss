@@ -1,0 +1,71 @@
+// Audit Log Viewer Styling
+
+.audit-log-container {
+  padding: 1.5rem 0;
+
+  .audit-log-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    transition: all 0.3s ease;
+
+    .card-header {
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 1.5rem 2rem;
+
+      h3 {
+        color: #ffffff;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0;
+      }
+      p {
+        color: #a1a1aa;
+        font-size: 0.875rem;
+        margin: 0.25rem 0 0 0;
+      }
+    }
+
+    .table {
+      margin-bottom: 0;
+      color: #e4e4e7;
+
+      th {
+        background: rgba(255, 255, 255, 0.01);
+        border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+        color: #a1a1aa;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        padding: 1rem 2rem;
+      }
+
+      td {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 1.25rem 2rem;
+        vertical-align: middle;
+        font-size: 0.9rem;
+      }
+
+      tr:hover {
+        background: rgba(255, 255, 255, 0.02);
+        transition: background 0.2s ease;
+      }
+    }
+  }
+
+  .meta-badge {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e4e4e7;
+    font-size: 0.75rem;
+    padding: 0.35em 0.7em;
+    border-radius: 6px;
+    font-family: var(--cui-font-monospace, monospace);
+  }
+}

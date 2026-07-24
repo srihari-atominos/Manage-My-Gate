@@ -19,10 +19,11 @@
  * <Route path="*" element={<DefaultLayout />} />
  */
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import { AppContent, AppSidebar, AppHeader } from '../components/index'
+import { loadCurrentModules } from '../features/workspace/store/workspaceSlice.js'
 import useNotificationSocket from '../features/notification/hooks/useNotificationSocket.js'
 import useWalkInListener from '../features/visitorManagement/hooks/useWalkInListener.js'
 import GlobalGateApprovalModal from '../features/visitorManagement/components/GlobalGateApprovalModal.jsx'
@@ -41,13 +42,21 @@ import GlobalGateApprovalModal from '../features/visitorManagement/components/Gl
  * @returns {React.ReactElement} Complete application layout
  */
 const DefaultLayout = () => {
+  const dispatch = useDispatch()
   const { token, user } = useSelector((state) => state.auth)
+  const activeOrgId = useSelector((state) => state.workspace.activeOrganizationId)
 
   // Initialize real-time notification socket listener
   useNotificationSocket(user?.id || user?._id)
 
   // Initialize real-time gate walk-in approval request listener
   useWalkInListener()
+
+  useEffect(() => {
+    if (token && activeOrgId) {
+      dispatch(loadCurrentModules())
+    }
+  }, [token, activeOrgId, dispatch])
 
   // Redirect to login if not authenticated
   if (!token && !user) {

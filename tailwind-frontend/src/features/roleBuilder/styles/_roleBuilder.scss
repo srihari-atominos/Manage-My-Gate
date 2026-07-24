@@ -1,0 +1,32 @@
+.permissions-scroll-container {
+  overflow-y: auto !important;
+
+  /* Mobile (Default) */
+  max-height: 45vh;
+
+  /* Desktop */
+  @media (min-width: 768px) {
+    max-height: 55vh;
+  }
+}
+
+.role-builder-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Animations */
+.role-integration-configurator {
+  animation: slideDown 0.25s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
