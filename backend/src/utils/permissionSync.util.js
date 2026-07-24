@@ -145,6 +145,83 @@ export const syncPermissions = async () => {
       logger.info('Updated existing Super Admin user membership status to Active.');
     }
 
+    // 6.5 Self-healing: Ensure all existing 'Community Admin' roles get all system permissions mapped
+    const RoleModel = (await import('../features/role/role.model.js')).default;
+    const communityAdminRoles = await RoleModel.find({ name: 'Community Admin' });
+    const allSystemPermissions = await PermissionModel.find({});
+
+    for (const role of communityAdminRoles) {
+      let roleModified = false;
+      for (const perm of allSystemPermissions) {
+        const mappingExists = await RolePermissionModel.findOne({
+          roleId: role._id,
+          permissionId: perm._id
+        });
+        if (!mappingExists) {
+          await RolePermissionModel.create({
+            roleId: role._id,
+            permissionId: perm._id
+          });
+          roleModified = true;
+          logger.info(`Self-healed role "${role.name}" (${role._id}) with permission "${perm.name}".`);
+        }
+      }
+      if (roleModified) {
+        // Clear the service cache for this role
+        rolePermissionService.cache.delete(role._id.toString());
+      }
+    }
+
+    // 6.7 Self-healing: Ensure all existing memberships have status 'Active' (fixes dev/seed data missing status)
+    const OrgMembershipModel = (await import('../features/orgMembership/orgMembership.model.js')).default;
+    await OrgMembershipModel.updateMany({ status: { $ne: 'Active' } }, { $set: { status: 'Active' } });
+    logger.info('Self-healed all memberships to status "Active".');
+
+    // 6.8 Self-healing: Ensure all existing workspaces have all default modules backfilled
+    const WorkspaceModel = (await import('../features/workspace/workspace.model.js')).default;
+    const workspacesList = await WorkspaceModel.find({});
+    const { DEFAULT_MODULES } = await import('../features/workspace/workspace.service.js');
+    
+    for (const ws of workspacesList) {
+      let modified = false;
+      if (!ws.modules) {
+        ws.modules = [];
+      }
+      for (const defaultMod of DEFAULT_MODULES) {
+        const hasModule = ws.modules.some(m => m.moduleKey === defaultMod.moduleKey);
+        if (!hasModule) {
+          ws.modules.push({ ...defaultMod });
+          modified = true;
+        }
+      }
+      if (modified) {
+        await ws.save({ validateBeforeSave: false });
+        logger.info(`Self-healed workspace "${ws.workspaceName}" (${ws._id}) by backfilling missing default modules.`);
+      }
+    }
+
+    // 6.9 Self-healing: Ensure all existing organizations have all default module features in allowedFeatures
+    const OrganizationModel = (await import('../features/organization/organization.model.js')).default;
+    const orgsList = await OrganizationModel.find({});
+    const defaultFeatureKeys = DEFAULT_MODULES.map(m => m.moduleKey);
+    
+    for (const org of orgsList) {
+      let modified = false;
+      if (!org.allowedFeatures) {
+        org.allowedFeatures = [];
+      }
+      for (const key of defaultFeatureKeys) {
+        if (!org.allowedFeatures.includes(key)) {
+          org.allowedFeatures.push(key);
+          modified = true;
+        }
+      }
+      if (modified) {
+        await org.save({ validateBeforeSave: false });
+        logger.info(`Self-healed organization "${org.name}" (${org._id}) by backfilling missing allowedFeatures.`);
+      }
+    }
+
     logger.info('Permission synchronization and Super Admin bootstrapping finished successfully.');
   } catch (error) {
     logger.error('Failed to synchronize permissions and bootstrap Super Admin user:', error);

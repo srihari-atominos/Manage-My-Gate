@@ -104,12 +104,11 @@ const workspaceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
-    members: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-      },
-    ],
+
+    organizationName: {
+      type: String,
+      trim: true,
+    },
     timeZone: {
       type: String,
       trim: true,
@@ -126,10 +125,7 @@ const workspaceSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    location: {
-      type: String,
-      trim: true,
-    },
+
     settings: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
@@ -154,13 +150,12 @@ workspaceSchema.post('init', function(doc) {
   }
 });
 
-workspaceSchema.pre('validate', function(next) {
+workspaceSchema.pre('validate', function() {
   if (this.workspaceName && !this.name) {
     this.name = this.workspaceName;
   } else if (this.name && !this.workspaceName) {
     this.workspaceName = this.name;
   }
-  next();
 });
 
 workspaceSchema.pre('findOneAndUpdate', function() {

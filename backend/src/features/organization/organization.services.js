@@ -55,9 +55,9 @@ export class OrganizationService {
       );
       const granularPermissionIds = targetPermissions.map((perm) => perm._id.toString());
 
-      // Ensure base UI permissions: ['users:read', 'roles:read'] are always included for Workspace Admin
+      // Ensure base UI permissions: ['users:read', 'roles:read', 'workspaces:read', 'workspaces:update'] are always included for Workspace Admin
       const basePermissions = allPermissions.filter((perm) =>
-        ['users:read', 'roles:read'].includes(perm.name)
+        ['users:read', 'roles:read', 'workspaces:read', 'workspaces:update'].includes(perm.name)
       );
       for (const basePerm of basePermissions) {
         const baseId = basePerm._id.toString();
@@ -75,33 +75,15 @@ export class OrganizationService {
 
       // Generate a new token if userId is provided
       let token = null;
-      let userObj = null;
       if (userId) {
         const authService = (await import('../auth/auth.services.js')).default;
         const user = await authService.getUserById(userId);
-        const { tokenPayload, permissions } = await authService.getScopedTokenPayload(user, orgId);
-        const { signToken } = await import('../../utils/jwt.utils.js');
-        token = signToken(tokenPayload);
-        userObj = {
-          id: user._id,
-          email: user.email,
-          username: user.username,
-          role: tokenPayload.role,
-          roles: tokenPayload.roles,
-          permissions,
-          orgId: tokenPayload.orgId,
-          isPlatform: tokenPayload.isPlatform,
-          visitorContext: tokenPayload.visitorContext,
-          villaId: tokenPayload.villaId,
-          villaNumber: tokenPayload.villaNumber,
-          villaBlock: tokenPayload.villaBlock,
-          residentType: tokenPayload.residentType,
-        };
+        token = await authService.generateToken(user, orgId);
       }
 
-      return token ? { organization: updatedOrg, token, user: userObj } : updatedOrg;
+      return token ? { organization: updatedOrg, token } : updatedOrg;
     } catch (error) {
-      if (localSession && localSession.inTransaction()) {
+      if (localSession) {
         await localSession.abortTransaction();
       }
       throw error;
@@ -153,14 +135,10 @@ export class OrganizationService {
 
       return updatedOrg;
     } catch (error) {
-      if (localSession && localSession.inTransaction()) {
-        await localSession.abortTransaction();
-      }
+      await localSession.abortTransaction();
       throw error;
     } finally {
-      if (localSession) {
-        await localSession.endSession();
-      }
+      await localSession.endSession();
     }
   }
 
@@ -172,7 +150,7 @@ export class OrganizationService {
     return !org;
   }
 
-  async setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId, password }) {
+  async setupWorkspace({ name, userId }) {
     // Enforce name uniqueness checks BEFORE starting the write transaction
     const trimmedName = name.trim();
     const existingOrg = await organizationRepository.findByName(trimmedName);
@@ -182,19 +160,13 @@ export class OrganizationService {
 
     const session = await mongoose.startSession();
     session.startTransaction();
+
     try {
-      // 1. Create Organization
-      const orgPayload = {
+      const newOrg = await organizationRepository.create({
         name: trimmedName,
-        organizationType,
-        contactEmail,
-        contactPhone,
-        expectedMemberCount,
-        timezone: timezone || 'Asia/Kolkata',
         status: 'Active',
-        allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices']
-      };
-      const newOrg = await organizationRepository.create(orgPayload, session);
+        allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices', 'complaints', 'visitor', 'billing']
+      }, session);
 
       // 2. Create the default Roles and assign Permissions
       const roleService = (await import('../role/role.services.js')).default;
@@ -228,7 +200,7 @@ export class OrganizationService {
         'villas:read', 'users:read', 
         'amenities:discover', 'amenities:my_booking', 
         'amenities:wallet', 'amenities:history', 'amenities:amenities',
-        'notices:active_board', 'notices:polls'
+        'notices:read'
       ]);
       await rolePermissionService.updateRolePermissions(ownerRole._id.toString(), ownerPerms, session);
 
@@ -241,7 +213,7 @@ export class OrganizationService {
         'villas:read', 'users:read', 
         'amenities:discover', 'amenities:my_booking', 
         'amenities:wallet', 'amenities:history', 'amenities:amenities',
-        'notices:active_board', 'notices:polls'
+        'notices:read'
       ]);
       await rolePermissionService.updateRolePermissions(tenantRole._id.toString(), tenantPerms, session);
 
@@ -253,7 +225,7 @@ export class OrganizationService {
       const familyPerms = getPermissionIds([
         'villas:read', 
         'amenities:discover', 'amenities:my_booking', 'amenities:history',
-        'notices:active_board', 'notices:polls'
+        'notices:read'
       ]);
       await rolePermissionService.updateRolePermissions(familyRole._id.toString(), familyPerms, session);
 
@@ -265,20 +237,16 @@ export class OrganizationService {
       const guardPerms = getPermissionIds([
         'villas:read', 'users:read', 
         'amenities:scanner', 'amenities:security_logs',
-        'notices:active_board', 'notices:polls'
+        'notices:read'
       ]);
       await rolePermissionService.updateRolePermissions(guardRole._id.toString(), guardPerms, session);
 
       // 3. Create the Organization Membership linking user, org, and role
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       await orgMembershipService.createMembership(
-        { userId, orgId: newOrg._id, roleIds: [adminRole._id], status: 'Active' },
+        { userId, orgId: newOrg._id, roleIds: [adminRole._id] },
         session
       );
-
-      // Update User roles array via user service to respect boundaries
-      const userService = (await import('../user/user.services.js')).default;
-      await userService.updateUserRoles(userId, newOrg._id, ['Community Admin'], session);
 
       await session.commitTransaction();
 
@@ -304,14 +272,10 @@ export class OrganizationService {
         availableWorkspaces,
       };
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
-      }
+      await session.abortTransaction();
       throw error;
     } finally {
-      if (session) {
-        await session.endSession();
-      }
+      await session.endSession();
     }
   }
 

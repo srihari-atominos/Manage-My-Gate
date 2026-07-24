@@ -71,9 +71,7 @@ export class WorkspaceRepository {
     );
   }
 
-
   // --- Activity Log Operations ---
-
   async addActivityLog(workspaceId, logData, session = null) {
     return await Workspace.findByIdAndUpdate(
       workspaceId,

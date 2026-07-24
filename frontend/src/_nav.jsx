@@ -30,6 +30,13 @@ const _nav = [
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
   },
   {
+    component: CNavItem,
+    name: 'Workspace Settings',
+    to: '/workspace/settings',
+    icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
+    requiredPermission: 'workspaces:read',
+  },
+  {
     component: CNavTitle,
     name: 'Features',
   },

@@ -34,4 +34,9 @@
   {
     "feature": "billing",
     "actions": ["dashboard", "assessment_manager", "action_center"]
+  },
+  {
+    "feature": "workspaces",
+    "actions": ["read", "update"]
+  }
 ]
