@@ -29,10 +29,14 @@
   },
   {
     "feature": "notices",
-    "actions": ["create", "read", "update", "delete"]
+    "actions": ["dashboard", "active_board", "manage_notices", "polls"]
+  },
+  {
+    "feature": "billing",
+    "actions": ["dashboard", "assessment_manager", "action_center"]
   },
   {
     "feature": "workspaces",
-    "actions": ["read", "write"]
+    "actions": ["read", "update"]
   }
 ]

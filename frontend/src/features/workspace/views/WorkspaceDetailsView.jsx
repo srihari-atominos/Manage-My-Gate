@@ -255,8 +255,13 @@ export const WorkspaceDetailsView = () => {
                         {...registerEdit('description')}
                       />
                     </CCol>
-
-
+                    <CCol md={6}>
+                      <CFormInput
+                        label={t('workspace.details.orgNameLabel', 'Organization Name')}
+                        disabled={activeRole === 'Resident'}
+                        {...registerEdit('organizationName')}
+                      />
+                    </CCol>
                     <CCol md={6}>
                       <CFormSelect
                         label={t('workspace.details.timeZoneLabel', 'Time Zone')}

@@ -55,9 +55,9 @@ export class OrganizationService {
       );
       const granularPermissionIds = targetPermissions.map((perm) => perm._id.toString());
 
-      // Ensure base UI permissions: ['users:read', 'roles:read'] are always included for Workspace Admin
+      // Ensure base UI permissions: ['users:read', 'roles:read', 'workspaces:read', 'workspaces:update'] are always included for Workspace Admin
       const basePermissions = allPermissions.filter((perm) =>
-        ['users:read', 'roles:read'].includes(perm.name)
+        ['users:read', 'roles:read', 'workspaces:read', 'workspaces:update'].includes(perm.name)
       );
       for (const basePerm of basePermissions) {
         const baseId = basePerm._id.toString();
@@ -162,8 +162,11 @@ export class OrganizationService {
     session.startTransaction();
 
     try {
-      // 1. Create Organization
-      const newOrg = await organizationRepository.create({ name: trimmedName, status: 'Active', allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices'] }, session);
+      const newOrg = await organizationRepository.create({
+        name: trimmedName,
+        status: 'Active',
+        allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices', 'complaints', 'visitor', 'billing']
+      }, session);
 
       // 2. Create the default Roles and assign Permissions
       const roleService = (await import('../role/role.services.js')).default;

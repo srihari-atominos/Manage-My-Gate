@@ -42,11 +42,11 @@ export const useWorkspaceDetails = () => {
       workspaceName: '',
       description: '',
       status: 'Active',
+      organizationName: '',
       timeZone: '',
       language: '',
       contactEmail: '',
       contactPhone: '',
-      location: '',
     },
   });
 
@@ -84,11 +84,11 @@ export const useWorkspaceDetails = () => {
         workspaceName: activeWorkspaceDetails.workspaceName || '',
         description: activeWorkspaceDetails.description || '',
         status: activeWorkspaceDetails.status || 'Active',
+        organizationName: activeWorkspaceDetails.organizationName || '',
         timeZone: activeWorkspaceDetails.timeZone || '',
         language: activeWorkspaceDetails.language || '',
         contactEmail: activeWorkspaceDetails.contactEmail || '',
         contactPhone: activeWorkspaceDetails.contactPhone || '',
-        location: activeWorkspaceDetails.location || '',
       });
     }
   }, [activeWorkspaceDetails, resetEdit]);
