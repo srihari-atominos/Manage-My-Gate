@@ -42,6 +42,7 @@ import GlobalGateApprovalModal from '../features/visitorManagement/components/Gl
  */
 const DefaultLayout = () => {
   const { token, user } = useSelector((state) => state.auth)
+  const availableWorkspaces = useSelector((state) => state.workspace.availableWorkspaces) || []
 
   // Initialize real-time notification socket listener
   useNotificationSocket(user?.id || user?._id)
@@ -52,6 +53,11 @@ const DefaultLayout = () => {
   // Redirect to login if not authenticated
   if (!token && !user) {
     return <Navigate to="/login" replace />
+  }
+
+  // Redirect to workspace setup if the user has no active organizations/workspaces
+  if (availableWorkspaces.length === 0) {
+    return <Navigate to="/workspace-setup" replace />
   }
 
   return (

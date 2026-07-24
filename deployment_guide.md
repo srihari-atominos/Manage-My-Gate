@@ -24,7 +24,7 @@ docker push atocash/manage-my-gate-server:latest
 **Single-Line (Recommended for Windows PowerShell / Command Prompt):**
 ```bash
 cd ../frontend
-docker build --no-cache -t atocash/manage-my-gate-client:latest --build-arg VITE_API_URL="https://managemygate.e3esg.com/api" --build-arg VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID_HERE" --build-arg VITE_MICROSOFT_CLIENT_ID="20c2e0b1-683b-446e-a5f4-aa30876357f7" --build-arg VITE_MICROSOFT_TENANT_ID="fd65b6d3-b789-4884-a69a-4ccf71e38700" .
+docker build --no-cache -t atocash/manage-my-gate-client:latest --build-arg VITE_API_URL="https://managemygate.e3esg.com/api" --build-arg VITE_GOOGLE_CLIENT_ID="your_google_client_id_here" --build-arg VITE_MICROSOFT_CLIENT_ID="your_microsoft_client_id_here" --build-arg VITE_MICROSOFT_TENANT_ID="your_microsoft_tenant_id_here" .
 docker push atocash/manage-my-gate-client:latest
 ```
 
@@ -33,9 +33,9 @@ docker push atocash/manage-my-gate-client:latest
 cd ../frontend
 docker build --no-cache -t atocash/manage-my-gate-client:latest \
   --build-arg VITE_API_URL="https://managemygate.e3esg.com/api" \
-  --build-arg VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID_HERE" \
-  --build-arg VITE_MICROSOFT_CLIENT_ID="20c2e0b1-683b-446e-a5f4-aa30876357f7" \
-  --build-arg VITE_MICROSOFT_TENANT_ID="fd65b6d3-b789-4884-a69a-4ccf71e38700" .
+  --build-arg VITE_GOOGLE_CLIENT_ID="your_google_client_id_here" \
+  --build-arg VITE_MICROSOFT_CLIENT_ID="your_microsoft_client_id_here" \
+  --build-arg VITE_MICROSOFT_TENANT_ID="your_microsoft_tenant_id_here" .
 docker push atocash/manage-my-gate-client:latest
 ```
 
@@ -105,10 +105,10 @@ SUPER_ADMIN_USERNAME=superadmin
 SUPER_ADMIN_PASSWORD=your_secure_superadmin_password_here
 
 # Enterprise SSO Credentials (Google & Microsoft)
-GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE
-GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET_HERE
-MICROSOFT_CLIENT_ID=20c2e0b1-683b-446e-a5f4-aa30876357f7
-MICROSOFT_TENANT_ID=fd65b6d3-b789-4884-a69a-4ccf71e38700
+GOOGLE_CLIENT_ID=your_google_client_id_here
+GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+MICROSOFT_CLIENT_ID=your_microsoft_client_id_here
+MICROSOFT_TENANT_ID=your_microsoft_tenant_id_here
 
 # Application Settings
 NODE_ENV=production
