@@ -76,7 +76,7 @@ const PollCard = ({ poll, onVote, onDelete, onPublish, onClosePoll }) => {
         </div>
         <div className="meta-item">
           <CIcon icon={cilPeople} size="sm" />
-          <span>By: {poll.createdBy?.name || 'Unknown'}</span>
+          <span>By: {poll.createdBy?.name || 'Unknown'} {poll.createdBy?.unit ? `(${poll.createdBy.unit})` : ''}</span>
         </div>
         <div className="meta-item">
           <CIcon icon={cilPeople} size="sm" />

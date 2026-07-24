@@ -1,5 +1,6 @@
 import pollEvents from './poll.events.js';
 import Notification from '../notification/notification.model.js';
+import notificationEvents from '../notification/notification.events.js';
 import User from '../user/user.model.js';
 import logger from '../../utils/logger.utils.js';
 
@@ -22,12 +23,26 @@ const sendPollNotifications = async (poll, title, body, type = 'INFO') => {
       actionUrl: `/notices/polls`
     }));
 
-    await Notification.insertMany(notifications);
+    const insertedNotifications = await Notification.insertMany(notifications);
+    
+    // Emit real-time socket events for each inserted notification
+    insertedNotifications.forEach(notification => {
+      notificationEvents.emit('notification_created', notification);
+    });
+
     logger.info(`[Poll Notification] Sent '${title}' to ${users.length} users in org ${poll.orgId}`);
   } catch (error) {
     logger.error(`[Poll Notification] Failed to send notifications:`, error);
   }
 };
+
+pollEvents.on('poll_created', async (poll) => {
+  if (poll.status === 'Active') {
+    const title = 'New Community Poll Created';
+    const body = `A new poll "${poll.question}" has been created. Cast your vote now!`;
+    await sendPollNotifications(poll, title, body, 'INFO');
+  }
+});
 
 pollEvents.on('poll_published', async (poll) => {
   const title = 'New Community Poll Published';

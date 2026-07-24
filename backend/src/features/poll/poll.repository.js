@@ -67,6 +67,46 @@ const buildMatchStage = (baseMatch, search, userContext) => {
   return match;
 };
 
+const getPopulateCreatorStages = () => [
+  {
+    $lookup: {
+      from: 'users',
+      localField: 'createdBy',
+      foreignField: '_id',
+      as: 'creator_info'
+    }
+  },
+  {
+    $unwind: { path: '$creator_info', preserveNullAndEmptyArrays: true }
+  },
+  {
+    $lookup: {
+      from: 'villas',
+      localField: 'creator_info.villaId',
+      foreignField: '_id',
+      as: 'villa_info'
+    }
+  },
+  {
+    $unwind: { path: '$villa_info', preserveNullAndEmptyArrays: true }
+  },
+  {
+    $addFields: {
+      'createdBy': {
+        _id: '$createdBy',
+        name: { $ifNull: ['$creator_info.name', 'Unknown'] },
+        unit: { $ifNull: ['$villa_info.villaNumber', ''] }
+      }
+    }
+  },
+  {
+    $project: {
+      creator_info: 0,
+      villa_info: 0
+    }
+  }
+];
+
 export const getPollsByStatus = async (orgId, status, page = 1, limit = 20, search = '', sort = 'latest', userContext = null) => {
   const skip = (page - 1) * limit;
   
@@ -75,7 +115,7 @@ export const getPollsByStatus = async (orgId, status, page = 1, limit = 20, sear
     { $sort: buildSortStage(sort) },
     {
       $facet: {
-        data: [{ $skip: skip }, { $limit: limit }],
+        data: [{ $skip: skip }, { $limit: limit }, ...getPopulateCreatorStages()],
         totalCount: [{ $count: 'count' }]
       }
     }
@@ -101,7 +141,7 @@ export const getMyPolls = async (orgId, userId, page = 1, limit = 20, search = '
     { $sort: buildSortStage(sort) },
     {
       $facet: {
-        data: [{ $skip: skip }, { $limit: limit }],
+        data: [{ $skip: skip }, { $limit: limit }, ...getPopulateCreatorStages()],
         totalCount: [{ $count: 'count' }]
       }
     }
@@ -127,7 +167,7 @@ export const getAllPolls = async (orgId, page = 1, limit = 20, search = '', sort
     { $sort: buildSortStage(sort) },
     {
       $facet: {
-        data: [{ $skip: skip }, { $limit: limit }],
+        data: [{ $skip: skip }, { $limit: limit }, ...getPopulateCreatorStages()],
         totalCount: [{ $count: 'count' }]
       }
     }
