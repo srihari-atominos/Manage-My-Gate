@@ -27,9 +27,9 @@ export const NoticeBoardList = () => {
   const { checkPermission } = useAuth()
 
   // Enforce permissions checks
-  const canCreate = checkPermission('notices:create')
-  const canUpdate = checkPermission('notices:update')
-  const canDelete = checkPermission('notices:delete')
+  const canCreate = checkPermission('notices:manage_notices')
+  const canUpdate = checkPermission('notices:manage_notices')
+  const canDelete = checkPermission('notices:manage_notices')
 
   const {
     notices,

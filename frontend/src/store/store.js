@@ -20,6 +20,7 @@ import visitorPassReducer from '../features/visitorManagement/store/visitorPassS
 import visitorLogReducer from '../features/visitorManagement/store/visitorLogSlice.js';
 import blacklistReducer from '../features/visitorManagement/store/blacklistSlice.js';
 import noticeBoardReducer from '../features/noticeBoard/store/noticeBoardSlice.js';
+import pollReducer from '../features/poll/store/pollSlice.js';
 import complaintReducer from '../features/complaints/store/complaintSlice.js';
 import complaintSettingsReducer from '../features/complaints/store/complaintSettingsSlice.js';
 import billingReducer from '../features/billing/store/billingSlice.js';
@@ -64,6 +65,7 @@ export const store = configureStore({
     visitorLog: visitorLogReducer,
     blacklist: blacklistReducer,
     noticeBoard: noticeBoardReducer,
+    poll: pollReducer,
     complaints: complaintReducer,
     complaintSettings: complaintSettingsReducer,
     billing: billingReducer,

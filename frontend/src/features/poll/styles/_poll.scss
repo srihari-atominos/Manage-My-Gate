@@ -1,0 +1,196 @@
+.poll-dashboard-container {
+  padding: 24px;
+  background-color: var(--cui-body-bg, #f4f5f7);
+  min-height: calc(100vh - 150px);
+}
+
+.poll-tabs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  
+  h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--cui-body-color, #2c3e50);
+    margin: 0;
+  }
+}
+
+.poll-card {
+  background: var(--cui-card-bg, #ffffff);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid var(--cui-border-color, #e0e0e0);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .poll-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+
+    .poll-question {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--cui-body-color, #2c3e50);
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .poll-status {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+
+      &.status-active {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+      &.status-closed {
+        background: #ffebee;
+        color: #c62828;
+      }
+      &.status-draft {
+        background: #fff8e1;
+        color: #f57f17;
+      }
+    }
+  }
+
+  .poll-description {
+    font-size: 14px;
+    color: var(--cui-secondary-color, #546e7a);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .poll-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--cui-secondary-color, #78909c);
+    margin-bottom: 24px;
+    
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  }
+
+  .poll-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .poll-option {
+      position: relative;
+      background: var(--cui-light, #f8f9fa);
+      border: 1px solid var(--cui-border-color, #e0e0e0);
+      border-radius: 8px;
+      padding: 12px 16px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.2s ease;
+
+      &:hover:not(.has-voted):not(.disabled) {
+        border-color: var(--cui-primary, #321fdb);
+        background: rgba(50, 31, 219, 0.05);
+      }
+
+      &.disabled {
+        cursor: default;
+      }
+
+      .option-content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .option-text {
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--cui-body-color, #2c3e50);
+      }
+
+      .option-percentage {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--cui-primary, #321fdb);
+      }
+
+      .progress-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        background: rgba(50, 31, 219, 0.1);
+        border-radius: 8px;
+        transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1;
+      }
+    }
+  }
+  
+  .poll-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--cui-border-color, #eee);
+  }
+}
+
+.create-poll-modal {
+  .option-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    align-items: center;
+    
+    .remove-btn {
+      color: #ef5350;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      
+      &:hover {
+        color: #d32f2f;
+      }
+    }
+  }
+  
+  .add-option-btn {
+    color: var(--cui-primary, #321fdb);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

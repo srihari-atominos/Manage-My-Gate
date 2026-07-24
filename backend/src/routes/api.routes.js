@@ -23,6 +23,7 @@ import visitorPassRouter from '../features/visitorPass/visitorPass.router.js';
 import visitorLogRouter from '../features/visitorLog/visitorLog.router.js';
 import blacklistRouter from '../features/blacklist/blacklist.router.js';
 import noticeBoardRouter from '../features/noticeBoard/noticeBoard.routes.js';
+import pollRouter from '../features/poll/poll.router.js';
 import assessmentRouter from '../features/assessment/assessment.routes.js';
 import invoiceRouter from '../features/invoice/invoice.routes.js';
 
@@ -46,6 +47,7 @@ router.use('/organizations', organizationRouter);
 router.use('/audit-logs', auditLogRouter);
 router.use('/workspaces', workspaceRouter);
 router.use('/notices', noticeBoardRouter);
+router.use('/polls', pollRouter);
 router.use('/assessments', assessmentRouter);
 router.use('/invoices', invoiceRouter);
 router.use('/dashboard-feed', dashboardFeedRouter);

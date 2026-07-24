@@ -92,7 +92,12 @@ const _nav = [
     name: 'Notice Board',
     to: '/notices',
     icon: <CIcon icon={cilList} customClassName="nav-icon" />,
-    requiredPermission: 'notices:read',
+    requiredPermission: [
+      'notices:dashboard',
+      'notices:active_board',
+      'notices:manage_notices',
+      'notices:polls'
+    ],
   },
   {
     component: CNavItem,

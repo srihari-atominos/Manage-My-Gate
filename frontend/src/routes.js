@@ -16,6 +16,7 @@ const NoticeBoardRedirector = React.lazy(() => import('./features/noticeBoard/vi
 const NoticeBoardDashboardView = React.lazy(() => import('./features/noticeBoard/views/NoticeBoardDashboardView'));
 const NoticeBoardActiveView = React.lazy(() => import('./features/noticeBoard/views/NoticeBoardActiveView'));
 const NoticeBoardManageView = React.lazy(() => import('./features/noticeBoard/views/NoticeBoardManageView'));
+const PollDashboardView = React.lazy(() => import('./features/poll/views/PollDashboardView'));
 
 // Amenities Views (New)
 const AmenitiesRedirector = React.lazy(() => import('./features/amenities/views/AmenitiesRedirector'));
@@ -76,9 +77,10 @@ export const routes = [
   { path: '/super-admin/organizations', name: 'Organization Manager', element: OrganizationManager, requirePlatform: true },
   { path: '/super-admin/audit-logs', name: 'Audit Logs', element: AuditLogViewer, requirePlatform: true },
   { path: '/notices', name: 'Notice Board', element: NoticeBoardRedirector },
-  { path: '/admin/notices/dashboard', name: 'Notice Dashboard', element: NoticeBoardDashboardView, requiredPermission: 'notices:create' },
-  { path: '/notices/board', name: 'Active Board', element: NoticeBoardActiveView, requiredPermission: 'notices:read' },
-  { path: '/admin/notices/manage', name: 'Manage Notices', element: NoticeBoardManageView, requiredPermission: 'notices:create' },
+  { path: '/admin/notices/dashboard', name: 'Notice Dashboard', element: NoticeBoardDashboardView, requiredPermission: 'notices:dashboard' },
+  { path: '/notices/board', name: 'Active Board', element: NoticeBoardActiveView, requiredPermission: 'notices:active_board' },
+  { path: '/admin/notices/manage', name: 'Manage Notices', element: NoticeBoardManageView, requiredPermission: 'notices:manage_notices' },
+  { path: '/notices/polls', name: 'Community Polls', element: PollDashboardView, requiredPermission: 'notices:polls' },
 
   // Amenities Dynamic Redirector
   { path: '/amenities', name: 'Amenities & Bookings', element: AmenitiesRedirector },

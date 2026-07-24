@@ -10,14 +10,20 @@ const navItems = [
     name: 'Dashboard',
     to: '/admin/notices/dashboard',
     icon: cilSpeedometer,
-    requiredPermission: 'notices:create',
+    requiredPermission: 'notices:dashboard',
   },
-  { name: 'Active Board', to: '/notices/board', icon: cilList, requiredPermission: 'notices:read' },
+  { name: 'Active Board', to: '/notices/board', icon: cilList, requiredPermission: 'notices:active_board' },
   {
     name: 'Manage Notices',
     to: '/admin/notices/manage',
     icon: cilSettings,
-    requiredPermission: 'notices:create',
+    requiredPermission: 'notices:manage_notices',
+  },
+  {
+    name: 'Polls',
+    to: '/notices/polls',
+    icon: cilList,
+    requiredPermission: 'notices:polls',
   },
 ]
 

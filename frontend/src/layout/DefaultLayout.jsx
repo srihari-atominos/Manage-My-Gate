@@ -26,6 +26,7 @@ import { AppContent, AppSidebar, AppHeader } from '../components/index'
 import { loadCurrentModules } from '../features/workspace/store/workspaceSlice.js'
 import useNotificationSocket from '../features/notification/hooks/useNotificationSocket.js'
 import useWalkInListener from '../features/visitorManagement/hooks/useWalkInListener.js'
+import useRoleSocket from '../features/roleBuilder/hooks/useRoleSocket.js'
 import GlobalGateApprovalModal from '../features/visitorManagement/components/GlobalGateApprovalModal.jsx'
 
 /**
@@ -51,6 +52,9 @@ const DefaultLayout = () => {
 
   // Initialize real-time gate walk-in approval request listener
   useWalkInListener()
+
+  // Initialize real-time role update listener
+  useRoleSocket()
 
   useEffect(() => {
     if (token && activeOrgId) {
