@@ -275,6 +275,15 @@ export class OrganizationService {
       await session.endSession();
     }
   }
+
+  async updateOrganizationName(id, name, session = null) {
+    const trimmedName = name.trim();
+    const existing = await organizationRepository.findByName(trimmedName, session);
+    if (existing && existing._id.toString() !== id.toString()) {
+      throw new HttpError(409, 'Organization name already exists.');
+    }
+    return await organizationRepository.updateName(id, trimmedName, session);
+  }
 }
 
 export default new OrganizationService();

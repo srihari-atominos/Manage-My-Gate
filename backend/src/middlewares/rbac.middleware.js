@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import HttpError from '../utils/httpError.utils.js';
 import { mapPermission } from '../utils/permissionMapper.js';
 
@@ -35,11 +36,25 @@ export const authorizeRoles = (...allowedRoles) => {
  * @param {string} action - The action type (e.g., 'create', 'read', 'manage_bookings')
  */
 export const authorizePermission = (feature, action) => {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     try {
       if (!req.user) {
         throw new HttpError(401, 'Unauthorized. Authentication required.');
       }
+
+      // Check if this feature is a dynamic module in the workspace and if it is disabled
+      const orgId = req.headers['x-organization-id'] || req.user?.orgId;
+      if (orgId && mongoose.isValidObjectId(orgId)) {
+        const Workspace = mongoose.model('Workspace');
+        const workspace = await Workspace.findOne({ organizationId: orgId });
+        if (workspace && workspace.modules) {
+          const targetModule = workspace.modules.find(m => m.moduleKey === feature);
+          if (targetModule && targetModule.enabled === false) {
+            throw new HttpError(403, `Forbidden. The feature "${targetModule.moduleName}" is disabled in this workspace.`);
+          }
+        }
+      }
+
       // Super Admin bypasses all permission checks
       if (req.user.role === 'Super Admin' || req.user.role === 'Platform Super Admin') {
         console.log(`[RBAC DEBUG] User ${req.user.username} is ${req.user.role}. Bypassing check.`);

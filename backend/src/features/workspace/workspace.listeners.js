@@ -57,10 +57,3 @@ workspaceEvents.on('SETTINGS_UPDATED', async ({ actorId, targetId }) => {
   await logWorkspaceAudit('Settings Updated', actorId, targetId);
 });
 
-workspaceEvents.on('MEMBER_ADDED', async ({ actorId, targetId, userId }) => {
-  await logWorkspaceAudit('Member Added', actorId, targetId, { userId });
-});
-
-workspaceEvents.on('MEMBER_REMOVED', async ({ actorId, targetId, userId }) => {
-  await logWorkspaceAudit('Member Removed', actorId, targetId, { userId });
-});

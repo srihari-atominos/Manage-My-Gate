@@ -71,23 +71,6 @@ export class WorkspaceRepository {
     );
   }
 
-  // --- Member Operations ---
-
-  async addMember(workspaceId, userId, session = null) {
-    return await Workspace.findByIdAndUpdate(
-      workspaceId,
-      { $addToSet: { members: new mongoose.Types.ObjectId(userId) } },
-      { returnDocument: 'after', new: true, ...(session ? { session } : {}) }
-    );
-  }
-
-  async removeMember(workspaceId, userId, session = null) {
-    return await Workspace.findByIdAndUpdate(
-      workspaceId,
-      { $pull: { members: new mongoose.Types.ObjectId(userId) } },
-      { returnDocument: 'after', new: true, ...(session ? { session } : {}) }
-    );
-  }
 
   // --- Activity Log Operations ---
 

@@ -30,6 +30,9 @@ export const useAuth = () => {
   const error = useSelector((state) => state.auth.error)
   const successMsg = useSelector((state) => state.auth.successMsg)
 
+  const allowedFeatures = useSelector((state) => state.workspace?.allowedFeatures || [])
+  const isPlatform = useSelector((state) => state.workspace?.isPlatform || false)
+
   const logout = () => {
     dispatch(logoutAction())
   }
@@ -79,6 +82,15 @@ export const useAuth = () => {
 
   const checkPermission = (permissionName) => {
     if (!currentUser) return false
+
+    if (permissionName && !isPlatform) {
+      const featurePart = permissionName.split(':')[0]
+      if (featurePart !== 'workspaces') {
+        const isEnabled = allowedFeatures.includes(featurePart) || allowedFeatures.includes(permissionName)
+        if (!isEnabled) return false
+      }
+    }
+
     if (currentUser.role === 'Super Admin' || currentUser.role === 'Platform Super Admin') return true
     return !!(currentUser.permissions && currentUser.permissions.includes(permissionName))
   }

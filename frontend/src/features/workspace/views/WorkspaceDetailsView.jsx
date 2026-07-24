@@ -23,10 +23,9 @@ import {
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import * as CoreIcons from '@coreui/icons';
-import { cilSpeedometer, cilQrCode, cilPeople, cilSettings, cilTrash, cilUserPlus } from '@coreui/icons';
-
-import DataTable from '../../../components/common/DataTable.jsx';
+import { cilQrCode, cilSettings } from '@coreui/icons';
 import useWorkspaceDetails from '../hooks/useWorkspaceDetails.js';
+import SearchableLanguageSelect from '../components/SearchableLanguageSelect.jsx';
 import '../../visitorManagement/styles/_visitorManagement.scss';
 import '../styles/_workspace.scss';
 
@@ -36,56 +35,25 @@ export const WorkspaceDetailsView = () => {
     // Redux selectors
     activeWorkspaceDetails,
     workspaceModules,
-    workspaceMembers,
     wsError,
     activeRole,
     // States & state setters
     activeTab,
     setActiveTab,
-    showAddModuleModal,
-    setShowAddModuleModal,
-    showEditModuleModal,
-    setShowEditModuleModal,
-    showDeleteModal,
-    setShowDeleteModal,
-    newMemberIdentifier,
-    setNewMemberIdentifier,
-    searchMemberQuery,
-    setSearchMemberQuery,
     // Forms
     editForm,
-    addModuleForm,
-    editModuleForm,
     // Action handlers
     handleGeneralInfoSubmit,
     handleModuleToggle,
-    handleAddModuleSubmit,
-    handleOpenEditModal,
-    handleEditModuleSubmit,
-    handleRemoveModule,
-    handleAddMember,
-    handleRemoveMember,
-    handleDeleteWorkspace,
-    handleRoleSwitch,
   } = useWorkspaceDetails();
 
   const {
     register: registerEdit,
     handleSubmit: handleSubmitEdit,
+    watch: watchEdit,
+    setValue: setValueEdit,
     formState: { errors: editErrors, isSubmitting: isEditSubmitting },
   } = editForm;
-
-  const {
-    register: registerAddModule,
-    handleSubmit: handleSubmitAddModule,
-    formState: { errors: addModuleErrors },
-  } = addModuleForm;
-
-  const {
-    register: registerEditModule,
-    handleSubmit: handleSubmitEditModule,
-    formState: { errors: editModuleErrors },
-  } = editModuleForm;
 
   // Icon mapping matching sidebar keys
   const iconMap = {
@@ -143,26 +111,11 @@ export const WorkspaceDetailsView = () => {
     );
   }
 
-  const filteredMembers = (workspaceMembers || []).filter((m) =>
-    m && (
-      (m.name || '').toLowerCase().includes(searchMemberQuery.toLowerCase()) ||
-      (m.email || '').toLowerCase().includes(searchMemberQuery.toLowerCase()) ||
-      (m.username || '').toLowerCase().includes(searchMemberQuery.toLowerCase())
-    )
-  );
 
-  const memberColumns = [
-    { key: 'name', label: t('workspace.details.tableName', 'Name'), render: (val) => val || 'N/A' },
-    { key: 'email', label: t('workspace.details.tableEmail', 'Email') },
-    { key: 'username', label: t('workspace.details.tableUsername', 'Username') },
-    { key: 'role', label: t('workspace.details.tableRole', 'Role') },
-  ];
 
   // Navigation tabs layout matching the Visitor Management bar style
   const navTabs = [
-    { id: 'overview', name: 'Dashboard Overview', icon: cilSpeedometer },
-    { id: 'create', name: 'Create Workspace', icon: cilQrCode },
-    { id: 'members', name: 'Workspace Members', icon: cilPeople },
+    { id: 'create', name: 'Module Management', icon: cilQrCode },
     { id: 'settings', name: 'Workspace Settings', icon: cilSettings },
   ];
 
@@ -196,84 +149,21 @@ export const WorkspaceDetailsView = () => {
             })}
           </CNav>
 
-          {/* Interactive Role Switcher Pill */}
-          <div className="role-switcher-pill">
-            <button
-              onClick={() => handleRoleSwitch('Community Admin')}
-              className={`btn-pill-role ${activeRole === 'Community Admin' ? 'active' : ''}`}
-            >
-              Community Admin
-            </button>
-            <button
-              onClick={() => handleRoleSwitch('Resident')}
-              className={`btn-pill-role ${activeRole === 'Resident' ? 'active' : ''}`}
-            >
-              Resident
-            </button>
-          </div>
         </div>
-
-        {/* Workspace Active Role restrictions warning banner */}
-        {activeRole === 'Resident' && (
-          <CAlert color="warning" className="mb-4 border-0 shadow-sm rounded-3">
-            <strong>{t('workspace.details.readOnlyTitle', 'Read-Only Access:')}</strong>{' '}
-            {t('workspace.details.readOnlyDesc', 'You are currently viewing this workspace settings dashboard under a Resident role scope. Modification rights are locked.')}
-          </CAlert>
-        )}
 
         <CCard className="mb-4 border-0 shadow-sm rounded-4">
           <CCardBody className="p-4">
             
-            {/* 1. DASHBOARD OVERVIEW TAB */}
-            {activeTab === 'overview' && (
-              <div>
-                <h4 className="mb-4 fw-bold">{t('workspace.details.overviewHeader', 'Overview Analytics')}</h4>
-                <CRow className="g-4">
-                  <CCol xs={12} sm={4}>
-                    <div className="card card-hover" style={{ padding: '24px', borderLeft: '4px solid var(--primary, #0084FF)' }}>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Workspace Members</div>
-                      <div style={{ fontSize: '28px', fontWeight: '800', color: 'var(--text-main)', marginTop: '8px' }}>
-                        {activeWorkspaceDetails?.members?.length ?? 0}
-                      </div>
-                    </div>
-                  </CCol>
-                  <CCol xs={12} sm={4}>
-                    <div className="card card-hover" style={{ padding: '24px', borderLeft: '4px solid var(--success, #2ECC71)' }}>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Workspace Status</div>
-                      <div style={{ fontSize: '28px', fontWeight: '800', color: 'var(--text-main)', marginTop: '8px' }}>
-                        {activeWorkspaceDetails?.status ?? 'Active'}
-                      </div>
-                    </div>
-                  </CCol>
-                  <CCol xs={12} sm={4}>
-                    <div className="card card-hover" style={{ padding: '24px', borderLeft: '4px solid var(--info, #0084FF)' }}>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Enabled Modules</div>
-                      <div style={{ fontSize: '28px', fontWeight: '800', color: 'var(--text-main)', marginTop: '8px' }}>
-                        {workspaceModules?.filter(m => m.enabled)?.length ?? 0}
-                      </div>
-                    </div>
-                  </CCol>
-                </CRow>
-              </div>
-            )}
 
-            {/* 2. CREATE WORKSPACE (FEATURES LIST & CREATE MODULE) TAB */}
+
+            {/* 2. MODULE MANAGEMENT (FEATURES LIST & CREATE MODULE) TAB */}
             {activeTab === 'create' && (
               <div>
                 {/* Header aligned with the reference UI mockup */}
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h3 className="fw-bold text-dark mb-0" style={{ fontSize: '24px' }}>
-                    {t('workspace.details.createHeader', 'Create Workspace')}
+                    {t('workspace.details.createHeader', 'Module Management')}
                   </h3>
-                  <CButton
-                    color="primary"
-                    disabled={activeRole === 'Resident'}
-                    onClick={() => setShowAddModuleModal(true)}
-                    className="text-white d-flex align-items-center gap-2 px-3 py-2 fw-semibold rounded-3 border-0"
-                    style={{ background: 'var(--primary, #0084FF)' }}
-                  >
-                    <span>+ New feature</span>
-                  </CButton>
                 </div>
 
                 <p className="text-muted mb-4" style={{ fontSize: '14.5px', lineHeight: '1.6' }}>
@@ -322,24 +212,8 @@ export const WorkspaceDetailsView = () => {
                             onChange={() => handleModuleToggle(mod._id, mod.enabled)}
                             style={{ transform: 'scale(1.25)', cursor: activeRole === 'Resident' ? 'not-allowed' : 'pointer' }}
                           />
-                          <CButton
-                            color="light"
-                            size="sm"
-                            disabled={activeRole === 'Resident'}
-                            onClick={() => handleOpenEditModal(mod)}
-                            className="border p-2 bg-white"
-                          >
-                            <CIcon icon={CoreIcons.cilPencil} size="sm" style={{ color: '#475569' }} />
-                          </CButton>
-                          <CButton
-                            color="light"
-                            size="sm"
-                            disabled={activeRole === 'Resident'}
-                            onClick={() => handleRemoveModule(mod._id)}
-                            className="border p-2 bg-white"
-                          >
-                            <CIcon icon={CoreIcons.cilTrash} size="sm" style={{ color: '#ef4444' }} />
-                          </CButton>
+
+
                         </div>
                       </div>
                     );
@@ -354,65 +228,7 @@ export const WorkspaceDetailsView = () => {
               </div>
             )}
 
-            {/* 3. WORKSPACE MEMBERS TAB */}
-            {activeTab === 'members' && (
-              <div>
-                <h4 className="mb-4 fw-bold">{t('workspace.details.membersHeader', 'Workspace Member Listings')}</h4>
-                
-                {activeRole !== 'Resident' && (
-                  <div className="mb-4">
-                    <CForm onSubmit={handleAddMember} className="row g-2 align-items-end">
-                      <CCol xs={12} sm={8} md={6}>
-                        <CFormInput
-                          label={t('workspace.details.addMemberLabel', 'Add Member')}
-                          placeholder={t('workspace.details.addMemberPlaceholder', 'Enter User ID, Email, or Username')}
-                          value={newMemberIdentifier}
-                          onChange={(e) => setNewMemberIdentifier(e.target.value)}
-                        />
-                      </CCol>
-                      <CCol xs={12} sm={4}>
-                        <CButton type="submit" color="primary" className="w-100 d-flex align-items-center justify-content-center gap-2 text-white py-2">
-                          <CIcon icon={cilUserPlus} />
-                          <span>{t('workspace.details.addMemberBtn', 'Add Member')}</span>
-                        </CButton>
-                      </CCol>
-                    </CForm>
-                  </div>
-                )}
 
-                <div className="mb-3">
-                  <CFormInput
-                    type="text"
-                    placeholder={t('workspace.details.searchMembers', 'Search members...')}
-                    value={searchMemberQuery}
-                    onChange={(e) => setSearchMemberQuery(e.target.value)}
-                    size="sm"
-                    className="w-100 max-w-sm"
-                  />
-                </div>
-
-                <DataTable
-                  columns={memberColumns}
-                  data={filteredMembers}
-                  currentPage={1}
-                  totalPages={1}
-                  rowsPerPage={filteredMembers.length || 10}
-                  loading={false}
-                  renderRowActions={(row) => (
-                    activeRole !== 'Resident' && (
-                      <CButton
-                        color="danger"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRemoveMember(row._id)}
-                      >
-                        <CIcon icon={cilTrash} />
-                      </CButton>
-                    )
-                  )}
-                />
-              </div>
-            )}
 
             {/* 4. WORKSPACE SETTINGS TAB */}
             {activeTab === 'settings' && (
@@ -439,6 +255,66 @@ export const WorkspaceDetailsView = () => {
                         {...registerEdit('description')}
                       />
                     </CCol>
+
+
+                    <CCol md={6}>
+                      <CFormSelect
+                        label={t('workspace.details.timeZoneLabel', 'Time Zone')}
+                        disabled={activeRole === 'Resident'}
+                        {...registerEdit('timeZone')}
+                      >
+                        <option value="">{t('workspace.details.selectTimeZone', 'Select Time Zone')}</option>
+                        <option value="UTC">UTC (Coordinated Universal Time)</option>
+                        <option value="GMT">GMT (Greenwich Mean Time)</option>
+                        <option value="BST">BST (British Summer Time)</option>
+                        <option value="CET">CET (Central European Time)</option>
+                        <option value="EET">EET (Eastern European Time)</option>
+                        <option value="AST">AST (Arabia Standard Time - UTC+3)</option>
+                        <option value="GST">GST (Gulf Standard Time - UTC+4)</option>
+                        <option value="IST">IST (Indian Standard Time - UTC+5:30)</option>
+                        <option value="SGT">SGT (Singapore Time - UTC+8)</option>
+                        <option value="JST">JST (Japan Standard Time - UTC+9)</option>
+                        <option value="AEST">AEST (Australian Eastern Standard Time - UTC+10)</option>
+                        <option value="NZST">NZST (New Zealand Standard Time - UTC+12)</option>
+                        <option value="PST">PST (Pacific Standard Time - UTC-8)</option>
+                        <option value="MST">MST (Mountain Standard Time - UTC-7)</option>
+                        <option value="CST">CST (Central Standard Time - UTC-6)</option>
+                        <option value="EST">EST (Eastern Standard Time - UTC-5)</option>
+                      </CFormSelect>
+                    </CCol>
+                    <CCol md={6}>
+                      <SearchableLanguageSelect
+                        label={t('workspace.details.languageLabel', 'Language')}
+                        disabled={activeRole === 'Resident'}
+                        value={watchEdit('language')}
+                        onChange={(val) => setValueEdit('language', val)}
+                      />
+                    </CCol>
+                    <CCol md={6}>
+                      <CFormInput
+                        type="email"
+                        label={t('workspace.details.emailLabel', 'Contact Email')}
+                        disabled={activeRole === 'Resident'}
+                        {...registerEdit('contactEmail')}
+                        feedbackInvalid={editErrors.contactEmail?.message}
+                        invalid={!!editErrors.contactEmail}
+                      />
+                    </CCol>
+                    <CCol md={6}>
+                      <CFormInput
+                        type="tel"
+                        label={t('workspace.details.phoneLabel', 'Contact Phone')}
+                        disabled={activeRole === 'Resident'}
+                        {...registerEdit('contactPhone')}
+                      />
+                    </CCol>
+                    <CCol md={6}>
+                      <CFormInput
+                        label={t('workspace.details.locationLabel', 'Location')}
+                        disabled={activeRole === 'Resident'}
+                        {...registerEdit('location')}
+                      />
+                    </CCol>
                   </CRow>
                   {activeRole !== 'Resident' && (
                     <div className="mt-4 text-end">
@@ -449,154 +325,12 @@ export const WorkspaceDetailsView = () => {
                   )}
                 </CForm>
 
-                <hr className="my-4" />
-
-                {/* Danger zone delete */}
-                {activeRole !== 'Resident' && (
-                  <div className="p-4 border border-danger rounded-3 bg-danger-light">
-                    <h5 className="text-danger fw-bold mb-2">{t('workspace.details.dangerZone', 'Danger Zone')}</h5>
-                    <p className="text-muted small mb-3">{t('workspace.details.deleteWarning', 'Deleting this workspace will remove all linked configurations, modules, and logs permanently.')}</p>
-                    <CButton color="danger" className="text-white" onClick={() => setShowDeleteModal(true)}>
-                      <CIcon icon={cilTrash} className="me-2" />
-                      {t('workspace.details.deleteBtn', 'Delete Workspace')}
-                    </CButton>
-                  </div>
-                )}
               </div>
             )}
 
           </CCardBody>
         </CCard>
       </CContainer>
-
-      {/* 1. Add New Module Modal */}
-      <CModal visible={showAddModuleModal} onClose={() => setShowAddModuleModal(false)} size="lg">
-        <CModalHeader>
-          <CModalTitle>{t('workspace.details.addModuleModal', 'Add New Sidebar Feature')}</CModalTitle>
-        </CModalHeader>
-        <CForm onSubmit={handleSubmitAddModule(handleAddModuleSubmit)}>
-          <CModalBody>
-            <CRow className="g-3">
-              <CCol md={6}>
-                <CFormInput
-                  label={t('workspace.details.addModName', 'Feature Name *')}
-                  placeholder="e.g. Notices Board"
-                  {...registerAddModule('moduleName', { required: 'Feature name is required.' })}
-                  invalid={!!addModuleErrors.moduleName}
-                />
-              </CCol>
-              <CCol md={6}>
-                <CFormInput
-                  label={t('workspace.details.addModKey', 'Feature Key (unique identifier) *')}
-                  placeholder="e.g. notices"
-                  {...registerAddModule('moduleKey', { required: 'Feature key is required.' })}
-                  invalid={!!addModuleErrors.moduleKey}
-                />
-              </CCol>
-              <CCol md={6}>
-                <CFormInput
-                  label={t('workspace.details.addModRoute', 'Feature Route (redirect path) *')}
-                  placeholder="e.g. /notices"
-                  {...registerAddModule('route', { required: 'Route path is required.' })}
-                  invalid={!!addModuleErrors.route}
-                />
-              </CCol>
-              <CCol md={6}>
-                <CFormSelect
-                  label={t('workspace.details.addModIcon', 'Sidebar Icon *')}
-                  {...registerAddModule('icon')}
-                >
-                  {availableIconsList.map((ico) => (
-                    <option key={ico.value} value={ico.value}>
-                      {ico.label}
-                    </option>
-                  ))}
-                </CFormSelect>
-              </CCol>
-            </CRow>
-          </CModalBody>
-          <CModalFooter>
-            <CButton color="secondary" onClick={() => setShowAddModuleModal(false)}>
-              {t('workspace.details.cancel', 'Cancel')}
-            </CButton>
-            <CButton type="submit" color="primary" className="text-white">
-              {t('workspace.details.submit', 'Save')}
-            </CButton>
-          </CModalFooter>
-        </CForm>
-      </CModal>
-
-      {/* 2. Edit Module Modal */}
-      <CModal visible={showEditModuleModal} onClose={() => setShowEditModuleModal(false)} size="lg">
-        <CModalHeader>
-          <CModalTitle>{t('workspace.details.editModuleModal', 'Modify Feature Configuration')}</CModalTitle>
-        </CModalHeader>
-        <CForm onSubmit={handleSubmitEditModule(handleEditModuleSubmit)}>
-          <CModalBody>
-            <CRow className="g-3">
-              <CCol md={6}>
-                <CFormInput
-                  label={t('workspace.details.addModName', 'Feature Name *')}
-                  {...registerEditModule('moduleName', { required: 'Feature name is required.' })}
-                  invalid={!!editModuleErrors.moduleName}
-                />
-              </CCol>
-              <CCol md={6}>
-                <CFormInput
-                  label={t('workspace.details.addModKey', 'Feature Key (unique identifier) *')}
-                  disabled
-                  {...registerEditModule('moduleKey')}
-                />
-              </CCol>
-              <CCol md={6}>
-                <CFormInput
-                  label={t('workspace.details.addModRoute', 'Feature Route (redirect path) *')}
-                  {...registerEditModule('route', { required: 'Route path is required.' })}
-                  invalid={!!editModuleErrors.route}
-                />
-              </CCol>
-              <CCol md={6}>
-                <CFormSelect
-                  label={t('workspace.details.addModIcon', 'Sidebar Icon *')}
-                  {...registerEditModule('icon')}
-                >
-                  {availableIconsList.map((ico) => (
-                    <option key={ico.value} value={ico.value}>
-                      {ico.label}
-                    </option>
-                  ))}
-                </CFormSelect>
-              </CCol>
-            </CRow>
-          </CModalBody>
-          <CModalFooter>
-            <CButton color="secondary" onClick={() => setShowEditModuleModal(false)}>
-              {t('workspace.details.cancel', 'Cancel')}
-            </CButton>
-            <CButton type="submit" color="primary" className="text-white">
-              {t('workspace.details.submit', 'Save')}
-            </CButton>
-          </CModalFooter>
-        </CForm>
-      </CModal>
-
-      {/* 3. Delete Workspace Confirmation Modal */}
-      <CModal visible={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
-        <CModalHeader>
-          <CModalTitle>{t('workspace.details.deleteModalTitle', 'Delete Workspace')}</CModalTitle>
-        </CModalHeader>
-        <CModalBody>
-          <p>{t('workspace.details.deleteModalBody', 'Are you absolutely sure you want to permanently delete this workspace? All user details and module structures will be pruned.')}</p>
-        </CModalBody>
-        <CModalFooter>
-          <CButton color="secondary" onClick={() => setShowDeleteModal(false)}>
-            {t('workspace.details.cancel', 'Cancel')}
-          </CButton>
-          <CButton color="danger" className="text-white" onClick={handleDeleteWorkspace}>
-            {t('workspace.details.confirmDelete', 'Delete')}
-          </CButton>
-        </CModalFooter>
-      </CModal>
     </div>
   );
 };

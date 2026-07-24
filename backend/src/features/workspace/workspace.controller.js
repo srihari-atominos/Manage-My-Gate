@@ -146,47 +146,6 @@ export class WorkspaceController {
     }
   }
 
-  // --- Members ---
-
-  async getMembers(req, res, next) {
-    try {
-      const { workspaceId } = req.params;
-      const orgId = req.user.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
-      const data = await workspaceService.getWorkspaceMembers(workspaceId, orgId, isPlatform);
-      res.success(data, 'Workspace members retrieved successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async addMember(req, res, next) {
-    try {
-      const { workspaceId } = req.params;
-      const { identifier } = req.body;
-      const actorId = req.user.id || req.user._id;
-      const orgId = req.user.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
-      const data = await workspaceService.addMember(workspaceId, orgId, isPlatform, identifier, actorId);
-      res.success(data, 'Member added to workspace successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async removeMember(req, res, next) {
-    try {
-      const { workspaceId, userId } = req.params;
-      const actorId = req.user.id || req.user._id;
-      const orgId = req.user.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
-      const data = await workspaceService.removeMember(workspaceId, orgId, isPlatform, userId, actorId);
-      res.success(data, 'Member removed from workspace successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
   // --- Settings ---
 
   async getSettings(req, res, next) {

@@ -66,7 +66,7 @@ export class WorkspaceService {
     }
 
     // Tenant check
-    if (!isPlatform && orgId && workspace.organizationId.toString() !== orgId.toString()) {
+    if (!isPlatform && orgId && (!workspace.organizationId || workspace.organizationId.toString() !== orgId.toString())) {
       throw new HttpError(403, 'Forbidden. You do not have access to this workspace.');
     }
 
@@ -273,77 +273,6 @@ export class WorkspaceService {
     return updated.modules;
   }
 
-  // --- Members Management ---
-
-  async addMember(workspaceId, orgId = null, isPlatform = false, identifier, actorId, session = null) {
-    const workspace = await this.getWorkspaceById(workspaceId, orgId, isPlatform, session);
-
-    // Resolve user by ID, username or email
-    const query = mongoose.isValidObjectId(identifier)
-      ? { _id: identifier }
-      : { $or: [{ email: identifier }, { username: identifier }] };
-
-    const user = await User.findOne(query).session(session);
-    if (!user) {
-      throw new HttpError(404, 'User not found.');
-    }
-
-    if (workspace.members.includes(user._id)) {
-      throw new HttpError(409, 'User is already a member of this workspace.');
-    }
-
-    const updated = await workspaceRepository.addMember(workspaceId, user._id, session);
-
-    await workspaceRepository.addActivityLog(workspaceId, {
-      action: 'Member Added',
-      performedBy: actorId,
-      details: `User "${user.username}" added as member.`,
-    }, session);
-
-    workspaceEvents.emit('MEMBER_ADDED', {
-      actorId,
-      targetId: workspaceId,
-      userId: user._id,
-    });
-
-    return updated;
-  }
-
-  async removeMember(workspaceId, orgId = null, isPlatform = false, userId, actorId, session = null) {
-    const workspace = await this.getWorkspaceById(workspaceId, orgId, isPlatform, session);
-
-    if (!workspace.members.includes(userId)) {
-      throw new HttpError(404, 'User is not a member of this workspace.');
-    }
-
-    const updated = await workspaceRepository.removeMember(workspaceId, userId, session);
-
-    const user = await User.findById(userId).session(session);
-    const username = user ? user.username : userId;
-
-    await workspaceRepository.addActivityLog(workspaceId, {
-      action: 'Member Removed',
-      performedBy: actorId,
-      details: `User "${username}" removed from members.`,
-    }, session);
-
-    workspaceEvents.emit('MEMBER_REMOVED', {
-      actorId,
-      targetId: workspaceId,
-      userId,
-    });
-
-    return updated;
-  }
-
-  async getWorkspaceMembers(workspaceId, orgId = null, isPlatform = false, session = null) {
-    const workspace = await this.getWorkspaceById(workspaceId, orgId, isPlatform, session);
-    // Populate member details
-    const populated = await Workspace.findById(workspace._id)
-      .populate('members', 'name email username status role')
-      .session(session);
-    return populated.members || [];
-  }
 
   // --- Settings & Activity Logs ---
 
