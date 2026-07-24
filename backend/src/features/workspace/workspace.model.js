@@ -44,29 +44,7 @@ const moduleSchema = new mongoose.Schema(
   }
 );
 
-const activityLogSchema = new mongoose.Schema(
-  {
-    action: {
-      type: String,
-      required: true,
-    },
-    performedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-    details: {
-      type: String,
-    },
-    timestamp: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  {
-    _id: true,
-  }
-);
+
 
 const workspaceSchema = new mongoose.Schema(
   {
@@ -106,11 +84,6 @@ const workspaceSchema = new mongoose.Schema(
         ref: 'User',
       },
     ],
-    settings: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
-    activityLogs: [activityLogSchema],
     modules: [moduleSchema],
   },
   {

@@ -187,46 +187,7 @@ export class WorkspaceController {
     }
   }
 
-  // --- Settings ---
 
-  async getSettings(req, res, next) {
-    try {
-      const { workspaceId } = req.params;
-      const orgId = req.user.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
-      const data = await workspaceService.getSettings(workspaceId, orgId, isPlatform);
-      res.success(data, 'Workspace settings retrieved successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async updateSettings(req, res, next) {
-    try {
-      const { workspaceId } = req.params;
-      const actorId = req.user.id || req.user._id;
-      const orgId = req.user.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
-      const data = await workspaceService.updateSettings(workspaceId, orgId, isPlatform, req.body, actorId);
-      res.success(data, 'Workspace settings updated successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // --- Logs ---
-
-  async getActivityLogs(req, res, next) {
-    try {
-      const { workspaceId } = req.params;
-      const orgId = req.user.orgId;
-      const isPlatform = req.user.role === 'Platform Super Admin' || req.user.isPlatform === true;
-      const data = await workspaceService.getActivityLogs(workspaceId, orgId, isPlatform);
-      res.success(data, 'Workspace activity logs retrieved successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
 
   // --- Current Sidebar Config ---
 

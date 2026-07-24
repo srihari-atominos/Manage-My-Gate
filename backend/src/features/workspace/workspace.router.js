@@ -43,9 +43,6 @@ router.get('/:workspaceId/members', allowedManagers, workspaceController.getMemb
 router.post('/:workspaceId/members', allowedManagers, validate(addMemberRules), workspaceController.addMember);
 router.delete('/:workspaceId/members/:userId', allowedManagers, workspaceController.removeMember);
 
-// Settings & Activity Logs
-router.get('/:workspaceId/settings', allowedManagers, workspaceController.getSettings);
-router.put('/:workspaceId/settings', allowedManagers, workspaceController.updateSettings);
-router.get('/:workspaceId/activity', allowedManagers, workspaceController.getActivityLogs);
+// Settings & Activity Logs endpoints have been removed as part of Workspace Settings module deletion
 
 export default router;
