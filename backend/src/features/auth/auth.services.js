@@ -104,8 +104,8 @@ export class AuthService {
         availableWorkspaces: [],
       };
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
@@ -473,8 +473,8 @@ export class AuthService {
         availableWorkspaces,
       };
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
@@ -614,11 +614,22 @@ export class AuthService {
 
       if (existingIdentity) {
         // Find existing user linked to identity
-        user = await userService.getUserById(existingIdentity.userId, session);
-        if (!user || user.status !== 'Active') {
+        try {
+          user = await userService.getUserById(existingIdentity.userId, session);
+        } catch (err) {
+          if (err.statusCode === 404) {
+            user = null; // Dangling identity
+          } else {
+            throw err;
+          }
+        }
+        
+        if (user && user.status !== 'Active') {
           throw new HttpError(403, 'Account is inactive or suspended.');
         }
-      } else {
+      } 
+      
+      if (!user) {
         // Fallback: Check if user exists by email to link them
         user = await userService.getUserByEmail(email, session);
       }
@@ -673,8 +684,8 @@ export class AuthService {
       };
     } catch (error) {
       authEvents.emit('LOGIN_FAILED', { email: email, reason: error.message, method: provider });
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
@@ -820,8 +831,8 @@ export class AuthService {
         availableWorkspaces,
       };
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
@@ -906,8 +917,8 @@ export class AuthService {
         availableWorkspaces,
       };
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
@@ -981,8 +992,8 @@ export class AuthService {
 
       return true;
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
@@ -1091,8 +1102,8 @@ export class AuthService {
         availableWorkspaces,
       };
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
