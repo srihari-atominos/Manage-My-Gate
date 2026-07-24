@@ -47,18 +47,6 @@ export const reorderWorkspaceModules = async (workspaceId, orders) => {
   return await apiClient.patch(`/workspaces/${workspaceId}/modules/reorder`, { orders });
 };
 
-export const getWorkspaceMembers = async (workspaceId) => {
-  return await apiClient.get(`/workspaces/${workspaceId}/members`);
-};
-
-export const addWorkspaceMember = async (workspaceId, identifier) => {
-  return await apiClient.post(`/workspaces/${workspaceId}/members`, { identifier });
-};
-
-export const removeWorkspaceMember = async (workspaceId, userId) => {
-  return await apiClient.delete(`/workspaces/${workspaceId}/members/${userId}`);
-};
-
 export const getCurrentWorkspaceModules = async () => {
   return await apiClient.get('/workspaces/current/modules');
 };
@@ -75,8 +63,5 @@ export default {
   updateWorkspaceModule,
   deleteWorkspaceModule,
   reorderWorkspaceModules,
-  getWorkspaceMembers,
-  addWorkspaceMember,
-  removeWorkspaceMember,
   getCurrentWorkspaceModules,
 };

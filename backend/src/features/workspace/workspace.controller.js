@@ -146,6 +146,7 @@ export class WorkspaceController {
     }
   }
 
+<<<<<<< HEAD
   // --- Members ---
 
   async getMembers(req, res, next) {
@@ -186,7 +187,6 @@ export class WorkspaceController {
       next(error);
     }
   }
-
 
 
   // --- Current Sidebar Config ---

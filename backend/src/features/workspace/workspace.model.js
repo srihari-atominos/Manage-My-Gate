@@ -53,6 +53,10 @@ const workspaceSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    name: {
+      type: String,
+      trim: true,
+    },
     description: {
       type: String,
       trim: true,
@@ -84,6 +88,26 @@ const workspaceSchema = new mongoose.Schema(
         ref: 'User',
       },
     ],
+    timeZone: {
+      type: String,
+      trim: true,
+    },
+    language: {
+      type: String,
+      trim: true,
+    },
+    contactEmail: {
+      type: String,
+      trim: true,
+    },
+    contactPhone: {
+      type: String,
+      trim: true,
+    },
+    location: {
+      type: String,
+      trim: true,
+    },
     modules: [moduleSchema],
   },
   {
@@ -93,6 +117,42 @@ const workspaceSchema = new mongoose.Schema(
 
 // Ensure workspaceName is unique within an organization
 workspaceSchema.index({ workspaceName: 1, organizationId: 1 }, { unique: true });
+
+// Document lifecycle hooks to synchronize name and workspaceName
+workspaceSchema.post('init', function(doc) {
+  if (!doc.workspaceName && doc.name) {
+    doc.workspaceName = doc.name;
+  } else if (!doc.name && doc.workspaceName) {
+    doc.name = doc.workspaceName;
+  }
+});
+
+workspaceSchema.pre('validate', function(next) {
+  if (this.workspaceName && !this.name) {
+    this.name = this.workspaceName;
+  } else if (this.name && !this.workspaceName) {
+    this.workspaceName = this.name;
+  }
+  next();
+});
+
+workspaceSchema.pre('findOneAndUpdate', function() {
+  const update = this.getUpdate();
+  if (update) {
+    if (update.workspaceName && !update.name) {
+      update.name = update.workspaceName;
+    } else if (update.name && !update.workspaceName) {
+      update.workspaceName = update.name;
+    }
+    if (update.$set) {
+      if (update.$set.workspaceName && !update.$set.name) {
+        update.$set.name = update.$set.workspaceName;
+      } else if (update.$set.name && !update.$set.workspaceName) {
+        update.$set.workspaceName = update.$set.name;
+      }
+    }
+  }
+});
 
 export const Workspace = mongoose.model('Workspace', workspaceSchema);
 export default Workspace;

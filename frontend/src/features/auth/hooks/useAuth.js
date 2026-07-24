@@ -40,6 +40,8 @@ export const useAuth = () => {
   const successMsg = useSelector((state) => state.auth.successMsg)
 
   const otpSent = useSelector((state) => state.auth.otpSent)
+  const allowedFeatures = useSelector((state) => state.workspace?.allowedFeatures || [])
+  const isPlatform = useSelector((state) => state.workspace?.isPlatform || false)
 
   useEffect(() => {
     const handleStorageChange = (event) => {
@@ -146,6 +148,15 @@ export const useAuth = () => {
 
   const checkPermission = (permissionName) => {
     if (!currentUser) return false
+
+    if (permissionName && !isPlatform) {
+      const featurePart = permissionName.split(':')[0]
+      if (featurePart !== 'workspaces') {
+        const isEnabled = allowedFeatures.includes(featurePart) || allowedFeatures.includes(permissionName)
+        if (!isEnabled) return false
+      }
+    }
+
     if (currentUser.role === 'Super Admin' || currentUser.role === 'Platform Super Admin') return true
     if (Array.isArray(permissionName)) {
       return permissionName.some((perm) => currentUser.permissions && currentUser.permissions.includes(perm))

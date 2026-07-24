@@ -23,6 +23,36 @@ export const createWorkspaceRules = [
     .optional()
     .isIn(['Active', 'Inactive', 'Pending'])
     .withMessage('Status must be Active, Inactive, or Pending'),
+
+  body('timeZone')
+    .optional()
+    .isString()
+    .withMessage('Time zone must be a string')
+    .trim(),
+
+  body('language')
+    .optional()
+    .isString()
+    .withMessage('Language must be a string')
+    .trim(),
+
+  body('contactEmail')
+    .optional({ checkFalsy: true })
+    .isEmail()
+    .withMessage('Contact email must be a valid email address')
+    .normalizeEmail(),
+
+  body('contactPhone')
+    .optional()
+    .isString()
+    .withMessage('Contact phone must be a string')
+    .trim(),
+
+  body('location')
+    .optional()
+    .isString()
+    .withMessage('Location must be a string')
+    .trim(),
 ];
 
 export const updateWorkspaceRules = [
@@ -42,6 +72,36 @@ export const updateWorkspaceRules = [
     .optional()
     .isIn(['Active', 'Inactive', 'Pending'])
     .withMessage('Status must be Active, Inactive, or Pending'),
+
+  body('timeZone')
+    .optional()
+    .isString()
+    .withMessage('Time zone must be a string')
+    .trim(),
+
+  body('language')
+    .optional()
+    .isString()
+    .withMessage('Language must be a string')
+    .trim(),
+
+  body('contactEmail')
+    .optional({ checkFalsy: true })
+    .isEmail()
+    .withMessage('Contact email must be a valid email address')
+    .normalizeEmail(),
+
+  body('contactPhone')
+    .optional()
+    .isString()
+    .withMessage('Contact phone must be a string')
+    .trim(),
+
+  body('location')
+    .optional()
+    .isString()
+    .withMessage('Location must be a string')
+    .trim(),
 ];
 
 export const addModuleRules = [
@@ -151,11 +211,24 @@ export const reorderModulesRules = [
     }),
 ];
 
-export const addMemberRules = [
-  body('identifier')
-    .notEmpty()
-    .withMessage('User identifier (ID, username, or email) is required')
-    .isString()
-    .withMessage('User identifier must be a string')
-    .trim(),
+export const idParamRules = [
+  param('id')
+    .isMongoId()
+    .withMessage('Workspace ID must be a valid Mongo ID'),
 ];
+
+export const workspaceIdParamRules = [
+  param('workspaceId')
+    .isMongoId()
+    .withMessage('Workspace ID must be a valid Mongo ID'),
+];
+
+export const workspaceAndModuleIdParamRules = [
+  param('workspaceId')
+    .isMongoId()
+    .withMessage('Workspace ID must be a valid Mongo ID'),
+  param('moduleId')
+    .isMongoId()
+    .withMessage('Module ID must be a valid Mongo ID'),
+];
+
