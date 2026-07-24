@@ -136,8 +136,13 @@ export const syncPermissions = async () => {
         orgId: platformOrg._id,
         roleIds: [superAdminRole._id],
         roleId: superAdminRole._id,
+        status: 'Active',
       });
       logger.info('Linked Super Admin user to the Platform organization with Platform Super Admin role.');
+    } else if (membership.status !== 'Active') {
+      membership.status = 'Active';
+      await membership.save();
+      logger.info('Updated existing Super Admin user membership status to Active.');
     }
 
     logger.info('Permission synchronization and Super Admin bootstrapping finished successfully.');

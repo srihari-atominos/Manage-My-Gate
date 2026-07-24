@@ -86,17 +86,23 @@ export const switchContextRules = [
  * Validation rules for SSO token verification
  */
 export const ssoVerifyRules = [
-  body('token')
-    .notEmpty()
-    .withMessage('SSO provider token is required')
-    .isString()
-    .withMessage('Token must be a string')
-    .trim(),
   body('inviteToken')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isString()
     .withMessage('Invite token must be a string')
     .trim(),
+  body()
+    .custom((value, { req }) => {
+      const ssoToken = req.body.token || req.body.credential;
+      if (!ssoToken || (typeof ssoToken === 'string' && !ssoToken.trim())) {
+        throw new Error('SSO provider token is required');
+      }
+      if (typeof ssoToken !== 'string') {
+        throw new Error('Token must be a string');
+      }
+      req.body.token = ssoToken.trim();
+      return true;
+    }),
 ];
 
 /**
