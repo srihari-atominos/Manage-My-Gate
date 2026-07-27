@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   CCard,
@@ -21,6 +22,7 @@ import {
   cilLockLocked,
 } from '@coreui/icons'
 import useSetupWorkspace from '../hooks/useSetupWorkspace.js'
+import useAuth from '../../auth/hooks/useAuth.js'
 
 /**
  * SetupWorkspace Component
@@ -31,6 +33,13 @@ import useSetupWorkspace from '../hooks/useSetupWorkspace.js'
  */
 export const SetupWorkspace = () => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { logout } = useAuth()
+
+  const handleBack = () => {
+    logout()
+    navigate('/register')
+  }
 
   const {
     register,
@@ -136,10 +145,21 @@ export const SetupWorkspace = () => {
                     )}
                   </div>
 
-                  <div className="d-grid mt-4">
+                  <div className="d-flex gap-3 mt-4">
+                    <CButton
+                      type="button"
+                      color="secondary"
+                      variant="ghost"
+                      style={styles.backButton}
+                      onClick={handleBack}
+                      disabled={loading}
+                    >
+                      {t('workspace.setup.back', { defaultValue: 'Back' })}
+                    </CButton>
                     <CButton
                       type="submit"
                       color="primary"
+                      className="flex-grow-1"
                       style={isSubmitDisabled ? styles.submitButtonDisabled : styles.submitButton}
                       disabled={isSubmitDisabled}
                     >
@@ -244,6 +264,16 @@ const styles = {
     boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
     color: '#ffffff',
     transition: 'all 0.2s',
+  },
+  backButton: {
+    padding: '12px 24px',
+    fontSize: '16px',
+    fontWeight: '600',
+    borderRadius: '8px',
+    color: '#6b7280',
+    border: '1px solid #d1d5db',
+    transition: 'all 0.2s',
+    minWidth: '100px',
   },
   submitButtonDisabled: {
     background: '#e5e7eb',

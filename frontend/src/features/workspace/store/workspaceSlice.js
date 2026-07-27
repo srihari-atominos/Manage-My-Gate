@@ -238,6 +238,20 @@ export const workspaceSlice = createSlice({
         state.workspaceActivityLogs = []
         state.modules = []
       })
+      .addCase('auth/createWorkspace/fulfilled', (state, action) => {
+        const payloadData = action.payload?.data
+        if (payloadData && payloadData.user) {
+          state.activeOrganizationId = payloadData.user.orgId
+          state.activeRole = payloadData.user.role
+          state.allowedFeatures = payloadData.user.permissions || []
+          state.isPlatform = payloadData.user.isPlatform || false
+        }
+        if (payloadData && payloadData.availableWorkspaces) {
+          state.availableWorkspaces = payloadData.availableWorkspaces
+          const matched = payloadData.availableWorkspaces.find((w) => w.orgId === state.activeOrganizationId)
+          state.organizationName = matched ? matched.name : null
+        }
+      })
       // loadWorkspaces
       .addCase(loadWorkspaces.pending, (state) => {
         state.loading = true
