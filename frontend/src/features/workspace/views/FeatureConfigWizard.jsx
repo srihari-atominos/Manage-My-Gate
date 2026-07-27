@@ -1,32 +1,36 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { CContainer, CRow, CCol, CCard, CCardBody, CButton, CAlert, CSpinner } from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilUser, cilShieldAlt, cilLayers, cilHome, cilBuilding, cilList, cilSettings, cilAddressBook, cilMoney } from '@coreui/icons';
-import useFeatureConfigWizard from '../hooks/useFeatureConfigWizard.js';
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { CContainer, CRow, CCol, CCard, CCardBody, CButton, CAlert, CSpinner } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import {
+  cilUser,
+  cilShieldAlt,
+  cilLayers,
+  cilHome,
+  cilBuilding,
+  cilList,
+  cilSettings,
+  cilAddressBook,
+  cilMoney,
+} from '@coreui/icons'
+import useFeatureConfigWizard from '../hooks/useFeatureConfigWizard.js'
 
-import SetupWorkspace from '../components/SetupWorkspace.jsx';
-import '../styles/_workspace.scss';
+import SetupWorkspace from '../components/SetupWorkspace.jsx'
+import '../styles/_workspace.scss'
 
 /**
  * View presenting available modules as interactive cards to configure organization features.
  */
 export const FeatureConfigWizard = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
-  const {
-    showWorkspaceSetup,
-    selectedFeatures,
-    loading,
-    error,
-    toggleFeature,
-    submitFeatures,
-  } = useFeatureConfigWizard();
+  const { showWorkspaceSetup, selectedFeatures, loading, error, toggleFeature, submitFeatures } =
+    useFeatureConfigWizard()
 
   // If user does not have an active organization, or if they explicitly intend to create a new one,
   // they must setup one first.
   if (showWorkspaceSetup) {
-    return <SetupWorkspace />;
+    return <SetupWorkspace />
   }
 
   const features = [
@@ -84,7 +88,7 @@ export const FeatureConfigWizard = () => {
       descKey: 'workspace.wizard.billing.desc',
       icon: cilMoney,
     },
-  ];
+  ]
 
   return (
     <div className="feature-config-wizard bg-body-secondary">
@@ -94,12 +98,8 @@ export const FeatureConfigWizard = () => {
             <CCard className="shadow-lg border-0 rounded-4">
               <CCardBody className="p-5">
                 <div className="text-center mb-4">
-                  <h2 className="fw-bold text-body mb-2">
-                    {t('workspace.wizard.title')}
-                  </h2>
-                  <p className="text-muted">
-                    {t('workspace.wizard.subtitle')}
-                  </p>
+                  <h2 className="fw-bold text-body mb-2">{t('workspace.wizard.title')}</h2>
+                  <p className="text-muted">{t('workspace.wizard.subtitle')}</p>
                 </div>
 
                 {error && (
@@ -110,7 +110,7 @@ export const FeatureConfigWizard = () => {
 
                 <CRow className="g-3 mb-5">
                   {features.map((feature) => {
-                    const isSelected = selectedFeatures.includes(feature.id);
+                    const isSelected = selectedFeatures.includes(feature.id)
                     return (
                       <CCol key={feature.id} xs={12} sm={6} lg={3}>
                         <CCard
@@ -126,22 +126,14 @@ export const FeatureConfigWizard = () => {
                                 isSelected ? 'selected' : ''
                               }`}
                             >
-                              <CIcon 
-                                icon={feature.icon} 
-                                size="xl" 
-                                className="feature-card-icon"
-                              />
+                              <CIcon icon={feature.icon} size="xl" className="feature-card-icon" />
                             </div>
-                            <h5 className="fw-semibold text-body mb-2">
-                              {t(feature.titleKey)}
-                            </h5>
-                            <p className="text-muted small mb-0">
-                              {t(feature.descKey)}
-                            </p>
+                            <h5 className="fw-semibold text-body mb-2">{t(feature.titleKey)}</h5>
+                            <p className="text-muted small mb-0">{t(feature.descKey)}</p>
                           </CCardBody>
                         </CCard>
                       </CCol>
-                    );
+                    )
                   })}
                 </CRow>
 
@@ -170,7 +162,7 @@ export const FeatureConfigWizard = () => {
         </CRow>
       </CContainer>
     </div>
-  );
-};
+  )
+}
 
-export default FeatureConfigWizard;
+export default FeatureConfigWizard

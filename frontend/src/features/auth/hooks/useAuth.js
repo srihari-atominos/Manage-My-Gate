@@ -22,11 +22,11 @@ import {
 } from '../store/authSlice'
 
 /**
-  * useAuth Custom Hook
-  *
-  * Controller hook encapsulating auth state selectors and action dispatchers.
-  * Follows the "Thin View" architectural pattern.
-  */
+ * useAuth Custom Hook
+ *
+ * Controller hook encapsulating auth state selectors and action dispatchers.
+ * Follows the "Thin View" architectural pattern.
+ */
 export const useAuth = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -122,7 +122,9 @@ export const useAuth = () => {
 
   const handleAcceptSsoInvitation = async (inviteToken, ssoCredential, provider) => {
     try {
-      const resultAction = await dispatch(acceptSsoInvitation({ inviteToken, ssoCredential, provider }))
+      const resultAction = await dispatch(
+        acceptSsoInvitation({ inviteToken, ssoCredential, provider }),
+      )
       if (acceptSsoInvitation.fulfilled.match(resultAction)) {
         const data = resultAction.payload?.data
         const workspaces = data?.workspaces || data?.availableWorkspaces || []
@@ -149,7 +151,8 @@ export const useAuth = () => {
   const checkPermission = (permissionName) => {
     if (!currentUser) return false
 
-    if (currentUser.role === 'Super Admin' || currentUser.role === 'Platform Super Admin') return true
+    if (currentUser.role === 'Super Admin' || currentUser.role === 'Platform Super Admin')
+      return true
 
     const isPermEnabledInWorkspace = (perm) => {
       if (!perm || isPlatform) return true
@@ -160,7 +163,7 @@ export const useAuth = () => {
 
     if (Array.isArray(permissionName)) {
       return permissionName.some(
-        (perm) => isPermEnabledInWorkspace(perm) && currentUser.permissions?.includes(perm)
+        (perm) => isPermEnabledInWorkspace(perm) && currentUser.permissions?.includes(perm),
       )
     }
 

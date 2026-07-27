@@ -1,41 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import PropTypes from 'prop-types';
-import {
-  CForm,
-  CFormInput,
-  CFormTextarea,
-  CFormSelect,
-  CButton,
-  CFormLabel,
-} from '@coreui/react';
+import React, { useState, useEffect } from 'react'
+import PropTypes from 'prop-types'
+import { CForm, CFormInput, CFormTextarea, CFormSelect, CButton, CFormLabel } from '@coreui/react'
 
 export const SampleForm = ({ onSubmit, initialValues, onCancel, isSubmitting }) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [status, setStatus] = useState('pending');
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [status, setStatus] = useState('pending')
 
   useEffect(() => {
     if (initialValues) {
-      setTitle(initialValues.title || '');
-      setDescription(initialValues.description || '');
-      setStatus(initialValues.status || 'pending');
+      setTitle(initialValues.title || '')
+      setDescription(initialValues.description || '')
+      setStatus(initialValues.status || 'pending')
     } else {
-      setTitle('');
-      setDescription('');
-      setStatus('pending');
+      setTitle('')
+      setDescription('')
+      setStatus('pending')
     }
-  }, [initialValues]);
+  }, [initialValues])
 
   const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-    
+    e.preventDefault()
+    if (!title.trim()) return
+
     onSubmit({
       title: title.trim(),
       description: description.trim(),
       status,
-    });
-  };
+    })
+  }
 
   return (
     <CForm onSubmit={handleSubmit} className="row g-3">
@@ -86,8 +79,8 @@ export const SampleForm = ({ onSubmit, initialValues, onCancel, isSubmitting }) 
         </CButton>
       </div>
     </CForm>
-  );
-};
+  )
+}
 
 SampleForm.propTypes = {
   onSubmit: PropTypes.func.isRequired,
@@ -98,6 +91,6 @@ SampleForm.propTypes = {
   }),
   onCancel: PropTypes.func,
   isSubmitting: PropTypes.bool,
-};
+}
 
-export default SampleForm;
+export default SampleForm

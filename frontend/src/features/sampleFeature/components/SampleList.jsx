@@ -1,5 +1,5 @@
-import React from 'react';
-import PropTypes from 'prop-types';
+import React from 'react'
+import PropTypes from 'prop-types'
 import {
   CTable,
   CTableBody,
@@ -9,25 +9,29 @@ import {
   CTableRow,
   CButton,
   CBadge,
-} from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilPencil, cilTrash } from '@coreui/icons';
+} from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilPencil, cilTrash } from '@coreui/icons'
 
 export const SampleList = ({ items, onEdit, onDelete }) => {
   const getBadge = (status) => {
     switch (status) {
       case 'active':
-        return 'success';
+        return 'success'
       case 'completed':
-        return 'info';
+        return 'info'
       case 'pending':
       default:
-        return 'warning';
+        return 'warning'
     }
-  };
+  }
 
   if (!items || items.length === 0) {
-    return <div className="text-center py-4 text-muted">No sample records found. Add one to get started!</div>;
+    return (
+      <div className="text-center py-4 text-muted">
+        No sample records found. Add one to get started!
+      </div>
+    )
   }
 
   return (
@@ -44,18 +48,14 @@ export const SampleList = ({ items, onEdit, onDelete }) => {
       <CTableBody>
         {items.map((item) => (
           <CTableRow key={item._id}>
-            <CTableDataCell className="fw-semibold">
-              {item.title}
-            </CTableDataCell>
+            <CTableDataCell className="fw-semibold">{item.title}</CTableDataCell>
             <CTableDataCell>
               {item.description || <span className="text-muted fs-7 italic">No description</span>}
             </CTableDataCell>
             <CTableDataCell>
               <CBadge color={getBadge(item.status)}>{item.status}</CBadge>
             </CTableDataCell>
-            <CTableDataCell>
-              {new Date(item.createdAt).toLocaleDateString()}
-            </CTableDataCell>
+            <CTableDataCell>{new Date(item.createdAt).toLocaleDateString()}</CTableDataCell>
             <CTableDataCell className="text-center">
               <CButton
                 color="info"
@@ -79,8 +79,8 @@ export const SampleList = ({ items, onEdit, onDelete }) => {
         ))}
       </CTableBody>
     </CTable>
-  );
-};
+  )
+}
 
 SampleList.propTypes = {
   items: PropTypes.arrayOf(
@@ -90,10 +90,10 @@ SampleList.propTypes = {
       description: PropTypes.string,
       status: PropTypes.string,
       createdAt: PropTypes.string.isRequired,
-    })
+    }),
   ).isRequired,
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
-};
+}
 
-export default SampleList;
+export default SampleList

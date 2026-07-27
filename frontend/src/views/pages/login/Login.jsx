@@ -1,16 +1,16 @@
-import React from 'react';
-import { CContainer, CRow, CCol } from '@coreui/react';
-import LoginForm from '../../../features/auth/components/LoginForm.jsx';
-import loginBG from '../../../assets/images/loginBackGr.avif';
+import React from 'react'
+import { CContainer, CRow, CCol } from '@coreui/react'
+import LoginForm from '../../../features/auth/components/LoginForm.jsx'
+import loginBG from '../../../assets/images/loginBackGr.avif'
 
 const Login = () => {
   return (
-    <div 
-      className="min-vh-100 d-flex flex-row align-items-center position-relative overflow-hidden" 
+    <div
+      className="min-vh-100 d-flex flex-row align-items-center position-relative overflow-hidden"
       style={{ backgroundColor: '#f0f4f8' }}
     >
       {/* Background Image Layer with Subtle Animation */}
-      <div 
+      <div
         style={{
           position: 'absolute',
           top: 0,
@@ -24,7 +24,7 @@ const Login = () => {
           animation: 'subtlePanZoom 30s ease-in-out infinite alternate',
         }}
       />
-      
+
       {/* Injecting CSS Keyframes locally */}
       <style>
         {`
@@ -40,14 +40,15 @@ const Login = () => {
       </style>
 
       {/* Light frosted overlay for contrast */}
-      <div 
+      <div
         style={{
           position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.4) 100%)',
+          background:
+            'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.4) 100%)',
           backdropFilter: 'blur(2px)',
           zIndex: 2,
         }}
@@ -62,9 +63,7 @@ const Login = () => {
         </CRow>
       </CContainer>
     </div>
-  );
-};
+  )
+}
 
-export default Login;
-
-
+export default Login

@@ -1,13 +1,13 @@
-import React, { useRef, useEffect } from 'react';
-import PropTypes from 'prop-types';
-import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { CSpinner } from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilBell } from '@coreui/icons';
-import useNotifications from '../hooks/useNotifications.js';
-import NotificationItem from './NotificationItem.jsx';
-import '../styles/_notification.scss';
+import React, { useRef, useEffect } from 'react'
+import PropTypes from 'prop-types'
+import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { CSpinner } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilBell } from '@coreui/icons'
+import useNotifications from '../hooks/useNotifications.js'
+import NotificationItem from './NotificationItem.jsx'
+import '../styles/_notification.scss'
 
 /**
  * Dropdown Popover rendering notification list for desktop layouts.
@@ -18,8 +18,8 @@ import '../styles/_notification.scss';
  * @param {Function} props.onClose - Callback to close the popover
  */
 export const NotificationPopover = ({ isOpen, onClose }) => {
-  const { t } = useTranslation();
-  const popoverRef = useRef(null);
+  const { t } = useTranslation()
+  const popoverRef = useRef(null)
 
   const {
     notifications,
@@ -29,11 +29,11 @@ export const NotificationPopover = ({ isOpen, onClose }) => {
     handleMarkAsRead,
     handleMarkAllAsRead,
     handleDelete,
-  } = useNotifications();
+  } = useNotifications()
 
   // Handle click outside to close popover
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return
 
     const handleClickOutside = (event) => {
       if (
@@ -41,38 +41,43 @@ export const NotificationPopover = ({ isOpen, onClose }) => {
         !popoverRef.current.contains(event.target) &&
         !event.target.closest('.notification-bell-container')
       ) {
-        onClose();
+        onClose()
       }
-    };
+    }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside)
+
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
-  }, [isOpen, onClose]);
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [isOpen, onClose])
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   const handleMarkAllClick = (e) => {
-    e.preventDefault();
-    handleMarkAllAsRead();
-  };
+    e.preventDefault()
+    handleMarkAllAsRead()
+  }
 
   const handleLoadMoreClick = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    fetchNextPage();
-  };
+    e.stopPropagation()
+    e.preventDefault()
+    fetchNextPage()
+  }
 
   return (
-    <div className="notification-popover" ref={popoverRef} role="dialog" aria-label={t('notification.panelTitle')}>
+    <div
+      className="notification-popover"
+      ref={popoverRef}
+      role="dialog"
+      aria-label={t('notification.panelTitle')}
+    >
       {/* Popover Header */}
       <div className="popover-header">
         <h6>{t('notification.title')}</h6>
-        {notifications.some(n => !n.isRead) && (
+        {notifications.some((n) => !n.isRead) && (
           <button
             type="button"
             className="mark-all-btn"
@@ -133,12 +138,12 @@ export const NotificationPopover = ({ isOpen, onClose }) => {
         </Link>
       </div>
     </div>
-  );
-};
+  )
+}
 
 NotificationPopover.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-};
+}
 
-export default NotificationPopover;
+export default NotificationPopover

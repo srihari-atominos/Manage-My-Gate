@@ -1,145 +1,150 @@
-import { useState, useCallback } from 'react';
-import { useSelector } from 'react-redux';
-import config from '../../../config/config.js';
-import { useTranslation } from 'react-i18next';
-import toast from 'react-hot-toast';
-import { createWalletRechargeOrder, verifyWalletRechargePayment } from '../services/walletApi.js';
+import { useState, useCallback } from 'react'
+import { useSelector } from 'react-redux'
+import config from '../../../config/config.js'
+import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
+import { createWalletRechargeOrder, verifyWalletRechargePayment } from '../services/walletApi.js'
 
 export const useWalletPayment = () => {
-  const { t } = useTranslation();
-  const { user } = useSelector((state) => state.auth || {});
-  const [loading, setLoading] = useState(false);
+  const { t } = useTranslation()
+  const { user } = useSelector((state) => state.auth || {})
+  const [loading, setLoading] = useState(false)
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
       if (window.Razorpay) {
-        resolve(true);
-        return;
+        resolve(true)
+        return
       }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
+      const script = document.createElement('script')
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+      script.onload = () => resolve(true)
+      script.onerror = () => resolve(false)
+      document.body.appendChild(script)
+    })
+  }
 
-  const rechargeWallet = useCallback(async (amountVal, onSuccess, onFailure) => {
-    setLoading(true);
-    try {
-      const isMock = !config.razorpayKey || config.razorpayKey === 'rzp_test_mockkey';
+  const rechargeWallet = useCallback(
+    async (amountVal, onSuccess, onFailure) => {
+      setLoading(true)
+      try {
+        const isMock = !config.razorpayKey || config.razorpayKey === 'rzp_test_mockkey'
 
-      if (isMock) {
-        // 1. Create order on backend (mock order)
-        const orderRes = await createWalletRechargeOrder(amountVal);
-        if (!orderRes || !orderRes.data) {
-          throw new Error(t('payment.order_creation_failed', 'Failed to create payment order.'));
-        }
-        
-        // Wait 1.5 seconds to show the loading spinner "Connecting to payment gateway..."
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // Show a browser confirm box to simulate the payment action
-        const confirmPayment = window.confirm(t('payment.mock_confirm', `[Mock Mode] Confirm payment of ₹${amountVal}?`));
-        if (confirmPayment) {
-          // Simulate verification call
-          const verifyPayload = {
-            razorpay_order_id: orderRes.data.id,
-            razorpay_payment_id: `pay_mock_${Date.now()}`,
-            razorpay_signature: `sig_mock_${Date.now()}`,
-            amount: amountVal,
-          };
-          const verification = await verifyWalletRechargePayment(verifyPayload);
-          if (verification.success) {
-            toast.success(t('payment.recharge_success', 'Wallet recharged successfully!'));
-            if (onSuccess) onSuccess(verification.data);
-          } else {
-            throw new Error(verification.message || 'Signature verification failed');
+        if (isMock) {
+          // 1. Create order on backend (mock order)
+          const orderRes = await createWalletRechargeOrder(amountVal)
+          if (!orderRes || !orderRes.data) {
+            throw new Error(t('payment.order_creation_failed', 'Failed to create payment order.'))
           }
-        } else {
-          setLoading(false);
-          toast.error(t('payment.cancelled', 'Payment cancelled by user.'));
-          if (onFailure) onFailure(new Error('Payment cancelled by user'));
-        }
-        return;
-      }
 
-      // Real Razorpay Flow
-      const isLoaded = await loadRazorpayScript();
-      if (!isLoaded) {
-        toast.error(t('payment.script_failed', 'Failed to load payment gateway SDK.'));
-        setLoading(false);
-        if (onFailure) onFailure(new Error('SDK load failure'));
-        return;
-      }
+          // Wait 1.5 seconds to show the loading spinner "Connecting to payment gateway..."
+          await new Promise((resolve) => setTimeout(resolve, 1500))
 
-      const orderRes = await createWalletRechargeOrder(amountVal);
-      if (!orderRes || !orderRes.data) {
-        throw new Error(t('payment.order_creation_failed', 'Failed to create payment order.'));
-      }
-
-      const orderData = orderRes.data;
-
-      const options = {
-        key: config.razorpayKey,
-        amount: orderData.amount,
-        currency: orderData.currency || 'INR',
-        name: t('payment.org_name', 'Gated Community'),
-        description: t('payment.wallet_recharge', 'Wallet Recharge'),
-        order_id: orderData.id,
-        handler: async function (response) {
-          try {
-            setLoading(true);
+          // Show a browser confirm box to simulate the payment action
+          const confirmPayment = window.confirm(
+            t('payment.mock_confirm', `[Mock Mode] Confirm payment of ₹${amountVal}?`),
+          )
+          if (confirmPayment) {
+            // Simulate verification call
             const verifyPayload = {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
+              razorpay_order_id: orderRes.data.id,
+              razorpay_payment_id: `pay_mock_${Date.now()}`,
+              razorpay_signature: `sig_mock_${Date.now()}`,
               amount: amountVal,
-            };
-            const verification = await verifyWalletRechargePayment(verifyPayload);
-            if (verification.success) {
-              toast.success(t('payment.recharge_success', 'Wallet recharged successfully!'));
-              if (onSuccess) onSuccess(verification.data);
-            } else {
-              throw new Error(verification.message || 'Signature verification failed');
             }
-          } catch (err) {
-            toast.error(err.message || t('payment.failed', 'Payment verification failed.'));
-            if (onFailure) onFailure(err);
-          } finally {
-            setLoading(false);
+            const verification = await verifyWalletRechargePayment(verifyPayload)
+            if (verification.success) {
+              toast.success(t('payment.recharge_success', 'Wallet recharged successfully!'))
+              if (onSuccess) onSuccess(verification.data)
+            } else {
+              throw new Error(verification.message || 'Signature verification failed')
+            }
+          } else {
+            setLoading(false)
+            toast.error(t('payment.cancelled', 'Payment cancelled by user.'))
+            if (onFailure) onFailure(new Error('Payment cancelled by user'))
           }
-        },
-        prefill: {
-          name: user?.name || '',
-          email: user?.email || '',
-          contact: user?.phone || user?.contact || '',
-        },
-        theme: {
-          color: '#321fdb',
-        },
-        modal: {
-          ondismiss: function () {
-            setLoading(false);
-            toast.error(t('payment.cancelled', 'Payment cancelled by user.'));
-            if (onFailure) onFailure(new Error('Payment cancelled by user'));
-          }
+          return
         }
-      };
 
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (error) {
-      setLoading(false);
-      toast.error(error.message || t('payment.error', 'An error occurred during payment setup.'));
-      if (onFailure) onFailure(error);
-    }
-  }, [user, t]);
+        // Real Razorpay Flow
+        const isLoaded = await loadRazorpayScript()
+        if (!isLoaded) {
+          toast.error(t('payment.script_failed', 'Failed to load payment gateway SDK.'))
+          setLoading(false)
+          if (onFailure) onFailure(new Error('SDK load failure'))
+          return
+        }
+
+        const orderRes = await createWalletRechargeOrder(amountVal)
+        if (!orderRes || !orderRes.data) {
+          throw new Error(t('payment.order_creation_failed', 'Failed to create payment order.'))
+        }
+
+        const orderData = orderRes.data
+
+        const options = {
+          key: config.razorpayKey,
+          amount: orderData.amount,
+          currency: orderData.currency || 'INR',
+          name: t('payment.org_name', 'Gated Community'),
+          description: t('payment.wallet_recharge', 'Wallet Recharge'),
+          order_id: orderData.id,
+          handler: async function (response) {
+            try {
+              setLoading(true)
+              const verifyPayload = {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                amount: amountVal,
+              }
+              const verification = await verifyWalletRechargePayment(verifyPayload)
+              if (verification.success) {
+                toast.success(t('payment.recharge_success', 'Wallet recharged successfully!'))
+                if (onSuccess) onSuccess(verification.data)
+              } else {
+                throw new Error(verification.message || 'Signature verification failed')
+              }
+            } catch (err) {
+              toast.error(err.message || t('payment.failed', 'Payment verification failed.'))
+              if (onFailure) onFailure(err)
+            } finally {
+              setLoading(false)
+            }
+          },
+          prefill: {
+            name: user?.name || '',
+            email: user?.email || '',
+            contact: user?.phone || user?.contact || '',
+          },
+          theme: {
+            color: '#321fdb',
+          },
+          modal: {
+            ondismiss: function () {
+              setLoading(false)
+              toast.error(t('payment.cancelled', 'Payment cancelled by user.'))
+              if (onFailure) onFailure(new Error('Payment cancelled by user'))
+            },
+          },
+        }
+
+        const rzp = new window.Razorpay(options)
+        rzp.open()
+      } catch (error) {
+        setLoading(false)
+        toast.error(error.message || t('payment.error', 'An error occurred during payment setup.'))
+        if (onFailure) onFailure(error)
+      }
+    },
+    [user, t],
+  )
 
   return {
     rechargeWallet,
-    loading
-  };
-};
+    loading,
+  }
+}
 
-export default useWalletPayment;
+export default useWalletPayment

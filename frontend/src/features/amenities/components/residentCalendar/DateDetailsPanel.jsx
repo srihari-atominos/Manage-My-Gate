@@ -1,354 +1,503 @@
-import React, { memo } from 'react';
-import { CPlaceholder } from '@coreui/react';
+import React, { memo } from 'react'
+import { CPlaceholder } from '@coreui/react'
 
 const STATUS_CONFIG = {
-  Available:   { color: '#10B981', bg: '#D1FAE5', label: 'Available',   badge: 'badge-available' },
-  Booked:      { color: '#EF4444', bg: '#FEE2E2', label: 'Booked',      badge: 'badge-booked'    },
-  BookedByMe:  { color: '#059669', bg: '#D1FAE5', label: 'Booked by You', badge: 'badge-booked-me' },
-  Maintenance: { color: '#F59E0B', bg: '#FEF3C7', label: 'Maintenance', badge: 'badge-maint'     },
-  Closed:      { color: '#94A3B8', bg: '#F1F5F9', label: 'Closed',      badge: 'badge-closed'    },
-};
+  Available: { color: '#10B981', bg: '#D1FAE5', label: 'Available', badge: 'badge-available' },
+  Booked: { color: '#EF4444', bg: '#FEE2E2', label: 'Booked', badge: 'badge-booked' },
+  BookedByMe: { color: '#059669', bg: '#D1FAE5', label: 'Booked by You', badge: 'badge-booked-me' },
+  Maintenance: { color: '#F59E0B', bg: '#FEF3C7', label: 'Maintenance', badge: 'badge-maint' },
+  Closed: { color: '#94A3B8', bg: '#F1F5F9', label: 'Closed', badge: 'badge-closed' },
+}
 
 const getStatusCfg = (slot) => {
-  if (slot.bookedByMe) return STATUS_CONFIG.BookedByMe;
-  return STATUS_CONFIG[slot.status] || STATUS_CONFIG.Closed;
-};
+  if (slot.bookedByMe) return STATUS_CONFIG.BookedByMe
+  return STATUS_CONFIG[slot.status] || STATUS_CONFIG.Closed
+}
 
-const DateDetailsPanel = memo(({
-  selectedDate,
-  dateBookings,
-  amenities,
-  selectedAmenityId,
-  onAmenitySelect,
-  allSlots,
-  slotsLoading,
-  onSlotSelect,
-  selectedSlot,
-  onBookNow,
-  onClose,
-}) => {
-  const formattedDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-  });
+const DateDetailsPanel = memo(
+  ({
+    selectedDate,
+    dateBookings,
+    amenities,
+    selectedAmenityId,
+    onAmenitySelect,
+    allSlots,
+    slotsLoading,
+    onSlotSelect,
+    selectedSlot,
+    onBookNow,
+    onClose,
+  }) => {
+    const formattedDate = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
 
-  const activeAmenities = (amenities || []).filter(a => a.status === 'active');
-  const selectedAmenity  = amenities?.find(a => a._id === selectedAmenityId);
+    const activeAmenities = (amenities || []).filter((a) => a.status === 'active')
+    const selectedAmenity = amenities?.find((a) => a._id === selectedAmenityId)
 
-  const bookingStatusClass = (status) => {
-    if (status === 'confirmed' || status === 'approved') return 'ddp-booking-badge--success';
-    if (status === 'cancelled' || status === 'rejected') return 'ddp-booking-badge--danger';
-    return 'ddp-booking-badge--default';
-  };
+    const bookingStatusClass = (status) => {
+      if (status === 'confirmed' || status === 'approved') return 'ddp-booking-badge--success'
+      if (status === 'cancelled' || status === 'rejected') return 'ddp-booking-badge--danger'
+      return 'ddp-booking-badge--default'
+    }
 
-  return (
-    <div className="ddp-root">
-      {/* Header */}
-      <div className="ddp-header">
-        <div>
-          <div className="ddp-header__label">Selected Date</div>
-          <div className="ddp-header__date">{formattedDate}</div>
+    return (
+      <div className="ddp-root">
+        {/* Header */}
+        <div className="ddp-header">
+          <div>
+            <div className="ddp-header__label">Selected Date</div>
+            <div className="ddp-header__date">{formattedDate}</div>
+          </div>
+          <button className="ddp-close-btn" onClick={onClose} aria-label="Close panel">
+            <i className="fa-solid fa-xmark"></i>
+          </button>
         </div>
-        <button className="ddp-close-btn" onClick={onClose} aria-label="Close panel">
-          <i className="fa-solid fa-xmark"></i>
-        </button>
-      </div>
 
-      <div className="ddp-body">
-        {/* ── Section 1: Existing Bookings ── */}
-        {dateBookings.length > 0 && (
-          <div className="ddp-card">
-            <div className="ddp-card__title">
-              <i className="fa-regular fa-calendar-check me-2" style={{ color: '#0084FF' }}></i>
-              Your Bookings
-              <span className="ddp-count-pill">{dateBookings.length}</span>
+        <div className="ddp-body">
+          {/* ── Section 1: Existing Bookings ── */}
+          {dateBookings.length > 0 && (
+            <div className="ddp-card">
+              <div className="ddp-card__title">
+                <i className="fa-regular fa-calendar-check me-2" style={{ color: '#0084FF' }}></i>
+                Your Bookings
+                <span className="ddp-count-pill">{dateBookings.length}</span>
+              </div>
+              <div className="ddp-booking-list">
+                {dateBookings.map((b) => (
+                  <div key={b.id} className="ddp-booking-row">
+                    <div>
+                      <div className="ddp-booking-name">{b.amenityName}</div>
+                      <div className="ddp-booking-time">
+                        <i className="fa-regular fa-clock me-1"></i>
+                        {b.start} – {b.end}
+                      </div>
+                    </div>
+                    <span className={`ddp-booking-badge ${bookingStatusClass(b.status)}`}>
+                      {b.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="ddp-booking-list">
-              {dateBookings.map(b => (
-                <div key={b.id} className="ddp-booking-row">
-                  <div>
-                    <div className="ddp-booking-name">{b.amenityName}</div>
-                    <div className="ddp-booking-time">
-                      <i className="fa-regular fa-clock me-1"></i>
-                      {b.start} – {b.end}
-                    </div>
-                  </div>
-                  <span className={`ddp-booking-badge ${bookingStatusClass(b.status)}`}>
-                    {b.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Section 2: Book an Amenity ── */}
-        <div className="ddp-card">
-          <div className="fw-bold fs-5 ddp-card__title" style={{ color: '#0F172A', marginBottom: '16px' }}>
-            Available Slots
-          </div>
-
-          <select
-            className="ddp-select mb-3"
-            value={selectedAmenityId || ''}
-            onChange={(e) => onAmenitySelect(e.target.value)}
-          >
-            <option value="">— Select Amenity —</option>
-            {activeAmenities.map(a => (
-              <option key={a._id} value={a._id}>{a.name}</option>
-            ))}
-          </select>
-
-          <div className="d-flex flex-wrap gap-2 mb-3">
-            {activeAmenities.map(a => (
-              <button
-                key={a._id}
-                onClick={() => onAmenitySelect(selectedAmenityId === a._id ? '' : a._id)}
-                className={`btn btn-sm rounded-pill px-3 py-1 d-flex align-items-center gap-2 ${selectedAmenityId === a._id ? 'btn-primary shadow-sm' : 'btn-outline-secondary'}`}
-                style={{ 
-                  backgroundColor: selectedAmenityId !== a._id ? 'var(--bg-secondary, #F8FAFC)' : '',
-                  border: selectedAmenityId === a._id ? 'none' : '1px solid var(--border-light, #E2E8F0)',
-                  transition: 'all 0.2s',
-                  fontWeight: selectedAmenityId === a._id ? '600' : '400',
-                  color: selectedAmenityId !== a._id ? '#475569' : ''
-                }}
-              >
-                {a.name}
-              </button>
-            ))}
-            {activeAmenities.length === 0 && (
-              <span className="text-muted small">No amenities available</span>
-            )}
-          </div>
-
-          {selectedAmenityId && (
-            <>
-              {slotsLoading ? (
-                <div className="ddp-slot-grid">
-                  {[1, 2, 3, 4, 5, 6].map(i => (
-                    <CPlaceholder key={i} animation="glow" style={{ height: '80px', borderRadius: '12px' }} />
-                  ))}
-                </div>
-              ) : selectedAmenity?.pricing?.pricingType === 'daily' ? (
-                <div className="ddp-card shadow-sm mt-3 mb-2" style={{ background: '#F8FAFC', border: '1px solid #0084FF', padding: '16px', animation: 'fadeIn 0.3s ease-out' }}>
-                  <div className="fs-6 ddp-card__title" style={{ marginBottom: '12px' }}>
-                    Day-Based Booking Summary
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }} className="small">
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#64748B' }}>Amenity</span>
-                      <strong style={{ color: '#0F172A' }}>{selectedAmenity.name}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#64748B' }}>Date</span>
-                      <strong style={{ color: '#0F172A' }}>{formattedDate}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#64748B' }}>Operating Hours</span>
-                      <strong style={{ color: '#0F172A' }}>{selectedAmenity.bookingRules?.openTime} - {selectedAmenity.bookingRules?.closeTime}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '8px', marginTop: '4px' }}>
-                      <span style={{ color: '#64748B' }}>Daily Rate</span>
-                      <strong style={{ color: '#0F172A' }} className="fs-6">
-                        {selectedAmenity.pricing?.baseRate > 0 ? `₹${selectedAmenity.pricing.baseRate}` : 'Free'}
-                      </strong>
-                    </div>
-                  </div>
-                  {allSlots && allSlots[0] && (allSlots[0].status !== 'Available' || (allSlots[0].myBookingsCount >= (selectedAmenity.maxBookingsPerUserPerSlot || 1))) ? (
-                     <div className="text-danger small mt-3 fw-medium" style={{ background: '#FEE2E2', padding: '8px 12px', borderRadius: '8px' }}>
-                       <i className="fa-solid fa-triangle-exclamation me-1"></i>
-                       This amenity is {allSlots[0].status === 'Available' ? 'already booked by you' : allSlots[0].status.toLowerCase()} for the selected date.
-                     </div>
-                  ) : (
-                    <button 
-                      className="fw-semibold btn btn-primary w-100 mt-3" 
-                      style={{ padding: '10px' }}
-                      onClick={() => {
-                        const slotToBook = (allSlots && allSlots[0]) ? allSlots[0] : {
-                          startTime: selectedAmenity.bookingRules?.openTime,
-                          endTime: selectedAmenity.bookingRules?.closeTime,
-                          price: selectedAmenity.pricing?.baseRate,
-                          status: 'Available'
-                        };
-                        onSlotSelect(slotToBook);
-                        onBookNow();
-                      }}
-                    >
-                      Book Full Day
-                    </button>
-                  )}
-                </div>
-              ) : allSlots && allSlots.length > 0 ? (
-                <>
-                  {/* Legend */}
-                  <div className="ddp-legend">
-                    {Object.entries(STATUS_CONFIG).map(([status, cfg]) => (
-                      <span key={status} className="ddp-legend-item">
-                        <span className="ddp-legend-dot" style={{ background: cfg.color }}></span>
-                        {status}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Slot Grid */}
-                  <div className="ddp-slot-grid">
-                    {allSlots.map((slot, i) => {
-                      const maxLimit = slot.maxBookingsPerUser || selectedAmenity?.maxBookingsPerUserPerSlot || 2;
-                      const myCount = slot.myBookingsCount || 0;
-                      const canBookMore = myCount < maxLimit && slot.status === 'Available';
-
-                      const cfg = getStatusCfg(slot);
-                      const isAvailable = slot.status === 'Available' && canBookMore;
-                      const isSelected = selectedSlot?.startTime === slot.startTime && selectedSlot?.endTime === slot.endTime;
-                      
-                      let cardClass = isAvailable ? 'ddp-slot-card--available' : 'ddp-slot-card--disabled';
-                      if (isSelected) cardClass += ' ddp-slot-card--selected';
-                      
-                      let badgeLabel = cfg.label;
-                      if (slot.bookedByMe) {
-                         badgeLabel = `Booked by You (${myCount}/${maxLimit})`;
-                      }
-                      
-                      const slotCard = (
-                        <div
-                          key={`slot-${i}`}
-                          className={`ddp-slot-card ${cardClass}`}
-                          style={{ borderLeftColor: isSelected ? '#0084FF' : cfg.color,
-                            '--slot-bg-hover': cfg.bg,
-                            background: isSelected ? '#F0F9FF' : '#ffffff',
-                            borderColor: isSelected ? '#0084FF' : '#E2E8F0',
-                            opacity: (!isAvailable && !slot.bookedByMe) ? 0.6 : 1 }}
-                          onClick={() => {
-                            if (isAvailable) {
-                              onSlotSelect(slot);
-                            }
-                          }}
-                          title={isAvailable ? `Book ${slot.startTime} – ${slot.endTime}` : cfg.label}
-                        >
-                          {isSelected && (
-                            <div style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#0084FF', color: 'white', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,132,255,0.3)' }} className="small">
-                              <i className="fa-solid fa-check"></i>
-                            </div>
-                          )}
-                          <div className="ddp-slot-time">{slot.startTime}</div>
-                          <div className="ddp-slot-meta">
-                            <span className="ddp-slot-end">{slot.endTime}</span>
-                            {selectedAmenity?.pricing?.pricingType !== 'daily' && (
-                              <span className="ddp-slot-duration">{slot.duration || selectedAmenity.bookingRules?.slotDurationMinutes || 60}m</span>
-                            )}
-                          </div>
-                          <div
-                            className="ddp-slot-badge"
-                            style={{ background: isSelected ? '#0084FF' : cfg.bg, 
-                              color: isSelected ? '#ffffff' : cfg.color }}
-                          >
-                            {!isSelected && <span className="ddp-badge-dot" style={{ background: cfg.color }}></span>}
-                            {isSelected ? 'Selected' : badgeLabel}
-                          </div>
-                        </div>
-                      );
-
-                      // Determine if this is the end of a row or the last item
-                      const isRowEnd = i % 2 === 1 || i === allSlots.length - 1;
-                      const selectedIndex = selectedSlot ? allSlots.findIndex(s => s.startTime === selectedSlot.startTime && s.endTime === selectedSlot.endTime) : -1;
-                      const isSelectedRow = selectedIndex !== -1 && Math.floor(selectedIndex / 2) === Math.floor(i / 2);
-
-                      if (isRowEnd && isSelectedRow && selectedAmenity) {
-                        return (
-                          <React.Fragment key={`row-${i}`}>
-                            {slotCard}
-                            <div className="ddp-card shadow-sm mt-1 mb-2" style={{ gridColumn: '1 / -1', background: '#F8FAFC', border: '1px solid #0084FF', padding: '16px', animation: 'fadeIn 0.3s ease-out' }}>
-                              <div className="fs-6 ddp-card__title" style={{ marginBottom: '12px' }}>
-                                Booking Summary
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }} className="small">
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <span style={{ color: '#64748B' }}>Amenity</span>
-                                  <strong style={{ color: '#0F172A' }}>{selectedAmenity.name}</strong>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <span style={{ color: '#64748B' }}>Date</span>
-                                  <strong style={{ color: '#0F172A' }}>{formattedDate}</strong>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <span style={{ color: '#64748B' }}>Time</span>
-                                  <strong style={{ color: '#0F172A' }}>{selectedSlot.startTime} - {selectedSlot.endTime}</strong>
-                                </div>
-                                {selectedAmenity?.pricing?.pricingType !== 'daily' && (
-                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span style={{ color: '#64748B' }}>Duration</span>
-                                    <strong style={{ color: '#0F172A' }}>{selectedSlot.duration || selectedAmenity.bookingRules?.slotDurationMinutes || 60} Minutes</strong>
-                                  </div>
-                                )}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '8px', marginTop: '4px' }}>
-                                  <span style={{ color: '#64748B' }}>Booking Amount</span>
-                                  <strong style={{ color: '#0F172A' }} className="fs-6">
-                                    {selectedSlot.price > 0 ? `₹${selectedSlot.price}` : 'Free'}
-                                  </strong>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <span style={{ color: '#64748B' }}>Status</span>
-                                  <strong style={{ color: '#10B981' }}>Ready to Book</strong>
-                                </div>
-                              </div>
-                              <button 
-                                className="fw-semibold btn btn-primary w-100 mt-3" 
-                                style={{ padding: '10px' }}
-                                onClick={onBookNow}
-                              >
-                                Book Now
-                              </button>
-                            </div>
-                          </React.Fragment>
-                        );
-                      }
-
-                      return slotCard;
-                    })}
-                  </div>
-                </>
-              ) : (
-                <div className="ddp-empty-text" style={{ textAlign: 'center', padding: '24px 0' }}>
-                  <i className="fs-2 fa-regular fa-calendar-xmark" style={{ marginBottom: '8px', display: 'block', color: '#CBD5E1' }}></i>
-                  <div style={{ color: '#0F172A', marginBottom: '4px' }} className="fw-semibold">No available slots for this date.</div>
-                  <div  className="small">Please select another date or amenity.</div>
-                </div>
-              )}
-            </>
           )}
 
-        </div>
-
-        {/* ── Section 3: Operating Info ── */}
-        {selectedAmenity && (
+          {/* ── Section 2: Book an Amenity ── */}
           <div className="ddp-card">
-            <div className="ddp-card__title">
-              <i className="fa-regular fa-clock me-2" style={{ color: '#0084FF' }}></i>
-              Operating Information
+            <div
+              className="fw-bold fs-5 ddp-card__title"
+              style={{ color: '#0F172A', marginBottom: '16px' }}
+            >
+              Available Slots
             </div>
-            <div className="ddp-info-row">
-              <i className="fa-solid fa-door-open ddp-info-icon"></i>
-              <span>Opens at <strong>{selectedAmenity.bookingRules?.openTime || 'N/A'}</strong></span>
+
+            <select
+              className="ddp-select mb-3"
+              value={selectedAmenityId || ''}
+              onChange={(e) => onAmenitySelect(e.target.value)}
+            >
+              <option value="">— Select Amenity —</option>
+              {activeAmenities.map((a) => (
+                <option key={a._id} value={a._id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+
+            <div className="d-flex flex-wrap gap-2 mb-3">
+              {activeAmenities.map((a) => (
+                <button
+                  key={a._id}
+                  onClick={() => onAmenitySelect(selectedAmenityId === a._id ? '' : a._id)}
+                  className={`btn btn-sm rounded-pill px-3 py-1 d-flex align-items-center gap-2 ${selectedAmenityId === a._id ? 'btn-primary shadow-sm' : 'btn-outline-secondary'}`}
+                  style={{
+                    backgroundColor:
+                      selectedAmenityId !== a._id ? 'var(--bg-secondary, #F8FAFC)' : '',
+                    border:
+                      selectedAmenityId === a._id
+                        ? 'none'
+                        : '1px solid var(--border-light, #E2E8F0)',
+                    transition: 'all 0.2s',
+                    fontWeight: selectedAmenityId === a._id ? '600' : '400',
+                    color: selectedAmenityId !== a._id ? '#475569' : '',
+                  }}
+                >
+                  {a.name}
+                </button>
+              ))}
+              {activeAmenities.length === 0 && (
+                <span className="text-muted small">No amenities available</span>
+              )}
             </div>
-            <div className="ddp-info-row">
-              <i className="fa-solid fa-door-closed ddp-info-icon"></i>
-              <span>Closes at <strong>{selectedAmenity.bookingRules?.closeTime || 'N/A'}</strong></span>
-            </div>
-            {selectedAmenity.status === 'maintenance' && (
-              <div className="ddp-info-row ddp-info-row--warning">
-                <i className="fa-solid fa-wrench ddp-info-icon"></i>
-                <span>Currently Under Maintenance</span>
-              </div>
-            )}
-            {selectedAmenity.bookingRules?.slotDurationMinutes && selectedAmenity?.pricing?.pricingType !== 'daily' && (
-              <div className="ddp-info-row">
-                <i className="fa-regular fa-hourglass-half ddp-info-icon"></i>
-                <span>Slot Duration: <strong>{selectedAmenity.bookingRules?.slotDurationMinutes} min</strong></span>
-              </div>
+
+            {selectedAmenityId && (
+              <>
+                {slotsLoading ? (
+                  <div className="ddp-slot-grid">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <CPlaceholder
+                        key={i}
+                        animation="glow"
+                        style={{ height: '80px', borderRadius: '12px' }}
+                      />
+                    ))}
+                  </div>
+                ) : selectedAmenity?.pricing?.pricingType === 'daily' ? (
+                  <div
+                    className="ddp-card shadow-sm mt-3 mb-2"
+                    style={{
+                      background: '#F8FAFC',
+                      border: '1px solid #0084FF',
+                      padding: '16px',
+                      animation: 'fadeIn 0.3s ease-out',
+                    }}
+                  >
+                    <div className="fs-6 ddp-card__title" style={{ marginBottom: '12px' }}>
+                      Day-Based Booking Summary
+                    </div>
+                    <div
+                      style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+                      className="small"
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#64748B' }}>Amenity</span>
+                        <strong style={{ color: '#0F172A' }}>{selectedAmenity.name}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#64748B' }}>Date</span>
+                        <strong style={{ color: '#0F172A' }}>{formattedDate}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#64748B' }}>Operating Hours</span>
+                        <strong style={{ color: '#0F172A' }}>
+                          {selectedAmenity.bookingRules?.openTime} -{' '}
+                          {selectedAmenity.bookingRules?.closeTime}
+                        </strong>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          borderTop: '1px solid #E2E8F0',
+                          paddingTop: '8px',
+                          marginTop: '4px',
+                        }}
+                      >
+                        <span style={{ color: '#64748B' }}>Daily Rate</span>
+                        <strong style={{ color: '#0F172A' }} className="fs-6">
+                          {selectedAmenity.pricing?.baseRate > 0
+                            ? `₹${selectedAmenity.pricing.baseRate}`
+                            : 'Free'}
+                        </strong>
+                      </div>
+                    </div>
+                    {allSlots &&
+                    allSlots[0] &&
+                    (allSlots[0].status !== 'Available' ||
+                      allSlots[0].myBookingsCount >=
+                        (selectedAmenity.maxBookingsPerUserPerSlot || 1)) ? (
+                      <div
+                        className="text-danger small mt-3 fw-medium"
+                        style={{ background: '#FEE2E2', padding: '8px 12px', borderRadius: '8px' }}
+                      >
+                        <i className="fa-solid fa-triangle-exclamation me-1"></i>
+                        This amenity is{' '}
+                        {allSlots[0].status === 'Available'
+                          ? 'already booked by you'
+                          : allSlots[0].status.toLowerCase()}{' '}
+                        for the selected date.
+                      </div>
+                    ) : (
+                      <button
+                        className="fw-semibold btn btn-primary w-100 mt-3"
+                        style={{ padding: '10px' }}
+                        onClick={() => {
+                          const slotToBook =
+                            allSlots && allSlots[0]
+                              ? allSlots[0]
+                              : {
+                                  startTime: selectedAmenity.bookingRules?.openTime,
+                                  endTime: selectedAmenity.bookingRules?.closeTime,
+                                  price: selectedAmenity.pricing?.baseRate,
+                                  status: 'Available',
+                                }
+                          onSlotSelect(slotToBook)
+                          onBookNow()
+                        }}
+                      >
+                        Book Full Day
+                      </button>
+                    )}
+                  </div>
+                ) : allSlots && allSlots.length > 0 ? (
+                  <>
+                    {/* Legend */}
+                    <div className="ddp-legend">
+                      {Object.entries(STATUS_CONFIG).map(([status, cfg]) => (
+                        <span key={status} className="ddp-legend-item">
+                          <span className="ddp-legend-dot" style={{ background: cfg.color }}></span>
+                          {status}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Slot Grid */}
+                    <div className="ddp-slot-grid">
+                      {allSlots.map((slot, i) => {
+                        const maxLimit =
+                          slot.maxBookingsPerUser || selectedAmenity?.maxBookingsPerUserPerSlot || 2
+                        const myCount = slot.myBookingsCount || 0
+                        const canBookMore = myCount < maxLimit && slot.status === 'Available'
+
+                        const cfg = getStatusCfg(slot)
+                        const isAvailable = slot.status === 'Available' && canBookMore
+                        const isSelected =
+                          selectedSlot?.startTime === slot.startTime &&
+                          selectedSlot?.endTime === slot.endTime
+
+                        let cardClass = isAvailable
+                          ? 'ddp-slot-card--available'
+                          : 'ddp-slot-card--disabled'
+                        if (isSelected) cardClass += ' ddp-slot-card--selected'
+
+                        let badgeLabel = cfg.label
+                        if (slot.bookedByMe) {
+                          badgeLabel = `Booked by You (${myCount}/${maxLimit})`
+                        }
+
+                        const slotCard = (
+                          <div
+                            key={`slot-${i}`}
+                            className={`ddp-slot-card ${cardClass}`}
+                            style={{
+                              borderLeftColor: isSelected ? '#0084FF' : cfg.color,
+                              '--slot-bg-hover': cfg.bg,
+                              background: isSelected ? '#F0F9FF' : '#ffffff',
+                              borderColor: isSelected ? '#0084FF' : '#E2E8F0',
+                              opacity: !isAvailable && !slot.bookedByMe ? 0.6 : 1,
+                            }}
+                            onClick={() => {
+                              if (isAvailable) {
+                                onSlotSelect(slot)
+                              }
+                            }}
+                            title={
+                              isAvailable ? `Book ${slot.startTime} – ${slot.endTime}` : cfg.label
+                            }
+                          >
+                            {isSelected && (
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: '-10px',
+                                  right: '-10px',
+                                  background: '#0084FF',
+                                  color: 'white',
+                                  borderRadius: '50%',
+                                  width: '24px',
+                                  height: '24px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  boxShadow: '0 2px 4px rgba(0,132,255,0.3)',
+                                }}
+                                className="small"
+                              >
+                                <i className="fa-solid fa-check"></i>
+                              </div>
+                            )}
+                            <div className="ddp-slot-time">{slot.startTime}</div>
+                            <div className="ddp-slot-meta">
+                              <span className="ddp-slot-end">{slot.endTime}</span>
+                              {selectedAmenity?.pricing?.pricingType !== 'daily' && (
+                                <span className="ddp-slot-duration">
+                                  {slot.duration ||
+                                    selectedAmenity.bookingRules?.slotDurationMinutes ||
+                                    60}
+                                  m
+                                </span>
+                              )}
+                            </div>
+                            <div
+                              className="ddp-slot-badge"
+                              style={{
+                                background: isSelected ? '#0084FF' : cfg.bg,
+                                color: isSelected ? '#ffffff' : cfg.color,
+                              }}
+                            >
+                              {!isSelected && (
+                                <span
+                                  className="ddp-badge-dot"
+                                  style={{ background: cfg.color }}
+                                ></span>
+                              )}
+                              {isSelected ? 'Selected' : badgeLabel}
+                            </div>
+                          </div>
+                        )
+
+                        // Determine if this is the end of a row or the last item
+                        const isRowEnd = i % 2 === 1 || i === allSlots.length - 1
+                        const selectedIndex = selectedSlot
+                          ? allSlots.findIndex(
+                              (s) =>
+                                s.startTime === selectedSlot.startTime &&
+                                s.endTime === selectedSlot.endTime,
+                            )
+                          : -1
+                        const isSelectedRow =
+                          selectedIndex !== -1 &&
+                          Math.floor(selectedIndex / 2) === Math.floor(i / 2)
+
+                        if (isRowEnd && isSelectedRow && selectedAmenity) {
+                          return (
+                            <React.Fragment key={`row-${i}`}>
+                              {slotCard}
+                              <div
+                                className="ddp-card shadow-sm mt-1 mb-2"
+                                style={{
+                                  gridColumn: '1 / -1',
+                                  background: '#F8FAFC',
+                                  border: '1px solid #0084FF',
+                                  padding: '16px',
+                                  animation: 'fadeIn 0.3s ease-out',
+                                }}
+                              >
+                                <div
+                                  className="fs-6 ddp-card__title"
+                                  style={{ marginBottom: '12px' }}
+                                >
+                                  Booking Summary
+                                </div>
+                                <div
+                                  style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+                                  className="small"
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ color: '#64748B' }}>Amenity</span>
+                                    <strong style={{ color: '#0F172A' }}>
+                                      {selectedAmenity.name}
+                                    </strong>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ color: '#64748B' }}>Date</span>
+                                    <strong style={{ color: '#0F172A' }}>{formattedDate}</strong>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ color: '#64748B' }}>Time</span>
+                                    <strong style={{ color: '#0F172A' }}>
+                                      {selectedSlot.startTime} - {selectedSlot.endTime}
+                                    </strong>
+                                  </div>
+                                  {selectedAmenity?.pricing?.pricingType !== 'daily' && (
+                                    <div
+                                      style={{ display: 'flex', justifyContent: 'space-between' }}
+                                    >
+                                      <span style={{ color: '#64748B' }}>Duration</span>
+                                      <strong style={{ color: '#0F172A' }}>
+                                        {selectedSlot.duration ||
+                                          selectedAmenity.bookingRules?.slotDurationMinutes ||
+                                          60}{' '}
+                                        Minutes
+                                      </strong>
+                                    </div>
+                                  )}
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      borderTop: '1px solid #E2E8F0',
+                                      paddingTop: '8px',
+                                      marginTop: '4px',
+                                    }}
+                                  >
+                                    <span style={{ color: '#64748B' }}>Booking Amount</span>
+                                    <strong style={{ color: '#0F172A' }} className="fs-6">
+                                      {selectedSlot.price > 0 ? `₹${selectedSlot.price}` : 'Free'}
+                                    </strong>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ color: '#64748B' }}>Status</span>
+                                    <strong style={{ color: '#10B981' }}>Ready to Book</strong>
+                                  </div>
+                                </div>
+                                <button
+                                  className="fw-semibold btn btn-primary w-100 mt-3"
+                                  style={{ padding: '10px' }}
+                                  onClick={onBookNow}
+                                >
+                                  Book Now
+                                </button>
+                              </div>
+                            </React.Fragment>
+                          )
+                        }
+
+                        return slotCard
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div
+                    className="ddp-empty-text"
+                    style={{ textAlign: 'center', padding: '24px 0' }}
+                  >
+                    <i
+                      className="fs-2 fa-regular fa-calendar-xmark"
+                      style={{ marginBottom: '8px', display: 'block', color: '#CBD5E1' }}
+                    ></i>
+                    <div style={{ color: '#0F172A', marginBottom: '4px' }} className="fw-semibold">
+                      No available slots for this date.
+                    </div>
+                    <div className="small">Please select another date or amenity.</div>
+                  </div>
+                )}
+              </>
             )}
           </div>
-        )}
-    </div>
-    <style>{`
+
+          {/* ── Section 3: Operating Info ── */}
+          {selectedAmenity && (
+            <div className="ddp-card">
+              <div className="ddp-card__title">
+                <i className="fa-regular fa-clock me-2" style={{ color: '#0084FF' }}></i>
+                Operating Information
+              </div>
+              <div className="ddp-info-row">
+                <i className="fa-solid fa-door-open ddp-info-icon"></i>
+                <span>
+                  Opens at <strong>{selectedAmenity.bookingRules?.openTime || 'N/A'}</strong>
+                </span>
+              </div>
+              <div className="ddp-info-row">
+                <i className="fa-solid fa-door-closed ddp-info-icon"></i>
+                <span>
+                  Closes at <strong>{selectedAmenity.bookingRules?.closeTime || 'N/A'}</strong>
+                </span>
+              </div>
+              {selectedAmenity.status === 'maintenance' && (
+                <div className="ddp-info-row ddp-info-row--warning">
+                  <i className="fa-solid fa-wrench ddp-info-icon"></i>
+                  <span>Currently Under Maintenance</span>
+                </div>
+              )}
+              {selectedAmenity.bookingRules?.slotDurationMinutes &&
+                selectedAmenity?.pricing?.pricingType !== 'daily' && (
+                  <div className="ddp-info-row">
+                    <i className="fa-regular fa-hourglass-half ddp-info-icon"></i>
+                    <span>
+                      Slot Duration:{' '}
+                      <strong>{selectedAmenity.bookingRules?.slotDurationMinutes} min</strong>
+                    </span>
+                  </div>
+                )}
+            </div>
+          )}
+        </div>
+        <style>{`
       .ddp-root {
         display: flex;
           flex-direction: column;
@@ -662,8 +811,9 @@ const DateDetailsPanel = memo(({
           color: #D97706;
         }
       `}</style>
-    </div>
-  );
-});
+      </div>
+    )
+  },
+)
 
-export default DateDetailsPanel;
+export default DateDetailsPanel

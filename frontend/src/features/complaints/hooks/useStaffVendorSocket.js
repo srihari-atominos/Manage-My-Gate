@@ -1,46 +1,46 @@
-import { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import { io } from 'socket.io-client';
-import config from '../../../config/config.js';
-import { fetchStaffVendorsAnalytics } from '../store/complaintSlice';
+import { useEffect } from 'react'
+import { useDispatch } from 'react-redux'
+import { io } from 'socket.io-client'
+import config from '../../../config/config.js'
+import { fetchStaffVendorsAnalytics } from '../store/complaintSlice'
 
-const SOCKET_URL = config.socketUrl;
+const SOCKET_URL = config.socketUrl
 
 /**
  * Hook to listen for real‑time technician/technician‑analytics events.
  * It dispatches a fresh analytics load when relevant events occur.
  */
 export const useStaffVendorSocket = (token) => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch()
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) return
     const socket = io(SOCKET_URL, {
       auth: { token },
       transports: ['websocket'],
-    });
+    })
 
     socket.on('connect', () => {
-      console.log('Technician socket connected');
-    });
+      console.log('Technician socket connected')
+    })
 
     // When any technician record changes, reload analytics
     socket.on('technicians:updated', () => {
-      dispatch(fetchStaffVendorsAnalytics());
-    });
+      dispatch(fetchStaffVendorsAnalytics())
+    })
 
     socket.on('technicians:analytics:updated', () => {
-      dispatch(fetchStaffVendorsAnalytics());
-    });
+      dispatch(fetchStaffVendorsAnalytics())
+    })
 
     socket.on('disconnect', () => {
-      console.log('Technician socket disconnected');
-    });
+      console.log('Technician socket disconnected')
+    })
 
     return () => {
-      socket.disconnect();
-    };
-  }, [token, dispatch]);
-};
+      socket.disconnect()
+    }
+  }, [token, dispatch])
+}
 
-export default useStaffVendorSocket;
+export default useStaffVendorSocket

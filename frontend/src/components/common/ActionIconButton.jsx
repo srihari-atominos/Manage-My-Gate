@@ -4,7 +4,7 @@ import { CButton } from '@coreui/react'
 
 /**
  * ActionIconButton Component
- * 
+ *
  * Reusable generic borderless icon button for row actions in data grids.
  * Forwards any additional props (such as id) to the underlying CButton.
  */

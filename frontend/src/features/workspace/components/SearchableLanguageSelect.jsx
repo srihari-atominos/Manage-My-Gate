@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { CFormInput } from '@coreui/react';
+import React, { useState, useEffect, useRef } from 'react'
+import { CFormInput } from '@coreui/react'
 
 const ISO_LANGUAGES = [
   { code: 'aa', name: 'Afar' },
@@ -185,50 +185,51 @@ const ISO_LANGUAGES = [
   { code: 'yo', name: 'Yoruba' },
   { code: 'za', name: 'Zhuang' },
   { code: 'zh', name: 'Chinese (中文)' },
-  { code: 'zu', name: 'Zulu' }
-];
+  { code: 'zu', name: 'Zulu' },
+]
 
 export const SearchableLanguageSelect = ({ label, value, onChange, disabled }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const dropdownRef = useRef(null);
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const dropdownRef = useRef(null)
 
-  const selectedLanguage = ISO_LANGUAGES.find(l => l.code === value);
+  const selectedLanguage = ISO_LANGUAGES.find((l) => l.code === value)
 
   // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setIsOpen(false);
+        setIsOpen(false)
       }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // Sync display value when value prop changes
   useEffect(() => {
     if (!isOpen) {
-      setSearchQuery(selectedLanguage ? selectedLanguage.name : '');
+      setSearchQuery(selectedLanguage ? selectedLanguage.name : '')
     }
-  }, [value, isOpen, selectedLanguage]);
+  }, [value, isOpen, selectedLanguage])
 
-  const filteredLanguages = ISO_LANGUAGES.filter(lang =>
-    lang.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    lang.code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredLanguages = ISO_LANGUAGES.filter(
+    (lang) =>
+      lang.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lang.code.toLowerCase().includes(searchQuery.toLowerCase()),
+  )
 
   const handleInputFocus = () => {
     if (!disabled) {
-      setIsOpen(true);
-      setSearchQuery('');
+      setIsOpen(true)
+      setSearchQuery('')
     }
-  };
+  }
 
   const handleSelectLanguage = (code) => {
-    onChange(code);
-    setIsOpen(false);
-  };
+    onChange(code)
+    setIsOpen(false)
+  }
 
   return (
     <div className="position-relative" ref={dropdownRef}>
@@ -242,9 +243,9 @@ export const SearchableLanguageSelect = ({ label, value, onChange, disabled }) =
         className="pe-5"
         style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
       />
-      
+
       {/* Down arrow icon */}
-      <span 
+      <span
         className="position-absolute end-0 top-50 translate-middle-y me-3 text-muted pointer-events-none"
         style={{ marginTop: label ? '12px' : '0px' }}
       >
@@ -252,19 +253,19 @@ export const SearchableLanguageSelect = ({ label, value, onChange, disabled }) =
       </span>
 
       {isOpen && !disabled && (
-        <div 
+        <div
           className="position-absolute w-100 bg-white border rounded-3 mt-1 shadow-lg overflow-y-auto"
           style={{ zIndex: 1050, maxHeight: '200px' }}
         >
           {filteredLanguages.length > 0 ? (
-            filteredLanguages.map(lang => (
+            filteredLanguages.map((lang) => (
               <div
                 key={lang.code}
                 className="p-2 cursor-pointer hover-bg-light text-dark"
                 style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
                 onClick={() => handleSelectLanguage(lang.code)}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#f1f5f9'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                onMouseEnter={(e) => (e.target.style.backgroundColor = '#f1f5f9')}
+                onMouseLeave={(e) => (e.target.style.backgroundColor = 'transparent')}
               >
                 {lang.name} <span className="text-muted small">({lang.code})</span>
               </div>
@@ -275,7 +276,7 @@ export const SearchableLanguageSelect = ({ label, value, onChange, disabled }) =
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default SearchableLanguageSelect;
+export default SearchableLanguageSelect

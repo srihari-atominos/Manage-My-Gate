@@ -20,7 +20,7 @@ import { fetchRolesAsync } from '../../roleBuilder/store/roleSlice'
 
 /**
  * useUserList Custom Hook
- * 
+ *
  * Reusable controller hook encapsulating all Redux selectors and actions
  * for the user management feature. Follows the "Thin View" architectural pattern.
  */
@@ -90,7 +90,7 @@ export const useUserList = () => {
   }, [roles])
 
   // Under server-side pagination, filtered users is the raw users array returned from backend
-  const filteredUsers = users;
+  const filteredUsers = users
 
   // Action Dispatchers
   const changeSearchQuery = (query) => {
@@ -109,19 +109,19 @@ export const useUserList = () => {
     dispatch(clearRoleFilter())
     dispatch(setCurrentPage(1))
   }
-  
+
   // Handlers for page and limit changes
   const handlePageChange = (newPage) => {
     dispatch(setCurrentPage(newPage))
   }
-  
+
   const handleRowsPerPageChange = (newLimit) => {
     dispatch(setRowsPerPage(newLimit))
     dispatch(setCurrentPage(1))
   }
 
   const removeUser = (id) => dispatch(deleteUserAsync(id))
-  
+
   const inviteUser = async (inviteData) => {
     const resultAction = await dispatch(inviteUserAsync(inviteData))
     if (inviteUserAsync.fulfilled.match(resultAction)) {

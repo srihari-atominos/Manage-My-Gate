@@ -1,40 +1,40 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { getAmenities } from '../store/amenitySlice.js';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { getAmenities } from '../store/amenitySlice.js'
+import { useNavigate } from 'react-router-dom'
 
 export const useResidentDiscover = () => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  
-  const { items, loading, error } = useSelector(state => state.amenities);
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
 
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const { items, loading, error } = useSelector((state) => state.amenities)
+
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
 
   // Debounce search input
   useEffect(() => {
     const handler = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 400);
-    return () => clearTimeout(handler);
-  }, [search]);
+      setDebouncedSearch(search)
+    }, 400)
+    return () => clearTimeout(handler)
+  }, [search])
 
   const fetchData = useCallback(() => {
-    const params = { status: 'active' };
+    const params = { status: 'active' }
     if (debouncedSearch) {
-      params.search = debouncedSearch;
+      params.search = debouncedSearch
     }
-    dispatch(getAmenities(params));
-  }, [dispatch, debouncedSearch]);
+    dispatch(getAmenities(params))
+  }, [dispatch, debouncedSearch])
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData()
+  }, [fetchData])
 
   const navigateToBooking = (id) => {
-    navigate(`/resident/amenities/calendar`, { state: { amenityId: id } });
-  };
+    navigate(`/resident/amenities/calendar`, { state: { amenityId: id } })
+  }
 
   return {
     items: items || [],
@@ -42,8 +42,8 @@ export const useResidentDiscover = () => {
     error,
     search,
     setSearch,
-    navigateToBooking
-  };
-};
+    navigateToBooking,
+  }
+}
 
-export default useResidentDiscover;
+export default useResidentDiscover

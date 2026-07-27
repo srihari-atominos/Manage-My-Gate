@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'
 
 /**
  * Custom hook that tracks the status of a media query.
@@ -11,40 +11,40 @@ export const useMediaQuery = (query) => {
   const [matches, setMatches] = useState(() => {
     // Check if window object is available
     if (typeof window !== 'undefined') {
-      return window.matchMedia(query).matches;
+      return window.matchMedia(query).matches
     }
-    return false;
-  });
+    return false
+  })
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return
 
-    const mediaQueryList = window.matchMedia(query);
-    
+    const mediaQueryList = window.matchMedia(query)
+
     // Set initial value in case query changed
-    setMatches(mediaQueryList.matches);
+    setMatches(mediaQueryList.matches)
 
     const listener = (event) => {
-      setMatches(event.matches);
-    };
+      setMatches(event.matches)
+    }
 
     // Support both modern and older browsers
     if (mediaQueryList.addEventListener) {
-      mediaQueryList.addEventListener('change', listener);
+      mediaQueryList.addEventListener('change', listener)
     } else {
-      mediaQueryList.addListener(listener);
+      mediaQueryList.addListener(listener)
     }
 
     return () => {
       if (mediaQueryList.removeEventListener) {
-        mediaQueryList.removeEventListener('change', listener);
+        mediaQueryList.removeEventListener('change', listener)
       } else {
-        mediaQueryList.removeListener(listener);
+        mediaQueryList.removeListener(listener)
       }
-    };
-  }, [query]);
+    }
+  }, [query])
 
-  return matches;
-};
+  return matches
+}
 
-export default useMediaQuery;
+export default useMediaQuery

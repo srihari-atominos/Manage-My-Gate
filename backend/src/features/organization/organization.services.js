@@ -150,7 +150,7 @@ export class OrganizationService {
     return !org;
   }
 
-  async setupWorkspace({ name, userId }) {
+  async setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId }) {
     // Enforce name uniqueness checks BEFORE starting the write transaction
     const trimmedName = name.trim();
     const existingOrg = await organizationRepository.findByName(trimmedName);
@@ -165,6 +165,11 @@ export class OrganizationService {
       const newOrg = await organizationRepository.create({
         name: trimmedName,
         status: 'Active',
+        organizationType: organizationType || 'Residential',
+        contactEmail,
+        contactPhone,
+        expectedMemberCount,
+        timezone: timezone || 'Asia/Kolkata',
         allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices', 'complaints', 'visitor', 'billing']
       }, session);
 
@@ -244,7 +249,7 @@ export class OrganizationService {
       // 3. Create the Organization Membership linking user, org, and role
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       await orgMembershipService.createMembership(
-        { userId, orgId: newOrg._id, roleIds: [adminRole._id] },
+        { userId, orgId: newOrg._id, roleIds: [adminRole._id], status: 'Active' },
         session
       );
 

@@ -1,8 +1,8 @@
-import axios from '../../../services/apiClient';
+import axios from '../../../services/apiClient'
 
 /**
  * BlacklistAPI
- * 
+ *
  * Frontend service layer to handle API communications for blocklist settings.
  */
 export const BlacklistAPI = {
@@ -12,7 +12,7 @@ export const BlacklistAPI = {
    * @returns {Promise<Object>} The API response.
    */
   addToBlacklist: async (payload) => {
-    return await axios.post('/blacklist', payload);
+    return await axios.post('/blacklist', payload)
   },
 
   /**
@@ -22,7 +22,7 @@ export const BlacklistAPI = {
    * @returns {Promise<Object>} The API response.
    */
   getBlacklist: async (orgId, params) => {
-    return await axios.get(`/blacklist/org/${orgId}`, { params });
+    return await axios.get(`/blacklist/org/${orgId}`, { params })
   },
 
   /**
@@ -32,7 +32,7 @@ export const BlacklistAPI = {
    * @returns {Promise<Object>} The API response.
    */
   checkMatch: async (orgId, query) => {
-    return await axios.get(`/blacklist/org/${orgId}/check-match`, { params: query });
+    return await axios.get(`/blacklist/org/${orgId}/check-match`, { params: query })
   },
 
   /**
@@ -41,8 +41,8 @@ export const BlacklistAPI = {
    * @returns {Promise<Object>} The API response.
    */
   removeFromBlacklist: async (id) => {
-    return await axios.delete(`/blacklist/${id}`);
-  }
-};
+    return await axios.delete(`/blacklist/${id}`)
+  },
+}
 
-export default BlacklistAPI;
+export default BlacklistAPI

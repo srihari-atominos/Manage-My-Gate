@@ -46,8 +46,8 @@ export class RoleController {
       const { id } = req.params;
       const orgId = req.tenant.orgId;
       const existingRole = await roleService.getRoleById(id);
-      if (existingRole.name === 'Super Admin') {
-        throw new HttpError(403, 'The Super Admin role is a protected system role and cannot be modified.');
+      if (existingRole.name === 'Super Admin' || existingRole.name === 'Platform Super Admin') {
+        throw new HttpError(403, 'The Super Admin and Platform Super Admin roles are protected system roles and cannot be modified.');
       }
       
       const { name, description, permissions, integrationMappings, isTenantRole } = req.body;
@@ -70,8 +70,8 @@ export class RoleController {
     try {
       const { id } = req.params;
       const existingRole = await roleService.getRoleById(id);
-      if (existingRole.name === 'Super Admin') {
-        throw new HttpError(403, 'The Super Admin role is a protected system role and cannot be modified.');
+      if (existingRole.name === 'Super Admin' || existingRole.name === 'Platform Super Admin') {
+        throw new HttpError(403, 'The Super Admin and Platform Super Admin roles are protected system roles and cannot be modified.');
       }
       
       await roleService.deleteRole(id);
@@ -104,8 +104,8 @@ export class RoleController {
     try {
       const { id } = req.params;
       const existingRole = await roleService.getRoleById(id);
-      if (existingRole.name === 'Super Admin') {
-        throw new HttpError(403, 'The Super Admin role is a protected system role and cannot have its permissions modified.');
+      if (existingRole.name === 'Super Admin' || existingRole.name === 'Platform Super Admin') {
+        throw new HttpError(403, 'The Super Admin and Platform Super Admin roles are protected system roles and cannot have their permissions modified.');
       }
       const { permissionIds } = req.body;
       const updated = await roleService.syncRolePermissions(id, permissionIds);

@@ -1,4 +1,4 @@
-import apiClient from '../../../services/apiClient.js';
+import apiClient from '../../../services/apiClient.js'
 
 /**
  * Audit Log API service to fetch system security events
@@ -6,9 +6,9 @@ import apiClient from '../../../services/apiClient.js';
 export const fetchAuditLogs = async (page = 1, limit = 10) => {
   return await apiClient.get('/audit-logs', {
     params: { page, limit },
-  });
-};
+  })
+}
 
 export default {
   fetchAuditLogs,
-};
+}

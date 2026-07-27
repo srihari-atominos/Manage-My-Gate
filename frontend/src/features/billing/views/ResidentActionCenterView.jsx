@@ -1,8 +1,8 @@
-import React, { memo, useEffect, useMemo } from 'react';
-import HeroLiabilityBanner  from '../components/HeroLiabilityBanner';
-import TenantComplianceBadge from '../components/TenantComplianceBadge';
-import { useBilling } from '../hooks/useBilling';
-import '../styles/_billing.scss';
+import React, { memo, useEffect, useMemo } from 'react'
+import HeroLiabilityBanner from '../components/HeroLiabilityBanner'
+import TenantComplianceBadge from '../components/TenantComplianceBadge'
+import { useBilling } from '../hooks/useBilling'
+import '../styles/_billing.scss'
 
 /**
  * ResidentActionCenterView
@@ -20,28 +20,45 @@ const ResidentActionCenterView = memo(() => {
     payInvoiceRazorpay,
     verifyRazorpay,
     loadingStates,
-  } = useBilling();
+  } = useBilling()
 
   useEffect(() => {
-    loadResidentDues();
+    loadResidentDues()
 
     const handleRefresh = () => {
-      loadResidentDues();
-    };
+      loadResidentDues()
+    }
 
-    window.addEventListener('billing:refreshDues', handleRefresh);
+    window.addEventListener('billing:refreshDues', handleRefresh)
     return () => {
-      window.removeEventListener('billing:refreshDues', handleRefresh);
-    };
-  }, [loadResidentDues]);
+      window.removeEventListener('billing:refreshDues', handleRefresh)
+    }
+  }, [loadResidentDues])
 
   const currentPeriod = useMemo(() => {
-    const now = new Date();
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    return `${months[now.getMonth()]} ${now.getFullYear()}`;
-  }, []);
+    const now = new Date()
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ]
+    return `${months[now.getMonth()]} ${now.getFullYear()}`
+  }, [])
 
-  if (loadingStates.fetchDues && (!activeDues?.unitBreakdown?.length && !activeDues?.secondaryCompliance?.length)) {
+  if (
+    loadingStates.fetchDues &&
+    !activeDues?.unitBreakdown?.length &&
+    !activeDues?.secondaryCompliance?.length
+  ) {
     return (
       <div className="d-flex flex-column align-items-center justify-content-center py-5 my-5">
         <div className="spinner-border text-primary spinner-border-lg" role="status">
@@ -49,12 +66,11 @@ const ResidentActionCenterView = memo(() => {
         </div>
         <span className="text-muted mt-3 fw-semibold small">Fetching outstanding dues...</span>
       </div>
-    );
+    )
   }
 
   return (
     <div className="billing-os-theme resident-action-center">
-
       <div className="resident-action-center__header">
         <div className="resident-action-center__header-left">
           <h4 className="resident-action-center__title">My Financials</h4>
@@ -87,12 +103,10 @@ const ResidentActionCenterView = memo(() => {
           <TenantComplianceBadge activeDues={activeDues} />
         </div>
       </div>
-
     </div>
-  );
-});
+  )
+})
 
+ResidentActionCenterView.displayName = 'ResidentActionCenterView'
 
-ResidentActionCenterView.displayName = 'ResidentActionCenterView';
-
-export default ResidentActionCenterView;
+export default ResidentActionCenterView

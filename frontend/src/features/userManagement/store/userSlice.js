@@ -9,7 +9,7 @@ export const fetchUsersAsync = createAsyncThunk(
   'userManagement/fetchUsers',
   async ({ page, limit }, { getState, rejectWithValue }) => {
     try {
-      const { searchQuery, selectedRoles, statusFilter } = getState().userManagement;
+      const { searchQuery, selectedRoles, statusFilter } = getState().userManagement
       const response = await userApi.fetchUsers({
         page,
         limit,
@@ -21,7 +21,7 @@ export const fetchUsersAsync = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch users')
     }
-  }
+  },
 )
 
 export const inviteUserAsync = createAsyncThunk(
@@ -33,7 +33,7 @@ export const inviteUserAsync = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to invite user')
     }
-  }
+  },
 )
 
 export const bulkInviteUsersAsync = createAsyncThunk(
@@ -45,7 +45,7 @@ export const bulkInviteUsersAsync = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to bulk invite users')
     }
-  }
+  },
 )
 
 export const deleteUserAsync = createAsyncThunk(
@@ -57,7 +57,7 @@ export const deleteUserAsync = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to delete user')
     }
-  }
+  },
 )
 
 export const updateUserRolesAsync = createAsyncThunk(
@@ -69,7 +69,7 @@ export const updateUserRolesAsync = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to update user roles')
     }
-  }
+  },
 )
 
 const initialState = {

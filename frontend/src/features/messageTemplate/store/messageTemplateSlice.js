@@ -10,10 +10,10 @@ export const getTemplatesAsync = createAsyncThunk(
       return response.data
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to fetch templates'
+        error.response?.data?.message || error.message || 'Failed to fetch templates',
       )
     }
-  }
+  },
 )
 
 export const createTemplateAsync = createAsyncThunk(
@@ -24,10 +24,10 @@ export const createTemplateAsync = createAsyncThunk(
       return response.data
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to create template'
+        error.response?.data?.message || error.message || 'Failed to create template',
       )
     }
-  }
+  },
 )
 
 export const updateTemplateAsync = createAsyncThunk(
@@ -38,10 +38,10 @@ export const updateTemplateAsync = createAsyncThunk(
       return response.data
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to update template'
+        error.response?.data?.message || error.message || 'Failed to update template',
       )
     }
-  }
+  },
 )
 
 export const deleteTemplateAsync = createAsyncThunk(
@@ -52,10 +52,10 @@ export const deleteTemplateAsync = createAsyncThunk(
       return id
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to delete template'
+        error.response?.data?.message || error.message || 'Failed to delete template',
       )
     }
-  }
+  },
 )
 
 const initialState = {

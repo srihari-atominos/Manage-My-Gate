@@ -4,7 +4,7 @@ import { CCard, CCardBody } from '@coreui/react'
 
 /**
  * PageHeader Component
- * 
+ *
  * Reusable enterprise page header containing title, subtitle, and action buttons.
  * Supports full mobile responsiveness (stacking layout on small screens).
  */
@@ -14,7 +14,10 @@ const PageHeader = ({ title, subtitle, actionButtons }) => {
       <CCardBody className="p-4">
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
           <div>
-            <h1 className="mb-1" style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--cui-body-color)' }}>
+            <h1
+              className="mb-1"
+              style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--cui-body-color)' }}
+            >
               {title}
             </h1>
             {subtitle && (

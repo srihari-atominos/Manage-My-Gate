@@ -1,17 +1,10 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import PropTypes from 'prop-types';
-import { useTranslation } from 'react-i18next';
-import CIcon from '@coreui/icons-react';
-import {
-  cilInfo,
-  cilCheckCircle,
-  cilWarning,
-  cilXCircle,
-  cilCheck,
-  cilTrash,
-} from '@coreui/icons';
-import '../styles/_notification.scss';
+import React from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import PropTypes from 'prop-types'
+import { useTranslation } from 'react-i18next'
+import CIcon from '@coreui/icons-react'
+import { cilInfo, cilCheckCircle, cilWarning, cilXCircle, cilCheck, cilTrash } from '@coreui/icons'
+import '../styles/_notification.scss'
 
 /**
  * Format relative time using native Intl API
@@ -19,36 +12,36 @@ import '../styles/_notification.scss';
  * @param {string} locale
  */
 const formatRelativeTime = (dateString, locale = 'en') => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffInSeconds = Math.floor((now - date) / 1000);
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInSeconds = Math.floor((now - date) / 1000)
 
-  if (isNaN(diffInSeconds)) return '';
+  if (isNaN(diffInSeconds)) return ''
 
-  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
 
   if (diffInSeconds < 60) {
-    return rtf.format(-Math.max(1, diffInSeconds), 'second');
+    return rtf.format(-Math.max(1, diffInSeconds), 'second')
   }
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  const diffInMinutes = Math.floor(diffInSeconds / 60)
   if (diffInMinutes < 60) {
-    return rtf.format(-diffInMinutes, 'minute');
+    return rtf.format(-diffInMinutes, 'minute')
   }
-  const diffInHours = Math.floor(diffInMinutes / 60);
+  const diffInHours = Math.floor(diffInMinutes / 60)
   if (diffInHours < 24) {
-    return rtf.format(-diffInHours, 'hour');
+    return rtf.format(-diffInHours, 'hour')
   }
-  const diffInDays = Math.floor(diffInHours / 24);
+  const diffInDays = Math.floor(diffInHours / 24)
   if (diffInDays < 30) {
-    return rtf.format(-diffInDays, 'day');
+    return rtf.format(-diffInDays, 'day')
   }
-  const diffInMonths = Math.floor(diffInDays / 30);
+  const diffInMonths = Math.floor(diffInDays / 30)
   if (diffInMonths < 12) {
-    return rtf.format(-diffInMonths, 'month');
+    return rtf.format(-diffInMonths, 'month')
   }
-  const diffInYears = Math.floor(diffInMonths / 12);
-  return rtf.format(-diffInYears, 'year');
-};
+  const diffInYears = Math.floor(diffInMonths / 12)
+  return rtf.format(-diffInYears, 'year')
+}
 
 /**
  * Maps notification type to CoreUI icon
@@ -57,16 +50,16 @@ const formatRelativeTime = (dateString, locale = 'en') => {
 const getNotificationIcon = (type) => {
   switch (type) {
     case 'SUCCESS':
-      return cilCheckCircle;
+      return cilCheckCircle
     case 'WARNING':
-      return cilWarning;
+      return cilWarning
     case 'ERROR':
-      return cilXCircle;
+      return cilXCircle
     case 'INFO':
     default:
-      return cilInfo;
+      return cilInfo
   }
-};
+}
 
 /**
  * Renders a single notification item.
@@ -78,28 +71,28 @@ const getNotificationIcon = (type) => {
  * @param {Function} props.onDelete - Callback when delete/clear is clicked
  */
 export const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClose }) => {
-  const { t, i18n } = useTranslation();
-const navigate = useNavigate();
-  const { _id, id, title, body, type, isRead, createdAt, actionUrl } = notification;
-  const notificationId = id || _id;
+  const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
+  const { _id, id, title, body, type, isRead, createdAt, actionUrl } = notification
+  const notificationId = id || _id
 
   const handleMarkAsReadClick = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
+    e.stopPropagation()
+    e.preventDefault()
     if (onMarkAsRead && !isRead) {
-      onMarkAsRead(notificationId);
+      onMarkAsRead(notificationId)
     }
-  };
+  }
 
   const handleDeleteClick = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
+    e.stopPropagation()
+    e.preventDefault()
     if (onDelete) {
-      onDelete(notificationId);
+      onDelete(notificationId)
     }
-  };
+  }
 
-  const itemClassNames = `notification-item ${isRead ? 'read' : 'unread'} type-${type}`;
+  const itemClassNames = `notification-item ${isRead ? 'read' : 'unread'} type-${type}`
 
   const renderedContent = (
     <>
@@ -110,9 +103,7 @@ const navigate = useNavigate();
       <div className="notification-content">
         <h6 className="notification-title">{title}</h6>
         <p className="notification-body">{body}</p>
-        <span className="notification-time">
-          {formatRelativeTime(createdAt, i18n.language)}
-        </span>
+        <span className="notification-time">{formatRelativeTime(createdAt, i18n.language)}</span>
       </div>
       <div className="notification-actions">
         {!isRead && (
@@ -137,43 +128,51 @@ const navigate = useNavigate();
         </button>
       </div>
     </>
-  );
+  )
 
   if (actionUrl) {
-    let finalActionUrl = actionUrl;
-    
+    let finalActionUrl = actionUrl
+
     // Legacy mapping for broken URLs already in the DB
     if (finalActionUrl.startsWith('/complaints/')) {
-      finalActionUrl = '/complaints';
+      finalActionUrl = '/complaints'
     } else if (finalActionUrl === '/assignee') {
-      finalActionUrl = '/admin/complaints/assignee';
-    } else if (finalActionUrl.startsWith('/admin/complaints') && finalActionUrl !== '/admin/complaints/assignee') {
-      finalActionUrl = '/complaints';
+      finalActionUrl = '/admin/complaints/assignee'
+    } else if (
+      finalActionUrl.startsWith('/admin/complaints') &&
+      finalActionUrl !== '/admin/complaints/assignee'
+    ) {
+      finalActionUrl = '/complaints'
     } else if (finalActionUrl === '/resident/notice-board') {
-      finalActionUrl = '/notices/board';
+      finalActionUrl = '/notices/board'
     } else if (finalActionUrl.startsWith('#/')) {
-      finalActionUrl = finalActionUrl.replace('#', '');
+      finalActionUrl = finalActionUrl.replace('#', '')
     }
 
     // Use programmatic navigation to ensure HashRouter works correctly
     // navigate defined at component level
     const handleClick = () => {
-      if (onClose) onClose();
-      navigate(finalActionUrl);
-    };
+      if (onClose) onClose()
+      navigate(finalActionUrl)
+    }
     return (
       <div className={itemClassNames} onClick={handleClick}>
         {renderedContent}
       </div>
-    );
+    )
   }
 
   return (
-    <div className={itemClassNames} onClick={() => { if (onClose) onClose(); }}>
+    <div
+      className={itemClassNames}
+      onClick={() => {
+        if (onClose) onClose()
+      }}
+    >
       {renderedContent}
     </div>
-  );
-};
+  )
+}
 
 NotificationItem.propTypes = {
   notification: PropTypes.shape({
@@ -188,7 +187,6 @@ NotificationItem.propTypes = {
   }).isRequired,
   onMarkAsRead: PropTypes.func.isRequired,
   onClose: PropTypes.func,
+}
 
-};
-
-export default NotificationItem;
+export default NotificationItem

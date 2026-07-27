@@ -24,7 +24,7 @@ const msalConfig = {
   cache: {
     cacheLocation: 'sessionStorage',
     storeAuthStateInCookie: false,
-  }
+  },
 }
 
 // MSAL instance initialization
@@ -47,7 +47,7 @@ try {
           isPlatform: savedUser.isPlatform || false,
           organizationName: matchedOrg ? matchedOrg.name : null,
           availableWorkspaces: cachedWorkspaces,
-        })
+        }),
       )
     }
   }
@@ -55,12 +55,12 @@ try {
   console.error('Failed to bootstrap workspace hydration from localStorage:', error)
 }
 
-const googleClientId = config.googleClientId;
-console.log('====== GOOGLE SSO DEBUG INFO ======');
-console.log('Current Browser Origin:', window.location.origin);
-console.log('Using Client ID:', googleClientId);
-console.log('If these do not EXACTLY match Google Cloud Console, it will fail with 403.');
-console.log('===================================');
+const googleClientId = config.googleClientId
+console.log('====== GOOGLE SSO DEBUG INFO ======')
+console.log('Current Browser Origin:', window.location.origin)
+console.log('Using Client ID:', googleClientId)
+console.log('If these do not EXACTLY match Google Cloud Console, it will fail with 403.')
+console.log('===================================')
 
 const renderApp = () => (
   <ErrorBoundary>
@@ -72,13 +72,16 @@ const renderApp = () => (
       </GoogleOAuthProvider>
     </Provider>
   </ErrorBoundary>
-);
+)
 
 // Initialize MSAL and then render the app
-msalInstance.initialize().then(() => {
-  createRoot(document.getElementById('root')).render(renderApp());
-}).catch(err => {
-  console.error("MSAL Initialization failed:", err);
-  // Render anyway so the rest of the app works, even if Microsoft SSO fails
-  createRoot(document.getElementById('root')).render(renderApp());
-});
+msalInstance
+  .initialize()
+  .then(() => {
+    createRoot(document.getElementById('root')).render(renderApp())
+  })
+  .catch((err) => {
+    console.error('MSAL Initialization failed:', err)
+    // Render anyway so the rest of the app works, even if Microsoft SSO fails
+    createRoot(document.getElementById('root')).render(renderApp())
+  })

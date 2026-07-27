@@ -1,11 +1,11 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import { useTranslation } from 'react-i18next';
-import { CModal, CModalHeader, CModalTitle, CModalBody, CButton } from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilFullscreen, cilFullscreenExit, cilPlus, cilX } from '@coreui/icons';
-import ConnectionTable from './ConnectionTable.jsx';
-import '../styles/_integrationHub.scss';
+import React from 'react'
+import PropTypes from 'prop-types'
+import { useTranslation } from 'react-i18next'
+import { CModal, CModalHeader, CModalTitle, CModalBody, CButton } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilFullscreen, cilFullscreenExit, cilPlus, cilX } from '@coreui/icons'
+import ConnectionTable from './ConnectionTable.jsx'
+import '../styles/_integrationHub.scss'
 
 /**
  * Modal displaying existing integration connections with an option to open the creation form.
@@ -24,9 +24,9 @@ export const ProviderConnectionsModal = ({
   onDeleteConnection,
   isLoading,
 }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
-  if (!isOpen || !selectedProvider) return null;
+  if (!isOpen || !selectedProvider) return null
 
   return (
     <CModal
@@ -98,8 +98,8 @@ export const ProviderConnectionsModal = ({
         />
       </CModalBody>
     </CModal>
-  );
-};
+  )
+}
 
 ProviderConnectionsModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
@@ -112,7 +112,7 @@ ProviderConnectionsModal.propTypes = {
         name: PropTypes.string.isRequired,
         label: PropTypes.string.isRequired,
         type: PropTypes.string.isRequired,
-      })
+      }),
     ).isRequired,
   }),
   onClose: PropTypes.func.isRequired,
@@ -124,6 +124,6 @@ ProviderConnectionsModal.propTypes = {
   onUpdateLabel: PropTypes.func.isRequired,
   onDeleteConnection: PropTypes.func.isRequired,
   isLoading: PropTypes.bool,
-};
+}
 
-export default ProviderConnectionsModal;
+export default ProviderConnectionsModal

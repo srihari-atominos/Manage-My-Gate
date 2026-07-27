@@ -21,8 +21,6 @@ import RoleIntegrationConfigurator from './RoleIntegrationConfigurator'
 import PermissionMatrix from './PermissionMatrix'
 import '../styles/_roleBuilder.scss'
 
-
-
 /**
  * RoleFormModal Component
  *
@@ -42,7 +40,7 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
     activeMappingsCount,
     setValue,
     handleSelectAllGroup,
-    handleTogglePermission
+    handleTogglePermission,
   } = useRoleForm({ role, visible, onSave })
 
   // Load available permissions when modal opens
@@ -51,10 +49,6 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
       loadPermissions()
     }
   }, [visible, loadPermissions])
-
-
-
-
 
   return (
     <CModal visible={visible} onClose={onClose} id="role-form-modal" alignment="center" size="lg">
@@ -108,15 +102,14 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
               {...register('isTenantRole')}
             />
             <div className="text-body-secondary small mt-1">
-              If checked, this role will belong to the unit and be selectable when onboarding residents to specific villas/apartments.
+              If checked, this role will belong to the unit and be selectable when onboarding
+              residents to specific villas/apartments.
             </div>
           </div>
 
           {/* Role Integration Configuration Segment */}
           <div className="mb-3">
-            <CFormLabel className="form-label-custom">
-              Role Integrations
-            </CFormLabel>
+            <CFormLabel className="form-label-custom">Role Integrations</CFormLabel>
             <div className="d-flex align-items-center gap-3 p-2 border rounded bg-body-secondary-subtle">
               <CButton
                 type="button"
@@ -140,14 +133,15 @@ const RoleFormModal = ({ visible, role, onClose, onSave }) => {
               onClose={() => setIsConfiguratorOpen(false)}
               mappings={integrationMappings}
               onApply={(newMappings) => {
-                setValue('integrationMappings', newMappings, { shouldDirty: true, shouldValidate: true })
+                setValue('integrationMappings', newMappings, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
               }}
             />
           </div>
 
-          <div className="form-label-custom mb-2">
-            Granular Permissions Mapping
-          </div>
+          <div className="form-label-custom mb-2">Granular Permissions Mapping</div>
 
           <div className="permissions-scroll-container pe-2">
             {isPermissionsLoading ? (

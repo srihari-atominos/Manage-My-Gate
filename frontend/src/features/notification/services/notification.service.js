@@ -1,4 +1,4 @@
-import apiClient from '../../../services/apiClient.js';
+import apiClient from '../../../services/apiClient.js'
 
 /**
  * Service to interface with the Notifications API endpoints.
@@ -12,9 +12,9 @@ export const notificationService = {
    */
   async getNotifications(page = 1, limit = 10) {
     const response = await apiClient.get('/notifications', {
-      params: { page, limit }
-    });
-    return response.data;
+      params: { page, limit },
+    })
+    return response.data
   },
 
   /**
@@ -23,8 +23,8 @@ export const notificationService = {
    * @returns {Promise<Object>} The updated notification document
    */
   async markAsRead(id) {
-    const response = await apiClient.patch(`/notifications/${id}/read`);
-    return response.data;
+    const response = await apiClient.patch(`/notifications/${id}/read`)
+    return response.data
   },
 
   /**
@@ -32,8 +32,8 @@ export const notificationService = {
    * @returns {Promise<{matchedCount: number, modifiedCount: number}>}
    */
   async markAllAsRead() {
-    const response = await apiClient.patch('/notifications/read-all');
-    return response.data;
+    const response = await apiClient.patch('/notifications/read-all')
+    return response.data
   },
 
   /**
@@ -42,9 +42,9 @@ export const notificationService = {
    * @returns {Promise<Object>}
    */
   async deleteNotification(id) {
-    const response = await apiClient.delete(`/notifications/${id}`);
-    return response.data;
-  }
-};
+    const response = await apiClient.delete(`/notifications/${id}`)
+    return response.data
+  },
+}
 
-export default notificationService;
+export default notificationService

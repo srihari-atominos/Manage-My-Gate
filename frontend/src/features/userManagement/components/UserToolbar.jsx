@@ -7,7 +7,7 @@ import MultiSelectFilter from '../../../components/common/MultiSelectFilter'
 
 /**
  * UserToolbar Component
- * 
+ *
  * Handles search input and multiselect dropdown filters for roles and statuses.
  * Enforces one-component-per-file and consumes the generic `<MultiSelectFilter>` component.
  */
@@ -25,7 +25,10 @@ const UserToolbar = ({
   return (
     <>
       {/* Search Bar - Responsive width */}
-      <div className="flex-grow-1 flex-md-grow-0" style={{ minWidth: 'min(350px, 100%)', maxWidth: '500px' }}>
+      <div
+        className="flex-grow-1 flex-md-grow-0"
+        style={{ minWidth: 'min(350px, 100%)', maxWidth: '500px' }}
+      >
         <CFormInput
           id="um-search-input"
           placeholder="Search by name or email..."

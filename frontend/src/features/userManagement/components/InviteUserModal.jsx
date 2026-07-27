@@ -15,7 +15,7 @@ import apiClient from '../../../services/apiClient'
 
 /**
  * InviteUserModal Component
- * 
+ *
  * Renders modal overlay containing form inputs for inviting new community users.
  */
 const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
@@ -30,11 +30,12 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
   useEffect(() => {
     if (visible) {
       setLoadingVillas(true)
-      apiClient.get('/villas?limit=1000')
-        .then(res => {
+      apiClient
+        .get('/villas?limit=1000')
+        .then((res) => {
           setVillas(res.data?.data || [])
         })
-        .catch(err => {
+        .catch((err) => {
           console.error('Failed to load villas for invite dropdown:', err)
         })
         .finally(() => {
@@ -42,11 +43,12 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
         })
 
       setLoadingRoles(true)
-      apiClient.get('/roles?limit=100')
-        .then(res => {
+      apiClient
+        .get('/roles?limit=100')
+        .then((res) => {
           setRoles(res.data?.data || [])
         })
-        .catch(err => {
+        .catch((err) => {
           console.error('Failed to load roles for invite dropdown:', err)
         })
         .finally(() => {
@@ -59,7 +61,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
     e.preventDefault()
     if (!inviteEmail.trim()) return
 
-    const selectedRole = roles.find(r => r.name === selectedRoleName)
+    const selectedRole = roles.find((r) => r.name === selectedRoleName)
     const isTenant = selectedRole ? selectedRole.isTenantRole : false
 
     // Determine residentType based on roleName
@@ -76,9 +78,9 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
       email: inviteEmail.trim(),
       villaId: isTenant ? selectedVillaId || null : null,
       residentType,
-      roleName: selectedRoleName || null
+      roleName: selectedRoleName || null,
     })
-    
+
     setInviteEmail('')
     setSelectedVillaId('')
     setSelectedRoleName('')
@@ -91,16 +93,11 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
     onClose()
   }
 
-  const selectedRoleObj = roles.find(r => r.name === selectedRoleName)
+  const selectedRoleObj = roles.find((r) => r.name === selectedRoleName)
   const isTenantRole = selectedRoleObj ? selectedRoleObj.isTenantRole : false
 
   return (
-    <CModal
-      visible={visible}
-      onClose={handleClose}
-      id="invite-user-modal"
-      alignment="center"
-    >
+    <CModal visible={visible} onClose={handleClose} id="invite-user-modal" alignment="center">
       <CModalHeader>
         <CModalTitle style={{ fontSize: '1rem', fontWeight: 700 }}>
           Invite Resident / Community Staff
@@ -109,7 +106,10 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
       <form onSubmit={handleSubmit}>
         <CModalBody>
           <div className="mb-3">
-            <CFormLabel htmlFor="invite-email-input" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            <CFormLabel
+              htmlFor="invite-email-input"
+              style={{ fontSize: '0.85rem', fontWeight: 600 }}
+            >
               Email Address
             </CFormLabel>
             <CFormInput
@@ -124,7 +124,10 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
           </div>
 
           <div className="mb-3">
-            <CFormLabel htmlFor="invite-role-select" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            <CFormLabel
+              htmlFor="invite-role-select"
+              style={{ fontSize: '0.85rem', fontWeight: 600 }}
+            >
               Select Role
             </CFormLabel>
             <CFormSelect
@@ -146,7 +149,10 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
 
           {isTenantRole && (
             <div className="mb-3 position-relative">
-              <CFormLabel htmlFor="invite-villa-select" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+              <CFormLabel
+                htmlFor="invite-villa-select"
+                style={{ fontSize: '0.85rem', fontWeight: 600 }}
+              >
                 Select Villa / Unit
               </CFormLabel>
               <div className="dropdown w-100">
@@ -157,30 +163,40 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
                   aria-expanded="false"
                   disabled={loadingVillas}
                   onClick={(e) => {
-                    const menu = e.currentTarget.nextElementSibling;
+                    const menu = e.currentTarget.nextElementSibling
                     if (menu.classList.contains('show')) {
-                      menu.classList.remove('show');
+                      menu.classList.remove('show')
                     } else {
-                      menu.classList.add('show');
+                      menu.classList.add('show')
                     }
                   }}
                 >
-                  {selectedVillaId 
+                  {selectedVillaId
                     ? (() => {
-                        const v = villas.find(v => v._id === selectedVillaId);
-                        return v ? `${v.unitNumber} ${v.blockOrBuilding ? `(${v.blockOrBuilding})` : ''}` : '-- Choose a Villa --';
+                        const v = villas.find((v) => v._id === selectedVillaId)
+                        return v
+                          ? `${v.unitNumber} ${v.blockOrBuilding ? `(${v.blockOrBuilding})` : ''}`
+                          : '-- Choose a Villa --'
                       })()
                     : '-- Choose a Villa --'}
                   <span className="caret"></span>
                 </button>
-                <ul className="dropdown-menu w-100 shadow-sm" style={{ maxHeight: '200px', overflowY: 'auto', position: 'absolute', zIndex: 9999 }}>
+                <ul
+                  className="dropdown-menu w-100 shadow-sm"
+                  style={{
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    position: 'absolute',
+                    zIndex: 9999,
+                  }}
+                >
                   <li>
                     <button
                       className="dropdown-item"
                       type="button"
                       onClick={(e) => {
-                        setSelectedVillaId('');
-                        e.currentTarget.closest('.dropdown-menu').classList.remove('show');
+                        setSelectedVillaId('')
+                        e.currentTarget.closest('.dropdown-menu').classList.remove('show')
                       }}
                     >
                       -- Choose a Villa --
@@ -192,11 +208,12 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
                         className="dropdown-item"
                         type="button"
                         onClick={(e) => {
-                          setSelectedVillaId(villa._id);
-                          e.currentTarget.closest('.dropdown-menu').classList.remove('show');
+                          setSelectedVillaId(villa._id)
+                          e.currentTarget.closest('.dropdown-menu').classList.remove('show')
                         }}
                       >
-                        {villa.unitNumber} {villa.blockOrBuilding ? `(${villa.blockOrBuilding})` : ''}
+                        {villa.unitNumber}{' '}
+                        {villa.blockOrBuilding ? `(${villa.blockOrBuilding})` : ''}
                       </button>
                     </li>
                   ))}
@@ -210,11 +227,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
           </div>
         </CModalBody>
         <CModalFooter className="border-0 pt-0">
-          <CButton
-            color="light"
-            size="sm"
-            onClick={handleClose}
-          >
+          <CButton color="light" size="sm" onClick={handleClose}>
             Cancel
           </CButton>
           <CButton
@@ -222,7 +235,9 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
             type="submit"
             color="primary"
             size="sm"
-            disabled={!inviteEmail.trim() || !selectedRoleName || (isTenantRole && !selectedVillaId)}
+            disabled={
+              !inviteEmail.trim() || !selectedRoleName || (isTenantRole && !selectedVillaId)
+            }
             style={{ fontWeight: 600 }}
           >
             Send Invitation

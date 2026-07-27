@@ -5,7 +5,7 @@ import apiClient from '../../../services/apiClient.js'
 
 /**
  * InviteHandler Component
- * 
+ *
  * Intercepts incoming /#/invite?token=... links, validates the token
  * with the backend, and routes the user based on whether they already exist:
  * - Existing users -> /login?invite_token=...&email=...

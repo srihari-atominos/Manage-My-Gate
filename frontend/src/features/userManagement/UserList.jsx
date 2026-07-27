@@ -74,23 +74,34 @@ const UserList = () => {
       if (token) {
         const clientUrl = window.location.origin + window.location.pathname
         const inviteLink = `${clientUrl}#/invite?token=${token}`
-        toast((t) => (
-          <div className="d-flex align-items-center gap-2">
-            <span style={{ fontSize: '0.8rem' }}>
-              User invited! Link: <a href={inviteLink} target="_blank" rel="noreferrer" className="text-decoration-underline fw-bold">{inviteLink.substring(0, 30)}...</a>
-            </span>
-            <CButton
-              size="sm"
-              color="primary"
-              onClick={() => {
-                navigator.clipboard.writeText(inviteLink)
-                toast.success('Copied link!')
-              }}
-            >
-              Copy
-            </CButton>
-          </div>
-        ), { duration: 8000 })
+        toast(
+          (t) => (
+            <div className="d-flex align-items-center gap-2">
+              <span style={{ fontSize: '0.8rem' }}>
+                User invited! Link:{' '}
+                <a
+                  href={inviteLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-decoration-underline fw-bold"
+                >
+                  {inviteLink.substring(0, 30)}...
+                </a>
+              </span>
+              <CButton
+                size="sm"
+                color="primary"
+                onClick={() => {
+                  navigator.clipboard.writeText(inviteLink)
+                  toast.success('Copied link!')
+                }}
+              >
+                Copy
+              </CButton>
+            </div>
+          ),
+          { duration: 8000 },
+        )
       } else {
         toast.success('User invited successfully!')
       }
@@ -125,91 +136,96 @@ const UserList = () => {
   }
 
   // ── DataTable Columns Configuration ──
-  const columns = useMemo(() => [
-    {
-      key: 'name',
-      label: 'Name',
-      render: (val) => <span className="fw-semibold">{val}</span>,
-    },
-    {
-      key: 'email',
-      label: 'Contact Info',
-      render: (val, row) => (
-        <div className="d-flex flex-column gap-1">
-          <span className="text-body-secondary">{val}</span>
-          {row.phone && <span className="text-muted small"><i className="fa-solid fa-phone me-1"></i>{row.phone}</span>}
-        </div>
-      ),
-    },
-    {
-      key: 'villaNumber',
-      label: 'Villa / Unit',
-      render: (val, row) => {
-        if (!val) return <span className="text-muted small">—</span>;
-        return (
-          <div>
-            <span className="fw-bold small text-primary">{val}</span>
-            {row.villaBlock && <span className="text-muted small ms-1">({row.villaBlock})</span>}
-            {row.residentType && row.residentType !== 'None' && (
-              <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                Residency: <span className="fw-semibold">{row.residentType}</span>
-              </div>
+  const columns = useMemo(
+    () => [
+      {
+        key: 'name',
+        label: 'Name',
+        render: (val) => <span className="fw-semibold">{val}</span>,
+      },
+      {
+        key: 'email',
+        label: 'Contact Info',
+        render: (val, row) => (
+          <div className="d-flex flex-column gap-1">
+            <span className="text-body-secondary">{val}</span>
+            {row.phone && (
+              <span className="text-muted small">
+                <i className="fa-solid fa-phone me-1"></i>
+                {row.phone}
+              </span>
             )}
           </div>
-        );
-      }
-    },
-    {
-      key: 'role',
-      label: 'Role',
-      render: (val) => {
-        if (!val || val === '' || (Array.isArray(val) && val.length === 0)) {
+        ),
+      },
+      {
+        key: 'villaNumber',
+        label: 'Villa / Unit',
+        render: (val, row) => {
+          if (!val) return <span className="text-muted small">—</span>
           return (
-            <CBadge color="light" className="text-body small px-2 py-1 border">
-              Unassigned
+            <div>
+              <span className="fw-bold small text-primary">{val}</span>
+              {row.villaBlock && <span className="text-muted small ms-1">({row.villaBlock})</span>}
+              {row.residentType && row.residentType !== 'None' && (
+                <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                  Residency: <span className="fw-semibold">{row.residentType}</span>
+                </div>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        key: 'role',
+        label: 'Role',
+        render: (val) => {
+          if (!val || val === '' || (Array.isArray(val) && val.length === 0)) {
+            return (
+              <CBadge color="light" className="text-body small px-2 py-1 border">
+                Unassigned
+              </CBadge>
+            )
+          }
+          const rolesList = typeof val === 'string' ? val.split(',').map((r) => r.trim()) : [val]
+          return (
+            <div className="d-flex flex-wrap gap-1 overflow-y-auto" style={{ maxHeight: '40px' }}>
+              {rolesList.map((r, i) => (
+                <CBadge
+                  key={i}
+                  color="info"
+                  shape="rounded-pill"
+                  className="small px-2 py-1 text-nowrap"
+                >
+                  {r}
+                </CBadge>
+              ))}
+            </div>
+          )
+        },
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        render: (val) => {
+          let badgeColor = 'secondary'
+          if (val === 'Active') {
+            badgeColor = 'success'
+          } else if (val === 'Pending') {
+            badgeColor = 'warning'
+          } else if (val === 'Inactive') {
+            badgeColor = 'danger'
+          }
+          return (
+            <CBadge color={badgeColor} className="small px-2 py-1">
+              {val}
             </CBadge>
           )
-        }
-        const rolesList = typeof val === 'string' ? val.split(',').map(r => r.trim()) : [val]
-        return (
-          <div className="d-flex flex-wrap gap-1 overflow-y-auto" style={{ maxHeight: '40px' }}>
-            {rolesList.map((r, i) => (
-              <CBadge
-                key={i}
-                color="info"
-                shape="rounded-pill"
-                className="small px-2 py-1 text-nowrap"
-              >
-                {r}
-              </CBadge>
-            ))}
-          </div>
-        )
+        },
       },
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (val) => {
-        let badgeColor = 'secondary'
-        if (val === 'Active') {
-          badgeColor = 'success'
-        } else if (val === 'Pending') {
-          badgeColor = 'warning'
-        } else if (val === 'Inactive') {
-          badgeColor = 'danger'
-        }
-        return (
-          <CBadge
-            color={badgeColor}
-            className="small px-2 py-1"
-          >
-            {val}
-          </CBadge>
-        )
-      },
-    },
-  ], [])
+    ],
+    [],
+  )
 
   // ── Render Actions for Data Grid ──
   const renderRowActions = (user) => {
@@ -225,7 +241,16 @@ const UserList = () => {
             onClick={() => handleResendInvite(user)}
             title={`Resend invitation to ${user.name}`}
             icon={
-              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                width="13"
+                height="13"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                 <polyline points="22,6 12,13 2,6" />
               </svg>
@@ -240,7 +265,16 @@ const UserList = () => {
           title={isSelf ? 'You cannot modify your own account.' : `Manage roles for ${user.name}`}
           disabled={isSelf}
           icon={
-            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              width="13"
+              height="13"
+              stroke="currentColor"
+              strokeWidth="2"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
             </svg>
           }
@@ -256,7 +290,16 @@ const UserList = () => {
             isDeleting === user.id ? (
               <CSpinner size="sm" style={{ width: '13px', height: '13px' }} />
             ) : (
-              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                width="13"
+                height="13"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                 <path d="M10 11v6" />

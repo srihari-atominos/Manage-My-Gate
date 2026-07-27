@@ -44,20 +44,20 @@ export const NoticeBoardActiveView = () => {
 
   // Handle deep link from dashboard feed
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const openNoticeId = params.get('openNoticeId');
-    
+    const params = new URLSearchParams(location.search)
+    const openNoticeId = params.get('openNoticeId')
+
     if (openNoticeId && notices && notices.length > 0) {
-      const targetNotice = notices.find(n => n._id === openNoticeId);
+      const targetNotice = notices.find((n) => n._id === openNoticeId)
       if (targetNotice) {
-        selectNotice(targetNotice);
-        setDetailsModalVisible(true);
+        selectNotice(targetNotice)
+        setDetailsModalVisible(true)
         if (!targetNotice.isReadByUser) {
-          markAsRead(targetNotice._id);
+          markAsRead(targetNotice._id)
         }
       }
     }
-  }, [location.search, notices, selectNotice, markAsRead]);
+  }, [location.search, notices, selectNotice, markAsRead])
 
   const handleDetailsClick = (notice) => {
     selectNotice(notice)

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
-import { useTranslation } from 'react-i18next';
+import React, { useState } from 'react'
+import PropTypes from 'prop-types'
+import { useTranslation } from 'react-i18next'
 import {
   CModal,
   CModalHeader,
@@ -12,10 +12,10 @@ import {
   CAlert,
   CSpinner,
   CBadge,
-} from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilWallet, cilCreditCard, cilCheckCircle, cilWarning } from '@coreui/icons';
-import '../styles/_billing.scss';
+} from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilWallet, cilCreditCard, cilCheckCircle, cilWarning } from '@coreui/icons'
+import '../styles/_billing.scss'
 
 /**
  * Dynamically load the Razorpay checkout.js script if not already present on window.
@@ -23,16 +23,16 @@ import '../styles/_billing.scss';
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
     if (window.Razorpay) {
-      resolve(true);
-      return;
+      resolve(true)
+      return
     }
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
 
 /**
  * Isolated Resident Payment Checkout Modal.
@@ -49,50 +49,57 @@ export const PaymentCheckoutModal = ({
   isLoading,
   actionError,
 }) => {
-  const { t } = useTranslation();
-  const [paymentMethod, setPaymentMethod] = useState('WALLET');
-  const [scriptLoading, setScriptLoading] = useState(false);
-  const [localError, setLocalError] = useState(null);
+  const { t } = useTranslation()
+  const [paymentMethod, setPaymentMethod] = useState('WALLET')
+  const [scriptLoading, setScriptLoading] = useState(false)
+  const [localError, setLocalError] = useState(null)
 
-  if (!invoice) return null;
+  if (!invoice) return null
 
-  const totalAmount = invoice.totalDue || invoice.amount || 0;
-  const isWalletInsufficient = walletBalance < totalAmount;
+  const totalAmount = invoice.totalDue || invoice.amount || 0
+  const isWalletInsufficient = walletBalance < totalAmount
 
   const handleCheckoutSubmit = async () => {
-    setLocalError(null);
+    setLocalError(null)
 
     if (paymentMethod === 'WALLET') {
       if (isWalletInsufficient) {
-        setLocalError(t('billing.checkout.insufficientBalance', 'Insufficient wallet balance. Please recharge your wallet or choose Razorpay.'));
-        return;
+        setLocalError(
+          t(
+            'billing.checkout.insufficientBalance',
+            'Insufficient wallet balance. Please recharge your wallet or choose Razorpay.',
+          ),
+        )
+        return
       }
       if (onPayWithWallet) {
-        const result = await onPayWithWallet(invoice.invoiceId || invoice._id);
+        const result = await onPayWithWallet(invoice.invoiceId || invoice._id)
         if (result?.success || !result?.error) {
-          onClose();
+          onClose()
         }
       }
     } else if (paymentMethod === 'RAZORPAY') {
-      setScriptLoading(true);
+      setScriptLoading(true)
 
       if (onPayWithRazorpay) {
-        const orderResult = await onPayWithRazorpay(invoice.invoiceId || invoice._id, totalAmount);
+        const orderResult = await onPayWithRazorpay(invoice.invoiceId || invoice._id, totalAmount)
         if (orderResult?.error) {
-          setLocalError(orderResult.error);
-          setScriptLoading(false);
-          return;
+          setLocalError(orderResult.error)
+          setScriptLoading(false)
+          return
         }
 
-        const orderData = orderResult?.data || orderResult?.payload || orderResult;
-        const keyId = orderData.keyId || orderData.razorpayKeyId;
-        const isMock = !keyId || keyId.includes('dummy') || keyId === 'rzp_test_12345';
+        const orderData = orderResult?.data || orderResult?.payload || orderResult
+        const keyId = orderData.keyId || orderData.razorpayKeyId
+        const isMock = !keyId || keyId.includes('dummy') || keyId === 'rzp_test_12345'
 
         if (isMock) {
           // Mock Payment Flow
-          await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate loading delay
-          const confirmPayment = window.confirm(t('billing.checkout.mockConfirm', `[Mock Mode] Confirm payment of ₹${totalAmount}?`));
-          
+          await new Promise((resolve) => setTimeout(resolve, 1500)) // Simulate loading delay
+          const confirmPayment = window.confirm(
+            t('billing.checkout.mockConfirm', `[Mock Mode] Confirm payment of ₹${totalAmount}?`),
+          )
+
           if (confirmPayment) {
             if (onVerifyRazorpay) {
               const verifyResult = await onVerifyRazorpay({
@@ -100,27 +107,35 @@ export const PaymentCheckoutModal = ({
                 razorpayPaymentId: `pay_mock_${Date.now()}`,
                 razorpayOrderId: orderData.orderId || orderData.id,
                 razorpaySignature: `sig_mock_${Date.now()}`,
-              });
-              if (verifyResult?.meta?.requestStatus === 'fulfilled' || (verifyResult && !verifyResult.error && verifyResult.success !== false)) {
-                onClose(true);
+              })
+              if (
+                verifyResult?.meta?.requestStatus === 'fulfilled' ||
+                (verifyResult && !verifyResult.error && verifyResult.success !== false)
+              ) {
+                onClose(true)
               } else {
-                setLocalError(t('billing.checkout.verificationFailed', 'Mock verification failed.'));
+                setLocalError(t('billing.checkout.verificationFailed', 'Mock verification failed.'))
               }
             }
           } else {
-            setLocalError(t('billing.checkout.cancelled', 'Payment cancelled by user.'));
+            setLocalError(t('billing.checkout.cancelled', 'Payment cancelled by user.'))
           }
-          setScriptLoading(false);
-          return;
+          setScriptLoading(false)
+          return
         }
 
         // Real Razorpay Flow
-        const scriptLoaded = await loadRazorpayScript();
-        setScriptLoading(false);
+        const scriptLoaded = await loadRazorpayScript()
+        setScriptLoading(false)
 
         if (!scriptLoaded) {
-          setLocalError(t('billing.checkout.scriptError', 'Failed to load Razorpay payment gateway script. Check connection.'));
-          return;
+          setLocalError(
+            t(
+              'billing.checkout.scriptError',
+              'Failed to load Razorpay payment gateway script. Check connection.',
+            ),
+          )
+          return
         }
 
         const options = {
@@ -137,9 +152,12 @@ export const PaymentCheckoutModal = ({
                 razorpayPaymentId: response.razorpay_payment_id,
                 razorpayOrderId: response.razorpay_order_id,
                 razorpaySignature: response.razorpay_signature,
-              });
-              if (verifyResult?.meta?.requestStatus === 'fulfilled' || (verifyResult && !verifyResult.error && verifyResult.success !== false)) {
-                onClose(true);
+              })
+              if (
+                verifyResult?.meta?.requestStatus === 'fulfilled' ||
+                (verifyResult && !verifyResult.error && verifyResult.success !== false)
+              ) {
+                onClose(true)
               }
             }
           },
@@ -149,15 +167,15 @@ export const PaymentCheckoutModal = ({
           theme: {
             color: '#321fdb',
           },
-        };
+        }
 
-        const razorpayInstance = new window.Razorpay(options);
-        razorpayInstance.open();
+        const razorpayInstance = new window.Razorpay(options)
+        razorpayInstance.open()
       } else {
-        setScriptLoading(false);
+        setScriptLoading(false)
       }
     }
-  };
+  }
 
   return (
     <CModal
@@ -184,11 +202,15 @@ export const PaymentCheckoutModal = ({
         {/* Invoice Summary Card */}
         <div className="p-3 mb-4 rounded border bg-light text-start">
           <div className="d-flex justify-content-between align-items-center mb-2">
-            <span className="text-muted small">{t('billing.checkout.invoiceLabel', 'Invoice Number')}</span>
+            <span className="text-muted small">
+              {t('billing.checkout.invoiceLabel', 'Invoice Number')}
+            </span>
             <span className="fw-bold text-primary">{invoice.invoiceNumber}</span>
           </div>
           <div className="d-flex justify-content-between align-items-center mb-2">
-            <span className="text-muted small">{t('billing.checkout.unitLabel', 'Unit / Flat')}</span>
+            <span className="text-muted small">
+              {t('billing.checkout.unitLabel', 'Unit / Flat')}
+            </span>
             <span className="fw-medium">{invoice.unitNumber || '—'}</span>
           </div>
           <div className="d-flex justify-content-between align-items-center mb-2">
@@ -203,7 +225,9 @@ export const PaymentCheckoutModal = ({
         </div>
 
         {/* Payment Method Selector */}
-        <h6 className="fw-bold mb-3 text-start">{t('billing.checkout.selectMethodTitle', 'Select Payment Method')}</h6>
+        <h6 className="fw-bold mb-3 text-start">
+          {t('billing.checkout.selectMethodTitle', 'Select Payment Method')}
+        </h6>
 
         {/* Option 1: Digital Wallet */}
         <div
@@ -224,7 +248,9 @@ export const PaymentCheckoutModal = ({
               <div className="d-flex align-items-center gap-2">
                 <CIcon icon={cilWallet} size="lg" className="text-primary" />
                 <div>
-                  <div className="fw-semibold">{t('billing.checkout.walletOptionTitle', 'Digital Wallet Balance')}</div>
+                  <div className="fw-semibold">
+                    {t('billing.checkout.walletOptionTitle', 'Digital Wallet Balance')}
+                  </div>
                   <div className="text-muted small">
                     {t('billing.checkout.availableBalance', 'Available Balance:')}{' '}
                     <strong className={isWalletInsufficient ? 'text-danger' : 'text-success'}>
@@ -262,8 +288,15 @@ export const PaymentCheckoutModal = ({
             <div className="d-flex align-items-center gap-2">
               <CIcon icon={cilCreditCard} size="lg" className="text-primary" />
               <div>
-                <div className="fw-semibold">{t('billing.checkout.razorpayOptionTitle', 'Razorpay (Cards, UPI, Net Banking)')}</div>
-                <div className="text-muted small">{t('billing.checkout.razorpayOptionSub', 'Instant online payment via official Razorpay SDK')}</div>
+                <div className="fw-semibold">
+                  {t('billing.checkout.razorpayOptionTitle', 'Razorpay (Cards, UPI, Net Banking)')}
+                </div>
+                <div className="text-muted small">
+                  {t(
+                    'billing.checkout.razorpayOptionSub',
+                    'Instant online payment via official Razorpay SDK',
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -271,13 +304,20 @@ export const PaymentCheckoutModal = ({
       </CModalBody>
 
       <CModalFooter>
-        <CButton color="secondary" variant="ghost" onClick={onClose} disabled={isLoading || scriptLoading}>
+        <CButton
+          color="secondary"
+          variant="ghost"
+          onClick={onClose}
+          disabled={isLoading || scriptLoading}
+        >
           {t('billing.checkout.cancel', 'Cancel')}
         </CButton>
         <CButton
           color="primary"
           onClick={handleCheckoutSubmit}
-          disabled={isLoading || scriptLoading || (paymentMethod === 'WALLET' && isWalletInsufficient)}
+          disabled={
+            isLoading || scriptLoading || (paymentMethod === 'WALLET' && isWalletInsufficient)
+          }
         >
           {isLoading || scriptLoading ? (
             <>
@@ -285,13 +325,15 @@ export const PaymentCheckoutModal = ({
               {t('billing.checkout.processing', 'Processing...')}
             </>
           ) : (
-            t('billing.checkout.payNowBtn', 'Confirm & Pay ₹{{amount}}', { amount: totalAmount.toLocaleString('en-IN') })
+            t('billing.checkout.payNowBtn', 'Confirm & Pay ₹{{amount}}', {
+              amount: totalAmount.toLocaleString('en-IN'),
+            })
           )}
         </CButton>
       </CModalFooter>
     </CModal>
-  );
-};
+  )
+}
 
 PaymentCheckoutModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
@@ -303,13 +345,13 @@ PaymentCheckoutModal.propTypes = {
   onVerifyRazorpay: PropTypes.func,
   isLoading: PropTypes.bool,
   actionError: PropTypes.string,
-};
+}
 
 PaymentCheckoutModal.defaultProps = {
   invoice: null,
   walletBalance: 0,
   isLoading: false,
   actionError: null,
-};
+}
 
-export default PaymentCheckoutModal;
+export default PaymentCheckoutModal

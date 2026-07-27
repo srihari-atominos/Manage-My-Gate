@@ -1,15 +1,15 @@
-import React, { memo } from 'react';
-import { CCard, CCardBody, CRow, CCol } from '@coreui/react';
-import AmenityStatusBadge from '../AmenityStatusBadge.jsx';
+import React, { memo } from 'react'
+import { CCard, CCardBody, CRow, CCol } from '@coreui/react'
+import AmenityStatusBadge from '../AmenityStatusBadge.jsx'
 
 const BookingDetailsCard = memo(({ booking }) => {
-  if (!booking) return null;
+  if (!booking) return null
 
   return (
     <CCard className="border-0 shadow-sm mb-4">
       <CCardBody className="p-4">
-        <h6 className="fw-bold mb-4 text-uppercase text-muted" >Pass Details</h6>
-        
+        <h6 className="fw-bold mb-4 text-uppercase text-muted">Pass Details</h6>
+
         <CRow className="g-4 mb-4">
           <CCol xs={6}>
             <div className="small text-muted text-uppercase fw-bold mb-1">Booking ID</div>
@@ -26,7 +26,12 @@ const BookingDetailsCard = memo(({ booking }) => {
           <CCol xs={12}>
             <div className="small text-muted text-uppercase fw-bold mb-1">Valid On</div>
             <div className="fw-semibold">
-              {new Date(booking.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              {new Date(booking.date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+              })}
             </div>
           </CCol>
           <CCol xs={6}>
@@ -41,7 +46,9 @@ const BookingDetailsCard = memo(({ booking }) => {
 
         <div className="d-flex justify-content-between align-items-center pt-3 border-top mb-2">
           <span className="small text-muted fw-bold text-uppercase">Payment Status</span>
-          <span className="fw-bold text-success text-capitalize">{booking.paymentStatus || 'Success'}</span>
+          <span className="fw-bold text-success text-capitalize">
+            {booking.paymentStatus || 'Success'}
+          </span>
         </div>
         <div className="d-flex justify-content-between align-items-center pt-2">
           <span className="small text-muted fw-bold text-uppercase">Pass Status</span>
@@ -49,7 +56,7 @@ const BookingDetailsCard = memo(({ booking }) => {
         </div>
       </CCardBody>
     </CCard>
-  );
-});
+  )
+})
 
-export default BookingDetailsCard;
+export default BookingDetailsCard

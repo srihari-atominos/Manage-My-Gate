@@ -94,11 +94,11 @@ const getPopulateCreatorStages = () => [
     $addFields: {
       'createdBy': {
         _id: '$createdBy',
-        name: { 
-          $cond: [
-            { $and: [ { $ne: ['$creator_info.name', null] }, { $ne: ['$creator_info.name', ''] } ] },
-            '$creator_info.name',
-            { $ifNull: ['$creator_info.username', 'Unknown'] }
+        name: {
+          $ifNull: [
+            { $cond: [{ $eq: ['$creator_info.name', ''] }, null, '$creator_info.name'] },
+            { $cond: [{ $eq: ['$creator_info.username', ''] }, null, '$creator_info.username'] },
+            'Unknown'
           ]
         },
         unit: { $ifNull: ['$villa_info.villaNumber', ''] }
@@ -112,6 +112,15 @@ const getPopulateCreatorStages = () => [
     }
   }
 ];
+
+export const getPopulatedPollById = async (pollId, orgId) => {
+  const pipeline = [
+    { $match: { _id: new mongoose.Types.ObjectId(pollId), orgId: new mongoose.Types.ObjectId(orgId) } },
+    ...getPopulateCreatorStages()
+  ];
+  const result = await Poll.aggregate(pipeline);
+  return result[0];
+};
 
 export const getPollsByStatus = async (orgId, status, page = 1, limit = 20, search = '', sort = 'latest', userContext = null) => {
   const skip = (page - 1) * limit;
@@ -197,8 +206,20 @@ export const recordVote = async (pollId, orgId, residentId, optionIndex) => {
   
   if (existingVote) {
     if (existingVote.optionIndex === optionIndex) {
-      // Same option, do nothing
-      return await Poll.findById(pollId);
+      // Same option, unvote
+      await PollVote.findByIdAndDelete(existingVote._id);
+      
+      const updatedPoll = await Poll.findOneAndUpdate(
+        { _id: pollId, orgId },
+        { 
+          $inc: { 
+            [`options.${optionIndex}.votesCount`]: -1
+          } 
+        },
+        { new: true }
+      );
+      
+      return { poll: updatedPoll, action: 'unvoted' };
     }
     
     // Decrement old option, increment new option
@@ -217,7 +238,7 @@ export const recordVote = async (pollId, orgId, residentId, optionIndex) => {
     existingVote.optionIndex = optionIndex;
     await existingVote.save();
     
-    return updatedPoll;
+    return { poll: updatedPoll, action: 'changed' };
   }
   
   // Create the new vote
@@ -230,7 +251,7 @@ export const recordVote = async (pollId, orgId, residentId, optionIndex) => {
     { new: true }
   );
   
-  return updatedPoll;
+  return { poll: updatedPoll, action: 'voted' };
 };
 
 export const getPollResults = async (pollId, orgId) => {
@@ -245,4 +266,42 @@ export const hasVoted = async (pollId, orgId, residentId) => {
 export const getUserVotedPollIds = async (orgId, residentId, pollIds) => {
   const votes = await PollVote.find({ orgId, residentId, pollId: { $in: pollIds } });
   return votes.map(v => v.pollId.toString());
+};
+
+export const getPollVoters = async (pollId, orgId) => {
+  const pipeline = [
+    { $match: { pollId: new mongoose.Types.ObjectId(pollId), orgId: new mongoose.Types.ObjectId(orgId) } },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'residentId',
+        foreignField: '_id',
+        as: 'user_info'
+      }
+    },
+    { $unwind: { path: '$user_info', preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: 'villas',
+        localField: 'user_info.villaId',
+        foreignField: '_id',
+        as: 'villa_info'
+      }
+    },
+    { $unwind: { path: '$villa_info', preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        optionIndex: 1,
+        name: {
+          $ifNull: [
+            { $cond: [ { $eq: ['$user_info.name', ''] }, null, '$user_info.name' ] },
+            { $cond: [ { $eq: ['$user_info.username', ''] }, null, '$user_info.username' ] },
+            'Unknown'
+          ]
+        },
+        unit: { $ifNull: ['$villa_info.unitNumber', ''] }
+      }
+    }
+  ];
+  return await PollVote.aggregate(pipeline);
 };

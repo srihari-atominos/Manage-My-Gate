@@ -1,29 +1,30 @@
-import React, { memo } from 'react';
-import PropTypes from 'prop-types';
+import React, { memo } from 'react'
+import PropTypes from 'prop-types'
 
 const STATUS_CONFIG = {
   PAID: {
     className: 'billing-status-badge billing-status-badge--paid',
-    label:     'Paid',
-    icon:      'fa-circle-check',
+    label: 'Paid',
+    icon: 'fa-circle-check',
   },
   UNPAID: {
     className: 'billing-status-badge billing-status-badge--unpaid',
-    label:     'Unpaid',
-    icon:      'fa-circle-xmark',
+    label: 'Unpaid',
+    icon: 'fa-circle-xmark',
   },
   VERIFICATION_PENDING: {
     className: 'billing-status-badge billing-status-badge--pending',
-    label:     'Pending',
-    icon:      'fa-clock-rotate-left',
+    label: 'Pending',
+    icon: 'fa-clock-rotate-left',
   },
-};
+}
 
 const StatusBadge = memo(({ status, paymentMethod }) => {
-  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.UNPAID;
-  const tooltipText = status === 'VERIFICATION_PENDING'
-    ? `${paymentMethod || 'Cheque/NEFT'} currently clearing T+3`
-    : undefined;
+  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.UNPAID
+  const tooltipText =
+    status === 'VERIFICATION_PENDING'
+      ? `${paymentMethod || 'Cheque/NEFT'} currently clearing T+3`
+      : undefined
 
   return (
     <span
@@ -35,9 +36,9 @@ const StatusBadge = memo(({ status, paymentMethod }) => {
       <i className={`fa-solid ${cfg.icon} me-1`} />
       {cfg.label}
     </span>
-  );
-});
-StatusBadge.displayName = 'StatusBadge';
+  )
+})
+StatusBadge.displayName = 'StatusBadge'
 
 export const BillingLedgerRow = memo(({ invoice, onMarkPaid, onOfflineSettle }) => (
   <tr className="billing-ledger__row">
@@ -50,15 +51,14 @@ export const BillingLedgerRow = memo(({ invoice, onMarkPaid, onOfflineSettle }) 
     </td>
     <td className="billing-ledger__cell">
       <div className="d-flex align-items-center gap-2">
-        <div className="billing-ledger__avatar">
-          {(invoice.targetUser || 'Unknown').charAt(0)}
-        </div>
+        <div className="billing-ledger__avatar">{(invoice.targetUser || 'Unknown').charAt(0)}</div>
         <span className="billing-ledger__user">{invoice.targetUser || 'Unknown'}</span>
       </div>
     </td>
     <td className="billing-ledger__cell billing-ledger__cell--amount">
       <span className="billing-ledger__amount">
-        {invoice.currency === 'INR' ? '₹' : invoice.currency}{(invoice.amount || 0).toLocaleString('en-IN')}
+        {invoice.currency === 'INR' ? '₹' : invoice.currency}
+        {(invoice.amount || 0).toLocaleString('en-IN')}
       </span>
     </td>
     <td className="billing-ledger__cell">
@@ -89,14 +89,14 @@ export const BillingLedgerRow = memo(({ invoice, onMarkPaid, onOfflineSettle }) 
       </button>
     </td>
   </tr>
-));
+))
 
-BillingLedgerRow.displayName = 'BillingLedgerRow';
+BillingLedgerRow.displayName = 'BillingLedgerRow'
 
 BillingLedgerRow.propTypes = {
   invoice: PropTypes.object.isRequired,
   onMarkPaid: PropTypes.func.isRequired,
   onOfflineSettle: PropTypes.func.isRequired,
-};
+}
 
-export default BillingLedgerRow;
+export default BillingLedgerRow

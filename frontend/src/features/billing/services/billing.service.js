@@ -1,4 +1,4 @@
-import apiClient from '../../../services/apiClient.js';
+import apiClient from '../../../services/apiClient.js'
 
 export const billingService = {
   /**
@@ -6,14 +6,14 @@ export const billingService = {
    * @param {string} communityId
    */
   async getKPIs(communityId) {
-    return await apiClient.get('/invoices/kpis', { params: { communityId } });
+    return await apiClient.get('/invoices/kpis', { params: { communityId } })
   },
 
   /**
    * Fetch personal outstanding dues for a resident.
    */
   async getMyDues() {
-    return await apiClient.get('/invoices/my-dues');
+    return await apiClient.get('/invoices/my-dues')
   },
 
   /**
@@ -23,7 +23,7 @@ export const billingService = {
    * @param {Object} [filters]
    */
   async getInvoicesTable(page, limit, filters = {}) {
-    return await apiClient.get('/invoices', { params: { page, limit, ...filters } });
+    return await apiClient.get('/invoices', { params: { page, limit, ...filters } })
   },
 
   /**
@@ -35,7 +35,7 @@ export const billingService = {
     return await apiClient.post('/invoices/trigger-manual', {
       assessmentId,
       billingPeriodString,
-    });
+    })
   },
 
   /**
@@ -44,7 +44,7 @@ export const billingService = {
    * @param {Object} payload - { offlineReference, paymentMethod }
    */
   async settleInvoiceOffline(invoiceId, payload) {
-    return await apiClient.patch(`/invoices/${invoiceId}/settle-offline`, payload);
+    return await apiClient.patch(`/invoices/${invoiceId}/settle-offline`, payload)
   },
 
   /**
@@ -52,7 +52,7 @@ export const billingService = {
    * @param {string} invoiceId
    */
   async approveInvoiceOffline(invoiceId) {
-    return await apiClient.patch(`/invoices/${invoiceId}/approve`);
+    return await apiClient.patch(`/invoices/${invoiceId}/approve`)
   },
 
   /**
@@ -60,7 +60,7 @@ export const billingService = {
    * @param {string} invoiceId
    */
   async payInvoiceWithWallet(invoiceId) {
-    return await apiClient.post('/wallet/pay-invoice', { invoiceId });
+    return await apiClient.post('/wallet/pay-invoice', { invoiceId })
   },
 
   /**
@@ -75,7 +75,7 @@ export const billingService = {
       amount,
       currency: 'INR',
       gateway: 'razorpay',
-    });
+    })
   },
 
   /**
@@ -92,9 +92,9 @@ export const billingService = {
       razorpay_payment_id: payload.razorpayPaymentId || payload.razorpay_payment_id,
       razorpay_order_id: payload.razorpayOrderId || payload.orderId || payload.razorpay_order_id,
       razorpay_signature: payload.razorpaySignature || payload.razorpay_signature,
-    };
-    return await apiClient.post('/payments/verify-signature', formattedPayload);
+    }
+    return await apiClient.post('/payments/verify-signature', formattedPayload)
   },
-};
+}
 
-export default billingService;
+export default billingService

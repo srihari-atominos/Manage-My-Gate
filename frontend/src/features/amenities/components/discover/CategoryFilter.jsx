@@ -1,11 +1,14 @@
-﻿import React, { memo } from 'react';
-import { CButton } from '@coreui/react';
+﻿import React, { memo } from 'react'
+import { CButton } from '@coreui/react'
 
 const CategoryFilter = memo(({ categories, selectedCategory, onSelect }) => {
   return (
-    <div className="d-flex gap-2 flex-wrap mb-4 pb-2" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-      {categories.map(cat => (
-        <CButton 
+    <div
+      className="d-flex gap-2 flex-wrap mb-4 pb-2"
+      style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
+    >
+      {categories.map((cat) => (
+        <CButton
           key={cat}
           color={selectedCategory === cat ? 'primary' : 'light'}
           variant={selectedCategory === cat ? '' : 'outline'}
@@ -19,7 +22,7 @@ const CategoryFilter = memo(({ categories, selectedCategory, onSelect }) => {
         </CButton>
       ))}
     </div>
-  );
-});
+  )
+})
 
-export default CategoryFilter;
+export default CategoryFilter

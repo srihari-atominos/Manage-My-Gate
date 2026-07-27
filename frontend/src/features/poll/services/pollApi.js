@@ -1,4 +1,4 @@
-import apiClient from '../../../services/apiClient';
+import apiClient from '../../../services/apiClient'
 
 export const pollApi = {
   createPoll: (data) => apiClient.post('/polls', data),
@@ -12,5 +12,6 @@ export const pollApi = {
   publishPoll: (id) => apiClient.post(`/polls/${id}/publish`),
   closePoll: (id) => apiClient.post(`/polls/${id}/close`),
   voteOnPoll: (id, optionIndex) => apiClient.post(`/polls/${id}/vote`, { optionIndex }),
-  getPollResults: (id) => apiClient.get(`/polls/${id}/results`)
-};
+  getPollResults: (id) => apiClient.get(`/polls/${id}/results`),
+  getPollVoters: (id) => apiClient.get(`/polls/${id}/voters`),
+}

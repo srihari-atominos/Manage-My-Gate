@@ -95,7 +95,9 @@ const UserProfileModal = ({ visible, onClose }) => {
   // Derive static asset base URL
   const apiBase = config.apiUrl
   const backendHost = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase
-  const existingAvatarUrl = currentUser?.avatar ? `${backendHost}/${currentUser.avatar.startsWith('/') ? currentUser.avatar.substring(1) : currentUser.avatar}` : null
+  const existingAvatarUrl = currentUser?.avatar
+    ? `${backendHost}/${currentUser.avatar.startsWith('/') ? currentUser.avatar.substring(1) : currentUser.avatar}`
+    : null
 
   // Capitalized letter fallback
   const fallbackLetter = currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'U'
@@ -103,14 +105,20 @@ const UserProfileModal = ({ visible, onClose }) => {
   return (
     <CModal visible={visible} onClose={onClose} id="user-profile-modal" alignment="center">
       <CModalHeader>
-        <CModalTitle style={{ fontSize: '1rem', fontWeight: 700 }}>
-          My Profile Settings
-        </CModalTitle>
+        <CModalTitle style={{ fontSize: '1rem', fontWeight: 700 }}>My Profile Settings</CModalTitle>
       </CModalHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CModalBody>
-          {error && <CAlert color="danger" className="py-2 small">{error}</CAlert>}
-          {successMsg && <CAlert color="success" className="py-2 small">{successMsg}</CAlert>}
+          {error && (
+            <CAlert color="danger" className="py-2 small">
+              {error}
+            </CAlert>
+          )}
+          {successMsg && (
+            <CAlert color="success" className="py-2 small">
+              {successMsg}
+            </CAlert>
+          )}
 
           {/* Avatar Preview & File Upload */}
           <div className="profile-avatar-container">
@@ -121,9 +129,12 @@ const UserProfileModal = ({ visible, onClose }) => {
             ) : (
               <div className="profile-avatar-fallback">{fallbackLetter}</div>
             )}
-            
+
             <div className="w-100 mt-2">
-              <CFormLabel htmlFor="profile-avatar-input" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+              <CFormLabel
+                htmlFor="profile-avatar-input"
+                style={{ fontSize: '0.85rem', fontWeight: 600 }}
+              >
                 Upload New Avatar
               </CFormLabel>
               <CFormInput
@@ -140,15 +151,13 @@ const UserProfileModal = ({ visible, onClose }) => {
 
           {/* Email (Read Only) */}
           <div className="mb-3">
-            <CFormLabel htmlFor="profile-email-input" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            <CFormLabel
+              htmlFor="profile-email-input"
+              style={{ fontSize: '0.85rem', fontWeight: 600 }}
+            >
               Email Address
             </CFormLabel>
-            <CFormInput
-              id="profile-email-input"
-              type="email"
-              disabled
-              {...register('email')}
-            />
+            <CFormInput id="profile-email-input" type="email" disabled {...register('email')} />
             <div className="text-muted small mt-1">
               Email address is managed by administrator and cannot be changed.
             </div>
@@ -156,7 +165,10 @@ const UserProfileModal = ({ visible, onClose }) => {
 
           {/* Name */}
           <div className="mb-3">
-            <CFormLabel htmlFor="profile-name-input" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            <CFormLabel
+              htmlFor="profile-name-input"
+              style={{ fontSize: '0.85rem', fontWeight: 600 }}
+            >
               Full Name
             </CFormLabel>
             <CFormInput
@@ -166,16 +178,15 @@ const UserProfileModal = ({ visible, onClose }) => {
               {...register('name')}
               invalid={!!errors.name}
             />
-            {errors.name && (
-              <div className="text-danger small mt-1">
-                {errors.name.message}
-              </div>
-            )}
+            {errors.name && <div className="text-danger small mt-1">{errors.name.message}</div>}
           </div>
 
           {/* Phone */}
           <div className="mb-3">
-            <CFormLabel htmlFor="profile-phone-input" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            <CFormLabel
+              htmlFor="profile-phone-input"
+              style={{ fontSize: '0.85rem', fontWeight: 600 }}
+            >
               Phone Number
             </CFormLabel>
             <CFormInput
@@ -185,15 +196,17 @@ const UserProfileModal = ({ visible, onClose }) => {
               {...register('phone')}
               invalid={!!errors.phone}
             />
-            {errors.phone && (
-              <div className="text-danger small mt-1">
-                {errors.phone.message}
-              </div>
-            )}
+            {errors.phone && <div className="text-danger small mt-1">{errors.phone.message}</div>}
           </div>
         </CModalBody>
         <CModalFooter className="border-0 pt-0">
-          <CButton id="close-profile-btn" color="light" size="sm" onClick={onClose} disabled={loading}>
+          <CButton
+            id="close-profile-btn"
+            color="light"
+            size="sm"
+            onClick={onClose}
+            disabled={loading}
+          >
             Cancel
           </CButton>
           <CButton

@@ -1,39 +1,39 @@
-import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import config from '../../../config/config.js';
-import { createRazorpayOrder, verifyRazorpayPayment } from '../store/walletSlice';
-import { Modal, Button, Form, Spinner, Alert } from 'react-bootstrap';
+import React, { useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import config from '../../../config/config.js'
+import { createRazorpayOrder, verifyRazorpayPayment } from '../store/walletSlice'
+import { Modal, Button, Form, Spinner, Alert } from 'react-bootstrap'
 
 const WalletRechargeModal = ({ show, onHide }) => {
-  const dispatch = useDispatch();
-  const [amount, setAmount] = useState('');
-  const { isLoading, error } = useSelector(state => state.wallet);
+  const dispatch = useDispatch()
+  const [amount, setAmount] = useState('')
+  const { isLoading, error } = useSelector((state) => state.wallet)
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
-      if (window.Razorpay) return resolve(true);
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
+      if (window.Razorpay) return resolve(true)
+      const script = document.createElement('script')
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+      script.onload = () => resolve(true)
+      script.onerror = () => resolve(false)
+      document.body.appendChild(script)
+    })
+  }
 
   const handleRecharge = async (e) => {
-    e.preventDefault();
-    if (!amount || amount <= 0) return;
+    e.preventDefault()
+    if (!amount || amount <= 0) return
 
-    const isLoaded = await loadRazorpayScript();
-    if (!isLoaded) return alert('Razorpay SDK failed to load. Are you online?');
+    const isLoaded = await loadRazorpayScript()
+    if (!isLoaded) return alert('Razorpay SDK failed to load. Are you online?')
 
-    const orderAction = await dispatch(createRazorpayOrder({ amount: Number(amount) }));
-    
+    const orderAction = await dispatch(createRazorpayOrder({ amount: Number(amount) }))
+
     if (orderAction.meta.requestStatus === 'fulfilled') {
-      const order = orderAction.payload.data || orderAction.payload;
+      const order = orderAction.payload.data || orderAction.payload
 
       const options = {
-        key: config.razorpayKeyId, 
+        key: config.razorpayKeyId,
         amount: order.amount,
         currency: order.currency,
         name: 'Gated Community Wallet',
@@ -44,24 +44,24 @@ const WalletRechargeModal = ({ show, onHide }) => {
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_order_id: response.razorpay_order_id,
             razorpay_signature: response.razorpay_signature,
-            amount: Number(amount)
-          };
-          const verifyAction = await dispatch(verifyRazorpayPayment(verificationData));
+            amount: Number(amount),
+          }
+          const verifyAction = await dispatch(verifyRazorpayPayment(verificationData))
           if (verifyAction.meta.requestStatus === 'fulfilled') {
-            onHide();
-            setAmount('');
+            onHide()
+            setAmount('')
           }
         },
-        theme: { color: '#0d6efd' }
-      };
+        theme: { color: '#0d6efd' },
+      }
 
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response){
-        alert(response.error.description);
-      });
-      rzp.open();
+      const rzp = new window.Razorpay(options)
+      rzp.on('payment.failed', function (response) {
+        alert(response.error.description)
+      })
+      rzp.open()
     }
-  };
+  }
 
   return (
     <Modal show={show} onHide={onHide} centered>
@@ -73,9 +73,9 @@ const WalletRechargeModal = ({ show, onHide }) => {
         <Form onSubmit={handleRecharge}>
           <Form.Group className="mb-3">
             <Form.Label>Amount (₹)</Form.Label>
-            <Form.Control 
-              type="number" 
-              placeholder="Enter amount" 
+            <Form.Control
+              type="number"
+              placeholder="Enter amount"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               min="1"
@@ -88,7 +88,7 @@ const WalletRechargeModal = ({ show, onHide }) => {
         </Form>
       </Modal.Body>
     </Modal>
-  );
-};
+  )
+}
 
-export default WalletRechargeModal;
+export default WalletRechargeModal

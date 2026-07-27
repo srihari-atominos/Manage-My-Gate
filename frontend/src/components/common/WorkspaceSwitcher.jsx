@@ -1,10 +1,5 @@
 import React from 'react'
-import {
-  CDropdown,
-  CDropdownToggle,
-  CDropdownMenu,
-  CDropdownItem,
-} from '@coreui/react'
+import { CDropdown, CDropdownToggle, CDropdownMenu, CDropdownItem } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilBuilding } from '@coreui/icons'
 import { useTranslation } from 'react-i18next'
@@ -12,10 +7,10 @@ import useWorkspaceSwitcher from '../../features/workspace/hooks/useWorkspaceSwi
 
 /**
  * WorkspaceSwitcher Component
- * 
+ *
  * Presentational dropdown to switch active workspace context.
  * Consumes useWorkspaceSwitcher custom hook and translates static text using react-i18next.
- * 
+ *
  * @component
  */
 export const WorkspaceSwitcher = () => {
@@ -52,7 +47,9 @@ export const WorkspaceSwitcher = () => {
             id={`workspace-switch-item-${ws.orgId}`}
           >
             <div>
-              <div className="fw-semibold text-truncate" style={{ maxWidth: '180px' }}>{ws.name}</div>
+              <div className="fw-semibold text-truncate" style={{ maxWidth: '180px' }}>
+                {ws.name}
+              </div>
               <div className="small text-body-secondary">{ws.roleName}</div>
             </div>
             {ws.isPlatform && (

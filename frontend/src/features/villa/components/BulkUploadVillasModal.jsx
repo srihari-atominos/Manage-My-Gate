@@ -53,8 +53,7 @@ const parseXLSX = (arrayBuffer) => {
         key = 'type'
       else if (header.includes('floor area') || header.includes('sq ft') || header.includes('area'))
         key = 'floorAreaSqFt'
-      else if (header.includes('occupancy status') || header.includes('status'))
-        key = 'status'
+      else if (header.includes('occupancy status') || header.includes('status')) key = 'status'
       else if (header.includes('role')) key = 'roleName'
 
       row[key] =
@@ -92,74 +91,93 @@ const parseXLSX = (arrayBuffer) => {
 }
 
 const parseCSV = (csvText) => {
-  const lines = csvText.split(/\r?\n/).filter(line => line.trim());
-  if (lines.length < 2) return [];
+  const lines = csvText.split(/\r?\n/).filter((line) => line.trim())
+  if (lines.length < 2) return []
 
   // Simple CSV parser that handles quotes
   const parseLine = (line) => {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
+    const result = []
+    let current = ''
+    let inQuotes = false
     for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"' && line[i+1] === '"') {
-        current += '"';
-        i++;
+      const char = line[i]
+      if (char === '"' && line[i + 1] === '"') {
+        current += '"'
+        i++
       } else if (char === '"') {
-        inQuotes = !inQuotes;
+        inQuotes = !inQuotes
       } else if (char === ',' && !inQuotes) {
-        result.push(current);
-        current = '';
+        result.push(current)
+        current = ''
       } else {
-        current += char;
+        current += char
       }
     }
-    result.push(current);
-    return result;
-  };
-
-  const headers = parseLine(lines[0]).map(h => (h || '').toString().trim().toLowerCase());
-  
-  const parsed = [];
-  for (let i = 1; i < lines.length; i++) {
-    const values = parseLine(lines[i]);
-    if (!values || values.length === 0 || (values.length === 1 && !values[0])) continue;
-
-    const row = {};
-    headers.forEach((header, index) => {
-      let key = header;
-      if (header.includes('unitnumber') || header.includes('unit number')) key = 'unitNumber';
-      else if (header.includes('blockorbuilding') || header.includes('block') || header.includes('building')) key = 'blockOrBuilding';
-      else if (header.includes('email')) key = 'email';
-      else if (header.includes('residenttype') || header.includes('resident type')) key = 'residentType';
-      else if (header.includes('unit type') || header.includes('type') || header.includes('configuration')) key = 'type';
-      else if (header.includes('floor area') || header.includes('sq ft') || header.includes('area')) key = 'floorAreaSqFt';
-      else if (header.includes('occupancy status') || header.includes('status')) key = 'status';
-      else if (header.includes('role')) key = 'roleName';
-
-      row[key] = values[index] !== undefined && values[index] !== null ? values[index].toString().trim() : '';
-    });
-
-    row.isValidVilla = !!row.unitNumber;
-    if (row.email) {
-      row.isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email);
-      row.isValidResidentType = ['Owner', 'Tenant', 'Family Member', 'Resident Owner', 'Family'].some((t) => (row.residentType || '').includes(t));
-      if (!row.roleName && row.residentType) {
-        if (row.residentType.includes('Owner')) row.roleName = 'Resident Owner';
-        else if (row.residentType.includes('Tenant')) row.roleName = 'Resident Tenant';
-        else if (row.residentType.includes('Family')) row.roleName = 'Family Member';
-      }
-      row.isValidRole = !!row.roleName;
-    } else {
-      row.isValidEmail = true;
-      row.isValidResidentType = true;
-      row.isValidRole = true;
-    }
-    row.isValid = row.isValidVilla && row.isValidEmail && row.isValidResidentType && row.isValidRole;
-    parsed.push(row);
+    result.push(current)
+    return result
   }
-  return parsed;
-};
+
+  const headers = parseLine(lines[0]).map((h) => (h || '').toString().trim().toLowerCase())
+
+  const parsed = []
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseLine(lines[i])
+    if (!values || values.length === 0 || (values.length === 1 && !values[0])) continue
+
+    const row = {}
+    headers.forEach((header, index) => {
+      let key = header
+      if (header.includes('unitnumber') || header.includes('unit number')) key = 'unitNumber'
+      else if (
+        header.includes('blockorbuilding') ||
+        header.includes('block') ||
+        header.includes('building')
+      )
+        key = 'blockOrBuilding'
+      else if (header.includes('email')) key = 'email'
+      else if (header.includes('residenttype') || header.includes('resident type'))
+        key = 'residentType'
+      else if (
+        header.includes('unit type') ||
+        header.includes('type') ||
+        header.includes('configuration')
+      )
+        key = 'type'
+      else if (header.includes('floor area') || header.includes('sq ft') || header.includes('area'))
+        key = 'floorAreaSqFt'
+      else if (header.includes('occupancy status') || header.includes('status')) key = 'status'
+      else if (header.includes('role')) key = 'roleName'
+
+      row[key] =
+        values[index] !== undefined && values[index] !== null ? values[index].toString().trim() : ''
+    })
+
+    row.isValidVilla = !!row.unitNumber
+    if (row.email) {
+      row.isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)
+      row.isValidResidentType = [
+        'Owner',
+        'Tenant',
+        'Family Member',
+        'Resident Owner',
+        'Family',
+      ].some((t) => (row.residentType || '').includes(t))
+      if (!row.roleName && row.residentType) {
+        if (row.residentType.includes('Owner')) row.roleName = 'Resident Owner'
+        else if (row.residentType.includes('Tenant')) row.roleName = 'Resident Tenant'
+        else if (row.residentType.includes('Family')) row.roleName = 'Family Member'
+      }
+      row.isValidRole = !!row.roleName
+    } else {
+      row.isValidEmail = true
+      row.isValidResidentType = true
+      row.isValidRole = true
+    }
+    row.isValid = row.isValidVilla && row.isValidEmail && row.isValidResidentType && row.isValidRole
+    parsed.push(row)
+  }
+  return parsed
+}
 
 export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
   const { t } = useTranslation()
@@ -207,11 +225,11 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
           setParsedRows(rows)
         }
       } catch (err) {
-        console.error('File parsing error:', err);
+        console.error('File parsing error:', err)
         setErrorMsg(t('villas.bulk.parseError', 'Failed to parse file: ') + err.message)
       }
     }
-    
+
     if (file.name.endsWith('.csv')) {
       reader.readAsText(file)
     } else {
@@ -235,7 +253,9 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
     if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.csv'))) {
       processFile(file)
     } else {
-      setErrorMsg(t('villas.bulk.invalidType', 'Please upload a valid Excel (.xlsx) or CSV (.csv) file.'))
+      setErrorMsg(
+        t('villas.bulk.invalidType', 'Please upload a valid Excel (.xlsx) or CSV (.csv) file.'),
+      )
     }
   }
 
@@ -393,7 +413,9 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
               <table className="table table-hover align-middle mb-0 small">
                 <thead className="table-light sticky-top">
                   <tr>
-                    <th scope="col" className="ps-3">{t('villas.bulk.csvUnitNumber', 'Unit Number')}</th>
+                    <th scope="col" className="ps-3">
+                      {t('villas.bulk.csvUnitNumber', 'Unit Number')}
+                    </th>
                     <th scope="col">{t('villas.bulk.csvBlock', 'Block/Building')}</th>
                     <th scope="col">{t('villas.bulk.csvUnitType', 'Unit Type')}</th>
                     <th scope="col">{t('villas.bulk.csvFloorArea', 'Floor Area (Sq.Ft)')}</th>

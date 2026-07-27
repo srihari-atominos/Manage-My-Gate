@@ -36,5 +36,6 @@ router.post('/:id/vote', validate(pollValidation.voteRules()), pollController.vo
 
 // Results
 router.get('/:id/results', validate(pollValidation.validateIdRule()), pollController.getPollResults);
+router.get('/:id/voters', validate(pollValidation.validateIdRule()), pollController.getPollVoters);
 
 export default router;

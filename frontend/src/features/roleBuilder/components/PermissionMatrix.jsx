@@ -22,13 +22,18 @@ const getCategoryDisplayName = (category) => {
     users: 'User Management',
     notices: 'Notices Board',
     integrations: 'Integrations Hub',
-    complaints: 'Complaints/Maintenance'
+    complaints: 'Complaints/Maintenance',
   }
   const key = category.toLowerCase()
-  return map[key] || (category.charAt(0).toUpperCase() + category.slice(1))
+  return map[key] || category.charAt(0).toUpperCase() + category.slice(1)
 }
 
-const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, onTogglePermission }) => {
+const PermissionMatrix = ({
+  groupedPermissions,
+  selectedIds,
+  onSelectAllGroup,
+  onTogglePermission,
+}) => {
   if (!groupedPermissions || Object.keys(groupedPermissions).length === 0) {
     return (
       <div className="text-center text-body-secondary py-3 small">
@@ -41,20 +46,29 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
     <div className="d-flex flex-column gap-3">
       {Object.keys(groupedPermissions).map((category) => {
         let perms = groupedPermissions[category] || []
-        
+
         // Filter complaints permissions as requested
         if (category.toLowerCase() === 'complaints') {
-          const allowedComplaintsPerms = ['dashboard', 'raise_ticket', 'complaint_management', 'staff_vendors', 'assignee', 'track_requests', 'staff'];
-          perms = perms.filter(p => {
-            const permName = p.name || p.code || p._id || '';
-            const action = permName.includes(':') ? permName.split(':')[1] : permName;
-            return allowedComplaintsPerms.includes(action.toLowerCase());
-          });
+          const allowedComplaintsPerms = [
+            'dashboard',
+            'raise_ticket',
+            'complaint_management',
+            'staff_vendors',
+            'assignee',
+            'track_requests',
+            'staff',
+          ]
+          perms = perms.filter((p) => {
+            const permName = p.name || p.code || p._id || ''
+            const action = permName.includes(':') ? permName.split(':')[1] : permName
+            return allowedComplaintsPerms.includes(action.toLowerCase())
+          })
         }
-        
+
         const groupCodes = perms.map((p) => p.name || p.code || p._id)
-        const isAllGroupSelected = groupCodes.length > 0 && groupCodes.every((code) => selectedIds.includes(code))
-        
+        const isAllGroupSelected =
+          groupCodes.length > 0 && groupCodes.every((code) => selectedIds.includes(code))
+
         // Enforce single visual selection for visitor radios if backend synced multiple
         let firstSelectedVisitorPerm = null
         if (category.toLowerCase() === 'visitor') {
@@ -80,12 +94,12 @@ const PermissionMatrix = ({ groupedPermissions, selectedIds, onSelectAllGroup, o
                 />
               )}
             </div>
-            
+
             <CRow className="g-2">
               {perms.map((perm) => {
                 const permValue = perm.name || perm.code || perm._id
                 const idSafe = String(permValue).replace(/:/g, '-')
-                
+
                 let isChecked = selectedIds.includes(permValue)
                 if (category.toLowerCase() === 'visitor') {
                   isChecked = permValue === firstSelectedVisitorPerm

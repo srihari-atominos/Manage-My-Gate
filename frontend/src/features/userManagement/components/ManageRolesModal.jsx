@@ -21,14 +21,20 @@ const schema = yup.object().shape({
 
 /**
  * ManageRolesModal Component
- * 
+ *
  * Form component using react-hook-form to check/uncheck roles for a selected user.
  * Validates with yup schema and enforces read-only state if user lacks permission.
  */
 const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] }) => {
   const hasPermission = usePermission('users', 'update')
 
-  const { reset, watch, setValue, handleSubmit, formState: { errors } } = useForm({
+  const {
+    reset,
+    watch,
+    setValue,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
       selectedRole: '',
@@ -38,9 +44,13 @@ const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] 
   // Reset form values when visible changes or a different user is selected
   useEffect(() => {
     if (visible && user) {
-      const userRoles = typeof user.role === 'string'
-        ? user.role.split(',').map((r) => r.trim()).filter(Boolean)
-        : []
+      const userRoles =
+        typeof user.role === 'string'
+          ? user.role
+              .split(',')
+              .map((r) => r.trim())
+              .filter(Boolean)
+          : []
       reset({ selectedRole: userRoles.length > 0 ? userRoles[0] : '' })
     } else if (!visible) {
       reset({ selectedRole: '' })
@@ -60,12 +70,7 @@ const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] 
   }
 
   return (
-    <CModal
-      visible={visible}
-      onClose={onClose}
-      id="manage-roles-modal"
-      alignment="center"
-    >
+    <CModal visible={visible} onClose={onClose} id="manage-roles-modal" alignment="center">
       <CModalHeader>
         <CModalTitle style={{ fontSize: '1rem', fontWeight: 700 }}>
           Manage Roles - {user?.name || ''}
@@ -108,12 +113,7 @@ const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] 
           )}
         </CModalBody>
         <CModalFooter className="border-0 pt-0">
-          <CButton
-            id="close-manage-roles-btn"
-            color="light"
-            size="sm"
-            onClick={onClose}
-          >
+          <CButton id="close-manage-roles-btn" color="light" size="sm" onClick={onClose}>
             Cancel
           </CButton>
           {hasPermission && (

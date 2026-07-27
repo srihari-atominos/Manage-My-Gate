@@ -80,7 +80,7 @@ const RoleBuilderList = () => {
   )
 
   const renderRowActions = (role) => {
-    const isSuperAdmin = role.name === 'Super Admin'
+    const isSuperAdmin = role.name === 'Super Admin' || role.name === 'Platform Super Admin'
     return (
       <div className="d-flex gap-2">
         {/* Edit button */}

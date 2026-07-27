@@ -1,110 +1,117 @@
-import { useState, useCallback, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import config from '../../../config/config.js';
-import { checkInBooking, fetchRecentScans } from '../services/amenityBookingApi.js';
-import io from 'socket.io-client';
+import { useState, useCallback, useEffect } from 'react'
+import { useSelector } from 'react-redux'
+import config from '../../../config/config.js'
+import { checkInBooking, fetchRecentScans } from '../services/amenityBookingApi.js'
+import io from 'socket.io-client'
 
 export const useSecurityScanner = () => {
-  const { user } = useSelector(state => state.auth || {});
-  const [scanResult, setScanResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const { user } = useSelector((state) => state.auth || {})
+  const [scanResult, setScanResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const processCheckIn = useCallback(async (bookingId) => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
-      const response = await checkInBooking(bookingId);
+      const response = await checkInBooking(bookingId)
       // response contains the updated booking along with isExit and message flags
       setScanResult({
         success: true,
         booking: response || { _id: bookingId },
-        message: response?.message || 'Check-in successful.'
-      });
+        message: response?.message || 'Check-in successful.',
+      })
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to check in.';
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to check in.'
       setScanResult({
         success: false,
-        message: errorMsg
-      });
+        message: errorMsg,
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
-  const handleScan = useCallback((data) => {
-    if (!data) return;
-    
-    // Simple debounce to prevent multiple rapid scans
-    if (loading || scanResult) return;
+  const handleScan = useCallback(
+    (data) => {
+      if (!data) return
 
-    try {
-      const payload = JSON.parse(data);
-      if (payload && payload.bookingId) {
-        processCheckIn(payload.bookingId);
-      } else {
-        throw new Error('Invalid QR Format');
+      // Simple debounce to prevent multiple rapid scans
+      if (loading || scanResult) return
+
+      try {
+        const payload = JSON.parse(data)
+        if (payload && payload.bookingId) {
+          processCheckIn(payload.bookingId)
+        } else {
+          throw new Error('Invalid QR Format')
+        }
+      } catch (e) {
+        setScanResult({
+          success: false,
+          message:
+            'Unrecognized QR Code format. Please scan a valid GatedCommunity Resident Wallet pass.',
+        })
       }
-    } catch (e) {
-      setScanResult({
-        success: false,
-        message: 'Unrecognized QR Code format. Please scan a valid GatedCommunity Resident Wallet pass.'
-      });
-    }
-  }, [loading, scanResult, processCheckIn]);
+    },
+    [loading, scanResult, processCheckIn],
+  )
 
-  const handleManualEntry = useCallback((bookingId) => {
-    if (!bookingId || bookingId.trim() === '') return;
-    processCheckIn(bookingId.trim());
-  }, [processCheckIn]);
+  const handleManualEntry = useCallback(
+    (bookingId) => {
+      if (!bookingId || bookingId.trim() === '') return
+      processCheckIn(bookingId.trim())
+    },
+    [processCheckIn],
+  )
 
   const resetScanner = useCallback(() => {
-    setScanResult(null);
-    setError(null);
-  }, []);
+    setScanResult(null)
+    setError(null)
+  }, [])
 
-  const [recentScans, setRecentScans] = useState([]);
+  const [recentScans, setRecentScans] = useState([])
 
   const loadRecentScans = useCallback(async () => {
     try {
-      const data = await fetchRecentScans();
-      console.log('Fetched recent scans:', data);
-      setRecentScans(data || []);
+      const data = await fetchRecentScans()
+      console.log('Fetched recent scans:', data)
+      setRecentScans(data || [])
     } catch (err) {
-      console.error('Failed to fetch recent scans:', err);
+      console.error('Failed to fetch recent scans:', err)
     }
-  }, []);
+  }, [])
 
   // Fetch initially and set up socket listener for real-time updates
   useEffect(() => {
-    loadRecentScans();
-    
-    const socketUrl = config.socketUrl;
+    loadRecentScans()
+
+    const socketUrl = config.socketUrl
     const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
-      withCredentials: true
-    });
-    
+      withCredentials: true,
+    })
+
     // Join the organization room to receive broadcasts
     socket.on('connect', () => {
-      const orgId = user?.orgId;
+      const orgId = user?.orgId
       if (orgId) {
-        socket.emit('join_room', `org:${orgId}`);
+        socket.emit('join_room', `org:${orgId}`)
       }
-    });
+    })
 
     socket.on('bookingUpdated', () => {
-      loadRecentScans();
-    });
-    
+      loadRecentScans()
+    })
+
     socket.on('bookingCompleted', () => {
-      loadRecentScans();
-    });
-    
+      loadRecentScans()
+    })
+
     return () => {
-      socket.disconnect();
-    };
-  }, [loadRecentScans, user?.orgId]);
+      socket.disconnect()
+    }
+  }, [loadRecentScans, user?.orgId])
 
   return {
     scanResult,
@@ -113,8 +120,8 @@ export const useSecurityScanner = () => {
     recentScans,
     handleScan,
     handleManualEntry,
-    resetScanner
-  };
-};
+    resetScanner,
+  }
+}
 
-export default useSecurityScanner;
+export default useSecurityScanner

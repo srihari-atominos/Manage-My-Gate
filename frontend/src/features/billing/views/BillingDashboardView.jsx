@@ -1,7 +1,7 @@
-import React, { memo, useEffect } from 'react';
-import BillingLedgerTable from '../components/BillingLedgerTable.jsx';
-import { useBilling } from '../hooks/useBilling';
-import '../styles/_billing.scss';
+import React, { memo, useEffect } from 'react'
+import BillingLedgerTable from '../components/BillingLedgerTable.jsx'
+import { useBilling } from '../hooks/useBilling'
+import '../styles/_billing.scss'
 
 /**
  * BillingDashboardView
@@ -9,8 +9,8 @@ import '../styles/_billing.scss';
  * Admin dashboard tab — community billing ledger with KPI strip and data grid.
  */
 const BillingDashboardView = memo(() => {
-  const billingData = useBilling();
-  
+  const billingData = useBilling()
+
   const {
     kpis,
     invoicesList,
@@ -21,18 +21,17 @@ const BillingDashboardView = memo(() => {
     changeTablePage,
     settleOffline,
     approveOffline,
-  } = billingData;
+  } = billingData
 
   useEffect(() => {
     if (activeOrgId) {
-      loadAdminDashboard(activeOrgId);
-      changeTablePage(1);
+      loadAdminDashboard(activeOrgId)
+      changeTablePage(1)
     }
-  }, [activeOrgId, loadAdminDashboard, changeTablePage]);
+  }, [activeOrgId, loadAdminDashboard, changeTablePage])
 
   return (
     <div className="billing-os-theme billing-dashboard-view">
-
       <div className="billing-dashboard-view__header">
         <div>
           <h4 className="billing-dashboard-view__title">Billing Ledger</h4>
@@ -57,11 +56,10 @@ const BillingDashboardView = memo(() => {
         onSettleOffline={settleOffline}
         onApproveOffline={approveOffline}
       />
-
     </div>
-  );
-});
+  )
+})
 
-BillingDashboardView.displayName = 'BillingDashboardView';
+BillingDashboardView.displayName = 'BillingDashboardView'
 
-export default BillingDashboardView;
+export default BillingDashboardView

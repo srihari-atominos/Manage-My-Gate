@@ -26,15 +26,23 @@ const AppHeaderDropdown = () => {
   const avatarLetter = currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'A'
 
   // Derive roles list from currentUser
-  const roles = currentUser?.roles && currentUser.roles.length > 0
-    ? currentUser.roles
-    : (currentUser?.role ? currentUser.role.split(',').map(r => r.trim()).filter(Boolean) : [])
+  const roles =
+    currentUser?.roles && currentUser.roles.length > 0
+      ? currentUser.roles
+      : currentUser?.role
+        ? currentUser.role
+            .split(',')
+            .map((r) => r.trim())
+            .filter(Boolean)
+        : []
   const activeRole = currentUser?.role || ''
 
   const handleSwitchRole = async (roleName) => {
     if (roleName === activeRole) return
     try {
-      await dispatch(switchWorkspaceContext({ targetOrgId: activeOrganizationId, targetRole: roleName })).unwrap()
+      await dispatch(
+        switchWorkspaceContext({ targetOrgId: activeOrganizationId, targetRole: roleName }),
+      ).unwrap()
       window.location.reload()
     } catch (err) {
       console.error('Failed to switch role context:', err)
@@ -57,7 +65,9 @@ const AppHeaderDropdown = () => {
   // Derive dynamic backend static base URL
   const apiBase = config.apiUrl
   const backendHost = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase
-  const avatarUrl = currentUser?.avatar ? `${backendHost}/${currentUser.avatar.startsWith('/') ? currentUser.avatar.substring(1) : currentUser.avatar}` : null
+  const avatarUrl = currentUser?.avatar
+    ? `${backendHost}/${currentUser.avatar.startsWith('/') ? currentUser.avatar.substring(1) : currentUser.avatar}`
+    : null
 
   return (
     <CDropdown variant="nav-item" alignment="end">
@@ -195,7 +205,10 @@ const AppHeaderDropdown = () => {
         </CDropdownItem>
       </CDropdownMenu>
 
-      <UserProfileModal visible={profileModalVisible} onClose={() => setProfileModalVisible(false)} />
+      <UserProfileModal
+        visible={profileModalVisible}
+        onClose={() => setProfileModalVisible(false)}
+      />
     </CDropdown>
   )
 }

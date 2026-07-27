@@ -65,9 +65,13 @@ export const useRoleForm = ({ role, visible, onSave }) => {
     let newValue
     if (checked) {
       let filteredGroupCodes = [...groupCodes]
-      const visitorCodes = groupCodes.filter((code) => String(code).toLowerCase().startsWith('visitor:'))
+      const visitorCodes = groupCodes.filter((code) =>
+        String(code).toLowerCase().startsWith('visitor:'),
+      )
       if (visitorCodes.length > 1) {
-        filteredGroupCodes = groupCodes.filter((code) => !String(code).toLowerCase().startsWith('visitor:') || code === visitorCodes[0])
+        filteredGroupCodes = groupCodes.filter(
+          (code) => !String(code).toLowerCase().startsWith('visitor:') || code === visitorCodes[0],
+        )
       }
       newValue = Array.from(new Set([...currentPermissions, ...filteredGroupCodes]))
     } else {
@@ -112,7 +116,7 @@ export const useRoleForm = ({ role, visible, onSave }) => {
     activeMappingsCount,
     setValue,
     handleSelectAllGroup,
-    handleTogglePermission
+    handleTogglePermission,
   }
 }
 

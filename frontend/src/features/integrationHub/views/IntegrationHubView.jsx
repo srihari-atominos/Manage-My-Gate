@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   CFormInput,
   CRow,
@@ -13,23 +13,23 @@ import {
   CCard,
   CCardBody,
   CBadge,
-} from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilBank, cilSettings, cilCheckCircle, cilWarning } from '@coreui/icons';
-import PageHeader from '../../../components/common/PageHeader';
-import useIntegrationHub from '../hooks/useIntegrationHub.js';
-import ProviderCard from '../components/ProviderCard.jsx';
-import ProviderConnectionsModal from '../components/ProviderConnectionsModal.jsx';
-import CreateConnectionModal from '../components/CreateConnectionModal.jsx';
-import BankDetailsFormModal from '../components/BankDetailsFormModal.jsx';
-import '../styles/_integrationHub.scss';
+} from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilBank, cilSettings, cilCheckCircle, cilWarning } from '@coreui/icons'
+import PageHeader from '../../../components/common/PageHeader'
+import useIntegrationHub from '../hooks/useIntegrationHub.js'
+import ProviderCard from '../components/ProviderCard.jsx'
+import ProviderConnectionsModal from '../components/ProviderConnectionsModal.jsx'
+import CreateConnectionModal from '../components/CreateConnectionModal.jsx'
+import BankDetailsFormModal from '../components/BankDetailsFormModal.jsx'
+import '../styles/_integrationHub.scss'
 
 /**
  * Main View container for the Integration Hub.
  * Binds the useIntegrationHub hook to visual UI components.
  */
 export const IntegrationHubView = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
   const {
     // Redux State
     catalog,
@@ -61,104 +61,107 @@ export const IntegrationHubView = () => {
     handleDeleteConnection,
     handleSaveBankDetails,
     handleClearError,
-  } = useIntegrationHub();
+  } = useIntegrationHub()
 
-  const [toastMessage, setToastMessage] = useState(null);
-  const [toastColor, setToastColor] = useState('success');
+  const [toastMessage, setToastMessage] = useState(null)
+  const [toastColor, setToastColor] = useState('success')
 
   // Local actions error state to prevent overriding global loader/error
-  const [actionLoading, setActionLoading] = useState(false);
-  const [actionError, setActionError] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false)
+  const [actionError, setActionError] = useState(null)
 
   // Filter catalog based on search query
   const filteredCatalog = useMemo(() => {
     return catalog.filter((provider) =>
-      provider.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [catalog, searchQuery]);
+      provider.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    )
+  }, [catalog, searchQuery])
 
   const showToast = (message, color = 'success') => {
-    setToastMessage(message);
-    setToastColor(color);
-  };
+    setToastMessage(message)
+    setToastColor(color)
+  }
 
   const handleConnectionCreate = async (formData) => {
-    setActionLoading(true);
-    setActionError(null);
-    const result = await handleCreateConnection(formData);
-    setActionLoading(false);
+    setActionLoading(true)
+    setActionError(null)
+    const result = await handleCreateConnection(formData)
+    setActionLoading(false)
     if (result.success) {
       showToast(
         t('integrationHub.toast.connectSuccess', 'Integration connected successfully!'),
-        'success'
-      );
-      return true;
+        'success',
+      )
+      return true
     } else {
-      setActionError(result.error);
-      return false;
+      setActionError(result.error)
+      return false
     }
-  };
+  }
 
   const handleLabelUpdate = async (id, newLabel) => {
-    setActionLoading(true);
-    setActionError(null);
-    const result = await handleUpdateLabel(id, newLabel);
-    setActionLoading(false);
+    setActionLoading(true)
+    setActionError(null)
+    const result = await handleUpdateLabel(id, newLabel)
+    setActionLoading(false)
     if (result.success) {
-      showToast(t('integrationHub.toast.updateSuccess', 'Label updated successfully!'), 'success');
-      return true;
+      showToast(t('integrationHub.toast.updateSuccess', 'Label updated successfully!'), 'success')
+      return true
     } else {
-      setActionError(result.error);
-      return false;
+      setActionError(result.error)
+      return false
     }
-  };
+  }
 
   const handleConnectionDelete = async (id) => {
     if (
       !window.confirm(
-        t('integrationHub.confirm.delete', 'Are you sure you want to disconnect this account?')
+        t('integrationHub.confirm.delete', 'Are you sure you want to disconnect this account?'),
       )
     ) {
-      return;
+      return
     }
-    setActionLoading(true);
-    setActionError(null);
-    const result = await handleDeleteConnection(id);
-    setActionLoading(false);
+    setActionLoading(true)
+    setActionError(null)
+    const result = await handleDeleteConnection(id)
+    setActionLoading(false)
     if (result.success) {
       showToast(
         t('integrationHub.toast.deleteSuccess', 'Integration disconnected successfully!'),
-        'success'
-      );
+        'success',
+      )
     } else {
       // Gracefully catch and expose HTTP 409 errors (Orphan Mapping protection)
-      showToast(result.error, 'danger');
+      showToast(result.error, 'danger')
     }
-  };
+  }
 
   const handleBankDetailsSubmit = async (bankFormData) => {
-    setActionLoading(true);
-    setActionError(null);
-    const result = await handleSaveBankDetails(bankFormData);
-    setActionLoading(false);
+    setActionLoading(true)
+    setActionError(null)
+    const result = await handleSaveBankDetails(bankFormData)
+    setActionLoading(false)
     if (result.success) {
       showToast(
         t('integrationHub.toast.bankSuccess', 'Bank details & credentials saved successfully!'),
-        'success'
-      );
-      return true;
+        'success',
+      )
+      return true
     } else {
-      setActionError(result.error);
-      return false;
+      setActionError(result.error)
+      return false
     }
-  };
+  }
 
   return (
     <div className="p-4" style={{ maxWidth: '1200px', margin: '0 auto' }}>
       {/* Page Header */}
       <PageHeader
         title={t('integrationHub.title', 'Integration Hub')}
-        subtitle={t('integrationHub.subtitle', 'Configure and map external third-party API credentials.')}
+        subtitle={t(
+          'integrationHub.subtitle',
+          'Configure and map external third-party API credentials.',
+        )}
       />
 
       {error && (
@@ -195,7 +198,10 @@ export const IntegrationHubView = () => {
                 <p className="text-muted small mb-0">
                   {bankDetails?.isConfigured
                     ? `${bankDetails.bankName || 'Bank'} • A/C: ****${(bankDetails.accountNumber || '').slice(-4)} • IFSC: ${bankDetails.ifscCode || '—'}`
-                    : t('integrationHub.bankCard.subtitle', 'Configure community bank account & Razorpay merchant API keys to process automated billing.')}
+                    : t(
+                        'integrationHub.bankCard.subtitle',
+                        'Configure community bank account & Razorpay merchant API keys to process automated billing.',
+                      )}
                 </p>
               </div>
             </div>
@@ -245,9 +251,9 @@ export const IntegrationHubView = () => {
         isMaximized={isMaximized}
         selectedProvider={selectedProvider}
         onClose={() => {
-          setIsModalOpen(false);
-          setSelectedProvider(null);
-          setActionError(null);
+          setIsModalOpen(false)
+          setSelectedProvider(null)
+          setActionError(null)
         }}
         onToggleMaximize={() => setIsMaximized(!isMaximized)}
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
@@ -264,8 +270,8 @@ export const IntegrationHubView = () => {
         isOpen={isCreateModalOpen}
         selectedProvider={selectedProvider}
         onClose={() => {
-          setIsCreateModalOpen(false);
-          setActionError(null);
+          setIsCreateModalOpen(false)
+          setActionError(null)
         }}
         onCreateConnection={handleConnectionCreate}
         isLoading={actionLoading || isLoading}
@@ -276,8 +282,8 @@ export const IntegrationHubView = () => {
       <BankDetailsFormModal
         isOpen={isBankModalOpen}
         onClose={() => {
-          setIsBankModalOpen(false);
-          setActionError(null);
+          setIsBankModalOpen(false)
+          setActionError(null)
         }}
         initialValues={bankDetails}
         onSubmit={handleBankDetailsSubmit}
@@ -302,14 +308,16 @@ export const IntegrationHubView = () => {
                   : t('integrationHub.toast.successTitle', 'Success')}
               </strong>
             </CToastHeader>
-            <CToastBody className={toastColor === 'success' || toastColor === 'danger' ? 'text-white' : ''}>
+            <CToastBody
+              className={toastColor === 'success' || toastColor === 'danger' ? 'text-white' : ''}
+            >
               {toastMessage}
             </CToastBody>
           </CToast>
         </CToaster>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default IntegrationHubView;
+export default IntegrationHubView

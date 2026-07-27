@@ -1,16 +1,8 @@
-import React from 'react';
-import {
-  CCard,
-  CCardBody,
-  CCardHeader,
-  CCol,
-  CRow,
-  CAlert,
-  CSpinner,
-} from '@coreui/react';
-import SampleList from './components/SampleList.jsx';
-import SampleForm from './components/SampleForm.jsx';
-import useSampleFeature from './hooks/useSampleFeature.js';
+import React from 'react'
+import { CCard, CCardBody, CCardHeader, CCol, CRow, CAlert, CSpinner } from '@coreui/react'
+import SampleList from './components/SampleList.jsx'
+import SampleForm from './components/SampleForm.jsx'
+import useSampleFeature from './hooks/useSampleFeature.js'
 
 export const SampleFeatureView = () => {
   const {
@@ -23,7 +15,7 @@ export const SampleFeatureView = () => {
     handleEditSelect,
     handleDelete,
     handleCancelEdit,
-  } = useSampleFeature();
+  } = useSampleFeature()
 
   return (
     <CRow>
@@ -55,16 +47,12 @@ export const SampleFeatureView = () => {
             {loading && <CSpinner size="sm" color="primary" />}
           </CCardHeader>
           <CCardBody>
-            <SampleList
-              items={items}
-              onEdit={handleEditSelect}
-              onDelete={handleDelete}
-            />
+            <SampleList items={items} onEdit={handleEditSelect} onDelete={handleDelete} />
           </CCardBody>
         </CCard>
       </CCol>
     </CRow>
-  );
-};
+  )
+}
 
-export default SampleFeatureView;
+export default SampleFeatureView

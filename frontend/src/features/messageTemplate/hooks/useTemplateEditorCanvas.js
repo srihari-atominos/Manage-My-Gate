@@ -21,10 +21,16 @@ const DEFAULT_HTML_TEMPLATE = `<div style="font-family: sans-serif; padding: 24p
 
 export const useTemplateEditorCanvas = (visible, onClose) => {
   const dispatch = useDispatch()
-  const { templates = [], isLoading, error: apiError, loadTemplates, saveTemplate } = useMessageTemplates()
+  const {
+    templates = [],
+    isLoading,
+    error: apiError,
+    loadTemplates,
+    saveTemplate,
+  } = useMessageTemplates()
 
   const { connections = [], isLoading: isHubLoading = false } = useSelector(
-    (state) => state.integrationHub || {}
+    (state) => state.integrationHub || {},
   )
 
   const [templateId, setTemplateId] = useState(null)
@@ -54,7 +60,7 @@ export const useTemplateEditorCanvas = (visible, onClose) => {
       .filter((c) => c && c.provider)
       .map((c) => c.provider.toLowerCase())
     const channels = []
-    
+
     if (activeProviders.includes('smtp') || activeProviders.includes('resend')) {
       channels.push({ value: 'email', label: '📧 Email' })
     }
@@ -67,9 +73,9 @@ export const useTemplateEditorCanvas = (visible, onClose) => {
   // 3. Automatically select the first available channel and populate form if template exists
   useEffect(() => {
     if (visible && templates.length > 0) {
-      const matchingType = type || (availableTypes[0]?.value || 'email')
+      const matchingType = type || availableTypes[0]?.value || 'email'
       const match = templates.find((t) => t.type === matchingType && t.purpose === purpose)
-      
+
       if (match) {
         setTemplateId(match._id)
         setName(match.name)
@@ -86,7 +92,11 @@ export const useTemplateEditorCanvas = (visible, onClose) => {
         setSubject('Invitation to join Workspace')
         setCc('')
         setBcc('')
-        setBody(matchingType === 'email' ? DEFAULT_HTML_TEMPLATE : `Hello!\n\nYou have been invited to join our workspace. Click the link to register your account:\n\n{{invite_link}}`)
+        setBody(
+          matchingType === 'email'
+            ? DEFAULT_HTML_TEMPLATE
+            : `Hello!\n\nYou have been invited to join our workspace. Click the link to register your account:\n\n{{invite_link}}`,
+        )
       }
     } else if (visible && availableTypes.length > 0 && templates.length === 0) {
       const defaultType = type || availableTypes[0].value
@@ -95,7 +105,11 @@ export const useTemplateEditorCanvas = (visible, onClose) => {
       setSubject('Invitation to join Workspace')
       setCc('')
       setBcc('')
-      setBody(defaultType === 'email' ? DEFAULT_HTML_TEMPLATE : `Hello!\n\nYou have been invited to join our workspace. Click the link to register your account:\n\n{{invite_link}}`)
+      setBody(
+        defaultType === 'email'
+          ? DEFAULT_HTML_TEMPLATE
+          : `Hello!\n\nYou have been invited to join our workspace. Click the link to register your account:\n\n{{invite_link}}`,
+      )
     }
   }, [visible, templates, type, purpose, availableTypes])
 
@@ -112,7 +126,9 @@ export const useTemplateEditorCanvas = (visible, onClose) => {
       return
     }
     if (purpose === 'user_invitation' && !body.includes('{{invite_link}}')) {
-      setValidationError('For user invitation templates, you must include the placeholder "{{invite_link}}" in the body.')
+      setValidationError(
+        'For user invitation templates, you must include the placeholder "{{invite_link}}" in the body.',
+      )
       return
     }
 

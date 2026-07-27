@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   CContainer,
   CRow,
@@ -19,51 +19,44 @@ import {
   CAlert,
   CPagination,
   CPaginationItem,
-} from '@coreui/react';
-import useOrganizationManager from '../hooks/useOrganizationManager.js';
-import '../styles/_organization.scss';
+} from '@coreui/react'
+import useOrganizationManager from '../hooks/useOrganizationManager.js'
+import '../styles/_organization.scss'
 
 /**
  * Super Admin View container listing system organizations with Block/Unblock toggle triggers.
  */
 export const OrganizationManager = () => {
-  const { t } = useTranslation();
-  const {
-    organizations,
-    totalPages,
-    page,
-    loading,
-    error,
-    fetchOrgs,
-    toggleStatus,
-  } = useOrganizationManager();
+  const { t } = useTranslation()
+  const { organizations, totalPages, page, loading, error, fetchOrgs, toggleStatus } =
+    useOrganizationManager()
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchOrgs(1, 10, { signal: controller.signal });
+    const controller = new AbortController()
+    fetchOrgs(1, 10, { signal: controller.signal })
     return () => {
-      controller.abort();
-    };
-  }, []);
+      controller.abort()
+    }
+  }, [])
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
-      fetchOrgs(newPage, 10);
+      fetchOrgs(newPage, 10)
     }
-  };
+  }
 
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case 'Active':
-        return 'success';
+        return 'success'
       case 'Pending':
-        return 'warning';
+        return 'warning'
       case 'Rejected':
-        return 'danger';
+        return 'danger'
       default:
-        return 'secondary';
+        return 'secondary'
     }
-  };
+  }
 
   return (
     <div className="org-manager-container">
@@ -72,8 +65,15 @@ export const OrganizationManager = () => {
           <CCol xs={12}>
             <CCard className="org-manager-card">
               <CCardHeader className="card-header">
-                <h3>{t('superAdmin.orgManager.title', { defaultValue: 'Organization Manager' })}</h3>
-                <p>{t('superAdmin.orgManager.subtitle', { defaultValue: 'Manage all system organizations, view status, and block/unblock access.' })}</p>
+                <h3>
+                  {t('superAdmin.orgManager.title', { defaultValue: 'Organization Manager' })}
+                </h3>
+                <p>
+                  {t('superAdmin.orgManager.subtitle', {
+                    defaultValue:
+                      'Manage all system organizations, view status, and block/unblock access.',
+                  })}
+                </p>
               </CCardHeader>
               <CCardBody>
                 {error && (
@@ -85,7 +85,11 @@ export const OrganizationManager = () => {
                 {loading && organizations.length === 0 ? (
                   <div className="text-center py-5">
                     <CSpinner color="primary" className="me-2" />
-                    <span>{t('superAdmin.orgManager.loading', { defaultValue: 'Loading organizations...' })}</span>
+                    <span>
+                      {t('superAdmin.orgManager.loading', {
+                        defaultValue: 'Loading organizations...',
+                      })}
+                    </span>
                   </div>
                 ) : (
                   <>
@@ -114,25 +118,37 @@ export const OrganizationManager = () => {
                           {organizations.length === 0 ? (
                             <CTableRow>
                               <CTableDataCell colSpan={5} className="text-center py-4">
-                                {t('superAdmin.orgManager.noData', { defaultValue: 'No organizations found.' })}
+                                {t('superAdmin.orgManager.noData', {
+                                  defaultValue: 'No organizations found.',
+                                })}
                               </CTableDataCell>
                             </CTableRow>
                           ) : (
                             organizations.map((org) => (
                               <CTableRow key={org._id}>
-                                <CTableDataCell className="fw-semibold">
-                                  {org.name}
+                                <CTableDataCell className="fw-semibold">{org.name}</CTableDataCell>
+                                <CTableDataCell>
+                                  <span className="badge bg-secondary">
+                                    {org.villaCount ?? 0} Villas
+                                  </span>
                                 </CTableDataCell>
                                 <CTableDataCell>
-                                  <span className="badge bg-secondary">{org.villaCount ?? 0} Villas</span>
+                                  <span className="badge bg-secondary">
+                                    {org.userCount ?? 0} Users
+                                  </span>
                                 </CTableDataCell>
                                 <CTableDataCell>
-                                  <span className="badge bg-secondary">{org.userCount ?? 0} Users</span>
-                                </CTableDataCell>
-                                <CTableDataCell>
-                                   <CBadge color={getStatusBadgeColor(org.status)} className="org-badge">
-                                     {org.status ? t(`superAdmin.orgManager.status.${org.status.toLowerCase()}`, { defaultValue: org.status }) : 'Unknown'}
-                                   </CBadge>
+                                  <CBadge
+                                    color={getStatusBadgeColor(org.status)}
+                                    className="org-badge"
+                                  >
+                                    {org.status
+                                      ? t(
+                                          `superAdmin.orgManager.status.${org.status.toLowerCase()}`,
+                                          { defaultValue: org.status },
+                                        )
+                                      : 'Unknown'}
+                                  </CBadge>
                                 </CTableDataCell>
                                 <CTableDataCell className="text-end">
                                   <CButton
@@ -145,7 +161,9 @@ export const OrganizationManager = () => {
                                   >
                                     {org.status === 'Active'
                                       ? t('superAdmin.orgManager.block', { defaultValue: 'Block' })
-                                      : t('superAdmin.orgManager.unblock', { defaultValue: 'Unblock' })}
+                                      : t('superAdmin.orgManager.unblock', {
+                                          defaultValue: 'Unblock',
+                                        })}
                                   </CButton>
                                 </CTableDataCell>
                               </CTableRow>
@@ -195,7 +213,7 @@ export const OrganizationManager = () => {
         </CRow>
       </CContainer>
     </div>
-  );
-};
+  )
+}
 
-export default OrganizationManager;
+export default OrganizationManager

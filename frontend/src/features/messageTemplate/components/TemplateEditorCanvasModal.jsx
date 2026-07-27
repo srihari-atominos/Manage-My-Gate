@@ -50,13 +50,20 @@ export const TemplateEditorCanvasModal = ({ visible, onClose }) => {
   } = useTemplateEditorCanvas(visible, onClose)
 
   return (
-    <CModal visible={visible} onClose={onClose} alignment="center" size="lg" backdrop="static" id="template-editor-modal">
+    <CModal
+      visible={visible}
+      onClose={onClose}
+      alignment="center"
+      size="lg"
+      backdrop="static"
+      id="template-editor-modal"
+    >
       <CModalHeader>
         <CModalTitle style={{ fontSize: '1rem', fontWeight: 700 }}>
           ✉️ Configure Invitation Template
         </CModalTitle>
       </CModalHeader>
-      
+
       <form onSubmit={handleSave}>
         <CModalBody>
           {(validationError || apiError) && (
@@ -72,14 +79,18 @@ export const TemplateEditorCanvasModal = ({ visible, onClose }) => {
             </div>
           ) : availableTypes.length === 0 ? (
             <CAlert color="warning" className="my-2 small">
-              ⚠️ <strong>No Active Integrations:</strong> You have not configured any active SMTP, Resend, or Twilio connections in the <strong>Integration Hub</strong>. Please connect a provider first before writing custom templates.
+              ⚠️ <strong>No Active Integrations:</strong> You have not configured any active SMTP,
+              Resend, or Twilio connections in the <strong>Integration Hub</strong>. Please connect
+              a provider first before writing custom templates.
             </CAlert>
           ) : (
             <>
               {/* Template Name & Channel Selection Row */}
               <CRow className="g-3 mb-3">
                 <CCol md={6}>
-                  <CFormLabel htmlFor="tmpl-name-input" className="small fw-bold">Template Label</CFormLabel>
+                  <CFormLabel htmlFor="tmpl-name-input" className="small fw-bold">
+                    Template Label
+                  </CFormLabel>
                   <CFormInput
                     id="tmpl-name-input"
                     type="text"
@@ -89,9 +100,11 @@ export const TemplateEditorCanvasModal = ({ visible, onClose }) => {
                     required
                   />
                 </CCol>
-                
+
                 <CCol md={6}>
-                  <CFormLabel htmlFor="tmpl-type-select" className="small fw-bold">Channel Type (Integration-Derived)</CFormLabel>
+                  <CFormLabel htmlFor="tmpl-type-select" className="small fw-bold">
+                    Channel Type (Integration-Derived)
+                  </CFormLabel>
                   <CFormSelect
                     id="tmpl-type-select"
                     value={type}
@@ -110,7 +123,9 @@ export const TemplateEditorCanvasModal = ({ visible, onClose }) => {
               {type === 'email' && (
                 <>
                   <div className="mb-3">
-                    <CFormLabel htmlFor="tmpl-subject-input" className="small fw-bold">Email Subject Line</CFormLabel>
+                    <CFormLabel htmlFor="tmpl-subject-input" className="small fw-bold">
+                      Email Subject Line
+                    </CFormLabel>
                     <CFormInput
                       id="tmpl-subject-input"
                       type="text"
@@ -123,7 +138,9 @@ export const TemplateEditorCanvasModal = ({ visible, onClose }) => {
 
                   <CRow className="g-3 mb-3">
                     <CCol md={6}>
-                      <CFormLabel htmlFor="tmpl-cc-input" className="small fw-bold">CC Email Addresses (Optional)</CFormLabel>
+                      <CFormLabel htmlFor="tmpl-cc-input" className="small fw-bold">
+                        CC Email Addresses (Optional)
+                      </CFormLabel>
                       <CFormInput
                         id="tmpl-cc-input"
                         type="text"
@@ -133,7 +150,9 @@ export const TemplateEditorCanvasModal = ({ visible, onClose }) => {
                       />
                     </CCol>
                     <CCol md={6}>
-                      <CFormLabel htmlFor="tmpl-bcc-input" className="small fw-bold">BCC Email Addresses (Optional)</CFormLabel>
+                      <CFormLabel htmlFor="tmpl-bcc-input" className="small fw-bold">
+                        BCC Email Addresses (Optional)
+                      </CFormLabel>
                       <CFormInput
                         id="tmpl-bcc-input"
                         type="text"
@@ -148,7 +167,9 @@ export const TemplateEditorCanvasModal = ({ visible, onClose }) => {
 
               {/* Body Canvas Editor */}
               <div className="mb-3">
-                <CFormLabel htmlFor="tmpl-body-textarea" className="small fw-bold">Template Body Canvas</CFormLabel>
+                <CFormLabel htmlFor="tmpl-body-textarea" className="small fw-bold">
+                  Template Body Canvas
+                </CFormLabel>
                 <CFormTextarea
                   id="tmpl-body-textarea"
                   rows={8}
@@ -158,11 +179,12 @@ export const TemplateEditorCanvasModal = ({ visible, onClose }) => {
                   onChange={(e) => setBody(e.target.value)}
                   required
                 />
-                
+
                 {/* Placeholder variable indicator */}
                 <div className="mt-2 p-2 border rounded bg-body-secondary d-flex align-items-center justify-content-between">
                   <span className="small text-secondary">
-                    Required placeholder: <code className="fw-bold text-primary">{"{{invite_link}}"}</code>
+                    Required placeholder:{' '}
+                    <code className="fw-bold text-primary">{'{{invite_link}}'}</code>
                   </span>
                   <button
                     type="button"
@@ -181,7 +203,7 @@ export const TemplateEditorCanvasModal = ({ visible, onClose }) => {
             </>
           )}
         </CModalBody>
-        
+
         <CModalFooter className="border-0 pt-0">
           <CButton color="light" size="sm" onClick={onClose} disabled={isSubmitting}>
             Cancel

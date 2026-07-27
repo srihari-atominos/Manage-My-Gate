@@ -1,85 +1,85 @@
-import apiClient from '../../../services/apiClient.js';
+import apiClient from '../../../services/apiClient.js'
 
 /**
  * Authentication and Workspace API Client Service
  */
 export const login = async (credentials) => {
-  return await apiClient.post('/auth/login', credentials);
-};
+  return await apiClient.post('/auth/login', credentials)
+}
 
 export const register = async (userData) => {
-  return await apiClient.post('/auth/register', userData);
-};
+  return await apiClient.post('/auth/register', userData)
+}
 
 export const acceptInvite = async ({ token, password }) => {
-  return await apiClient.post('/auth/accept-invite', { token, password });
-};
+  return await apiClient.post('/auth/accept-invite', { token, password })
+}
 
 export const createWorkspace = async (workspaceData) => {
-  return await apiClient.post('/organizations/setup', workspaceData);
-};
+  return await apiClient.post('/organizations/setup', workspaceData)
+}
 
 export const loginWithGoogle = async (payload) => {
-  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
-  return await apiClient.post('/auth/google', body);
-};
+  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload }
+  return await apiClient.post('/auth/google', body)
+}
 
 export const loginWithMicrosoft = async (payload) => {
-  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
-  return await apiClient.post('/auth/microsoft', body);
-};
+  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload }
+  return await apiClient.post('/auth/microsoft', body)
+}
 
 export const initiatePhoneLogin = async (phone) => {
-  return await apiClient.post('/auth/login/phone', { phone });
-};
+  return await apiClient.post('/auth/login/phone', { phone })
+}
 
 export const verifyPhoneLogin = async (phone, code) => {
-  return await apiClient.post('/auth/login/phone/verify', { phone, code });
-};
+  return await apiClient.post('/auth/login/phone/verify', { phone, code })
+}
 
 export const initiateEmailOtpLogin = async (email) => {
-  return await apiClient.post('/auth/login/email-otp', { email });
-};
+  return await apiClient.post('/auth/login/email-otp', { email })
+}
 
 export const verifyEmailOtpLogin = async (email, code) => {
-  return await apiClient.post('/auth/login/email-otp/verify', { email, code });
-};
+  return await apiClient.post('/auth/login/email-otp/verify', { email, code })
+}
 
 export const forgotPassword = async (identifier) => {
-  return await apiClient.post('/auth/forgot-password', { identifier });
-};
+  return await apiClient.post('/auth/forgot-password', { identifier })
+}
 
 export const verifyResetPasswordOtp = async (identifier, code) => {
-  return await apiClient.post('/auth/forgot-password/verify-otp', { identifier, code });
-};
+  return await apiClient.post('/auth/forgot-password/verify-otp', { identifier, code })
+}
 
 export const resetPassword = async (identifier, code, newPassword) => {
-  return await apiClient.post('/auth/reset-password', { identifier, code, newPassword });
-};
+  return await apiClient.post('/auth/reset-password', { identifier, code, newPassword })
+}
 
 export const logoutApi = async () => {
-  return await apiClient.post('/auth/logout');
-};
+  return await apiClient.post('/auth/logout')
+}
 
 export const fetchSessions = async () => {
-  return await apiClient.get('/session');
-};
+  return await apiClient.get('/session')
+}
 
 export const revokeSession = async (sessionId) => {
-  return await apiClient.delete(`/session/${sessionId}`);
-};
+  return await apiClient.delete(`/session/${sessionId}`)
+}
 
 export const revokeAllSessions = async () => {
-  return await apiClient.delete('/session/all');
-};
+  return await apiClient.delete('/session/all')
+}
 
 export const emailOtpLogin = async (payload) => {
-  return await apiClient.post('/auth/login/email-otp', payload);
-};
+  return await apiClient.post('/auth/login/email-otp', payload)
+}
 
 export const acceptSsoInvite = async (payload) => {
-  return await apiClient.post('/auth/accept-invite/sso', payload);
-};
+  return await apiClient.post('/auth/accept-invite/sso', payload)
+}
 
 export default {
   login,
@@ -101,4 +101,4 @@ export default {
   revokeAllSessions,
   emailOtpLogin,
   acceptSsoInvite,
-};
+}

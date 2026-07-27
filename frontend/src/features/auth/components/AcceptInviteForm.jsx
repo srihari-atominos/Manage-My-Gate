@@ -30,16 +30,16 @@ import '../styles/_auth.scss'
  */
 class AcceptInviteFormErrorBoundary extends React.Component {
   constructor(props) {
-    super(props);
-    this.state = { hasError: false };
+    super(props)
+    this.state = { hasError: false }
   }
 
   static getDerivedStateFromError() {
-    return { hasError: true };
+    return { hasError: true }
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('AcceptInviteForm Error Boundary caught an error:', error, errorInfo);
+    console.error('AcceptInviteForm Error Boundary caught an error:', error, errorInfo)
   }
 
   render() {
@@ -49,9 +49,9 @@ class AcceptInviteFormErrorBoundary extends React.Component {
           <h3 className="text-danger">Something went wrong.</h3>
           <p>Please try reloading the page.</p>
         </div>
-      );
+      )
     }
-    return this.props.children;
+    return this.props.children
   }
 }
 
@@ -103,21 +103,20 @@ export const AcceptInviteForm = () => {
   // MSAL Instance
   const { instance: msalInstance } = useMsal()
 
-
-
   // Microsoft Login Popup Action
   const handleMicrosoftInvite = () => {
-    msalInstance.loginPopup({
-      scopes: ['openid', 'profile', 'user.read'],
-    })
-    .then(async (response) => {
-      if (response && response.idToken && token) {
-        await handleAcceptSsoInvitation(token, response.idToken, 'microsoft')
-      }
-    })
-    .catch((err) => {
-      console.error('Microsoft login failed:', err)
-    })
+    msalInstance
+      .loginPopup({
+        scopes: ['openid', 'profile', 'user.read'],
+      })
+      .then(async (response) => {
+        if (response && response.idToken && token) {
+          await handleAcceptSsoInvitation(token, response.idToken, 'microsoft')
+        }
+      })
+      .catch((err) => {
+        console.error('Microsoft login failed:', err)
+      })
   }
 
   const onSubmit = async (data) => {
@@ -130,7 +129,9 @@ export const AcceptInviteForm = () => {
   if (!token) {
     return (
       <div className="accept-invite-error-container">
-        <h2 className="text-danger mb-3 fw-bold">{t('auth.invite.title', 'Workspace Invitation')}</h2>
+        <h2 className="text-danger mb-3 fw-bold">
+          {t('auth.invite.title', 'Workspace Invitation')}
+        </h2>
         <CAlert color="danger" className="py-3 mb-4 rounded-3 border-0">
           {t('auth.invite.invalidToken', 'Invalid or expired invitation token.')}
         </CAlert>
@@ -145,7 +146,9 @@ export const AcceptInviteForm = () => {
     <CCard className="accept-invite-card border-0">
       <CCardBody className="p-0">
         <h1 className="accept-invite-title">{t('auth.invite.title', 'Workspace Invitation')}</h1>
-        <p className="accept-invite-subtitle">{t('auth.invite.subtitle', 'Accept your invitation using SSO or set up a password.')}</p>
+        <p className="accept-invite-subtitle">
+          {t('auth.invite.subtitle', 'Accept your invitation using SSO or set up a password.')}
+        </p>
 
         {error && (
           <CAlert color="danger" className="mb-4">
@@ -197,12 +200,12 @@ export const AcceptInviteForm = () => {
 
           <CRow>
             <CCol xs={12} className="d-grid mb-3">
-              <CButton
-                type="submit"
-                className="accept-invite-btn border-0 py-2"
-                disabled={loading}
-              >
-                {loading ? <CSpinner size="sm" variant="grow" /> : t('auth.invite.submit', 'Set Password & Accept')}
+              <CButton type="submit" className="accept-invite-btn border-0 py-2" disabled={loading}>
+                {loading ? (
+                  <CSpinner size="sm" variant="grow" />
+                ) : (
+                  t('auth.invite.submit', 'Set Password & Accept')
+                )}
               </CButton>
             </CCol>
           </CRow>
@@ -240,11 +243,15 @@ export const AcceptInviteForm = () => {
             disabled={loading}
           >
             {/* Microsoft Icon SVG */}
-            <svg style={{ width: '20px', height: '20px', flexShrink: 0 }} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23">
-              <path fill="#f35325" d="M1 1h10v10H1z"/>
-              <path fill="#81bc06" d="M12 1h10v10H12z"/>
-              <path fill="#05a6f0" d="M1 12h10v10H1z"/>
-              <path fill="#ffba08" d="M12 12h10v10H12z"/>
+            <svg
+              style={{ width: '20px', height: '20px', flexShrink: 0 }}
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 23 23"
+            >
+              <path fill="#f35325" d="M1 1h10v10H1z" />
+              <path fill="#81bc06" d="M12 1h10v10H12z" />
+              <path fill="#05a6f0" d="M1 12h10v10H1z" />
+              <path fill="#ffba08" d="M12 12h10v10H12z" />
             </svg>
             {t('auth.invite.continueWithMicrosoft', 'Continue with Microsoft')}
           </button>
