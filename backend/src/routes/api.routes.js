@@ -96,4 +96,9 @@ router.use('/crm/tasks', crmTaskRouter);
 router.use('/crm/threads', crmThreadRouter);
 router.use('/crm/meetings', crmMeetingRouter);
 
+import onboardingWizardRouter from '../features/onboardingWizard/onboardingWizard.router.js';
+
+router.use('/onboarding-wizard', onboardingWizardRouter);
+router.use('/onboarding', onboardingWizardRouter);
+
 export default router;

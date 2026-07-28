@@ -27,6 +27,7 @@ import billingReducer from '../features/billing/store/billingSlice.js';
 import assessmentReducer from '../features/assessment/store/assessmentSlice.js';
 import walletReducer from '../features/billing/store/walletSlice.js';
 import crmWorkspaceReducer from '../features/crmWorkspace/store/crmSlice.js';
+import onboardingWizardReducer from '../features/onboardingWizard/store/onboardingSlice.js';
 
 // Custom lightweight state logger middleware for development mode
 const stateLoggerMiddleware = (store) => (next) => (action) => {
@@ -73,6 +74,7 @@ export const store = configureStore({
     assessment: assessmentReducer,
     wallet: walletReducer,
     crmWorkspace: crmWorkspaceReducer,
+    onboardingWizard: onboardingWizardReducer,
   },
   middleware: (getDefaultMiddleware) => {
     const middlewares = getDefaultMiddleware();

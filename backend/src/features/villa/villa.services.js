@@ -8,6 +8,18 @@ import User from '../user/user.model.js';
 import Villa from './villa.model.js';
 
 export class VillaService {
+  async checkVillaExists(villaNumber, organisationId, session = null) {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info(`checkVillaExists request received`, { villaNumber, organisationId, correlationId });
+
+    if (!organisationId) throw new HttpError(400, 'Organization ID (organisationId) is required.');
+    if (!villaNumber) return false;
+
+    const trimmedNumber = String(villaNumber).trim();
+    const existing = await villaRepository.findByUnitNumber(trimmedNumber, organisationId, session);
+    return !!existing;
+  }
+
   async getUnitById(id, orgId, session = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info(`getUnitById request received`, { id, orgId, correlationId });
@@ -18,6 +30,10 @@ export class VillaService {
       throw new HttpError(404, `Unit with ID ${id} not found.`);
     }
     return villa;
+  }
+
+  async createVilla(orgId, villaData, session = null) {
+    return await this.createUnit(orgId, villaData, session);
   }
 
   async createUnit(orgId, unitData, session = null) {

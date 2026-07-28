@@ -1,0 +1,272 @@
+.onboarding-wizard-container {
+  width: 100%;
+  padding-block: 1.5rem;
+  padding-inline: 1.5rem;
+
+  .wizard-header {
+    margin-block-end: 2rem;
+    text-align: start;
+
+    .wizard-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--cui-body-color, #2c384e);
+      margin-block-end: 0.5rem;
+    }
+
+    .wizard-subtitle {
+      font-size: 0.95rem;
+      color: var(--cui-secondary-color, #6c757d);
+    }
+  }
+
+  /* Step Indicator Banner */
+  .wizard-steps-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-block-end: 2rem;
+    padding-block: 1rem;
+    padding-inline: 1.5rem;
+    background-color: var(--cui-card-bg, #ffffff);
+    border-radius: 0.5rem;
+    border: 1px solid var(--cui-border-color, #d8dbc7);
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex: 1;
+
+      &:not(:last-child)::after {
+        content: '';
+        flex: 1;
+        height: 2px;
+        background-color: var(--cui-border-color, #e0e0e0);
+        margin-inline: 1rem;
+      }
+
+      .step-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 50%;
+        font-weight: 600;
+        font-size: 0.9rem;
+        background-color: var(--cui-secondary-bg, #e9ecef);
+        color: var(--cui-secondary-color, #6c757d);
+        transition: all 0.2s ease-in-out;
+      }
+
+      .step-label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--cui-secondary-color, #6c757d);
+      }
+
+      &.active {
+        .step-badge {
+          background-color: var(--cui-primary, #321fdb);
+          color: #ffffff;
+        }
+
+        .step-label {
+          color: var(--cui-body-color, #2c384e);
+          font-weight: 700;
+        }
+      }
+
+      &.completed {
+        .step-badge {
+          background-color: var(--cui-success, #2eb85c);
+          color: #ffffff;
+        }
+
+        .step-label {
+          color: var(--cui-success, #2eb85c);
+        }
+
+        &:not(:last-child)::after {
+          background-color: var(--cui-success, #2eb85c);
+        }
+      }
+    }
+  }
+
+  /* File Upload Zone */
+  .file-upload-card {
+    background-color: var(--cui-card-bg, #ffffff);
+    border-radius: 0.5rem;
+    border: 1px solid var(--cui-border-color, #d8dbc7);
+    padding-block: 2.5rem;
+    padding-inline: 2rem;
+    text-align: center;
+  }
+
+  .dropzone {
+    border: 2px dashed var(--cui-border-color, #b1b7c1);
+    border-radius: 0.75rem;
+    padding-block: 3.5rem;
+    padding-inline: 2rem;
+    background-color: var(--cui-tertiary-bg, #f8f9fa);
+    cursor: pointer;
+    transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    &:hover,
+    &.drag-active {
+      border-color: var(--cui-primary, #321fdb);
+      background-color: var(--cui-light, #ebedef);
+    }
+
+    .dropzone-icon {
+      font-size: 3rem;
+      color: var(--cui-primary, #321fdb);
+      margin-block-end: 1rem;
+    }
+
+    .dropzone-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-block-end: 0.5rem;
+    }
+
+    .dropzone-hint {
+      font-size: 0.875rem;
+      color: var(--cui-secondary-color, #6c757d);
+      margin-block-end: 1.5rem;
+    }
+  }
+
+  /* Validation Summary & Error View */
+  .validation-summary-card {
+    background-color: var(--cui-card-bg, #ffffff);
+    border-radius: 0.5rem;
+    border: 1px solid var(--cui-border-color, #d8dbc7);
+    padding-block: 1.5rem;
+    padding-inline: 1.5rem;
+
+    .summary-stats-banner {
+      display: flex;
+      gap: 1.5rem;
+      margin-block-end: 1.5rem;
+
+      .stat-box {
+        flex: 1;
+        padding-block: 1rem;
+        padding-inline: 1.25rem;
+        border-radius: 0.5rem;
+        background-color: var(--cui-tertiary-bg, #f8f9fa);
+        border: 1px solid var(--cui-border-color, #d8dbc7);
+
+        .stat-value {
+          font-size: 1.5rem;
+          font-weight: 700;
+        }
+
+        .stat-label {
+          font-size: 0.85rem;
+          color: var(--cui-secondary-color, #6c757d);
+          margin-block-start: 0.25rem;
+        }
+
+        &.stat-invalid {
+          border-inline-start: 4px solid var(--cui-danger, #e55353);
+          .stat-value {
+            color: var(--cui-danger, #e55353);
+          }
+        }
+
+        &.stat-valid {
+          border-inline-start: 4px solid var(--cui-success, #2eb85c);
+          .stat-value {
+            color: var(--cui-success, #2eb85c);
+          }
+        }
+
+        &.stat-total {
+          border-inline-start: 4px solid var(--cui-info, #39f);
+          .stat-value {
+            color: var(--cui-info, #39f);
+          }
+        }
+      }
+    }
+
+    .error-table-container {
+      margin-block-end: 1.5rem;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      border: 1px solid var(--cui-border-color, #d8dbc7);
+    }
+
+    .error-badge-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+  }
+
+  /* Data Preview Table */
+  .data-preview-card {
+    background-color: var(--cui-card-bg, #ffffff);
+    border-radius: 0.5rem;
+    border: 1px solid var(--cui-border-color, #d8dbc7);
+    padding-block: 1.5rem;
+    padding-inline: 1.5rem;
+
+    .preview-actions-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-block-end: 1.25rem;
+    }
+
+    .preview-table-container {
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      border: 1px solid var(--cui-border-color, #d8dbc7);
+      margin-block-end: 1.25rem;
+    }
+
+    .pagination-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-block: 0.75rem;
+    }
+  }
+
+  /* Success View */
+  .import-success-card {
+    background-color: var(--cui-card-bg, #ffffff);
+    border-radius: 0.5rem;
+    border: 1px solid var(--cui-border-color, #d8dbc7);
+    padding-block: 3.5rem;
+    padding-inline: 2rem;
+    text-align: center;
+
+    .success-icon {
+      font-size: 4rem;
+      color: var(--cui-success, #2eb85c);
+      margin-block-end: 1rem;
+    }
+
+    .success-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-block-end: 0.5rem;
+    }
+
+    .success-message {
+      font-size: 1rem;
+      color: var(--cui-secondary-color, #6c757d);
+      margin-block-end: 2rem;
+    }
+  }
+}
