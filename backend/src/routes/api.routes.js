@@ -31,6 +31,7 @@ import platformOrderRouter from '../features/platformOrder/platformOrder.router.
 import platformQuoteRouter from '../features/platformQuote/platformQuote.router.js';
 import platformInvoiceRouter from '../features/platformInvoice/platformInvoice.router.js';
 import platformPaymentRouter from '../features/platformPayment/platformPayment.router.js';
+import platformProvisioningJobRouter from '../features/platformProvisioningJob/platformProvisioningJob.router.js';
 import crmInquiryRouter from '../features/crmInquiry/crmInquiry.router.js';
 import crmTaskRouter from '../features/crmTask/crmTask.router.js';
 import crmThreadRouter from '../features/crmThread/crmThread.router.js';
@@ -85,6 +86,7 @@ router.use('/platform-orders', platformOrderRouter);
 router.use('/platform-quotes', platformQuoteRouter);
 router.use('/platform-invoices', platformInvoiceRouter);
 router.use('/platform-payments', platformPaymentRouter);
+router.use('/platform-provisioning-jobs', platformProvisioningJobRouter);
 router.use('/crm/inquiries', crmInquiryRouter);
 router.use('/crm/tasks', crmTaskRouter);
 router.use('/crm/threads', crmThreadRouter);
