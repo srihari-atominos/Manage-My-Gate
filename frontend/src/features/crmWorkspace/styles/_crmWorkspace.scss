@@ -1,0 +1,392 @@
+// _crmWorkspace.scss
+// Design system for the CRM Workspace — strictly adheres to logical CSS properties for RTL support.
+
+.crm-workspace-theme {
+  /* ── Color Palette ───────────────────────────────────────────────────── */
+  --crm-primary: #0084FF;
+  --crm-primary-hover: #006BCC;
+  --crm-primary-light: #E5F3FF;
+  --crm-surface-bg: #F4F7FB;
+  --crm-surface-card: #FFFFFF;
+  --crm-surface-hover: #F8FAFC;
+
+  --crm-text-main: #0F172A;
+  --crm-text-muted: #64748B;
+  --crm-text-light: #94A3B8;
+
+  --crm-border-light: #E2E8F0;
+  --crm-border-focus: #CBD5E1;
+
+  /* Status Colors */
+  --crm-success: #10B981;
+  --crm-success-bg: #D1FAE5;
+  --crm-warning: #F59E0B;
+  --crm-warning-bg: #FEF3C7;
+  --crm-danger: #EF4444;
+  --crm-danger-bg: #FEE2E2;
+  --crm-info: #0084FF;
+  --crm-info-bg: #E5F3FF;
+
+  /* Scale & Shadows */
+  --crm-radius-sm: 12px;
+  --crm-radius-md: 16px;
+  --crm-radius-lg: 24px;
+  --crm-radius-pill: 50px;
+  --crm-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --crm-shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
+
+  /* ── Layout Container ───────────────────────────────────────────────── */
+  .view-container {
+    padding-block: 24px;
+    padding-inline: 32px;
+    max-width: 1400px;
+    margin-inline: auto;
+  }
+
+  /* ── Page Header ────────────────────────────────────────────────────── */
+  .crm-header-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-block-end: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+
+    &__title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--crm-text-main);
+      margin: 0;
+    }
+
+    &__sub {
+      font-size: 13px;
+      color: var(--crm-text-muted);
+      margin-block-start: 4px;
+    }
+
+    &__actions {
+      display: flex;
+      gap: 12px;
+    }
+  }
+
+  /* ── Lifecycle Stepper ──────────────────────────────────────────────── */
+  .crm-stepper-card {
+    background: var(--crm-surface-card);
+    border-radius: var(--crm-radius-lg);
+    box-shadow: var(--crm-shadow-sm);
+    border: 1px solid var(--crm-border-light);
+    padding-block: 20px;
+    padding-inline: 24px;
+    margin-block-end: 24px;
+  }
+
+  .crm-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    gap: 8px;
+    overflow-x: auto;
+    padding-block: 8px;
+  }
+
+  .crm-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+    text-align: center;
+    min-width: 110px;
+
+    &__icon-wrap {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #F1F5F9;
+      color: var(--crm-text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      z-index: 2;
+      transition: all 0.25s ease;
+      border: 2px solid var(--crm-surface-card);
+    }
+
+    &__label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--crm-text-muted);
+      margin-block-start: 8px;
+    }
+
+    &__sub {
+      font-size: 10px;
+      color: var(--crm-text-light);
+      margin-block-start: 2px;
+    }
+
+    /* Completed state */
+    &--completed {
+      .crm-step__icon-wrap {
+        background: var(--crm-success);
+        color: white;
+      }
+      .crm-step__label {
+        color: var(--crm-text-main);
+      }
+    }
+
+    /* Active state */
+    &--active {
+      .crm-step__icon-wrap {
+        background: var(--crm-primary);
+        color: white;
+        box-shadow: 0 0 0 4px var(--crm-primary-light);
+      }
+      .crm-step__label {
+        color: var(--crm-primary);
+        font-weight: 700;
+      }
+    }
+  }
+
+  .crm-stepper-line {
+    position: absolute;
+    top: 28px;
+    inset-inline-start: 5%;
+    inset-inline-end: 5%;
+    height: 3px;
+    background: #E2E8F0;
+    z-index: 1;
+  }
+
+  /* ── Tab Navigation ─────────────────────────────────────────────────── */
+  .crm-nav-tabs {
+    display: flex;
+    gap: 8px;
+    background: var(--crm-surface-card);
+    border-radius: var(--crm-radius-md);
+    padding-block: 8px;
+    padding-inline: 12px;
+    box-shadow: var(--crm-shadow-sm);
+    border: 1px solid var(--crm-border-light);
+    margin-block-end: 24px;
+    overflow-x: auto;
+  }
+
+  .crm-nav-btn {
+    padding-block: 10px;
+    padding-inline: 20px;
+    border-radius: var(--crm-radius-pill);
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: var(--crm-text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+
+    &:hover {
+      color: var(--crm-text-main);
+      background: var(--crm-surface-hover);
+    }
+
+    &--active {
+      background: var(--crm-primary);
+      color: #FFFFFF !important;
+      box-shadow: 0 4px 12px rgba(0, 132, 255, 0.25);
+    }
+  }
+
+  /* ── Content Grid Layouts ───────────────────────────────────────────── */
+  .crm-workspace-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 24px;
+    align-items: start;
+
+    @media (max-width: 992px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Cards */
+  .crm-card {
+    background: var(--crm-surface-card);
+    border-radius: var(--crm-radius-lg);
+    border: 1px solid var(--crm-border-light);
+    box-shadow: var(--crm-shadow-sm);
+    padding-block: 24px;
+    padding-inline: 24px;
+    text-align: start;
+
+    &__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-block-end: 20px;
+      border-block-end: 1px solid var(--crm-border-light);
+      padding-block-end: 14px;
+    }
+
+    &__title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--crm-text-main);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    &__body {
+      color: var(--crm-text-main);
+    }
+  }
+
+  /* Key-Value Details Table */
+  .crm-detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    &__item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-block: 8px;
+      border-block-end: 1px dashed var(--crm-border-light);
+
+      &:last-child {
+        border-block-end: none;
+      }
+    }
+
+    &__label {
+      font-size: 13px;
+      color: var(--crm-text-muted);
+      font-weight: 500;
+    }
+
+    &__value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--crm-text-main);
+    }
+  }
+
+  /* ── Threads / Messaging Timeline ───────────────────────────────────── */
+  .crm-thread-box {
+    display: flex;
+    flex-direction: column;
+    height: 480px;
+
+    &__messages {
+      flex: 1;
+      overflow-y: auto;
+      padding-inline-end: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-block-end: 16px;
+    }
+
+    &__bubble {
+      max-width: 80%;
+      padding-block: 12px;
+      padding-inline: 16px;
+      border-radius: 18px;
+      font-size: 13px;
+      line-height: 1.5;
+
+      &--agent {
+        align-self: flex-end;
+        background: var(--crm-primary);
+        color: #FFFFFF;
+        border-bottom-inline-end-radius: 4px;
+      }
+
+      &--customer {
+        align-self: flex-start;
+        background: #F1F5F9;
+        color: var(--crm-text-main);
+        border-bottom-inline-start-radius: 4px;
+      }
+    }
+
+    &__composer {
+      display: flex;
+      gap: 10px;
+      padding-block-start: 12px;
+      border-block-start: 1px solid var(--crm-border-light);
+    }
+
+    &__input {
+      flex: 1;
+      border: 1px solid var(--crm-border-light);
+      border-radius: var(--crm-radius-pill);
+      padding-block: 10px;
+      padding-inline: 18px;
+      font-size: 13px;
+
+      &:focus {
+        outline: none;
+        border-color: var(--crm-primary);
+      }
+    }
+  }
+
+  /* ── Buttons & Badges ───────────────────────────────────────────────── */
+  .crm-btn {
+    padding-block: 10px;
+    padding-inline: 20px;
+    border-radius: var(--crm-radius-pill);
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+
+    &--primary {
+      background: var(--crm-primary);
+      color: #FFFFFF;
+
+      &:hover {
+        background: var(--crm-primary-hover);
+      }
+    }
+
+    &--secondary {
+      background: #F1F5F9;
+      color: var(--crm-text-muted);
+
+      &:hover {
+        background: #E2E8F0;
+      }
+    }
+  }
+
+  .crm-badge {
+    display: inline-flex;
+    padding-block: 4px;
+    padding-inline: 12px;
+    border-radius: var(--crm-radius-pill);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+}
