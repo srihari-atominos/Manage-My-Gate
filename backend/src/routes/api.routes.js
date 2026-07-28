@@ -29,6 +29,8 @@ import invoiceRouter from '../features/invoice/invoice.routes.js';
 import masterPricingRouter from '../features/masterPricing/masterPricing.router.js';
 import platformOrderRouter from '../features/platformOrder/platformOrder.router.js';
 import platformQuoteRouter from '../features/platformQuote/platformQuote.router.js';
+import crmInquiryRouter from '../features/crmInquiry/crmInquiry.router.js';
+import crmTaskRouter from '../features/crmTask/crmTask.router.js';
 
 // Complaint and Technician routes
 import complaintRouter from '../features/complaint/complaint.router.js';
@@ -77,5 +79,7 @@ router.use('/blacklist', blacklistRouter);
 router.use('/master-pricing', masterPricingRouter);
 router.use('/platform-orders', platformOrderRouter);
 router.use('/platform-quotes', platformQuoteRouter);
+router.use('/crm/inquiries', crmInquiryRouter);
+router.use('/crm/tasks', crmTaskRouter);
 
 export default router;
