@@ -45,6 +45,29 @@ export class PlatformProvisioningJobService {
   }
 
   /**
+   * Enqueue a new provisioning job in PENDING state (e.g. from payment.success event listener).
+   * @param {Object} params - { orderId, paymentId, requestedFeatures }
+   * @param {ClientSession} [session=null]
+   */
+  async enqueueJob({ orderId, paymentId, requestedFeatures = [] }, session = null) {
+    let features = Array.isArray(requestedFeatures) ? requestedFeatures : [];
+
+    if (features.length === 0) {
+      features = ['VISITOR_MANAGEMENT', 'BILLING_COLLECTION', 'AMENITY_BOOKING'];
+    }
+
+    return await this.createJob(
+      {
+        orderId,
+        paymentId,
+        requestedFeatures: features,
+        status: 'PENDING',
+      },
+      session
+    );
+  }
+
+  /**
    * Find job by database ObjectId.
    * @param {string} id
    * @param {ClientSession} [session=null]

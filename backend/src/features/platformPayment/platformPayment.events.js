@@ -11,6 +11,12 @@ platformPaymentEvents.on('payment.processed', ({ payment, isDuplicate }) => {
   );
 });
 
+platformPaymentEvents.on('payment.success', (payload) => {
+  logger.info(
+    `[PlatformPayment Event] payment.success - Order ID: ${payload.orderId}, Payment ID: ${payload.paymentId}`
+  );
+});
+
 platformPaymentEvents.on('payment.failed', (payment) => {
   logger.warn(
     `[PlatformPayment Event] payment.failed - Payment ID: ${payment._id}, EventId: ${payment.gatewayEventId}, TxId: ${payment.gatewayTransactionId}`

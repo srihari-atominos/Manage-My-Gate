@@ -101,6 +101,11 @@ class PlatformPaymentService {
 
       if (status === 'SUCCESS') {
         platformPaymentEvents.emit('payment.processed', { payment: createdPayment, isDuplicate: false });
+        platformPaymentEvents.emit('payment.success', {
+          orderId: createdPayment.orderId,
+          paymentId: createdPayment._id,
+          payment: createdPayment,
+        });
       } else {
         platformPaymentEvents.emit('payment.failed', createdPayment);
       }
