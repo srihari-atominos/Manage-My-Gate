@@ -70,8 +70,9 @@ app.use(responseHandler);
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Mount API routes at /api
+// Mount API routes at /api and /api/v1
 app.use('/api', apiRouter);
+app.use('/api/v1', apiRouter);
 
 // Mount Swagger UI at root
 app.use('/', swaggerRouter);

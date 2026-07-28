@@ -26,6 +26,9 @@ import noticeBoardRouter from '../features/noticeBoard/noticeBoard.routes.js';
 import pollRouter from '../features/poll/poll.router.js';
 import assessmentRouter from '../features/assessment/assessment.routes.js';
 import invoiceRouter from '../features/invoice/invoice.routes.js';
+import masterPricingRouter from '../features/masterPricing/masterPricing.router.js';
+import platformOrderRouter from '../features/platformOrder/platformOrder.router.js';
+import platformQuoteRouter from '../features/platformQuote/platformQuote.router.js';
 
 // Complaint and Technician routes
 import complaintRouter from '../features/complaint/complaint.router.js';
@@ -71,5 +74,8 @@ router.use('/technicians', technicianRouter);
 router.use('/visitor-pass', visitorPassRouter);
 router.use('/visitor-log', visitorLogRouter);
 router.use('/blacklist', blacklistRouter);
+router.use('/master-pricing', masterPricingRouter);
+router.use('/platform-orders', platformOrderRouter);
+router.use('/platform-quotes', platformQuoteRouter);
 
 export default router;
