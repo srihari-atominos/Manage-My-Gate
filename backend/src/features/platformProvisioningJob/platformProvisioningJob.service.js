@@ -7,6 +7,8 @@ import logger from '../../utils/logger.utils.js';
 import organizationService from '../organization/organization.services.js';
 import workspaceService from '../workspace/workspace.service.js';
 import userService from '../user/user.services.js';
+import platformSubscriptionService from '../platformSubscription/platformSubscription.service.js';
+import platformEntitlementService from '../platformEntitlement/platformEntitlement.service.js';
 
 export class PlatformProvisioningJobService {
   /**
@@ -219,7 +221,26 @@ export class PlatformProvisioningJobService {
       const orgId = (job.organisationId?._id || job.organisationId).toString();
       const features = job.requestedFeatures || [];
 
-      // Service to Service call to activate entitlements on Organization
+      // 1. Create/update PlatformSubscription for the Organization inside session
+      const subscription = await platformSubscriptionService.createSubscription(
+        {
+          organisationId: orgId,
+          orderId: job.orderId?._id || job.orderId,
+          planName: 'Enterprise Standard',
+          status: 'ACTIVE',
+        },
+        session
+      );
+
+      // 2. Batch activate PlatformEntitlements for the Organization inside session
+      await platformEntitlementService.activateBatch(
+        orgId,
+        subscription._id,
+        features,
+        session
+      );
+
+      // 3. Service to Service call to update allowedFeatures on Organization model
       await organizationService.updateFeatures(
         orgId,
         orgId,
