@@ -31,6 +31,8 @@ import platformOrderRouter from '../features/platformOrder/platformOrder.router.
 import platformQuoteRouter from '../features/platformQuote/platformQuote.router.js';
 import crmInquiryRouter from '../features/crmInquiry/crmInquiry.router.js';
 import crmTaskRouter from '../features/crmTask/crmTask.router.js';
+import crmThreadRouter from '../features/crmThread/crmThread.router.js';
+import crmMeetingRouter from '../features/crmMeeting/crmMeeting.router.js';
 
 // Complaint and Technician routes
 import complaintRouter from '../features/complaint/complaint.router.js';
@@ -81,5 +83,7 @@ router.use('/platform-orders', platformOrderRouter);
 router.use('/platform-quotes', platformQuoteRouter);
 router.use('/crm/inquiries', crmInquiryRouter);
 router.use('/crm/tasks', crmTaskRouter);
+router.use('/crm/threads', crmThreadRouter);
+router.use('/crm/meetings', crmMeetingRouter);
 
 export default router;
