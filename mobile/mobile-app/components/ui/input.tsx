@@ -1,0 +1,61 @@
+import * as React from 'react';
+import { TextInput, View, Text, TouchableOpacity, TextInputProps } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
+
+export interface InputProps extends TextInputProps {
+  label?: string;
+  error?: string;
+  isPassword?: boolean;
+  leftIcon?: React.ReactNode;
+}
+
+export const Input = React.forwardRef<TextInput, InputProps>(
+  ({ label, error, isPassword = false, leftIcon, className = '', ...props }, ref) => {
+    const [secureTextEntry, setSecureTextEntry] = React.useState(isPassword);
+
+    return (
+      <View className="w-full gap-1.5">
+        {label && (
+          <Text className="text-foreground font-semibold text-sm">
+            {label}
+          </Text>
+        )}
+
+        <View className="relative flex-row items-center border border-border bg-card rounded-xl px-3.5 focus:border-primary">
+          {leftIcon && <View className="mr-2.5">{leftIcon}</View>}
+
+          <TextInput
+            ref={ref}
+            secureTextEntry={isPassword ? secureTextEntry : props.secureTextEntry}
+            placeholderTextColor="#888888"
+            className={`flex-1 text-foreground py-3.5 text-sm ${className}`}
+            {...props}
+          />
+
+          {isPassword && (
+            <TouchableOpacity
+              onPress={() => setSecureTextEntry((prev) => !prev)}
+              activeOpacity={0.7}
+              className="p-1 ml-2"
+            >
+              {secureTextEntry ? (
+                <EyeOff size={18} color="#888888" />
+              ) : (
+                <Eye size={18} color="#888888" />
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {error ? (
+          <Text className="text-rose-500 text-xs font-semibold mt-0.5">
+            {error}
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
+);
+
+Input.displayName = 'Input';
+export default Input;
