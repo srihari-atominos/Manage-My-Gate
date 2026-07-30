@@ -19,6 +19,20 @@ const messageSubSchema = new Schema(
       required: [true, 'Message content is required'],
       trim: true,
     },
+    isInternal: {
+      type: Boolean,
+      default: false,
+    },
+    messageId: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    inReplyTo: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     timestamp: {
       type: Date,
       default: Date.now,

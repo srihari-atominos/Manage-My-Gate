@@ -52,6 +52,24 @@ export class CrmMeetingController {
   }
 
   /**
+   * Check platform user availability for a time slot.
+   */
+  async checkAvailability(req, res, next) {
+    try {
+      const { userIds, startTime, endTime, excludeMeetingId } = req.body;
+      const isAvailable = await crmMeetingService.checkPlatformUserAvailability(
+        userIds,
+        startTime,
+        endTime,
+        excludeMeetingId
+      );
+      res.success({ available: isAvailable }, 'Platform users availability verified successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Delete CRM meeting.
    */
   async delete(req, res, next) {

@@ -104,6 +104,7 @@ class PlatformPaymentService {
         platformPaymentEvents.emit('payment.success', {
           orderId: createdPayment.orderId,
           paymentId: createdPayment._id,
+          organisationId: order?.organisationId || null,
           payment: createdPayment,
         });
       } else {

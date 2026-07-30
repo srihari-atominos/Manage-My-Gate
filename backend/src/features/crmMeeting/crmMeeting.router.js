@@ -13,6 +13,7 @@ const router = Router();
 router.get('/', validate(queryMeetingRules), crmMeetingController.getAll);
 router.get('/:id', validate(getMeetingByIdRules), crmMeetingController.getById);
 router.post('/', validate(createMeetingRules), crmMeetingController.create);
+router.post('/check-availability', crmMeetingController.checkAvailability);
 router.put('/:id', validate(updateMeetingRules), crmMeetingController.update);
 router.delete('/:id', validate(getMeetingByIdRules), crmMeetingController.delete);
 

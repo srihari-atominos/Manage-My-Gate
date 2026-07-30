@@ -22,10 +22,20 @@ export class PaymentService {
       const activeGateway = (gateway || process.env.PAYMENT_PROVIDER || 'mock').toLowerCase();
       logger.info(`Initiating payment order via '${activeGateway}' strategy`, { orgId, userId, amount, currency });
 
-      // Fetch active tenant's credentials via integrationHubService (Zero cross-feature repository access)
+      // Fetch System Platform Organization Razorpay credentials via integrationHubService
       let credentials = {};
       if (activeGateway !== 'mock') {
-        credentials = await integrationHubService.getDecryptedCredentials(orgId, activeGateway);
+        const platformOrgId = process.env.PLATFORM_ORG_ID;
+        if (platformOrgId) {
+          credentials = await integrationHubService.getDecryptedCredentials(platformOrgId, activeGateway);
+        } else {
+          const globalConn = await integrationHubService.getGlobalConnectionByProvider(activeGateway);
+          if (globalConn) {
+            credentials = await integrationHubService.getDecryptedCredentialsById(globalConn._id);
+          } else {
+            credentials = await integrationHubService.getDecryptedCredentials(orgId, activeGateway);
+          }
+        }
       }
 
       const provider = getPaymentProvider(activeGateway);

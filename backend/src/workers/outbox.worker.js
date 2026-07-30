@@ -4,6 +4,7 @@ import messageTemplateService from '../features/messageTemplate/messageTemplate.
 import logger from '../utils/logger.utils.js';
 import nodemailer from 'nodemailer';
 import { generateInviteLink } from '../features/user/utils/invite.utils.js';
+import { sendEmail } from '../utils/email.utils.js';
 
 const DEFAULT_INVITE_BODY = `
 <div style="font-family: sans-serif; padding: 20px; color: #333;">
@@ -18,6 +19,32 @@ const DEFAULT_INVITE_BODY = `
   <p style="color: #666; font-size: 0.85rem; margin-top: 40px;">
     If the button above does not work, copy and paste this link in your browser:<br/>
     <a href="{{invite_link}}">{{invite_link}}</a>
+  </p>
+</div>
+`;
+
+const DEFAULT_INVOICE_BODY = `
+<div style="font-family: sans-serif; padding: 20px; color: #333;">
+  <h2>Invoice Generated</h2>
+  <p>Hello {{organization_name}},</p>
+  <p>Your invoice for total amount <strong>{{invoice_amount}}</strong> has been generated successfully.</p>
+  <p style="margin: 30px 0;">
+    <a href="{{invoice_link}}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+      View / Download Invoice
+    </a>
+  </p>
+</div>
+`;
+
+const DEFAULT_PROVISIONING_BODY = `
+<div style="font-family: sans-serif; padding: 20px; color: #333;">
+  <h2>Provisioning Completed</h2>
+  <p>Hello {{organization_name}},</p>
+  <p>Your platform workspace environment is fully provisioned and ready for access.</p>
+  <p style="margin: 30px 0;">
+    <a href="{{workspace_url}}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+      Access Workspace
+    </a>
   </p>
 </div>
 `;
@@ -74,11 +101,77 @@ async function handleUserInvited(payload) {
 }
 
 /**
+ * Handle INVOICE_GENERATED event type
+ */
+async function handleInvoiceGenerated(payload) {
+  const { orgId, customerEmail, invoiceAmount, invoiceLink, organizationName } = payload;
+
+  const template = await messageTemplateService.getTemplateByPurpose(orgId, 'email', 'invoice_generated');
+
+  const subject = template?.subject || `Invoice Generated for ${organizationName || 'Your Organization'}`;
+  const bodyTemplate = template?.body || DEFAULT_INVOICE_BODY;
+
+  const compiledSubject = subject
+    .replace(/{{organization_name}}/g, organizationName || '')
+    .replace(/{{invoice_amount}}/g, String(invoiceAmount || ''))
+    .replace(/{{invoice_link}}/g, invoiceLink || '');
+
+  const compiledBody = bodyTemplate
+    .replace(/{{organization_name}}/g, organizationName || '')
+    .replace(/{{invoice_amount}}/g, String(invoiceAmount || ''))
+    .replace(/{{invoice_link}}/g, invoiceLink || '');
+
+  const sent = await sendEmail(orgId, customerEmail, compiledSubject, compiledBody);
+  if (!sent) {
+    const smtpConnection = await integrationHubService.findSmtpConnection(orgId);
+    if (!smtpConnection) {
+      logger.warn(`[Outbox Worker] SMTP not configured for org ${orgId}. Invoice email for ${customerEmail} logged.`);
+      return;
+    }
+    throw new Error(`Failed to dispatch INVOICE_GENERATED email to ${customerEmail}`);
+  }
+}
+
+/**
+ * Handle PROVISIONING_COMPLETED_EMAIL event type
+ */
+async function handleProvisioningCompletedEmail(payload) {
+  const { orgId, customerEmail, workspaceUrl, organizationName } = payload;
+
+  const template = await messageTemplateService.getTemplateByPurpose(orgId, 'email', 'provisioning_completed');
+
+  const subject = template?.subject || `Provisioning Completed for ${organizationName || 'Your Workspace'}`;
+  const bodyTemplate = template?.body || DEFAULT_PROVISIONING_BODY;
+
+  const compiledSubject = subject
+    .replace(/{{organization_name}}/g, organizationName || '')
+    .replace(/{{workspace_url}}/g, workspaceUrl || '');
+
+  const compiledBody = bodyTemplate
+    .replace(/{{organization_name}}/g, organizationName || '')
+    .replace(/{{workspace_url}}/g, workspaceUrl || '');
+
+  const sent = await sendEmail(orgId, customerEmail, compiledSubject, compiledBody);
+  if (!sent) {
+    const smtpConnection = await integrationHubService.findSmtpConnection(orgId);
+    if (!smtpConnection) {
+      logger.warn(`[Outbox Worker] SMTP not configured for org ${orgId}. Provisioning email for ${customerEmail} logged.`);
+      return;
+    }
+    throw new Error(`Failed to dispatch PROVISIONING_COMPLETED_EMAIL to ${customerEmail}`);
+  }
+}
+
+/**
  * Process a single outbox event based on its type
  */
 async function processEvent(event) {
   if (event.eventType === 'USER_INVITED') {
     await handleUserInvited(event.payload);
+  } else if (event.eventType === 'INVOICE_GENERATED') {
+    await handleInvoiceGenerated(event.payload);
+  } else if (event.eventType === 'PROVISIONING_COMPLETED_EMAIL') {
+    await handleProvisioningCompletedEmail(event.payload);
   } else {
     throw new Error(`Unknown event type: ${event.eventType}`);
   }

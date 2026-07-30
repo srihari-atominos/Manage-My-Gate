@@ -36,6 +36,7 @@ const crmInquirySchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: 'User',
       default: null,
+      index: true,
     },
   },
   {

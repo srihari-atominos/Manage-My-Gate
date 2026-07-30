@@ -32,7 +32,7 @@ class PlatformOrderService {
       );
     }
 
-    if (quote.validUntil && new Date(quote.validUntil) < new Date()) {
+    if (quote.expiresAt && new Date(quote.expiresAt) < new Date()) {
       throw new HttpError(400, 'Quote has expired and cannot be converted to an order.');
     }
 
@@ -57,6 +57,7 @@ class PlatformOrderService {
       perUnitRate: quote.perUnitRate || 0,
       addOns: quote.addOns || [],
       setupFee: quote.setupFee || 0,
+      validityInMonths: quote.pricingSnapshot?.validityInMonths || quote.validityInMonths || 12,
       discountPercent: quote.discountPercent || 0,
       discountAmount: quote.discountAmount || 0,
       subtotal: quote.subtotal || 0,

@@ -5,6 +5,8 @@ import {
   fetchInquiryById,
   createInquiry,
   updateInquiry,
+  assignInquiry,
+  checkAvailability,
   fetchTasks,
   createTask,
   updateTask,
@@ -133,6 +135,34 @@ export const useCrmWorkspace = () => {
     [dispatch]
   );
 
+  const fetchAssignedToMeInquiries = useCallback(
+    (userId, params = {}) => {
+      return dispatch(fetchInquiries({ ...params, assignedAgentId: userId }));
+    },
+    [dispatch]
+  );
+
+  const fetchUnassignedInquiries = useCallback(
+    (params = {}) => {
+      return dispatch(fetchInquiries({ ...params, assignedAgentId: 'null' }));
+    },
+    [dispatch]
+  );
+
+  const assignInquiryToUser = useCallback(
+    (inquiryId, userId) => {
+      return dispatch(assignInquiry({ inquiryId, userId }));
+    },
+    [dispatch]
+  );
+
+  const verifyUserAvailability = useCallback(
+    (userIds, startTime, endTime, excludeMeetingId = null) => {
+      return dispatch(checkAvailability({ userIds, startTime, endTime, excludeMeetingId }));
+    },
+    [dispatch]
+  );
+
   const resetError = useCallback(
     () => {
       dispatch(clearCrmError());
@@ -158,6 +188,9 @@ export const useCrmWorkspace = () => {
     handleTabChange,
     selectActiveInquiry,
     fetchInquiriesList,
+    fetchAssignedToMeInquiries,
+    fetchUnassignedInquiries,
+    assignInquiryToUser,
     fetchInquiryDetails,
     createInquiryItem,
     updateInquiryItem,
@@ -166,6 +199,7 @@ export const useCrmWorkspace = () => {
     updateTaskItem,
     fetchMeetingsList,
     scheduleMeetingItem,
+    verifyUserAvailability,
     fetchThreadData,
     sendChatMessage,
     resetError,

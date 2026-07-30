@@ -58,6 +58,11 @@ const masterPricingSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Setup fee must be greater than or equal to 0'],
     },
+    validityInMonths: {
+      type: Number,
+      default: 12,
+      min: [1, 'Validity in months must be at least 1'],
+    },
     maxAgentDiscountPercent: {
       type: Number,
       default: 10,

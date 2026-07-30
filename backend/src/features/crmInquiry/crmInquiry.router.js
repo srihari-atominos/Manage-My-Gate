@@ -14,6 +14,7 @@ router.get('/', validate(queryInquiryRules), crmInquiryController.getAll);
 router.get('/:id', validate(getInquiryRules), crmInquiryController.getById);
 router.post('/', validate(createInquiryRules), crmInquiryController.create);
 router.put('/:id', validate(updateInquiryRules), crmInquiryController.update);
+router.patch('/:id/assign', validate(getInquiryRules), crmInquiryController.assign);
 router.delete('/:id', validate(getInquiryRules), crmInquiryController.delete);
 
 export default router;

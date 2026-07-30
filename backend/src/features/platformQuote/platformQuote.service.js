@@ -80,6 +80,7 @@ class PlatformQuoteService {
       perUnitRate: masterPricing.perUnitRate,
       selectedAddOns,
       setupFee: masterPricing.setupFee,
+      validityInMonths: masterPricing.validityInMonths || 12,
       maxAgentDiscountPercent: masterPricing.maxAgentDiscountPercent,
       taxRatePercent: masterPricing.taxRatePercent,
     };
@@ -338,6 +339,217 @@ class PlatformQuoteService {
       platformQuoteEvents.emit('platform_quote_deleted', deletedQuote);
 
       return deletedQuote;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
+
+  /**
+   * Save a quote draft (create or update strictly in DRAFT status).
+   * @param {Object} payload
+   */
+  async saveQuoteDraft({
+    quoteId,
+    organisationId,
+    masterPricingId,
+    inquiryId,
+    unitCount = 1,
+    selectedAddOnKeys = [],
+    appliedDiscountPercent = 0,
+    createdBy,
+  }) {
+    let existingQuote = null;
+    if (quoteId) {
+      existingQuote = await platformQuoteRepository.findById(quoteId);
+      if (!existingQuote) {
+        throw new HttpError(404, `Platform quote with ID '${quoteId}' not found.`);
+      }
+      if (existingQuote.status !== 'DRAFT') {
+        throw new HttpError(400, `Cannot edit quote draft. Current status is '${existingQuote.status}'.`);
+      }
+    }
+
+    const targetMasterPricingId = masterPricingId || existingQuote?.masterPricingId;
+    const masterPricing = await masterPricingService.getPricingById(targetMasterPricingId);
+    if (!masterPricing) {
+      throw new HttpError(404, `Master pricing plan not found.`);
+    }
+
+    const selectedAddOns = (masterPricing.addOns || []).filter((item) =>
+      selectedAddOnKeys.includes(item.key)
+    );
+
+    const pricingSnapshot = {
+      planName: masterPricing.planName,
+      tier: masterPricing.tier,
+      basePrice: masterPricing.basePrice,
+      perUnitRate: masterPricing.perUnitRate,
+      selectedAddOns,
+      setupFee: masterPricing.setupFee,
+      validityInMonths: masterPricing.validityInMonths || 12,
+      maxAgentDiscountPercent: masterPricing.maxAgentDiscountPercent,
+      taxRatePercent: masterPricing.taxRatePercent,
+    };
+
+    const calculatedAmounts = this.calculatePricingBreakdown({
+      basePrice: masterPricing.basePrice,
+      perUnitRate: masterPricing.perUnitRate,
+      unitCount,
+      selectedAddOns,
+      setupFee: masterPricing.setupFee,
+      appliedDiscountPercent,
+      taxRatePercent: masterPricing.taxRatePercent,
+    });
+
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+
+      let quote;
+      if (existingQuote) {
+        quote = await platformQuoteRepository.updateById(
+          existingQuote._id,
+          {
+            masterPricingId: masterPricing._id,
+            pricingSnapshot,
+            unitCount,
+            appliedDiscountPercent,
+            calculatedAmounts,
+            status: 'DRAFT',
+          },
+          session
+        );
+      } else {
+        const quoteNumber = generateQuoteNumber();
+        quote = await platformQuoteRepository.create(
+          {
+            quoteNumber,
+            inquiryId: inquiryId || null,
+            organisationId,
+            masterPricingId: masterPricing._id,
+            pricingSnapshot,
+            unitCount,
+            appliedDiscountPercent,
+            calculatedAmounts,
+            status: 'DRAFT',
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            createdBy: createdBy || null,
+          },
+          session
+        );
+      }
+
+      await session.commitTransaction();
+      platformQuoteEvents.emit(existingQuote ? 'quote.updated' : 'quote.created', quote);
+      return quote;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
+
+  /**
+   * Finalize and generate quote from a DRAFT, resetting the 30-day expiry countdown upon generation.
+   * Transitions status to PENDING_APPROVAL or APPROVED based on discount threshold.
+   * @param {string} quoteId
+   * @param {number} [expiresInDays=30]
+   */
+  async generateQuote(quoteId, expiresInDays = 30) {
+    const existingQuote = await platformQuoteRepository.findById(quoteId);
+    if (!existingQuote) {
+      throw new HttpError(404, `Platform quote with ID '${quoteId}' not found.`);
+    }
+
+    if (existingQuote.status !== 'DRAFT') {
+      throw new HttpError(400, `Only quotes in DRAFT status can be generated. Current status: '${existingQuote.status}'.`);
+    }
+
+    const maxDiscount = existingQuote.pricingSnapshot?.maxAgentDiscountPercent ?? 10;
+    const targetStatus =
+      existingQuote.appliedDiscountPercent > maxDiscount
+        ? 'PENDING_APPROVAL'
+        : 'APPROVED';
+
+    // Reset expiry 30-day countdown starting from generation time
+    const freshExpiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
+
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+
+      const updatedQuote = await platformQuoteRepository.updateById(
+        quoteId,
+        {
+          status: targetStatus,
+          expiresAt: freshExpiresAt,
+        },
+        session
+      );
+
+      await session.commitTransaction();
+
+      platformQuoteEvents.emit('platform_quote_status_updated', {
+        quote: updatedQuote,
+        previousStatus: 'DRAFT',
+        newStatus: targetStatus,
+      });
+
+      return updatedQuote;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
+
+  /**
+   * Extend the expiration date of a quote.
+   * Protection: Rejects attempt to extend ACCEPTED or REJECTED quotes.
+   * @param {string} quoteId
+   * @param {Date|string} [newExpiryDate=null]
+   * @param {number} [extensionDays=30]
+   */
+  async extendQuoteValidity(quoteId, newExpiryDate = null, extensionDays = 30) {
+    const existingQuote = await platformQuoteRepository.findById(quoteId);
+    if (!existingQuote) {
+      throw new HttpError(404, `Platform quote with ID '${quoteId}' not found.`);
+    }
+
+    if (['ACCEPTED', 'REJECTED'].includes(existingQuote.status)) {
+      throw new HttpError(
+        400,
+        `Cannot extend validity of a quote in '${existingQuote.status}' status.`
+      );
+    }
+
+    const expiresAt = newExpiryDate
+      ? new Date(newExpiryDate)
+      : new Date(Date.now() + extensionDays * 24 * 60 * 60 * 1000);
+
+    const updatePayload = { expiresAt };
+
+    if (existingQuote.status === 'EXPIRED') {
+      const maxDiscount = existingQuote.pricingSnapshot?.maxAgentDiscountPercent ?? 10;
+      updatePayload.status = existingQuote.appliedDiscountPercent > maxDiscount ? 'PENDING_APPROVAL' : 'APPROVED';
+    }
+
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+
+      const updatedQuote = await platformQuoteRepository.updateById(quoteId, updatePayload, session);
+
+      await session.commitTransaction();
+
+      platformQuoteEvents.emit('platform_quote_validity_extended', updatedQuote);
+
+      return updatedQuote;
     } catch (error) {
       await session.abortTransaction();
       throw error;

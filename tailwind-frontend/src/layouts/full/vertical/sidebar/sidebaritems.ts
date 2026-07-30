@@ -133,6 +133,20 @@ const SidebarContent: MenuItem[] = [
         url: '/super-admin/audit-logs',
         requirePlatform: true,
       },
+      {
+        name: 'Platform Billing',
+        icon: 'solar:bill-list-linear',
+        id: uniqueId(),
+        url: '/super-admin/platform-billing',
+        requirePlatform: true,
+      },
+      {
+        name: 'CRM Workspace',
+        icon: 'solar:users-group-rounded-linear',
+        id: uniqueId(),
+        url: '/super-admin/crm',
+        requirePlatform: true,
+      },
     ],
   },
 ];

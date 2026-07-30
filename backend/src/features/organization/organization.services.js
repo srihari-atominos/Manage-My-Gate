@@ -98,18 +98,22 @@ export class OrganizationService {
     return await organizationRepository.findAllPaginated(Number(page), Number(limit));
   }
 
-  async changeOrganizationStatus(orgId, status, requestingUserId = null) {
-    const validStatuses = ['Active', 'Pending', 'Rejected'];
+  async changeOrganizationStatus(orgId, status, requestingUserId = null, session = null) {
+    const validStatuses = ['Draft', 'Active', 'Pending', 'Rejected'];
     if (!validStatuses.includes(status)) {
       throw new HttpError(400, `Invalid status. Must be one of ${validStatuses.join(', ')}.`);
     }
 
-    const localSession = await mongoose.startSession();
-    localSession.startTransaction();
+    let localSession = null;
+    if (!session) {
+      localSession = await mongoose.startSession();
+      localSession.startTransaction();
+    }
+    const activeSession = session || localSession;
 
     try {
       // 1. Verify organization exists
-      const org = await organizationRepository.findById(orgId, localSession);
+      const org = await organizationRepository.findById(orgId, activeSession);
       if (!org) {
         throw new HttpError(404, `Organization with ID ${orgId} not found.`);
       }
@@ -121,9 +125,11 @@ export class OrganizationService {
       const oldStatus = org.status;
 
       // 2. Update status
-      const updatedOrg = await organizationRepository.updateStatus(orgId, status, localSession);
+      const updatedOrg = await organizationRepository.updateStatus(orgId, status, activeSession);
 
-      await localSession.commitTransaction();
+      if (localSession) {
+        await localSession.commitTransaction();
+      }
 
       // Emit decoupled status changed event outside transaction lifecycle
       orgEventEmitter.emit('ORG_STATUS_CHANGED', {
@@ -135,10 +141,14 @@ export class OrganizationService {
 
       return updatedOrg;
     } catch (error) {
-      await localSession.abortTransaction();
+      if (localSession) {
+        await localSession.abortTransaction();
+      }
       throw error;
     } finally {
-      await localSession.endSession();
+      if (localSession) {
+        await localSession.endSession();
+      }
     }
   }
 

@@ -16,6 +16,7 @@ const orderSnapshotSchema = new mongoose.Schema(
       },
     ],
     setupFee: { type: Number, default: 0 },
+    validityInMonths: { type: Number, default: 12, min: 1 },
     discountPercent: { type: Number, default: 0 },
     discountAmount: { type: Number, default: 0 },
     subtotal: { type: Number, default: 0 },

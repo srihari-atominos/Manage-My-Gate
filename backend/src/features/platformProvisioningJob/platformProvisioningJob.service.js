@@ -9,6 +9,22 @@ import workspaceService from '../workspace/workspace.service.js';
 import userService from '../user/user.services.js';
 import platformSubscriptionService from '../platformSubscription/platformSubscription.service.js';
 import platformEntitlementService from '../platformEntitlement/platformEntitlement.service.js';
+import platformOrderService from '../platformOrder/platformOrder.service.js';
+
+/**
+ * Safely adds N months to a date, avoiding end-of-month rollover issues (e.g. Jan 31 + 1 month = Feb 28/29).
+ */
+const addMonthsSafely = (startDate, months) => {
+  const d = new Date(startDate);
+  const targetMonth = d.getMonth() + Number(months);
+  const targetYear = d.getFullYear() + Math.floor(targetMonth / 12);
+  const normalizedMonth = ((targetMonth % 12) + 12) % 12;
+  const originalDate = d.getDate();
+  d.setFullYear(targetYear, normalizedMonth, 1);
+  const daysInTargetMonth = new Date(targetYear, normalizedMonth + 1, 0).getDate();
+  d.setDate(Math.min(originalDate, daysInTargetMonth));
+  return d;
+};
 
 export class PlatformProvisioningJobService {
   /**
@@ -46,10 +62,10 @@ export class PlatformProvisioningJobService {
 
   /**
    * Enqueue a new provisioning job in PENDING state (e.g. from payment.success event listener).
-   * @param {Object} params - { orderId, paymentId, requestedFeatures }
+   * @param {Object} params - { orderId, paymentId, organisationId, requestedFeatures }
    * @param {ClientSession} [session=null]
    */
-  async enqueueJob({ orderId, paymentId, requestedFeatures = [] }, session = null) {
+  async enqueueJob({ orderId, paymentId, organisationId = null, requestedFeatures = [] }, session = null) {
     let features = Array.isArray(requestedFeatures) ? requestedFeatures : [];
 
     if (features.length === 0) {
@@ -60,6 +76,7 @@ export class PlatformProvisioningJobService {
       {
         orderId,
         paymentId,
+        organisationId,
         requestedFeatures: features,
         status: 'PENDING',
       },
@@ -162,24 +179,22 @@ export class PlatformProvisioningJobService {
   async executeProvisioningPipeline(job, session) {
     logger.info(`[Provisioning Pipeline] Beginning execution for job ${job.jobId} (Current Step: ${job.currentStep})`);
 
-    // Step 1: CREATE_ORG
+    // Phase 4 Canonical Pipeline Execution
+    // Step 1: CREATE_ORG (Canonical check for pre-existing Organization)
     if (job.currentStep === 'INIT' || job.currentStep === 'CREATE_ORG') {
       logger.info(`[Provisioning Pipeline] Executing Step: CREATE_ORG for job ${job.jobId}`);
 
-      let orgId = job.organisationId?._id || job.organisationId;
+      const orgId = job.organisationId?._id || job.organisationId;
       if (!orgId) {
-        // Orchestrate via organizationService (Service-to-Service)
-        const orgData = {
-          name: `Org-${job.jobId}`,
-          code: `ORG-${Math.floor(1000 + Math.random() * 9000)}`,
-          email: `admin-${job.jobId.toLowerCase()}@platform.local`,
-          allowedFeatures: job.requestedFeatures || [],
-        };
-        const createdOrg = await organizationService.createOrganization(orgData, session);
-        orgId = createdOrg._id;
+        throw new HttpError(400, 'Canonical provisioning requires an existing organisationId.');
       }
 
-      job.organisationId = orgId;
+      // Verify existing Organization in database (Service-to-Service)
+      const targetOrg = await organizationService.getOrganizationById(orgId, session);
+      if (!targetOrg) {
+        throw new HttpError(404, `Target Organization with ID '${orgId}' not found.`);
+      }
+
       job.currentStep = 'CREATE_WORKSPACE';
       await repository.updateById(
         job._id,
@@ -203,7 +218,7 @@ export class PlatformProvisioningJobService {
       try {
         await workspaceService.createWorkspace(workspacePayload, 'SYSTEM_PROVISIONER', session);
       } catch (err) {
-        // If workspace already exists, proceed gracefully
+        // If workspace already exists, proceed gracefully (Idempotency)
         if (!err.message?.includes('already exists') && err.statusCode !== 409) {
           throw err;
         }
@@ -214,19 +229,37 @@ export class PlatformProvisioningJobService {
       events.emit('jobStepUpdated', { jobId: job.jobId, currentStep: 'CREATE_ADMIN', status: 'IN_PROGRESS' });
     }
 
-    // Step 3: CREATE_ADMIN
+    // Step 3: CREATE_ADMIN (Real Customer Email Resolution & Idempotency)
     if (job.currentStep === 'CREATE_ADMIN') {
       logger.info(`[Provisioning Pipeline] Executing Step: CREATE_ADMIN for job ${job.jobId}`);
 
-      const adminEmail = `admin-${job.jobId.toLowerCase()}@platform.local`;
+      const orgId = job.organisationId?._id || job.organisationId;
+      const targetOrg = await organizationService.getOrganizationById(orgId, session);
+
+      // Resolve real customer email from Organization contactEmail or PlatformOrder
+      let adminEmail = targetOrg?.contactEmail;
+      const rawOrderId = job.orderId?._id || job.orderId;
+      if (!adminEmail && rawOrderId) {
+        try {
+          const order = await platformOrderService.getOrderById(rawOrderId);
+          adminEmail = order?.contactEmail || order?.orderSnapshot?.contactEmail;
+        } catch (err) {
+          logger.warn(`[Provisioning Pipeline] Could not fetch order to extract contact email: ${err.message}`);
+        }
+      }
+
+      if (!adminEmail) {
+        adminEmail = `admin-${orgId.toString().slice(-6)}@platform.local`;
+      }
+
       const existingUser = await userService.getUserByEmail(adminEmail, session);
 
       if (!existingUser) {
         const userPayload = {
-          name: `Admin ${job.jobId}`,
+          name: `${targetOrg?.name || 'Customer'} Admin`,
           email: adminEmail,
           password: `InitPassword123!`,
-          organisationId: job.organisationId?._id || job.organisationId,
+          organisationId: orgId,
           role: 'Admin',
         };
         await userService.createUser(userPayload, session);
@@ -244,13 +277,34 @@ export class PlatformProvisioningJobService {
       const orgId = (job.organisationId?._id || job.organisationId).toString();
       const features = job.requestedFeatures || [];
 
-      // 1. Create/update PlatformSubscription for the Organization inside session
+      const rawOrderId = job.orderId?._id || job.orderId;
+      let planName = 'Enterprise Standard';
+      let validityInMonths = 12;
+
+      if (rawOrderId) {
+        try {
+          const order = await platformOrderService.getOrderById(rawOrderId);
+          if (order && order.orderSnapshot) {
+            planName = order.orderSnapshot.planName || planName;
+            validityInMonths = order.orderSnapshot.validityInMonths || validityInMonths;
+          }
+        } catch (err) {
+          logger.warn(`Could not fetch order ${rawOrderId} during provisioning. Fallback to default pricing snapshot: ${err.message}`);
+        }
+      }
+
+      const billingPeriodStart = new Date();
+      const billingPeriodEnd = addMonthsSafely(billingPeriodStart, validityInMonths);
+
+      // 1. Create/update PlatformSubscription dynamically for the Organization inside session
       const subscription = await platformSubscriptionService.createSubscription(
         {
           organisationId: orgId,
-          orderId: job.orderId?._id || job.orderId,
-          planName: 'Enterprise Standard',
+          orderId: rawOrderId,
+          planName,
           status: 'ACTIVE',
+          billingPeriodStart,
+          billingPeriodEnd,
         },
         session
       );
@@ -278,11 +332,23 @@ export class PlatformProvisioningJobService {
       events.emit('jobStepUpdated', { jobId: job.jobId, currentStep: 'GENERATE_TEMPLATES', status: 'IN_PROGRESS' });
     }
 
-    // Step 5: GENERATE_TEMPLATES
+    // Step 5: GENERATE_TEMPLATES & Organization Activation
     if (job.currentStep === 'GENERATE_TEMPLATES') {
       logger.info(`[Provisioning Pipeline] Executing Step: GENERATE_TEMPLATES for job ${job.jobId}`);
 
-      // Finalize setup templates and transition to FINISHED
+      const orgId = job.organisationId?._id || job.organisationId;
+
+      // Transition Organization status from 'Draft' to 'Active' upon successful provisioning completion
+      if (orgId) {
+        try {
+          await organizationService.changeOrganizationStatus(orgId, 'Active', null, session);
+          logger.info(`[Provisioning Pipeline] Successfully transitioned Organization ${orgId} status from Draft to Active.`);
+        } catch (err) {
+          logger.warn(`[Provisioning Pipeline] Organization status update to Active yielded: ${err.message}`);
+        }
+      }
+
+      // Finalize setup templates and transition job to FINISHED
       job.currentStep = 'FINISHED';
       job.status = 'COMPLETED';
       job.lastError = null;
@@ -296,6 +362,39 @@ export class PlatformProvisioningJobService {
         },
         session
       );
+
+      // Fetch organization details for transactional notification
+      let targetOrg = null;
+      if (orgId) {
+        try {
+          targetOrg = await organizationService.getOrganizationById(orgId, session);
+        } catch (err) {
+          logger.warn(`[Provisioning Pipeline] Organization lookup yielded: ${err.message}`);
+        }
+      }
+
+      const customerEmail = targetOrg?.contactEmail || 'admin@organization.com';
+      const organizationName = targetOrg?.name || 'Your Organization';
+      const workspaceUrl = process.env.CLIENT_URL ? `${process.env.CLIENT_URL}/workspace` : 'https://app.managemygate.com';
+
+      // Create outbox event for PROVISIONING_COMPLETED_EMAIL
+      try {
+        const OutboxEvent = (await import('../outbox/outboxEvent.model.js')).default;
+        const outboxEvent = new OutboxEvent({
+          eventType: 'PROVISIONING_COMPLETED_EMAIL',
+          payload: {
+            orgId,
+            customerEmail,
+            workspaceUrl,
+            organizationName,
+          },
+          status: 'PENDING',
+          retries: 0,
+        });
+        await outboxEvent.save({ session });
+      } catch (outboxErr) {
+        logger.error(`[Provisioning Pipeline] Failed to create PROVISIONING_COMPLETED_EMAIL outbox event: ${outboxErr.message}`);
+      }
 
       events.emit('jobCompleted', { jobId: job.jobId, status: 'COMPLETED' });
     }

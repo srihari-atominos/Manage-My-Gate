@@ -9,7 +9,7 @@ const organizationSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Pending', 'Active', 'Rejected'],
+      enum: ['Draft', 'Pending', 'Active', 'Rejected'],
       default: 'Active',
     },
     organizationType: {

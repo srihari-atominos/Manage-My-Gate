@@ -3,6 +3,7 @@ import platformInvoiceRepository from './platformInvoice.repository.js';
 import platformInvoiceEvents from './platformInvoice.events.js';
 import platformOrderService from '../platformOrder/platformOrder.service.js';
 import HttpError from '../../utils/httpError.utils.js';
+import OutboxEvent from '../outbox/outboxEvent.model.js';
 
 /**
  * Generate a standard invoice number in format INV-YYYYMMDD-XXXX
@@ -86,9 +87,31 @@ class PlatformInvoiceService {
       pdfUrl: null,
     };
 
+    const customerEmail = order.contactEmail || order.orderSnapshot?.contactEmail || '';
+    const organizationName = order.orderSnapshot?.organizationName || order.organisationId?.name || 'Organization';
+    const invoiceAmount = amounts.totalAmount;
+
+    // Helper to record Outbox Event for transaction email
+    const createOutboxEvent = async (invoice, currentSession) => {
+      const outboxEvent = new OutboxEvent({
+        eventType: 'INVOICE_GENERATED',
+        payload: {
+          orgId: organisationId,
+          customerEmail,
+          invoiceAmount,
+          invoiceLink: invoice.pdfUrl || `/api/v1/platform-invoices/${invoice._id}/download`,
+          organizationName,
+        },
+        status: 'PENDING',
+        retries: 0,
+      });
+      await outboxEvent.save({ session: currentSession });
+    };
+
     // Manage session/transaction
     if (externalSession) {
       const newInvoice = await platformInvoiceRepository.create(invoicePayload, externalSession);
+      await createOutboxEvent(newInvoice, externalSession);
       platformInvoiceEvents.emit('invoice.created', newInvoice);
       return newInvoice;
     }
@@ -98,6 +121,7 @@ class PlatformInvoiceService {
       session.startTransaction();
 
       const newInvoice = await platformInvoiceRepository.create(invoicePayload, session);
+      await createOutboxEvent(newInvoice, session);
 
       await session.commitTransaction();
 

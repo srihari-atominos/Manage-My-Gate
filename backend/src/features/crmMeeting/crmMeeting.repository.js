@@ -19,9 +19,32 @@ export class CrmMeetingRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findById(id, session = null) {
-    const query = CrmMeeting.findById(id).populate('inquiryId', 'inquiryId customerName contactEmail status');
+    const query = CrmMeeting.findById(id)
+      .populate('inquiryId', 'inquiryId customerName contactEmail status')
+      .populate('platformParticipants', 'name email username avatar');
     if (session) query.session(session);
     return await query.exec();
+  }
+
+  /**
+   * Find overlapping active meetings for platform users.
+   * @param {Array<string|mongoose.Types.ObjectId>} userIds
+   * @param {Date} startTime
+   * @param {Date} endTime
+   * @param {string} [excludeId]
+   */
+  async findOverlappingMeetings(userIds, startTime, endTime, excludeId = null) {
+    const objectIds = userIds.map((id) => (typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id));
+    const query = {
+      status: { $ne: 'CANCELLED' },
+      platformParticipants: { $in: objectIds },
+      startTime: { $lt: new Date(endTime) },
+      endTime: { $gt: new Date(startTime) },
+    };
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
+    return await CrmMeeting.find(query).exec();
   }
 
   /**
@@ -54,7 +77,7 @@ export class CrmMeetingRepository {
 
     const pipeline = [
       { $match: matchStage },
-      { $sort: { scheduledAt: 1, createdAt: -1 } },
+      { $sort: { startTime: 1, createdAt: -1 } },
       {
         $facet: {
           data: [
@@ -77,7 +100,10 @@ export class CrmMeetingRepository {
             {
               $project: {
                 title: 1,
-                scheduledAt: 1,
+                startTime: 1,
+                endTime: 1,
+                platformParticipants: 1,
+                customerParticipants: 1,
                 googleMeetLink: 1,
                 status: 1,
                 createdAt: 1,

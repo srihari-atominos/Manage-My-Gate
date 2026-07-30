@@ -19,24 +19,80 @@ export class CrmMeetingService {
   }
 
   /**
+   * Check if any of the provided platform user IDs have overlapping meetings.
+   * @param {Array<string>} userIds
+   * @param {Date|string} startTime
+   * @param {Date|string} endTime
+   * @param {string} [excludeMeetingId]
+   */
+  async checkPlatformUserAvailability(userIds, startTime, endTime, excludeMeetingId = null) {
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return true;
+    }
+
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new HttpError(400, 'Invalid startTime or endTime date format');
+    }
+
+    if (start >= end) {
+      throw new HttpError(400, 'startTime must be prior to endTime');
+    }
+
+    const overlappingMeetings = await crmMeetingRepository.findOverlappingMeetings(
+      userIds,
+      start,
+      end,
+      excludeMeetingId
+    );
+
+    if (overlappingMeetings && overlappingMeetings.length > 0) {
+      throw new HttpError(409, 'One or more selected platform participants have an overlapping meeting during this time slot.');
+    }
+
+    return true;
+  }
+
+  /**
    * Schedule a new CRM Meeting.
-   * @param {Object} payload { inquiryId, title, scheduledAt, googleMeetLink, status }
+   * @param {Object} payload { inquiryId, title, startTime, endTime, platformParticipants, customerParticipants, googleMeetLink, status }
    */
   async scheduleMeeting(payload) {
-    const { inquiryId, title, scheduledAt, googleMeetLink, status } = payload;
+    const { inquiryId, title, startTime, endTime, platformParticipants = [], customerParticipants = [], googleMeetLink, status } = payload;
 
     // Cross-feature service call to validate related CRM Inquiry
     await crmInquiryService.getInquiryById(inquiryId);
 
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new HttpError(400, 'Valid startTime and endTime are required');
+    }
+
+    if (start >= end) {
+      throw new HttpError(400, 'startTime must be before endTime');
+    }
+
+    // Enforce platform user availability check
+    if (platformParticipants && platformParticipants.length > 0) {
+      await this.checkPlatformUserAvailability(platformParticipants, start, end);
+    }
+
     // Mock Google Calendar API link generation if not provided
     const meetLink = googleMeetLink && googleMeetLink.trim() !== ''
       ? googleMeetLink.trim()
-      : this.generateMockGoogleMeetLink(title, scheduledAt);
+      : this.generateMockGoogleMeetLink(title, start);
 
     const meetingData = {
       inquiryId,
       title,
-      scheduledAt,
+      startTime: start,
+      endTime: end,
+      platformParticipants,
+      customerParticipants,
       googleMeetLink: meetLink,
       status: status || 'SCHEDULED',
     };
@@ -81,8 +137,15 @@ export class CrmMeetingService {
     }
 
     if (updatePayload.inquiryId && String(updatePayload.inquiryId) !== String(existing.inquiryId?._id || existing.inquiryId)) {
-      // Cross-feature service call to validate new related inquiry
       await crmInquiryService.getInquiryById(updatePayload.inquiryId);
+    }
+
+    const start = updatePayload.startTime ? new Date(updatePayload.startTime) : existing.startTime;
+    const end = updatePayload.endTime ? new Date(updatePayload.endTime) : existing.endTime;
+    const participants = updatePayload.platformParticipants || existing.platformParticipants || [];
+
+    if (updatePayload.startTime || updatePayload.endTime || updatePayload.platformParticipants) {
+      await this.checkPlatformUserAvailability(participants, start, end, id);
     }
 
     const updatedMeeting = await crmMeetingRepository.updateById(id, updatePayload);

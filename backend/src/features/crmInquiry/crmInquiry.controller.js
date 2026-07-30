@@ -52,6 +52,20 @@ export class CrmInquiryController {
   }
 
   /**
+   * Assign a CRM Inquiry to a Platform user.
+   */
+  async assign(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { userId } = req.body;
+      const data = await crmInquiryService.assignInquiry(id, userId);
+      res.success(data, 'CRM Inquiry assigned successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Delete a CRM Inquiry.
    */
   async delete(req, res, next) {

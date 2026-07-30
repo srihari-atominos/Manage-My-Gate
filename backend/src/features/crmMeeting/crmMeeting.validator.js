@@ -12,11 +12,24 @@ export const createMeetingRules = [
     .isString()
     .withMessage('Meeting title must be a string')
     .trim(),
-  body('scheduledAt')
+  body('startTime')
     .notEmpty()
-    .withMessage('Scheduled date and time is required')
+    .withMessage('Start date and time is required')
     .isISO8601()
-    .withMessage('scheduledAt must be a valid ISO 8601 date string'),
+    .withMessage('startTime must be a valid ISO 8601 date string'),
+  body('endTime')
+    .notEmpty()
+    .withMessage('End date and time is required')
+    .isISO8601()
+    .withMessage('endTime must be a valid ISO 8601 date string'),
+  body('platformParticipants')
+    .optional()
+    .isArray()
+    .withMessage('platformParticipants must be an array of User ObjectIds'),
+  body('customerParticipants')
+    .optional()
+    .isArray()
+    .withMessage('customerParticipants must be an array'),
   body('googleMeetLink')
     .optional({ checkFalsy: true })
     .isURL()
@@ -40,10 +53,22 @@ export const updateMeetingRules = [
     .isString()
     .withMessage('Meeting title must be a string')
     .trim(),
-  body('scheduledAt')
+  body('startTime')
     .optional()
     .isISO8601()
-    .withMessage('scheduledAt must be a valid ISO 8601 date string'),
+    .withMessage('startTime must be a valid ISO 8601 date string'),
+  body('endTime')
+    .optional()
+    .isISO8601()
+    .withMessage('endTime must be a valid ISO 8601 date string'),
+  body('platformParticipants')
+    .optional()
+    .isArray()
+    .withMessage('platformParticipants must be an array of User ObjectIds'),
+  body('customerParticipants')
+    .optional()
+    .isArray()
+    .withMessage('customerParticipants must be an array'),
   body('googleMeetLink')
     .optional({ nullable: true })
     .isURL()

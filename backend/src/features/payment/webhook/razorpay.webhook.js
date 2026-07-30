@@ -167,6 +167,75 @@ export const handleRazorpayWebhook = async (req, res, next) => {
         logger.error('Transaction error in Razorpay webhook settlement:', txnError);
         throw txnError;
       }
+    } else if (event === 'payment.failed') {
+      const paymentEntity = payload?.payment?.entity || {};
+      const razorpayPaymentId = paymentEntity.id;
+      const orderId = paymentEntity.order_id || paymentEntity.id;
+      const errorReason = paymentEntity.error_description || paymentEntity.error_reason || 'Payment failed on Razorpay';
+
+      logger.warn(`Processing payment.failed webhook event`, { orderId, razorpayPaymentId, errorReason });
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        // 1. Check legacy Payment record
+        const paymentRecord = await paymentRepository.findByGatewayTransactionId(orderId, session);
+
+        if (paymentRecord) {
+          // Out-of-Order Protection: If payment already succeeded, ignore out-of-order failed event
+          if (['success', 'SUCCESS'].includes(paymentRecord.status)) {
+            await session.abortTransaction();
+            session.endSession();
+            logger.info(`Out-of-order webhook ignored: Payment ${orderId} is already marked SUCCESS.`);
+            return res.status(200).json({ success: true, message: 'Out-of-order payment.failed event ignored.' });
+          }
+
+          paymentRecord.status = 'failed';
+          paymentRecord.errorReason = errorReason;
+          await paymentRecord.save({ session });
+
+          await session.commitTransaction();
+          session.endSession();
+
+          paymentEventEmitter.emit(PAYMENT_FAILED, paymentRecord);
+          return res.status(200).json({ success: true, message: 'Payment marked as failed successfully' });
+        }
+
+        // 2. Check PlatformPayment record
+        const PlatformPayment = (await import('../../platformPayment/platformPayment.model.js')).default;
+        const platformPaymentRecord = await PlatformPayment.findOne({
+          $or: [{ gatewayTransactionId: razorpayPaymentId }, { gatewayTransactionId: orderId }],
+        }).session(session);
+
+        if (platformPaymentRecord) {
+          // Out-of-Order Protection: If PlatformPayment is already SUCCESS, ignore out-of-order failed event
+          if (platformPaymentRecord.status === 'SUCCESS') {
+            await session.abortTransaction();
+            session.endSession();
+            logger.info(`Out-of-order webhook ignored: PlatformPayment ${orderId} is already SUCCESS.`);
+            return res.status(200).json({ success: true, message: 'Out-of-order payment.failed event ignored.' });
+          }
+
+          // Strict Uppercase Enum: 'FAILED' for PlatformPayment schema
+          platformPaymentRecord.status = 'FAILED';
+          await platformPaymentRecord.save({ session });
+
+          await session.commitTransaction();
+          session.endSession();
+
+          return res.status(200).json({ success: true, message: 'PlatformPayment marked as FAILED successfully' });
+        }
+
+        await session.abortTransaction();
+        session.endSession();
+        logger.info(`Payment record not found for failed order ${orderId}. Webhook acknowledged.`);
+        return res.status(200).json({ success: true, message: 'Payment record not found, webhook acknowledged' });
+      } catch (txnError) {
+        await session.abortTransaction();
+        session.endSession();
+        throw txnError;
+      }
     }
 
     return res.status(200).json({ success: true, message: `Webhook event ${event} acknowledged` });

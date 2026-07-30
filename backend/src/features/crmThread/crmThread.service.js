@@ -48,7 +48,7 @@ export class CrmThreadService {
   /**
    * Add a message to an inquiry's thread.
    * @param {string} inquiryId
-   * @param {Object} messagePayload { senderId, senderType, content }
+   * @param {Object} messagePayload { senderId, senderType, content, isInternal, messageId, inReplyTo }
    */
   async addMessage(inquiryId, messagePayload) {
     let thread = await crmThreadRepository.findByInquiryId(inquiryId);
@@ -64,6 +64,9 @@ export class CrmThreadService {
       senderId: messagePayload.senderId || null,
       senderType: messagePayload.senderType,
       content: messagePayload.content,
+      isInternal: messagePayload.isInternal !== undefined ? Boolean(messagePayload.isInternal) : false,
+      messageId: messagePayload.messageId || null,
+      inReplyTo: messagePayload.inReplyTo || null,
       timestamp: new Date(),
     };
 

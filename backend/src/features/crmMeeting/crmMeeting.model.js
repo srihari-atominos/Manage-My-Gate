@@ -15,10 +15,28 @@ const crmMeetingSchema = new Schema(
       required: [true, 'Meeting title is required'],
       trim: true,
     },
-    scheduledAt: {
+    startTime: {
       type: Date,
-      required: [true, 'Scheduled date and time is required'],
+      required: [true, 'Start date and time is required'],
+      index: true,
     },
+    endTime: {
+      type: Date,
+      required: [true, 'End date and time is required'],
+      index: true,
+    },
+    platformParticipants: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    customerParticipants: [
+      {
+        name: { type: String, trim: true },
+        email: { type: String, trim: true, lowercase: true },
+      },
+    ],
     googleMeetLink: {
       type: String,
       trim: true,

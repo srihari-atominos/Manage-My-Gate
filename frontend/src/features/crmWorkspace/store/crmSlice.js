@@ -51,6 +51,30 @@ export const updateInquiry = createAsyncThunk(
   }
 );
 
+export const assignInquiry = createAsyncThunk(
+  'crmWorkspace/assignInquiry',
+  async ({ inquiryId, userId }, { rejectWithValue }) => {
+    try {
+      const response = await crmApi.assignInquiry(inquiryId, userId);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to assign inquiry');
+    }
+  }
+);
+
+export const checkAvailability = createAsyncThunk(
+  'crmWorkspace/checkAvailability',
+  async ({ userIds, startTime, endTime, excludeMeetingId }, { rejectWithValue }) => {
+    try {
+      const response = await crmApi.checkPlatformUserAvailability(userIds, startTime, endTime, excludeMeetingId);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Platform users are not available for this time window');
+    }
+  }
+);
+
 export const fetchTasks = createAsyncThunk(
   'crmWorkspace/fetchTasks',
   async (params = {}, { rejectWithValue }) => {

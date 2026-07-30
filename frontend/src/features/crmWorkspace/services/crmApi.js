@@ -43,6 +43,36 @@ export const crmApi = {
     return await apiClient.delete(`/crm/inquiries/${id}`);
   },
 
+  /**
+   * Fetch inquiries assigned to a specific user ("Assigned to Me").
+   * @param {string} userId
+   * @param {Object} [params]
+   */
+  async getInquiriesAssignedToMe(userId, params = {}) {
+    return await apiClient.get('/crm/inquiries', {
+      params: { ...params, assignedAgentId: userId },
+    });
+  },
+
+  /**
+   * Fetch unassigned inquiries.
+   * @param {Object} [params]
+   */
+  async getUnassignedInquiries(params = {}) {
+    return await apiClient.get('/crm/inquiries', {
+      params: { ...params, assignedAgentId: 'null' },
+    });
+  },
+
+  /**
+   * Assign inquiry to a platform user.
+   * @param {string} inquiryId
+   * @param {string|null} userId
+   */
+  async assignInquiry(inquiryId, userId) {
+    return await apiClient.patch(`/crm/inquiries/${inquiryId}/assign`, { userId });
+  },
+
   // --- CRM Tasks ---
   /**
    * Fetch paginated list of CRM tasks.
@@ -125,6 +155,22 @@ export const crmApi = {
    */
   async deleteMeeting(id) {
     return await apiClient.delete(`/crm/meetings/${id}`);
+  },
+
+  /**
+   * Check platform user availability for a given time window.
+   * @param {Array<string>} userIds
+   * @param {string|Date} startTime
+   * @param {string|Date} endTime
+   * @param {string} [excludeMeetingId]
+   */
+  async checkPlatformUserAvailability(userIds, startTime, endTime, excludeMeetingId = null) {
+    return await apiClient.post('/crm/meetings/check-availability', {
+      userIds,
+      startTime,
+      endTime,
+      excludeMeetingId,
+    });
   },
 
   // --- CRM Threads ---

@@ -99,6 +99,30 @@ export class CrmInquiryService {
   }
 
   /**
+   * Assign a CRM inquiry to a Platform user.
+   * @param {string} inquiryId - Database ID (_id) or human-readable inquiryId
+   * @param {string|null} userId - Platform user ID to assign (or null to unassign)
+   */
+  async assignInquiry(inquiryId, userId) {
+    const inquiry = await this.getInquiryById(inquiryId);
+
+    if (userId) {
+      const userService = (await import('../user/user.services.js')).default;
+      const user = await userService.getUserById(userId);
+      if (!user) {
+        throw new HttpError(404, `User with ID '${userId}' not found for assignment`);
+      }
+    }
+
+    const updatedInquiry = await crmInquiryRepository.updateById(inquiry._id, {
+      assignedAgentId: userId || null,
+    });
+
+    crmInquiryEvents.emit('inquiryUpdated', updatedInquiry);
+    return updatedInquiry;
+  }
+
+  /**
    * Delete a CRM inquiry.
    * @param {string} id
    */

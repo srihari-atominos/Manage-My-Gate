@@ -17,6 +17,7 @@ const pricingSnapshotSchema = new mongoose.Schema(
     perUnitRate: { type: Number, default: 0, min: 0 },
     selectedAddOns: { type: [selectedAddOnSchema], default: [] },
     setupFee: { type: Number, default: 0, min: 0 },
+    validityInMonths: { type: Number, default: 12, min: 1 },
     maxAgentDiscountPercent: { type: Number, default: 10 },
     taxRatePercent: { type: Number, default: 15 },
   },

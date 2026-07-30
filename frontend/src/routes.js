@@ -59,7 +59,7 @@ const DashboardDeepLinkRedirector = React.lazy(() => import('./views/dashboard/c
  */
 export const OnboardingWizardView = React.lazy(() => import('./features/onboardingWizard/views/OnboardingWizardView'));
 
-const routes = [
+export const routes = [
   { path: '/onboarding-wizard', name: 'Onboarding Wizard', element: OnboardingWizardView },
   { path: '/onboarding', name: 'Data Import Wizard', element: OnboardingWizardView },
   { path: '/', exact: true, name: 'Home' },

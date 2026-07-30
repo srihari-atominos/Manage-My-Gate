@@ -11,9 +11,10 @@ export function initProvisioningJobListeners() {
     try {
       const orderId = payload.orderId || payload.payment?.orderId;
       const paymentId = payload.paymentId || payload.payment?._id;
+      const organisationId = payload.organisationId || payload.payment?.organisationId || null;
 
       logger.info(
-        `[Provisioning Listener] Received 'payment.success' event for Order ID: ${orderId}, Payment ID: ${paymentId}. Enqueuing job...`
+        `[Provisioning Listener] Received 'payment.success' event for Order ID: ${orderId}, Payment ID: ${paymentId}, Org ID: ${organisationId}. Enqueuing job...`
       );
 
       if (!orderId || !paymentId) {
@@ -24,6 +25,7 @@ export function initProvisioningJobListeners() {
       await platformProvisioningJobService.enqueueJob({
         orderId,
         paymentId,
+        organisationId,
         requestedFeatures: payload.requestedFeatures || [],
       });
 
