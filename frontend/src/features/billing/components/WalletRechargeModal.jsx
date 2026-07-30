@@ -69,7 +69,7 @@ const WalletRechargeModal = ({ show, onHide }) => {
         <Modal.Title>Recharge Wallet</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        {error && <Alert variant="danger">{error}</Alert>}
+        {error && <Alert variant="danger">{typeof error === 'object' ? error.message || JSON.stringify(error) : error}</Alert>}
         <Form onSubmit={handleRecharge}>
           <Form.Group className="mb-3">
             <Form.Label>Amount (₹)</Form.Label>

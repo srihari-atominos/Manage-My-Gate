@@ -13,6 +13,7 @@ import {
   CFormSelect,
 } from '@coreui/react'
 import PaymentCheckoutModal from './PaymentCheckoutModal.jsx'
+import { openInvoicePrintWindow } from '../utils/invoiceTemplate'
 
 /**
  * HeroLiabilityBanner
@@ -46,7 +47,9 @@ const HeroLiabilityBanner = memo(
     const [submitting, setSubmitting] = useState(false)
 
     const handlePayNow = () => {
-      const firstUnpaid = unitBreakdown.find((inv) => inv.status === 'UNPAID')
+      const firstUnpaid = unitBreakdown.find(
+        (inv) => ['UNPAID', 'PARTIALLY_PAID', 'OVERDUE'].includes(inv.status) || inv.outstandingAmount > 0
+      )
       if (!firstUnpaid) {
         toast.error('You have no outstanding unpaid invoices!')
         return
@@ -55,7 +58,9 @@ const HeroLiabilityBanner = memo(
     }
 
     const handleOpenOfflineModal = () => {
-      const firstUnpaid = unitBreakdown.find((inv) => inv.status === 'UNPAID')
+      const firstUnpaid = unitBreakdown.find(
+        (inv) => ['UNPAID', 'PARTIALLY_PAID', 'OVERDUE'].includes(inv.status) || inv.outstandingAmount > 0
+      )
       if (!firstUnpaid) {
         toast.error('You have no outstanding unpaid invoices!')
         return
@@ -75,6 +80,12 @@ const HeroLiabilityBanner = memo(
             paymentMethod: paymentMethod,
           })
         }
+        
+        // Offline payment is synchronous in the DB, so we can dispatch immediately
+        if (window.dispatchEvent) {
+          window.dispatchEvent(new CustomEvent('billing:refreshDues'))
+        }
+        
         toast.success('Offline payment submitted successfully! Awaiting admin verification.')
         setPayOfflineInvoice(null)
       } catch (err) {
@@ -82,6 +93,10 @@ const HeroLiabilityBanner = memo(
       } finally {
         setSubmitting(false)
       }
+    }
+
+    const handleDownloadInvoice = (item) => {
+      openInvoicePrintWindow(item)
     }
 
     return (
@@ -109,10 +124,10 @@ const HeroLiabilityBanner = memo(
               <div key={item.invoiceId || item._id} className="hero-liability-card__breakdown-row">
                 <span className="hero-liability-card__breakdown-label">
                   <i className="fa-solid fa-circle-dot me-2 opacity-50" />
-                  {item.unitNumber || 'Unit'} - Period: {item.billingPeriodString}
+                  {item.unitNumber || 'Unit'} — {item.assessmentName || 'Maintenance'} ({item.billingPeriodString})
                 </span>
                 <span className="hero-liability-card__breakdown-value">
-                  ₹{(item.totalDue || 0).toLocaleString('en-IN')}
+                  ₹{(item.outstandingAmount ?? item.totalDue ?? 0).toLocaleString('en-IN')}
                 </span>
               </div>
             ))
@@ -165,15 +180,34 @@ const HeroLiabilityBanner = memo(
         {/* ── Online Checkout Modal (Wallet / Razorpay) ─────────────────── */}
         <PaymentCheckoutModal
           isOpen={!!checkoutInvoice}
-          onClose={(success) => {
-            setCheckoutInvoice(null)
-            // If the payment succeeded, tell the parent component to reload dues
-            if (success === true && window.dispatchEvent) {
-              // Alternatively, dispatch an event or rely on Redux.
-              // Since we don't have loadResidentDues passed as prop to HeroLiabilityBanner currently,
-              // we will dispatch a custom DOM event that ResidentActionCenterView can listen to.
-              window.dispatchEvent(new CustomEvent('billing:refreshDues'))
+          onClose={(isSuccess, paidCustomAmount, methodUsed) => {
+            if (isSuccess && checkoutInvoice) {
+              toast.success('Payment completed successfully!')
+              
+              // Add a small delay to allow the backend's PAYMENT_SUCCESS event listener 
+              // to finish updating the invoice in the database (Eventual Consistency).
+              if (window.dispatchEvent) {
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('billing:refreshDues'))
+                }, 1500)
+              }
+              
+              const amountSettled = paidCustomAmount || checkoutInvoice?.outstandingAmount || 0;
+              const newOutstanding = (checkoutInvoice?.outstandingAmount || checkoutInvoice?.totalDue || 0) - amountSettled;
+              const paidInvoice = {
+                ...checkoutInvoice,
+                alreadyPaidAmount: checkoutInvoice?.paidAmount || 0,
+                currentPaymentAmount: amountSettled,
+                paidAmount: (checkoutInvoice?.paidAmount || 0) + amountSettled,
+                outstandingAmount: newOutstanding,
+                status: newOutstanding <= 0 ? 'PAID' : 'PARTIALLY_PAID',
+                paid_at: new Date().toISOString(),
+                paymentMethod: methodUsed || 'ONLINE', 
+              }
+              
+              handleDownloadInvoice(paidInvoice)
             }
+            setCheckoutInvoice(null)
           }}
           invoice={checkoutInvoice}
           walletBalance={walletBalance}
@@ -181,6 +215,7 @@ const HeroLiabilityBanner = memo(
           onPayWithRazorpay={payInvoiceRazorpay}
           onVerifyRazorpay={verifyRazorpay}
           isLoading={loadingStates.settleInvoice}
+          totalPortfolioDue={totalOutstanding}
         />
 
         {/* ── Pay Offline / Record Settlement Modal ─────────────────────────── */}
@@ -201,7 +236,7 @@ const HeroLiabilityBanner = memo(
             <CModalBody>
               <div className="alert alert-info py-2 px-3 small mb-3">
                 You are clearing Invoice <strong>{payOfflineInvoice?.invoiceNumber}</strong> of{' '}
-                <strong>₹{payOfflineInvoice?.totalDue?.toLocaleString('en-IN')}</strong>.
+                <strong>₹{(payOfflineInvoice?.outstandingAmount ?? payOfflineInvoice?.totalDue)?.toLocaleString('en-IN')}</strong>.
               </div>
 
               <div className="mb-3">
@@ -215,7 +250,7 @@ const HeroLiabilityBanner = memo(
                   size="sm"
                 >
                   <option value="CHEQUE">Cheque</option>
-                  <option value="BANK_TRANSFER">Bank Transfer (NEFT/IMPS/UPI)</option>
+                  <option value="NEFT">Bank Transfer (NEFT/IMPS/UPI)</option>
                 </CFormSelect>
               </div>
 

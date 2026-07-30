@@ -55,6 +55,7 @@ const parseXLSX = (arrayBuffer) => {
         key = 'floorAreaSqFt'
       else if (header.includes('occupancy status') || header.includes('status')) key = 'status'
       else if (header.includes('role')) key = 'roleName'
+      else if (header.includes('phone') || header.includes('mobile')) key = 'phone'
 
       row[key] =
         values[index] !== undefined && values[index] !== null ? values[index].toString().trim() : ''
@@ -147,6 +148,7 @@ const parseCSV = (csvText) => {
         key = 'floorAreaSqFt'
       else if (header.includes('occupancy status') || header.includes('status')) key = 'status'
       else if (header.includes('role')) key = 'roleName'
+      else if (header.includes('phone') || header.includes('mobile')) key = 'phone'
 
       row[key] =
         values[index] !== undefined && values[index] !== null ? values[index].toString().trim() : ''
@@ -276,6 +278,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
         status: r.status || 'Vacant',
         floorAreaSqFt: r.floorAreaSqFt ? parseFloat(r.floorAreaSqFt) : undefined,
         email: r.email || undefined,
+        phone: r.phone || undefined,
         residentType: r.email ? r.residentType : undefined,
         roleName: r.email ? r.roleName : undefined,
       }))

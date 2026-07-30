@@ -52,6 +52,7 @@ const UserList = () => {
     inviteUser,
     bulkInviteUsers,
     selectedUserForRoles,
+    selectedUnitForRoles,
     openManageRolesModal,
     closeManageRolesModal,
     handleSaveRoles,
@@ -121,18 +122,20 @@ const UserList = () => {
   }
 
   const handleDeleteClick = async (user) => {
-    if (window.confirm(`Delete user "${user.name}"? This action cannot be undone.`)) {
+    const confirmMessage = `Delete user "${user.name}" from the organization? This action cannot be undone.`;
+      
+    if (window.confirm(confirmMessage)) {
       try {
         setIsDeleting(user.id)
-        await deleteUser(user.id)
+        await deleteUser({ userId: user.id })
+        toast.success(`User ${user.name} deleted successfully`);
+      } catch (err) {
+        console.error('Delete failed:', err);
+        toast.error(err?.message || 'Failed to delete user');
       } finally {
         setIsDeleting(null)
       }
     }
-  }
-
-  const handleManageRoles = (user) => {
-    openManageRolesModal(user)
   }
 
   // ── DataTable Columns Configuration ──
@@ -159,19 +162,25 @@ const UserList = () => {
         ),
       },
       {
-        key: 'villaNumber',
+        key: 'assignedUnits',
         label: 'Villa / Unit',
         render: (val, row) => {
-          if (!val) return <span className="text-muted small">—</span>
+          if (!val || val.length === 0) return <span className="text-muted small">—</span>
           return (
-            <div>
-              <span className="fw-bold small text-primary">{val}</span>
-              {row.villaBlock && <span className="text-muted small ms-1">({row.villaBlock})</span>}
-              {row.residentType && row.residentType !== 'None' && (
-                <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                  Residency: <span className="fw-semibold">{row.residentType}</span>
+            <div className="d-flex flex-column gap-3 py-1">
+              {val.map((unit, idx) => (
+                <div key={idx} className="d-flex flex-column justify-content-center" style={{ height: '50px' }}>
+                  <div>
+                    <span className="fw-bold small text-primary">{unit.villaNumber}</span>
+                    {unit.villaBlock && <span className="text-muted small ms-1">({unit.villaBlock})</span>}
+                  </div>
+                  {unit.residentType && unit.residentType !== 'None' && (
+                    <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                      Residency: <span className="fw-semibold">{unit.residentType}</span>
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
           )
         },
@@ -179,27 +188,49 @@ const UserList = () => {
       {
         key: 'role',
         label: 'Role',
-        render: (val) => {
-          if (!val || val === '' || (Array.isArray(val) && val.length === 0)) {
+        render: (val, row) => {
+          const renderRoleBadges = (roleStr) => {
+            if (!roleStr || roleStr === '' || (Array.isArray(roleStr) && roleStr.length === 0)) {
+              return (
+                <CBadge color="light" className="text-body small px-2 py-1 border">
+                  Unassigned
+                </CBadge>
+              )
+            }
+            const rolesList = typeof roleStr === 'string' ? roleStr.split(',').map((r) => r.trim()) : [roleStr]
             return (
-              <CBadge color="light" className="text-body small px-2 py-1 border">
-                Unassigned
-              </CBadge>
+              <div className="d-flex flex-wrap gap-1">
+                {rolesList.map((r, i) => (
+                  <CBadge
+                    key={i}
+                    color="info"
+                    shape="rounded-pill"
+                    className="small px-2 py-1 text-nowrap"
+                  >
+                    {r}
+                  </CBadge>
+                ))}
+              </div>
             )
           }
-          const rolesList = typeof val === 'string' ? val.split(',').map((r) => r.trim()) : [val]
+
+          if (row.assignedUnits && row.assignedUnits.length > 0) {
+            return (
+              <div className="d-flex flex-column gap-3 py-1">
+                {row.assignedUnits.map((unit, idx) => (
+                  <div key={idx} className="d-flex align-items-center" style={{ height: '50px' }}>
+                    {renderRoleBadges(unit.role)}
+                  </div>
+                ))}
+              </div>
+            )
+          }
+
           return (
-            <div className="d-flex flex-wrap gap-1 overflow-y-auto" style={{ maxHeight: '40px' }}>
-              {rolesList.map((r, i) => (
-                <CBadge
-                  key={i}
-                  color="info"
-                  shape="rounded-pill"
-                  className="small px-2 py-1 text-nowrap"
-                >
-                  {r}
-                </CBadge>
-              ))}
+            <div className="d-flex flex-column gap-3 py-1">
+              <div className="d-flex align-items-center" style={{ height: '50px' }}>
+                {renderRoleBadges(val)}
+              </div>
             </div>
           )
         },
@@ -207,19 +238,37 @@ const UserList = () => {
       {
         key: 'status',
         label: 'Status',
-        render: (val) => {
-          let badgeColor = 'secondary'
-          if (val === 'Active') {
-            badgeColor = 'success'
-          } else if (val === 'Pending') {
-            badgeColor = 'warning'
-          } else if (val === 'Inactive') {
-            badgeColor = 'danger'
+        render: (val, row) => {
+          const renderStatusBadge = (statusStr) => {
+            let badgeColor = 'secondary'
+            if (statusStr === 'Active') badgeColor = 'success'
+            else if (statusStr === 'Pending') badgeColor = 'warning'
+            else if (statusStr === 'Inactive') badgeColor = 'danger'
+            return (
+              <CBadge color={badgeColor} className="small px-2 py-1">
+                {statusStr}
+              </CBadge>
+            )
           }
+
+          if (row.assignedUnits && row.assignedUnits.length > 0) {
+            return (
+              <div className="d-flex flex-column gap-3 py-1">
+                {row.assignedUnits.map((unit, idx) => (
+                  <div key={idx} className="d-flex align-items-center" style={{ height: '50px' }}>
+                    {renderStatusBadge(unit.status || val)}
+                  </div>
+                ))}
+              </div>
+            )
+          }
+
           return (
-            <CBadge color={badgeColor} className="small px-2 py-1">
-              {val}
-            </CBadge>
+            <div className="d-flex flex-column gap-3 py-1">
+              <div className="d-flex align-items-center" style={{ height: '50px' }}>
+                {renderStatusBadge(val)}
+              </div>
+            </div>
           )
         },
       },
@@ -227,11 +276,16 @@ const UserList = () => {
     [],
   )
 
+  const handleManageRoles = (user, unit = null) => {
+    openManageRolesModal(user, unit)
+  }
+
   // ── Render Actions for Data Grid ──
   const renderRowActions = (user) => {
     const isSelf = user.id === currentUserId
     const isPending = user.status === 'Pending'
-    return (
+
+    const ActionButtons = ({ unit }) => (
       <div className="d-flex gap-2">
         {/* Resend Invite — mail icon (only for pending users) */}
         {isPending && (
@@ -261,7 +315,7 @@ const UserList = () => {
         <ActionIconButton
           id={`manage-roles-${user.id}`}
           color="primary"
-          onClick={() => handleManageRoles(user)}
+          onClick={() => handleManageRoles(user, unit)}
           title={isSelf ? 'You cannot modify your own account.' : `Manage roles for ${user.name}`}
           disabled={isSelf}
           icon={
@@ -309,6 +363,26 @@ const UserList = () => {
             )
           }
         />
+      </div>
+    )
+
+    if (user.assignedUnits && user.assignedUnits.length > 0) {
+      return (
+        <div className="d-flex flex-column gap-3 py-1">
+          {user.assignedUnits.map((unit, idx) => (
+            <div key={idx} className="d-flex align-items-center" style={{ height: '50px' }}>
+              <ActionButtons unit={unit} />
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    return (
+      <div className="d-flex flex-column gap-3 py-1">
+        <div className="d-flex align-items-center" style={{ height: '50px' }}>
+          <ActionButtons unit={null} />
+        </div>
       </div>
     )
   }
@@ -407,6 +481,7 @@ const UserList = () => {
       <ManageRolesModal
         visible={!!selectedUserForRoles}
         user={selectedUserForRoles}
+        unit={selectedUnitForRoles}
         onClose={closeManageRolesModal}
         onSave={handleSaveRoles}
         availableRoles={ROLES}

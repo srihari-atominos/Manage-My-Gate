@@ -99,6 +99,11 @@ export const useAuth = () => {
     const resultAction = await dispatch(loginWithGoogle(payload))
     if (loginWithGoogle.fulfilled.match(resultAction)) {
       const data = resultAction.payload?.data
+
+      if (data?.isNewUser) {
+        return { success: true, isNewUser: true, googleData: data.googleData }
+      }
+
       const workspaces = data?.workspaces || data?.availableWorkspaces || []
       const navigateTo = workspaces.length === 0 ? '/workspace-setup' : '/dashboard'
       navigate(navigateTo)

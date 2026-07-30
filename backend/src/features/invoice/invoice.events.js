@@ -1,7 +1,37 @@
 import { EventEmitter } from 'events';
+import twilio from 'twilio';
+import logger from '../../utils/logger.utils.js';
+import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * Enterprise Event Payload Standard
+ * Every emitted event MUST follow this structure:
+ * {
+ *   eventName: String,
+ *   version: Number,
+ *   timestamp: Date,
+ *   correlationId: String,
+ *   payload: { orgId, ...data }
+ * }
+ */
+export const createVersionedPayload = (eventName, correlationId, payload) => ({
+  eventName,
+  version: 1,
+  timestamp: new Date(),
+  correlationId: correlationId || uuidv4(),
+  payload
+});
 
 export const INVOICE_GENERATED = 'INVOICE_GENERATED';
 export const INVOICE_STATUS_UPDATED = 'INVOICE_STATUS_UPDATED';
+export const PAYMENT_LINK_CREATED = 'PAYMENT_LINK_CREATED';
+export const PAYMENT_LINK_REGENERATED = 'PAYMENT_LINK_REGENERATED';
+export const WHATSAPP_SENT = 'WHATSAPP_SENT';
+export const INVOICE_PARTIALLY_PAID = 'INVOICE_PARTIALLY_PAID';
+export const INVOICE_PAID = 'INVOICE_PAID';
+export const INVOICE_OVERDUE = 'INVOICE_OVERDUE';
+export const CARRY_FORWARD_CREATED = 'CARRY_FORWARD_CREATED';
+export const SEND_WHATSAPP_LINK = 'SEND_WHATSAPP_LINK';
 
 export const invoiceEventEmitter = new EventEmitter();
 
@@ -9,6 +39,38 @@ export const invoiceEventEmitter = new EventEmitter();
 import { setupInvoiceSocketListeners } from './invoice.socket.js';
 setupInvoiceSocketListeners().catch((err) => {
   console.error('Failed to initialize invoice socket listeners:', err);
+});
+
+// Twilio WhatsApp Integration
+invoiceEventEmitter.on(SEND_WHATSAPP_LINK, async (payload) => {
+  try {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
+
+    if (!accountSid || !authToken) {
+      logger.warn('Twilio credentials not configured, skipping WhatsApp notification');
+      return;
+    }
+
+    const client = twilio(accountSid, authToken);
+
+    if (payload.targetPhone && payload.paymentLink) {
+      let formattedPhone = payload.targetPhone.replace(/[\s-]/g, '');
+      if (!formattedPhone.startsWith('+')) {
+        formattedPhone = '+91' + formattedPhone; // Defaulting to E.164 +91
+      }
+
+      await client.messages.create({
+        body: `Hello ${payload.userName},\nYour invoice for ₹${payload.amount} has been generated. Please pay here: ${payload.paymentLink}`,
+        from: twilioWhatsAppNumber,
+        to: `whatsapp:${formattedPhone}`
+      });
+      logger.info('WhatsApp invoice notification sent', { invoiceId: payload.invoiceId });
+    }
+  } catch (error) {
+    logger.error('Failed to send WhatsApp invoice notification', { error: error.message });
+  }
 });
 
 export default invoiceEventEmitter;

@@ -72,7 +72,7 @@ export const useBilling = () => {
           assessmentId,
           billingPeriodString: periodString,
         }),
-      )
+      ).unwrap()
     },
     [dispatch],
   )
@@ -85,35 +85,35 @@ export const useBilling = () => {
           offlineReference: referenceData.offlineReference,
           paymentMethod: referenceData.paymentMethod,
         }),
-      )
+      ).unwrap()
     },
     [dispatch],
   )
 
   const approveOffline = useCallback(
     (invoiceId) => {
-      return dispatch(clearOfflineSettlement(invoiceId))
+      return dispatch(clearOfflineSettlement(invoiceId)).unwrap()
     },
     [dispatch],
   )
 
   const payInvoiceWallet = useCallback(
-    (invoiceId) => {
-      return dispatch(payWithWallet(invoiceId))
+    (invoiceId, amount) => {
+      return dispatch(payWithWallet({ invoiceId, amount })).unwrap()
     },
     [dispatch],
   )
 
   const payInvoiceRazorpay = useCallback(
     (invoiceId, amount) => {
-      return dispatch(createRazorpayOrder({ invoiceId, amount }))
+      return dispatch(createRazorpayOrder({ invoiceId, amount })).unwrap()
     },
     [dispatch],
   )
 
   const verifyRazorpay = useCallback(
     (verificationData) => {
-      return dispatch(verifyRazorpaySignature(verificationData))
+      return dispatch(verifyRazorpaySignature(verificationData)).unwrap()
     },
     [dispatch],
   )

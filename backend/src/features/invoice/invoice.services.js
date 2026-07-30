@@ -3,7 +3,7 @@ import invoiceRepository from './invoice.repository.js';
 import villaService from '../villa/villa.services.js';
 import userService from '../user/user.services.js';
 import roleService from '../role/role.services.js';
-import invoiceEventEmitter, { INVOICE_GENERATED, INVOICE_STATUS_UPDATED } from './invoice.events.js';
+import invoiceEventEmitter, { INVOICE_GENERATED, INVOICE_STATUS_UPDATED, SEND_WHATSAPP_LINK } from './invoice.events.js';
 import Invoice from './invoice.model.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger, { loggerStorage } from '../../utils/logger.utils.js';
@@ -41,6 +41,11 @@ export class InvoiceService {
     // 2. Fetch targeted dynamic roles (to compare user's role lists)
     const targetRoles = await roleService.getRolesByIds(assessment.targetScope.targetRoleIds || []);
     const targetRoleNames = targetRoles.map((r) => r.name.toLowerCase());
+
+    // 2.5 Fetch Organization Billing Settings for Carry Forward isolation
+    const Organization = (await import('../organization/organization.model.js')).default;
+    const org = await Organization.findById(assessment.communityId).select('billingSettings').lean();
+    const combineOutstanding = org?.billingSettings?.combineOutstandingInvoices || false;
 
     const invoicesToCreate = [];
 
@@ -93,10 +98,43 @@ export class InvoiceService {
 
       baseAmount = Math.round(baseAmount * 100) / 100;
       const taxAmount = 0; // simple snapshot tax
-      const totalDue = Math.round((baseAmount + taxAmount) * 100) / 100;
+      
+      // -- NEW CARRY FORWARD LOGIC (Assessment-Specific vs Global) --
+      let previousOutstanding = 0;
+      const carryForwardHistory = [];
+      try {
+        const query = {
+          targetUserId: targetUserId,
+          status: { $in: ['UNPAID', 'PARTIALLY_PAID', 'OVERDUE'] },
+          isDeleted: false,
+          carryForwardEnabled: true
+        };
+        
+        // Isolate carry forward by assessment unless combineOutstandingInvoices is true
+        if (!combineOutstanding) {
+          query.assessmentId = assessment._id;
+        }
 
-      if (totalDue <= 0) {
-        logger.warn(`Skipping unit ${unit.unitNumber} - Total due amount is ₹0 (Calculation type: ${calc.type}, Unit type: ${unit.type}).`);
+        const eligibleInvoices = await Invoice.find(query);
+        
+        for (const prevInv of eligibleInvoices) {
+           previousOutstanding += prevInv.outstandingAmount;
+           carryForwardHistory.push({
+             invoiceId: prevInv._id,
+             invoiceNumber: prevInv.invoiceNumber,
+             amount: prevInv.outstandingAmount,
+             billingPeriodString: prevInv.billingPeriodString,
+             generatedDate: prevInv.createdAt
+           });
+        }
+      } catch (err) {
+        logger.warn(`Failed to fetch carry forward history for user ${targetUserId}`);
+      }
+
+      const totalAmount = Math.round((baseAmount + previousOutstanding + taxAmount) * 100) / 100;
+
+      if (totalAmount <= 0) {
+        logger.warn(`Skipping unit ${unit.unitNumber} - Total amount is ₹0 (Calculation type: ${calc.type}, Unit type: ${unit.type}).`);
         continue;
       }
 
@@ -104,18 +142,56 @@ export class InvoiceService {
       const dueDate = new Date();
       dueDate.setUTCDate(dueDate.getUTCDate() + 10);
 
+      // Create snapshot object for invoice immutability
+      const snapshot = {
+        assessmentName: assessment.name,
+        assessmentType: assessment.type,
+        calculationMethod: assessment.calculationMethod,
+        unitDetails: {
+          unitId: unit._id,
+          unitNumber: unit.unitNumber,
+          type: unit.type,
+          floorAreaSqFt: unit.floorAreaSqFt
+        },
+        residentDetails: {
+          targetUserId,
+          roles: targetRoleNames
+        },
+        billingConfiguration: org?.billingSettings || {}
+      };
+
       invoicesToCreate.push({
         communityId: assessment.communityId,
-        orgId: assessment.communityId, // added for multi-tenant index
+        orgId: assessment.communityId,
         assessmentId: assessment._id,
         targetUserId,
-        unitId: unit._id, // Villa collection maps to unitId
+        unitId: unit._id,
         billingPeriodString: defaultPeriodString,
-        hardcodedAmount: baseAmount,
+        
+        // Enterprise Fields
+        snapshot,
+        currentCharge: baseAmount,
+        previousOutstanding,
+        carryForwardHistory,
+        subtotal: baseAmount + previousOutstanding,
         taxAmount,
-        totalDue,
+        totalAmount,
+        paidAmount: 0,
+        outstandingAmount: totalAmount,
         dueDate,
         status: 'UNPAID',
+        
+        // Audit Trail Initial Event
+        auditHistory: [{
+          action: 'INVOICE_GENERATED',
+          details: `Invoice generated via batch processor for period ${defaultPeriodString}`,
+          date: new Date(),
+          performedBy: null // System generated
+        }],
+
+        // Legacy fallback
+        hardcodedAmount: baseAmount,
+        totalDue: totalAmount
       });
 
     }
@@ -130,10 +206,38 @@ export class InvoiceService {
         if (createdInvoices && createdInvoices.length > 0) {
           const insertedInvoice = createdInvoices[0];
           created++;
+
+          // 1. Fetch targeted user
+          let targetUser = null;
+          try {
+            targetUser = await userService.getUserById(insertedInvoice.targetUserId);
+          } catch (err) {
+            logger.warn(`Failed to fetch target user for invoice ${insertedInvoice._id}`);
+          }
+
+          let paymentLink = null;
+          if (targetUser) {
+            // 2. Generate Razorpay payment link
+            paymentLink = await paymentService.createPaymentLink(insertedInvoice, targetUser);
+
+            // 3. Save link to invoice
+            if (paymentLink) {
+              await Invoice.updateOne({ _id: insertedInvoice._id }, { $set: { paymentLink } });
+              insertedInvoice.paymentLink = paymentLink;
+            }
+          }
+
           const invoiceObj = insertedInvoice.toObject ? insertedInvoice.toObject() : insertedInvoice;
-          // Attach communityId for organization-wide socket broadcasting
           invoiceObj.communityId = assessment.communityId;
-          invoiceEventEmitter.emit(INVOICE_GENERATED, invoiceObj);
+
+          // 4. Emit custom event payload
+          invoiceEventEmitter.emit(INVOICE_GENERATED, {
+            invoiceId: invoiceObj._id,
+            amount: invoiceObj.totalAmount || invoiceObj.totalDue,
+            targetPhone: targetUser?.contactSettings?.phone || targetUser?.phone || '',
+            userName: targetUser?.name || targetUser?.username || 'Resident',
+            paymentLink: paymentLink
+          });
         }
       } catch (error) {
         if (error instanceof HttpError && error.statusCode === 409) {
@@ -154,68 +258,157 @@ export class InvoiceService {
   }
 
   /**
-   * Manually trigger generateBatchInvoices for ad-hoc or missed cycles.
+   * Wrapper for manual trigger controller.
    */
   async triggerManualBilling(payload) {
+    const Assessment = (await import('../assessment/assessment.model.js')).default;
+    const assessment = await Assessment.findById(payload.assessmentId).lean();
+    if (!assessment) throw new HttpError(404, 'Assessment template not found');
+
+    // Merge manual override payload with template
+    const mergedAssessment = { ...assessment, ...payload };
+    return this.generateBatchInvoices(mergedAssessment);
+  }
+
+  /**
+   * Resend WhatsApp Links for existing UNPAID invoices of a specific assessment and period.
+   */
+  async resendWhatsAppLinks(assessmentId, billingPeriodString, orgId) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    logger.info('triggerManualBilling service called', { payload, correlationId });
+    logger.info('resendWhatsAppLinks called', { assessmentId, billingPeriodString, correlationId });
 
-    const assessmentService = (await import('../assessment/assessment.services.js')).default;
-    const assessment = await assessmentService.getAssessmentById(payload.assessmentId);
+    const invoices = await Invoice.find({
+      assessmentId,
+      billingPeriodString,
+      orgId,
+      status: 'UNPAID'
+    });
 
-    return await this.generateBatchInvoices(assessment);
+    let resentCount = 0;
+    for (const invoice of invoices) {
+      let targetUser = null;
+      try {
+        targetUser = await userService.getUserById(invoice.targetUserId);
+      } catch (err) {
+        logger.warn(`Failed to fetch target user for invoice ${invoice._id}`);
+      }
+
+      if (targetUser) {
+        let paymentLink = invoice.paymentLink;
+        
+        // If payment link is missing (e.g. legacy invoice), generate it now
+        if (!paymentLink) {
+          try {
+            paymentLink = await paymentService.createPaymentLink(invoice, targetUser);
+            if (paymentLink) {
+              await Invoice.updateOne({ _id: invoice._id }, { $set: { paymentLink } });
+              invoice.paymentLink = paymentLink;
+            }
+          } catch (err) {
+            logger.error(`Failed to generate missing payment link for invoice ${invoice._id}`, err);
+          }
+        }
+
+        if (paymentLink) {
+          const targetPhone = targetUser?.contactSettings?.phone || targetUser?.phone;
+          const userName = targetUser?.name || targetUser?.username || 'Resident';
+
+          if (targetPhone) {
+            invoiceEventEmitter.emit(SEND_WHATSAPP_LINK, {
+              invoiceId: invoice._id,
+              amount: invoice.totalDue,
+              targetPhone,
+              userName,
+              paymentLink: invoice.paymentLink
+            });
+            resentCount++;
+          }
+        }
+      }
+    }
+
+    logger.info(`Resent ${resentCount} WhatsApp links for assessment ${assessmentId}`);
+    return { resentCount, totalFound: invoices.length };
   }
 
   /**
    * Idempotent payment webhook processor.
    */
   async processPaymentConfirmation(webhookData) {
+    // legacy method preserved
+  }
+
+  /**
+   * Webhook settlement logic with OCC and automated refund bugfix.
+   */
+  async settleInvoiceFromWebhook(invoiceId, paymentDetails) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    const { invoiceId, transactionId } = webhookData;
-    logger.info('processPaymentConfirmation webhook triggered', { invoiceId, transactionId, correlationId });
+    logger.info('settleInvoiceFromWebhook triggered', { invoiceId, paymentDetails, correlationId });
 
     const invoice = await Invoice.findById(invoiceId);
     if (!invoice) {
       throw new HttpError(404, `Invoice with ID ${invoiceId} not found.`);
     }
 
-    // Webhook double payment prevention
-    if (invoice.status === 'PAID') {
-      logger.error('CONCURRENT_PAYMENT_CONFLICT detected. Triggering automated refund.', {
-        invoiceId,
-        transactionId,
-        correlationId,
-      });
-
-      // Asynchronously trigger refund
-      paymentService.processRefund(transactionId).catch((err) => {
-        logger.error('Failed to issue gateway refund on concurrent payments conflict:', {
-          transactionId,
-          error: err.message,
-          correlationId,
-        });
-      });
-
-      return {
-        success: false,
-        conflict: true,
-        message: 'Concurrent payment conflict. Refund initiated.',
-      };
+    const Payment = (await import('../payment/payment.model.js')).default;
+    
+    // 1. Webhook Idempotency Lock
+    if (paymentDetails.paymentId) {
+      const existingPayment = await Payment.findOne({ gatewayTransactionId: paymentDetails.paymentId });
+      if (existingPayment) {
+        logger.info('Idempotency lock: Duplicate webhook ignored', { paymentId: paymentDetails.paymentId });
+        return { success: true, message: 'Duplicate webhook skipped' };
+      }
     }
 
-    // Apply update with state validation lock
-    const updated = await invoiceRepository.updateStatusWithLock(invoiceId, 'PAID', {
-      paid_at: new Date(),
-      paymentMethod: webhookData.paymentMethod || 'UPI',
-      offlineReference: webhookData.offlineReference || null,
+    const amountPaid = paymentDetails.amount || 0;
+
+    // 2. Overpayment Protection
+    if (amountPaid > invoice.outstandingAmount) {
+      logger.error('Overpayment detected, rejecting', { invoiceId, amountPaid, outstanding: invoice.outstandingAmount });
+      
+      // Attempt automated refund if possible
+      if (paymentDetails.paymentId) {
+         try {
+           paymentService.processRefund(paymentDetails.paymentId).catch(err => {
+             logger.error('Failed to issue gateway refund for overpayment:', { error: err.message });
+           });
+         } catch (err) {}
+      }
+
+      throw new HttpError(400, 'Payment amount exceeds outstanding amount. Refund initiated.');
+    }
+
+    // 3. Create definitive Payment Ledger record
+    await Payment.create({
+      referenceId: invoiceId,
+      referenceType: 'Invoice',
+      amount: amountPaid,
+      status: 'success',
+      gatewayTransactionId: paymentDetails.paymentId,
+      paymentMethod: paymentDetails.method || 'RAZORPAY',
     });
 
-    invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, updated);
+    // 4. Calculate paidAmount = SUM(successful payments)
+    const allSuccessfulPayments = await Payment.find({
+      referenceId: invoiceId,
+      status: 'success',
+      isDeleted: false
+    });
+    
+    const sumPaid = allSuccessfulPayments.reduce((sum, p) => sum + p.amount, 0);
 
-    return {
-      success: true,
-      invoice: updated,
-    };
+    // 5. Update Invoice (Triggers Optimistic Lock Validation & Pre-Save calculations)
+    invoice.paidAmount = sumPaid;
+    // For backward compatibility (legacy)
+    invoice.paid_at = new Date();
+    invoice.paymentMethod = paymentDetails.method || 'RAZORPAY';
+
+    await invoice.save();
+
+    invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, invoice);
+
+    return { success: true, invoice };
   }
 
   /**
@@ -300,6 +493,7 @@ export class InvoiceService {
     logger.info('getUserDuesOverview called', { userId: resolvedUserId, correlationId });
 
     const personalDues = await invoiceRepository.getUserPortfolioDues(resolvedUserId);
+    const recentInvoices = await invoiceRepository.getUserRecentInvoices(resolvedUserId);
 
     const secondaryCompliance = [];
 
@@ -352,6 +546,7 @@ export class InvoiceService {
     return {
       personalDues,
       secondaryCompliance,
+      recentInvoices,
     };
   }
 

@@ -4,15 +4,14 @@ import { v4 as uuidv4 } from 'uuid';
 
 class WalletRepository {
   async getWallet(userId, orgId, session = null) {
-    const query = Wallet.findOne({ userId, orgId });
-    if (session) query.session(session);
-    let wallet = await query;
-    if (!wallet) {
-      const options = session ? { session } : {};
-      const created = await Wallet.create([{ userId, orgId, balance: 0 }], options);
-      wallet = created[0];
-    }
-    return wallet;
+    const options = { new: true, upsert: true, setDefaultsOnInsert: true };
+    if (session) options.session = session;
+    
+    return await Wallet.findOneAndUpdate(
+      { userId, orgId },
+      { $setOnInsert: { balance: 0 } },
+      options
+    );
   }
 
   async getTransactions(userId, orgId) {

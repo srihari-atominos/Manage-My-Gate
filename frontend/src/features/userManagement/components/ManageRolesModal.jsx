@@ -1,82 +1,72 @@
-import React, { useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
-import { useForm } from 'react-hook-form'
-import { yupResolver } from '@hookform/resolvers/yup'
-import * as yup from 'yup'
 import {
   CModal,
   CModalHeader,
   CModalTitle,
   CModalBody,
   CModalFooter,
-  CFormCheck,
   CButton,
   CAlert,
 } from '@coreui/react'
 import usePermission from '../../../hooks/usePermission'
 
-const schema = yup.object().shape({
-  selectedRole: yup.string().required('Role selection is required'),
-})
-
 /**
  * ManageRolesModal Component
  *
- * Form component using react-hook-form to check/uncheck roles for a selected user.
- * Validates with yup schema and enforces read-only state if user lacks permission.
+ * Simple state-based modal to check/uncheck roles for a selected user.
+ * Enforces read-only state if user lacks permission.
  */
-const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] }) => {
+const ManageRolesModal = ({ visible, user, unit, onClose, onSave, availableRoles = [] }) => {
   const hasPermission = usePermission('users', 'update')
-
-  const {
-    reset,
-    watch,
-    setValue,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      selectedRole: '',
-    },
-  })
+  const [selectedRole, setSelectedRole] = useState('')
+  const [error, setError] = useState('')
 
   // Reset form values when visible changes or a different user is selected
   useEffect(() => {
     if (visible && user) {
-      const userRoles =
-        typeof user.role === 'string'
-          ? user.role
+      const sourceRole = unit ? unit.role : user.role
+      const userRoles = Array.isArray(sourceRole)
+        ? sourceRole
+        : typeof sourceRole === 'string'
+          ? sourceRole
               .split(',')
               .map((r) => r.trim())
               .filter(Boolean)
           : []
-      reset({ selectedRole: userRoles.length > 0 ? userRoles[0] : '' })
+      setSelectedRole(userRoles.length > 0 ? userRoles[0] : '')
+      setError('')
     } else if (!visible) {
-      reset({ selectedRole: '' })
+      setSelectedRole('')
+      setError('')
     }
-  }, [user, visible, reset])
-
-  const selectedRole = watch('selectedRole')
+  }, [user, unit, visible])
 
   const handleRoleChange = (role) => {
     if (!hasPermission) return
-    setValue('selectedRole', role, { shouldValidate: true, shouldDirty: true })
+    setError('')
+    if (selectedRole === role) {
+      setSelectedRole('') // Toggle off
+    } else {
+      setSelectedRole(role) // Select new role
+    }
   }
 
-  const onSubmit = (data) => {
+  const onSubmit = (e) => {
+    e.preventDefault()
     if (!hasPermission) return
-    onSave(user.id, [data.selectedRole])
+    // Allow empty role (Unassigned)
+    onSave(user.id, selectedRole ? [selectedRole] : [])
   }
 
   return (
     <CModal visible={visible} onClose={onClose} id="manage-roles-modal" alignment="center">
       <CModalHeader>
         <CModalTitle style={{ fontSize: '1rem', fontWeight: 700 }}>
-          Manage Roles - {user?.name || ''}
+          Manage Roles - {user?.name || ''} {unit ? `(Unit ${unit.villaNumber})` : ''}
         </CModalTitle>
       </CModalHeader>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={onSubmit}>
         <CModalBody>
           {!hasPermission && (
             <CAlert color="warning" className="mb-3" id="rbac-warning-alert">
@@ -91,24 +81,48 @@ const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] 
           <div className="d-flex flex-column gap-2 mb-3">
             {availableRoles.map((role) => {
               const isChecked = selectedRole === role
+              const safeId = `role-radio-${role.replace(/\s+/g, '-').toLowerCase()}`
               return (
-                <CFormCheck
+                <div
                   key={role}
-                  type="radio"
-                  name="roleSelection"
-                  id={`role-radio-${role.replace(/\s+/g, '-').toLowerCase()}`}
-                  label={role}
-                  checked={isChecked}
-                  disabled={!hasPermission}
-                  onChange={() => handleRoleChange(role)}
-                />
+                  className="form-check p-2 rounded"
+                  style={{
+                    transition: 'background-color 0.2s',
+                    backgroundColor: isChecked ? '#f3f4f6' : 'transparent',
+                  }}
+                >
+                  <input
+                    className="form-check-input mt-1"
+                    type="checkbox"
+                    name="roleSelection"
+                    id={safeId}
+                    checked={isChecked}
+                    disabled={!hasPermission}
+                    onChange={() => {
+                      if (hasPermission) handleRoleChange(role)
+                    }}
+                    style={{ cursor: hasPermission ? 'pointer' : 'default', marginLeft: '-1.5em' }}
+                  />
+                  <label
+                    className="form-check-label ms-2 d-block w-100"
+                    htmlFor={safeId}
+                    style={{
+                      cursor: hasPermission ? 'pointer' : 'default',
+                      userSelect: 'none',
+                      opacity: !hasPermission ? 0.6 : 1,
+                      fontWeight: isChecked ? 600 : 400,
+                    }}
+                  >
+                    {role}
+                  </label>
+                </div>
               )
             })}
           </div>
 
-          {errors.selectedRole && (
+          {error && (
             <div className="text-danger small mt-1" id="roles-validation-error">
-              {errors.selectedRole.message}
+              {error}
             </div>
           )}
         </CModalBody>

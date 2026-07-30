@@ -135,7 +135,7 @@ export class InvoiceRepository {
       {
         $group: {
           _id: '$targetUserId',
-          totalPortfolioDue: { $sum: '$totalDue' },
+          totalPortfolioDue: { $sum: '$outstandingAmount' },
           unitBreakdown: {
             $push: {
               invoiceId: '$_id',
@@ -144,10 +144,22 @@ export class InvoiceRepository {
               unitNumber: '$unitInfo.unitNumber',
               floor: '$unitInfo.floor',
               type: '$unitInfo.type',
+              assessmentName: '$snapshot.assessmentName',
+              residentName: '$snapshot.residentDetails.name',
+              residentType: '$snapshot.residentDetails.residencyType',
+              currentCharge: '$currentCharge',
+              previousOutstanding: '$previousOutstanding',
+              lateFeeAmount: '$lateFeeAmount',
               totalDue: '$totalDue',
+              outstandingAmount: '$outstandingAmount',
+              paidAmount: '$paidAmount',
               billingPeriodString: '$billingPeriodString',
               status: '$status',
               dueDate: '$dueDate',
+              createdAt: '$createdAt',
+              paid_at: '$paid_at',
+              paymentMethod: '$paymentMethod',
+              offlineReference: '$offlineReference',
             },
           },
         },
@@ -155,6 +167,67 @@ export class InvoiceRepository {
     ]);
 
     return result[0] || null;
+  }
+
+  /**
+   * Get recent invoice history for a user.
+   * @param {string} userId - User ID.
+   * @returns {Promise<Array>}
+   */
+  async getUserRecentInvoices(userId) {
+    return await Invoice.aggregate([
+      {
+        $match: {
+          targetUserId: new mongoose.Types.ObjectId(userId),
+          isDeleted: false
+        }
+      },
+      {
+        $lookup: {
+          from: 'villas',
+          localField: 'unitId',
+          foreignField: '_id',
+          as: 'unitInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$unitInfo',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $sort: { createdAt: -1 }
+      },
+      {
+        $limit: 10
+      },
+      {
+        $project: {
+          invoiceId: '$_id',
+          invoiceNumber: 1,
+          unitId: 1,
+          unitNumber: '$unitInfo.unitNumber',
+          type: '$unitInfo.type',
+          assessmentName: '$snapshot.assessmentName',
+          residentName: '$snapshot.residentDetails.name',
+          residentType: '$snapshot.residentDetails.residencyType',
+          currentCharge: 1,
+          previousOutstanding: 1,
+          lateFeeAmount: 1,
+          totalDue: 1,
+          outstandingAmount: 1,
+          paidAmount: 1,
+          billingPeriodString: 1,
+          status: 1,
+          dueDate: 1,
+          createdAt: 1,
+          paid_at: 1,
+          paymentMethod: 1,
+          offlineReference: 1
+        }
+      }
+    ]);
   }
 
   /**
@@ -191,6 +264,13 @@ export class InvoiceRepository {
       invoice.settled_at = paymentData.settled_at || null;
       invoice.paymentMethod = paymentData.paymentMethod || invoice.paymentMethod || null;
       invoice.offlineReference = paymentData.offlineReference || invoice.offlineReference || null;
+      
+      if (paymentData.amount) {
+        invoice.paidAmount = (invoice.paidAmount || 0) + Number(paymentData.amount);
+      } else if (!paymentData.amount && paymentData.paymentMethod !== 'WALLET') {
+        // Legacy fallback: if no amount provided, assume full payment
+        invoice.paidAmount = invoice.totalAmount;
+      }
     } else if (newStatus === 'CANCELLED') {
       invoice.paid_at = null;
       invoice.settled_at = null;

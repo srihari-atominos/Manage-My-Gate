@@ -39,6 +39,14 @@ export const billingService = {
   },
 
   /**
+   * Trigger the invoice generation / WhatsApp resend.
+   */
+  async triggerInvoiceGeneration(payload) {
+    return await apiClient.post('/invoices/trigger-whatsapp', payload)
+  },
+
+
+  /**
    * Record an offline payment for verification.
    * @param {string} invoiceId
    * @param {Object} payload - { offlineReference, paymentMethod }
@@ -58,9 +66,11 @@ export const billingService = {
   /**
    * Settle invoice payment using resident digital wallet balance.
    * @param {string} invoiceId
+   * @param {number} amount
    */
-  async payInvoiceWithWallet(invoiceId) {
-    return await apiClient.post('/wallet/pay-invoice', { invoiceId })
+  async payInvoiceWithWallet(invoiceId, amount) {
+    const response = await apiClient.post('/wallet/pay-invoice', { invoiceId, amount })
+    return response.data
   },
 
   /**

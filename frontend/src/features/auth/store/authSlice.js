@@ -34,18 +34,26 @@ export const loginUser = createAsyncThunk(
 
 export const loginWithGoogle = createAsyncThunk(
   'auth/loginWithGoogle',
-  async (token, { dispatch, rejectWithValue }) => {
+  async (payload, { dispatch, rejectWithValue }) => {
     try {
-      const response = await authService.loginWithGoogle(token)
+      const response = await authService.loginWithGoogle(payload)
+
+      if (response.data?.isNewUser) {
+        return response
+      }
 
       const user = response.data?.user
+      const token = response.data?.token
       const availableWorkspaces = response.data?.availableWorkspaces || []
 
       if (user) {
+        dispatch(updateTokenAndUser({ token, user }))
+        
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
             activeRole: user.role,
+            activeVillaId: user.villaId || null,
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
             availableWorkspaces: availableWorkspaces,
@@ -203,7 +211,7 @@ export const switchWorkspaceContext = createAsyncThunk(
   async (arg, { dispatch, rejectWithValue }) => {
     try {
       const payload = typeof arg === 'string' ? { targetOrgId: arg } : arg
-      const response = await apiClient.post('/auth/switch-context', payload)
+      const response = await authService.switchContext(payload)
 
       const token = response.data?.token
       const user = response.data?.user
@@ -215,6 +223,7 @@ export const switchWorkspaceContext = createAsyncThunk(
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
+            activeVillaId: user.villaId || null,
             activeRole: user.role,
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
@@ -456,6 +465,12 @@ const authSlice = createSlice({
       })
       .addCase(loginWithGoogle.fulfilled, (state, action) => {
         state.loading = false
+        
+        if (action.payload.data?.isNewUser) {
+          state.successMsg = action.payload.message || 'Google token verified'
+          return
+        }
+
         state.isAuthenticated = true
         state.token = action.payload.data?.token
         state.user = action.payload.data?.user

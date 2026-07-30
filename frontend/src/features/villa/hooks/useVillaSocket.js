@@ -1,13 +1,15 @@
 import { useEffect, useRef } from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { io } from 'socket.io-client'
 import config from '../../../config/config.js'
-import { fetchVillasAsync, fetchVillaStatsAsync } from '../store/villaSlice'
+import { fetchVillasAsync, fetchVillaStatsAsync, fetchVillaByIdAsync } from '../store/villaSlice'
 import logger from '../../../utils/logger'
 
 export const useVillaSocket = (orgId) => {
   const dispatch = useDispatch()
   const socketRef = useRef(null)
+
+  const { currentPage, rowsPerPage, selectedVilla } = useSelector((state) => state.villa)
 
   useEffect(() => {
     if (!orgId) return
@@ -25,6 +27,18 @@ export const useVillaSocket = (orgId) => {
 
     const socket = socketRef.current
 
+    const refreshVillas = () => {
+      dispatch(fetchVillasAsync({ page: currentPage, limit: rowsPerPage }))
+      dispatch(fetchVillaStatsAsync())
+    }
+
+    const refreshSingleVillaIfNeeded = (payload) => {
+      const villaId = payload?._id || payload?.id || payload?.villaId
+      if (selectedVilla && selectedVilla._id === villaId) {
+        dispatch(fetchVillaByIdAsync(selectedVilla._id))
+      }
+    }
+
     socket.on('connect', () => {
       logger.info(`Villa Socket connected successfully. Joining room: org:${orgId}`)
       socket.emit('join_room', `org:${orgId}`)
@@ -32,26 +46,25 @@ export const useVillaSocket = (orgId) => {
 
     socket.on('unit_created', (payload) => {
       logger.info('Real-time notification: unit_created', payload)
-      dispatch(fetchVillasAsync({ page: 1, limit: 12 }))
-      dispatch(fetchVillaStatsAsync())
+      refreshVillas()
     })
 
     socket.on('unit_updated', (payload) => {
       logger.info('Real-time notification: unit_updated', payload)
-      dispatch(fetchVillasAsync({ page: 1, limit: 12 }))
-      dispatch(fetchVillaStatsAsync())
+      refreshVillas()
+      refreshSingleVillaIfNeeded(payload)
     })
 
     socket.on('resident_assigned', (payload) => {
       logger.info('Real-time notification: resident_assigned', payload)
-      dispatch(fetchVillasAsync({ page: 1, limit: 12 }))
-      dispatch(fetchVillaStatsAsync())
+      refreshVillas()
+      refreshSingleVillaIfNeeded(payload)
     })
 
     socket.on('resident_type_updated', (payload) => {
       logger.info('Real-time notification: resident_type_updated', payload)
-      dispatch(fetchVillasAsync({ page: 1, limit: 12 }))
-      dispatch(fetchVillaStatsAsync())
+      refreshVillas()
+      refreshSingleVillaIfNeeded(payload)
     })
 
     // Clean up connections and listeners
@@ -64,7 +77,7 @@ export const useVillaSocket = (orgId) => {
       socket.disconnect()
       socketRef.current = null // Reset ref on unmount
     }
-  }, [dispatch, orgId])
+  }, [dispatch, orgId, currentPage, rowsPerPage, selectedVilla])
 }
 
 export default useVillaSocket

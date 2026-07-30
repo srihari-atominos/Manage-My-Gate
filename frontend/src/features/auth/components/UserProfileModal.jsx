@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import config from '../../../config/config.js'
-import { useForm } from 'react-hook-form'
-import { yupResolver } from '@hookform/resolvers/yup'
-import * as yup from 'yup'
+import { useForm, Controller } from 'react-hook-form'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 import {
   CModal,
   CModalHeader,
@@ -19,23 +19,21 @@ import {
 import useAuth from '../hooks/useAuth'
 import '../styles/_auth.scss'
 
-const schema = yup.object().shape({
-  name: yup.string().trim().required('Name is required'),
-  phone: yup.string().trim().optional(),
-})
+
 
 const UserProfileModal = ({ visible, onClose }) => {
   const { currentUser, updateProfile, loading, error, successMsg, clearStatus } = useAuth()
   const [previewUrl, setPreviewUrl] = useState(null)
+  const [expectedPhoneLength, setExpectedPhoneLength] = useState(12)
 
   const {
     register,
     handleSubmit,
     reset,
     watch,
+    control,
     formState: { errors },
   } = useForm({
-    resolver: yupResolver(schema),
     defaultValues: {
       name: '',
       phone: '',
@@ -175,7 +173,7 @@ const UserProfileModal = ({ visible, onClose }) => {
               id="profile-name-input"
               type="text"
               placeholder="e.g. John Doe"
-              {...register('name')}
+              {...register('name', { required: 'Name is required' })}
               invalid={!!errors.name}
             />
             {errors.name && <div className="text-danger small mt-1">{errors.name.message}</div>}
@@ -189,12 +187,46 @@ const UserProfileModal = ({ visible, onClose }) => {
             >
               Phone Number
             </CFormLabel>
-            <CFormInput
-              id="profile-phone-input"
-              type="text"
-              placeholder="e.g. +1234567890"
-              {...register('phone')}
-              invalid={!!errors.phone}
+            <Controller
+              name="phone"
+              control={control}
+              rules={{
+                validate: (value) => {
+                  if (!value) return true
+                  if (value.length < expectedPhoneLength) {
+                    return 'Invalid phone number length for this country.'
+                  }
+                  return true
+                },
+              }}
+              render={({ field: { onChange, value } }) => (
+                <PhoneInput
+                  country={'in'}
+                  value={value}
+                  onChange={(phone, country) => {
+                    if (country && country.format) {
+                      setExpectedPhoneLength(country.format.replace(/[^.]/g, '').length)
+                    }
+                    onChange(phone)
+                  }}
+                  containerStyle={{
+                    width: '100%',
+                  }}
+                  inputStyle={{
+                    width: '100%',
+                    height: '38px', // Match CFormInput height
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem',
+                    fontSize: '14px',
+                  }}
+                  buttonStyle={{
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem 0 0 0.375rem',
+                    backgroundColor: '#f3f4f6',
+                  }}
+                  disabled={loading}
+                />
+              )}
             />
             {errors.phone && <div className="text-danger small mt-1">{errors.phone.message}</div>}
           </div>

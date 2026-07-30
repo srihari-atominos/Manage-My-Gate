@@ -182,7 +182,7 @@ export class VillaController {
         'Occupancy Status(Occupied,Vacant)',
         'Email',
         'ResidentType(Family Member,Resident Owner,Tenant)',
-        'Role(Admin,Owner,Tenant,Family Member,Security)'
+        'Phone No'
       ];
 
       const exampleRow = [
@@ -193,7 +193,7 @@ export class VillaController {
         'Occupied',
         'resident@example.com',
         'Resident Owner',
-        'Owner'
+        '1234567890'
       ];
 
       const escapeCSV = (arr) => arr.map(val => `"${val}"`).join(',');

@@ -1,6 +1,8 @@
 import React, { memo, useEffect } from 'react'
+import { useDispatch } from 'react-redux'
 import BillingLedgerTable from '../components/BillingLedgerTable.jsx'
 import { useBilling } from '../hooks/useBilling'
+import { clearInvoicesGrid } from '../store/billingSlice'
 import '../styles/_billing.scss'
 
 /**
@@ -8,7 +10,8 @@ import '../styles/_billing.scss'
  *
  * Admin dashboard tab — community billing ledger with KPI strip and data grid.
  */
-const BillingDashboardView = memo(() => {
+const BillingDashboardView = memo(({ onRunBillingClick }) => {
+  const dispatch = useDispatch()
   const billingData = useBilling()
 
   const {
@@ -28,7 +31,11 @@ const BillingDashboardView = memo(() => {
       loadAdminDashboard(activeOrgId)
       changeTablePage(1)
     }
-  }, [activeOrgId, loadAdminDashboard, changeTablePage])
+
+    return () => {
+      dispatch(clearInvoicesGrid())
+    }
+  }, [activeOrgId, loadAdminDashboard, changeTablePage, dispatch])
 
   return (
     <div className="billing-os-theme billing-dashboard-view">
@@ -39,7 +46,18 @@ const BillingDashboardView = memo(() => {
             All community invoices for the current billing period.
           </p>
         </div>
-        <div className="billing-dashboard-view__header-actions">
+        <div className="billing-dashboard-view__header-actions d-flex align-items-center">
+          {onRunBillingClick && (
+            <button
+              type="button"
+              className="btn btn-primary d-inline-flex align-items-center me-2"
+              style={{ borderRadius: '10px', padding: '9px 18px', fontSize: '13px', fontWeight: 600 }}
+              onClick={onRunBillingClick}
+            >
+              <i className="fa-solid fa-play me-2" />
+              Run Billing
+            </button>
+          )}
           <button type="button" className="billing-dashboard-view__export-btn">
             <i className="fa-solid fa-file-export me-2" />
             Export CSV

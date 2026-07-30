@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CButton } from '@coreui/react'
@@ -10,6 +10,7 @@ import AssessmentFormModal from '../components/AssessmentFormModal.jsx'
 import BillingDashboardView from './BillingDashboardView.jsx'
 import ResidentActionCenterView from './ResidentActionCenterView.jsx'
 import { useAssessment } from '../../assessment/hooks/useAssessment'
+import { clearAssessments } from '../../assessment/store/assessmentSlice'
 import { useBillingSocket } from '../hooks/useBillingSocket.js'
 import usePermission from '../../../hooks/usePermission'
 import '../styles/_billing.scss'
@@ -21,6 +22,7 @@ import '../styles/_billing.scss'
  * active nav selection.
  */
 export const BillingView = () => {
+  const dispatch = useDispatch()
   const user = useSelector((state) => state.auth?.user)
   const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId)
   useBillingSocket(user?.id || user?._id, activeOrgId)
@@ -85,9 +87,12 @@ export const BillingView = () => {
 
   useEffect(() => {
     if (activeTab === 'assessment-manager') {
-      loadAssessments()
+      if (activeOrgId) {
+        dispatch(clearAssessments())
+        loadAssessments()
+      }
     }
-  }, [activeTab, loadAssessments])
+  }, [activeTab, activeOrgId, loadAssessments, dispatch])
 
   const handleOpenEditModal = useCallback((assessment) => {
     setEditingAssessment(assessment)
@@ -135,7 +140,9 @@ export const BillingView = () => {
       <div className="view-container">
         <div className="view active" id="view-billing">
           {/* ── Tab: Dashboard ─────────────────────────────────────────── */}
-          {activeTab === 'dashboard' && hasDashboard && <BillingDashboardView />}
+          {activeTab === 'dashboard' && hasDashboard && (
+            <BillingDashboardView onRunBillingClick={() => setActiveTab('assessment-manager')} />
+          )}
 
           {/* ── Tab: Action Center ─────────────────────────────────────── */}
           {activeTab === 'action-center' && hasActionCenter && <ResidentActionCenterView />}

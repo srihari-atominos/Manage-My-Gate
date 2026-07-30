@@ -86,6 +86,11 @@ export const assessmentSlice = createSlice({
     setActiveTemplate: (state, action) => {
       state.activeTemplate = action.payload
     },
+    clearAssessments: (state) => {
+      state.assessmentsList = []
+      state.activeTemplate = null
+      state.pagination = { ...initialState.pagination }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -190,5 +195,5 @@ export const assessmentSlice = createSlice({
   },
 })
 
-export const { clearAssessmentError, setActiveTemplate } = assessmentSlice.actions
+export const { clearAssessmentError, setActiveTemplate, clearAssessments } = assessmentSlice.actions
 export default assessmentSlice.reducer

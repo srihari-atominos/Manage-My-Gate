@@ -32,33 +32,44 @@ export const WorkspaceSwitcher = () => {
       >
         <CIcon icon={cilBuilding} className="me-2" size="lg" />
         <span className="d-none d-md-inline text-truncate" style={{ maxWidth: '160px' }}>
-          {activeWorkspace.name || t('workspace.defaultName', { defaultValue: 'Select Workspace' })}
+          {activeWorkspace.name 
+            ? (activeWorkspace.villaId && availableWorkspaces.find(ws => ws.orgId === activeWorkspace.orgId && (ws.villaId||null) === activeWorkspace.villaId)?.villaNumber 
+                ? `${activeWorkspace.name} - Unit ${availableWorkspaces.find(ws => ws.orgId === activeWorkspace.orgId && (ws.villaId||null) === activeWorkspace.villaId).villaNumber}`
+                : activeWorkspace.name)
+            : t('workspace.defaultName', { defaultValue: 'Select Workspace' })}
         </span>
       </CDropdownToggle>
       <CDropdownMenu className="pt-0 pb-0" placement="bottom-end">
-        {availableWorkspaces.map((ws) => (
-          <CDropdownItem
-            key={ws.orgId}
-            as="button"
-            type="button"
-            className="d-flex align-items-center justify-content-between py-2 px-3 text-start w-100"
-            active={ws.orgId === activeWorkspace.orgId}
-            onClick={() => handleSwitchWorkspace(ws.orgId)}
-            id={`workspace-switch-item-${ws.orgId}`}
-          >
-            <div>
-              <div className="fw-semibold text-truncate" style={{ maxWidth: '180px' }}>
-                {ws.name}
+        {availableWorkspaces.map((ws, idx) => {
+          const isActive = ws.orgId === activeWorkspace.orgId && (ws.villaId || null) === (activeWorkspace.villaId || null)
+          const displayName = ws.villaNumber 
+            ? `${ws.name} - Unit ${ws.villaNumber} (${ws.residentType})`
+            : ws.name
+
+          return (
+            <CDropdownItem
+              key={`${ws.orgId}-${ws.villaId || 'admin'}-${idx}`}
+              as="button"
+              type="button"
+              className="d-flex align-items-center justify-content-between py-2 px-3 text-start w-100"
+              active={isActive}
+              onClick={() => handleSwitchWorkspace(ws.orgId, ws.villaId)}
+              id={`workspace-switch-item-${ws.orgId}-${ws.villaId || 'admin'}`}
+            >
+              <div>
+                <div className="fw-semibold text-truncate" style={{ maxWidth: '220px' }}>
+                  {displayName}
+                </div>
+                <div className="small text-body-secondary">{ws.roleName}</div>
               </div>
-              <div className="small text-body-secondary">{ws.roleName}</div>
-            </div>
             {ws.isPlatform && (
               <span className="badge bg-primary ms-3 small">
                 {t('workspace.platformBadge', { defaultValue: 'Platform' })}
               </span>
             )}
           </CDropdownItem>
-        ))}
+          )
+        })}
       </CDropdownMenu>
     </CDropdown>
   )

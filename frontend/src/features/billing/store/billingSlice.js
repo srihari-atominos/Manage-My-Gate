@@ -61,6 +61,19 @@ export const executeManualTrigger = createAsyncThunk(
   },
 )
 
+export const triggerInvoiceGenerationThunk = createAsyncThunk(
+  'billing/triggerInvoiceGenerationThunk',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const response = await billingService.triggerInvoiceGeneration(payload || {})
+      const body = response?.success !== undefined ? response : response?.data
+      return body?.data || body
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to trigger invoice generation')
+    }
+  },
+)
+
 export const submitOfflineSettlement = createAsyncThunk(
   'billing/submitOfflineSettlement',
   async ({ invoiceId, offlineReference, paymentMethod }, { rejectWithValue }) => {
@@ -92,9 +105,9 @@ export const clearOfflineSettlement = createAsyncThunk(
 
 export const payWithWallet = createAsyncThunk(
   'billing/payWithWallet',
-  async (invoiceId, { rejectWithValue }) => {
+  async ({ invoiceId, amount }, { rejectWithValue }) => {
     try {
-      const response = await billingService.payInvoiceWithWallet(invoiceId)
+      const response = await billingService.payInvoiceWithWallet(invoiceId, amount)
       const body = response?.success !== undefined ? response : response?.data
       return body?.data || body
     } catch (error) {
@@ -309,6 +322,12 @@ export const billingSlice = createSlice({
     syncRealtimeInvoice: (state, action) => {
       performInvoiceSync(state, action.payload)
     },
+    clearInvoicesGrid: (state) => {
+      state.invoicesList = []
+      state.pagination = { ...initialState.pagination }
+      state.kpis = { ...initialState.kpis }
+      state.activeDues = { ...initialState.activeDues }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -338,6 +357,7 @@ export const billingSlice = createSlice({
           totalPortfolioDue: duesData.personalDues?.totalPortfolioDue || 0,
           unitBreakdown: duesData.personalDues?.unitBreakdown || [],
           secondaryCompliance: duesData.secondaryCompliance || [],
+          recentInvoices: duesData.recentInvoices || [],
         }
       })
       .addCase(fetchMyDues.rejected, (state, action) => {
@@ -440,5 +460,5 @@ export const billingSlice = createSlice({
   },
 })
 
-export const { clearBillingError, syncRealtimeInvoice } = billingSlice.actions
+export const { clearBillingError, syncRealtimeInvoice, clearInvoicesGrid } = billingSlice.actions
 export default billingSlice.reducer

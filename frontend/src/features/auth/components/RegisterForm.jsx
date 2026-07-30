@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import useAuthRouting from '../hooks/useAuthRouting.js'
 import useAuth from '../hooks/useAuth.js'
 import { GoogleLogin } from '@react-oauth/google'
 import { useMsal } from '@azure/msal-react'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 import {
   CButton,
   CCard,
@@ -33,7 +35,12 @@ export const RegisterForm = () => {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const [isLoginMode, setIsLoginMode] = useState(location.pathname === '/login-createOrg')
+  const isLoginModeParam = location.pathname === '/login-createOrg'
+  const [isLoginMode, setIsLoginMode] = useState(isLoginModeParam)
+
+  const isGoogleSso = location.state?.isGoogleSso || false
+  const ssoEmail = location.state?.email || ''
+  const ssoName = location.state?.name || ''
 
   const {
     loading,
@@ -47,17 +54,20 @@ export const RegisterForm = () => {
   } = useAuth()
   const { handlePostAuthRedirect, isAuthenticated } = useAuthRouting()
 
+  const [expectedPhoneLength, setExpectedPhoneLength] = useState(12) // Default for India (91 + 10 digits)
+
   const {
     register,
     handleSubmit,
     setValue,
     watch,
     clearErrors,
-    formState: { errors },
+    control,
+    formState: { errors, isValid },
   } = useForm({
     defaultValues: {
-      name: '',
-      email: '',
+      name: ssoName,
+      email: ssoEmail,
       phone: '',
       password: '',
       confirmPassword: '',
@@ -65,7 +75,9 @@ export const RegisterForm = () => {
     mode: 'onChange',
   })
 
+  // Watch fields for logic
   const watchPassword = watch('password', '')
+  const watchPhone = watch('phone', '')
 
   useEffect(() => {
     clearStatus()
@@ -82,9 +94,9 @@ export const RegisterForm = () => {
   // When changing mode, navigate to the correct onboarding route
   const toggleMode = () => {
     if (isLoginMode) {
-      navigate('/register')
+      navigate('/register', { state: location.state })
     } else {
-      navigate('/login?intent=create-org')
+      navigate('/login?intent=create-org', { state: location.state })
     }
   }
 
@@ -141,8 +153,9 @@ export const RegisterForm = () => {
         name: data.name.trim(),
         username: derivedUsername,
         email: data.email.trim().toLowerCase(),
-        phone: data.phone?.trim() || undefined,
+        phone: data.phone?.trim() ? `+${data.phone.trim()}` : undefined,
         password: data.password,
+        isGoogleSso,
       }).then((action) => {
         if (action.meta.requestStatus === 'fulfilled') {
           setTimeout(() => {
@@ -244,11 +257,16 @@ export const RegisterForm = () => {
                 <CIcon icon={cilEnvelopeOpen} style={styles.icon} />
               </CInputGroupText>
               <CFormInput
-                style={styles.input}
+                style={
+                  isGoogleSso
+                    ? { ...styles.input, backgroundColor: '#f9fafb', color: '#6b7280' }
+                    : styles.input
+                }
                 type="email"
                 placeholder={t('auth.register.emailPlaceholder', { defaultValue: 'Email' })}
                 autoComplete="email"
                 disabled={loading}
+                readOnly={isGoogleSso}
                 {...register('email', {
                   required: t('auth.register.emailRequired', {
                     defaultValue: 'Email address is required.',
@@ -262,6 +280,12 @@ export const RegisterForm = () => {
                 })}
               />
             </CInputGroup>
+            {isGoogleSso && (
+              <div className="text-success small mt-1 ms-1 fw-medium d-flex align-items-center">
+                <CIcon icon={cilLockLocked} size="sm" className="me-1" />
+                Verified via Google
+              </div>
+            )}
             {errors.email && (
               <div className="text-danger small mt-1 ms-1">{errors.email.message}</div>
             )}
@@ -270,32 +294,52 @@ export const RegisterForm = () => {
           {/* Phone */}
           {!isLoginMode && (
             <div className="mb-3">
-              <CInputGroup>
-                <CInputGroupText style={styles.inputIconText}>
-                  <CIcon icon={cilPhone} style={styles.icon} />
-                </CInputGroupText>
-                <CFormInput
-                  style={styles.input}
-                  placeholder={t('auth.register.phonePlaceholder', {
-                    defaultValue: 'Phone Number',
-                  })}
-                  autoComplete="tel"
-                  disabled={loading}
-                  {...register('phone', {
-                    required:
-                      !isLoginMode &&
-                      t('auth.register.phoneRequired', {
-                        defaultValue: 'Phone number is required.',
-                      }),
-                    pattern: {
-                      value: /^\+?[0-9\s\-\(\)]{7,20}$/,
-                      message: t('auth.register.phoneInvalid', {
-                        defaultValue: 'Invalid phone number.',
-                      }),
-                    },
-                  })}
-                />
-              </CInputGroup>
+              <Controller
+                name="phone"
+                control={control}
+                rules={{
+                  required: t('auth.register.phoneRequired', {
+                    defaultValue: 'Phone number is required.',
+                  }),
+                  validate: (value) => {
+                    if (!value) return true
+                    if (value.length < expectedPhoneLength) {
+                      return t('auth.register.phoneInvalid', {
+                        defaultValue: 'Invalid phone number length for this country.',
+                      })
+                    }
+                    return true
+                  },
+                }}
+                render={({ field: { onChange, value } }) => (
+                  <PhoneInput
+                    country={'in'}
+                    value={value}
+                    onChange={(phone, country) => {
+                      if (country && country.format) {
+                        setExpectedPhoneLength(country.format.replace(/[^.]/g, '').length)
+                      }
+                      onChange(phone)
+                    }}
+                    containerStyle={{
+                      width: '100%',
+                    }}
+                    inputStyle={{
+                      width: '100%',
+                      height: '42px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.375rem',
+                      fontSize: '14px',
+                    }}
+                    buttonStyle={{
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.375rem 0 0 0.375rem',
+                      backgroundColor: '#f3f4f6',
+                    }}
+                    disabled={loading}
+                  />
+                )}
+              />
               {errors.phone && (
                 <div className="text-danger small mt-1 ms-1">{errors.phone.message}</div>
               )}
@@ -420,8 +464,17 @@ export const RegisterForm = () => {
               <CCol xs={12} sm={6} className="d-flex justify-content-center">
                 <div style={{ width: '100%', maxWidth: '210px' }}>
                   <GoogleLogin
-                    onSuccess={(credentialResponse) => {
-                      loginGoogle(credentialResponse.credential)
+                    onSuccess={async (credentialResponse) => {
+                      const res = await loginGoogle(credentialResponse.credential)
+                      if (res.isNewUser) {
+                        navigate('/register', {
+                          state: {
+                            email: res.googleData.email,
+                            name: res.googleData.name,
+                            isGoogleSso: true,
+                          },
+                        })
+                      }
                     }}
                     onError={() => {
                       console.error('Google Sign-In failed')

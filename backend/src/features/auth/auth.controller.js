@@ -80,9 +80,9 @@ export class AuthController {
 
   async switchContext(req, res, next) {
     try {
-      const { targetOrgId, targetRole } = req.body;
+      const { targetOrgId, targetVillaId, targetRole } = req.body;
       const userId = req.user.id;
-      const data = await authService.switchContext(userId, targetOrgId, targetRole);
+      const data = await authService.switchContext(userId, targetOrgId, targetVillaId, targetRole);
 
       setAuthCookie(res, data.token);
 
@@ -96,8 +96,15 @@ export class AuthController {
     try {
       const { token, inviteToken } = req.body;
       const data = await authService.loginWithGoogle(token, inviteToken);
+      
+      if (data.isNewUser) {
+        return res.success(data, 'Google token verified. User not found.', 200);
+      }
+
       setAuthCookie(res, data.token);
-      res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+      if (data.refreshToken) {
+        res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+      }
       res.success(data, 'Google login successful');
     } catch (error) {
       next(error);

@@ -32,10 +32,7 @@ export class UserController {
         email: u.email,
         role: u.role || '',
         status: u.status || 'Pending',
-        villaId: u.villaId || null,
-        villaNumber: u.villaNumber || '',
-        villaBlock: u.villaBlock || '',
-        residentType: u.residentType || 'None',
+        assignedUnits: u.assignedUnits || [],
       }));
       res.success({ data: formatted, pagination }, 'Users retrieved successfully');
     } catch (error) {
@@ -48,9 +45,9 @@ export class UserController {
    */
   async inviteUser(req, res, next) {
     try {
-      const { email, villaId, residentType, roleName } = req.body;
+      const { email, phone, villaId, residentType, roleName } = req.body;
       const orgId = req.tenant.orgId;
-      const { user, invitationToken } = await userService.inviteUser(email, orgId, villaId, residentType, roleName);
+      const { user, invitationToken } = await userService.inviteUser(email, orgId, villaId, residentType, roleName, phone);
       const formatted = {
         id: user._id,
         username: user.username,
@@ -75,8 +72,9 @@ export class UserController {
   async deleteUser(req, res, next) {
     try {
       const { id } = req.params;
+      const { villaId } = req.query;
       const orgId = req.tenant.orgId;
-      await userService.deleteUserFromOrg(id, orgId);
+      await userService.deleteUserFromOrg(id, orgId, villaId);
       res.success({ id }, 'User deleted successfully');
     } catch (error) {
       next(error);
@@ -89,10 +87,10 @@ export class UserController {
   async updateUserRoles(req, res, next) {
     try {
       const { id } = req.params;
-      const { roles } = req.body;
+      const { roles, villaId } = req.body;
       const orgId = req.tenant.orgId;
 
-      const result = await userService.updateUserRoles(id, orgId, roles);
+      const result = await userService.updateUserRoles(id, orgId, roles, villaId);
       res.success(result, 'User roles updated successfully')
     } catch (error) {
       next(error)

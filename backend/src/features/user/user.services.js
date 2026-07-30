@@ -145,6 +145,35 @@ export class UserService {
       const villaService = (await import('../villa/villa.services.js')).default;
       await villaService.removeUserFromAllVillasInOrg(id, orgId, session);
 
+      // Check if user has any OTHER memberships left across the platform
+      const remainingMemberships = await orgMembershipService.getUserMemberships(id, session);
+      if (remainingMemberships.length === 0) {
+        // If they don't belong to any other organization, hard-delete their global user record
+        await userRepository.delete(id, session);
+      } else {
+        const remaining = remainingMemberships[0];
+        const getResidencyTypeFromMemberType = (type) => {
+          switch (type) {
+            case 'Owner': return 'Resident Owner';
+            case 'Tenant': return 'Tenant';
+            case 'Family': return 'Family Member';
+            default: return 'None';
+          }
+        };
+        const User = (await import('./user.model.js')).default;
+        await User.updateOne(
+          { _id: id },
+          {
+            $set: {
+              villaId: remaining.villaId || null,
+              residencyType: getResidencyTypeFromMemberType(remaining.residentType),
+              roleId: remaining.roleId || null,
+              roleIds: remaining.roleIds || []
+            }
+          }
+        ).session(session);
+      }
+
       await session.commitTransaction();
       userEvents.emit('USER_UPDATED', { userId: id, action: 'deleted' });
       return { id };
@@ -156,7 +185,7 @@ export class UserService {
     }
   }
 
-  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null) {
+  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null, phone = '') {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -179,8 +208,11 @@ export class UserService {
           email: trimmedEmail,
           username: username,
           status: 'Pending Verification',
+          phone: phone || '',
         };
         user = await userRepository.create(userData, session);
+      } else if (phone && !user.phone) {
+        user = await userRepository.update(user._id, { phone }, session);
       }
 
       // Check if membership already exists
@@ -330,7 +362,7 @@ export class UserService {
     }
   }
 
-  async updateUserRoles(userId, orgId, roles, session = null) {
+  async updateUserRoles(userId, orgId, roles, villaId = null, session = null) {
     let localSession = null;
     if (!session) {
       localSession = await mongoose.startSession();
@@ -356,7 +388,13 @@ export class UserService {
       }
 
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-      const updatedMembership = await orgMembershipService.updateMembershipRole(userId, orgId, roleIds, currentSession);
+      
+      let newResidentType = null;
+      if (foundRoleNames.includes('Resident Owner')) newResidentType = 'Owner';
+      else if (foundRoleNames.includes('Resident Tenant')) newResidentType = 'Tenant';
+      else if (foundRoleNames.includes('Family Member')) newResidentType = 'Family';
+
+      const updatedMembership = await orgMembershipService.updateMembershipRole(userId, orgId, roleIds, villaId, newResidentType, currentSession);
       if (!updatedMembership) {
         throw new HttpError(404, 'User organization membership not found.');
       }

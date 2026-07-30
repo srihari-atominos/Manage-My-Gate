@@ -97,6 +97,51 @@ export class OrgMembershipRepository {
           preserveNullAndEmptyArrays: true,
         },
       },
+      {
+        $group: {
+          _id: '$user._id',
+          user: { $first: '$user' },
+          // We don't need $first for rolesPopulated globally, we compute the combined string per unit
+          status: { $first: '$status' },
+          assignedUnits: {
+            $push: {
+              $cond: [
+                { $eq: [{ $ifNull: ['$villa._id', null] }, null] },
+                '$$REMOVE',
+                {
+                  villaId: '$villa._id',
+                  residentType: '$residentType',
+                  villaNumber: '$villa.unitNumber',
+                  villaBlock: '$villa.blockOrBuilding',
+                  status: '$status',
+                  role: {
+                    $cond: {
+                      if: { $gt: [{ $size: '$rolesPopulated' }, 0] },
+                      then: {
+                        $reduce: {
+                          input: '$rolesPopulated.name',
+                          initialValue: '',
+                          in: {
+                            $cond: [
+                              { $eq: ['$$value', ''] },
+                              '$$this',
+                              { $concat: ['$$value', ', ', '$$this'] }
+                            ]
+                          }
+                        }
+                      },
+                      else: { $ifNull: [{ $arrayElemAt: ['$rolePopulatedFallback.name', 0] }, ''] }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          // We still need a global role string for users without units (e.g. Community Admin)
+          rolesPopulated: { $first: '$rolesPopulated' },
+          rolePopulatedFallback: { $first: '$rolePopulatedFallback' }
+        }
+      },
     ];
 
     if (Object.keys(filterMatch).length > 0) {
@@ -112,7 +157,7 @@ export class OrgMembershipRepository {
           {
             $project: {
               _id: 0,
-              id: '$user._id',
+              id: '$_id',
               username: '$user.username',
               name: '$user.name',
               phone: '$user.phone',
@@ -137,10 +182,7 @@ export class OrgMembershipRepository {
                 }
               },
               status: '$status',
-              villaId: '$villa._id',
-              villaNumber: '$villa.unitNumber',
-              villaBlock: '$villa.blockOrBuilding',
-              residentType: '$residentType',
+              assignedUnits: '$assignedUnits',
             },
           },
         ],
@@ -158,10 +200,20 @@ export class OrgMembershipRepository {
     };
   }
 
-  async updateRoles(userId, orgId, roleIds, session) {
+  async updateRoles(userId, orgId, roleIds, villaId = null, residentType = null, session = null) {
+    const query = { userId, orgId };
+    if (villaId) {
+      query.villaId = villaId;
+    }
+    
+    const updatePayload = { roleIds, roleId: roleIds.length > 0 ? roleIds[0] : null };
+    if (residentType) {
+      updatePayload.residentType = residentType;
+    }
+    
     return await OrgMembership.findOneAndUpdate(
-      { userId, orgId },
-      { roleIds, roleId: roleIds.length > 0 ? roleIds[0] : null },
+      query,
+      updatePayload,
       { returnDocument: 'after', runValidators: true, session: session || null }
     );
   }
@@ -182,7 +234,7 @@ export class OrgMembershipRepository {
   }
 
   async deleteByUserIdAndOrgId(userId, orgId, session = null) {
-    return await OrgMembership.deleteOne(
+    return await OrgMembership.deleteMany(
       { userId, orgId },
       session ? { session } : undefined
     );

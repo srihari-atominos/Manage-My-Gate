@@ -166,6 +166,7 @@ const cachedWorkspaces = localStorage.getItem('availableWorkspaces')
 
 const initialState = {
   activeOrganizationId: cachedUser?.orgId || null,
+  activeVillaId: cachedUser?.villaId || null,
   activeRole: cachedUser?.role || null,
   allowedFeatures: cachedUser?.permissions || [],
   organizationName: cachedWorkspaces.find((w) => w.orgId === cachedUser?.orgId)?.name || null,
@@ -186,10 +187,11 @@ export const workspaceSlice = createSlice({
   initialState,
   reducers: {
     setActiveWorkspace: (state, action) => {
-      const { activeOrganizationId, activeRole, allowedFeatures, isPlatform, availableWorkspaces } =
+      const { activeOrganizationId, activeVillaId, activeRole, allowedFeatures, isPlatform, availableWorkspaces } =
         action.payload || {}
 
       state.activeOrganizationId = activeOrganizationId ?? null
+      state.activeVillaId = activeVillaId ?? null
       state.activeRole = activeRole ?? null
       state.allowedFeatures = allowedFeatures ?? []
       state.isPlatform = isPlatform ?? false
@@ -206,6 +208,7 @@ export const workspaceSlice = createSlice({
     clearWorkspace: (state) => {
       localStorage.removeItem('availableWorkspaces')
       state.activeOrganizationId = null
+      state.activeVillaId = null
       state.activeRole = null
       state.allowedFeatures = []
       state.organizationName = null
@@ -225,6 +228,7 @@ export const workspaceSlice = createSlice({
       .addCase('auth/logout', (state) => {
         localStorage.removeItem('availableWorkspaces')
         state.activeOrganizationId = null
+        state.activeVillaId = null
         state.activeRole = null
         state.allowedFeatures = []
         state.organizationName = null
@@ -242,6 +246,7 @@ export const workspaceSlice = createSlice({
         const payloadData = action.payload?.data
         if (payloadData && payloadData.user) {
           state.activeOrganizationId = payloadData.user.orgId
+          state.activeVillaId = payloadData.user.villaId || null
           state.activeRole = payloadData.user.role
           state.allowedFeatures = payloadData.user.permissions || []
           state.isPlatform = payloadData.user.isPlatform || false

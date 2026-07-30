@@ -36,55 +36,54 @@
 .accept-invite-card {
   max-width: 520px;
   width: 100%;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   border-radius: 16px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid #e4e6ef;
   padding: 32px 24px;
 
   .login-divider-line {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: #eff2f5;
   }
 }
 
 .accept-invite-title {
   font-size: 32px;
   font-weight: 700;
-  color: #ffffff;
+  color: #181c32;
   margin-bottom: 8px;
   letter-spacing: -0.025em;
 }
 
 .accept-invite-subtitle {
-  color: #a1a1aa;
+  color: #7e8299;
   font-size: 15px;
   margin-bottom: 24px;
 }
 
 .accept-invite-input {
-  background: rgba(255, 255, 255, 0.02) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff !important;
+  background: #f5f8fa !important;
+  border: 1px solid #e4e6ef !important;
+  color: #3f4254 !important;
   padding: 12px !important;
 
   &:focus {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border-color: rgba(255, 255, 255, 0.25) !important;
-    color: #ffffff !important;
+    background: #eef3f7 !important;
+    border-color: #b5b5c3 !important;
+    color: #3f4254 !important;
     box-shadow: none !important;
   }
   
   &::placeholder {
-    color: #71717a !important;
+    color: #a1a5b7 !important;
   }
 }
 
 .accept-invite-input-icon {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  color: #a1a1aa !important;
+  background: #ebedf3 !important;
+  border: 1px solid #e4e6ef !important;
+  color: #7e8299 !important;
   min-width: 50px;
   justify-content: center;
 }
@@ -111,7 +110,7 @@
 }
 
 .accept-invite-link {
-  color: #818cf8 !important;
+  color: #4f46e5 !important;
   font-size: 14px;
   text-decoration: none;
 
@@ -123,14 +122,13 @@
 .accept-invite-error-container {
   max-width: 520px;
   width: 100%;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   border-radius: 16px;
   border: 1px solid rgba(239, 68, 68, 0.2);
-  background: rgba(239, 68, 68, 0.05);
-  backdrop-filter: blur(10px);
+  background: #fff5f5;
   padding: 40px 24px;
   text-align: center;
-  color: #ffffff;
+  color: #2d3748;
 }
 
 .accept-invite-sso-container {
@@ -142,9 +140,9 @@
 
 .accept-invite-sso-btn {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #ffffff !important;
+  color: #3f4254 !important;
+  border: 1px solid #e4e6ef !important;
   padding: 10px 14px;
   font-size: 14px;
   font-weight: 500;
@@ -158,8 +156,8 @@
   transition: all 0.2s;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.15) !important;
+    background: #f5f8fa !important;
+    border-color: #b5b5c3 !important;
   }
 }
 

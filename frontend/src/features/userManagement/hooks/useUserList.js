@@ -14,9 +14,11 @@ import {
   bulkInviteUsersAsync,
   deleteUserAsync,
   updateUserRolesAsync,
+  clearUsers,
   STATUS_OPTIONS,
 } from '../store/userSlice'
 import { fetchRolesAsync } from '../../roleBuilder/store/roleSlice'
+import { switchWorkspaceContext } from '../../auth/store/authSlice'
 
 /**
  * useUserList Custom Hook
@@ -44,6 +46,7 @@ export const useUserList = () => {
   const { roles } = useSelector((state) => state.roleBuilder)
   const currentUserId = useSelector((state) => state.auth.user?.id)
   const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId)
+  const activeVillaId = useSelector((state) => state.auth.currentUser?.villaId) || null
 
   // Real-time real-time sync via Socket.io
   useEffect(() => {
@@ -72,10 +75,11 @@ export const useUserList = () => {
     }
   }, [activeOrgId, dispatch, currentPage, rowsPerPage])
 
-  // Fetch users when pagination states change
+  // Fetch users when pagination or context states change
   useEffect(() => {
+    dispatch(clearUsers())
     dispatch(fetchUsersAsync({ page: currentPage, limit: rowsPerPage }))
-  }, [dispatch, currentPage, rowsPerPage, searchQuery, selectedRoles, statusFilter])
+  }, [dispatch, activeOrgId, activeVillaId, currentPage, rowsPerPage, searchQuery, selectedRoles, statusFilter])
 
   // Load roles on mount if not loaded
   useEffect(() => {
@@ -120,7 +124,10 @@ export const useUserList = () => {
     dispatch(setCurrentPage(1))
   }
 
-  const removeUser = (id) => dispatch(deleteUserAsync(id))
+  const removeUser = async (payload) => {
+    await dispatch(deleteUserAsync(payload)).unwrap()
+    dispatch(fetchUsersAsync({ page: currentPage, limit: rowsPerPage }))
+  }
 
   const inviteUser = async (inviteData) => {
     const resultAction = await dispatch(inviteUserAsync(inviteData))
@@ -142,19 +149,32 @@ export const useUserList = () => {
 
   // Modal State & Handlers
   const [selectedUserForRoles, setSelectedUserForRoles] = useState(null)
+  const [selectedUnitForRoles, setSelectedUnitForRoles] = useState(null)
 
-  const openManageRolesModal = (user) => {
+  const openManageRolesModal = (user, unit = null) => {
     setSelectedUserForRoles(user)
+    setSelectedUnitForRoles(unit)
   }
 
   const closeManageRolesModal = () => {
     setSelectedUserForRoles(null)
+    setSelectedUnitForRoles(null)
   }
 
   const handleSaveRoles = async (userId, newRoles) => {
     try {
-      await dispatch(updateUserRolesAsync({ userId, newRoles })).unwrap()
+      const payload = { userId, roles: newRoles }
+      if (selectedUnitForRoles && selectedUnitForRoles.villaId) {
+        payload.villaId = selectedUnitForRoles.villaId
+      }
+      await dispatch(updateUserRolesAsync(payload)).unwrap()
       closeManageRolesModal()
+      dispatch(fetchUsersAsync({ page: currentPage, limit: rowsPerPage }))
+      
+      // If the admin is modifying their own roles, refresh the auth context to update availableWorkspaces
+      if (userId === currentUserId) {
+        dispatch(switchWorkspaceContext({ targetOrgId: activeOrgId, targetVillaId: activeVillaId }))
+      }
     } catch (err) {
       console.error('Failed to update user roles:', err)
     }
@@ -175,6 +195,7 @@ export const useUserList = () => {
     ROLES,
     STATUS_OPTIONS,
     selectedUserForRoles,
+    selectedUnitForRoles,
     isLoading: loading,
     error,
 

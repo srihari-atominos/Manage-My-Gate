@@ -62,6 +62,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
 
   // Form states for Tab 2 (Invite via Email)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [invitePhone, setInvitePhone] = useState('')
   const [inviteResidencyType, setInviteResidencyType] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState(null)
@@ -136,6 +137,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
       const actionResult = await dispatch(
         inviteUserAsync({
           email: inviteEmail.trim(),
+          phone: invitePhone.trim(),
           villaId,
           residentType: getResidentType(inviteResidencyType),
           roleName: inviteResidencyType,
@@ -147,6 +149,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
           t('villas.details.inviteSuccess', `Invitation sent successfully to ${inviteEmail}`),
         )
         setInviteEmail('')
+        setInvitePhone('')
         dispatch(fetchVillaByIdAsync(villaId))
       } else {
         setInviteError(
@@ -161,7 +164,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
   }
 
   const startEditResidencyType = (resident) => {
-    setEditingUserId(resident.id)
+    setEditingUserId(resident._id || resident.id)
     setEditResidencyType(resident.residentType || 'Tenant')
   }
 
@@ -303,16 +306,17 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
                 ) : (
                   <div className="directory-scroller">
                     {selectedVilla.residents.map((res) => {
-                      const isEditing = editingUserId === res.id
+                      const residentId = res._id || res.id
+                      const isEditing = editingUserId === residentId
 
                       const isPrimary =
                         selectedVilla.villa.primaryResidentId &&
-                        (String(selectedVilla.villa.primaryResidentId) === String(res.id) ||
-                          String(selectedVilla.villa.primaryResidentId._id) === String(res.id))
+                        (String(selectedVilla.villa.primaryResidentId) === String(residentId) ||
+                          String(selectedVilla.villa.primaryResidentId._id) === String(residentId))
 
                       return (
                         <div
-                          key={res.id}
+                          key={residentId}
                           className="resident-list-item d-flex flex-column p-2 mb-2 border rounded bg-body"
                         >
                           <div className="d-flex align-items-center justify-content-between">
@@ -369,7 +373,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
                                   <CButton
                                     size="sm"
                                     color="success"
-                                    onClick={() => handleSaveResidencyType(res.id)}
+                                    onClick={() => handleSaveResidencyType(residentId)}
                                     className="text-white py-1 px-2 inline-btn"
                                   >
                                     {t('villas.details.save', 'Save')}
@@ -398,7 +402,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
                                       <CButton
                                         color="link"
                                         className="p-0 text-decoration-none inline-btn text-primary"
-                                        onClick={() => handleSetPrimaryResident(res.id)}
+                                        onClick={() => handleSetPrimaryResident(residentId)}
                                       >
                                         {t('villas.details.setPrimary', 'Set Primary')}
                                       </CButton>
@@ -419,7 +423,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
                                   <CButton
                                     color="link"
                                     className="p-0 text-decoration-none inline-btn text-danger"
-                                    onClick={() => handleRemoveResident(res.id)}
+                                    onClick={() => handleRemoveResident(residentId)}
                                   >
                                     {t('villas.details.remove', 'Remove')}
                                   </CButton>
@@ -482,9 +486,9 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
                               {t('villas.details.chooseUser', 'Choose a user...')}
                             </option>
                             {workspaceUsers
-                              .filter((u) => !selectedVilla.residents.some((r) => r.id === u.id))
+                              .filter((u) => !selectedVilla.residents.some((r) => (r._id || r.id) === (u._id || u.id)))
                               .map((u) => (
-                                <option key={u.id} value={u.id}>
+                                <option key={u._id || u.id} value={u._id || u.id}>
                                   {u.name || u.email} ({u.email})
                                 </option>
                               ))}
@@ -555,6 +559,19 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
                             value={inviteEmail}
                             onChange={(e) => setInviteEmail(e.target.value)}
                             required
+                            size="sm"
+                          />
+                        </div>
+                        <div className="mb-3">
+                          <CFormLabel htmlFor="invite-phone" className="small fw-semibold">
+                            {t('villas.details.phoneLabel', 'Phone Number (Optional)')}
+                          </CFormLabel>
+                          <CFormInput
+                            id="invite-phone"
+                            type="text"
+                            placeholder="+1234567890"
+                            value={invitePhone}
+                            onChange={(e) => setInvitePhone(e.target.value)}
                             size="sm"
                           />
                         </div>

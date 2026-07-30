@@ -44,9 +44,14 @@ export const inviteUser = async (inviteData) => {
  * @param {number} userId
  * @returns {Promise<number>} Resolves with the deleted user's ID.
  */
-export const deleteUser = async (userId) => {
+export const deleteUser = async (userId, villaId = null) => {
+  if (villaId) {
+    // Remove user from a specific unit instead of entire org
+    await apiClient.delete(`/villas/${villaId}/residents/${userId}`)
+    return { userId, villaId }
+  }
   await apiClient.delete(`/users/${userId}`)
-  return userId
+  return { userId, villaId: null }
 }
 
 /**
@@ -55,9 +60,12 @@ export const deleteUser = async (userId) => {
  * @param {Array<string>} roles
  * @returns {Promise<Object>} Resolves with the updated userId and new roles array.
  */
-export const updateUserRoles = async (userId, roles) => {
-  await apiClient.put(`/users/${userId}/roles`, { roles })
-  return { userId, roles }
+export const updateUserRoles = async (userId, roles, villaId = null) => {
+  const payload = { roles }
+  if (villaId) payload.villaId = villaId
+  
+  await apiClient.put(`/users/${userId}/roles`, payload)
+  return { userId, roles, villaId }
 }
 
 /**

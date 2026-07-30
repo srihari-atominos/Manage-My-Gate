@@ -1,9 +1,11 @@
 import React, { useState, memo, useCallback, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import toast from 'react-hot-toast'
+import { useDispatch } from 'react-redux'
 import { CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CButton } from '@coreui/react'
 import BillingLedgerRow from './BillingLedgerRow.jsx'
 import OfflineSettleModal from './OfflineSettleModal.jsx'
+import { triggerInvoiceGenerationThunk } from '../store/billingSlice.js'
 
 /**
  * BillingLedgerTable
@@ -21,6 +23,7 @@ const BillingLedgerTable = memo(
     onSettleOffline,
     onApproveOffline,
   }) => {
+    const dispatch = useDispatch()
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('ALL')
 

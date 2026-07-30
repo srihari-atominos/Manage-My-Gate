@@ -46,18 +46,159 @@ const invoiceSchema = new mongoose.Schema(
           `${props.value} is not a valid billing period format. Use 'YYYY-MM' or 'YYYY-Qx' (e.g. '2026-07' or '2026-Q3').`,
       },
     },
+    // --- Enterprise Invoice Numbering ---
+    fy: { type: String, required: false }, // Will make required later after migration
+    sequenceNumber: { type: Number },
+
+    // --- Invoice Snapshot (Immutable) ---
+    snapshot: {
+      assessmentName: String,
+      assessmentType: String,
+      calculationMethod: Object,
+      unitDetails: Object,
+      residentDetails: Object,
+      billingConfiguration: Object
+    },
+
+    // --- Currency & Tax Snapshot (Immutable) ---
+    currency: { type: String, default: 'INR' },
+    subtotal: { type: Number, default: 0 },
+    taxPercentage: { type: Number, default: 0 },
+    taxAmount: { type: Number, default: 0 },
+    
+    // --- Document Storage Versioning ---
+    invoiceDocuments: [{
+      documentId: String,
+      generatedAt: Date,
+      version: Number,
+      url: String
+    }],
+
+    // --- Legacy Fields (Retained for Phase 1 Migration) ---
     hardcodedAmount: {
       type: Number,
-      required: [true, 'Hardcoded amount is required'],
-    },
-    taxAmount: {
-      type: Number,
-      default: 0,
+      required: false,
     },
     totalDue: {
       type: Number,
-      required: [true, 'Total due is required'],
+      required: false,
     },
+    paid_at: {
+      type: Date,
+      required: false,
+    },
+
+    // --- New Enterprise Fields ---
+    currentCharge: {
+      type: Number,
+      required: [true, 'Current charge is required'],
+    },
+    previousOutstanding: {
+      type: Number,
+      default: 0,
+    },
+    lateFeeAmount: {
+      type: Number,
+      default: 0,
+    },
+    carryForwardHistory: [{
+      invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
+      invoiceNumber: String,
+      amount: Number,
+      billingPeriodString: String,
+      generatedDate: Date,
+    }],
+    totalAmount: {
+      type: Number,
+      required: [true, 'Total amount is required'],
+    },
+    paidAmount: {
+      type: Number,
+      default: 0,
+    },
+    outstandingAmount: {
+      type: Number,
+      required: [true, 'Outstanding amount is required'],
+    },
+    carryForwardEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    invoiceVersion: {
+      type: Number,
+      default: 1,
+    },
+    lastPaymentDate: {
+      type: Date,
+      default: null,
+    },
+    paymentCompletionDate: {
+      type: Date,
+      default: null,
+    },
+    
+    // --- Payment Link Lifecycle ---
+    paymentLinkId: { type: String, default: null },
+    paymentLink: { type: String, default: null },
+    paymentLinkStatus: { type: String, enum: ['ACTIVE', 'EXPIRED', 'CANCELLED', 'PAID'], default: null },
+    paymentLinkGeneratedAt: { type: Date, default: null },
+    paymentLinkExpiresAt: { type: Date, default: null },
+    paymentLinkRegeneratedCount: { type: Number, default: 0 },
+
+    // --- Billing Calendar & Retries ---
+    penaltyDate: { type: Date, default: null },
+    retryCount: { type: Number, default: 0 },
+
+    // --- Billing Freeze ---
+    isFrozen: { type: Boolean, default: false },
+    frozenAt: { type: Date, default: null },
+    frozenBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+
+    // --- Approval & Cancellation State ---
+    cancellationRequestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    cancellationApprovedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+
+    // --- Reminder Management ---
+    reminderCount: { type: Number, default: 0 },
+    lastReminderSentAt: { type: Date, default: null },
+    nextReminderAt: { type: Date, default: null },
+    reminderChannel: { type: String, enum: ['WHATSAPP', 'EMAIL', 'SMS', 'NONE'], default: 'NONE' },
+
+    // --- Financial Audit Timeline (Expanded) ---
+    auditHistory: [{
+      action: { type: String, required: true },
+      details: { type: String, default: '' },
+      date: { type: Date, default: Date.now },
+      performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      userRole: { type: String, default: 'SYSTEM' },
+      source: { type: String, enum: ['API', 'WEBHOOK', 'SCHEDULER', 'SYSTEM', 'ADMIN_PANEL', 'RESIDENT_APP'], default: 'SYSTEM' },
+      ipAddress: { type: String, default: null },
+      device: { type: String, default: null },
+      reason: { type: String, default: null } 
+    }],
+    
+    // --- Idempotency Support ---
+    idempotencyKey: {
+      type: String,
+      index: { unique: true, sparse: true }
+    },
+    
+    // --- Soft Delete Fields ---
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+
     dueDate: {
       type: Date,
       required: [true, 'Due date is required'],
@@ -73,8 +214,8 @@ const invoiceSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: {
-        values: ['UNPAID', 'VERIFICATION_PENDING', 'PAID', 'CANCELLED'],
-        message: 'Status must be UNPAID, VERIFICATION_PENDING, PAID, or CANCELLED',
+        values: ['UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'VERIFICATION_PENDING', 'CANCELLED'],
+        message: 'Status must be UNPAID, PARTIALLY_PAID, PAID, OVERDUE, VERIFICATION_PENDING, or CANCELLED',
       },
       default: 'UNPAID',
       index: true,
@@ -114,8 +255,64 @@ invoiceSchema.index(
 // Multi-tenant query partitioning indexes
 invoiceSchema.index({ communityId: 1, status: 1 });
 invoiceSchema.index({ communityId: 1, targetUserId: 1 });
-// Add compound index for Dashboard Queries
+// Dashboard Queries and Carry Forward Lookup Indexes
 invoiceSchema.index({ orgId: 1, status: 1 });
+invoiceSchema.index({ targetUserId: 1, status: 1, isDeleted: 1, carryForwardEnabled: 1 });
+invoiceSchema.index({ dueDate: 1, status: 1 });
+
+// --- Mongoose Pre-Save Financial Validation Hook ---
+invoiceSchema.pre('save', function () {
+  
+  if (this.isFrozen) {
+    if (this.isModified() && !this.isModified('isFrozen')) {
+      throw new Error('Financial Integrity Error: Invoice is frozen. No modifications are allowed.');
+    }
+  }
+
+  // Immutability Check for existing documents
+  if (!this.isNew) {
+    const immutableFields = [
+      'snapshot', 'currency', 'subtotal', 'taxAmount',
+      'currentCharge', 'previousOutstanding', 'totalAmount',
+      'billingPeriodString', 'assessmentId'
+    ];
+    for (const field of immutableFields) {
+      if (this.isModified(field)) {
+         throw new Error(`Financial Integrity Error: ${field} is immutable and cannot be modified after generation.`);
+      }
+    }
+  }
+
+  // Ensure outstanding equation integrity
+  // Note: Float math in JS can be tricky, rounding to 2 decimals
+  const calculatedOutstanding = Math.round((this.totalAmount - this.paidAmount) * 100) / 100;
+  this.outstandingAmount = calculatedOutstanding;
+
+  if (this.outstandingAmount < 0) {
+    throw new Error('Financial Integrity Error: Outstanding amount cannot be negative.');
+  }
+  
+  if (this.outstandingAmount > this.totalAmount) {
+     throw new Error('Financial Integrity Error: Outstanding amount cannot exceed total amount.');
+  }
+
+  // Automatic Status Calculation based on payments and due date
+  // Do not alter CANCELLED invoices
+  if (this.status !== 'CANCELLED') {
+    const now = new Date();
+    
+    if (this.paidAmount === 0) {
+      this.status = (this.dueDate && this.dueDate < now) ? 'OVERDUE' : 'UNPAID';
+    } else if (this.paidAmount > 0 && this.outstandingAmount > 0) {
+      this.status = (this.dueDate && this.dueDate < now) ? 'OVERDUE' : 'PARTIALLY_PAID';
+    } else if (this.outstandingAmount <= 0) {
+      this.status = 'PAID';
+      if (!this.paymentCompletionDate) {
+        this.paymentCompletionDate = now;
+      }
+    }
+  }
+});
 
 export const Invoice = mongoose.model('Invoice', invoiceSchema);
 export default Invoice;

@@ -9,8 +9,8 @@ export class RazorpayProvider extends PaymentProviderInterface {
    * Helper to construct basic authorization header
    */
   #getAuthHeader(credentials) {
-    const keyId = credentials?.keyId || credentials?.key_id;
-    const keySecret = credentials?.keySecret || credentials?.key_secret;
+    const keyId = credentials?.keyId || credentials?.key_id || process.env.RAZORPAY_KEY_ID;
+    const keySecret = credentials?.keySecret || credentials?.key_secret || process.env.RAZORPAY_KEY_SECRET;
 
     if (!keyId || !keySecret) {
       throw new HttpError(400, 'Razorpay Key ID and Key Secret credentials are required.');
@@ -73,7 +73,7 @@ export class RazorpayProvider extends PaymentProviderInterface {
    */
   async verifySignature({ orderId, paymentId, signature }, credentials) {
     try {
-      const keySecret = credentials?.keySecret || credentials?.key_secret;
+      const keySecret = credentials?.keySecret || credentials?.key_secret || process.env.RAZORPAY_KEY_SECRET;
       if (!keySecret) {
         throw new HttpError(400, 'Razorpay Key Secret is required for signature verification.');
       }

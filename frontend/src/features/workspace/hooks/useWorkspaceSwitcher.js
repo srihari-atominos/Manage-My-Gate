@@ -13,14 +13,15 @@ export const useWorkspaceSwitcher = () => {
   const isPlatform = useSelector((state) => state.workspace.isPlatform)
   const name = useSelector((state) => state.workspace.organizationName)
 
-  const activeWorkspace = { orgId, role, isPlatform, name }
+  const activeVillaId = useSelector((state) => state.auth.currentUser?.villaId) || null
+  const activeWorkspace = { orgId, role, isPlatform, name, villaId: activeVillaId }
 
-  const handleSwitchWorkspace = async (targetOrgId) => {
+  const handleSwitchWorkspace = async (targetOrgId, targetVillaId = null) => {
     try {
-      await dispatch(switchWorkspaceContext(targetOrgId)).unwrap()
-      // Redirect to home/dashboard and reload the page to refresh all active data queries
+      // Note: we pass an object with both targetOrgId and targetVillaId
+      await dispatch(switchWorkspaceContext({ targetOrgId, targetVillaId })).unwrap()
+      // Redirect to home/dashboard without hard-reloading
       window.location.hash = '#/dashboard'
-      window.location.reload()
     } catch (err) {
       console.error('Failed to switch workspace context:', err)
     }

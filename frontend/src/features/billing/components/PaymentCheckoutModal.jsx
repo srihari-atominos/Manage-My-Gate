@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { useTranslation } from 'react-i18next'
 import {
@@ -48,16 +48,26 @@ export const PaymentCheckoutModal = ({
   onVerifyRazorpay,
   isLoading,
   actionError,
+  totalPortfolioDue,
 }) => {
   const { t } = useTranslation()
   const [paymentMethod, setPaymentMethod] = useState('WALLET')
   const [scriptLoading, setScriptLoading] = useState(false)
   const [localError, setLocalError] = useState(null)
 
+  const invoiceOutstanding = invoice?.outstandingAmount ?? invoice?.totalDue ?? invoice?.amount ?? 0
+  const maxAmount = totalPortfolioDue && totalPortfolioDue > invoiceOutstanding ? totalPortfolioDue : invoiceOutstanding
+  const [customAmount, setCustomAmount] = useState(maxAmount)
+
+  useEffect(() => {
+    if (invoice) {
+      setCustomAmount(maxAmount)
+    }
+  }, [invoice, maxAmount])
+
   if (!invoice) return null
 
-  const totalAmount = invoice.totalDue || invoice.amount || 0
-  const isWalletInsufficient = walletBalance < totalAmount
+  const isWalletInsufficient = walletBalance < customAmount
 
   const handleCheckoutSubmit = async () => {
     setLocalError(null)
@@ -73,16 +83,16 @@ export const PaymentCheckoutModal = ({
         return
       }
       if (onPayWithWallet) {
-        const result = await onPayWithWallet(invoice.invoiceId || invoice._id)
+        const result = await onPayWithWallet(invoice.invoiceId || invoice._id, customAmount)
         if (result?.success || !result?.error) {
-          onClose()
+          onClose(true, customAmount, 'WALLET')
         }
       }
     } else if (paymentMethod === 'RAZORPAY') {
       setScriptLoading(true)
 
       if (onPayWithRazorpay) {
-        const orderResult = await onPayWithRazorpay(invoice.invoiceId || invoice._id, totalAmount)
+        const orderResult = await onPayWithRazorpay(invoice.invoiceId || invoice._id, customAmount)
         if (orderResult?.error) {
           setLocalError(orderResult.error)
           setScriptLoading(false)
@@ -97,7 +107,7 @@ export const PaymentCheckoutModal = ({
           // Mock Payment Flow
           await new Promise((resolve) => setTimeout(resolve, 1500)) // Simulate loading delay
           const confirmPayment = window.confirm(
-            t('billing.checkout.mockConfirm', `[Mock Mode] Confirm payment of ₹${totalAmount}?`),
+            t('billing.checkout.mockConfirm', `[Mock Mode] Confirm payment of ₹${customAmount}?`),
           )
 
           if (confirmPayment) {
@@ -112,7 +122,7 @@ export const PaymentCheckoutModal = ({
                 verifyResult?.meta?.requestStatus === 'fulfilled' ||
                 (verifyResult && !verifyResult.error && verifyResult.success !== false)
               ) {
-                onClose(true)
+                onClose(true, customAmount, 'RAZORPAY')
               } else {
                 setLocalError(t('billing.checkout.verificationFailed', 'Mock verification failed.'))
               }
@@ -157,7 +167,7 @@ export const PaymentCheckoutModal = ({
                 verifyResult?.meta?.requestStatus === 'fulfilled' ||
                 (verifyResult && !verifyResult.error && verifyResult.success !== false)
               ) {
-                onClose(true)
+                onClose(true, customAmount, 'RAZORPAY')
               }
             }
           },
@@ -195,7 +205,7 @@ export const PaymentCheckoutModal = ({
       <CModalBody className="p-4">
         {(actionError || localError) && (
           <CAlert color="danger" className="mb-4">
-            {actionError || localError}
+            {typeof (actionError || localError) === 'object' ? (actionError || localError)?.message || JSON.stringify(actionError || localError) : (actionError || localError)}
           </CAlert>
         )}
 
@@ -219,8 +229,22 @@ export const PaymentCheckoutModal = ({
           </div>
           <hr className="my-2" />
           <div className="d-flex justify-content-between align-items-center">
-            <span className="fw-bold">{t('billing.checkout.totalAmount', 'Total Amount Due')}</span>
-            <h4 className="fw-bold text-success mb-0">₹{totalAmount.toLocaleString('en-IN')}</h4>
+            <span className="fw-bold">{t('billing.checkout.payAmount', 'Amount to Pay (₹)')}</span>
+            <div style={{ width: '150px' }}>
+              <input
+                type="number"
+                className="form-control text-end fw-bold text-success"
+                value={customAmount}
+                max={maxAmount}
+                min={1}
+                onChange={(e) => {
+                   let val = Number(e.target.value);
+                   if (val > maxAmount) val = maxAmount;
+                   if (val < 0) val = 0;
+                   setCustomAmount(val);
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -326,7 +350,7 @@ export const PaymentCheckoutModal = ({
             </>
           ) : (
             t('billing.checkout.payNowBtn', 'Confirm & Pay ₹{{amount}}', {
-              amount: totalAmount.toLocaleString('en-IN'),
+              amount: customAmount.toLocaleString('en-IN'),
             })
           )}
         </CButton>

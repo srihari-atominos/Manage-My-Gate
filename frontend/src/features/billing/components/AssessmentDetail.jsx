@@ -1,6 +1,9 @@
 import React, { memo, useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
+import { useDispatch } from 'react-redux'
+import toast from 'react-hot-toast'
 import { fetchRoles } from '../../roleBuilder/services/roleApi'
+import { triggerInvoiceGenerationThunk } from '../store/billingSlice.js'
 import CIcon from '@coreui/icons-react'
 import { cilPencil, cilCheckCircle, cilPeople, cilInfo } from '@coreui/icons'
 
@@ -12,6 +15,7 @@ import { cilPencil, cilCheckCircle, cilPeople, cilInfo } from '@coreui/icons'
  * for the selected assessment template.
  */
 export const AssessmentDetail = memo(({ assessment = null, onEdit, onRunBilling }) => {
+  const dispatch = useDispatch()
   const [allRoles, setAllRoles] = useState([])
 
   useEffect(() => {
@@ -93,17 +97,31 @@ export const AssessmentDetail = memo(({ assessment = null, onEdit, onRunBilling 
           </h3>
           <p className="assessment-detail-sub">Details for {assessment.name}</p>
         </div>
-        <div className="d-flex gap-2">
+        <div className="d-flex flex-wrap gap-2 justify-content-end">
           <button
             type="button"
-            className="btn btn-primary btn-sm rounded-3 me-1"
+            className="btn btn-success btn-sm rounded-3 text-nowrap d-flex align-items-center"
+            onClick={() => {
+              const billingPeriodString = window.prompt("Enter Billing Period (e.g. 2026-07):", new Date().toISOString().substring(0, 7));
+              if (!billingPeriodString) return;
+              dispatch(triggerInvoiceGenerationThunk({ assessmentId: assessment._id, billingPeriodString }))
+                .unwrap()
+                .then(() => toast.success('WhatsApp links generated & sent!'))
+                .catch((err) => toast.error('Failed to trigger: ' + err))
+            }}
+          >
+            <i className="fa-brands fa-whatsapp me-1 small" /> Send Payment Link via WhatsApp
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm rounded-3 text-nowrap d-flex align-items-center"
             onClick={() => onRunBilling && onRunBilling(assessment)}
           >
             <i className="fa-solid fa-play me-1 small" /> Run Billing
           </button>
           <button
             type="button"
-            className="btn btn-outline-secondary btn-sm rounded-3"
+            className="btn btn-outline-secondary btn-sm rounded-3 text-nowrap d-flex align-items-center"
             onClick={() => onEdit && onEdit(assessment)}
           >
             <CIcon icon={cilPencil} className="me-1 icon-size-12" /> Edit Template

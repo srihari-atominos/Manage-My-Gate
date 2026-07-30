@@ -138,6 +138,10 @@ const noticeBoardSlice = createSlice({
     clearNoticeSuccess: (state) => {
       state.success = null
     },
+    clearNotices: (state) => {
+      state.notices = []
+      state.totalRecords = 0
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -335,6 +339,7 @@ export const {
   selectNotice,
   clearNoticeErrors,
   clearNoticeSuccess,
+  clearNotices,
 } = noticeBoardSlice.actions
 
 export default noticeBoardSlice.reducer

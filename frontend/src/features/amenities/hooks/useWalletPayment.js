@@ -130,6 +130,13 @@ export const useWalletPayment = () => {
           },
         }
 
+        if (!window.Razorpay) {
+          setLoading(false)
+          toast.error(t('payment.gateway_loading', 'Payment gateway is still loading. Please try again in a moment.'))
+          if (onFailure) onFailure(new Error('Payment gateway not ready'))
+          return
+        }
+
         const rzp = new window.Razorpay(options)
         rzp.open()
       } catch (error) {

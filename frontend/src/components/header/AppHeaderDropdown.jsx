@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import config from '../../config/config.js'
 import {
   CDropdown,
@@ -21,6 +22,7 @@ const AppHeaderDropdown = () => {
   const dispatch = useDispatch()
   const { organizationName, activeOrganizationId, switchWorkspace, isPlatform } = useWorkspace()
   const [profileModalVisible, setProfileModalVisible] = useState(false)
+  const navigate = useNavigate()
 
   // Derive avatar letter: first char of username, fallback to 'A'
   const avatarLetter = currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'A'
@@ -43,7 +45,6 @@ const AppHeaderDropdown = () => {
       await dispatch(
         switchWorkspaceContext({ targetOrgId: activeOrganizationId, targetRole: roleName }),
       ).unwrap()
-      window.location.reload()
     } catch (err) {
       console.error('Failed to switch role context:', err)
     }
@@ -51,12 +52,11 @@ const AppHeaderDropdown = () => {
 
   const availableWorkspaces = useSelector((state) => state.workspace.availableWorkspaces) || []
 
-  const handleSwitchWorkspace = async (targetOrgId) => {
-    if (targetOrgId === activeOrganizationId) return
+  const handleSwitchWorkspace = async (targetOrgId, targetVillaId) => {
+    if (targetOrgId === activeOrganizationId && (targetVillaId || null) === (currentUser?.villaId || null)) return
     try {
-      await dispatch(switchWorkspaceContext(targetOrgId)).unwrap()
-      window.location.hash = '#/dashboard'
-      window.location.reload()
+      await dispatch(switchWorkspaceContext({ targetOrgId, targetVillaId })).unwrap()
+      navigate('/dashboard')
     } catch (err) {
       console.error('Failed to switch workspace context:', err)
     }
@@ -148,9 +148,11 @@ const AppHeaderDropdown = () => {
 
         <CDropdownDivider />
 
-        {/* Organization Switcher Section */}
         <CDropdownHeader className="fw-semibold text-uppercase py-1 px-3 header-dropdown-org-header">
-          {t('header.dropdown.switchOrg', { defaultValue: 'Switch Organization' })}
+          {isPlatform 
+            ? t('header.dropdown.switchOrg', { defaultValue: 'Switch Organization' })
+            : t('header.dropdown.switchHouse', { defaultValue: 'Switch House' })
+          }
         </CDropdownHeader>
 
         {availableWorkspaces.length === 0 ? (
@@ -160,17 +162,21 @@ const AppHeaderDropdown = () => {
               : t('header.dropdown.noActiveWorkspace', { defaultValue: 'No active workspace' })}
           </CDropdownItem>
         ) : (
-          availableWorkspaces.map((ws) => {
-            const isActive = ws.orgId === activeOrganizationId
+          availableWorkspaces.map((ws, idx) => {
+            const isActive = ws.orgId === activeOrganizationId && (ws.villaId || null) === (currentUser?.villaId || null)
+            const displayName = ws.villaNumber 
+              ? `${ws.name} - Unit ${ws.villaNumber} (${ws.residentType})`
+              : ws.name
+
             return (
               <CDropdownItem
-                key={ws.orgId}
+                key={`${ws.orgId}-${ws.villaId || 'admin'}-${idx}`}
                 component="button"
-                id={`dropdown-org-${ws.orgId}`}
+                id={`dropdown-org-${ws.orgId}-${ws.villaId || 'admin'}`}
                 className={`d-flex align-items-center justify-content-between py-1 px-3 ${isActive ? 'fw-semibold' : ''}`}
-                onClick={() => handleSwitchWorkspace(ws.orgId)}
+                onClick={() => handleSwitchWorkspace(ws.orgId, ws.villaId)}
               >
-                {ws.name}
+                {displayName}
                 {isActive && (
                   <svg
                     viewBox="0 0 24 24"
