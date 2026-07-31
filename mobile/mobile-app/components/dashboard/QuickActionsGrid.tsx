@@ -22,7 +22,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   // Filter equipped features (slots 1 through 7, reserved slot 8 for + View More tile)
   const equippedFeatures: AppFeatureItem[] = React.useMemo(() => {
     return REAL_APP_FEATURES.filter((item) =>
-      activeFeatureIds.includes(item.id)
+      (activeFeatureIds || []).includes(item.id)
     ).slice(0, 7);
   }, [activeFeatureIds]);
 

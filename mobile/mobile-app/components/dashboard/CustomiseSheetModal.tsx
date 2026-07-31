@@ -205,7 +205,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
 
   // Active Equipped items
   const equippedItems = React.useMemo(() => {
-    return REAL_APP_FEATURES.filter((f) => activeFeatureIds.includes(f.id)).slice(0, 8);
+    return REAL_APP_FEATURES.filter((f) => (activeFeatureIds || []).includes(f.id)).slice(0, 8);
   }, [activeFeatureIds]);
 
   return (
@@ -221,7 +221,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
               <View>
                 <Text className="text-base font-extrabold text-foreground">Customise Quick Actions</Text>
                 <Text className="text-[10px] text-muted-foreground">
-                  Equip up to 8 tools for your 4x2 quick action grid ({activeFeatureIds.length}/8 equipped)
+                  Equip up to 8 tools for your 4x2 quick action grid ({(activeFeatureIds || []).length}/8 equipped)
                 </Text>
               </View>
             </View>
@@ -282,7 +282,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
 
                   <View className="gap-2">
                     {groupedFeatures[groupName].map((feature) => {
-                      const isEquipped = activeFeatureIds.includes(feature.id);
+                      const isEquipped = (activeFeatureIds || []).includes(feature.id);
                       return (
                         <TouchableOpacity
                           key={feature.id}
