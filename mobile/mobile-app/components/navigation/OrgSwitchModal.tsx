@@ -2,7 +2,11 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { Building2, Check, X, ShieldAlert } from 'lucide-react-native';
+import { Building2, Check, X } from 'lucide-react-native';
+
+import { useDispatch, useSelector } from 'react-redux';
+import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
+import { useAuth } from '../../src/features/auth/hooks/useAuth';
 
 export interface WorkspaceItem {
   orgId: string;
@@ -18,20 +22,46 @@ interface OrgSwitchModalProps {
   onSelectCommunity: (orgName: string, orgId: string) => void;
 }
 
-// Sample organizations list for multi-tenant community users
-const MOCK_WORKSPACES: WorkspaceItem[] = [
-  { orgId: 'org-01', name: 'Green Meadows', roleName: 'Resident', isPlatform: false },
-  { orgId: 'org-02', name: 'Palm Heights Compound', roleName: 'Villa Owner', isPlatform: false },
-  { orgId: 'org-03', name: 'Enterprise Platform Org', roleName: 'Platform Super Admin', isPlatform: true },
-];
-
 export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   visible,
   onClose,
   activeCommunity,
   onSelectCommunity,
 }) => {
+  const { user } = useAuth();
+  const dispatch = useDispatch<any>();
+  const reduxWorkspaces = useSelector((state: any) => state.auth?.user?.availableWorkspaces || state.workspace?.availableWorkspaces);
+
+  const workspacesList: WorkspaceItem[] = React.useMemo(() => {
+    const list = reduxWorkspaces || (user as any)?.availableWorkspaces;
+    if (list && Array.isArray(list) && list.length > 0) {
+      return list.map((w: any) => ({
+        orgId: w.orgId || w._id,
+        name: w.name || w.organizationName || w.orgName || w.communityOrg || (w.isPlatform ? 'System Platform' : 'Community Workspace'),
+        roleName: w.roleName || (w.roles ? w.roles.join(', ') : 'Member'),
+        isPlatform: w.isPlatform || false,
+      }));
+    }
+    // Real active org fallback
+    const rawName =
+      (user as any)?.organizationName ||
+      (user as any)?.activeOrganizationName ||
+      (user as any)?.orgName ||
+      (user as any)?.communityName ||
+      (user as any)?.communityOrg;
+    const activeName = rawName || 'Community Workspace';
+    const activeOrgId = (user as any)?.orgId || 'org-active';
+    const isPlatform = Boolean((user as any)?.isPlatform);
+    return [{
+      orgId: activeOrgId,
+      name: activeName,
+      roleName: user?.role || 'Member',
+      isPlatform,
+    }];
+  }, [reduxWorkspaces, user]);
+
   const handleSelect = (ws: WorkspaceItem) => {
+    dispatch(switchWorkspaceContextThunk({ targetOrgId: ws.orgId }));
     onSelectCommunity(ws.name, ws.orgId);
     onClose();
   };
@@ -60,7 +90,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
           {/* Workspaces List */}
           <ScrollView className="max-h-60">
             <View className="gap-2.5">
-              {MOCK_WORKSPACES.map((ws) => {
+              {workspacesList.map((ws) => {
                 const isSelected = ws.name === activeCommunity;
                 return (
                   <TouchableOpacity
@@ -87,7 +117,10 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                       <View className="flex-1">
                         <View className="flex-row items-center gap-2">
                           <Text
-                            className={`text-sm font-bold text-truncate ${
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.8}
+                            className={`text-sm font-bold flex-1 ${
                               isSelected ? 'text-indigo-600 font-extrabold' : 'text-foreground'
                             }`}
                           >

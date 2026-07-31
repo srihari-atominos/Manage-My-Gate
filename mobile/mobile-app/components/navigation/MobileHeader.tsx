@@ -3,56 +3,130 @@ import { View, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Bell, Home, Building2, ChevronDown } from 'lucide-react-native';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { useSelector } from 'react-redux';
 import { RoleSwitchModal } from './RoleSwitchModal';
 import { VillaSwitchModal } from './VillaSwitchModal';
 import { OrgSwitchModal } from './OrgSwitchModal';
 import { ProfileModal } from './ProfileModal';
+import { NotificationSheetModal } from './NotificationSheetModal';
 
 interface MobileHeaderProps {
   unitName?: string | null;
   communityName?: string;
+  unreadNotificationCount?: number;
   onNotificationPress?: () => void;
 }
 
 export const MobileHeader: React.FC<MobileHeaderProps> = ({
-  unitName = 'Villa 12',
-  communityName = 'Green Meadows',
+  unitName,
+  communityName,
+  unreadNotificationCount,
   onNotificationPress,
 }) => {
   const { user } = useAuth();
-  const [activeVilla, setActiveVilla] = useState<string | null>(unitName || null);
-  const [activeCommunity, setActiveCommunity] = useState<string>(communityName);
+  
+  // Real-time notification count from Redux store if available
+  const storeUnreadCount = useSelector((state: any) => state.notification?.unreadCount);
+  const liveUnreadCount = unreadNotificationCount !== undefined 
+    ? unreadNotificationCount 
+    : (typeof storeUnreadCount === 'number' ? storeUnreadCount : 0);
+
+  const reduxWorkspaces = useSelector((state: any) => state.auth?.user?.availableWorkspaces || state.workspace?.availableWorkspaces || []);
+
+  // Fully dynamic active villa & community from user session
+  const dynamicVilla = React.useMemo(() => {
+    if (unitName !== undefined && unitName !== null) return unitName;
+    return (user as any)?.villaNumber || (user as any)?.activeVillaNumber || (user as any)?.unitNumber || null;
+  }, [unitName, user]);
+
+  const dynamicCommunity = React.useMemo(() => {
+    const userOrg =
+      (user as any)?.organizationName ||
+      (user as any)?.activeOrganizationName ||
+      (user as any)?.orgName ||
+      (user as any)?.communityName ||
+      (user as any)?.communityOrg ||
+      (user as any)?.organization?.name;
+
+    if (userOrg) return userOrg;
+
+    // 2. Fall back to availableWorkspaces list in Redux
+    const workspaces = (user as any)?.availableWorkspaces || [];
+    if (Array.isArray(workspaces) && workspaces.length > 0 && workspaces[0]?.name) {
+      return workspaces[0].name;
+    }
+
+    return 'Community Workspace';
+  }, [communityName, user]);
+
+  const [activeVilla, setActiveVilla] = useState<string | null>(dynamicVilla);
+  const [activeCommunity, setActiveCommunity] = useState<string>(dynamicCommunity);
+
+  // Sync state dynamically when user session or props change
+  React.useEffect(() => {
+    setActiveVilla(dynamicVilla);
+  }, [dynamicVilla]);
+
+  React.useEffect(() => {
+    setActiveCommunity(dynamicCommunity);
+  }, [dynamicCommunity]);
 
   const [roleModalVisible, setRoleModalVisible] = useState(false);
   const [villaModalVisible, setVillaModalVisible] = useState(false);
   const [orgModalVisible, setOrgModalVisible] = useState(false);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [notifModalVisible, setNotifModalVisible] = useState(false);
+
+  // Check if context switching is applicable
+  const userUnits = (user as any)?.accessibleUnits || [];
+  const hasMultipleOrgs = Array.isArray(reduxWorkspaces) && reduxWorkspaces.length > 1;
+  const hasMultipleUnits = Array.isArray(userUnits) && userUnits.length > 1;
+  const hasUnit = Boolean(activeVilla && activeVilla.trim() !== '');
+
+  const canSwitchContext = hasUnit || hasMultipleOrgs || hasMultipleUnits;
 
   // Avatar initial letter
   const avatarLetter = React.useMemo(() => {
+    if (user?.name) return user.name.charAt(0).toUpperCase();
     if (user?.email) return user.email.charAt(0).toUpperCase();
-    return 'A';
+    return 'U';
   }, [user]);
 
-  // Derived context display text
-  const hasUnit = Boolean(activeVilla && activeVilla.trim() !== '');
-
   const handleContextPress = () => {
+    if (!canSwitchContext) return;
     if (hasUnit) {
       setVillaModalVisible(true);
-    } else {
+    } else if (hasMultipleOrgs) {
       setOrgModalVisible(true);
     }
   };
 
+  const handleBellPress = () => {
+    if (onNotificationPress) {
+      onNotificationPress();
+    } else {
+      setNotifModalVisible(true);
+    }
+  };
+
+  // Formatted header string preventing nested Text styling glitches
+  const headerTextString = React.useMemo(() => {
+    const comm = activeCommunity || 'Green Meadows';
+    if (hasUnit && activeVilla) {
+      return `${activeVilla} • ${comm}`;
+    }
+    return comm;
+  }, [hasUnit, activeVilla, activeCommunity]);
+
   return (
     <>
       <View className="bg-card border-b border-border px-4 py-2.5 flex-row items-center justify-between shadow-xs">
-        {/* Left Section: Compact Context Pill (Constrained to ~62% width max) */}
+        {/* Left Section: Compact Context Pill (Constrained to ~64% width max) */}
         <TouchableOpacity
           onPress={handleContextPress}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1.5 max-w-[62%] bg-muted/40 border border-border px-2.5 py-1.5 rounded-full active:bg-muted/70"
+          activeOpacity={canSwitchContext ? 0.8 : 1}
+          disabled={!canSwitchContext}
+          className="flex-row items-center gap-1.5 max-w-[64%] bg-muted/40 border border-border px-2.5 py-1.5 rounded-full"
         >
           <View className={`p-1 rounded-full ${hasUnit ? 'bg-primary/15' : 'bg-indigo-500/15'}`}>
             {hasUnit ? (
@@ -64,33 +138,35 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
           <Text
             numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
             ellipsizeMode="tail"
             className="text-xs font-bold text-foreground flex-1"
           >
-            {hasUnit ? (
-              <>
-                {activeVilla} <Text className="text-muted-foreground font-normal">• {activeCommunity}</Text>
-              </>
-            ) : (
-              activeCommunity
-            )}
+            {headerTextString}
           </Text>
 
-          <ChevronDown size={12} color="#03A9F4" className="flex-shrink-0" />
+          {canSwitchContext ? (
+            <ChevronDown size={12} color="#03A9F4" className="flex-shrink-0" />
+          ) : null}
         </TouchableOpacity>
 
         {/* Right Section: Notification Bell & Profile Avatar (Far Right) */}
         <View className="flex-row items-center gap-3">
           {/* Notification Bell Icon Button */}
           <TouchableOpacity
-            onPress={onNotificationPress}
+            onPress={handleBellPress}
             activeOpacity={0.7}
             className="size-9 rounded-full bg-muted/60 border border-border items-center justify-center relative"
           >
             <Bell size={16} color="#555" />
-            <View className="absolute -top-0.5 -right-0.5 bg-rose-500 rounded-full min-w-3.5 h-3.5 px-0.5 items-center justify-center border border-card">
-              <Text className="text-[8px] font-bold text-white">3</Text>
-            </View>
+            {liveUnreadCount > 0 ? (
+              <View className="absolute -top-0.5 -right-0.5 bg-rose-500 rounded-full min-w-3.5 h-3.5 px-1 items-center justify-center border border-card">
+                <Text className="text-[8px] font-bold text-white">
+                  {liveUnreadCount > 99 ? '99+' : liveUnreadCount}
+                </Text>
+              </View>
+            ) : null}
           </TouchableOpacity>
 
           {/* Profile Avatar Button (Far Right End) */}
@@ -136,6 +212,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         onOpenOrgModal={() => setOrgModalVisible(true)}
         onOpenRoleModal={() => setRoleModalVisible(true)}
         onOpenVillaModal={() => setVillaModalVisible(true)}
+      />
+
+      {/* Notifications Slide-Over Drawer Modal */}
+      <NotificationSheetModal
+        visible={notifModalVisible}
+        onClose={() => setNotifModalVisible(false)}
       />
     </>
   );

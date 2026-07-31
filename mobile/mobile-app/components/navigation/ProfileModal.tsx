@@ -18,17 +18,42 @@ interface ProfileModalProps {
 export const ProfileModal: React.FC<ProfileModalProps> = ({
   visible,
   onClose,
-  unitName = 'Villa 12',
-  communityName = 'Green Meadows',
+  unitName,
+  communityName,
   onOpenOrgModal,
   onOpenRoleModal,
   onOpenVillaModal,
 }) => {
   const { user, logout } = useAuth();
+  const userAny = user as any;
+
+  const dynamicUnit = userAny?.villaNumber || userAny?.activeVillaNumber || userAny?.unitNumber || unitName || 'No Unit Assigned';
+  const dynamicCommunity = React.useMemo(() => {
+    if (communityName) return communityName;
+
+    const userOrg =
+      userAny?.organizationName ||
+      userAny?.activeOrganizationName ||
+      userAny?.orgName ||
+      userAny?.communityName ||
+      userAny?.communityOrg ||
+      userAny?.organization?.name;
+
+    if (userOrg) return userOrg;
+
+    const workspaces = userAny?.availableWorkspaces || [];
+    if (Array.isArray(workspaces) && workspaces.length > 0 && workspaces[0]?.name) {
+      return workspaces[0].name;
+    }
+
+    return 'Community Workspace';
+  }, [communityName, userAny]);
+  const dynamicRole = user?.role || (userAny?.roles && userAny?.roles.length > 0 ? userAny?.roles[0] : 'Member');
 
   const avatarLetter = React.useMemo(() => {
+    if (user?.name) return user.name.charAt(0).toUpperCase();
     if (user?.email) return user.email.charAt(0).toUpperCase();
-    return 'A';
+    return 'U';
   }, [user]);
 
   const handleLogout = () => {
@@ -57,23 +82,23 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </View>
 
                 <Text className="text-base font-extrabold text-foreground text-center">
-                  {user?.email ? user.email.split('@')[0] : 'Resident User'}
+                  {user?.name || (user?.email ? user.email.split('@')[0] : 'User')}
                 </Text>
 
                 <View className="flex-row items-center gap-1">
                   <Mail size={12} color="#888" />
-                  <Text className="text-xs text-muted-foreground text-center">{user?.email || 'admin@enterprise.com'}</Text>
+                  <Text className="text-xs text-muted-foreground text-center">{user?.email || ''}</Text>
                 </View>
 
                 <View className="flex-row gap-2 mt-1">
                   <View className="bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
                     <Text className="text-primary text-[10px] font-bold">
-                      {unitName}
+                      {dynamicUnit}
                     </Text>
                   </View>
                   <View className="bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                     <Text className="text-emerald-600 text-[10px] font-bold">
-                      {user?.role || 'Resident'}
+                      {dynamicRole}
                     </Text>
                   </View>
                 </View>
@@ -100,7 +125,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     </View>
                     <View>
                       <Text className="text-xs font-bold text-foreground">Switch Community</Text>
-                      <Text className="text-[10px] text-muted-foreground">{communityName}</Text>
+                      <Text className="text-[10px] text-muted-foreground">{dynamicCommunity}</Text>
                     </View>
                   </View>
                   <ChevronRight size={16} color="#888" />
@@ -121,7 +146,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     </View>
                     <View>
                       <Text className="text-xs font-bold text-foreground">Switch Role Persona</Text>
-                      <Text className="text-[10px] text-muted-foreground">{user?.role || 'Resident'}</Text>
+                      <Text className="text-[10px] text-muted-foreground">{dynamicRole}</Text>
                     </View>
                   </View>
                   <ChevronRight size={16} color="#888" />
@@ -142,7 +167,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     </View>
                     <View>
                       <Text className="text-xs font-bold text-foreground">Switch Villa Unit</Text>
-                      <Text className="text-[10px] text-muted-foreground">{unitName}</Text>
+                      <Text className="text-[10px] text-muted-foreground">{dynamicUnit}</Text>
                     </View>
                   </View>
                   <ChevronRight size={16} color="#888" />

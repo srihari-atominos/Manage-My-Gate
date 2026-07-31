@@ -61,6 +61,10 @@ export const revokeAllSessions = async () => {
   return await apiClient.delete('/session/all');
 };
 
+export const switchContext = async (payload: { targetOrgId?: string; targetRole?: string; targetVillaId?: string }) => {
+  return await apiClient.post('/auth/switch-context', payload);
+};
+
 export default {
   login,
   register,
@@ -77,4 +81,5 @@ export default {
   fetchSessions,
   revokeSession,
   revokeAllSessions,
+  switchContext,
 };

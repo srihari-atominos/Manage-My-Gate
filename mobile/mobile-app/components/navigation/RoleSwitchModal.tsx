@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ShieldCheck, Check, X, UserCheck } from 'lucide-react-native';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useDispatch } from 'react-redux';
-import { updateTokenAndUser } from '../../src/features/auth/store/authSlice';
+import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
 
 interface RoleSwitchModalProps {
   visible: boolean;
@@ -15,28 +15,26 @@ interface RoleSwitchModalProps {
 
 export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClose, onSelectRole }) => {
   const { user } = useAuth();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<any>();
 
-  // Extract available roles array
+  // Extract available roles array from active user session
   const roles: string[] = React.useMemo(() => {
-    if (!user) return ['Resident', 'Admin', 'Guard'];
+    if (!user) return ['Resident', 'Community Admin', 'Guard'];
     const userAny = user as any;
     if (userAny.roles && Array.isArray(userAny.roles) && userAny.roles.length > 0) {
-      return userAny.roles;
+      return Array.from(new Set(userAny.roles));
     }
     if (user.role) {
       const split = user.role.split(',').map((r: string) => r.trim()).filter(Boolean);
-      return Array.from(new Set([...split, 'Resident', 'Admin', 'Guard']));
+      return Array.from(new Set(split));
     }
-    return ['Resident', 'Admin', 'Guard'];
+    return ['Resident', 'Community Admin', 'Guard'];
   }, [user]);
 
   const activeRole = user?.role || roles[0] || 'Resident';
 
   const handleSelectRole = (selectedRole: string) => {
-    if (user) {
-      dispatch(updateTokenAndUser({ user: { ...user, role: selectedRole } }));
-    }
+    dispatch(switchWorkspaceContextThunk({ targetRole: selectedRole }));
     if (onSelectRole) {
       onSelectRole(selectedRole);
     }

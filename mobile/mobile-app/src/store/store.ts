@@ -6,6 +6,8 @@ import complaintReducer from '../features/complaints/store/complaintSlice';
 import billingReducer from '../features/billing/store/billingSlice';
 import villaReducer from '../features/villa/store/villaSlice';
 import amenityReducer from '../features/amenities/store/amenitySlice';
+import dashboardReducer from '../features/dashboard/dashboardSlice';
+import notificationReducer from '../features/notification/store/notificationSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +18,8 @@ export const store = configureStore({
     billing: billingReducer,
     villa: villaReducer,
     amenities: amenityReducer,
+    dashboard: dashboardReducer,
+    notification: notificationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -4,6 +4,11 @@ import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Home, Check, X, Building2 } from 'lucide-react-native';
 
+import { useDispatch } from 'react-redux';
+import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
+
+import { useAuth } from '../../src/features/auth/hooks/useAuth';
+
 interface VillaUnit {
   id: string;
   unitNumber: string;
@@ -19,22 +24,37 @@ interface VillaSwitchModalProps {
   communityName?: string;
 }
 
-// Sample units list for multi-unit owners/residents
-const MOCK_USER_UNITS: VillaUnit[] = [
-  { id: '1', unitNumber: 'Villa 12', block: 'Block A', residencyType: 'Owner' },
-  { id: '2', unitNumber: 'Villa 15', block: 'Block B', residencyType: 'Owner' },
-  { id: '3', unitNumber: 'Villa 24', block: 'Block C', residencyType: 'Tenant' },
-];
-
+// Purely dynamic user units interface
 export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   visible,
   onClose,
   activeVilla,
   onSelectVilla,
-  communityName = 'Green Meadows',
+  communityName = '',
 }) => {
-  const handleSelect = (unitNumber: string) => {
-    onSelectVilla(unitNumber);
+  const { user } = useAuth();
+  const dispatch = useDispatch<any>();
+
+  const userUnits: VillaUnit[] = React.useMemo(() => {
+    const userAny = user as any;
+    if (userAny?.accessibleUnits && Array.isArray(userAny.accessibleUnits) && userAny.accessibleUnits.length > 0) {
+      return userAny.accessibleUnits.map((u: any, idx: number) => ({
+        id: u.villaId || String(idx + 1),
+        unitNumber: u.villaNumber || `Villa ${idx + 1}`,
+        block: u.block || '',
+        residencyType: u.residentType || 'Resident',
+      }));
+    }
+    if (userAny?.villaNumber || userAny?.activeVillaNumber) {
+      const vNum = userAny?.villaNumber || userAny?.activeVillaNumber;
+      return [{ id: userAny?.villaId || '1', unitNumber: vNum, block: '', residencyType: userAny?.residencyType || 'Owner' }];
+    }
+    return [];
+  }, [user]);
+
+  const handleSelect = (unit: VillaUnit) => {
+    dispatch(switchWorkspaceContextThunk({ targetVillaId: unit.id }));
+    onSelectVilla(unit.unitNumber);
     onClose();
   };
 
@@ -62,48 +82,58 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
           {/* Villa Units List */}
           <ScrollView className="max-h-60">
             <View className="gap-2.5">
-              {MOCK_USER_UNITS.map((unit) => {
-                const isSelected = unit.unitNumber === activeVilla;
-                return (
-                  <TouchableOpacity
-                    key={unit.id}
-                    onPress={() => handleSelect(unit.unitNumber)}
-                    activeOpacity={0.8}
-                    className={`flex-row items-center justify-between p-3.5 rounded-2xl border ${
-                      isSelected
-                        ? 'bg-primary/10 border-primary'
-                        : 'bg-muted/30 border-border'
-                    }`}
-                  >
-                    <View className="flex-row items-center gap-3">
-                      <View
-                        className={`p-2.5 rounded-xl ${
-                          isSelected ? 'bg-primary/20' : 'bg-muted'
-                        }`}
-                      >
-                        <Building2
-                          size={18}
-                          color={isSelected ? '#03A9F4' : '#777'}
-                        />
-                      </View>
-                      <View>
-                        <Text
-                          className={`text-sm font-bold ${
-                            isSelected ? 'text-primary' : 'text-foreground'
+              {userUnits.length > 0 ? (
+                userUnits.map((unit) => {
+                  const isSelected = unit.unitNumber === activeVilla;
+                  return (
+                    <TouchableOpacity
+                      key={unit.id}
+                      onPress={() => handleSelect(unit)}
+                      activeOpacity={0.8}
+                      className={`flex-row items-center justify-between p-3.5 rounded-2xl border ${
+                        isSelected
+                          ? 'bg-primary/10 border-primary'
+                          : 'bg-muted/30 border-border'
+                      }`}
+                    >
+                      <View className="flex-row items-center gap-3">
+                        <View
+                          className={`p-2.5 rounded-xl ${
+                            isSelected ? 'bg-primary/20' : 'bg-muted'
                           }`}
                         >
-                          {unit.unitNumber}
-                        </Text>
-                        <Text className="text-[10px] text-muted-foreground">
-                          {unit.block} • {unit.residencyType}
-                        </Text>
+                          <Building2
+                            size={18}
+                            color={isSelected ? '#03A9F4' : '#777'}
+                          />
+                        </View>
+                        <View>
+                          <Text
+                            className={`text-sm font-bold ${
+                              isSelected ? 'text-primary' : 'text-foreground'
+                            }`}
+                          >
+                            {unit.unitNumber}
+                          </Text>
+                          <Text className="text-[10px] text-muted-foreground">
+                            {unit.block ? `${unit.block} • ` : ''}{unit.residencyType}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
 
-                    {isSelected && <Check size={18} color="#03A9F4" />}
-                  </TouchableOpacity>
-                );
-              })}
+                      {isSelected && <Check size={18} color="#03A9F4" />}
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                <View className="bg-muted/30 border border-dashed border-border rounded-2xl p-5 items-center justify-center gap-1.5 my-2">
+                  <Home size={24} color="#a1a1aa" />
+                  <Text className="text-xs font-bold text-foreground text-center">No Unit Assigned</Text>
+                  <Text className="text-[10px] text-muted-foreground text-center">
+                    Your profile is not assigned to a property unit in this workspace.
+                  </Text>
+                </View>
+              )}
             </View>
           </ScrollView>
 

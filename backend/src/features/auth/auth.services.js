@@ -20,6 +20,9 @@ export class AuthService {
    * @param {string} email - The email address to verify
    */
   async verifyEmailDeep(email) {
+    if (process.env.NODE_ENV !== 'production' || process.env.SKIP_DEEP_EMAIL_VALIDATION === 'true') {
+      return;
+    }
     const res = await emailValidator({
       email: email,
       validateRegex: true,
@@ -174,9 +177,9 @@ export class AuthService {
       }
     } else {
       // Primary context selection:
-      // 1. Try to find the platform workspace
-      selectedMembership = activeMemberships.find((m) => m.orgId.isPlatform === true);
-      // 2. Fall back to the first active workspace
+      // 1. If user has a non-platform community workspace, prefer that for community roles
+      selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform);
+      // 2. Fall back to the first active workspace (e.g. System Platform for Platform Super Admin)
       if (!selectedMembership && activeMemberships.length > 0) {
         selectedMembership = activeMemberships[0];
       }
@@ -299,6 +302,8 @@ export class AuthService {
       }
     }
 
+    const activeOrgName = selectedMembership?.orgId?.name || null;
+
     return {
       tokenPayload: {
         id: user._id,
@@ -308,6 +313,9 @@ export class AuthService {
         roleId: activeRoleObj ? activeRoleObj._id.toString() : null,
         roles: selectedMembership ? (selectedMembership.roleIds && selectedMembership.roleIds.length > 0 ? selectedMembership.roleIds.map(r => r.name) : (selectedMembership.roleId ? [selectedMembership.roleId.name] : [])) : [],
         orgId,
+        orgName: activeOrgName,
+        organizationName: activeOrgName,
+        activeOrganizationName: activeOrgName,
         isPlatform,
         visitorContext,
         villaId: villaInfo ? villaInfo.id : null,
@@ -327,11 +335,6 @@ export class AuthService {
    */
   async login(loginData) {
     const { login, password, inviteToken } = loginData;
-
-    // Deep Email Verification before login (if identifier is formatted as an email)
-    if (login && login.includes('@')) {
-      await this.verifyEmailDeep(login);
-    }
 
     // 1. Fetch user by email or username
     const user = await userService.getUserByEmailOrUsername(login);
@@ -398,12 +401,16 @@ export class AuthService {
         roles: tokenPayload.roles,
         permissions: permissions,
         orgId: tokenPayload.orgId,
+        orgName: tokenPayload.orgName,
+        organizationName: tokenPayload.organizationName,
+        activeOrganizationName: tokenPayload.activeOrganizationName,
         isPlatform: tokenPayload.isPlatform,
         visitorContext: tokenPayload.visitorContext,
         villaId: tokenPayload.villaId,
         villaNumber: tokenPayload.villaNumber,
         villaBlock: tokenPayload.villaBlock,
         residentType: tokenPayload.residentType,
+        availableWorkspaces,
       },
       availableWorkspaces,
     };
@@ -434,12 +441,16 @@ export class AuthService {
         roles: tokenPayload.roles,
         permissions: permissions,
         orgId: tokenPayload.orgId,
+        orgName: tokenPayload.orgName,
+        organizationName: tokenPayload.organizationName,
+        activeOrganizationName: tokenPayload.activeOrganizationName,
         isPlatform: tokenPayload.isPlatform,
         visitorContext: tokenPayload.visitorContext,
         villaId: tokenPayload.villaId,
         villaNumber: tokenPayload.villaNumber,
         villaBlock: tokenPayload.villaBlock,
         residentType: tokenPayload.residentType,
+        availableWorkspaces,
       },
       availableWorkspaces,
     };
