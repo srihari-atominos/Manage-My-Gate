@@ -449,7 +449,7 @@ export const RegisterForm = () => {
           </CRow>
         </CForm>
 
-        {!isLoginMode && (
+        {!isLoginMode && !isGoogleSso && (
           <div style={styles.dividerContainer}>
             <div style={styles.dividerLine}></div>
             <span style={styles.dividerText}>OR</span>
@@ -458,7 +458,7 @@ export const RegisterForm = () => {
         )}
 
         {/* Enterprise SSO Registration */}
-        {!isLoginMode && (
+        {!isLoginMode && !isGoogleSso && (
           <div className="mb-4">
             <CRow className="g-3 align-items-center justify-content-center">
               <CCol xs={12} sm={6} className="d-flex justify-content-center">
