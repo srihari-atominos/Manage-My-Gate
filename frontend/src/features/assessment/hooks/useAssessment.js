@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useCallback } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import {
   fetchAssessments,
   createNewAssessment,
@@ -8,77 +8,74 @@ import {
   setActiveTemplate,
   deleteAssessmentTemplate,
   runBillingCycle,
-} from '../store/assessmentSlice.js';
+} from '../store/assessmentSlice.js'
 
 /**
  * Custom Hook: useAssessment
- * 
+ *
  * Sole controller bridge between visual UI components and Redux Toolkit state.
  * Conforms to the "Thin View" pattern by encapsulating all dispatch actions.
  */
 export const useAssessment = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch()
 
   // 1. Selector mapping
   const { assessmentsList, activeTemplate, pagination, loading, error } = useSelector(
-    (state) => state.assessment
-  );
-  const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId);
+    (state) => state.assessment,
+  )
+  const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId)
 
   // 2. Memoized action dispatchers
   const loadAssessments = useCallback(
     (params = {}) => {
-      const orgId = params.orgId || activeOrgId;
-      const page = params.page || 1;
-      const limit = params.limit || 3;
-      return dispatch(fetchAssessments({ orgId, page, limit, ...params }));
+      const orgId = params.orgId || activeOrgId
+      const page = params.page || 1
+      const limit = params.limit || 3
+      return dispatch(fetchAssessments({ orgId, page, limit, ...params }))
     },
-    [dispatch, activeOrgId]
-  );
+    [dispatch, activeOrgId],
+  )
 
   const saveAssessment = useCallback(
     (data) => {
-      const orgId = data.communityId || activeOrgId;
-      const enriched = { ...data, communityId: orgId };
-      return dispatch(createNewAssessment(enriched));
+      const orgId = data.communityId || activeOrgId
+      const enriched = { ...data, communityId: orgId }
+      return dispatch(createNewAssessment(enriched))
     },
-    [dispatch, activeOrgId]
-  );
+    [dispatch, activeOrgId],
+  )
 
   const editAssessment = useCallback(
     (id, data) => {
-      return dispatch(modifyAssessment({ id, payload: data }));
+      return dispatch(modifyAssessment({ id, payload: data }))
     },
-    [dispatch]
-  );
+    [dispatch],
+  )
 
   const selectTemplate = useCallback(
     (template) => {
-      dispatch(setActiveTemplate(template));
+      dispatch(setActiveTemplate(template))
     },
-    [dispatch]
-  );
+    [dispatch],
+  )
 
-  const resetAssessmentError = useCallback(
-    () => {
-      dispatch(clearAssessmentError());
-    },
-    [dispatch]
-  );
+  const resetAssessmentError = useCallback(() => {
+    dispatch(clearAssessmentError())
+  }, [dispatch])
 
   const deleteTemplate = useCallback(
     (id) => {
-      return dispatch(deleteAssessmentTemplate(id));
+      return dispatch(deleteAssessmentTemplate(id))
     },
-    [dispatch]
-  );
+    [dispatch],
+  )
 
   const triggerBilling = useCallback(
     (id) => {
-      return dispatch(runBillingCycle(id));
+      return dispatch(runBillingCycle(id))
     },
-    [dispatch]
-  );
+    [dispatch],
+  )
 
   return {
     // Redux Slice states
@@ -96,7 +93,7 @@ export const useAssessment = () => {
     selectTemplate,
     resetAssessmentError,
     triggerBilling,
-  };
-};
+  }
+}
 
-export default useAssessment;
+export default useAssessment

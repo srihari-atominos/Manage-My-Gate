@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   CContainer,
   CRow,
@@ -17,33 +17,26 @@ import {
   CAlert,
   CPagination,
   CPaginationItem,
-} from '@coreui/react';
-import useAuditLog from '../hooks/useAuditLog.js';
-import '../styles/_auditLog.scss';
+} from '@coreui/react'
+import useAuditLog from '../hooks/useAuditLog.js'
+import '../styles/_auditLog.scss'
 
 /**
  * Super Admin View container rendering system-wide event logs in a table view
  */
 export const AuditLogViewer = () => {
-  const { t } = useTranslation();
-  const {
-    logs,
-    totalPages,
-    page,
-    loading,
-    error,
-    fetchLogs,
-  } = useAuditLog();
+  const { t } = useTranslation()
+  const { logs, totalPages, page, loading, error, fetchLogs } = useAuditLog()
 
   useEffect(() => {
-    fetchLogs(1, 10);
-  }, []);
+    fetchLogs(1, 10)
+  }, [])
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
-      fetchLogs(newPage, 10);
+      fetchLogs(newPage, 10)
     }
-  };
+  }
 
   const formatDate = (dateString) => {
     try {
@@ -54,12 +47,12 @@ export const AuditLogViewer = () => {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-      };
-      return new Date(dateString).toLocaleDateString(undefined, options);
+      }
+      return new Date(dateString).toLocaleDateString(undefined, options)
     } catch {
-      return dateString;
+      return dateString
     }
-  };
+  }
 
   return (
     <div className="audit-log-container">
@@ -69,7 +62,11 @@ export const AuditLogViewer = () => {
             <CCard className="audit-log-card">
               <CCardHeader className="card-header">
                 <h3>{t('superAdmin.auditLog.title', { defaultValue: 'Audit Logs' })}</h3>
-                <p>{t('superAdmin.auditLog.subtitle', { defaultValue: 'Track system-wide administrative actions and security events.' })}</p>
+                <p>
+                  {t('superAdmin.auditLog.subtitle', {
+                    defaultValue: 'Track system-wide administrative actions and security events.',
+                  })}
+                </p>
               </CCardHeader>
               <CCardBody>
                 {error && (
@@ -81,7 +78,9 @@ export const AuditLogViewer = () => {
                 {loading && logs.length === 0 ? (
                   <div className="text-center py-5">
                     <CSpinner color="primary" className="me-2" />
-                    <span>{t('superAdmin.auditLog.loading', { defaultValue: 'Loading audit logs...' })}</span>
+                    <span>
+                      {t('superAdmin.auditLog.loading', { defaultValue: 'Loading audit logs...' })}
+                    </span>
                   </div>
                 ) : (
                   <>
@@ -110,7 +109,9 @@ export const AuditLogViewer = () => {
                           {logs.length === 0 ? (
                             <CTableRow>
                               <CTableDataCell colSpan={5} className="text-center py-4">
-                                {t('superAdmin.auditLog.noData', { defaultValue: 'No audit logs registered.' })}
+                                {t('superAdmin.auditLog.noData', {
+                                  defaultValue: 'No audit logs registered.',
+                                })}
                               </CTableDataCell>
                             </CTableRow>
                           ) : (
@@ -118,16 +119,14 @@ export const AuditLogViewer = () => {
                               // Safely resolve actor name
                               const actorText = log.actor
                                 ? `${log.actor.username} (${log.actor.email})`
-                                : log.actorId || 'System';
+                                : log.actorId || 'System'
 
                               return (
                                 <CTableRow key={log._id}>
                                   <CTableDataCell style={{ whiteSpace: 'nowrap' }}>
                                     {formatDate(log.createdAt)}
                                   </CTableDataCell>
-                                  <CTableDataCell>
-                                    {actorText}
-                                  </CTableDataCell>
+                                  <CTableDataCell>{actorText}</CTableDataCell>
                                   <CTableDataCell className="fw-semibold">
                                     {log.action}
                                   </CTableDataCell>
@@ -144,7 +143,7 @@ export const AuditLogViewer = () => {
                                     )}
                                   </CTableDataCell>
                                 </CTableRow>
-                              );
+                              )
                             })
                           )}
                         </CTableBody>
@@ -191,7 +190,7 @@ export const AuditLogViewer = () => {
         </CRow>
       </CContainer>
     </div>
-  );
-};
+  )
+}
 
-export default AuditLogViewer;
+export default AuditLogViewer

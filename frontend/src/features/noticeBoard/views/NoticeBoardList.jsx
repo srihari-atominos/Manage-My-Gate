@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { clearNotices } from '../store/noticeBoardSlice.js'
 import { CContainer, CButton } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilPlus } from '@coreui/icons'
@@ -27,9 +29,9 @@ export const NoticeBoardList = () => {
   const { checkPermission } = useAuth()
 
   // Enforce permissions checks
-  const canCreate = checkPermission('notices:create')
-  const canUpdate = checkPermission('notices:update')
-  const canDelete = checkPermission('notices:delete')
+  const canCreate = checkPermission('notices:manage_notices')
+  const canUpdate = checkPermission('notices:manage_notices')
+  const canDelete = checkPermission('notices:manage_notices')
 
   const {
     notices,
@@ -56,6 +58,10 @@ export const NoticeBoardList = () => {
     clearNoticeSuccess,
   } = useNoticeBoard()
 
+  const dispatch = useDispatch()
+  const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId)
+  const activeVillaId = useSelector((state) => state.workspace?.activeVillaId)
+
   // Modal visibilities local states
   const [formModalVisible, setFormModalVisible] = useState(false)
   const [detailsModalVisible, setDetailsModalVisible] = useState(false)
@@ -63,10 +69,11 @@ export const NoticeBoardList = () => {
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false)
   const [noticeIdToDelete, setNoticeIdToDelete] = useState(null)
 
-  // Trigger load on mount
+  // Trigger load on mount and when context switches
   useEffect(() => {
+    dispatch(clearNotices())
     loadNotices()
-  }, [loadNotices])
+  }, [loadNotices, dispatch, activeOrgId, activeVillaId])
 
   // Sync toasts
   useEffect(() => {

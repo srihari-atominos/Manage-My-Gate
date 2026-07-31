@@ -32,4 +32,34 @@ export default class PaymentProviderInterface {
   async refund(params, credentials) {
     throw new Error('Method refund() must be implemented.');
   }
+
+  /**
+   * Create a Payment Link
+   * @param {object} params - { amount, currency, description, customer (email, contact), expireBy }
+   * @param {object} credentials - Tenant decrypted credentials
+   * @returns {Promise<object>} Link payload { id, short_url, status }
+   */
+  async createPaymentLink(params, credentials) {
+    throw new Error('Method createPaymentLink() must be implemented.');
+  }
+
+  /**
+   * Cancel an active Payment Link
+   * @param {object} params - { linkId }
+   * @param {object} credentials - Tenant decrypted credentials
+   * @returns {Promise<object>} Cancellation status
+   */
+  async cancelPaymentLink(params, credentials) {
+    throw new Error('Method cancelPaymentLink() must be implemented.');
+  }
+
+  /**
+   * Get Payment Status directly from gateway
+   * @param {object} params - { paymentId }
+   * @param {object} credentials - Tenant decrypted credentials
+   * @returns {Promise<object>} Status info { status, amount, method }
+   */
+  async getPaymentStatus(params, credentials) {
+    throw new Error('Method getPaymentStatus() must be implemented.');
+  }
 }

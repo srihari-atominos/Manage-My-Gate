@@ -1,11 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  CButton,
-  CCol,
-  CContainer,
-  CRow,
-} from '@coreui/react'
+import { CButton, CCol, CContainer, CRow } from '@coreui/react'
 
 const Page404 = () => {
   const navigate = useNavigate()
@@ -18,15 +13,9 @@ const Page404 = () => {
             <div className="clearfix mb-4">
               <h1 className="display-3 fw-bold text-danger">404</h1>
               <h4 className="pt-3 fw-semibold">Oops! You're lost.</h4>
-              <p className="text-body-secondary">
-                The page you are looking for was not found.
-              </p>
+              <p className="text-body-secondary">The page you are looking for was not found.</p>
             </div>
-            <CButton 
-              color="primary" 
-              onClick={() => navigate('/')} 
-              className="px-4 fw-semibold"
-            >
+            <CButton color="primary" onClick={() => navigate('/')} className="px-4 fw-semibold">
               Back to Home
             </CButton>
           </CCol>

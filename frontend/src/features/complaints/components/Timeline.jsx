@@ -1,8 +1,8 @@
-import React from 'react';
+import React from 'react'
 
 const Timeline = ({ events }) => {
   if (!events || events.length === 0) {
-    return <p className="text-muted">No timeline events yet.</p>;
+    return <p className="text-muted">No timeline events yet.</p>
   }
 
   return (
@@ -16,11 +16,18 @@ const Timeline = ({ events }) => {
               {evt.userName && ` by ${evt.userName} (${evt.userRole})`}
             </div>
             {evt.remarks && <div className="text">{evt.remarks}</div>}
-            
+
             {evt.attachments && evt.attachments.length > 0 && (
               <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {evt.attachments.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }} className="small">
+                  <a
+                    key={i}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--primary)' }}
+                    className="small"
+                  >
                     <i className="fa-solid fa-paperclip"></i> Attachment {i + 1}
                   </a>
                 ))}
@@ -30,7 +37,7 @@ const Timeline = ({ events }) => {
         </div>
       ))}
     </div>
-  );
-};
+  )
+}
 
-export default Timeline;
+export default Timeline

@@ -5,5 +5,5 @@ export const sygnet = [
     <path d="M14 16 H26" stroke="#ffffff" />
     <path d="M20 16 V26" stroke="#ffffff" />
     <path d="M17 21 H23" stroke="#ffffff" />
-  </g>`
+  </g>`,
 ]

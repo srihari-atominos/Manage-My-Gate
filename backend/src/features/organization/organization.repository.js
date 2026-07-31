@@ -89,6 +89,14 @@ export class OrganizationRepository {
       { returnDocument: 'after', runValidators: true, ...(session ? { session } : {}) }
     );
   }
+
+  async updateName(orgId, name, session = null) {
+    return await Organization.findByIdAndUpdate(
+      orgId,
+      { $set: { name } },
+      { returnDocument: 'after', runValidators: true, ...(session ? { session } : {}) }
+    );
+  }
 }
 
 export default new OrganizationRepository();

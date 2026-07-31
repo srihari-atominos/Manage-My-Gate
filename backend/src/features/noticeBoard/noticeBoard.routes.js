@@ -29,7 +29,7 @@ router.use(isAuthenticated)
 router.post(
   '/',
   tenantContext,
-  authorizePermission('notices', 'create'),
+  authorizePermission('notices', 'manage_notices'),
   noticeUpload.array('images', 5),
   noticeImageSignatureValidator,
   validate(createNoticeRules),
@@ -45,7 +45,7 @@ router.post(
 router.get(
   '/',
   tenantContext,
-  authorizePermission('notices', 'read'),
+  authorizePermission('notices', ['active_board', 'manage_notices']),
   noticeController.getAll,
 )
 
@@ -58,7 +58,7 @@ router.get(
 router.get(
   '/stats',
   tenantContext,
-  authorizePermission('notices', 'read'),
+  authorizePermission('notices', 'dashboard'),
   noticeController.getStats,
 )
 
@@ -71,7 +71,7 @@ router.get(
 router.get(
   '/:id',
   tenantContext,
-  authorizePermission('notices', 'read'),
+  authorizePermission('notices', ['active_board', 'manage_notices']),
   validate(noticeParamRules),
   noticeController.getById,
 )
@@ -85,7 +85,7 @@ router.get(
 router.put(
   '/:id',
   tenantContext,
-  authorizePermission('notices', 'update'),
+  authorizePermission('notices', 'manage_notices'),
   noticeUpload.array('images', 5),
   noticeImageSignatureValidator,
   validate(updateNoticeRules),
@@ -101,7 +101,7 @@ router.put(
 router.delete(
   '/:id',
   tenantContext,
-  authorizePermission('notices', 'delete'),
+  authorizePermission('notices', 'manage_notices'),
   validate(noticeParamRules),
   noticeController.delete,
 )
@@ -115,7 +115,7 @@ router.delete(
 router.patch(
   '/:id/pin',
   tenantContext,
-  authorizePermission('notices', 'update'),
+  authorizePermission('notices', 'manage_notices'),
   validate(pinNoticeRules),
   noticeController.togglePin,
 )
@@ -129,7 +129,7 @@ router.patch(
 router.patch(
   '/:id/read',
   tenantContext,
-  authorizePermission('notices', 'read'),
+  authorizePermission('notices', ['active_board', 'manage_notices']),
   validate(noticeParamRules),
   noticeController.markAsRead,
 )
@@ -143,7 +143,7 @@ router.patch(
 router.patch(
   '/:id/bookmark',
   tenantContext,
-  authorizePermission('notices', 'read'),
+  authorizePermission('notices', ['active_board', 'manage_notices']),
   validate(noticeParamRules),
   noticeController.bookmark,
 )

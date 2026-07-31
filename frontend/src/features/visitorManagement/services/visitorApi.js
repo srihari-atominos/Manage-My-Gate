@@ -1,8 +1,8 @@
-import axios from '../../../services/apiClient';
+import axios from '../../../services/apiClient'
 
 /**
  * VisitorAPI
- * 
+ *
  * Frontend service layer to handle API communications for the Visitor Management module.
  * Delegates calls to the globally configured Axios instance (axios).
  */
@@ -13,7 +13,7 @@ export const VisitorAPI = {
    * @returns {Promise<Object>} The API response.
    */
   createPass: async (payload) => {
-    return await axios.post('/visitor-pass', payload);
+    return await axios.post('/visitor-pass', payload)
   },
 
   /**
@@ -22,7 +22,7 @@ export const VisitorAPI = {
    * @returns {Promise<Object>} The API response.
    */
   getPassDetails: async (id) => {
-    return await axios.get(`/visitor-pass/${id}`);
+    return await axios.get(`/visitor-pass/${id}`)
   },
 
   /**
@@ -31,7 +31,7 @@ export const VisitorAPI = {
    * @returns {Promise<Object>} The API response.
    */
   getPassByCode: async (code) => {
-    return await axios.get(`/visitor-pass/code/${code}`);
+    return await axios.get(`/visitor-pass/code/${code}`)
   },
 
   /**
@@ -41,7 +41,7 @@ export const VisitorAPI = {
    * @returns {Promise<Object>} The API response.
    */
   updatePassStatus: async (id, status) => {
-    return await axios.patch(`/visitor-pass/${id}/status`, { status });
+    return await axios.patch(`/visitor-pass/${id}/status`, { status })
   },
 
   /**
@@ -51,7 +51,7 @@ export const VisitorAPI = {
    * @returns {Promise<Object>} The API response.
    */
   getPasses: async (orgId, params) => {
-    return await axios.get(`/visitor-pass/org/${orgId}`, { params });
+    return await axios.get(`/visitor-pass/org/${orgId}`, { params })
   },
 
   /**
@@ -60,7 +60,7 @@ export const VisitorAPI = {
    * @returns {Promise<Object>} The API response.
    */
   processPreApproved: async (payload) => {
-    return await axios.post('/visitor-log/pre-approved', payload);
+    return await axios.post('/visitor-log/pre-approved', payload)
   },
 
   /**
@@ -69,7 +69,7 @@ export const VisitorAPI = {
    * @returns {Promise<Object>} The API response.
    */
   initiateWalkIn: async (payload) => {
-    return await axios.post('/visitor-log/walk-in', payload);
+    return await axios.post('/visitor-log/walk-in', payload)
   },
 
   /**
@@ -79,8 +79,8 @@ export const VisitorAPI = {
    * @returns {Promise<Object>} The API response.
    */
   resolveWalkIn: async (id, status) => {
-    const action = typeof status === 'string' ? status.toUpperCase() : status;
-    return await axios.patch(`/visitor-log/walk-in/${id}/resolve`, { action });
+    const action = typeof status === 'string' ? status.toUpperCase() : status
+    return await axios.patch(`/visitor-log/walk-in/${id}/resolve`, { action })
   },
 
   /**
@@ -89,7 +89,7 @@ export const VisitorAPI = {
    * @returns {Promise<Object>} The API response.
    */
   checkoutVisitor: async (id) => {
-    return await axios.patch(`/visitor-log/${id}/checkout`);
+    return await axios.patch(`/visitor-log/${id}/checkout`)
   },
 
   /**
@@ -98,7 +98,7 @@ export const VisitorAPI = {
    * @returns {Promise<Object>} The API response.
    */
   getActiveVisitors: async (orgId) => {
-    return await axios.get(`/visitor-log/org/${orgId}/inside`);
+    return await axios.get(`/visitor-log/org/${orgId}/inside`)
   },
 
   /**
@@ -108,7 +108,7 @@ export const VisitorAPI = {
    * @returns {Promise<Object>} The API response.
    */
   getHistoryLogs: async (orgId, params) => {
-    return await axios.get(`/visitor-log/org/${orgId}`, { params });
+    return await axios.get(`/visitor-log/org/${orgId}`, { params })
   },
 
   /**
@@ -117,8 +117,8 @@ export const VisitorAPI = {
    * @returns {Promise<Object>} The API response.
    */
   getPendingApprovals: async (orgId) => {
-    return await axios.get(`/visitor-log/org/${orgId}/pending`);
-  }
-};
+    return await axios.get(`/visitor-log/org/${orgId}/pending`)
+  },
+}
 
-export default VisitorAPI;
+export default VisitorAPI

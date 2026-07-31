@@ -42,6 +42,14 @@ router.post(
   invoiceController.triggerManual
 );
 
+router.post(
+  '/trigger-whatsapp',
+  tenantContext,
+  authorizePermission('billing', 'assessment_manager'),
+  validate(manualTriggerSchema),
+  invoiceController.triggerWhatsApp
+);
+
 router.patch(
   '/:id/settle-offline',
   tenantContext,

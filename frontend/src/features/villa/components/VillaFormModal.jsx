@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
-import PropTypes from 'prop-types';
-import { useForm } from 'react-hook-form';
-import * as yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
+import React, { useEffect } from 'react'
+import PropTypes from 'prop-types'
+import { useForm } from 'react-hook-form'
+import * as yup from 'yup'
+import { yupResolver } from '@hookform/resolvers/yup'
 import {
   CModal,
   CModalHeader,
@@ -14,32 +14,41 @@ import {
   CFormLabel,
   CFormInput,
   CFormSelect,
-  CFormFeedback
-} from '@coreui/react';
-import { useTranslation } from 'react-i18next';
+  CFormFeedback,
+} from '@coreui/react'
+import { useTranslation } from 'react-i18next'
 
 // Validation Schema
 const schema = yup.object().shape({
   unitNumber: yup.string().required('Unit number is required').trim(),
   blockOrBuilding: yup.string().optional(),
-  type: yup.string().oneOf(['Studio', 'Apartment', 'Villa', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex'], 'Invalid type').default('Apartment'),
-  status: yup.string().oneOf(['Vacant', 'Occupied', 'Under Maintenance'], 'Invalid status').default('Vacant'),
+  type: yup
+    .string()
+    .oneOf(
+      ['Studio', 'Apartment', 'Villa', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex'],
+      'Invalid type',
+    )
+    .default('Apartment'),
+  status: yup
+    .string()
+    .oneOf(['Vacant', 'Occupied', 'Under Maintenance'], 'Invalid status')
+    .default('Vacant'),
   floorAreaSqFt: yup
     .number()
     .transform((value, originalValue) => (String(originalValue).trim() === '' ? null : value))
     .nullable()
     .moreThan(0, 'Floor area must be a positive number')
     .optional(),
-});
+})
 
 export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting }
+    formState: { errors, isSubmitting },
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
@@ -48,8 +57,8 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
       type: 'Apartment',
       status: 'Vacant',
       floorAreaSqFt: '',
-    }
-  });
+    },
+  })
 
   // Reset form when editing unit changes
   useEffect(() => {
@@ -60,7 +69,7 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
         type: editingVilla.type || 'Apartment',
         status: villaStatusMapBack(editingVilla.status),
         floorAreaSqFt: editingVilla.floorAreaSqFt || '',
-      });
+      })
     } else {
       reset({
         unitNumber: '',
@@ -68,45 +77,42 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
         type: 'Apartment',
         status: 'Vacant',
         floorAreaSqFt: '',
-      });
+      })
     }
-  }, [editingVilla, reset]);
+  }, [editingVilla, reset])
 
   // Map legacy occupancyStatus field to DB status if editing
   const villaStatusMapBack = (status) => {
     if (status === 'Owner Occupied' || status === 'Tenant Occupied') {
-      return 'Occupied';
+      return 'Occupied'
     }
-    return status || 'Vacant';
-  };
+    return status || 'Vacant'
+  }
 
   const handleFormSubmit = async (data) => {
     try {
-      const payload = { ...data };
+      const payload = { ...data }
       if (payload.floorAreaSqFt === '') {
-        payload.floorAreaSqFt = null;
+        payload.floorAreaSqFt = null
       }
       if (payload.blockOrBuilding === '') {
-        payload.blockOrBuilding = null;
+        payload.blockOrBuilding = null
       }
-      await onSubmit(payload);
-      reset();
-      onClose();
+      await onSubmit(payload)
+      reset()
+      onClose()
     } catch (err) {
-      console.error(err);
+      console.error(err)
     }
-  };
+  }
 
   return (
-    <CModal
-      visible={visible}
-      onClose={onClose}
-      alignment="center"
-      className="villa-form-modal"
-    >
+    <CModal visible={visible} onClose={onClose} alignment="center" className="villa-form-modal">
       <CModalHeader>
         <CModalTitle className="modal-title-bold">
-          {editingVilla ? t('villas.form.editTitle', 'Edit Unit') : t('villas.form.createTitle', 'Create Unit')}
+          {editingVilla
+            ? t('villas.form.editTitle', 'Edit Unit')
+            : t('villas.form.createTitle', 'Create Unit')}
         </CModalTitle>
       </CModalHeader>
       <CForm onSubmit={handleSubmit(handleFormSubmit)}>
@@ -164,7 +170,9 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
             <CFormSelect id="status" {...register('status')} invalid={!!errors.status} size="sm">
               <option value="Vacant">{t('villas.statusTypes.Vacant', 'Vacant')}</option>
               <option value="Occupied">{t('villas.statusTypes.Occupied', 'Occupied')}</option>
-              <option value="Under Maintenance">{t('villas.statusTypes.UnderMaintenance', 'Under Maintenance')}</option>
+              <option value="Under Maintenance">
+                {t('villas.statusTypes.UnderMaintenance', 'Under Maintenance')}
+              </option>
             </CFormSelect>
           </div>
 
@@ -194,14 +202,14 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
         </CModalFooter>
       </CForm>
     </CModal>
-  );
-};
+  )
+}
 
 VillaFormModal.propTypes = {
   visible: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
   editingVilla: PropTypes.object,
-};
+}
 
-export default VillaFormModal;
+export default VillaFormModal

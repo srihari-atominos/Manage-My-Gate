@@ -52,6 +52,7 @@ const UserList = () => {
     inviteUser,
     bulkInviteUsers,
     selectedUserForRoles,
+    selectedUnitForRoles,
     openManageRolesModal,
     closeManageRolesModal,
     handleSaveRoles,
@@ -74,23 +75,34 @@ const UserList = () => {
       if (token) {
         const clientUrl = window.location.origin + window.location.pathname
         const inviteLink = `${clientUrl}#/invite?token=${token}`
-        toast((t) => (
-          <div className="d-flex align-items-center gap-2">
-            <span style={{ fontSize: '0.8rem' }}>
-              User invited! Link: <a href={inviteLink} target="_blank" rel="noreferrer" className="text-decoration-underline fw-bold">{inviteLink.substring(0, 30)}...</a>
-            </span>
-            <CButton
-              size="sm"
-              color="primary"
-              onClick={() => {
-                navigator.clipboard.writeText(inviteLink)
-                toast.success('Copied link!')
-              }}
-            >
-              Copy
-            </CButton>
-          </div>
-        ), { duration: 8000 })
+        toast(
+          (t) => (
+            <div className="d-flex align-items-center gap-2">
+              <span style={{ fontSize: '0.8rem' }}>
+                User invited! Link:{' '}
+                <a
+                  href={inviteLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-decoration-underline fw-bold"
+                >
+                  {inviteLink.substring(0, 30)}...
+                </a>
+              </span>
+              <CButton
+                size="sm"
+                color="primary"
+                onClick={() => {
+                  navigator.clipboard.writeText(inviteLink)
+                  toast.success('Copied link!')
+                }}
+              >
+                Copy
+              </CButton>
+            </div>
+          ),
+          { duration: 8000 },
+        )
       } else {
         toast.success('User invited successfully!')
       }
@@ -110,112 +122,170 @@ const UserList = () => {
   }
 
   const handleDeleteClick = async (user) => {
-    if (window.confirm(`Delete user "${user.name}"? This action cannot be undone.`)) {
+    const confirmMessage = `Delete user "${user.name}" from the organization? This action cannot be undone.`;
+      
+    if (window.confirm(confirmMessage)) {
       try {
         setIsDeleting(user.id)
-        await deleteUser(user.id)
+        await deleteUser({ userId: user.id })
+        toast.success(`User ${user.name} deleted successfully`);
+      } catch (err) {
+        console.error('Delete failed:', err);
+        toast.error(err?.message || 'Failed to delete user');
       } finally {
         setIsDeleting(null)
       }
     }
   }
 
-  const handleManageRoles = (user) => {
-    openManageRolesModal(user)
-  }
-
   // ── DataTable Columns Configuration ──
-  const columns = useMemo(() => [
-    {
-      key: 'name',
-      label: 'Name',
-      render: (val) => <span className="fw-semibold">{val}</span>,
-    },
-    {
-      key: 'email',
-      label: 'Contact Info',
-      render: (val, row) => (
-        <div className="d-flex flex-column gap-1">
-          <span className="text-body-secondary">{val}</span>
-          {row.phone && <span className="text-muted small"><i className="fa-solid fa-phone me-1"></i>{row.phone}</span>}
-        </div>
-      ),
-    },
-    {
-      key: 'villaNumber',
-      label: 'Villa / Unit',
-      render: (val, row) => {
-        if (!val) return <span className="text-muted small">—</span>;
-        return (
-          <div>
-            <span className="fw-bold small text-primary">{val}</span>
-            {row.villaBlock && <span className="text-muted small ms-1">({row.villaBlock})</span>}
-            {row.residentType && row.residentType !== 'None' && (
-              <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                Residency: <span className="fw-semibold">{row.residentType}</span>
-              </div>
+  const columns = useMemo(
+    () => [
+      {
+        key: 'name',
+        label: 'Name',
+        render: (val) => <span className="fw-semibold">{val}</span>,
+      },
+      {
+        key: 'email',
+        label: 'Contact Info',
+        render: (val, row) => (
+          <div className="d-flex flex-column gap-1">
+            <span className="text-body-secondary">{val}</span>
+            {row.phone && (
+              <span className="text-muted small">
+                <i className="fa-solid fa-phone me-1"></i>
+                {row.phone}
+              </span>
             )}
           </div>
-        );
-      }
-    },
-    {
-      key: 'role',
-      label: 'Role',
-      render: (val) => {
-        if (!val || val === '' || (Array.isArray(val) && val.length === 0)) {
+        ),
+      },
+      {
+        key: 'assignedUnits',
+        label: 'Villa / Unit',
+        render: (val, row) => {
+          if (!val || val.length === 0) return <span className="text-muted small">—</span>
           return (
-            <CBadge color="light" className="text-body small px-2 py-1 border">
-              Unassigned
-            </CBadge>
+            <div className="d-flex flex-column gap-3 py-1">
+              {val.map((unit, idx) => (
+                <div key={idx} className="d-flex flex-column justify-content-center" style={{ height: '50px' }}>
+                  <div>
+                    <span className="fw-bold small text-primary">{unit.villaNumber}</span>
+                    {unit.villaBlock && <span className="text-muted small ms-1">({unit.villaBlock})</span>}
+                  </div>
+                  {unit.residentType && unit.residentType !== 'None' && (
+                    <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                      Residency: <span className="fw-semibold">{unit.residentType}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           )
-        }
-        const rolesList = typeof val === 'string' ? val.split(',').map(r => r.trim()) : [val]
-        return (
-          <div className="d-flex flex-wrap gap-1 overflow-y-auto" style={{ maxHeight: '40px' }}>
-            {rolesList.map((r, i) => (
-              <CBadge
-                key={i}
-                color="info"
-                shape="rounded-pill"
-                className="small px-2 py-1 text-nowrap"
-              >
-                {r}
+        },
+      },
+      {
+        key: 'role',
+        label: 'Role',
+        render: (val, row) => {
+          const renderRoleBadges = (roleStr) => {
+            if (!roleStr || roleStr === '' || (Array.isArray(roleStr) && roleStr.length === 0)) {
+              return (
+                <CBadge color="light" className="text-body small px-2 py-1 border">
+                  Unassigned
+                </CBadge>
+              )
+            }
+            const rolesList = typeof roleStr === 'string' ? roleStr.split(',').map((r) => r.trim()) : [roleStr]
+            return (
+              <div className="d-flex flex-wrap gap-1">
+                {rolesList.map((r, i) => (
+                  <CBadge
+                    key={i}
+                    color="info"
+                    shape="rounded-pill"
+                    className="small px-2 py-1 text-nowrap"
+                  >
+                    {r}
+                  </CBadge>
+                ))}
+              </div>
+            )
+          }
+
+          if (row.assignedUnits && row.assignedUnits.length > 0) {
+            return (
+              <div className="d-flex flex-column gap-3 py-1">
+                {row.assignedUnits.map((unit, idx) => (
+                  <div key={idx} className="d-flex align-items-center" style={{ height: '50px' }}>
+                    {renderRoleBadges(unit.role)}
+                  </div>
+                ))}
+              </div>
+            )
+          }
+
+          return (
+            <div className="d-flex flex-column gap-3 py-1">
+              <div className="d-flex align-items-center" style={{ height: '50px' }}>
+                {renderRoleBadges(val)}
+              </div>
+            </div>
+          )
+        },
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        render: (val, row) => {
+          const renderStatusBadge = (statusStr) => {
+            let badgeColor = 'secondary'
+            if (statusStr === 'Active') badgeColor = 'success'
+            else if (statusStr === 'Pending') badgeColor = 'warning'
+            else if (statusStr === 'Inactive') badgeColor = 'danger'
+            return (
+              <CBadge color={badgeColor} className="small px-2 py-1">
+                {statusStr}
               </CBadge>
-            ))}
-          </div>
-        )
+            )
+          }
+
+          if (row.assignedUnits && row.assignedUnits.length > 0) {
+            return (
+              <div className="d-flex flex-column gap-3 py-1">
+                {row.assignedUnits.map((unit, idx) => (
+                  <div key={idx} className="d-flex align-items-center" style={{ height: '50px' }}>
+                    {renderStatusBadge(unit.status || val)}
+                  </div>
+                ))}
+              </div>
+            )
+          }
+
+          return (
+            <div className="d-flex flex-column gap-3 py-1">
+              <div className="d-flex align-items-center" style={{ height: '50px' }}>
+                {renderStatusBadge(val)}
+              </div>
+            </div>
+          )
+        },
       },
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (val) => {
-        let badgeColor = 'secondary'
-        if (val === 'Active') {
-          badgeColor = 'success'
-        } else if (val === 'Pending') {
-          badgeColor = 'warning'
-        } else if (val === 'Inactive') {
-          badgeColor = 'danger'
-        }
-        return (
-          <CBadge
-            color={badgeColor}
-            className="small px-2 py-1"
-          >
-            {val}
-          </CBadge>
-        )
-      },
-    },
-  ], [])
+    ],
+    [],
+  )
+
+  const handleManageRoles = (user, unit = null) => {
+    openManageRolesModal(user, unit)
+  }
 
   // ── Render Actions for Data Grid ──
   const renderRowActions = (user) => {
     const isSelf = user.id === currentUserId
     const isPending = user.status === 'Pending'
-    return (
+
+    const ActionButtons = ({ unit }) => (
       <div className="d-flex gap-2">
         {/* Resend Invite — mail icon (only for pending users) */}
         {isPending && (
@@ -225,7 +295,16 @@ const UserList = () => {
             onClick={() => handleResendInvite(user)}
             title={`Resend invitation to ${user.name}`}
             icon={
-              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                width="13"
+                height="13"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                 <polyline points="22,6 12,13 2,6" />
               </svg>
@@ -236,11 +315,20 @@ const UserList = () => {
         <ActionIconButton
           id={`manage-roles-${user.id}`}
           color="primary"
-          onClick={() => handleManageRoles(user)}
+          onClick={() => handleManageRoles(user, unit)}
           title={isSelf ? 'You cannot modify your own account.' : `Manage roles for ${user.name}`}
           disabled={isSelf}
           icon={
-            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              width="13"
+              height="13"
+              stroke="currentColor"
+              strokeWidth="2"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
             </svg>
           }
@@ -256,7 +344,16 @@ const UserList = () => {
             isDeleting === user.id ? (
               <CSpinner size="sm" style={{ width: '13px', height: '13px' }} />
             ) : (
-              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                width="13"
+                height="13"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                 <path d="M10 11v6" />
@@ -266,6 +363,26 @@ const UserList = () => {
             )
           }
         />
+      </div>
+    )
+
+    if (user.assignedUnits && user.assignedUnits.length > 0) {
+      return (
+        <div className="d-flex flex-column gap-3 py-1">
+          {user.assignedUnits.map((unit, idx) => (
+            <div key={idx} className="d-flex align-items-center" style={{ height: '50px' }}>
+              <ActionButtons unit={unit} />
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    return (
+      <div className="d-flex flex-column gap-3 py-1">
+        <div className="d-flex align-items-center" style={{ height: '50px' }}>
+          <ActionButtons unit={null} />
+        </div>
       </div>
     )
   }
@@ -364,6 +481,7 @@ const UserList = () => {
       <ManageRolesModal
         visible={!!selectedUserForRoles}
         user={selectedUserForRoles}
+        unit={selectedUnitForRoles}
         onClose={closeManageRolesModal}
         onSave={handleSaveRoles}
         availableRoles={ROLES}

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
-import { useDispatch } from 'react-redux';
+import React, { useState } from 'react'
+import PropTypes from 'prop-types'
+import { useDispatch } from 'react-redux'
 import {
   CModal,
   CModalHeader,
@@ -14,69 +14,75 @@ import {
   CFormSelect,
   CRow,
   CCol,
-  CAlert
-} from '@coreui/react';
-import { batchGenerateVillasAsync, fetchVillasAsync } from '../store/villaSlice';
-import toast from 'react-hot-toast';
-import { useTranslation } from 'react-i18next';
+  CAlert,
+} from '@coreui/react'
+import { batchGenerateVillasAsync, fetchVillasAsync } from '../store/villaSlice'
+import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 
 export const BatchGenerateModal = ({ visible, onClose }) => {
-  const { t } = useTranslation();
-  const dispatch = useDispatch();
-  
+  const { t } = useTranslation()
+  const dispatch = useDispatch()
+
   // Local form state
-  const [prefix, setPrefix] = useState('Villa');
-  const [startNumber, setStartNumber] = useState(1);
-  const [endNumber, setEndNumber] = useState(54);
-  const [blockOrBuilding, setBlockOrBuilding] = useState('Block A');
-  const [type, setType] = useState('Apartment');
-  const [floorAreaSqFt, setFloorAreaSqFt] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [prefix, setPrefix] = useState('Villa')
+  const [startNumber, setStartNumber] = useState(1)
+  const [endNumber, setEndNumber] = useState(54)
+  const [blockOrBuilding, setBlockOrBuilding] = useState('Block A')
+  const [type, setType] = useState('Apartment')
+  const [floorAreaSqFt, setFloorAreaSqFt] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
     if (startNumber > endNumber) {
-      setError(t('villas.batch.errorStartEnd', 'Start number must be less than or equal to end number.'));
-      return;
+      setError(
+        t('villas.batch.errorStartEnd', 'Start number must be less than or equal to end number.'),
+      )
+      return
     }
 
-    setSubmitting(true);
-    setError(null);
+    setSubmitting(true)
+    setError(null)
 
     try {
-      const resultAction = await dispatch(batchGenerateVillasAsync({
-        startNumber,
-        endNumber,
-        prefix,
-        config: {
-          blockOrBuilding,
-          type,
-          floorAreaSqFt: floorAreaSqFt ? parseFloat(floorAreaSqFt) : null
-        }
-      }));
+      const resultAction = await dispatch(
+        batchGenerateVillasAsync({
+          startNumber,
+          endNumber,
+          prefix,
+          config: {
+            blockOrBuilding,
+            type,
+            floorAreaSqFt: floorAreaSqFt ? parseFloat(floorAreaSqFt) : null,
+          },
+        }),
+      )
 
       if (batchGenerateVillasAsync.fulfilled.match(resultAction)) {
-        toast.success(t('villas.batch.successMsg', `Successfully generated ${resultAction.payload.length} units!`));
-        dispatch(fetchVillasAsync({ page: 1, limit: 12 }));
-        onClose();
+        toast.success(
+          t(
+            'villas.batch.successMsg',
+            `Successfully generated ${resultAction.payload.length} units!`,
+          ),
+        )
+        dispatch(fetchVillasAsync({ page: 1, limit: 12 }))
+        onClose()
       } else {
-        setError(resultAction.payload || t('villas.batch.failedMsg', 'Failed to batch generate units.'));
+        setError(
+          resultAction.payload || t('villas.batch.failedMsg', 'Failed to batch generate units.'),
+        )
       }
     } catch (err) {
-      setError(err.message || t('villas.batch.unexpectedError', 'An unexpected error occurred.'));
+      setError(err.message || t('villas.batch.unexpectedError', 'An unexpected error occurred.'))
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
+  }
 
   return (
-    <CModal
-      visible={visible}
-      onClose={onClose}
-      alignment="center"
-      className="batch-generate-modal"
-    >
+    <CModal visible={visible} onClose={onClose} alignment="center" className="batch-generate-modal">
       <CModalHeader>
         <CModalTitle className="modal-title-bold">
           {t('villas.batch.title', 'Batch Generate Units')}
@@ -102,7 +108,10 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
               size="sm"
             />
             <div className="text-muted small-text mt-1 bulk-text-xxs">
-              {t('villas.batch.prefixDesc', 'Suffix numbers will be appended automatically, e.g. "Villa 01".')}
+              {t(
+                'villas.batch.prefixDesc',
+                'Suffix numbers will be appended automatically, e.g. "Villa 01".',
+              )}
             </div>
           </div>
 
@@ -191,18 +200,26 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
           <CButton color="light" size="sm" onClick={onClose} disabled={submitting}>
             {t('villas.batch.cancel', 'Cancel')}
           </CButton>
-          <CButton type="submit" color="primary" size="sm" disabled={submitting} className="fw-semibold">
-            {submitting ? t('villas.batch.generating', 'Generating...') : t('villas.batch.submit', 'Generate Units')}
+          <CButton
+            type="submit"
+            color="primary"
+            size="sm"
+            disabled={submitting}
+            className="fw-semibold"
+          >
+            {submitting
+              ? t('villas.batch.generating', 'Generating...')
+              : t('villas.batch.submit', 'Generate Units')}
           </CButton>
         </CModalFooter>
       </CForm>
     </CModal>
-  );
-};
+  )
+}
 
 BatchGenerateModal.propTypes = {
   visible: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-};
+}
 
-export default BatchGenerateModal;
+export default BatchGenerateModal

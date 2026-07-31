@@ -1,22 +1,22 @@
-import React, { memo } from 'react';
-import { CRow, CCol, CCard, CCardBody } from '@coreui/react';
+import React, { memo } from 'react'
+import { CRow, CCol, CCard, CCardBody } from '@coreui/react'
 
 const CalendarAnalytics = memo(({ analytics }) => {
-  if (!analytics) return null;
+  if (!analytics) return null
 
-  const bookingKpis = analytics.bookingKpis || {};
-  const revenue = analytics.revenue || {};
-  
-  const todayBookings = bookingKpis.todayBookings || 0;
-  const upcomingCount = bookingKpis.upcomingBookings || 0;
-  const dailyRevenue = revenue.dailyRevenue || 0;
-  
-  const completed = bookingKpis.completedBookings || 0;
-  const cancelled = (bookingKpis.cancelledBookings || 0) + (bookingKpis.rejectedBookings || 0);
-  const active = bookingKpis.checkedInBookings || 0;
-  const pending = bookingKpis.pendingBookings || 0;
-  
-  const currentlyInside = active;
+  const bookingKpis = analytics.bookingKpis || {}
+  const revenue = analytics.revenue || {}
+
+  const todayBookings = bookingKpis.todayBookings || 0
+  const upcomingCount = bookingKpis.upcomingBookings || 0
+  const dailyRevenue = revenue.dailyRevenue || 0
+
+  const completed = bookingKpis.completedBookings || 0
+  const cancelled = (bookingKpis.cancelledBookings || 0) + (bookingKpis.rejectedBookings || 0)
+  const active = bookingKpis.checkedInBookings || 0
+  const pending = bookingKpis.pendingBookings || 0
+
+  const currentlyInside = active
 
   return (
     <CRow className="g-3 mb-4">
@@ -88,7 +88,7 @@ const CalendarAnalytics = memo(({ analytics }) => {
         </CCard>
       </CCol>
     </CRow>
-  );
-});
+  )
+})
 
-export default CalendarAnalytics;
+export default CalendarAnalytics

@@ -43,13 +43,13 @@ export const payInvoice = async (req, res, next) => {
   try {
     const userId = req.user.id || req.user._id;
     const orgId = req.user.orgId;
-    const { invoiceId } = req.body;
+    const { invoiceId, amount } = req.body;
 
     if (!invoiceId) {
       return res.status(400).json({ success: false, message: 'invoiceId is required' });
     }
 
-    const result = await walletService.payInvoiceWithWallet({ userId, orgId, invoiceId });
+    const result = await walletService.payInvoiceWithWallet({ userId, orgId, invoiceId, amount });
 
     res.status(200).json({
       success: true,

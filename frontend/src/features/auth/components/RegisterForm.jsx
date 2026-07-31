@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
-import useAuthRouting from '../hooks/useAuthRouting.js';
-import useAuth from '../hooks/useAuth.js';
-import { GoogleLogin } from '@react-oauth/google';
-import { useMsal } from '@azure/msal-react';
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { useForm, Controller } from 'react-hook-form'
+import useAuthRouting from '../hooks/useAuthRouting.js'
+import useAuth from '../hooks/useAuth.js'
+import { GoogleLogin } from '@react-oauth/google'
+import { useMsal } from '@azure/msal-react'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 import {
   CButton,
   CCard,
@@ -19,9 +21,9 @@ import {
   CAlert,
   CSpinner,
   CProgress,
-} from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilLockLocked, cilUser, cilPhone, cilEnvelopeOpen } from '@coreui/icons';
+} from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilLockLocked, cilUser, cilPhone, cilEnvelopeOpen } from '@coreui/icons'
 
 /**
  * RegisterForm Component
@@ -29,14 +31,30 @@ import { cilLockLocked, cilUser, cilPhone, cilEnvelopeOpen } from '@coreui/icons
  * Adheres to the "Thin View" architectural pattern.
  */
 export const RegisterForm = () => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
 
-  const [isLoginMode, setIsLoginMode] = useState(location.pathname === '/login-createOrg');
+  const isLoginModeParam = location.pathname === '/login-createOrg'
+  const [isLoginMode, setIsLoginMode] = useState(isLoginModeParam)
 
-  const { loading, error, successMsg, login, register: authRegister, loginGoogle, loginMicrosoft, clearStatus } = useAuth();
-  const { handlePostAuthRedirect, isAuthenticated } = useAuthRouting();
+  const isGoogleSso = location.state?.isGoogleSso || false
+  const ssoEmail = location.state?.email || ''
+  const ssoName = location.state?.name || ''
+
+  const {
+    loading,
+    error,
+    successMsg,
+    login,
+    register: authRegister,
+    loginGoogle,
+    loginMicrosoft,
+    clearStatus,
+  } = useAuth()
+  const { handlePostAuthRedirect, isAuthenticated } = useAuthRouting()
+
+  const [expectedPhoneLength, setExpectedPhoneLength] = useState(12) // Default for India (91 + 10 digits)
 
   const {
     register,
@@ -44,114 +62,125 @@ export const RegisterForm = () => {
     setValue,
     watch,
     clearErrors,
-    formState: { errors },
+    control,
+    formState: { errors, isValid },
   } = useForm({
     defaultValues: {
-      name: '',
-      email: '',
+      name: ssoName,
+      email: ssoEmail,
       phone: '',
       password: '',
       confirmPassword: '',
     },
-    mode: 'onChange'
-  });
+    mode: 'onChange',
+  })
 
-  const watchPassword = watch('password', '');
+  // Watch fields for logic
+  const watchPassword = watch('password', '')
+  const watchPhone = watch('phone', '')
 
   useEffect(() => {
-    clearStatus();
-  }, [isLoginMode]);
+    clearStatus()
+  }, [isLoginMode])
 
   // Sync mode and form state with the active URL path
   useEffect(() => {
-    setIsLoginMode(location.pathname === '/login-createOrg');
-    setValue('password', '');
-    setValue('confirmPassword', '');
-    clearErrors();
-  }, [location.pathname]);
+    setIsLoginMode(location.pathname === '/login-createOrg')
+    setValue('password', '')
+    setValue('confirmPassword', '')
+    clearErrors()
+  }, [location.pathname])
 
   // When changing mode, navigate to the correct onboarding route
   const toggleMode = () => {
     if (isLoginMode) {
-      navigate('/register');
+      navigate('/register', { state: location.state })
     } else {
-      navigate('/login?intent=create-org');
+      navigate('/login?intent=create-org', { state: location.state })
     }
-  };
+  }
 
   useEffect(() => {
     if (isAuthenticated) {
-      handlePostAuthRedirect();
+      handlePostAuthRedirect()
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated])
 
-  const { instance: msalInstance } = useMsal();
+  const { instance: msalInstance } = useMsal()
 
   const handleMicrosoftLogin = () => {
     import('react-hot-toast').then(({ toast }) => {
-      msalInstance.loginPopup({
-        scopes: ['openid', 'profile', 'user.read'],
-      })
-      .then((response) => {
-        if (response && response.idToken) {
-          loginMicrosoft(response.idToken);
-        }
-      })
-      .catch((err) => {
-        console.error('Microsoft login failed:', err);
-        if (err.errorCode === 'interaction_in_progress' || (err.message && err.message.includes('interaction_in_progress'))) {
-          sessionStorage.clear();
-          toast.error('Stuck Microsoft session cleared! Please click the button one more time.');
-        } else {
-          toast.error(`Microsoft login failed: ${err.message || 'Unknown error'}`);
-        }
-      });
-    });
-  };
+      msalInstance
+        .loginPopup({
+          scopes: ['openid', 'profile', 'user.read'],
+        })
+        .then((response) => {
+          if (response && response.idToken) {
+            loginMicrosoft(response.idToken)
+          }
+        })
+        .catch((err) => {
+          console.error('Microsoft login failed:', err)
+          if (
+            err.errorCode === 'interaction_in_progress' ||
+            (err.message && err.message.includes('interaction_in_progress'))
+          ) {
+            sessionStorage.clear()
+            toast.error('Stuck Microsoft session cleared! Please click the button one more time.')
+          } else {
+            toast.error(`Microsoft login failed: ${err.message || 'Unknown error'}`)
+          }
+        })
+    })
+  }
 
   const onSubmit = (data) => {
     if (isLoginMode) {
-      login({ login: data.email.trim(), password: data.password });
+      login({ login: data.email.trim(), password: data.password })
     } else {
-      const emailPrefix = data.email.trim().split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
-      let derivedUsername = emailPrefix;
+      const emailPrefix = data.email
+        .trim()
+        .split('@')[0]
+        .replace(/[^a-zA-Z0-9]/g, '')
+      let derivedUsername = emailPrefix
       if (derivedUsername.length < 3) {
-        derivedUsername = 'user' + Math.floor(100 + Math.random() * 900);
+        derivedUsername = 'user' + Math.floor(100 + Math.random() * 900)
       } else if (derivedUsername.length > 30) {
-        derivedUsername = derivedUsername.substring(0, 30);
+        derivedUsername = derivedUsername.substring(0, 30)
       }
 
       authRegister({
         name: data.name.trim(),
         username: derivedUsername,
         email: data.email.trim().toLowerCase(),
-        phone: data.phone?.trim() || undefined,
+        phone: data.phone?.trim() ? `+${data.phone.trim()}` : undefined,
         password: data.password,
+        isGoogleSso,
       }).then((action) => {
         if (action.meta.requestStatus === 'fulfilled') {
           setTimeout(() => {
-            navigate('/workspace-setup?intent=create');
-          }, 1500);
+            navigate('/workspace-setup?intent=create')
+          }, 1500)
         }
-      });
+      })
     }
-  };
+  }
 
   // Password Strength Calculation
   const getPasswordStrength = (pass) => {
-    let score = 0;
-    if (!pass) return { score: 0, color: 'danger', label: 'Weak' };
-    if (pass.length >= 8) score += 25;
-    if (/[A-Z]/.test(pass)) score += 25;
-    if (/[a-z]/.test(pass)) score += 25;
-    if (/[0-9]/.test(pass) && /[^A-Za-z0-9]/.test(pass)) score += 25;
+    let score = 0
+    if (!pass) return { score: 0, color: 'danger', label: 'Weak' }
+    if (pass.length >= 8) score += 25
+    if (/[A-Z]/.test(pass)) score += 25
+    if (/[a-z]/.test(pass)) score += 25
+    if (/[0-9]/.test(pass) && /[^A-Za-z0-9]/.test(pass)) score += 25
 
-    if (score < 50) return { score, color: 'danger', label: 'Weak' };
-    if (score < 100) return { score, color: 'warning', label: 'Fair' };
-    return { score, color: 'success', label: 'Strong' };
-  };
+    if (score < 50) return { score, color: 'danger', label: 'Weak' }
+    if (score < 100) return { score, color: 'warning', label: 'Fair' }
+    return { score, color: 'success', label: 'Strong' }
+  }
 
-  const strength = getPasswordStrength(watchPassword);
+  const strength = getPasswordStrength(watchPassword)
 
   return (
     <CCard style={styles.card}>
@@ -203,11 +232,15 @@ export const RegisterForm = () => {
                 </CInputGroupText>
                 <CFormInput
                   style={styles.input}
-                  placeholder={t('auth.register.fullNamePlaceholder', { defaultValue: 'Full Name' })}
+                  placeholder={t('auth.register.fullNamePlaceholder', {
+                    defaultValue: 'Full Name',
+                  })}
                   autoComplete="name"
                   disabled={loading}
                   {...register('name', {
-                    required: !isLoginMode && t('auth.register.nameRequired', { defaultValue: 'Full Name is required.' }),
+                    required:
+                      !isLoginMode &&
+                      t('auth.register.nameRequired', { defaultValue: 'Full Name is required.' }),
                   })}
                 />
               </CInputGroup>
@@ -224,20 +257,35 @@ export const RegisterForm = () => {
                 <CIcon icon={cilEnvelopeOpen} style={styles.icon} />
               </CInputGroupText>
               <CFormInput
-                style={styles.input}
+                style={
+                  isGoogleSso
+                    ? { ...styles.input, backgroundColor: '#f9fafb', color: '#6b7280' }
+                    : styles.input
+                }
                 type="email"
                 placeholder={t('auth.register.emailPlaceholder', { defaultValue: 'Email' })}
                 autoComplete="email"
                 disabled={loading}
+                readOnly={isGoogleSso}
                 {...register('email', {
-                  required: t('auth.register.emailRequired', { defaultValue: 'Email address is required.' }),
+                  required: t('auth.register.emailRequired', {
+                    defaultValue: 'Email address is required.',
+                  }),
                   pattern: {
                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: t('auth.register.emailInvalid', { defaultValue: 'Invalid email address.' }),
+                    message: t('auth.register.emailInvalid', {
+                      defaultValue: 'Invalid email address.',
+                    }),
                   },
                 })}
               />
             </CInputGroup>
+            {isGoogleSso && (
+              <div className="text-success small mt-1 ms-1 fw-medium d-flex align-items-center">
+                <CIcon icon={cilLockLocked} size="sm" className="me-1" />
+                Verified via Google
+              </div>
+            )}
             {errors.email && (
               <div className="text-danger small mt-1 ms-1">{errors.email.message}</div>
             )}
@@ -246,24 +294,52 @@ export const RegisterForm = () => {
           {/* Phone */}
           {!isLoginMode && (
             <div className="mb-3">
-              <CInputGroup>
-                <CInputGroupText style={styles.inputIconText}>
-                  <CIcon icon={cilPhone} style={styles.icon} />
-                </CInputGroupText>
-                <CFormInput
-                  style={styles.input}
-                  placeholder={t('auth.register.phonePlaceholder', { defaultValue: 'Phone Number' })}
-                  autoComplete="tel"
-                  disabled={loading}
-                  {...register('phone', {
-                    required: !isLoginMode && t('auth.register.phoneRequired', { defaultValue: 'Phone number is required.' }),
-                    pattern: {
-                      value: /^\+?[0-9\s\-\(\)]{7,20}$/,
-                      message: t('auth.register.phoneInvalid', { defaultValue: 'Invalid phone number.' }),
-                    },
-                  })}
-                />
-              </CInputGroup>
+              <Controller
+                name="phone"
+                control={control}
+                rules={{
+                  required: t('auth.register.phoneRequired', {
+                    defaultValue: 'Phone number is required.',
+                  }),
+                  validate: (value) => {
+                    if (!value) return true
+                    if (value.length < expectedPhoneLength) {
+                      return t('auth.register.phoneInvalid', {
+                        defaultValue: 'Invalid phone number length for this country.',
+                      })
+                    }
+                    return true
+                  },
+                }}
+                render={({ field: { onChange, value } }) => (
+                  <PhoneInput
+                    country={'in'}
+                    value={value}
+                    onChange={(phone, country) => {
+                      if (country && country.format) {
+                        setExpectedPhoneLength(country.format.replace(/[^.]/g, '').length)
+                      }
+                      onChange(phone)
+                    }}
+                    containerStyle={{
+                      width: '100%',
+                    }}
+                    inputStyle={{
+                      width: '100%',
+                      height: '42px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.375rem',
+                      fontSize: '14px',
+                    }}
+                    buttonStyle={{
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.375rem 0 0 0.375rem',
+                      backgroundColor: '#f3f4f6',
+                    }}
+                    disabled={loading}
+                  />
+                )}
+              />
               {errors.phone && (
                 <div className="text-danger small mt-1 ms-1">{errors.phone.message}</div>
               )}
@@ -283,16 +359,21 @@ export const RegisterForm = () => {
                 autoComplete="new-password"
                 disabled={loading}
                 {...register('password', {
-                  required: t('auth.register.passwordRequired', { defaultValue: 'Password is required.' }),
+                  required: t('auth.register.passwordRequired', {
+                    defaultValue: 'Password is required.',
+                  }),
                   validate: (value) => {
-                    if (isLoginMode) return true;
-                    if (value.length < 8) return 'Password must be at least 8 characters long.';
-                    if (!/[A-Z]/.test(value)) return 'Password must contain at least one uppercase letter.';
-                    if (!/[a-z]/.test(value)) return 'Password must contain at least one lowercase letter.';
-                    if (!/[0-9]/.test(value)) return 'Password must contain at least one number.';
-                    if (!/[^A-Za-z0-9]/.test(value)) return 'Password must contain at least one special character.';
-                    return true;
-                  }
+                    if (isLoginMode) return true
+                    if (value.length < 8) return 'Password must be at least 8 characters long.'
+                    if (!/[A-Z]/.test(value))
+                      return 'Password must contain at least one uppercase letter.'
+                    if (!/[a-z]/.test(value))
+                      return 'Password must contain at least one lowercase letter.'
+                    if (!/[0-9]/.test(value)) return 'Password must contain at least one number.'
+                    if (!/[^A-Za-z0-9]/.test(value))
+                      return 'Password must contain at least one special character.'
+                    return true
+                  },
                 })}
               />
             </CInputGroup>
@@ -301,9 +382,17 @@ export const RegisterForm = () => {
             )}
             {!isLoginMode && watchPassword && (
               <div className="mt-2 ms-1">
-                <CProgress value={strength.score} color={strength.color} height={6} className="mb-1 rounded" />
+                <CProgress
+                  value={strength.score}
+                  color={strength.color}
+                  height={6}
+                  className="mb-1 rounded"
+                />
                 <div className="small text-muted d-flex justify-content-between">
-                  <span>Password strength: <strong className={`text-${strength.color}`}>{strength.label}</strong></span>
+                  <span>
+                    Password strength:{' '}
+                    <strong className={`text-${strength.color}`}>{strength.label}</strong>
+                  </span>
                 </div>
               </div>
             )}
@@ -319,13 +408,23 @@ export const RegisterForm = () => {
                 <CFormInput
                   style={styles.input}
                   type="password"
-                  placeholder={t('auth.register.confirmPasswordPlaceholder', { defaultValue: 'Repeat password' })}
+                  placeholder={t('auth.register.confirmPasswordPlaceholder', {
+                    defaultValue: 'Repeat password',
+                  })}
                   autoComplete="new-password"
                   disabled={loading}
                   {...register('confirmPassword', {
-                    required: !isLoginMode && t('auth.register.confirmPasswordRequired', { defaultValue: 'Please repeat your password.' }),
+                    required:
+                      !isLoginMode &&
+                      t('auth.register.confirmPasswordRequired', {
+                        defaultValue: 'Please repeat your password.',
+                      }),
                     validate: (value, formValues) =>
-                      isLoginMode || value === formValues.password || t('auth.register.passwordsMustMatch', { defaultValue: 'Passwords do not match.' }),
+                      isLoginMode ||
+                      value === formValues.password ||
+                      t('auth.register.passwordsMustMatch', {
+                        defaultValue: 'Passwords do not match.',
+                      }),
                   })}
                 />
               </CInputGroup>
@@ -365,11 +464,20 @@ export const RegisterForm = () => {
               <CCol xs={12} sm={6} className="d-flex justify-content-center">
                 <div style={{ width: '100%', maxWidth: '210px' }}>
                   <GoogleLogin
-                    onSuccess={credentialResponse => {
-                      loginGoogle(credentialResponse.credential);
+                    onSuccess={async (credentialResponse) => {
+                      const res = await loginGoogle(credentialResponse.credential)
+                      if (res.isNewUser) {
+                        navigate('/register', {
+                          state: {
+                            email: res.googleData.email,
+                            name: res.googleData.name,
+                            isGoogleSso: true,
+                          },
+                        })
+                      }
                     }}
                     onError={() => {
-                      console.error('Google Sign-In failed');
+                      console.error('Google Sign-In failed')
                     }}
                     type="standard"
                     theme="outline"
@@ -381,7 +489,7 @@ export const RegisterForm = () => {
                 </div>
               </CCol>
               <CCol xs={12} sm={6} className="d-flex justify-content-center">
-                <CButton 
+                <CButton
                   onClick={handleMicrosoftLogin}
                   style={styles.msButton}
                   disabled={loading}
@@ -404,8 +512,8 @@ export const RegisterForm = () => {
         </div>
       </CCardBody>
     </CCard>
-  );
-};
+  )
+}
 
 const styles = {
   card: {
@@ -518,6 +626,6 @@ const styles = {
     marginRight: '8px',
     fontSize: '16px',
   },
-};
+}
 
-export default RegisterForm;
+export default RegisterForm

@@ -1,43 +1,55 @@
-import React, { memo } from 'react';
+import React, { memo } from 'react'
 
 const WeekRenderer = memo(({ currentDate, events = [], onEventClick }) => {
   // Generate 7 days starting from Sunday
-  const startOfWeek = new Date(currentDate);
-  startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
-  
-  const days = [];
+  const startOfWeek = new Date(currentDate)
+  startOfWeek.setDate(currentDate.getDate() - currentDate.getDay())
+
+  const days = []
   for (let i = 0; i < 7; i++) {
-    const d = new Date(startOfWeek);
-    d.setDate(startOfWeek.getDate() + i);
-    days.push(d);
+    const d = new Date(startOfWeek)
+    d.setDate(startOfWeek.getDate() + i)
+    days.push(d)
   }
 
-  const hours = Array.from({ length: 24 }, (_, i) => i);
-  const hourHeight = 60; // 60px per hour
+  const hours = Array.from({ length: 24 }, (_, i) => i)
+  const hourHeight = 60 // 60px per hour
 
   const getEventsForDay = (dateObj) => {
-    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-    return events.filter(e => e.date === dateStr);
-  };
+    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`
+    return events.filter((e) => e.date === dateStr)
+  }
 
   const parseTime = (timeStr) => {
-    if (!timeStr) return 0;
-    const [h, m] = timeStr.split(':').map(Number);
-    return h + m / 60;
-  };
+    if (!timeStr) return 0
+    const [h, m] = timeStr.split(':').map(Number)
+    return h + m / 60
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'confirmed': case 'approved': return { bg: '#ECFCCB', border: '#84CC16', text: '#3F6212' };
-      case 'pending': return { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' };
-      case 'checked-in': case 'entered': return { bg: '#DBEAFE', border: '#3B82F6', text: '#1E3A8A' };
-      case 'completed': return { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151' };
-      case 'cancelled': case 'rejected': return { bg: '#FEE2E2', border: '#EF4444', text: '#991B1B' };
-      case 'in_progress': case 'maintenance': return { bg: '#FFEDD5', border: '#F97316', text: '#9A3412' };
-      case 'open': return { bg: '#F8FAFC', border: '#CBD5E1', text: '#475569' };
-      default: return { bg: '#F1F5F9', border: '#CBD5E1', text: '#334155' };
+      case 'confirmed':
+      case 'approved':
+        return { bg: '#ECFCCB', border: '#84CC16', text: '#3F6212' }
+      case 'pending':
+        return { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' }
+      case 'checked-in':
+      case 'entered':
+        return { bg: '#DBEAFE', border: '#3B82F6', text: '#1E3A8A' }
+      case 'completed':
+        return { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151' }
+      case 'cancelled':
+      case 'rejected':
+        return { bg: '#FEE2E2', border: '#EF4444', text: '#991B1B' }
+      case 'in_progress':
+      case 'maintenance':
+        return { bg: '#FFEDD5', border: '#F97316', text: '#9A3412' }
+      case 'open':
+        return { bg: '#F8FAFC', border: '#CBD5E1', text: '#475569' }
+      default:
+        return { bg: '#F1F5F9', border: '#CBD5E1', text: '#334155' }
     }
-  };
+  }
 
   return (
     <div className="rcv-week-grid-container">
@@ -45,43 +57,45 @@ const WeekRenderer = memo(({ currentDate, events = [], onEventClick }) => {
       <div className="rcv-week-header">
         <div className="rcv-time-col-header"></div>
         {days.map((d, i) => {
-          const isToday = d.toDateString() === new Date().toDateString();
+          const isToday = d.toDateString() === new Date().toDateString()
           return (
             <div key={i} className={`rcv-day-col-header ${isToday ? 'is-today' : ''}`}>
-              <div className="rcv-day-name">{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+              <div className="rcv-day-name">
+                {d.toLocaleDateString('en-US', { weekday: 'short' })}
+              </div>
               <div className="rcv-day-date">{d.getDate()}</div>
             </div>
-          );
+          )
         })}
       </div>
-      
+
       {/* Body */}
       <div className="rcv-week-body">
         <div className="rcv-time-col">
-          {hours.map(h => (
+          {hours.map((h) => (
             <div key={h} className="rcv-time-slot">
               {h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}
             </div>
           ))}
         </div>
-        
+
         <div className="rcv-days-wrapper">
           {days.map((d, i) => {
-            const dayEvents = getEventsForDay(d);
+            const dayEvents = getEventsForDay(d)
             return (
               <div key={i} className="rcv-day-col">
-                {hours.map(h => (
+                {hours.map((h) => (
                   <div key={h} className="rcv-grid-cell"></div>
                 ))}
-                
+
                 {/* Render Events Absolute */}
-                {dayEvents.map(evt => {
-                  const startH = parseTime(evt.start);
-                  const endH = parseTime(evt.end);
-                  const dur = Math.max(endH - startH, 0.5); // min 30 min height
-                  const top = startH * hourHeight;
-                  const height = dur * hourHeight;
-                  const colors = getStatusColor(evt.colorKey || evt.status);
+                {dayEvents.map((evt) => {
+                  const startH = parseTime(evt.start)
+                  const endH = parseTime(evt.end)
+                  const dur = Math.max(endH - startH, 0.5) // min 30 min height
+                  const top = startH * hourHeight
+                  const height = dur * hourHeight
+                  const colors = getStatusColor(evt.colorKey || evt.status)
 
                   return (
                     <div
@@ -92,18 +106,20 @@ const WeekRenderer = memo(({ currentDate, events = [], onEventClick }) => {
                         height: `${height}px`,
                         backgroundColor: colors.bg,
                         borderColor: colors.border,
-                        color: colors.text
+                        color: colors.text,
                       }}
                       onClick={() => onEventClick && onEventClick(evt)}
                     >
                       <div className="rcv-event-title">{evt.title}</div>
-                      <div className="rcv-event-time">{evt.start} - {evt.end}</div>
+                      <div className="rcv-event-time">
+                        {evt.start} - {evt.end}
+                      </div>
                       {evt.subtitle && <div className="rcv-event-subtitle">{evt.subtitle}</div>}
                     </div>
-                  );
+                  )
                 })}
               </div>
-            );
+            )
           })}
         </div>
       </div>
@@ -237,7 +253,7 @@ const WeekRenderer = memo(({ currentDate, events = [], onEventClick }) => {
         }
       `}</style>
     </div>
-  );
-});
+  )
+})
 
-export default WeekRenderer;
+export default WeekRenderer

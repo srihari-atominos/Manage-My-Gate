@@ -12,19 +12,19 @@ export const inviteUserRules = [
     .withMessage('Please provide a valid email address')
     .trim(),
   body('villaId')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .custom((val) => {
       if (val === '' || val === null) return true;
       return mongoose.Types.ObjectId.isValid(val);
     })
     .withMessage('Villa ID must be a valid Mongo ID'),
   body('residentType')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isString()
     .withMessage('Resident type must be a string')
     .trim(),
   body('roleName')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isString()
     .withMessage('Role name must be a string')
     .trim(),
@@ -42,6 +42,10 @@ export const updateUserRolesRules = [
     .withMessage('roles field is required')
     .isArray()
     .withMessage('roles must be an array'),
+  body('villaId')
+    .optional({ nullable: true })
+    .isMongoId()
+    .withMessage('Invalid Villa ID format'),
 ];
 
 /**

@@ -477,6 +477,134 @@ export class AmenityBookingService {
     }
   }
 
+  async cancelBookingAndRefund(bookingId, userId) {
+    const mongoose = (await import('mongoose')).default;
+    let session = await mongoose.startSession();
+    
+    let bookingToRefund = null;
+    let refundAmountPaise = 0;
+    let refundPercentage = 100;
+    let newPaymentStatus = 'pending';
+
+    try {
+      // --- TRANSACTION 1: Lock the Booking & Calculate Refund ---
+      session.startTransaction();
+      
+      const booking = await amenityBookingRepository.findById(bookingId).session(session);
+      if (!booking) throw new HttpError(404, 'Booking not found');
+      
+      if (booking.userId.toString() !== userId.toString()) {
+        throw new HttpError(403, 'Unauthorized: You can only cancel your own bookings.');
+      }
+      
+      if (['rejected', 'cancelled', 'completed'].includes(booking.status)) {
+        throw new HttpError(400, 'Booking cannot be cancelled in its current state.');
+      }
+
+      const amenityService = (await import('../amenity/amenity.services.js')).default;
+      const amenity = await amenityService.getAmenityById(booking.amenityId, booking.orgId, session);
+      
+      // FIX GAP 2: Convert base amount to smallest integer unit (paise) FIRST
+      const totalAmountRupees = booking.pricingDetails?.totalAmount || booking.totalPrice || 0;
+      const totalAmountPaise = Math.round(totalAmountRupees * 100);
+
+      if (amenity?.bookingRules?.isCancellationEnabled && amenity.bookingRules.cancellationRefundRules?.length > 0) {
+        const rules = [...amenity.bookingRules.cancellationRefundRules].sort((a, b) => b.cancelBeforeHours - a.cancelBeforeHours);
+        const moment = (await import('moment-timezone')).default;
+        const TIMEZONE = 'Asia/Kolkata';
+        const bookingStartDateTime = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
+        const remainingHours = moment.duration(bookingStartDateTime.diff(moment().tz(TIMEZONE))).asHours();
+
+        const applicableRule = rules.find(rule => remainingHours >= rule.cancelBeforeHours);
+        refundPercentage = applicableRule ? applicableRule.refundPercentage : 0;
+      }
+      
+      // Integer multiplication and division prevents microscopic floating-point errors
+      refundAmountPaise = Math.floor((totalAmountPaise * refundPercentage) / 100);
+      const refundAmountRupees = refundAmountPaise / 100;
+
+      newPaymentStatus = booking.paymentStatus;
+      let requiresRazorpayCall = false;
+
+      if (booking.paymentStatus === 'captured' || booking.paymentStatus === 'success') {
+        if (refundAmountPaise > 0 && booking.razorpayTransactionId) {
+          requiresRazorpayCall = true;
+          newPaymentStatus = 'refund_pending'; // Mark as pending while we hit the network
+        } else if (refundAmountPaise === 0) {
+           newPaymentStatus = 'success'; // No refund due
+        }
+      }
+
+      const cancelUpdateData = {
+        status: 'cancelled',
+        paymentStatus: newPaymentStatus,
+        qrStatus: 'expired',
+        cancellationReason: 'Resident self-cancellation',
+        cancelledAt: new Date(),
+        cancelledBy: userId,
+        refundPercentage,
+        refundAmount: refundAmountRupees
+      };
+
+      bookingToRefund = await amenityBookingRepository.updateStatus(bookingId, booking.orgId, 'cancelled', cancelUpdateData, session);
+      
+      await session.commitTransaction();
+      session.endSession();
+
+      // --- TRANSACTION 1 END ---
+
+      // FIX GAP 1: Network Call Outside the Database Transaction
+      if (requiresRazorpayCall) {
+        try {
+          const Razorpay = (await import('razorpay')).default;
+          const razorpay = new Razorpay({
+            key_id: process.env.RAZORPAY_KEY_ID,
+            key_secret: process.env.RAZORPAY_KEY_SECRET
+          });
+
+          // Execute external API call without holding any DB locks
+          await razorpay.payments.refund(bookingToRefund.razorpayTransactionId, {
+            amount: refundAmountPaise,
+            notes: {
+              reason: 'Resident initiated cancellation',
+              bookingId: bookingId.toString()
+            }
+          });
+
+          // --- TRANSACTION 2: Mark as Success ---
+          session = await mongoose.startSession();
+          session.startTransaction();
+          bookingToRefund.paymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
+          await bookingToRefund.save({ session });
+          await session.commitTransaction();
+          session.endSession();
+
+        } catch (networkError) {
+          // --- TRANSACTION 2 (Fallback): Mark as Failed ---
+          console.error('Razorpay Refund Network Failure:', networkError);
+          session = await mongoose.startSession();
+          session.startTransaction();
+          bookingToRefund.paymentStatus = 'refund_failed';
+          await bookingToRefund.save({ session });
+          await session.commitTransaction();
+          session.endSession();
+          
+          throw new HttpError(502, 'Payment gateway error during refund. Please contact support.');
+        }
+      }
+
+      amenityBookingEventEmitter.emit(AMENITY_BOOKING_CANCELLED, bookingToRefund);
+      return bookingToRefund;
+      
+    } catch (error) {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      session.endSession();
+      throw error;
+    }
+  }
+
   async hasPendingOrApprovedFutureBookings(amenityId, orgId) {
     const active = await amenityBookingRepository.findActiveBookingsByAmenity(amenityId, orgId);
     return active.length > 0;

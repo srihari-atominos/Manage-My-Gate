@@ -6,8 +6,8 @@ import ResidentDashboard from './components/ResidentDashboard'
 import GuardDashboard from './components/GuardDashboard'
 
 const Dashboard = () => {
-  const activeRole = useSelector((state) => state.workspace?.activeRole);
-  const { groups, appName } = useDashboard();
+  const activeRole = useSelector((state) => state.workspace?.activeRole)
+  const { groups, appName } = useDashboard()
 
   return (
     <div className="portal-hub">
@@ -144,7 +144,9 @@ const Dashboard = () => {
       `}</style>
 
       {/* Dynamic Dashboard Selector based on Role */}
-      {activeRole === 'Resident Owner' || activeRole === 'Resident Tenant' || activeRole === 'Family Member' ? (
+      {activeRole === 'Resident Owner' ||
+      activeRole === 'Resident Tenant' ||
+      activeRole === 'Family Member' ? (
         <ResidentDashboard />
       ) : activeRole === 'Security Guard' ? (
         <GuardDashboard />

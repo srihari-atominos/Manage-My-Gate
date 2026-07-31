@@ -7,6 +7,7 @@ import notificationRouter from '../features/notification/notification.router.js'
 import integrationHubRouter from '../features/integrationHub/integrationHub.router.js';
 import organizationRouter from '../features/organization/organization.router.js';
 import auditLogRouter from '../features/auditLog/auditLog.router.js';
+import workspaceRouter from '../features/workspace/workspace.router.js';
 
 import messageTemplateRouter from '../features/messageTemplate/messageTemplate.router.js';
 import villaRouter from '../features/villa/villa.router.js';
@@ -22,6 +23,7 @@ import visitorPassRouter from '../features/visitorPass/visitorPass.router.js';
 import visitorLogRouter from '../features/visitorLog/visitorLog.router.js';
 import blacklistRouter from '../features/blacklist/blacklist.router.js';
 import noticeBoardRouter from '../features/noticeBoard/noticeBoard.routes.js';
+import pollRouter from '../features/poll/poll.router.js';
 import assessmentRouter from '../features/assessment/assessment.routes.js';
 import invoiceRouter from '../features/invoice/invoice.routes.js';
 
@@ -43,7 +45,9 @@ router.use('/notifications', notificationRouter);
 router.use('/integrations', integrationHubRouter);
 router.use('/organizations', organizationRouter);
 router.use('/audit-logs', auditLogRouter);
+router.use('/workspaces', workspaceRouter);
 router.use('/notices', noticeBoardRouter);
+router.use('/polls', pollRouter);
 router.use('/assessments', assessmentRouter);
 router.use('/invoices', invoiceRouter);
 router.use('/dashboard-feed', dashboardFeedRouter);

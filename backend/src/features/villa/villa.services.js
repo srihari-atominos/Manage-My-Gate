@@ -133,15 +133,34 @@ export class VillaService {
 
       // 2. If residentId is provided, verify they belong to this organization
       if (residentId) {
-        const membership = await OrgMembership.findOne({ userId: residentId, orgId }).session(session);
+        let membership = await OrgMembership.findOne({ userId: residentId, orgId, villaId: villa._id }).session(session);
         if (!membership) {
-          throw new HttpError(400, `User with ID ${residentId} is not a member of this organization.`);
-        }
-
-        // Link membership to this unit
-        membership.villaId = villa._id;
-        if (membership.residentType === 'None') {
-          membership.residentType = 'Owner';
+          const emptyMembership = await OrgMembership.findOne({ userId: residentId, orgId, $or: [{ villaId: null }, { villaId: { $exists: false } }] }).session(session);
+          if (emptyMembership) {
+            membership = emptyMembership;
+            membership.villaId = villa._id;
+            if (membership.residentType === 'None') {
+              membership.residentType = 'Owner';
+            }
+          } else {
+            const baseMembership = await OrgMembership.findOne({ userId: residentId, orgId }).session(session);
+            if (!baseMembership) {
+              throw new HttpError(400, `User with ID ${residentId} is not a member of this organization.`);
+            }
+            membership = new OrgMembership({
+              userId: residentId,
+              orgId,
+              villaId: villa._id,
+              residentType: 'Owner',
+              status: 'Active',
+              roleId: baseMembership.roleId,
+              roleIds: baseMembership.roleIds || [],
+            });
+          }
+        } else {
+          if (membership.residentType === 'None') {
+            membership.residentType = 'Owner';
+          }
         }
         await membership.save({ session });
       }
@@ -195,17 +214,20 @@ export class VillaService {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info(`getVillaDetailsWithResidents request received`, { id, orgId, correlationId });
 
-    const villa = await Villa.findOne({ _id: id, orgId }).populate('residents.userId').session(session);
+    const villa = await Villa.findOne({ _id: id, orgId }).session(session);
     if (!villa) {
       throw new HttpError(404, `Unit with ID ${id} not found.`);
     }
 
-    const mappedResidents = (villa.residents || []).map(r => ({
-      id: r.userId?._id?.toString() || r.userId?.toString(),
-      name: r.userId?.name || r.userId?.username || '',
-      email: r.userId?.email || '',
+    const originalUserIds = (villa.residents || []).map(r => r.userId?.toString());
+    await villa.populate('residents.userId');
+
+    const mappedResidents = (villa.residents || []).map((r, i) => ({
+      id: r.userId?._id?.toString() || originalUserIds[i],
+      name: r.userId?.name || r.userId?.username || 'Deleted User',
+      email: r.userId?.email || 'deleted@user.com',
       phone: r.userId?.phone || '',
-      status: r.userId?.status || 'Pending',
+      status: r.userId?.status || 'Unknown',
       residentType: r.residencyType,
       joinedAt: r.assignedAt
     }));
@@ -297,7 +319,7 @@ export class VillaService {
     const userService = (await import('../user/user.services.js')).default;
 
     for (const item of villasArray) {
-      const { unitNumber, blockOrBuilding = '', type = 'Apartment', status = 'Vacant', floorAreaSqFt = null, email, residentType = 'None', roleName } = item;
+      const { unitNumber, blockOrBuilding = '', type = 'Apartment', status = 'Vacant', floorAreaSqFt = null, email, residentType = 'None', roleName, phone = '' } = item;
       const trimmedNumber = unitNumber ? unitNumber.trim() : '';
       const trimmedEmail = email ? email.trim().toLowerCase() : '';
 
@@ -338,14 +360,19 @@ export class VillaService {
 
         if (trimmedEmail) {
           try {
-            if (!['Owner', 'Tenant', 'Family'].includes(residentType)) {
+            if (!['Owner', 'Tenant', 'Family', 'Family Member', 'Resident Owner'].includes(residentType)) {
               throw new Error(`Invalid resident type '${residentType}' for user invitation.`);
             }
-            if (!roleName) {
-              throw new Error('Role name is required to invite user.');
+            
+            let finalRoleName = roleName;
+            if (!finalRoleName) {
+              if (residentType.includes('Owner')) finalRoleName = 'Resident Owner';
+              else if (residentType.includes('Tenant')) finalRoleName = 'Resident Tenant';
+              else if (residentType.includes('Family')) finalRoleName = 'Family Member';
+              else throw new Error('Role name is required to invite user.');
             }
 
-            await userService.inviteUser(trimmedEmail, orgId, villa._id, residentType, roleName);
+            await userService.inviteUser(trimmedEmail, orgId, villa._id, residentType, finalRoleName, phone);
             userInvited = true;
           } catch (err) {
             inviteError = err.message || 'User invitation failed';
@@ -396,8 +423,8 @@ export class VillaService {
       }
 
       // 2. Verify the user is a member of the organization
-      const membership = await OrgMembership.findOne({ userId, orgId }).session(session);
-      if (!membership) {
+      const hasMembership = await OrgMembership.exists({ userId, orgId }).session(session);
+      if (!hasMembership) {
         throw new HttpError(400, `User with ID ${userId} is not a member of this organization.`);
       }
 
@@ -429,7 +456,7 @@ export class VillaService {
         { $set: { villaId: villa._id, residencyType } }
       ).session(session);
 
-      // 4. Update OrgMembership
+      // 4. Update or Create OrgMembership
       const mappedResidentType = (type) => {
         switch (type) {
           case 'Resident Owner':
@@ -444,8 +471,31 @@ export class VillaService {
             return 'Guest';
         }
       };
-      membership.villaId = villa._id;
-      membership.residentType = mappedResidentType(residencyType);
+
+      let membership = await OrgMembership.findOne({ userId, orgId, villaId: villa._id }).session(session);
+      if (!membership) {
+        // Look for an unassigned membership to reuse
+        const emptyMembership = await OrgMembership.findOne({ userId, orgId, $or: [{ villaId: null }, { villaId: { $exists: false } }] }).session(session);
+        if (emptyMembership) {
+          membership = emptyMembership;
+          membership.villaId = villa._id;
+          membership.residentType = mappedResidentType(residencyType);
+        } else {
+          // Clone details from base membership to preserve roles/status
+          const baseMembership = await OrgMembership.findOne({ userId, orgId }).session(session);
+          membership = new OrgMembership({
+            userId,
+            orgId,
+            villaId: villa._id,
+            residentType: mappedResidentType(residencyType),
+            status: 'Active',
+            roleId: baseMembership?.roleId,
+            roleIds: baseMembership?.roleIds || [],
+          });
+        }
+      } else {
+        membership.residentType = mappedResidentType(residencyType);
+      }
 
       // Sync user role in membership to the selected tenant role
       const roleService = (await import('../role/role.services.js')).default;
@@ -529,7 +579,7 @@ export class VillaService {
       }
 
       await OrgMembership.updateOne(
-        { userId, orgId },
+        { userId, orgId, villaId },
         { $set: updateFields }
       ).session(session);
 
@@ -581,17 +631,60 @@ export class VillaService {
 
       await villa.save({ session });
 
-      // 3. Clear User profile fields
-      await User.updateOne(
-        { _id: userId },
-        { $set: { villaId: null, residencyType: 'None', roleId: null, roleIds: [] } }
-      ).session(session);
+      // 3. Update OrgMembership
+      const otherMembershipsCount = await OrgMembership.countDocuments({
+        userId,
+        orgId,
+        villaId: { $nin: [villaId, null] }
+      }).session(session);
 
-      // 4. Clear OrgMembership fields
-      await OrgMembership.updateOne(
-        { userId, orgId },
-        { $set: { villaId: null, residentType: 'None', roleId: null, roleIds: [] } }
-      ).session(session);
+      let remainingMembership = null;
+      if (otherMembershipsCount > 0) {
+        // Safe to delete the membership document for this specific unit
+        await OrgMembership.deleteOne({ userId, orgId, villaId }).session(session);
+        
+        // Find one of the remaining memberships to sync the user profile with
+        remainingMembership = await OrgMembership.findOne({
+          userId,
+          orgId,
+          villaId: { $nin: [villaId, null] }
+        }).session(session);
+      } else {
+        // This was the only unit, clear it instead of deleting membership to keep user in the organization
+        await OrgMembership.updateOne(
+          { userId, orgId, villaId },
+          { $set: { villaId: null, residentType: 'None', roleId: null, roleIds: [], units: [] } }
+        ).session(session);
+      }
+
+      // 4. Sync User Profile fields
+      if (remainingMembership) {
+        const getResidencyTypeFromMemberType = (type) => {
+          switch (type) {
+            case 'Owner': return 'Resident Owner';
+            case 'Tenant': return 'Tenant';
+            case 'Family': return 'Family Member';
+            default: return 'None';
+          }
+        };
+        await User.updateOne(
+          { _id: userId },
+          {
+            $set: {
+              villaId: remainingMembership.villaId || null,
+              residencyType: getResidencyTypeFromMemberType(remainingMembership.residentType),
+              roleId: remainingMembership.roleId || null,
+              roleIds: remainingMembership.roleIds || []
+            }
+          }
+        ).session(session);
+      } else {
+        // No remaining unit memberships in this organization
+        await User.updateOne(
+          { _id: userId },
+          { $set: { villaId: null, residencyType: 'None', roleId: null, roleIds: [] } }
+        ).session(session);
+      }
 
       await session.commitTransaction();
       logger.info(`Successfully removed resident from unit`, { villaId, userId, correlationId });
@@ -672,9 +765,17 @@ export class VillaService {
         villa.residents.push({
           userId,
           residencyType,
-          isPrimary: false,
+          isPrimary: !villa.primaryResidentId,
           assignedAt: new Date()
         });
+      }
+
+      // Update primary and owner IDs if they are empty
+      if (!villa.primaryResidentId) {
+        villa.primaryResidentId = userId;
+      }
+      if (!villa.ownerId && residencyType.includes('Owner')) {
+        villa.ownerId = userId;
       }
 
       // Update occupancy status

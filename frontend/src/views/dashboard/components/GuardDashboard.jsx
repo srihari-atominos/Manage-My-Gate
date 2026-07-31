@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 import {
   CRow,
   CCol,
@@ -22,63 +22,88 @@ import {
   CModalFooter,
   CForm,
   CFormLabel,
-  CFormSelect
-} from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilShieldAlt, cilSearch, cilPhone, cilPlus, cilCheckCircle } from '@coreui/icons';
-import apiClient from '../../../services/apiClient';
-import toast from 'react-hot-toast';
+  CFormSelect,
+} from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilShieldAlt, cilSearch, cilPhone, cilPlus, cilCheckCircle } from '@coreui/icons'
+import apiClient from '../../../services/apiClient'
+import toast from 'react-hot-toast'
 
 export const GuardDashboard = () => {
-  const [search, setSearch] = useState('');
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('')
+  const [results, setResults] = useState([])
+  const [loading, setLoading] = useState(false)
   const [visitorLogs, setVisitorLogs] = useState([
-    { id: 1, name: 'David Miller', phone: '+966 50 123 4567', villa: 'Villa 04', type: 'Delivery', checkIn: '3:45 PM', status: 'Checked In' },
-    { id: 2, name: 'Sarah Connor', phone: '+966 55 987 6543', villa: 'Villa 12', type: 'Guest', checkIn: '2:15 PM', status: 'Checked Out' },
-    { id: 3, name: 'FedEx Courier', phone: '—', villa: 'Villa 21', type: 'Delivery', checkIn: '1:05 PM', status: 'Checked Out' },
-  ]);
+    {
+      id: 1,
+      name: 'David Miller',
+      phone: '+966 50 123 4567',
+      villa: 'Villa 04',
+      type: 'Delivery',
+      checkIn: '3:45 PM',
+      status: 'Checked In',
+    },
+    {
+      id: 2,
+      name: 'Sarah Connor',
+      phone: '+966 55 987 6543',
+      villa: 'Villa 12',
+      type: 'Guest',
+      checkIn: '2:15 PM',
+      status: 'Checked Out',
+    },
+    {
+      id: 3,
+      name: 'FedEx Courier',
+      phone: '—',
+      villa: 'Villa 21',
+      type: 'Delivery',
+      checkIn: '1:05 PM',
+      status: 'Checked Out',
+    },
+  ])
 
   // Check-In modal state
-  const [modalVisible, setModalVisible] = useState(false);
-  const [visitorName, setVisitorName] = useState('');
-  const [visitorPhone, setVisitorPhone] = useState('');
-  const [visitorType, setVisitorType] = useState('Delivery');
-  const [targetVillaNumber, setTargetVillaNumber] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false)
+  const [visitorName, setVisitorName] = useState('')
+  const [visitorPhone, setVisitorPhone] = useState('')
+  const [visitorType, setVisitorType] = useState('Delivery')
+  const [targetVillaNumber, setTargetVillaNumber] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   // Load directory on search query change
   useEffect(() => {
     const delayDebounce = setTimeout(() => {
-      setLoading(true);
-      apiClient.get(`/villas?search=${search}&limit=5`)
-        .then(res => {
-          setResults(res.data?.data || []);
+      setLoading(true)
+      apiClient
+        .get(`/villas?search=${search}&limit=5`)
+        .then((res) => {
+          setResults(res.data?.data || [])
         })
-        .catch(err => {
-          console.error('Failed to load guard directory:', err);
+        .catch((err) => {
+          console.error('Failed to load guard directory:', err)
         })
         .finally(() => {
-          setLoading(false);
-        });
-    }, 300);
+          setLoading(false)
+        })
+    }, 300)
 
-    return () => clearTimeout(delayDebounce);
-  }, [search]);
+    return () => clearTimeout(delayDebounce)
+  }, [search])
 
   const handleDialIntercom = (villa) => {
     if (villa.intercom) {
-      toast.success(`📞 Dialing Intercom ${villa.intercom} for ${villa.villaNumber}...`);
+      toast.success(`📞 Dialing Intercom ${villa.intercom} for ${villa.villaNumber}...`)
     } else {
-      toast.error(`No intercom configured for ${villa.villaNumber}`);
+      toast.error(`No intercom configured for ${villa.villaNumber}`)
     }
-  };
+  }
 
   const handleCheckInSubmit = (e) => {
-    e.preventDefault();
-    if (!visitorName.trim() || !targetVillaNumber.trim()) return;
+    e.preventDefault()
+    if (!visitorName.trim() || !targetVillaNumber.trim()) return
 
-    setSubmitting(true);
+    setSubmitting(true)
     setTimeout(() => {
       const newLog = {
         id: Date.now(),
@@ -87,31 +112,29 @@ export const GuardDashboard = () => {
         villa: targetVillaNumber.trim(),
         type: visitorType,
         checkIn: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: 'Checked In'
-      };
+        status: 'Checked In',
+      }
 
-      setVisitorLogs(prev => [newLog, ...prev]);
-      setVisitorName('');
-      setVisitorPhone('');
-      setTargetVillaNumber('');
-      setModalVisible(false);
-      setSubmitting(false);
-      toast.success(`Checked in ${newLog.name} successfully!`);
-    }, 500);
-  };
+      setVisitorLogs((prev) => [newLog, ...prev])
+      setVisitorName('')
+      setVisitorPhone('')
+      setTargetVillaNumber('')
+      setModalVisible(false)
+      setSubmitting(false)
+      toast.success(`Checked in ${newLog.name} successfully!`)
+    }, 500)
+  }
 
   const handleCheckOut = (logId) => {
-    setVisitorLogs(prev => prev.map(log => 
-      log.id === logId ? { ...log, status: 'Checked Out' } : log
-    ));
-    toast.success('Visitor checked out successfully.');
-  };
+    setVisitorLogs((prev) =>
+      prev.map((log) => (log.id === logId ? { ...log, status: 'Checked Out' } : log)),
+    )
+    toast.success('Visitor checked out successfully.')
+  }
 
   return (
     <div className="guard-portal-dashboard">
-      <h1 className="portal-main-title text-start mb-4">
-        Gatehouse Portal — Guard Console
-      </h1>
+      <h1 className="portal-main-title text-start mb-4">Gatehouse Portal — Guard Console</h1>
 
       <CRow className="g-4">
         {/* Left Column: Quick Lookup */}
@@ -142,11 +165,15 @@ export const GuardDashboard = () => {
               ) : (
                 <div className="d-flex flex-column gap-3">
                   {results.map((villa) => (
-                    <div key={villa._id} className="d-flex align-items-center justify-content-between p-3 border rounded-3 bg-body-secondary-subtle">
+                    <div
+                      key={villa._id}
+                      className="d-flex align-items-center justify-content-between p-3 border rounded-3 bg-body-secondary-subtle"
+                    >
                       <div>
                         <div className="fw-bold text-primary">{villa.villaNumber}</div>
                         <div className="text-muted small">
-                          Block: <span className="fw-semibold">{villa.block || '—'}</span> | Occupancy: <span className="fw-semibold">{villa.occupancyStatus}</span>
+                          Block: <span className="fw-semibold">{villa.block || '—'}</span> |
+                          Occupancy: <span className="fw-semibold">{villa.occupancyStatus}</span>
                         </div>
                       </div>
                       <div className="d-flex align-items-center gap-2">
@@ -209,9 +236,13 @@ export const GuardDashboard = () => {
                       <CTableRow key={log.id}>
                         <CTableDataCell>
                           <div className="fw-semibold">{log.name}</div>
-                          <div className="text-muted" style={{ fontSize: '0.72rem' }}>{log.type} | {log.phone}</div>
+                          <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                            {log.type} | {log.phone}
+                          </div>
                         </CTableDataCell>
-                        <CTableDataCell className="fw-semibold text-primary">{log.villa}</CTableDataCell>
+                        <CTableDataCell className="fw-semibold text-primary">
+                          {log.villa}
+                        </CTableDataCell>
                         <CTableDataCell>{log.checkIn}</CTableDataCell>
                         <CTableDataCell>
                           <CBadge color={log.status === 'Checked In' ? 'success' : 'secondary'}>
@@ -243,11 +274,7 @@ export const GuardDashboard = () => {
       </CRow>
 
       {/* Visitor Check-In Modal */}
-      <CModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        alignment="center"
-      >
+      <CModal visible={modalVisible} onClose={() => setModalVisible(false)} alignment="center">
         <CModalHeader>
           <CModalTitle style={{ fontSize: '1.1rem', fontWeight: 700 }}>
             Visitor Check-In Log
@@ -256,7 +283,9 @@ export const GuardDashboard = () => {
         <CForm onSubmit={handleCheckInSubmit}>
           <CModalBody>
             <div className="mb-3">
-              <CFormLabel htmlFor="visitor-name" className="small fw-semibold text-muted">VISITOR NAME</CFormLabel>
+              <CFormLabel htmlFor="visitor-name" className="small fw-semibold text-muted">
+                VISITOR NAME
+              </CFormLabel>
               <CFormInput
                 id="visitor-name"
                 type="text"
@@ -268,7 +297,9 @@ export const GuardDashboard = () => {
             </div>
 
             <div className="mb-3">
-              <CFormLabel htmlFor="visitor-phone" className="small fw-semibold text-muted">VISITOR PHONE (OPTIONAL)</CFormLabel>
+              <CFormLabel htmlFor="visitor-phone" className="small fw-semibold text-muted">
+                VISITOR PHONE (OPTIONAL)
+              </CFormLabel>
               <CFormInput
                 id="visitor-phone"
                 type="tel"
@@ -280,7 +311,9 @@ export const GuardDashboard = () => {
 
             <CRow className="mb-3">
               <CCol>
-                <CFormLabel htmlFor="visitor-type" className="small fw-semibold text-muted">VISIT PURPOSE</CFormLabel>
+                <CFormLabel htmlFor="visitor-type" className="small fw-semibold text-muted">
+                  VISIT PURPOSE
+                </CFormLabel>
                 <CFormSelect
                   id="visitor-type"
                   value={visitorType}
@@ -293,7 +326,9 @@ export const GuardDashboard = () => {
                 </CFormSelect>
               </CCol>
               <CCol>
-                <CFormLabel htmlFor="visitor-villa" className="small fw-semibold text-muted">DESTINATION VILLA</CFormLabel>
+                <CFormLabel htmlFor="visitor-villa" className="small fw-semibold text-muted">
+                  DESTINATION VILLA
+                </CFormLabel>
                 <CFormInput
                   id="visitor-villa"
                   type="text"
@@ -306,17 +341,28 @@ export const GuardDashboard = () => {
             </CRow>
           </CModalBody>
           <CModalFooter>
-            <CButton color="light" size="sm" onClick={() => setModalVisible(false)} disabled={submitting}>
+            <CButton
+              color="light"
+              size="sm"
+              onClick={() => setModalVisible(false)}
+              disabled={submitting}
+            >
               Cancel
             </CButton>
-            <CButton type="submit" color="primary" size="sm" disabled={submitting} className="fw-semibold">
+            <CButton
+              type="submit"
+              color="primary"
+              size="sm"
+              disabled={submitting}
+              className="fw-semibold"
+            >
               {submitting ? 'Checking In...' : 'Verify & Log Entry'}
             </CButton>
           </CModalFooter>
         </CForm>
       </CModal>
     </div>
-  );
-};
+  )
+}
 
-export default GuardDashboard;
+export default GuardDashboard

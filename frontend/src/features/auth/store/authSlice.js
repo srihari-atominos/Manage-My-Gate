@@ -9,10 +9,10 @@ export const loginUser = createAsyncThunk(
   async (credentials, { dispatch, rejectWithValue }) => {
     try {
       const response = await authService.login(credentials)
-      
+
       const user = response.data?.user
       const availableWorkspaces = response.data?.availableWorkspaces || []
-      
+
       if (user) {
         dispatch(
           setActiveWorkspace({
@@ -21,43 +21,53 @@ export const loginUser = createAsyncThunk(
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
             availableWorkspaces: availableWorkspaces,
-          })
+          }),
         )
       }
-      
+
       return response
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Login failed')
     }
-  }
+  },
 )
 
 export const loginWithGoogle = createAsyncThunk(
   'auth/loginWithGoogle',
-  async (token, { dispatch, rejectWithValue }) => {
+  async (payload, { dispatch, rejectWithValue }) => {
     try {
-      const response = await authService.loginWithGoogle(token)
-      
+      const response = await authService.loginWithGoogle(payload)
+
+      if (response.data?.isNewUser) {
+        return response
+      }
+
       const user = response.data?.user
+      const token = response.data?.token
       const availableWorkspaces = response.data?.availableWorkspaces || []
-      
+
       if (user) {
+        dispatch(updateTokenAndUser({ token, user }))
+        
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
             activeRole: user.role,
+            activeVillaId: user.villaId || null,
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
             availableWorkspaces: availableWorkspaces,
-          })
+          }),
         )
       }
-      
+
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Google login failed')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Google login failed',
+      )
     }
-  }
+  },
 )
 
 export const loginWithMicrosoft = createAsyncThunk(
@@ -65,10 +75,10 @@ export const loginWithMicrosoft = createAsyncThunk(
   async (token, { dispatch, rejectWithValue }) => {
     try {
       const response = await authService.loginWithMicrosoft(token)
-      
+
       const user = response.data?.user
       const availableWorkspaces = response.data?.availableWorkspaces || []
-      
+
       if (user) {
         dispatch(
           setActiveWorkspace({
@@ -77,15 +87,17 @@ export const loginWithMicrosoft = createAsyncThunk(
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
             availableWorkspaces: availableWorkspaces,
-          })
+          }),
         )
       }
-      
+
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Microsoft login failed')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Microsoft login failed',
+      )
     }
-  }
+  },
 )
 
 export const registerUser = createAsyncThunk(
@@ -93,10 +105,10 @@ export const registerUser = createAsyncThunk(
   async (userData, { dispatch, rejectWithValue }) => {
     try {
       const response = await authService.register(userData)
-      
+
       const user = response.data?.user
       const availableWorkspaces = response.data?.availableWorkspaces || []
-      
+
       if (user) {
         dispatch(
           setActiveWorkspace({
@@ -105,15 +117,17 @@ export const registerUser = createAsyncThunk(
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
             availableWorkspaces: availableWorkspaces,
-          })
+          }),
         )
       }
-      
+
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Registration failed')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Registration failed',
+      )
     }
-  }
+  },
 )
 
 export const updateProfile = createAsyncThunk(
@@ -127,9 +141,11 @@ export const updateProfile = createAsyncThunk(
       })
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Profile update failed')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Profile update failed',
+      )
     }
-  }
+  },
 )
 
 export const acceptInvitation = createAsyncThunk(
@@ -137,10 +153,10 @@ export const acceptInvitation = createAsyncThunk(
   async ({ token, password }, { dispatch, rejectWithValue }) => {
     try {
       const response = await authService.acceptInvite({ token, password })
-      
+
       const user = response.data?.user
       const availableWorkspaces = response.data?.availableWorkspaces || []
-      
+
       if (user) {
         dispatch(
           setActiveWorkspace({
@@ -149,14 +165,16 @@ export const acceptInvitation = createAsyncThunk(
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
             availableWorkspaces: availableWorkspaces,
-          })
+          }),
         )
       }
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to accept invitation')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to accept invitation',
+      )
     }
-  }
+  },
 )
 
 export const acceptSsoInvitation = createAsyncThunk(
@@ -164,10 +182,10 @@ export const acceptSsoInvitation = createAsyncThunk(
   async ({ inviteToken, ssoCredential, provider }, { dispatch, rejectWithValue }) => {
     try {
       const response = await authService.acceptSsoInvite({ inviteToken, ssoCredential, provider })
-      
+
       const user = response.data?.user
       const availableWorkspaces = response.data?.availableWorkspaces || []
-      
+
       if (user) {
         dispatch(
           setActiveWorkspace({
@@ -176,14 +194,16 @@ export const acceptSsoInvitation = createAsyncThunk(
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
             availableWorkspaces: availableWorkspaces,
-          })
+          }),
         )
       }
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to accept SSO invitation')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to accept SSO invitation',
+      )
     }
-  }
+  },
 )
 
 export const switchWorkspaceContext = createAsyncThunk(
@@ -191,31 +211,34 @@ export const switchWorkspaceContext = createAsyncThunk(
   async (arg, { dispatch, rejectWithValue }) => {
     try {
       const payload = typeof arg === 'string' ? { targetOrgId: arg } : arg
-      const response = await apiClient.post('/auth/switch-context', payload)
-      
+      const response = await authService.switchContext(payload)
+
       const token = response.data?.token
       const user = response.data?.user
       const availableWorkspaces = response.data?.availableWorkspaces || []
-      
+
       dispatch(updateTokenAndUser({ token, user }))
-      
+
       if (user) {
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
+            activeVillaId: user.villaId || null,
             activeRole: user.role,
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
             availableWorkspaces: availableWorkspaces,
-          })
+          }),
         )
       }
-      
+
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to switch workspace context')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to switch workspace context',
+      )
     }
-  }
+  },
 )
 
 export const createWorkspace = createAsyncThunk(
@@ -223,13 +246,13 @@ export const createWorkspace = createAsyncThunk(
   async (workspaceData, { dispatch, rejectWithValue }) => {
     try {
       const response = await authService.createWorkspace(workspaceData)
-      
+
       const token = response.data?.token
       const user = response.data?.user
       const availableWorkspaces = response.data?.availableWorkspaces || []
-      
+
       dispatch(updateTokenAndUser({ token, user }))
-      
+
       if (user) {
         dispatch(
           setActiveWorkspace({
@@ -238,15 +261,17 @@ export const createWorkspace = createAsyncThunk(
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
             availableWorkspaces: availableWorkspaces,
-          })
+          }),
         )
       }
-      
+
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to create workspace')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to create workspace',
+      )
     }
-  }
+  },
 )
 
 export const requestOtp = createAsyncThunk(
@@ -258,9 +283,11 @@ export const requestOtp = createAsyncThunk(
         : await authService.initiatePhoneLogin(identifier)
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to request OTP')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to request OTP',
+      )
     }
-  }
+  },
 )
 
 export const verifyOtpLogin = createAsyncThunk(
@@ -270,10 +297,10 @@ export const verifyOtpLogin = createAsyncThunk(
       const response = isEmail
         ? await authService.verifyEmailOtpLogin(identifier, code)
         : await authService.verifyPhoneLogin(identifier, code)
-      
+
       const user = response.data?.user
       const availableWorkspaces = response.data?.availableWorkspaces || []
-      
+
       if (user) {
         dispatch(
           setActiveWorkspace({
@@ -282,14 +309,16 @@ export const verifyOtpLogin = createAsyncThunk(
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
             availableWorkspaces: availableWorkspaces,
-          })
+          }),
         )
       }
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'OTP verification failed')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'OTP verification failed',
+      )
     }
-  }
+  },
 )
 
 export const requestPasswordReset = createAsyncThunk(
@@ -299,9 +328,11 @@ export const requestPasswordReset = createAsyncThunk(
       const response = await authService.forgotPassword(identifier)
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to request password reset')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to request password reset',
+      )
     }
-  }
+  },
 )
 
 export const verifyResetOtp = createAsyncThunk(
@@ -311,9 +342,11 @@ export const verifyResetOtp = createAsyncThunk(
       const response = await authService.verifyResetPasswordOtp(identifier, code)
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'OTP verification failed')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'OTP verification failed',
+      )
     }
-  }
+  },
 )
 
 export const resetPassword = createAsyncThunk(
@@ -323,9 +356,11 @@ export const resetPassword = createAsyncThunk(
       const response = await authService.resetPassword(identifier, code, newPassword)
       return response
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to reset password')
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to reset password',
+      )
     }
-  }
+  },
 )
 
 export const performLogout = createAsyncThunk(
@@ -339,11 +374,13 @@ export const performLogout = createAsyncThunk(
       dispatch(logout()) // still logout on frontend
       return rejectWithValue(error.response?.data?.message || error.message || 'Logout API failed')
     }
-  }
+  },
 )
 
 const tokenFromStorage = localStorage.getItem('token') || null
-const userFromStorage = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null
+const userFromStorage = localStorage.getItem('user')
+  ? JSON.parse(localStorage.getItem('user'))
+  : null
 
 const initialState = {
   isAuthenticated: !!(tokenFromStorage || userFromStorage),
@@ -377,14 +414,14 @@ const authSlice = createSlice({
       state.otpSent = false
     },
     updateTokenAndUser: (state, action) => {
-      const { token, user } = action.payload || {};
+      const { token, user } = action.payload || {}
       if (token) {
-        state.token = token;
-        localStorage.setItem('token', token);
+        state.token = token
+        localStorage.setItem('token', token)
       }
       if (user) {
-        state.user = user;
-        localStorage.setItem('user', JSON.stringify(user));
+        state.user = user
+        localStorage.setItem('user', JSON.stringify(user))
       }
     },
   },
@@ -402,7 +439,7 @@ const authSlice = createSlice({
         state.token = action.payload.data?.token
         state.user = action.payload.data?.user
         state.successMsg = action.payload.message || 'Login successful!'
-        
+
         if (action.payload.data?.token) {
           localStorage.setItem('token', action.payload.data.token)
         }
@@ -410,7 +447,10 @@ const authSlice = createSlice({
           localStorage.setItem('user', JSON.stringify(action.payload.data.user))
         }
         if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+          localStorage.setItem(
+            'availableWorkspaces',
+            JSON.stringify(action.payload.data.availableWorkspaces),
+          )
         }
       })
       .addCase(loginUser.rejected, (state, action) => {
@@ -425,11 +465,17 @@ const authSlice = createSlice({
       })
       .addCase(loginWithGoogle.fulfilled, (state, action) => {
         state.loading = false
+        
+        if (action.payload.data?.isNewUser) {
+          state.successMsg = action.payload.message || 'Google token verified'
+          return
+        }
+
         state.isAuthenticated = true
         state.token = action.payload.data?.token
         state.user = action.payload.data?.user
         state.successMsg = action.payload.message || 'Google login successful!'
-        
+
         if (action.payload.data?.token) {
           localStorage.setItem('token', action.payload.data.token)
         }
@@ -437,7 +483,10 @@ const authSlice = createSlice({
           localStorage.setItem('user', JSON.stringify(action.payload.data.user))
         }
         if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+          localStorage.setItem(
+            'availableWorkspaces',
+            JSON.stringify(action.payload.data.availableWorkspaces),
+          )
         }
       })
       .addCase(loginWithGoogle.rejected, (state, action) => {
@@ -456,7 +505,7 @@ const authSlice = createSlice({
         state.token = action.payload.data?.token
         state.user = action.payload.data?.user
         state.successMsg = action.payload.message || 'Microsoft login successful!'
-        
+
         if (action.payload.data?.token) {
           localStorage.setItem('token', action.payload.data.token)
         }
@@ -464,7 +513,10 @@ const authSlice = createSlice({
           localStorage.setItem('user', JSON.stringify(action.payload.data.user))
         }
         if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+          localStorage.setItem(
+            'availableWorkspaces',
+            JSON.stringify(action.payload.data.availableWorkspaces),
+          )
         }
       })
       .addCase(loginWithMicrosoft.rejected, (state, action) => {
@@ -483,7 +535,7 @@ const authSlice = createSlice({
         state.token = action.payload.data?.token
         state.user = action.payload.data?.user
         state.successMsg = action.payload.message || 'Registration successful!'
-        
+
         if (action.payload.data?.token) {
           localStorage.setItem('token', action.payload.data.token)
         }
@@ -491,7 +543,10 @@ const authSlice = createSlice({
           localStorage.setItem('user', JSON.stringify(action.payload.data.user))
         }
         if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+          localStorage.setItem(
+            'availableWorkspaces',
+            JSON.stringify(action.payload.data.availableWorkspaces),
+          )
         }
       })
       .addCase(registerUser.rejected, (state, action) => {
@@ -511,7 +566,7 @@ const authSlice = createSlice({
           ...action.payload.data,
         }
         state.successMsg = action.payload.message || 'Profile updated successfully!'
-        
+
         if (state.user) {
           localStorage.setItem('user', JSON.stringify(state.user))
         }
@@ -540,7 +595,10 @@ const authSlice = createSlice({
           localStorage.setItem('user', JSON.stringify(action.payload.data.user))
         }
         if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+          localStorage.setItem(
+            'availableWorkspaces',
+            JSON.stringify(action.payload.data.availableWorkspaces),
+          )
         }
       })
       .addCase(acceptInvitation.rejected, (state, action) => {
@@ -567,7 +625,10 @@ const authSlice = createSlice({
           localStorage.setItem('user', JSON.stringify(action.payload.data.user))
         }
         if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+          localStorage.setItem(
+            'availableWorkspaces',
+            JSON.stringify(action.payload.data.availableWorkspaces),
+          )
         }
       })
       .addCase(acceptSsoInvitation.rejected, (state, action) => {
@@ -585,7 +646,7 @@ const authSlice = createSlice({
         state.token = action.payload.data?.token || action.payload.token || state.token
         state.user = action.payload.data?.user || action.payload.user || state.user
         state.successMsg = action.payload.message || 'Switched workspace context successfully!'
-        
+
         if (state.token) {
           localStorage.setItem('token', state.token)
         }
@@ -593,7 +654,10 @@ const authSlice = createSlice({
           localStorage.setItem('user', JSON.stringify(state.user))
         }
         if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+          localStorage.setItem(
+            'availableWorkspaces',
+            JSON.stringify(action.payload.data.availableWorkspaces),
+          )
         }
       })
       .addCase(switchWorkspaceContext.rejected, (state, action) => {
@@ -611,7 +675,7 @@ const authSlice = createSlice({
         state.token = action.payload.data?.token
         state.user = action.payload.data?.user
         state.successMsg = action.payload.message || 'Workspace created successfully!'
-        
+
         if (action.payload.data?.token) {
           localStorage.setItem('token', action.payload.data.token)
         }
@@ -619,7 +683,10 @@ const authSlice = createSlice({
           localStorage.setItem('user', JSON.stringify(action.payload.data.user))
         }
         if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+          localStorage.setItem(
+            'availableWorkspaces',
+            JSON.stringify(action.payload.data.availableWorkspaces),
+          )
         }
       })
       .addCase(createWorkspace.rejected, (state, action) => {
@@ -654,7 +721,7 @@ const authSlice = createSlice({
         state.token = action.payload.data?.token
         state.user = action.payload.data?.user
         state.successMsg = action.payload.message || 'Login successful!'
-        
+
         if (action.payload.data?.token) {
           localStorage.setItem('token', action.payload.data.token)
         }
@@ -662,7 +729,10 @@ const authSlice = createSlice({
           localStorage.setItem('user', JSON.stringify(action.payload.data.user))
         }
         if (action.payload.data?.availableWorkspaces) {
-          localStorage.setItem('availableWorkspaces', JSON.stringify(action.payload.data.availableWorkspaces))
+          localStorage.setItem(
+            'availableWorkspaces',
+            JSON.stringify(action.payload.data.availableWorkspaces),
+          )
         }
       })
       .addCase(verifyOtpLogin.rejected, (state, action) => {

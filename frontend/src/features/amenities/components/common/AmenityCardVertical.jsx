@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'
 
 const AmenityCardVertical = ({ image, title, location, rate, rating, onClick }) => {
   return (
@@ -14,13 +14,18 @@ const AmenityCardVertical = ({ image, title, location, rate, rating, onClick }) 
           )}
         </div>
         <p>
-          <i className="fa-solid fa-location-dot" style={{ color: 'var(--primary)', marginRight: '6px' }}></i>
+          <i
+            className="fa-solid fa-location-dot"
+            style={{ color: 'var(--primary)', marginRight: '6px' }}
+          ></i>
           {location}
         </p>
         <div className="app-card-v-bottom">
           <span className="app-card-v-price">
             ₹{rate}
-            <span style={{ color: 'var(--text-muted)' }} className="fw-medium small">/hr</span>
+            <span style={{ color: 'var(--text-muted)' }} className="fw-medium small">
+              /hr
+            </span>
           </span>
         </div>
       </div>
@@ -28,7 +33,7 @@ const AmenityCardVertical = ({ image, title, location, rate, rating, onClick }) 
         <i className="fa-solid fa-chevron-right fa-xl"></i>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AmenityCardVertical;
+export default AmenityCardVertical

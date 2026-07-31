@@ -1,29 +1,23 @@
-import React from 'react';
-import { CSpinner } from '@coreui/react';
-import useResidentDiscover from '../hooks/useResidentDiscover.js';
-import AmenityCardHorizontal from '../components/common/AmenityCardHorizontal.jsx';
-import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx';
-import '../styles/_amenities.scss';
+import React from 'react'
+import { CSpinner } from '@coreui/react'
+import useResidentDiscover from '../hooks/useResidentDiscover.js'
+import AmenityCardHorizontal from '../components/common/AmenityCardHorizontal.jsx'
+import AmenitiesTopNav from '../components/AmenitiesTopNav.jsx'
+import '../styles/_amenities.scss'
 
 const ResidentDiscoverView = () => {
-  const {
-    items,
-    loading,
-    error,
-    search,
-    setSearch,
-    navigateToBooking
-  } = useResidentDiscover();
+  const { items, loading, error, search, setSearch, navigateToBooking } = useResidentDiscover()
 
-  const activeCount = items.filter(a => a.status === 'active').length;
-  const maintenanceCount = items.filter(a => a.status === 'maintenance' || a.currentStatus === 'Under Maintenance').length;
+  const activeCount = items.filter((a) => a.status === 'active').length
+  const maintenanceCount = items.filter(
+    (a) => a.status === 'maintenance' || a.currentStatus === 'Under Maintenance',
+  ).length
 
   return (
     <div className="amenities-module-wrapper amenity-os-theme">
       <AmenitiesTopNav />
 
       <div className="view-container">
-
         {/* ── Hero Header ── */}
         <div className="discover-hero">
           <div className="discover-hero__text">
@@ -113,7 +107,7 @@ const ResidentDiscoverView = () => {
           </div>
         ) : (
           <div className="discover-grid">
-            {items.map(amenity => (
+            {items.map((amenity) => (
               <AmenityCardHorizontal
                 key={amenity._id}
                 image={amenity.images?.[0] || amenity.imageUrl}
@@ -132,8 +126,8 @@ const ResidentDiscoverView = () => {
                   amenity.status === 'maintenance' || amenity.currentStatus === 'Under Maintenance'
                     ? 'Maintenance'
                     : amenity.status === 'active'
-                    ? 'Active'
-                    : 'Inactive'
+                      ? 'Active'
+                      : 'Inactive'
                 }
                 onClick={
                   amenity.status === 'maintenance' || amenity.currentStatus === 'Under Maintenance'
@@ -146,7 +140,7 @@ const ResidentDiscoverView = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ResidentDiscoverView;
+export default ResidentDiscoverView

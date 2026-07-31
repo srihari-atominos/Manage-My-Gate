@@ -26,7 +26,11 @@ export async function verify(credentials) {
     });
 
     if (!response.ok && response.status === 401) {
-      throw new Error('Invalid Razorpay Key ID or Key Secret credentials.');
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Invalid Razorpay Key ID or Key Secret credentials.');
+      } else {
+        console.warn('⚠️ [DEV MODE] Invalid Razorpay credentials detected, but bypassing validation for local testing.');
+      }
     }
   } catch (error) {
     if (error.message.includes('Invalid Razorpay')) {

@@ -8,7 +8,7 @@ class PaymentController {
   async createOrder(req, res, next) {
     try {
       const { referenceId, referenceType, amount, currency, gateway } = req.body;
-      const orgId = req.user?.orgId || req.body.orgId;
+      const orgId = req.user?.orgId || req.body.orgId || req.headers['x-organization-id'];
       const userId = req.user?.id || req.user?._id || req.body.userId;
 
       if (!orgId || !userId) {
@@ -41,7 +41,7 @@ class PaymentController {
   async verifySignature(req, res, next) {
     try {
       const { paymentId, orderId, razorpayPaymentId, razorpaySignature } = req.body;
-      const orgId = req.user?.orgId || req.body.orgId;
+      const orgId = req.user?.orgId || req.body.orgId || req.headers['x-organization-id'];
 
       const verificationResult = await paymentService.verifyPaymentSignature({
         orgId,

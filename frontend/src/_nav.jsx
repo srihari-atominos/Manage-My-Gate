@@ -1,5 +1,5 @@
-import React from 'react';
-import CIcon from '@coreui/icons-react';
+import React from 'react'
+import CIcon from '@coreui/icons-react'
 import {
   cilLockLocked,
   cilPeople,
@@ -14,9 +14,8 @@ import {
   cilSettings,
   cilWallet,
   cilSearch,
-  cilWarning,
-} from '@coreui/icons';
-import { CNavItem, CNavTitle, CNavGroup } from '@coreui/react';
+} from '@coreui/icons'
+import { CNavItem, CNavTitle, CNavGroup } from '@coreui/react'
 
 /**
  * Sidebar Navigation Configuration
@@ -28,6 +27,13 @@ const _nav = [
     name: 'Dashboard',
     to: '/dashboard',
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'Workspace Settings',
+    to: '/workspace/settings',
+    icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
+    requiredPermission: 'workspaces:read',
   },
   {
     component: CNavTitle,
@@ -74,17 +80,17 @@ const _nav = [
     to: '/amenities',
     icon: <CIcon icon={cilBuilding} customClassName="nav-icon" />,
     requiredPermission: [
-      'amenities:dashboard', 
-      'amenities:amenities', 
-      'amenities:admin_calander', 
-      'amenities:ledgers', 
-      'amenities:maintenance', 
+      'amenities:dashboard',
+      'amenities:amenities',
+      'amenities:admin_calander',
+      'amenities:ledgers',
+      'amenities:maintenance',
       'amenities:settings',
-      'amenities:scanner', 
+      'amenities:scanner',
       'amenities:security_logs',
       'amenities:discover',
       'amenities:my_booking',
-      'amenities:wallet'
+      'amenities:wallet',
     ],
   },
   {
@@ -92,20 +98,11 @@ const _nav = [
     name: 'Notice Board',
     to: '/notices',
     icon: <CIcon icon={cilList} customClassName="nav-icon" />,
-    requiredPermission: 'notices:read',
-  },
-  {
-    component: CNavItem,
-    name: 'Complaints / Maintenance',
-    to: '/complaints',
-    icon: <CIcon icon={cilWarning} customClassName="nav-icon" />,
     requiredPermission: [
-      'complaints:dashboard',
-      'complaints:raise_ticket',
-      'complaints:track_requests',
-      'complaints:complaint_management',
-      'complaints:staff',
-      'complaints:assignee'
+      'notices:dashboard',
+      'notices:active_board',
+      'notices:manage_notices',
+      'notices:polls',
     ],
   },
   {
@@ -125,8 +122,12 @@ const _nav = [
     name: 'Billing & Invoices',
     to: '/billing',
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
-    requiredPermission: ['billing:dashboard', 'billing:assessment_manager', 'billing:action_center'],
+    requiredPermission: [
+      'billing:dashboard',
+      'billing:assessment_manager',
+      'billing:action_center',
+    ],
   },
-];
+]
 
-export default _nav;
+export default _nav

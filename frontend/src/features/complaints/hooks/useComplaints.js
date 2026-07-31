@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { io } from 'socket.io-client';
-import { 
-  fetchComplaints, 
+import { useEffect, useRef } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { io } from 'socket.io-client'
+import config from '../../../config/config.js'
+import {
+  fetchComplaints,
   fetchComplaintDetails,
-  fetchDashboardAnalytics, 
+  fetchDashboardAnalytics,
   fetchCalendarEvents,
   createComplaint,
   updateComplaintStatus,
@@ -22,173 +23,198 @@ import {
   uploadWorkAttachments,
   addWorkNotes,
   confirmCompletion as confirmCompletionAction,
-  addFeedback as addFeedbackAction
-} from '../store/complaintSlice';
-import { fetchComplaintSettings } from '../store/complaintSettingsSlice';
+  addFeedback as addFeedbackAction,
+} from '../store/complaintSlice'
+import { fetchComplaintSettings } from '../store/complaintSettingsSlice'
 
 export const useComplaints = (filters = {}, options = {}) => {
-  const dispatch = useDispatch();
-  const { list, pagination, currentComplaint, isDetailsLoading, dashboardAnalytics, calendarEvents, status, error } = useSelector((state) => state.complaints);
-  const settingsState = useSelector((state) => state.complaintSettings);
+  const dispatch = useDispatch()
+  const {
+    list,
+    pagination,
+    currentComplaint,
+    isDetailsLoading,
+    dashboardAnalytics,
+    calendarEvents,
+    status,
+    error,
+  } = useSelector((state) => state.complaints)
+  const settingsState = useSelector((state) => state.complaintSettings)
 
-  const socketRef = useRef(null);
+  const socketRef = useRef(null)
 
   useEffect(() => {
-    if (options.disableAutoFetch) return;
+    if (options.disableAutoFetch) return
     // Load data only when component mounts or filters change
     const debounce = setTimeout(() => {
-      dispatch(fetchComplaints(filters));
-    }, 300);
-    return () => clearTimeout(debounce);
-  }, [dispatch, JSON.stringify(filters), options.disableAutoFetch]);
+      dispatch(fetchComplaints(filters))
+    }, 300)
+    return () => clearTimeout(debounce)
+  }, [dispatch, JSON.stringify(filters), options.disableAutoFetch])
 
-  const token = useSelector((state) => state.auth.token);
+  const token = useSelector((state) => state.auth.token)
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) return
 
     // Socket initialization for real-time updates
-    socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002', {
-      auth: { token }
-    });
+    socketRef.current = io(config.socketUrl, {
+      auth: { token },
+    })
 
     const handleUpdate = (data) => {
-      dispatch(fetchComplaints(filters));
-      dispatch(fetchDashboardAnalytics());
+      dispatch(fetchComplaints(filters))
+      dispatch(fetchDashboardAnalytics())
       if (data && data._id) {
-        dispatch(updateCurrentComplaint(data));
+        dispatch(updateCurrentComplaint(data))
       }
-    };
+    }
 
-    const socket = socketRef.current;
-    
+    const socket = socketRef.current
+
     // Listen to enterprise events
-    socket.on('complaint_created', handleUpdate);
-    socket.on('complaint_updated', handleUpdate);
-    socket.on('complaint_assigned', handleUpdate);
-    socket.on('complaint_started', handleUpdate);
-    socket.on('complaint_completed', handleUpdate);
-    socket.on('complaint_closed', handleUpdate);
-    socket.on('complaint_reopened', handleUpdate);
-    socket.on('complaint_escalated', handleUpdate);
+    socket.on('complaint_created', handleUpdate)
+    socket.on('complaint_updated', handleUpdate)
+    socket.on('complaint_assigned', handleUpdate)
+    socket.on('complaint_started', handleUpdate)
+    socket.on('complaint_completed', handleUpdate)
+    socket.on('complaint_closed', handleUpdate)
+    socket.on('complaint_reopened', handleUpdate)
+    socket.on('complaint_escalated', handleUpdate)
 
     return () => {
-      socket.off('complaint_created', handleUpdate);
-      socket.off('complaint_updated', handleUpdate);
-      socket.off('complaint_assigned', handleUpdate);
-      socket.off('complaint_started', handleUpdate);
-      socket.off('complaint_completed', handleUpdate);
-      socket.off('complaint_closed', handleUpdate);
-      socket.off('complaint_reopened', handleUpdate);
-      socket.off('complaint_escalated', handleUpdate);
-      socket.disconnect();
-    };
-  }, [dispatch, JSON.stringify(filters), token]);
+      socket.off('complaint_created', handleUpdate)
+      socket.off('complaint_updated', handleUpdate)
+      socket.off('complaint_assigned', handleUpdate)
+      socket.off('complaint_started', handleUpdate)
+      socket.off('complaint_completed', handleUpdate)
+      socket.off('complaint_closed', handleUpdate)
+      socket.off('complaint_reopened', handleUpdate)
+      socket.off('complaint_escalated', handleUpdate)
+      socket.disconnect()
+    }
+  }, [dispatch, JSON.stringify(filters), token])
 
   const loadDashboardAnalytics = async (filterParams) => {
-    return await dispatch(fetchDashboardAnalytics(filterParams)).unwrap();
-  };
+    return await dispatch(fetchDashboardAnalytics(filterParams)).unwrap()
+  }
 
   const loadComplaintDetails = async (id) => {
-    return await dispatch(fetchComplaintDetails(id)).unwrap();
-  };
+    return await dispatch(fetchComplaintDetails(id)).unwrap()
+  }
 
   const loadCalendarEvents = async (params) => {
-    return await dispatch(fetchCalendarEvents(params)).unwrap();
-  };
+    return await dispatch(fetchCalendarEvents(params)).unwrap()
+  }
 
   const createNewComplaint = async (data) => {
-    return await dispatch(createComplaint(data)).unwrap();
-  };
+    return await dispatch(createComplaint(data)).unwrap()
+  }
 
   const updateStatus = async (id, data) => {
-    return await dispatch(updateComplaintStatus({ id, data })).unwrap();
-  };
+    return await dispatch(updateComplaintStatus({ id, data })).unwrap()
+  }
 
   const assignTechnician = async (id, data) => {
-    return await dispatch(assignComplaint({ id, data })).unwrap();
-  };
+    return await dispatch(assignComplaint({ id, data })).unwrap()
+  }
 
   const addComment = async (id, data) => {
-    return await dispatch(addComplaintComment({ id, data })).unwrap();
-  };
+    return await dispatch(addComplaintComment({ id, data })).unwrap()
+  }
 
   const cancelComplaint = async (id, reason) => {
-    return await dispatch(updateComplaintStatus({ id, data: { status: 'Cancelled', remarks: reason } })).unwrap();
-  };
+    return await dispatch(
+      updateComplaintStatus({ id, data: { status: 'Cancelled', remarks: reason } }),
+    ).unwrap()
+  }
 
   const reopenComplaint = async (id, reason) => {
-    return await dispatch(updateComplaintStatus({ id, data: { status: 'Reopened', remarks: reason } })).unwrap();
-  };
+    return await dispatch(
+      updateComplaintStatus({ id, data: { status: 'Reopened', remarks: reason } }),
+    ).unwrap()
+  }
 
   const confirmCompletion = async (id, payload) => {
-    return await dispatch(confirmCompletionAction({ id, ...payload })).unwrap();
-  };
+    return await dispatch(confirmCompletionAction({ id, ...payload })).unwrap()
+  }
 
   const addFeedback = async (id, data) => {
-    return await dispatch(addFeedbackAction({ id, data })).unwrap();
-  };
+    return await dispatch(addFeedbackAction({ id, data })).unwrap()
+  }
 
   const uploadFiles = async (formData) => {
-    return await dispatch(uploadComplaintAttachments(formData)).unwrap();
-  };
+    return await dispatch(uploadComplaintAttachments(formData)).unwrap()
+  }
 
   const loadSettings = () => {
     if (settingsState.status === 'idle') {
-      dispatch(fetchComplaintSettings());
+      dispatch(fetchComplaintSettings())
     }
-  };
+  }
 
   const resetErrors = () => {
-    dispatch(clearErrors());
-  };
+    dispatch(clearErrors())
+  }
 
-  const handleAcceptAssignment = async (id) => dispatch(acceptAssignment(id)).unwrap();
-  const handleRejectAssignment = async (id, reason) => dispatch(rejectAssignment({ id, reason })).unwrap();
-  const handleStartWork = async (id) => dispatch(startWork(id)).unwrap();
-  const handlePauseWork = async (id, reason) => dispatch(pauseWork({ id, reason })).unwrap();
-  const handleResumeWork = async (id) => dispatch(resumeWork(id)).unwrap();
-  const handleMarkWorkCompleted = async (id, data) => dispatch(markWorkCompleted({ id, data })).unwrap();
-  
-  const handleUploadWorkAttachments = async (id, attachments) => dispatch(uploadWorkAttachments({ id, attachments })).unwrap();
-  const handleAddWorkNotes = async (id, notes) => dispatch(addWorkNotes({ id, notes })).unwrap();
-  const handleConfirmCompletion = async (id, payload) => dispatch(confirmCompletionAction({ id, ...payload })).unwrap();
+  const handleAcceptAssignment = async (id) => dispatch(acceptAssignment(id)).unwrap()
+  const handleRejectAssignment = async (id, reason) =>
+    dispatch(rejectAssignment({ id, reason })).unwrap()
+  const handleStartWork = async (id) => dispatch(startWork(id)).unwrap()
+  const handlePauseWork = async (id, reason) => dispatch(pauseWork({ id, reason })).unwrap()
+  const handleResumeWork = async (id) => dispatch(resumeWork(id)).unwrap()
+  const handleMarkWorkCompleted = async (id, data) =>
+    dispatch(markWorkCompleted({ id, data })).unwrap()
+
+  const handleUploadWorkAttachments = async (id, attachments) =>
+    dispatch(uploadWorkAttachments({ id, attachments })).unwrap()
+  const handleAddWorkNotes = async (id, notes) => dispatch(addWorkNotes({ id, notes })).unwrap()
+  const handleConfirmCompletion = async (id, payload) =>
+    dispatch(confirmCompletionAction({ id, ...payload })).unwrap()
 
   const exportDataToExcel = () => {
     if (!list || list.length === 0) {
-      return;
+      return
     }
-    
+
     // Construct CSV header
-    const headers = ['Complaint No', 'Resident', 'Category', 'Priority', 'Status', 'Assigned To', 'Created At'];
-    
+    const headers = [
+      'Complaint No',
+      'Resident',
+      'Category',
+      'Priority',
+      'Status',
+      'Assigned To',
+      'Created At',
+    ]
+
     // Construct CSV rows
-    const rows = list.map(c => [
+    const rows = list.map((c) => [
       c.complaintNumber || '',
       c.residentName || (c.residentId && c.residentId.username) || '',
       c.category || '',
       c.priority || '',
       c.status || '',
       c.assignedTechnicianName || c.vendor || 'Unassigned',
-      new Date(c.createdAt).toLocaleString()
-    ]);
-    
+      new Date(c.createdAt).toLocaleString(),
+    ])
+
     // Combine to CSV format
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
-    
+      ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+    ].join('\n')
+
     // Create Blob and trigger download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'complaints_export.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', 'complaints_export.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   return {
     complaints: list,
@@ -228,8 +254,8 @@ export const useComplaints = (filters = {}, options = {}) => {
     uploadWorkAttachments: handleUploadWorkAttachments,
     addWorkNotes: handleAddWorkNotes,
     addFeedback: async (id, payload) => dispatch(addFeedbackAction({ id, data: payload })).unwrap(),
-    exportDataToExcel
-  };
-};
+    exportDataToExcel,
+  }
+}
 
-export default useComplaints;
+export default useComplaints

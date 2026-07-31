@@ -4,6 +4,7 @@ import { paymentEventEmitter, PAYMENT_INITIATED, PAYMENT_SUCCESS, PAYMENT_FAILED
 import { getPaymentProvider } from './providers/index.js';
 import integrationHubService from '../integrationHub/integrationHub.service.js';
 import { formatINR } from './utils/currency.utils.js';
+import Razorpay from 'razorpay';
 import HttpError from '../../utils/httpError.utils.js';
 import logger from '../../utils/logger.utils.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,13 +20,28 @@ export class PaymentService {
         throw new HttpError(400, 'orgId, userId, referenceId, and amount are required.');
       }
 
-      const activeGateway = (gateway || process.env.PAYMENT_PROVIDER || 'mock').toLowerCase();
+      let activeGateway = (gateway || process.env.PAYMENT_PROVIDER || 'mock').toLowerCase();
+      
+      if (process.env.PAYMENT_PROVIDER === 'mock') {
+        activeGateway = 'mock';
+      }
+
       logger.info(`Initiating payment order via '${activeGateway}' strategy`, { orgId, userId, amount, currency });
 
       // Fetch active tenant's credentials via integrationHubService (Zero cross-feature repository access)
       let credentials = {};
       if (activeGateway !== 'mock') {
-        credentials = await integrationHubService.getDecryptedCredentials(orgId, activeGateway);
+        try {
+          credentials = await integrationHubService.getDecryptedCredentials(orgId, activeGateway);
+        } catch (error) {
+          logger.warn(`Failed to fetch credentials for ${activeGateway}`, { error: error.message });
+        }
+
+        // Fallback to mock if no credentials exist and we're not in production
+        if (!credentials?.keyId && !credentials?.key_id && !process.env.RAZORPAY_KEY_ID && process.env.NODE_ENV !== 'production') {
+          activeGateway = 'mock';
+          logger.info(`Fallback to 'mock' strategy due to missing Razorpay credentials`);
+        }
       }
 
       const provider = getPaymentProvider(activeGateway);
@@ -62,6 +78,7 @@ export class PaymentService {
         currency: payment.currency,
         status: payment.status,
         gateway: payment.gateway,
+        razorpayKeyId: credentials?.keyId || credentials?.key_id || process.env.RAZORPAY_KEY_ID,
         rawOrder: orderPayload.rawOrder,
       };
     } catch (error) {
@@ -139,42 +156,74 @@ export class PaymentService {
    */
   async processRefund(paymentId, amount = null, notes = {}) {
     try {
-      const payment = mongoose.Types.ObjectId.isValid(paymentId) 
-        ? await Payment.findById(paymentId) 
-        : await Payment.findOne({ gatewayTransactionId: paymentId });
-      
-      if (!payment) throw new HttpError(404, 'Payment not found');
-      if (payment.status !== 'success') throw new HttpError(400, 'Only successful payments can be refunded');
+      const payment = await Payment.findById(paymentId);
+      if (!payment) throw new HttpError(404, 'Payment record not found.');
 
-      const activeGateway = payment.gateway || 'mock';
-      let credentials = {};
-      if (activeGateway !== 'mock') {
-        credentials = await integrationHubService.getDecryptedCredentials(payment.orgId, activeGateway);
+      if (payment.status !== 'success') {
+        throw new HttpError(400, 'Only successful payments can be refunded.');
       }
 
-      const provider = getPaymentProvider(activeGateway);
-      const refundAmount = amount !== null ? amount : payment.amount;
+      const activeGateway = payment.gateway || 'mock';
+      const refundAmount = amount || payment.amount; // Allow partial refunds
+      
+      let gatewayRefund = { id: `refund_mock_${Date.now()}` };
+      
+      if (process.env.NODE_ENV !== 'production' && activeGateway === 'mock') {
+        logger.info('Bypassing gateway refund for mock payment in non-production environment');
+      } else {
+        const credentials = await integrationHubService.getDecryptedCredentials(payment.orgId, activeGateway);
+        const provider = getPaymentProvider(activeGateway);
+        gatewayRefund = await provider.initiateRefund(payment.gatewayTransactionId, refundAmount, notes, credentials);
+      }
 
-      const refundResult = await provider.refund(
-        {
-          paymentId: payment.gatewayTransactionId || payment._id.toString(),
-          amount: refundAmount,
-          notes,
-        },
-        credentials
-      );
+      // 1. Mark original payment status as partially refunded or fully refunded (Optional but good practice)
+      // Here we just leave it as success, and create a negative offset Refund record
 
-      payment.status = 'refunded';
-      await payment.save();
+      // 2. Create Refund ledger record
+      const refundRecord = await Payment.create({
+        referenceId: payment.referenceId,
+        referenceType: payment.referenceType,
+        amount: -Math.abs(refundAmount), // Negative amount for refund
+        type: 'Refund',
+        parentPaymentId: payment._id,
+        status: 'success',
+        gatewayTransactionId: gatewayRefund.id,
+        paymentMethod: payment.paymentMethod
+      });
 
-      paymentEventEmitter.emit(PAYMENT_REFUNDED, payment);
+      paymentEventEmitter.emit(PAYMENT_REFUNDED, refundRecord);
 
-      logger.info('Payment refunded successfully', { paymentId: payment._id, refundId: refundResult.refundId });
+      logger.info('Refund processed successfully', { paymentId: payment._id, refundId: refundRecord._id });
+
+      // 3. Trigger recalculation of the parent Invoice
+      if (payment.referenceType === 'Invoice') {
+        const Invoice = (await import('../invoice/invoice.model.js')).default;
+        const invoice = await Invoice.findById(payment.referenceId);
+        if (invoice) {
+          // Re-sum all successful payments and refunds
+          const allLedgers = await Payment.find({
+            referenceId: invoice._id,
+            status: 'success',
+            isDeleted: false
+          });
+          const sumPaid = allLedgers.reduce((sum, p) => sum + p.amount, 0);
+          
+          invoice.paidAmount = sumPaid;
+          invoice.auditHistory.push({
+            action: 'PAYMENT_REFUNDED',
+            details: `Refund of ₹${refundAmount} processed. New Paid Amount: ₹${sumPaid}`,
+            date: new Date(),
+            performedBy: null
+          });
+          
+          await invoice.save(); // Pre-save hook adjusts outstandingAmount and status
+        }
+      }
 
       return {
         success: true,
-        payment,
-        refund: refundResult,
+        message: 'Refund initiated successfully',
+        refund: refundRecord
       };
     } catch (error) {
       logger.error('Error processing refund', { error: error.message });
@@ -241,6 +290,58 @@ export class PaymentService {
    */
   async recordPayment(data, session = null) {
     return await paymentRepository.createPayment(data, session);
+  }
+
+  /**
+   * Generate Razorpay Payment Link
+   */
+  async createPaymentLink(invoice, user) {
+    try {
+      const activeGateway = 'razorpay';
+      let credentials = {};
+      try {
+        credentials = await integrationHubService.getDecryptedCredentials(invoice.orgId, activeGateway);
+      } catch (err) {
+        logger.warn('Failed to get credentials from integrationHub, falling back to ENV', { error: err.message });
+      }
+
+      const key_id = credentials.key_id || process.env.RAZORPAY_KEY_ID;
+      const key_secret = credentials.key_secret || process.env.RAZORPAY_KEY_SECRET;
+
+      if (!key_id || !key_secret) {
+        logger.warn('Razorpay credentials not found, returning mock payment link for testing');
+        return `https://rzp.io/mock_link/${invoice._id}`;
+      }
+
+      const instance = new Razorpay({ key_id, key_secret });
+
+      const payload = {
+        amount: Math.round(invoice.totalDue * 100), // paise
+        currency: 'INR',
+        reference_id: invoice._id.toString(),
+        description: `Payment for Invoice ${invoice.invoiceNumber || invoice._id}`,
+        customer: {
+          name: user.name || user.username || 'Resident',
+          contact: user.phone || '',
+          email: user.email || ''
+        },
+        notify: {
+          sms: false,
+          email: false
+        },
+        reminder_enable: false
+      };
+
+      const linkResponse = await instance.paymentLink.create(payload);
+      return linkResponse.short_url;
+    } catch (error) {
+      logger.error('Failed to create Razorpay payment link', { error: error.message });
+      if (process.env.NODE_ENV !== 'production') {
+        logger.warn('Returning mock payment link due to Razorpay API error in DEV mode.');
+        return `https://rzp.io/mock_link/${invoice._id}`;
+      }
+      return null;
+    }
   }
 }
 

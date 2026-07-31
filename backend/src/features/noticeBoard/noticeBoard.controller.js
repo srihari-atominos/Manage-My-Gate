@@ -70,8 +70,8 @@ export class NoticeBoardController {
       const hasCreatePermission =
         req.user.role === 'Super Admin' ||
         req.user.role === 'Platform Super Admin' ||
-        userPermissions.includes('notices.create') ||
-        userPermissions.includes('notices:create');
+        userPermissions.includes('notices.manage_notices') ||
+        userPermissions.includes('notices:manage_notices');
       const restrictToPublished = !hasCreatePermission
 
       // Extract filters and search parameters

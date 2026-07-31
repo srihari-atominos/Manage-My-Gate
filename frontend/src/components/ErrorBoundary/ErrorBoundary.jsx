@@ -1,25 +1,26 @@
-import React from 'react';
-import logger from '../../utils/logger.js';
+import React from 'react'
+import logger from '../../utils/logger.js'
+import config from '../../config/config.js'
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    super(props)
+    this.state = { hasError: false, error: null, errorInfo: null }
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, error };
+    return { hasError: true, error }
   }
 
   componentDidCatch(error, errorInfo) {
-    this.setState({ errorInfo });
+    this.setState({ errorInfo })
     // Log crash details using the environment-aware logger
-    logger.error('React Component Crash:', error, errorInfo);
+    logger.error('React Component Crash:', error, errorInfo)
   }
 
   handleReload = () => {
-    window.location.reload();
-  };
+    window.location.reload()
+  }
 
   render() {
     if (this.state.hasError) {
@@ -31,27 +32,38 @@ class ErrorBoundary extends React.Component {
 
           <div style={styles.glassCard}>
             <div style={styles.iconContainer}>
-              <svg style={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <svg
+                style={styles.icon}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
               </svg>
             </div>
-            
+
             <h1 style={styles.title}>Oops! Something went wrong</h1>
             <p style={styles.subtitle}>
-              The application encountered an unexpected error. We have logged this issue and our team is investigating.
+              The application encountered an unexpected error. We have logged this issue and our
+              team is investigating.
             </p>
 
             <div style={styles.buttonContainer}>
-              <button 
-                onClick={this.handleReload} 
+              <button
+                onClick={this.handleReload}
                 style={styles.reloadButton}
                 onMouseEnter={(e) => {
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 8px 20px rgba(99, 102, 241, 0.4)';
+                  e.target.style.transform = 'translateY(-2px)'
+                  e.target.style.boxShadow = '0 8px 20px rgba(99, 102, 241, 0.4)'
                 }}
                 onMouseLeave={(e) => {
-                  e.target.style.transform = 'none';
-                  e.target.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.2)';
+                  e.target.style.transform = 'none'
+                  e.target.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.2)'
                 }}
               >
                 Reload Application
@@ -59,7 +71,7 @@ class ErrorBoundary extends React.Component {
             </div>
 
             {/* Developer Details Accordion */}
-            {import.meta.env.DEV && (
+            {config.isDev && (
               <details style={styles.details}>
                 <summary style={styles.summary}>Technical details for developers</summary>
                 <div style={styles.detailsContent}>
@@ -67,19 +79,17 @@ class ErrorBoundary extends React.Component {
                     <strong>Error:</strong> {this.state.error && this.state.error.toString()}
                   </p>
                   {this.state.errorInfo && (
-                    <pre style={styles.stackTrace}>
-                      {this.state.errorInfo.componentStack}
-                    </pre>
+                    <pre style={styles.stackTrace}>{this.state.errorInfo.componentStack}</pre>
                   )}
                 </div>
               </details>
             )}
           </div>
         </div>
-      );
+      )
     }
 
-    return this.props.children;
+    return this.props.children
   }
 }
 
@@ -229,6 +239,6 @@ const styles = {
     maxHeight: '160px',
     fontFamily: 'SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace',
   },
-};
+}
 
-export default ErrorBoundary;
+export default ErrorBoundary

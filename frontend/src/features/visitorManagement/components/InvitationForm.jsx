@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'
 
-export const InvitationForm = ({ 
-  inviteMethod, 
-  guestPassType, 
-  setGuestPassType, 
+export const InvitationForm = ({
+  inviteMethod,
+  guestPassType,
+  setGuestPassType,
   cabPassType,
   setCabPassType,
   cabUsageType,
@@ -12,35 +12,75 @@ export const InvitationForm = ({
   setServicePassType,
   serviceUsageType,
   setServiceUsageType,
-  formData, 
-  handleInputChange, 
-  handleCreatePass 
+  formData,
+  handleInputChange,
+  handleCreatePass,
 }) => {
-  const providers = ['Amazon Prime', 'FedEx Express', 'DHL Worldwide', 'Uber Cab', 'Noon eCommerce', 'Zomato Delivery', 'Talabat Delivery', 'Deliveroo', 'Careem Taxi'];
-  const serviceTypes = ['Plumber', 'Electrician', 'Carpenter', 'AC Technician', 'Cleaning Staff', 'Maid', 'Gardener', 'Painter', 'Pest Control'];
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [serviceSearchOpen, setServiceSearchOpen] = useState(false);
+  const providers = [
+    'Amazon Prime',
+    'FedEx Express',
+    'DHL Worldwide',
+    'Uber Cab',
+    'Noon eCommerce',
+    'Zomato Delivery',
+    'Talabat Delivery',
+    'Deliveroo',
+    'Careem Taxi',
+  ]
+  const serviceTypes = [
+    'Plumber',
+    'Electrician',
+    'Carpenter',
+    'AC Technician',
+    'Cleaning Staff',
+    'Maid',
+    'Gardener',
+    'Painter',
+    'Pest Control',
+  ]
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [serviceSearchOpen, setServiceSearchOpen] = useState(false)
 
-  const selectedDays = formData.selectedDays || [1, 2, 3, 4, 5];
-  const serviceSelectedDays = formData.serviceSelectedDays || [1, 2, 3, 4, 5];
+  const selectedDays = formData.selectedDays || [1, 2, 3, 4, 5]
+  const serviceSelectedDays = formData.serviceSelectedDays || [1, 2, 3, 4, 5]
 
   return (
     <div className="card card-hover">
       <h3 style={{ fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center' }}>
-        <i className="fa-solid fa-paper-plane" style={{ color: 'var(--primary)', marginRight: '8px' }}></i>
+        <i
+          className="fa-solid fa-paper-plane"
+          style={{ color: 'var(--primary)', marginRight: '8px' }}
+        ></i>
         {inviteMethod === 'guest' && 'Personal Guest Pass'}
         {inviteMethod === 'group' && 'Group / Event Pass'}
         {inviteMethod === 'cab_delivery' && 'Cab & Delivery pre-entry'}
         {inviteMethod === 'service' && 'Maintenance Service Entry'}
       </h3>
 
-      {(searchOpen || serviceSearchOpen) && <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 }} onClick={() => { setSearchOpen(false); setServiceSearchOpen(false); }} />}
+      {(searchOpen || serviceSearchOpen) && (
+        <div
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 }}
+          onClick={() => {
+            setSearchOpen(false)
+            setServiceSearchOpen(false)
+          }}
+        />
+      )}
 
       <form onSubmit={handleCreatePass}>
         {inviteMethod === 'guest' && (
           <>
             {/* Toggle box / Segmented Switch for Pass Type */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', backgroundColor: '#F1F5F9', padding: '4px', borderRadius: '8px' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                marginBottom: '24px',
+                backgroundColor: '#F1F5F9',
+                padding: '4px',
+                borderRadius: '8px',
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setGuestPassType('default')}
@@ -52,10 +92,13 @@ export const InvitationForm = ({
                   fontWeight: '600',
                   border: 'none',
                   backgroundColor: guestPassType === 'default' ? '#fff' : 'transparent',
-                  color: guestPassType === 'default' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                  color:
+                    guestPassType === 'default'
+                      ? 'var(--primary, #0084FF)'
+                      : 'var(--text-muted, #64748B)',
                   boxShadow: guestPassType === 'default' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
                 }}
               >
                 Default Pass
@@ -71,10 +114,13 @@ export const InvitationForm = ({
                   fontWeight: '600',
                   border: 'none',
                   backgroundColor: guestPassType === 'id_proof' ? '#fff' : 'transparent',
-                  color: guestPassType === 'id_proof' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                  color:
+                    guestPassType === 'id_proof'
+                      ? 'var(--primary, #0084FF)'
+                      : 'var(--text-muted, #64748B)',
                   boxShadow: guestPassType === 'id_proof' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
                 }}
               >
                 By ID Proof
@@ -83,20 +129,20 @@ export const InvitationForm = ({
 
             <div className="form-group">
               <label className="form-label">Guest Name</label>
-              <input 
-                type="text" 
-                className="form-control" 
+              <input
+                type="text"
+                className="form-control"
                 placeholder="e.g. John Doe"
                 value={formData.guestName || ''}
                 onChange={(e) => handleInputChange('guestName', e.target.value)}
               />
             </div>
-            
+
             {guestPassType === 'id_proof' && (
               <>
                 <div className="form-group">
                   <label className="form-label">Select ID Proof Type</label>
-                  <select 
+                  <select
                     className="form-control"
                     value={formData.idProofType}
                     onChange={(e) => handleInputChange('idProofType', e.target.value)}
@@ -110,9 +156,9 @@ export const InvitationForm = ({
                 </div>
                 <div className="form-group">
                   <label className="form-label">ID Proof Reference / Number</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
+                  <input
+                    type="text"
+                    className="form-control"
                     placeholder="e.g. ID Code / Serial"
                     value={formData.idProof}
                     onChange={(e) => handleInputChange('idProof', e.target.value)}
@@ -124,18 +170,18 @@ export const InvitationForm = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div className="form-group">
                 <label className="form-label">Start Date</label>
-                <input 
-                  type="date" 
-                  className="form-control" 
+                <input
+                  type="date"
+                  className="form-control"
                   value={formData.startDate || ''}
                   onChange={(e) => handleInputChange('startDate', e.target.value)}
                 />
               </div>
               <div className="form-group">
                 <label className="form-label">End Date</label>
-                <input 
-                  type="date" 
-                  className="form-control" 
+                <input
+                  type="date"
+                  className="form-control"
                   value={formData.endDate || ''}
                   onChange={(e) => handleInputChange('endDate', e.target.value)}
                 />
@@ -143,9 +189,9 @@ export const InvitationForm = ({
             </div>
             <div className="form-group">
               <label className="form-label">Usage Limit (Max entries)</label>
-              <input 
-                type="number" 
-                className="form-control" 
+              <input
+                type="number"
+                className="form-control"
                 min="1"
                 value={formData.usageLimit || ''}
                 onChange={(e) => handleInputChange('usageLimit', Number(e.target.value))}
@@ -158,9 +204,9 @@ export const InvitationForm = ({
           <>
             <div className="form-group">
               <label className="form-label">Event Name / Occasion</label>
-              <input 
-                type="text" 
-                className="form-control" 
+              <input
+                type="text"
+                className="form-control"
                 placeholder="e.g. Housewarming Party"
                 value={formData.eventName || ''}
                 onChange={(e) => handleInputChange('eventName', e.target.value)}
@@ -168,20 +214,20 @@ export const InvitationForm = ({
             </div>
             <div className="form-group">
               <label className="form-label">Total Expected Tokens</label>
-              <input 
-                type="number" 
-                className="form-control" 
+              <input
+                type="number"
+                className="form-control"
                 min="1"
                 value={formData.totalTokens || ''}
                 onChange={(e) => handleInputChange('totalTokens', Number(e.target.value))}
               />
             </div>
-            
+
             <div className="form-group">
               <label className="form-label">Event Date</label>
-              <input 
-                type="date" 
-                className="form-control" 
+              <input
+                type="date"
+                className="form-control"
                 value={formData.eventDate || ''}
                 onChange={(e) => handleInputChange('eventDate', e.target.value)}
               />
@@ -190,18 +236,18 @@ export const InvitationForm = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div className="form-group">
                 <label className="form-label">Start Time</label>
-                <input 
-                  type="time" 
-                  className="form-control" 
+                <input
+                  type="time"
+                  className="form-control"
                   value={formData.eventStartTime}
                   onChange={(e) => handleInputChange('eventStartTime', e.target.value)}
                 />
               </div>
               <div className="form-group">
                 <label className="form-label">End Time</label>
-                <input 
-                  type="time" 
-                  className="form-control" 
+                <input
+                  type="time"
+                  className="form-control"
                   value={formData.eventEndTime}
                   onChange={(e) => handleInputChange('eventEndTime', e.target.value)}
                 />
@@ -213,7 +259,16 @@ export const InvitationForm = ({
         {inviteMethod === 'cab_delivery' && (
           <>
             {/* Toggle box for Usage Type */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', backgroundColor: '#F1F5F9', padding: '4px', borderRadius: '8px' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                marginBottom: '24px',
+                backgroundColor: '#F1F5F9',
+                padding: '4px',
+                borderRadius: '8px',
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setCabUsageType('one_time')}
@@ -225,10 +280,13 @@ export const InvitationForm = ({
                   fontWeight: '600',
                   border: 'none',
                   backgroundColor: cabUsageType === 'one_time' ? '#fff' : 'transparent',
-                  color: cabUsageType === 'one_time' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                  color:
+                    cabUsageType === 'one_time'
+                      ? 'var(--primary, #0084FF)'
+                      : 'var(--text-muted, #64748B)',
                   boxShadow: cabUsageType === 'one_time' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
                 }}
               >
                 One-time Pass
@@ -244,10 +302,13 @@ export const InvitationForm = ({
                   fontWeight: '600',
                   border: 'none',
                   backgroundColor: cabUsageType === 'multi_use' ? '#fff' : 'transparent',
-                  color: cabUsageType === 'multi_use' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                  color:
+                    cabUsageType === 'multi_use'
+                      ? 'var(--primary, #0084FF)'
+                      : 'var(--text-muted, #64748B)',
                   boxShadow: cabUsageType === 'multi_use' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
                 }}
               >
                 Multi-use Pass
@@ -255,13 +316,22 @@ export const InvitationForm = ({
             </div>
 
             {/* Cab / Taxi vs Delivery / Order Toggle */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', backgroundColor: '#F1F5F9', padding: '4px', borderRadius: '8px' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                marginBottom: '24px',
+                backgroundColor: '#F1F5F9',
+                padding: '4px',
+                borderRadius: '8px',
+              }}
+            >
               <button
                 key="toggle-delivery"
                 type="button"
                 onClick={() => {
-                  handleInputChange('cabCategory', 'delivery');
-                  handleInputChange('vehicleNumber', '');
+                  handleInputChange('cabCategory', 'delivery')
+                  handleInputChange('vehicleNumber', '')
                 }}
                 style={{
                   flex: 1,
@@ -270,11 +340,18 @@ export const InvitationForm = ({
                   fontSize: '13px',
                   fontWeight: '600',
                   border: 'none',
-                  backgroundColor: (formData.cabCategory || 'delivery') === 'delivery' ? '#fff' : 'transparent',
-                  color: (formData.cabCategory || 'delivery') === 'delivery' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
-                  boxShadow: (formData.cabCategory || 'delivery') === 'delivery' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  backgroundColor:
+                    (formData.cabCategory || 'delivery') === 'delivery' ? '#fff' : 'transparent',
+                  color:
+                    (formData.cabCategory || 'delivery') === 'delivery'
+                      ? 'var(--primary, #0084FF)'
+                      : 'var(--text-muted, #64748B)',
+                  boxShadow:
+                    (formData.cabCategory || 'delivery') === 'delivery'
+                      ? '0 1px 3px rgba(0,0,0,0.1)'
+                      : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
                 }}
               >
                 Delivery / Order
@@ -283,8 +360,8 @@ export const InvitationForm = ({
                 key="toggle-cab"
                 type="button"
                 onClick={() => {
-                  handleInputChange('cabCategory', 'cab');
-                  handleInputChange('orderId', '');
+                  handleInputChange('cabCategory', 'cab')
+                  handleInputChange('orderId', '')
                 }}
                 style={{
                   flex: 1,
@@ -294,10 +371,13 @@ export const InvitationForm = ({
                   fontWeight: '600',
                   border: 'none',
                   backgroundColor: formData.cabCategory === 'cab' ? '#fff' : 'transparent',
-                  color: formData.cabCategory === 'cab' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                  color:
+                    formData.cabCategory === 'cab'
+                      ? 'var(--primary, #0084FF)'
+                      : 'var(--text-muted, #64748B)',
                   boxShadow: formData.cabCategory === 'cab' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
                 }}
               >
                 Cab / Taxi
@@ -307,40 +387,46 @@ export const InvitationForm = ({
             {/* Search & Select Provider */}
             <div className="form-group" style={{ position: 'relative', zIndex: 10 }}>
               <label className="form-label">Delivery Provider / Cab Brand</label>
-              <input 
-                type="text" 
-                className="form-control" 
+              <input
+                type="text"
+                className="form-control"
                 placeholder="Search & select provider..."
                 value={formData.companyName || ''}
                 onChange={(e) => {
-                  handleInputChange('companyName', e.target.value);
-                  setSearchOpen(true);
+                  handleInputChange('companyName', e.target.value)
+                  setSearchOpen(true)
                 }}
                 onFocus={() => setSearchOpen(true)}
               />
               {searchOpen && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  backgroundColor: '#fff',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-                  maxHeight: '160px',
-                  overflowY: 'auto',
-                  zIndex: 20,
-                  marginTop: '4px'
-                }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: '#fff',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                    maxHeight: '160px',
+                    overflowY: 'auto',
+                    zIndex: 20,
+                    marginTop: '4px',
+                  }}
+                >
                   {providers
-                    .filter(p => !formData.companyName || p.toLowerCase().includes(formData.companyName.toLowerCase()))
-                    .map(provider => (
-                      <div 
+                    .filter(
+                      (p) =>
+                        !formData.companyName ||
+                        p.toLowerCase().includes(formData.companyName.toLowerCase()),
+                    )
+                    .map((provider) => (
+                      <div
                         key={provider}
                         onClick={() => {
-                          handleInputChange('companyName', provider);
-                          setSearchOpen(false);
+                          handleInputChange('companyName', provider)
+                          setSearchOpen(false)
                         }}
                         style={{
                           padding: '10px 16px',
@@ -348,15 +434,14 @@ export const InvitationForm = ({
                           fontSize: '14px',
                           color: 'var(--text-main)',
                           borderBottom: '1px solid #F1F5F9',
-                          transition: 'background 0.2s'
+                          transition: 'background 0.2s',
                         }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#F8FAFC'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = '#fff'}
+                        onMouseEnter={(e) => (e.target.style.backgroundColor = '#F8FAFC')}
+                        onMouseLeave={(e) => (e.target.style.backgroundColor = '#fff')}
                       >
                         {provider}
                       </div>
-                    ))
-                  }
+                    ))}
                 </div>
               )}
             </div>
@@ -365,9 +450,9 @@ export const InvitationForm = ({
             {(formData.cabCategory || 'delivery') === 'delivery' ? (
               <div className="form-group">
                 <label className="form-label">Order Reference ID</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
+                <input
+                  type="text"
+                  className="form-control"
                   placeholder="e.g. AMZ-199-082"
                   value={formData.orderId || ''}
                   onChange={(e) => handleInputChange('orderId', e.target.value)}
@@ -376,9 +461,9 @@ export const InvitationForm = ({
             ) : (
               <div className="form-group">
                 <label className="form-label">Taxi License Number</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
+                <input
+                  type="text"
+                  className="form-control"
                   placeholder="e.g. MH 12 AB 1234 or 22 BH 1234 AB"
                   value={formData.vehicleNumber || ''}
                   onChange={(e) => handleInputChange('vehicleNumber', e.target.value)}
@@ -389,7 +474,7 @@ export const InvitationForm = ({
             {cabUsageType === 'one_time' ? (
               <div className="form-group">
                 <label className="form-label">Expected Time Window</label>
-                <select 
+                <select
                   className="form-control"
                   value={formData.timeWindow}
                   onChange={(e) => handleInputChange('timeWindow', e.target.value)}
@@ -405,18 +490,18 @@ export const InvitationForm = ({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div className="form-group">
                     <label className="form-label">Start Date</label>
-                    <input 
-                      type="date" 
-                      className="form-control" 
+                    <input
+                      type="date"
+                      className="form-control"
                       value={formData.startDate}
                       onChange={(e) => handleInputChange('startDate', e.target.value)}
                     />
                   </div>
                   <div className="form-group">
                     <label className="form-label">End Date</label>
-                    <input 
-                      type="date" 
-                      className="form-control" 
+                    <input
+                      type="date"
+                      className="form-control"
                       value={formData.endDate}
                       onChange={(e) => handleInputChange('endDate', e.target.value)}
                     />
@@ -433,18 +518,18 @@ export const InvitationForm = ({
                       { id: 4, name: 'Thu' },
                       { id: 5, name: 'Fri' },
                       { id: 6, name: 'Sat' },
-                      { id: 0, name: 'Sun' }
-                    ].map(day => {
-                      const isDaySelected = selectedDays.includes(day.id);
+                      { id: 0, name: 'Sun' },
+                    ].map((day) => {
+                      const isDaySelected = selectedDays.includes(day.id)
                       return (
                         <button
                           key={day.id}
                           type="button"
                           onClick={() => {
                             const nextDays = isDaySelected
-                              ? selectedDays.filter(d => d !== day.id)
-                              : [...selectedDays, day.id];
-                            handleInputChange('selectedDays', nextDays);
+                              ? selectedDays.filter((d) => d !== day.id)
+                              : [...selectedDays, day.id]
+                            handleInputChange('selectedDays', nextDays)
                           }}
                           style={{
                             padding: '6px 12px',
@@ -452,16 +537,22 @@ export const InvitationForm = ({
                             fontSize: '12px',
                             fontWeight: '600',
                             border: '1px solid',
-                            borderColor: isDaySelected ? 'var(--primary, #0084FF)' : 'var(--border-light, #E2E8F0)',
-                            backgroundColor: isDaySelected ? 'var(--primary-light, #E5F3FF)' : '#fff',
-                            color: isDaySelected ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                            borderColor: isDaySelected
+                              ? 'var(--primary, #0084FF)'
+                              : 'var(--border-light, #E2E8F0)',
+                            backgroundColor: isDaySelected
+                              ? 'var(--primary-light, #E5F3FF)'
+                              : '#fff',
+                            color: isDaySelected
+                              ? 'var(--primary, #0084FF)'
+                              : 'var(--text-muted, #64748B)',
                             cursor: 'pointer',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
                           }}
                         >
                           {day.name}
                         </button>
-                      );
+                      )
                     })}
                   </div>
                 </div>
@@ -469,18 +560,18 @@ export const InvitationForm = ({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div className="form-group">
                     <label className="form-label">Start Time</label>
-                    <input 
-                      type="time" 
-                      className="form-control" 
+                    <input
+                      type="time"
+                      className="form-control"
                       value={formData.eventStartTime}
                       onChange={(e) => handleInputChange('eventStartTime', e.target.value)}
                     />
                   </div>
                   <div className="form-group">
                     <label className="form-label">End Time</label>
-                    <input 
-                      type="time" 
-                      className="form-control" 
+                    <input
+                      type="time"
+                      className="form-control"
                       value={formData.eventEndTime}
                       onChange={(e) => handleInputChange('eventEndTime', e.target.value)}
                     />
@@ -494,7 +585,16 @@ export const InvitationForm = ({
         {inviteMethod === 'service' && (
           <>
             {/* Toggle box for Pass Type */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', backgroundColor: '#F1F5F9', padding: '4px', borderRadius: '8px' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                marginBottom: '24px',
+                backgroundColor: '#F1F5F9',
+                padding: '4px',
+                borderRadius: '8px',
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setServicePassType('default')}
@@ -506,10 +606,13 @@ export const InvitationForm = ({
                   fontWeight: '600',
                   border: 'none',
                   backgroundColor: servicePassType === 'default' ? '#fff' : 'transparent',
-                  color: servicePassType === 'default' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                  color:
+                    servicePassType === 'default'
+                      ? 'var(--primary, #0084FF)'
+                      : 'var(--text-muted, #64748B)',
                   boxShadow: servicePassType === 'default' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
                 }}
               >
                 Default Pass
@@ -525,10 +628,13 @@ export const InvitationForm = ({
                   fontWeight: '600',
                   border: 'none',
                   backgroundColor: servicePassType === 'id_proof' ? '#fff' : 'transparent',
-                  color: servicePassType === 'id_proof' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                  color:
+                    servicePassType === 'id_proof'
+                      ? 'var(--primary, #0084FF)'
+                      : 'var(--text-muted, #64748B)',
                   boxShadow: servicePassType === 'id_proof' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
                 }}
               >
                 By ID Proof
@@ -536,7 +642,16 @@ export const InvitationForm = ({
             </div>
 
             {/* Toggle box for Usage Type */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', backgroundColor: '#F1F5F9', padding: '4px', borderRadius: '8px' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                marginBottom: '24px',
+                backgroundColor: '#F1F5F9',
+                padding: '4px',
+                borderRadius: '8px',
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setServiceUsageType('one_time')}
@@ -548,10 +663,13 @@ export const InvitationForm = ({
                   fontWeight: '600',
                   border: 'none',
                   backgroundColor: serviceUsageType === 'one_time' ? '#fff' : 'transparent',
-                  color: serviceUsageType === 'one_time' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                  color:
+                    serviceUsageType === 'one_time'
+                      ? 'var(--primary, #0084FF)'
+                      : 'var(--text-muted, #64748B)',
                   boxShadow: serviceUsageType === 'one_time' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
                 }}
               >
                 One-time Pass
@@ -567,10 +685,14 @@ export const InvitationForm = ({
                   fontWeight: '600',
                   border: 'none',
                   backgroundColor: serviceUsageType === 'multi_use' ? '#fff' : 'transparent',
-                  color: serviceUsageType === 'multi_use' ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
-                  boxShadow: serviceUsageType === 'multi_use' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  color:
+                    serviceUsageType === 'multi_use'
+                      ? 'var(--primary, #0084FF)'
+                      : 'var(--text-muted, #64748B)',
+                  boxShadow:
+                    serviceUsageType === 'multi_use' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
                 }}
               >
                 Multi-use Pass
@@ -580,40 +702,46 @@ export const InvitationForm = ({
             {/* Search & Select Service Type */}
             <div className="form-group" style={{ position: 'relative', zIndex: 10 }}>
               <label className="form-label">Service Type</label>
-              <input 
-                type="text" 
-                className="form-control" 
+              <input
+                type="text"
+                className="form-control"
                 placeholder="Search & select service type..."
                 value={formData.serviceType || ''}
                 onChange={(e) => {
-                  handleInputChange('serviceType', e.target.value);
-                  setServiceSearchOpen(true);
+                  handleInputChange('serviceType', e.target.value)
+                  setServiceSearchOpen(true)
                 }}
                 onFocus={() => setServiceSearchOpen(true)}
               />
               {serviceSearchOpen && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  backgroundColor: '#fff',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
-                  maxHeight: '160px',
-                  overflowY: 'auto',
-                  zIndex: 20,
-                  marginTop: '4px'
-                }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: '#fff',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                    maxHeight: '160px',
+                    overflowY: 'auto',
+                    zIndex: 20,
+                    marginTop: '4px',
+                  }}
+                >
                   {serviceTypes
-                    .filter(s => !formData.serviceType || s.toLowerCase().includes(formData.serviceType.toLowerCase()))
-                    .map(service => (
-                      <div 
+                    .filter(
+                      (s) =>
+                        !formData.serviceType ||
+                        s.toLowerCase().includes(formData.serviceType.toLowerCase()),
+                    )
+                    .map((service) => (
+                      <div
                         key={service}
                         onClick={() => {
-                          handleInputChange('serviceType', service);
-                          setServiceSearchOpen(false);
+                          handleInputChange('serviceType', service)
+                          setServiceSearchOpen(false)
                         }}
                         style={{
                           padding: '10px 16px',
@@ -621,24 +749,23 @@ export const InvitationForm = ({
                           fontSize: '14px',
                           color: 'var(--text-main)',
                           borderBottom: '1px solid #F1F5F9',
-                          transition: 'background 0.2s'
+                          transition: 'background 0.2s',
                         }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#F8FAFC'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = '#fff'}
+                        onMouseEnter={(e) => (e.target.style.backgroundColor = '#F8FAFC')}
+                        onMouseLeave={(e) => (e.target.style.backgroundColor = '#fff')}
                       >
                         {service}
                       </div>
-                    ))
-                  }
+                    ))}
                 </div>
               )}
             </div>
-            
+
             <div className="form-group">
               <label className="form-label">Staff Name / Agency Name</label>
-              <input 
-                type="text" 
-                className="form-control" 
+              <input
+                type="text"
+                className="form-control"
                 placeholder="e.g. Mike from Urban Company"
                 value={formData.providerName}
                 onChange={(e) => handleInputChange('providerName', e.target.value)}
@@ -649,7 +776,7 @@ export const InvitationForm = ({
               <>
                 <div className="form-group">
                   <label className="form-label">Select ID Proof Type</label>
-                  <select 
+                  <select
                     className="form-control"
                     value={formData.idProofType}
                     onChange={(e) => handleInputChange('idProofType', e.target.value)}
@@ -663,9 +790,9 @@ export const InvitationForm = ({
                 </div>
                 <div className="form-group">
                   <label className="form-label">ID Proof Reference / Number</label>
-                  <input 
-                    type="text" 
-                    className="form-control" 
+                  <input
+                    type="text"
+                    className="form-control"
                     placeholder="e.g. ID Code / Serial"
                     value={formData.idProof}
                     onChange={(e) => handleInputChange('idProof', e.target.value)}
@@ -679,18 +806,18 @@ export const InvitationForm = ({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div className="form-group">
                     <label className="form-label">Start Date</label>
-                    <input 
-                      type="date" 
-                      className="form-control" 
+                    <input
+                      type="date"
+                      className="form-control"
                       value={formData.startDate}
                       onChange={(e) => handleInputChange('startDate', e.target.value)}
                     />
                   </div>
                   <div className="form-group">
                     <label className="form-label">End Date</label>
-                    <input 
-                      type="date" 
-                      className="form-control" 
+                    <input
+                      type="date"
+                      className="form-control"
                       value={formData.endDate}
                       onChange={(e) => handleInputChange('endDate', e.target.value)}
                     />
@@ -707,18 +834,18 @@ export const InvitationForm = ({
                       { id: 4, name: 'Thu' },
                       { id: 5, name: 'Fri' },
                       { id: 6, name: 'Sat' },
-                      { id: 0, name: 'Sun' }
-                    ].map(day => {
-                      const isDaySelected = serviceSelectedDays.includes(day.id);
+                      { id: 0, name: 'Sun' },
+                    ].map((day) => {
+                      const isDaySelected = serviceSelectedDays.includes(day.id)
                       return (
                         <button
                           key={day.id}
                           type="button"
                           onClick={() => {
                             const nextDays = isDaySelected
-                              ? serviceSelectedDays.filter(d => d !== day.id)
-                              : [...serviceSelectedDays, day.id];
-                            handleInputChange('serviceSelectedDays', nextDays);
+                              ? serviceSelectedDays.filter((d) => d !== day.id)
+                              : [...serviceSelectedDays, day.id]
+                            handleInputChange('serviceSelectedDays', nextDays)
                           }}
                           style={{
                             padding: '6px 12px',
@@ -726,16 +853,22 @@ export const InvitationForm = ({
                             fontSize: '12px',
                             fontWeight: '600',
                             border: '1px solid',
-                            borderColor: isDaySelected ? 'var(--primary, #0084FF)' : 'var(--border-light, #E2E8F0)',
-                            backgroundColor: isDaySelected ? 'var(--primary-light, #E5F3FF)' : '#fff',
-                            color: isDaySelected ? 'var(--primary, #0084FF)' : 'var(--text-muted, #64748B)',
+                            borderColor: isDaySelected
+                              ? 'var(--primary, #0084FF)'
+                              : 'var(--border-light, #E2E8F0)',
+                            backgroundColor: isDaySelected
+                              ? 'var(--primary-light, #E5F3FF)'
+                              : '#fff',
+                            color: isDaySelected
+                              ? 'var(--primary, #0084FF)'
+                              : 'var(--text-muted, #64748B)',
                             cursor: 'pointer',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
                           }}
                         >
                           {day.name}
                         </button>
-                      );
+                      )
                     })}
                   </div>
                 </div>
@@ -743,18 +876,18 @@ export const InvitationForm = ({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div className="form-group">
                     <label className="form-label">Start Time</label>
-                    <input 
-                      type="time" 
-                      className="form-control" 
+                    <input
+                      type="time"
+                      className="form-control"
                       value={formData.eventStartTime}
                       onChange={(e) => handleInputChange('eventStartTime', e.target.value)}
                     />
                   </div>
                   <div className="form-group">
                     <label className="form-label">End Time</label>
-                    <input 
-                      type="time" 
-                      className="form-control" 
+                    <input
+                      type="time"
+                      className="form-control"
                       value={formData.eventEndTime}
                       onChange={(e) => handleInputChange('eventEndTime', e.target.value)}
                     />
@@ -764,13 +897,20 @@ export const InvitationForm = ({
             )}
 
             <div style={{ display: 'flex', gap: '12px', marginTop: '16px', alignItems: 'center' }}>
-              <input 
-                type="checkbox" 
-                style={{ width: '20px', height: '20px', cursor: 'pointer' }} 
+              <input
+                type="checkbox"
+                style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                 checked={formData.intercomAlert}
                 onChange={(e) => handleInputChange('intercomAlert', e.target.checked)}
               />
-              <label style={{ fontSize: '14px', color: 'var(--text-main)', fontWeight: '500', marginBottom: 0 }}>
+              <label
+                style={{
+                  fontSize: '14px',
+                  color: 'var(--text-main)',
+                  fontWeight: '500',
+                  marginBottom: 0,
+                }}
+              >
                 Enable intercom call verification alert
               </label>
             </div>
@@ -782,7 +922,7 @@ export const InvitationForm = ({
         </button>
       </form>
     </div>
-  );
-};
+  )
+}
 
-export default InvitationForm;
+export default InvitationForm

@@ -22,6 +22,7 @@ export const registerInvoiceListeners = () => {
 
            await invoiceService.settleInvoicePayment(payment.referenceId, {
              paymentMethod: methodToUse,
+             amount: payment.amount,
              paid_at: new Date(),
              settled_at: new Date(),
              offlineReference: payment.gatewayTransactionId,

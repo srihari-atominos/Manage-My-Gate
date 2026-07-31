@@ -55,9 +55,9 @@ export class OrganizationService {
       );
       const granularPermissionIds = targetPermissions.map((perm) => perm._id.toString());
 
-      // Ensure base UI permissions: ['users:read', 'roles:read'] are always included for Workspace Admin
+      // Ensure base UI permissions: ['users:read', 'roles:read', 'workspaces:read', 'workspaces:update'] are always included for Workspace Admin
       const basePermissions = allPermissions.filter((perm) =>
-        ['users:read', 'roles:read'].includes(perm.name)
+        ['users:read', 'roles:read', 'workspaces:read', 'workspaces:update'].includes(perm.name)
       );
       for (const basePerm of basePermissions) {
         const baseId = basePerm._id.toString();
@@ -75,33 +75,27 @@ export class OrganizationService {
 
       // Generate a new token if userId is provided
       let token = null;
-      let userObj = null;
+      let userPayload = null;
       if (userId) {
         const authService = (await import('../auth/auth.services.js')).default;
         const user = await authService.getUserById(userId);
         const { tokenPayload, permissions } = await authService.getScopedTokenPayload(user, orgId);
         const { signToken } = await import('../../utils/jwt.utils.js');
         token = signToken(tokenPayload);
-        userObj = {
+        userPayload = {
           id: user._id,
           email: user.email,
           username: user.username,
           role: tokenPayload.role,
-          roles: tokenPayload.roles,
-          permissions,
+          permissions: permissions,
           orgId: tokenPayload.orgId,
           isPlatform: tokenPayload.isPlatform,
-          visitorContext: tokenPayload.visitorContext,
-          villaId: tokenPayload.villaId,
-          villaNumber: tokenPayload.villaNumber,
-          villaBlock: tokenPayload.villaBlock,
-          residentType: tokenPayload.residentType,
         };
       }
 
-      return token ? { organization: updatedOrg, token, user: userObj } : updatedOrg;
+      return token ? { organization: updatedOrg, token, user: userPayload } : updatedOrg;
     } catch (error) {
-      if (localSession && localSession.inTransaction()) {
+      if (localSession) {
         await localSession.abortTransaction();
       }
       throw error;
@@ -153,14 +147,10 @@ export class OrganizationService {
 
       return updatedOrg;
     } catch (error) {
-      if (localSession && localSession.inTransaction()) {
-        await localSession.abortTransaction();
-      }
+      await localSession.abortTransaction();
       throw error;
     } finally {
-      if (localSession) {
-        await localSession.endSession();
-      }
+      await localSession.endSession();
     }
   }
 
@@ -172,7 +162,7 @@ export class OrganizationService {
     return !org;
   }
 
-  async setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId, password }) {
+  async setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId }) {
     // Enforce name uniqueness checks BEFORE starting the write transaction
     const trimmedName = name.trim();
     const existingOrg = await organizationRepository.findByName(trimmedName);
@@ -182,19 +172,18 @@ export class OrganizationService {
 
     const session = await mongoose.startSession();
     session.startTransaction();
+
     try {
-      // 1. Create Organization
-      const orgPayload = {
+      const newOrg = await organizationRepository.create({
         name: trimmedName,
-        organizationType,
+        status: 'Active',
+        organizationType: organizationType || 'Residential',
         contactEmail,
         contactPhone,
         expectedMemberCount,
         timezone: timezone || 'Asia/Kolkata',
-        status: 'Active',
-        allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices']
-      };
-      const newOrg = await organizationRepository.create(orgPayload, session);
+        allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices', 'complaints', 'visitor', 'billing']
+      }, session);
 
       // 2. Create the default Roles and assign Permissions
       const roleService = (await import('../role/role.services.js')).default;
@@ -276,10 +265,6 @@ export class OrganizationService {
         session
       );
 
-      // Update User roles array via user service to respect boundaries
-      const userService = (await import('../user/user.services.js')).default;
-      await userService.updateUserRoles(userId, newOrg._id, ['Community Admin'], session);
-
       await session.commitTransaction();
 
       // Outside the write transaction, generate the fresh token context
@@ -304,15 +289,20 @@ export class OrganizationService {
         availableWorkspaces,
       };
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
-      }
+      await session.abortTransaction();
       throw error;
     } finally {
-      if (session) {
-        await session.endSession();
-      }
+      await session.endSession();
     }
+  }
+
+  async updateOrganizationName(id, name, session = null) {
+    const trimmedName = name.trim();
+    const existing = await organizationRepository.findByName(trimmedName, session);
+    if (existing && existing._id.toString() !== id.toString()) {
+      throw new HttpError(409, 'Organization name already exists.');
+    }
+    return await organizationRepository.updateName(id, trimmedName, session);
   }
 }
 

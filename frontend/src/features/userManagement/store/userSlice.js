@@ -9,7 +9,7 @@ export const fetchUsersAsync = createAsyncThunk(
   'userManagement/fetchUsers',
   async ({ page, limit }, { getState, rejectWithValue }) => {
     try {
-      const { searchQuery, selectedRoles, statusFilter } = getState().userManagement;
+      const { searchQuery, selectedRoles, statusFilter } = getState().userManagement
       const response = await userApi.fetchUsers({
         page,
         limit,
@@ -21,7 +21,7 @@ export const fetchUsersAsync = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch users')
     }
-  }
+  },
 )
 
 export const inviteUserAsync = createAsyncThunk(
@@ -33,7 +33,7 @@ export const inviteUserAsync = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to invite user')
     }
-  }
+  },
 )
 
 export const bulkInviteUsersAsync = createAsyncThunk(
@@ -45,31 +45,31 @@ export const bulkInviteUsersAsync = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to bulk invite users')
     }
-  }
+  },
 )
 
 export const deleteUserAsync = createAsyncThunk(
   'userManagement/deleteUser',
-  async (userId, { rejectWithValue }) => {
+  async ({ userId, villaId = null }, { rejectWithValue }) => {
     try {
-      const response = await userApi.deleteUser(userId)
+      const response = await userApi.deleteUser(userId, villaId)
       return response
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to delete user')
     }
-  }
+  },
 )
 
 export const updateUserRolesAsync = createAsyncThunk(
   'userManagement/updateUserRoles',
-  async ({ userId, newRoles }, { rejectWithValue }) => {
+  async ({ userId, roles, villaId = null }, { rejectWithValue }) => {
     try {
-      const response = await userApi.updateUserRoles(userId, newRoles)
+      const response = await userApi.updateUserRoles(userId, roles, villaId)
       return response
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to update user roles')
     }
-  }
+  },
 )
 
 const initialState = {
@@ -116,6 +116,10 @@ const userSlice = createSlice({
     },
     setRowsPerPage: (state, action) => {
       state.rowsPerPage = action.payload
+    },
+    clearUsers: (state) => {
+      state.users = []
+      state.totalRecords = 0
     },
   },
   extraReducers: (builder) => {
@@ -168,7 +172,11 @@ const userSlice = createSlice({
       })
       .addCase(deleteUserAsync.fulfilled, (state, action) => {
         state.loading = false
-        state.users = state.users.filter((u) => u.id !== action.payload)
+        // We rely on fetchUsersAsync to update the list if villaId was passed.
+        // If not, we remove the user.
+        if (!action.payload.villaId) {
+          state.users = state.users.filter((u) => u.id !== action.payload.userId)
+        }
       })
       .addCase(deleteUserAsync.rejected, (state, action) => {
         state.loading = false
@@ -181,11 +189,8 @@ const userSlice = createSlice({
       })
       .addCase(updateUserRolesAsync.fulfilled, (state, action) => {
         state.loading = false
-        const { userId, roles } = action.payload
-        const user = state.users.find((u) => u.id === userId)
-        if (user) {
-          user.role = roles.join(', ')
-        }
+        // We rely on fetchUsersAsync (dispatched by useUserList) to get the latest accurate 
+        // assignedUnits array and role mappings from the backend.
       })
       .addCase(updateUserRolesAsync.rejected, (state, action) => {
         state.loading = false
@@ -201,6 +206,7 @@ export const {
   clearRoleFilter,
   setCurrentPage,
   setRowsPerPage,
+  clearUsers,
 } = userSlice.actions
 
 export default userSlice.reducer

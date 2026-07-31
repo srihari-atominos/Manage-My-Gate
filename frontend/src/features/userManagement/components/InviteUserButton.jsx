@@ -4,7 +4,7 @@ import { CButton } from '@coreui/react'
 
 /**
  * InviteUserButton Component
- * 
+ *
  * Reusable action button for user grid invitation flow.
  * Uses utility classes for styling and sizing to eliminate inline styles.
  */

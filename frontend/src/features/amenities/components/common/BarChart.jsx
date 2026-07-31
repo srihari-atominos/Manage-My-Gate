@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'
 
 const BarChart = ({ data }) => {
   // data = [{ label: 'Mon', primaryVal: 40, secondaryVal: 30 }, ...]
@@ -12,7 +12,7 @@ const BarChart = ({ data }) => {
         </div>
       ))}
     </div>
-  );
-};
+  )
+}
 
-export default BarChart;
+export default BarChart

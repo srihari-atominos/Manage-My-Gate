@@ -1,11 +1,28 @@
-import React from 'react';
-import { CModal, CModalHeader, CModalTitle, CModalBody, CTable, CTableHead, CTableRow, CTableHeaderCell, CTableBody, CTableDataCell } from '@coreui/react';
+import React from 'react'
+import {
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CTable,
+  CTableHead,
+  CTableRow,
+  CTableHeaderCell,
+  CTableBody,
+  CTableDataCell,
+} from '@coreui/react'
 
 const CalendarEventDetailModal = ({ visible, onClose, eventDetails }) => {
-  if (!eventDetails) return null;
+  if (!eventDetails) return null
 
   return (
-    <CModal visible={visible} onClose={onClose} size="lg" backdrop="static" className="amenity-os-theme">
+    <CModal
+      visible={visible}
+      onClose={onClose}
+      size="lg"
+      backdrop="static"
+      className="amenity-os-theme"
+    >
       <CModalHeader>
         <CModalTitle>
           {eventDetails.amenityName} ({eventDetails.startTime} - {eventDetails.endTime})
@@ -40,7 +57,7 @@ const CalendarEventDetailModal = ({ visible, onClose, eventDetails }) => {
         </CTable>
       </CModalBody>
     </CModal>
-  );
-};
+  )
+}
 
-export default CalendarEventDetailModal;
+export default CalendarEventDetailModal

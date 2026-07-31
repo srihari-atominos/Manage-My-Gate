@@ -5,7 +5,7 @@ import { Navigate, Outlet } from 'react-router-dom'
 
 /**
  * AuthGuard Component
- * 
+ *
  * Route guard component that checks the Redux auth state.
  * If user is not authenticated, redirects to /login.
  * Otherwise, checks if allowedRoles criteria is met, else redirects to /403.
@@ -20,12 +20,10 @@ export const AuthGuard = ({ children, allowedRoles = [] }) => {
 
   if (allowedRoles.length > 0) {
     // Standard roles check supporting both user.roles (array) and user.role (string)
-    const userRoles = Array.isArray(user?.roles) 
-      ? user.roles 
-      : (user?.role ? [user.role] : []);
-      
-    const hasRequiredRole = allowedRoles.some((role) => userRoles.includes(role));
-    
+    const userRoles = Array.isArray(user?.roles) ? user.roles : user?.role ? [user.role] : []
+
+    const hasRequiredRole = allowedRoles.some((role) => userRoles.includes(role))
+
     if (!hasRequiredRole) {
       return <Navigate to="/403" replace />
     }

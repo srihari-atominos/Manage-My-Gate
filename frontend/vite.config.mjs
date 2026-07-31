@@ -26,13 +26,18 @@ export default defineConfig(() => {
       extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.scss'],
     },
     server: {
-      port: 3000,
+      port: 3004,
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups'
       },
       proxy: {
         '/api': {
           target: 'http://127.0.0.1:5002',
+          changeOrigin: true,
+        },
+        '/socket.io': {
+          target: 'http://127.0.0.1:5002',
+          ws: true,
           changeOrigin: true,
         },
         '/public': {

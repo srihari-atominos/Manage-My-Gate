@@ -56,6 +56,37 @@ router.get(
 
 /**
  * @swagger
+ * /villas/bulk-upload/template:
+ *   get:
+ *     summary: Download bulk upload template in Excel format
+ */
+router.get(
+  '/bulk-upload/template',
+  correlationIdMiddleware,
+  isAuthenticated,
+  tenantContext,
+  authorizePermission('villas', 'create'),
+  villaController.downloadBulkUploadTemplate
+);
+
+/**
+ * @swagger
+ * /villas/bulk-upload:
+ *   post:
+ *     summary: Bulk upload units with residents
+ */
+router.post(
+  '/bulk-upload',
+  correlationIdMiddleware,
+  isAuthenticated,
+  tenantContext,
+  authorizePermission('villas', ['create', 'update', 'read']),
+  validate(bulkUploadVillasRules),
+  villaController.bulkUpload
+);
+
+/**
+ * @swagger
  * /villas/{id}:
  *   get:
  *     summary: Retrieve a single unit and its residents
@@ -101,21 +132,6 @@ router.post(
   villaController.batchGenerate
 );
 
-/**
- * @swagger
- * /villas/bulk-upload:
- *   post:
- *     summary: Bulk upload units with residents
- */
-router.post(
-  '/bulk-upload',
-  correlationIdMiddleware,
-  isAuthenticated,
-  tenantContext,
-  authorizePermission('villas', ['create', 'update', 'read']),
-  validate(bulkUploadVillasRules),
-  villaController.bulkUpload
-);
 
 /**
  * @swagger

@@ -4,9 +4,9 @@
  * @returns {string} Formatted currency string
  */
 export const formatCurrency = (amount) => {
-  const num = amount || 0;
-  return `₹${num.toLocaleString('en-IN')}`;
-};
+  const num = amount || 0
+  return `₹${num.toLocaleString('en-IN')}`
+}
 
 /**
  * Formats a time string (HH:mm) to AM/PM format
@@ -14,14 +14,14 @@ export const formatCurrency = (amount) => {
  * @returns {string} Formatted 12h time string
  */
 export const formatTimeAMPM = (timeString) => {
-  if (!timeString) return '';
-  const [hours, minutes] = timeString.split(':');
-  let h = parseInt(hours, 10);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  h = h % 12;
-  h = h ? h : 12; // the hour '0' should be '12'
-  return `${h}:${minutes} ${ampm}`;
-};
+  if (!timeString) return ''
+  const [hours, minutes] = timeString.split(':')
+  let h = parseInt(hours, 10)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  h = h % 12
+  h = h ? h : 12 // the hour '0' should be '12'
+  return `${h}:${minutes} ${ampm}`
+}
 
 /**
  * Maps day index (0-6) to day name
@@ -29,6 +29,6 @@ export const formatTimeAMPM = (timeString) => {
  * @returns {string} Day name (short)
  */
 export const getDayName = (dayIndex) => {
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  return days[dayIndex] || '';
-};
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  return days[dayIndex] || ''
+}

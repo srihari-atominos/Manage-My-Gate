@@ -1,5 +1,5 @@
-﻿import React from 'react';
-import { CBadge } from '@coreui/react';
+﻿import React from 'react'
+import { CBadge } from '@coreui/react'
 
 export const AmenityStatusBadge = ({ status }) => {
   const getBadgeColor = (s) => {
@@ -7,26 +7,26 @@ export const AmenityStatusBadge = ({ status }) => {
       case 'active':
       case 'completed':
       case 'approved':
-        return 'success';
+        return 'success'
       case 'pending':
-        return 'warning';
+        return 'warning'
       case 'confirmed':
       case 'checked-in':
-        return 'info';
+        return 'info'
       case 'cancelled':
       case 'rejected':
       case 'inactive':
-        return 'danger';
+        return 'danger'
       default:
-        return 'secondary';
+        return 'secondary'
     }
-  };
+  }
 
   return (
     <CBadge color={getBadgeColor(status)} shape="rounded-pill">
       {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown'}
     </CBadge>
-  );
-};
+  )
+}
 
-export default AmenityStatusBadge;
+export default AmenityStatusBadge

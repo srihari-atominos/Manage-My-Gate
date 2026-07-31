@@ -22,7 +22,7 @@ const villaSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['Studio', 'Apartment', 'Villa', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex'],
+      enum: ['Studio', 'Apartment', 'Villa', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex', '1BHA', '2BHA', '3BHA'],
       default: 'Apartment',
     },
     status: {

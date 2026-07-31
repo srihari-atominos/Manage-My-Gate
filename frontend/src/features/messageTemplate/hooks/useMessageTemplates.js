@@ -16,9 +16,11 @@ import {
 export const useMessageTemplates = () => {
   const dispatch = useDispatch()
 
-  const { templates = [], isLoading = false, error = null } = useSelector(
-    (state) => state.messageTemplate || {}
-  )
+  const {
+    templates = [],
+    isLoading = false,
+    error = null,
+  } = useSelector((state) => state.messageTemplate || {})
 
   const loadTemplates = useCallback(() => {
     dispatch(getTemplatesAsync())
@@ -29,9 +31,7 @@ export const useMessageTemplates = () => {
       try {
         let result
         if (templateId) {
-          result = await dispatch(
-            updateTemplateAsync({ id: templateId, templateData })
-          ).unwrap()
+          result = await dispatch(updateTemplateAsync({ id: templateId, templateData })).unwrap()
         } else {
           result = await dispatch(createTemplateAsync(templateData)).unwrap()
         }
@@ -41,7 +41,7 @@ export const useMessageTemplates = () => {
         return { success: false, error: err }
       }
     },
-    [dispatch]
+    [dispatch],
   )
 
   const removeTemplate = useCallback(
@@ -54,7 +54,7 @@ export const useMessageTemplates = () => {
         return { success: false, error: err }
       }
     },
-    [dispatch]
+    [dispatch],
   )
 
   const handleClearError = useCallback(() => {

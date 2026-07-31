@@ -1,44 +1,44 @@
-import { useState, useCallback } from 'react';
-import { getAmenitySettings, updateAmenitySettings } from '../services/amenitySettingsApi.js';
-import toast from 'react-hot-toast';
+import { useState, useCallback } from 'react'
+import { getAmenitySettings, updateAmenitySettings } from '../services/amenitySettingsApi.js'
+import toast from 'react-hot-toast'
 
 export const useAdminSettings = () => {
-  const [settings, setSettings] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
+  const [settings, setSettings] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
 
   const loadSettings = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
-      const response = await getAmenitySettings();
-      setSettings(response.data);
+      const response = await getAmenitySettings()
+      setSettings(response.data)
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to load settings');
-      toast.error('Failed to load settings');
+      setError(err.response?.data?.message || err.message || 'Failed to load settings')
+      toast.error('Failed to load settings')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   const saveSettings = useCallback(async (data) => {
-    setSaving(true);
-    setError(null);
+    setSaving(true)
+    setError(null)
     try {
-      const response = await updateAmenitySettings(data);
-      setSettings(response.data);
-      toast.success('Settings saved successfully');
-      return true;
+      const response = await updateAmenitySettings(data)
+      setSettings(response.data)
+      toast.success('Settings saved successfully')
+      return true
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to save settings';
-      setError(errorMsg);
-      toast.error(errorMsg);
-      return false;
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to save settings'
+      setError(errorMsg)
+      toast.error(errorMsg)
+      return false
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  }, []);
+  }, [])
 
   return {
     settings,
@@ -46,8 +46,8 @@ export const useAdminSettings = () => {
     saving,
     error,
     loadSettings,
-    saveSettings
-  };
-};
+    saveSettings,
+  }
+}
 
-export default useAdminSettings;
+export default useAdminSettings

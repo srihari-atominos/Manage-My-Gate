@@ -1,28 +1,28 @@
-import { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchComplaintSettings, updateComplaintSettings } from '../store/complaintSettingsSlice';
+import { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchComplaintSettings, updateComplaintSettings } from '../store/complaintSettingsSlice'
 
 export const useComplaintSettings = () => {
-  const dispatch = useDispatch();
-  const { data, status, error } = useSelector((state) => state.complaintSettings);
+  const dispatch = useDispatch()
+  const { data, status, error } = useSelector((state) => state.complaintSettings)
 
   useEffect(() => {
     if (status === 'idle') {
-      dispatch(fetchComplaintSettings());
+      dispatch(fetchComplaintSettings())
     }
-  }, [status, dispatch]);
+  }, [status, dispatch])
 
   const updateSettings = async (newData) => {
-    return await dispatch(updateComplaintSettings(newData)).unwrap();
-  };
+    return await dispatch(updateComplaintSettings(newData)).unwrap()
+  }
 
   return {
     settings: data,
     isLoading: status === 'loading',
     isError: status === 'failed',
     error,
-    updateSettings
-  };
-};
+    updateSettings,
+  }
+}
 
-export default useComplaintSettings;
+export default useComplaintSettings
