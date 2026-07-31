@@ -154,6 +154,10 @@ export class UserService {
         // Clean up linked SSO identities
         const userIdentityService = (await import('../userIdentity/userIdentity.services.js')).default;
         await userIdentityService.deleteIdentitiesByUserId(id, session);
+
+        // Revoke all active sessions
+        const sessionService = (await import('../session/session.services.js')).default;
+        await sessionService.revokeAllUserSessions(id, null, session);
       } else {
         const remaining = remainingMemberships[0];
         const getResidencyTypeFromMemberType = (type) => {

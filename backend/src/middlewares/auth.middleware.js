@@ -1,11 +1,12 @@
 import jwt from 'jsonwebtoken';
 import config from '../config/config.js';
 import HttpError from '../utils/httpError.utils.js';
+import userService from '../features/user/user.services.js';
 
 /**
  * Authentication middleware to verify JWT token.
  */
-export const isAuthenticated = (req, res, next) => {
+export const isAuthenticated = async (req, res, next) => {
   try {
     let token = null;
 
@@ -27,6 +28,19 @@ export const isAuthenticated = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, config.jwt.secret);
+    
+    // Verify that the user still exists in the database and is Active
+    let user;
+    try {
+      user = await userService.getUserById(decoded.id);
+    } catch (err) {
+      throw new HttpError(401, 'User account no longer exists.');
+    }
+
+    if (!user || user.status !== 'Active') {
+      throw new HttpError(401, 'User account is inactive.');
+    }
+
     req.user = decoded; // Contains user ID, email, role, permissions, etc.
     next();
   } catch (error) {
