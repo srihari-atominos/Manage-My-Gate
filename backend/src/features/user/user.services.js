@@ -150,6 +150,10 @@ export class UserService {
       if (remainingMemberships.length === 0) {
         // If they don't belong to any other organization, hard-delete their global user record
         await userRepository.delete(id, session);
+        
+        // Clean up linked SSO identities
+        const userIdentityService = (await import('../userIdentity/userIdentity.services.js')).default;
+        await userIdentityService.deleteIdentitiesByUserId(id, session);
       } else {
         const remaining = remainingMemberships[0];
         const getResidencyTypeFromMemberType = (type) => {
@@ -175,7 +179,7 @@ export class UserService {
       }
 
       await session.commitTransaction();
-      userEvents.emit('USER_UPDATED', { userId: id, action: 'deleted' });
+      userEvents.emit('USER_UPDATED', { userId: id, orgId, action: 'deleted' });
       return { id };
     } catch (error) {
       await session.abortTransaction();
@@ -423,8 +427,6 @@ export class UserService {
 
   async activateUser(id, hashedPassword, session) {
     const updatedUser = await userRepository.update(id, { password: hashedPassword, status: 'Active' }, session);
-    userEvents.emit('USER_ACTIVATED', { userId: id, session });
-    userEvents.emit('USER_UPDATED', { userId: id, action: 'activated' });
     return updatedUser;
   }
 

@@ -20,6 +20,11 @@ const apiClient = axios.create({
 
 let isRefreshing = false
 let failedQueue = []
+let store
+
+export const injectStore = (_store) => {
+  store = _store
+}
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach((prom) => {
@@ -38,18 +43,19 @@ apiClient.interceptors.request.use(
     // Generate and inject a unique Request Correlation ID
     config.headers['X-Request-ID'] = uuidv4()
 
-    // Dynamically import store to prevent circular dependency crashes during application bootstrap
+    // Use injected store to get state
     try {
-      const { store } = await import('../store/store.js')
-      const state = store.getState()
+      if (store) {
+        const state = store.getState()
 
-      const token = state.auth?.token || localStorage.getItem('token')
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
+        const token = state.auth?.token || localStorage.getItem('token')
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`
+        }
 
-      if (state.workspace && state.workspace.activeOrganizationId) {
-        config.headers['x-organization-id'] = state.workspace.activeOrganizationId
+        if (state.workspace && state.workspace.activeOrganizationId) {
+          config.headers['x-organization-id'] = state.workspace.activeOrganizationId
+        }
       }
     } catch (err) {
       console.error('Failed to inject headers in request interceptor:', err)
@@ -127,12 +133,8 @@ apiClient.interceptors.response.use(
         if (res.status === 200 || res.status === 201) {
           const newToken = res.data.token
 
-          try {
-            const { store } = await import('../store/store.js')
-            const { updateTokenAndUser } = await import('../features/auth/store/authSlice.js')
-            store.dispatch(updateTokenAndUser({ token: newToken }))
-          } catch (dispatchErr) {
-            console.error('Failed to update refreshed token in store:', dispatchErr)
+          if (store) {
+            store.dispatch({ type: 'auth/updateTokenAndUser', payload: { token: newToken } })
           }
 
           apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newToken
@@ -144,14 +146,10 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null)
 
-        try {
-          const { store } = await import('../store/store.js')
-          const { logout } = await import('../features/auth/store/authSlice.js')
-          store.dispatch(logout())
-        } catch (dispatchErr) {
-          console.error('Failed to trigger automatic logout on 401', dispatchErr)
+        if (store) {
+          store.dispatch({ type: 'auth/logout' })
         }
-        window.location.href = window.location.pathname + '#/login'
+        window.location.href = '/#/login'
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false

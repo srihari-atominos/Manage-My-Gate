@@ -57,8 +57,18 @@ export class UserIdentityService {
       provider: identityData.provider,
       providerId: identityData.providerId
     }).session(session);
+    
     if (identityTaken) {
-      throw new HttpError(400, `This ${identityData.provider} account is already linked to another user.`);
+      // Self-healing: Check if the user who previously claimed this identity actually still exists
+      const User = (await import('../user/user.model.js')).default;
+      const oldUser = await User.findById(identityTaken.userId).session(session);
+      
+      if (!oldUser) {
+        // The old user was deleted, but their identity was left behind. Clean it up and proceed.
+        await UserIdentity.deleteOne({ _id: identityTaken._id }).session(session);
+      } else {
+        throw new HttpError(400, `This ${identityData.provider} account is already linked to another user.`);
+      }
     }
 
     const identity = new UserIdentity({
@@ -85,6 +95,15 @@ export class UserIdentityService {
    */
   async unlinkIdentity(userId, provider, session = null) {
     return await UserIdentity.findOneAndDelete({ userId, provider }).session(session);
+  }
+
+  /**
+   * Deletes all identities associated with a user ID (e.g., during hard delete).
+   * @param {string} userId - Internal user ID
+   * @param {object} [session] - Mongoose session
+   */
+  async deleteIdentitiesByUserId(userId, session = null) {
+    return await UserIdentity.deleteMany({ userId }).session(session);
   }
 
   /**

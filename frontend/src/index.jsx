@@ -6,7 +6,10 @@ import 'core-js'
 import config from './config/config.js'
 import App from './App'
 import store from './store/store'
+import { injectStore } from './services/apiClient'
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary'
+
+injectStore(store)
 import { setActiveWorkspace } from './features/workspace/store/workspaceSlice.js'
 import './i18n.js'
 

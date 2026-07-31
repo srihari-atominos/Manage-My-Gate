@@ -11,6 +11,7 @@ import userIdentityService from '../userIdentity/userIdentity.services.js';
 import integrationHubService from '../integrationHub/integrationHub.service.js';
 import config from '../../config/config.js';
 import authEvents from './auth.events.js';
+import userEvents from '../user/user.events.js';
 import emailValidator from 'deep-email-validator';
 
 export class AuthService {
@@ -498,6 +499,8 @@ export class AuthService {
 
       // Emit event for successful activation and login write operations
       authEvents.emit('USER_ACTIVATED', { userId: user._id });
+      userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
+      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
       authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'invitation' });
 
       return {
@@ -1224,6 +1227,8 @@ export class AuthService {
       authEvents.emit('PROVIDER_LOGIN', { userId: activatedUser._id, provider });
       authEvents.emit('LOGIN_SUCCESS', { userId: activatedUser._id, method: provider });
       authEvents.emit('USER_ACTIVATED', { userId: activatedUser._id });
+      userEvents.emit('USER_ACTIVATED', { userId: activatedUser._id, orgId });
+      userEvents.emit('USER_UPDATED', { userId: activatedUser._id, orgId, action: 'activated' });
 
       return {
         token,
