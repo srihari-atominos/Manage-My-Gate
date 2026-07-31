@@ -53,30 +53,29 @@ const AppContent = () => {
         <Routes>
           {routes.map((route, idx) => {
             // Exclude /workspace-setup route from rendering inside DefaultLayout
-            if (route.path === '/workspace-setup') return null;
+            if (route.path === '/workspace-setup') return null
 
             // Route-level authorization checks
             if (route.requirePlatform && !isPlatform) {
-              return (
-                <Route
-                  key={idx}
-                  path={route.path}
-                  element={<Page403 />}
-                />
-              )
+              return <Route key={idx} path={route.path} element={<Page403 />} />
             }
 
-            if (route.requiredPermission && !isPlatform && !checkPermission(route.requiredPermission)) {
-              return (
-                <Route
-                  key={idx}
-                  path={route.path}
-                  element={<Page403 />}
-                />
-              )
+            if (
+              route.requiredPermission &&
+              !isPlatform &&
+              !checkPermission(route.requiredPermission)
+            ) {
+              return <Route key={idx} path={route.path} element={<Page403 />} />
             }
 
-            const isProtected = ['/users', '/roles', '/role-builder', '/villas', '/super-admin/organizations', '/super-admin/audit-logs'].includes(route.path)
+            const isProtected = [
+              '/users',
+              '/roles',
+              '/role-builder',
+              '/villas',
+              '/super-admin/organizations',
+              '/super-admin/audit-logs',
+            ].includes(route.path)
             const routeElement = isProtected ? (
               <AuthGuard>
                 <route.element />

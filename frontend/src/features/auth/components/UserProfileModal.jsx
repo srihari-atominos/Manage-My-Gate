@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import config from '../../../config/config.js'
-import { useForm } from 'react-hook-form'
-import { yupResolver } from '@hookform/resolvers/yup'
-import * as yup from 'yup'
+import { useForm, Controller } from 'react-hook-form'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 import {
   CModal,
   CModalHeader,
@@ -19,23 +19,21 @@ import {
 import useAuth from '../hooks/useAuth'
 import '../styles/_auth.scss'
 
-const schema = yup.object().shape({
-  name: yup.string().trim().required('Name is required'),
-  phone: yup.string().trim().optional(),
-})
+
 
 const UserProfileModal = ({ visible, onClose }) => {
   const { currentUser, updateProfile, loading, error, successMsg, clearStatus } = useAuth()
   const [previewUrl, setPreviewUrl] = useState(null)
+  const [expectedPhoneLength, setExpectedPhoneLength] = useState(12)
 
   const {
     register,
     handleSubmit,
     reset,
     watch,
+    control,
     formState: { errors },
   } = useForm({
-    resolver: yupResolver(schema),
     defaultValues: {
       name: '',
       phone: '',
@@ -95,7 +93,9 @@ const UserProfileModal = ({ visible, onClose }) => {
   // Derive static asset base URL
   const apiBase = config.apiUrl
   const backendHost = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase
-  const existingAvatarUrl = currentUser?.avatar ? `${backendHost}/${currentUser.avatar.startsWith('/') ? currentUser.avatar.substring(1) : currentUser.avatar}` : null
+  const existingAvatarUrl = currentUser?.avatar
+    ? `${backendHost}/${currentUser.avatar.startsWith('/') ? currentUser.avatar.substring(1) : currentUser.avatar}`
+    : null
 
   // Capitalized letter fallback
   const fallbackLetter = currentUser?.username ? currentUser.username.charAt(0).toUpperCase() : 'U'
@@ -103,14 +103,20 @@ const UserProfileModal = ({ visible, onClose }) => {
   return (
     <CModal visible={visible} onClose={onClose} id="user-profile-modal" alignment="center">
       <CModalHeader>
-        <CModalTitle style={{ fontSize: '1rem', fontWeight: 700 }}>
-          My Profile Settings
-        </CModalTitle>
+        <CModalTitle style={{ fontSize: '1rem', fontWeight: 700 }}>My Profile Settings</CModalTitle>
       </CModalHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CModalBody>
-          {error && <CAlert color="danger" className="py-2 small">{error}</CAlert>}
-          {successMsg && <CAlert color="success" className="py-2 small">{successMsg}</CAlert>}
+          {error && (
+            <CAlert color="danger" className="py-2 small">
+              {error}
+            </CAlert>
+          )}
+          {successMsg && (
+            <CAlert color="success" className="py-2 small">
+              {successMsg}
+            </CAlert>
+          )}
 
           {/* Avatar Preview & File Upload */}
           <div className="profile-avatar-container">
@@ -121,9 +127,12 @@ const UserProfileModal = ({ visible, onClose }) => {
             ) : (
               <div className="profile-avatar-fallback">{fallbackLetter}</div>
             )}
-            
+
             <div className="w-100 mt-2">
-              <CFormLabel htmlFor="profile-avatar-input" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+              <CFormLabel
+                htmlFor="profile-avatar-input"
+                style={{ fontSize: '0.85rem', fontWeight: 600 }}
+              >
                 Upload New Avatar
               </CFormLabel>
               <CFormInput
@@ -140,15 +149,13 @@ const UserProfileModal = ({ visible, onClose }) => {
 
           {/* Email (Read Only) */}
           <div className="mb-3">
-            <CFormLabel htmlFor="profile-email-input" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            <CFormLabel
+              htmlFor="profile-email-input"
+              style={{ fontSize: '0.85rem', fontWeight: 600 }}
+            >
               Email Address
             </CFormLabel>
-            <CFormInput
-              id="profile-email-input"
-              type="email"
-              disabled
-              {...register('email')}
-            />
+            <CFormInput id="profile-email-input" type="email" disabled {...register('email')} />
             <div className="text-muted small mt-1">
               Email address is managed by administrator and cannot be changed.
             </div>
@@ -156,44 +163,82 @@ const UserProfileModal = ({ visible, onClose }) => {
 
           {/* Name */}
           <div className="mb-3">
-            <CFormLabel htmlFor="profile-name-input" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            <CFormLabel
+              htmlFor="profile-name-input"
+              style={{ fontSize: '0.85rem', fontWeight: 600 }}
+            >
               Full Name
             </CFormLabel>
             <CFormInput
               id="profile-name-input"
               type="text"
               placeholder="e.g. John Doe"
-              {...register('name')}
+              {...register('name', { required: 'Name is required' })}
               invalid={!!errors.name}
             />
-            {errors.name && (
-              <div className="text-danger small mt-1">
-                {errors.name.message}
-              </div>
-            )}
+            {errors.name && <div className="text-danger small mt-1">{errors.name.message}</div>}
           </div>
 
           {/* Phone */}
           <div className="mb-3">
-            <CFormLabel htmlFor="profile-phone-input" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            <CFormLabel
+              htmlFor="profile-phone-input"
+              style={{ fontSize: '0.85rem', fontWeight: 600 }}
+            >
               Phone Number
             </CFormLabel>
-            <CFormInput
-              id="profile-phone-input"
-              type="text"
-              placeholder="e.g. +1234567890"
-              {...register('phone')}
-              invalid={!!errors.phone}
+            <Controller
+              name="phone"
+              control={control}
+              rules={{
+                validate: (value) => {
+                  if (!value) return true
+                  if (value.length < expectedPhoneLength) {
+                    return 'Invalid phone number length for this country.'
+                  }
+                  return true
+                },
+              }}
+              render={({ field: { onChange, value } }) => (
+                <PhoneInput
+                  country={'in'}
+                  value={value}
+                  onChange={(phone, country) => {
+                    if (country && country.format) {
+                      setExpectedPhoneLength(country.format.replace(/[^.]/g, '').length)
+                    }
+                    onChange(phone)
+                  }}
+                  containerStyle={{
+                    width: '100%',
+                  }}
+                  inputStyle={{
+                    width: '100%',
+                    height: '38px', // Match CFormInput height
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem',
+                    fontSize: '14px',
+                  }}
+                  buttonStyle={{
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem 0 0 0.375rem',
+                    backgroundColor: '#f3f4f6',
+                  }}
+                  disabled={loading}
+                />
+              )}
             />
-            {errors.phone && (
-              <div className="text-danger small mt-1">
-                {errors.phone.message}
-              </div>
-            )}
+            {errors.phone && <div className="text-danger small mt-1">{errors.phone.message}</div>}
           </div>
         </CModalBody>
         <CModalFooter className="border-0 pt-0">
-          <CButton id="close-profile-btn" color="light" size="sm" onClick={onClose} disabled={loading}>
+          <CButton
+            id="close-profile-btn"
+            color="light"
+            size="sm"
+            onClick={onClose}
+            disabled={loading}
+          >
             Cancel
           </CButton>
           <CButton

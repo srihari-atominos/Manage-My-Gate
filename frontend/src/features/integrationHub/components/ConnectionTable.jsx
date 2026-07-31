@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
-import { useTranslation } from 'react-i18next';
+import React, { useState } from 'react'
+import PropTypes from 'prop-types'
+import { useTranslation } from 'react-i18next'
 import {
   CTable,
   CTableBody,
@@ -13,10 +13,10 @@ import {
   CPagination,
   CPaginationItem,
   CFormInput,
-} from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilPencil, cilTrash, cilCheck, cilX } from '@coreui/icons';
-import '../styles/_integrationHub.scss';
+} from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilPencil, cilTrash, cilCheck, cilX } from '@coreui/icons'
+import '../styles/_integrationHub.scss'
 
 /**
  * Table showing active connections for the selected provider with renaming and deletion capabilities.
@@ -29,35 +29,35 @@ export const ConnectionTable = ({
   onDelete,
   isActionLoading,
 }) => {
-  const { t } = useTranslation();
-  const [editingId, setEditingId] = useState(null);
-  const [editValue, setEditValue] = useState('');
+  const { t } = useTranslation()
+  const [editingId, setEditingId] = useState(null)
+  const [editValue, setEditValue] = useState('')
 
   const startEditing = (id, currentLabel) => {
-    setEditingId(id);
-    setEditValue(currentLabel);
-  };
+    setEditingId(id)
+    setEditValue(currentLabel)
+  }
 
   const cancelEditing = () => {
-    setEditingId(null);
-    setEditValue('');
-  };
+    setEditingId(null)
+    setEditValue('')
+  }
 
   const saveEdit = async (id) => {
-    if (!editValue.trim()) return;
-    const success = await onUpdateLabel(id, editValue.trim());
+    if (!editValue.trim()) return
+    const success = await onUpdateLabel(id, editValue.trim())
     if (success) {
-      setEditingId(null);
-      setEditValue('');
+      setEditingId(null)
+      setEditValue('')
     }
-  };
+  }
 
   const getStatusBadgeColor = (status) => {
-    return status === 'connected' ? 'success' : 'secondary';
-  };
+    return status === 'connected' ? 'success' : 'secondary'
+  }
 
-  const currentPage = pagination?.currentPage || 1;
-  const totalPages = pagination?.totalPages || 1;
+  const currentPage = pagination?.currentPage || 1
+  const totalPages = pagination?.totalPages || 1
 
   return (
     <div className="connection-table-wrapper flex-1 flex flex-col h-full overflow-hidden">
@@ -75,18 +75,31 @@ export const ConnectionTable = ({
         <>
           {/* Table Scroll Wrapper */}
           <div className="flex-1 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-t-lg">
-            <CTable align="middle" hover responsive className="m-0 w-full text-slate-700 dark:text-slate-300">
+            <CTable
+              align="middle"
+              hover
+              responsive
+              className="m-0 w-full text-slate-700 dark:text-slate-300"
+            >
               <CTableHead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 shadow-sm">
                 <CTableRow>
-                  <CTableHeaderCell className="ps-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">{t('integrationHub.table.accountLabel', 'Label')}</CTableHeaderCell>
-                  <CTableHeaderCell className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">{t('integrationHub.table.status', 'Status')}</CTableHeaderCell>
-                  <CTableHeaderCell className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">{t('integrationHub.table.createdAt', 'Connected At')}</CTableHeaderCell>
-                  <CTableHeaderCell className="text-center bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">{t('integrationHub.table.actions', 'Actions')}</CTableHeaderCell>
+                  <CTableHeaderCell className="ps-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">
+                    {t('integrationHub.table.accountLabel', 'Label')}
+                  </CTableHeaderCell>
+                  <CTableHeaderCell className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">
+                    {t('integrationHub.table.status', 'Status')}
+                  </CTableHeaderCell>
+                  <CTableHeaderCell className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">
+                    {t('integrationHub.table.createdAt', 'Connected At')}
+                  </CTableHeaderCell>
+                  <CTableHeaderCell className="text-center bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">
+                    {t('integrationHub.table.actions', 'Actions')}
+                  </CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
               <CTableBody>
                 {connections.map((conn) => {
-                  const isEditing = editingId === conn.id;
+                  const isEditing = editingId === conn.id
                   return (
                     <CTableRow key={conn.id} className="border-b dark:border-slate-800">
                       <CTableDataCell className="ps-4 py-3">
@@ -118,7 +131,9 @@ export const ConnectionTable = ({
                             </CButton>
                           </div>
                         ) : (
-                          <span className="fw-semibold text-slate-900 dark:text-slate-100">{conn.accountLabel}</span>
+                          <span className="fw-semibold text-slate-900 dark:text-slate-100">
+                            {conn.accountLabel}
+                          </span>
                         )}
                       </CTableDataCell>
                       <CTableDataCell className="py-3">
@@ -155,7 +170,7 @@ export const ConnectionTable = ({
                         )}
                       </CTableDataCell>
                     </CTableRow>
-                  );
+                  )
                 })}
               </CTableBody>
             </CTable>
@@ -191,7 +206,10 @@ export const ConnectionTable = ({
               <CPaginationItem
                 disabled={currentPage === totalPages || totalPages === 0}
                 onClick={() => onPageChange(currentPage + 1)}
-                style={{ cursor: (currentPage === totalPages || totalPages === 0) ? 'not-allowed' : 'pointer' }}
+                style={{
+                  cursor:
+                    currentPage === totalPages || totalPages === 0 ? 'not-allowed' : 'pointer',
+                }}
               >
                 {t('integrationHub.pagination.next', 'Next')}
               </CPaginationItem>
@@ -200,8 +218,8 @@ export const ConnectionTable = ({
         </>
       )}
     </div>
-  );
-};
+  )
+}
 
 ConnectionTable.propTypes = {
   connections: PropTypes.arrayOf(
@@ -211,7 +229,7 @@ ConnectionTable.propTypes = {
       accountLabel: PropTypes.string.isRequired,
       status: PropTypes.string.isRequired,
       createdAt: PropTypes.string,
-    })
+    }),
   ).isRequired,
   pagination: PropTypes.shape({
     totalRecords: PropTypes.number.isRequired,
@@ -223,6 +241,6 @@ ConnectionTable.propTypes = {
   onUpdateLabel: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   isActionLoading: PropTypes.bool,
-};
+}
 
-export default ConnectionTable;
+export default ConnectionTable

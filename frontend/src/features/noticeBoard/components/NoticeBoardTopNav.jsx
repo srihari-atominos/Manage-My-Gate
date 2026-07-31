@@ -12,7 +12,12 @@ const navItems = [
     icon: cilSpeedometer,
     requiredPermission: 'notices:dashboard',
   },
-  { name: 'Active Board', to: '/notices/board', icon: cilList, requiredPermission: 'notices:active_board' },
+  {
+    name: 'Active Board',
+    to: '/notices/board',
+    icon: cilList,
+    requiredPermission: 'notices:active_board',
+  },
   {
     name: 'Manage Notices',
     to: '/admin/notices/manage',

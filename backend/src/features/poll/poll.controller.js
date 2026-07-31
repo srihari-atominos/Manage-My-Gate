@@ -1,4 +1,11 @@
 import * as pollService from './poll.services.js';
+import { getPermissionsForUser } from '../../middlewares/rbac.middleware.js';
+
+const checkIsCommunityAdmin = async (user) => {
+  if (user.role === 'Super Admin' || user.role === 'Platform Super Admin' || user.isPlatformSuperAdmin) return true;
+  const permissions = await getPermissionsForUser(user);
+  return permissions.includes('notices:manage_notices') || permissions.includes('notices.manage_notices');
+};
 
 export const createPoll = async (req, res, next) => {
   try {
@@ -22,7 +29,7 @@ export const getPolls = async (req, res, next) => {
     const search = req.query.search || '';
     const sort = req.query.sort || 'latest';
 
-    const isCommunityAdmin = req.user.permissions?.includes('notices:manage_notices') || req.user.isPlatformSuperAdmin;
+    const isCommunityAdmin = await checkIsCommunityAdmin(req.user);
     const isResident = req.user.role === 'Resident' || !isCommunityAdmin;
     const userContext = { isCommunityAdmin, isResident, userId };
 
@@ -57,7 +64,7 @@ export const updatePoll = async (req, res, next) => {
     const pollId = req.params.id;
     const updateData = req.body;
     
-    const isCommunityAdmin = req.user.permissions?.includes('notices:manage_notices') || req.user.isPlatformSuperAdmin;
+    const isCommunityAdmin = await checkIsCommunityAdmin(req.user);
 
     const updatedPoll = await pollService.updatePoll(pollId, orgId, userId, updateData, isCommunityAdmin);
     return res.success(updatedPoll, 'Poll updated successfully');
@@ -72,7 +79,7 @@ export const deletePoll = async (req, res, next) => {
     const userId = req.user.id || req.user._id;
     const pollId = req.params.id;
     
-    const isCommunityAdmin = req.user.permissions?.includes('notices:manage_notices') || req.user.isPlatformSuperAdmin;
+    const isCommunityAdmin = await checkIsCommunityAdmin(req.user);
 
     const deletedPoll = await pollService.deletePoll(pollId, orgId, userId, isCommunityAdmin);
     return res.success(deletedPoll, 'Poll deleted successfully');
@@ -87,7 +94,7 @@ export const publishPoll = async (req, res, next) => {
     const userId = req.user.id || req.user._id;
     const pollId = req.params.id;
     
-    const isCommunityAdmin = req.user.permissions?.includes('notices:manage_notices') || req.user.isPlatformSuperAdmin;
+    const isCommunityAdmin = await checkIsCommunityAdmin(req.user);
 
     const updatedPoll = await pollService.publishPoll(pollId, orgId, userId, isCommunityAdmin);
     return res.success(updatedPoll, 'Poll published successfully');
@@ -102,7 +109,7 @@ export const closePoll = async (req, res, next) => {
     const userId = req.user.id || req.user._id;
     const pollId = req.params.id;
     
-    const isCommunityAdmin = req.user.permissions?.includes('notices:manage_notices') || req.user.isPlatformSuperAdmin;
+    const isCommunityAdmin = await checkIsCommunityAdmin(req.user);
 
     const updatedPoll = await pollService.closePoll(pollId, orgId, userId, isCommunityAdmin);
     return res.success(updatedPoll, 'Poll closed successfully');
@@ -120,7 +127,7 @@ export const getActivePolls = async (req, res, next) => {
     const search = req.query.search || '';
     const sort = req.query.sort || 'latest';
 
-    const isCommunityAdmin = req.user.permissions?.includes('notices:manage_notices') || req.user.isPlatformSuperAdmin;
+    const isCommunityAdmin = await checkIsCommunityAdmin(req.user);
     const isResident = req.user.role === 'Resident' || !isCommunityAdmin;
     const userContext = { isCommunityAdmin, isResident, userId };
 
@@ -140,7 +147,7 @@ export const getClosedPolls = async (req, res, next) => {
     const search = req.query.search || '';
     const sort = req.query.sort || 'latest';
 
-    const isCommunityAdmin = req.user.permissions?.includes('notices:manage_notices') || req.user.isPlatformSuperAdmin;
+    const isCommunityAdmin = await checkIsCommunityAdmin(req.user);
     const isResident = req.user.role === 'Resident' || !isCommunityAdmin;
     const userContext = { isCommunityAdmin, isResident, userId };
 
@@ -160,7 +167,7 @@ export const getMyPolls = async (req, res, next) => {
     const search = req.query.search || '';
     const sort = req.query.sort || 'latest';
 
-    const isCommunityAdmin = req.user.permissions?.includes('notices:manage_notices') || req.user.isPlatformSuperAdmin;
+    const isCommunityAdmin = await checkIsCommunityAdmin(req.user);
     const isResident = req.user.role === 'Resident' || !isCommunityAdmin;
     const userContext = { isCommunityAdmin, isResident, userId };
 
@@ -192,6 +199,18 @@ export const getPollResults = async (req, res, next) => {
     
     const results = await pollService.getPollResults(pollId, orgId);
     return res.success(results, 'Poll results fetched successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPollVoters = async (req, res, next) => {
+  try {
+    const orgId = req.tenant.orgId;
+    const pollId = req.params.id;
+    
+    const voters = await pollService.getPollVoters(pollId, orgId);
+    return res.success(voters, 'Poll voters fetched successfully');
   } catch (error) {
     next(error);
   }

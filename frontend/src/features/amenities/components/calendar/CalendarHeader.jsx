@@ -1,38 +1,86 @@
-import React, { memo } from 'react';
+import React, { memo } from 'react'
 
-const CalendarHeader = memo(({ currentDate, navigateDate, setToday, viewMode, setViewMode, hideViewOptions = false }) => {
-  const monthYear = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const weekYear = `Week of ${currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-  const dayYear = currentDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  
-  const title = viewMode === 'week' ? weekYear : viewMode === 'day' ? dayYear : monthYear;
+const CalendarHeader = memo(
+  ({ currentDate, navigateDate, setToday, viewMode, setViewMode, hideViewOptions = false }) => {
+    const monthYear = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    const weekYear = `Week of ${currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+    const dayYear = currentDate.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
 
-  return (
-    <div className="rcv-cal-header">
-      <div className="rcv-cal-header__left">
-        <div className="rcv-nav-group">
-          <button className="rcv-btn-icon" onClick={() => navigateDate(-1)} aria-label="Previous">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-          </button>
-          <button className="rcv-btn-ghost" onClick={setToday} style={{ marginLeft: '4px', marginRight: '4px' }}>Today</button>
-          <button className="rcv-btn-icon" onClick={() => navigateDate(1)} aria-label="Next">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-          </button>
-        </div>
-        <h4 className="rcv-cal-header__title">{title}</h4>
-      </div>
+    const title = viewMode === 'week' ? weekYear : viewMode === 'day' ? dayYear : monthYear
 
-      {!hideViewOptions && (
-        <div className="rcv-cal-header__right">
-          <div className="rcv-view-toggle">
-            <button className={`rcv-view-btn ${viewMode === 'month' ? 'active' : ''}`} onClick={() => setViewMode('month')}>Month</button>
-            <button className={`rcv-view-btn ${viewMode === 'week' ? 'active' : ''}`} onClick={() => setViewMode('week')}>Week</button>
-            <button className={`rcv-view-btn ${viewMode === 'day' ? 'active' : ''}`} onClick={() => setViewMode('day')}>Day</button>
+    return (
+      <div className="rcv-cal-header">
+        <div className="rcv-cal-header__left">
+          <div className="rcv-nav-group">
+            <button className="rcv-btn-icon" onClick={() => navigateDate(-1)} aria-label="Previous">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            <button
+              className="rcv-btn-ghost"
+              onClick={setToday}
+              style={{ marginLeft: '4px', marginRight: '4px' }}
+            >
+              Today
+            </button>
+            <button className="rcv-btn-icon" onClick={() => navigateDate(1)} aria-label="Next">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
           </div>
+          <h4 className="rcv-cal-header__title">{title}</h4>
         </div>
-      )}
 
-      <style>{`
+        {!hideViewOptions && (
+          <div className="rcv-cal-header__right">
+            <div className="rcv-view-toggle">
+              <button
+                className={`rcv-view-btn ${viewMode === 'month' ? 'active' : ''}`}
+                onClick={() => setViewMode('month')}
+              >
+                Month
+              </button>
+              <button
+                className={`rcv-view-btn ${viewMode === 'week' ? 'active' : ''}`}
+                onClick={() => setViewMode('week')}
+              >
+                Week
+              </button>
+              <button
+                className={`rcv-view-btn ${viewMode === 'day' ? 'active' : ''}`}
+                onClick={() => setViewMode('day')}
+              >
+                Day
+              </button>
+            </div>
+          </div>
+        )}
+
+        <style>{`
         .rcv-cal-header {
           display: flex;
           justify-content: space-between;
@@ -120,8 +168,9 @@ const CalendarHeader = memo(({ currentDate, navigateDate, setToday, viewMode, se
           color: #334155;
         }
       `}</style>
-    </div>
-  );
-});
+      </div>
+    )
+  },
+)
 
-export default CalendarHeader;
+export default CalendarHeader

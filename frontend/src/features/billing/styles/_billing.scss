@@ -1185,12 +1185,12 @@
   .resident-action-center {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 24px;
   }
 
   .resident-action-center__header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 12px;
@@ -1222,14 +1222,173 @@
 
   .resident-action-center__grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 24px;
     align-items: start;
 
-    @media (max-width: 768px) { grid-template-columns: 1fr; }
+    @media (max-width: 992px) { grid-template-columns: 1fr; }
   }
 
-  .resident-action-center__col { display: flex; flex-direction: column; }
+  .resident-action-center__col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     Recent Invoice History Table
+  ══════════════════════════════════════════════════════════════════════ */
+
+  .invoice-history {
+    margin-top: 8px;
+  }
+
+  .invoice-history__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-main, #0F172A);
+    margin: 0 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    i {
+      color: var(--primary, #0084FF);
+      font-size: 14px;
+    }
+  }
+
+  .invoice-history__table-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius-md, 16px);
+    border: 1px solid var(--border-light, #E2E8F0);
+    box-shadow: var(--shadow-sm);
+    background: var(--surface-card, #fff);
+  }
+
+  .invoice-history__table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .invoice-history__thead {
+    background: #F8FAFC;
+    border-bottom: 1px solid var(--border-light, #E2E8F0);
+  }
+
+  .invoice-history__th {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted, #64748B);
+    white-space: nowrap;
+    text-align: start;
+
+    &:last-child {
+      text-align: end;
+    }
+  }
+
+  .invoice-history__row {
+    border-bottom: 1px solid var(--border-light, #E2E8F0);
+    transition: background 0.15s ease;
+
+    &:last-child { border-bottom: none; }
+    &:hover { background: #F8FAFC; }
+  }
+
+  .invoice-history__cell {
+    padding: 14px 16px;
+    font-size: 13px;
+    color: var(--text-main, #0F172A);
+    vertical-align: middle;
+
+    &:last-child {
+      text-align: end;
+    }
+  }
+
+  .invoice-history__period {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main, #0F172A);
+  }
+
+  .invoice-history__assessment-name {
+    font-size: 11px;
+    color: var(--text-muted, #64748B);
+    margin-top: 2px;
+  }
+
+  .invoice-history__unit {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main, #0F172A);
+  }
+
+  .invoice-history__amount {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main, #0F172A);
+  }
+
+  .invoice-history__status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill, 50px);
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+
+    &--paid {
+      background: var(--success-bg, #D1FAE5);
+      color: #065F46;
+    }
+
+    &--partial {
+      background: var(--warning-bg, #FEF3C7);
+      color: #92400E;
+    }
+
+    &--unpaid {
+      background: var(--danger-bg, #FEE2E2);
+      color: #991B1B;
+    }
+
+    &--other {
+      background: #F1F5F9;
+      color: var(--text-muted, #64748B);
+    }
+  }
+
+  .invoice-history__receipt-btn {
+    padding: 5px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-light, #E2E8F0);
+    background: #fff;
+    color: var(--text-muted, #64748B);
+    transition: all 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+
+    &:hover {
+      border-color: var(--primary, #0084FF);
+      color: var(--primary, #0084FF);
+      background: var(--primary-light, #E5F3FF);
+    }
+
+    i {
+      font-size: 11px;
+    }
+  }
 
   /* ══════════════════════════════════════════════════════════════════════
      Billing Dashboard View
@@ -1294,7 +1453,8 @@
   .assessment-detail-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
+    flex-wrap: wrap;
     margin-bottom: 20px;
     gap: 12px;
   }

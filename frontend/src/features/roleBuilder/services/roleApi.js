@@ -1,7 +1,5 @@
 import apiClient from '../../../services/apiClient'
 
-
-
 /**
  * Fetch all roles from backend.
  * @returns {Promise<Array>}

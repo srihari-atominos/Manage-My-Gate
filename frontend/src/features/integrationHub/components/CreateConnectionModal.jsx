@@ -1,9 +1,9 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import { useTranslation } from 'react-i18next';
-import { CModal, CModalHeader, CModalTitle, CModalBody } from '@coreui/react';
-import ConnectionForm from './ConnectionForm.jsx';
-import '../styles/_integrationHub.scss';
+import React from 'react'
+import PropTypes from 'prop-types'
+import { useTranslation } from 'react-i18next'
+import { CModal, CModalHeader, CModalTitle, CModalBody } from '@coreui/react'
+import ConnectionForm from './ConnectionForm.jsx'
+import '../styles/_integrationHub.scss'
 
 /**
  * Dedicated modal containing only the creation form for credentials setup.
@@ -16,17 +16,12 @@ export const CreateConnectionModal = ({
   isLoading,
   actionError,
 }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
-  if (!isOpen || !selectedProvider) return null;
+  if (!isOpen || !selectedProvider) return null
 
   return (
-    <CModal
-      visible={isOpen}
-      onClose={onClose}
-      alignment="center"
-      backdrop="static"
-    >
+    <CModal visible={isOpen} onClose={onClose} alignment="center" backdrop="static">
       {/* Header */}
       <CModalHeader closeButton>
         <CModalTitle className="h5 font-bold mb-0">
@@ -47,8 +42,8 @@ export const CreateConnectionModal = ({
         />
       </CModalBody>
     </CModal>
-  );
-};
+  )
+}
 
 CreateConnectionModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
@@ -60,13 +55,13 @@ CreateConnectionModal.propTypes = {
         name: PropTypes.string.isRequired,
         label: PropTypes.string.isRequired,
         type: PropTypes.string.isRequired,
-      })
+      }),
     ).isRequired,
   }),
   onClose: PropTypes.func.isRequired,
   onCreateConnection: PropTypes.func.isRequired,
   isLoading: PropTypes.bool,
   actionError: PropTypes.string,
-};
+}
 
-export default CreateConnectionModal;
+export default CreateConnectionModal

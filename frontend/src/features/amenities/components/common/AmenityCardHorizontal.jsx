@@ -1,16 +1,27 @@
-import React from 'react';
+import React from 'react'
 
 const AmenityCardHorizontal = ({
-  image, title, category, description, location, capacity,
-  operatingHours, rate, status, onEdit, onDeactivate, onClick,
-  onToggleFavorite, isFavorite
+  image,
+  title,
+  category,
+  description,
+  location,
+  capacity,
+  operatingHours,
+  rate,
+  status,
+  onEdit,
+  onDeactivate,
+  onClick,
+  onToggleFavorite,
+  isFavorite,
 }) => {
   const statusColor =
     status?.toLowerCase() === 'active' || status?.toLowerCase() === 'available'
       ? { bg: '#d1fae5', color: '#059669' }
       : status?.toLowerCase() === 'maintenance' || status?.toLowerCase() === 'under maintenance'
-      ? { bg: '#fef3c7', color: '#d97706' }
-      : { bg: '#f1f5f9', color: '#64748b' };
+        ? { bg: '#fef3c7', color: '#d97706' }
+        : { bg: '#f1f5f9', color: '#64748b' }
 
   return (
     <div
@@ -21,12 +32,14 @@ const AmenityCardHorizontal = ({
       {/* ── Image Panel ── */}
       <div className="amenity-discover-card__image">
         <img
-          src={image && image !== 'https://via.placeholder.com/400x200'
-            ? image
-            : `https://source.unsplash.com/400x300/?${encodeURIComponent(title || 'amenity')},facility`}
+          src={
+            image && image !== 'https://via.placeholder.com/400x200'
+              ? image
+              : `https://source.unsplash.com/400x300/?${encodeURIComponent(title || 'amenity')},facility`
+          }
           alt={title}
           onError={(e) => {
-            e.target.src = `https://source.unsplash.com/400x300/?facility,building`;
+            e.target.src = `https://source.unsplash.com/400x300/?facility,building`
           }}
         />
         {/* Status badge on image */}
@@ -41,10 +54,15 @@ const AmenityCardHorizontal = ({
         {onToggleFavorite && (
           <button
             className="amenity-discover-card__fav-btn"
-            onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleFavorite()
+            }}
           >
-            <i className={`fa-bookmark ${isFavorite ? 'fa-solid' : 'fa-regular'}`}
-              style={{ color: isFavorite ? '#0084FF' : '#94a3b8' }} />
+            <i
+              className={`fa-bookmark ${isFavorite ? 'fa-solid' : 'fa-regular'}`}
+              style={{ color: isFavorite ? '#0084FF' : '#94a3b8' }}
+            />
           </button>
         )}
       </div>
@@ -68,9 +86,7 @@ const AmenityCardHorizontal = ({
         </div>
 
         {/* Description */}
-        {description && (
-          <p className="amenity-discover-card__desc">{description}</p>
-        )}
+        {description && <p className="amenity-discover-card__desc">{description}</p>}
 
         {/* Meta chips */}
         <div className="amenity-discover-card__meta">
@@ -93,14 +109,21 @@ const AmenityCardHorizontal = ({
 
         {/* Footer actions */}
         <div className="amenity-discover-card__footer">
-          {onClick && status?.toLowerCase() !== 'maintenance' && status?.toLowerCase() !== 'under maintenance' ? (
+          {onClick &&
+          status?.toLowerCase() !== 'maintenance' &&
+          status?.toLowerCase() !== 'under maintenance' ? (
             <button
               className="amenity-discover-card__book-btn"
-              onClick={(e) => { e.stopPropagation(); onClick(); }}
+              onClick={(e) => {
+                e.stopPropagation()
+                onClick()
+              }}
             >
               <i className="fa-solid fa-calendar-plus"></i> Book Now
             </button>
-          ) : onClick && (status?.toLowerCase() === 'maintenance' || status?.toLowerCase() === 'under maintenance') ? (
+          ) : onClick &&
+            (status?.toLowerCase() === 'maintenance' ||
+              status?.toLowerCase() === 'under maintenance') ? (
             <span className="amenity-discover-card__unavailable">
               <i className="fa-solid fa-wrench me-1"></i> Under Maintenance
             </span>
@@ -111,7 +134,10 @@ const AmenityCardHorizontal = ({
               {onEdit && (
                 <button
                   className="amenity-discover-card__action-btn"
-                  onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEdit()
+                  }}
                 >
                   <i className="fa-solid fa-pen-to-square"></i> Edit
                 </button>
@@ -119,7 +145,10 @@ const AmenityCardHorizontal = ({
               {onDeactivate && (
                 <button
                   className="amenity-discover-card__action-btn danger"
-                  onClick={(e) => { e.stopPropagation(); onDeactivate(); }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeactivate()
+                  }}
                 >
                   <i className="fa-solid fa-ban"></i> Deactivate
                 </button>
@@ -129,7 +158,7 @@ const AmenityCardHorizontal = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AmenityCardHorizontal;
+export default AmenityCardHorizontal

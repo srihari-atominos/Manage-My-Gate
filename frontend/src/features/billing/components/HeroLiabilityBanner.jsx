@@ -1,5 +1,5 @@
-import React, { useState, memo } from 'react';
-import toast from 'react-hot-toast';
+import React, { useState, memo } from 'react'
+import toast from 'react-hot-toast'
 import {
   CModal,
   CModalHeader,
@@ -11,8 +11,9 @@ import {
   CFormLabel,
   CFormInput,
   CFormSelect,
-} from '@coreui/react';
-import PaymentCheckoutModal from './PaymentCheckoutModal.jsx';
+} from '@coreui/react'
+import PaymentCheckoutModal from './PaymentCheckoutModal.jsx'
+import { openInvoicePrintWindow } from '../utils/invoiceTemplate'
 
 /**
  * HeroLiabilityBanner
@@ -20,216 +21,280 @@ import PaymentCheckoutModal from './PaymentCheckoutModal.jsx';
  * Prominent financial summary card for residents.
  * Displays live total outstanding liability with unit breakdown and Pay Now / Checkout CTAs.
  */
-const HeroLiabilityBanner = memo(({
-  activeDues = null,
-  settleOffline,
-  walletBalance = 0,
-  payInvoiceWallet,
-  payInvoiceRazorpay,
-  verifyRazorpay,
-  loadingStates = {},
-}) => {
-  const totalOutstanding = activeDues?.totalPortfolioDue || 0;
-  const unitBreakdown = activeDues?.unitBreakdown || [];
+const HeroLiabilityBanner = memo(
+  ({
+    activeDues = null,
+    settleOffline,
+    walletBalance = 0,
+    payInvoiceWallet,
+    payInvoiceRazorpay,
+    verifyRazorpay,
+    loadingStates = {},
+  }) => {
+    const totalOutstanding = activeDues?.totalPortfolioDue || 0
+    const unitBreakdown = activeDues?.unitBreakdown || []
 
-  // Determine if there is any cheque/offline payment currently clearing (VERIFICATION_PENDING)
-  const clearingInvoice = unitBreakdown.find((inv) => inv.status === 'VERIFICATION_PENDING');
-  const isClearing = !!clearingInvoice;
-  const clearingAmount = clearingInvoice?.totalDue || 0;
-  const clearingRef = clearingInvoice?.offlineReference || 'Cheque';
+    // Determine if there is any cheque/offline payment currently clearing (VERIFICATION_PENDING)
+    const clearingInvoice = unitBreakdown.find((inv) => inv.status === 'VERIFICATION_PENDING')
+    const isClearing = !!clearingInvoice
+    const clearingAmount = clearingInvoice?.totalDue || 0
+    const clearingRef = clearingInvoice?.offlineReference || 'Cheque'
 
-  const [checkoutInvoice, setCheckoutInvoice] = useState(null);
-  const [payOfflineInvoice, setPayOfflineInvoice] = useState(null);
-  const [offlineRef, setOfflineRef] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('CHEQUE');
-  const [submitting, setSubmitting] = useState(false);
+    const [checkoutInvoice, setCheckoutInvoice] = useState(null)
+    const [payOfflineInvoice, setPayOfflineInvoice] = useState(null)
+    const [offlineRef, setOfflineRef] = useState('')
+    const [paymentMethod, setPaymentMethod] = useState('CHEQUE')
+    const [submitting, setSubmitting] = useState(false)
 
-  const handlePayNow = () => {
-    const firstUnpaid = unitBreakdown.find((inv) => inv.status === 'UNPAID');
-    if (!firstUnpaid) {
-      toast.error('You have no outstanding unpaid invoices!');
-      return;
-    }
-    setCheckoutInvoice(firstUnpaid);
-  };
-
-  const handleOpenOfflineModal = () => {
-    const firstUnpaid = unitBreakdown.find((inv) => inv.status === 'UNPAID');
-    if (!firstUnpaid) {
-      toast.error('You have no outstanding unpaid invoices!');
-      return;
-    }
-    setPayOfflineInvoice(firstUnpaid);
-    setOfflineRef('');
-    setPaymentMethod('CHEQUE');
-  };
-
-  const handleConfirmOfflinePay = async () => {
-    if (!payOfflineInvoice || !offlineRef.trim()) return;
-    setSubmitting(true);
-    try {
-      if (settleOffline) {
-        await settleOffline(payOfflineInvoice.invoiceId || payOfflineInvoice._id, {
-          offlineReference: offlineRef,
-          paymentMethod: paymentMethod,
-        });
+    const handlePayNow = () => {
+      const firstUnpaid = unitBreakdown.find(
+        (inv) => ['UNPAID', 'PARTIALLY_PAID', 'OVERDUE'].includes(inv.status) || inv.outstandingAmount > 0
+      )
+      if (!firstUnpaid) {
+        toast.error('You have no outstanding unpaid invoices!')
+        return
       }
-      toast.success('Offline payment submitted successfully! Awaiting admin verification.');
-      setPayOfflineInvoice(null);
-    } catch (err) {
-      toast.error('Failed to submit offline payment: ' + err.message);
-    } finally {
-      setSubmitting(false);
+      setCheckoutInvoice(firstUnpaid)
     }
-  };
 
-  return (
-    <div className={`hero-liability-card${isClearing ? ' hero-liability-card--clearing' : ''}`}>
-      {/* Top label */}
-      <div className="hero-liability-card__eyebrow">
-        <i className="fa-solid fa-wallet me-2" />
-        Outstanding Balance
-      </div>
+    const handleOpenOfflineModal = () => {
+      const firstUnpaid = unitBreakdown.find(
+        (inv) => ['UNPAID', 'PARTIALLY_PAID', 'OVERDUE'].includes(inv.status) || inv.outstandingAmount > 0
+      )
+      if (!firstUnpaid) {
+        toast.error('You have no outstanding unpaid invoices!')
+        return
+      }
+      setPayOfflineInvoice(firstUnpaid)
+      setOfflineRef('')
+      setPaymentMethod('CHEQUE')
+    }
 
-      {/* Big amount */}
-      <div className="hero-liability-card__amount">
-        <span className="hero-liability-card__currency">₹</span>
-        {totalOutstanding.toLocaleString('en-IN')}
-      </div>
+    const handleConfirmOfflinePay = async () => {
+      if (!payOfflineInvoice || !offlineRef.trim()) return
+      setSubmitting(true)
+      try {
+        if (settleOffline) {
+          await settleOffline(payOfflineInvoice.invoiceId || payOfflineInvoice._id, {
+            offlineReference: offlineRef,
+            paymentMethod: paymentMethod,
+          })
+        }
+        
+        // Offline payment is synchronous in the DB, so we can dispatch immediately
+        if (window.dispatchEvent) {
+          window.dispatchEvent(new CustomEvent('billing:refreshDues'))
+        }
+        
+        toast.success('Offline payment submitted successfully! Awaiting admin verification.')
+        setPayOfflineInvoice(null)
+      } catch (err) {
+        toast.error('Failed to submit offline payment: ' + err.message)
+      } finally {
+        setSubmitting(false)
+      }
+    }
 
-      {/* Breakdown */}
-      <div className="hero-liability-card__breakdown">
-        {unitBreakdown.length === 0 ? (
-          <div className="text-white-50 small text-center py-2">
-            🎉 No outstanding dues. Good job!
-          </div>
-        ) : (
-          unitBreakdown.map((item) => (
-            <div key={item.invoiceId || item._id} className="hero-liability-card__breakdown-row">
-              <span className="hero-liability-card__breakdown-label">
-                <i className="fa-solid fa-circle-dot me-2 opacity-50" />
-                {item.unitNumber || 'Unit'} - Period: {item.billingPeriodString}
-              </span>
-              <span className="hero-liability-card__breakdown-value">
-                ₹{(item.totalDue || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
+    const handleDownloadInvoice = (item) => {
+      openInvoicePrintWindow(item)
+    }
 
-      {/* Clearing message — shown when isClearing */}
-      {isClearing && (
-        <div className="hero-liability-card__clearing-msg">
-          <i className="fa-solid fa-clock-rotate-left hero-liability-card__clearing-icon" />
-          <span>
-            Payment of ₹{clearingAmount.toLocaleString('en-IN')} is currently
-            clearing via Reference {clearingRef}.
-          </span>
+    return (
+      <div className={`hero-liability-card${isClearing ? ' hero-liability-card--clearing' : ''}`}>
+        {/* Top label */}
+        <div className="hero-liability-card__eyebrow">
+          <i className="fa-solid fa-wallet me-2" />
+          Outstanding Balance
         </div>
-      )}
 
-      {/* Actions */}
-      <div className="hero-liability-card__actions d-flex gap-2">
-        <button
-          type="button"
-          className="hero-liability-card__pay-btn flex-grow-1"
-          disabled={isClearing || totalOutstanding === 0}
-          onClick={handlePayNow}
-        >
-          {isClearing ? (
-            <>
-              <i className="fa-solid fa-spinner fa-spin me-2" />
-              Processing Clearance…
-            </>
+        {/* Big amount */}
+        <div className="hero-liability-card__amount">
+          <span className="hero-liability-card__currency">₹</span>
+          {totalOutstanding.toLocaleString('en-IN')}
+        </div>
+
+        {/* Breakdown */}
+        <div className="hero-liability-card__breakdown">
+          {unitBreakdown.length === 0 ? (
+            <div className="text-white-50 small text-center py-2">
+              🎉 No outstanding dues. Good job!
+            </div>
           ) : (
-            <>
-              <i className="fa-solid fa-bolt me-2" />
-              Pay Now — ₹{totalOutstanding.toLocaleString('en-IN')}
-            </>
+            unitBreakdown.map((item) => (
+              <div key={item.invoiceId || item._id} className="hero-liability-card__breakdown-row">
+                <span className="hero-liability-card__breakdown-label">
+                  <i className="fa-solid fa-circle-dot me-2 opacity-50" />
+                  {item.unitNumber || 'Unit'} — {item.assessmentName || 'Maintenance'} ({item.billingPeriodString})
+                </span>
+                <span className="hero-liability-card__breakdown-value">
+                  ₹{(item.outstandingAmount ?? item.totalDue ?? 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+            ))
           )}
-        </button>
+        </div>
 
-        {totalOutstanding > 0 && !isClearing && (
+        {/* Clearing message — shown when isClearing */}
+        {isClearing && (
+          <div className="hero-liability-card__clearing-msg">
+            <i className="fa-solid fa-clock-rotate-left hero-liability-card__clearing-icon" />
+            <span>
+              Payment of ₹{clearingAmount.toLocaleString('en-IN')} is currently clearing via
+              Reference {clearingRef}.
+            </span>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="hero-liability-card__actions d-flex gap-2">
           <button
             type="button"
-            className="btn btn-outline-light btn-sm"
-            onClick={handleOpenOfflineModal}
+            className="hero-liability-card__pay-btn flex-grow-1"
+            disabled={isClearing || totalOutstanding === 0}
+            onClick={handlePayNow}
           >
-            Offline Cheque
+            {isClearing ? (
+              <>
+                <i className="fa-solid fa-spinner fa-spin me-2" />
+                Processing Clearance…
+              </>
+            ) : (
+              <>
+                <i className="fa-solid fa-bolt me-2" />
+                Pay Now — ₹{totalOutstanding.toLocaleString('en-IN')}
+              </>
+            )}
           </button>
-        )}
-      </div>
 
-      {/* ── Online Checkout Modal (Wallet / Razorpay) ─────────────────── */}
-      <PaymentCheckoutModal
-        isOpen={!!checkoutInvoice}
-        onClose={(success) => {
-          setCheckoutInvoice(null);
-          // If the payment succeeded, tell the parent component to reload dues
-          if (success === true && window.dispatchEvent) {
-            // Alternatively, dispatch an event or rely on Redux.
-            // Since we don't have loadResidentDues passed as prop to HeroLiabilityBanner currently,
-            // we will dispatch a custom DOM event that ResidentActionCenterView can listen to.
-            window.dispatchEvent(new CustomEvent('billing:refreshDues'));
-          }
-        }}
-        invoice={checkoutInvoice}
-        walletBalance={walletBalance}
-        onPayWithWallet={payInvoiceWallet}
-        onPayWithRazorpay={payInvoiceRazorpay}
-        onVerifyRazorpay={verifyRazorpay}
-        isLoading={loadingStates.settleInvoice}
-      />
+          {totalOutstanding > 0 && !isClearing && (
+            <button
+              type="button"
+              className="btn btn-outline-light btn-sm"
+              onClick={handleOpenOfflineModal}
+            >
+              Offline Cheque
+            </button>
+          )}
+        </div>
 
-      {/* ── Pay Offline / Record Settlement Modal ─────────────────────────── */}
-      <CModal visible={!!payOfflineInvoice} onClose={() => setPayOfflineInvoice(null)} alignment="center">
-        <CModalHeader>
-          <CModalTitle className="fw-semibold">Submit Offline Payment Confirmation</CModalTitle>
-        </CModalHeader>
-        <CForm onSubmit={(e) => { e.preventDefault(); handleConfirmOfflinePay(); }}>
-          <CModalBody>
-            <div className="alert alert-info py-2 px-3 small mb-3">
-              You are clearing Invoice <strong>{payOfflineInvoice?.invoiceNumber}</strong> of <strong>₹{payOfflineInvoice?.totalDue?.toLocaleString('en-IN')}</strong>.
-            </div>
+        {/* ── Online Checkout Modal (Wallet / Razorpay) ─────────────────── */}
+        <PaymentCheckoutModal
+          isOpen={!!checkoutInvoice}
+          onClose={(isSuccess, paidCustomAmount, methodUsed) => {
+            if (isSuccess && checkoutInvoice) {
+              toast.success('Payment completed successfully!')
+              
+              // Add a small delay to allow the backend's PAYMENT_SUCCESS event listener 
+              // to finish updating the invoice in the database (Eventual Consistency).
+              if (window.dispatchEvent) {
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('billing:refreshDues'))
+                }, 1500)
+              }
+              
+              const amountSettled = paidCustomAmount || checkoutInvoice?.outstandingAmount || 0;
+              const newOutstanding = (checkoutInvoice?.outstandingAmount || checkoutInvoice?.totalDue || 0) - amountSettled;
+              const paidInvoice = {
+                ...checkoutInvoice,
+                alreadyPaidAmount: checkoutInvoice?.paidAmount || 0,
+                currentPaymentAmount: amountSettled,
+                paidAmount: (checkoutInvoice?.paidAmount || 0) + amountSettled,
+                outstandingAmount: newOutstanding,
+                status: newOutstanding <= 0 ? 'PAID' : 'PARTIALLY_PAID',
+                paid_at: new Date().toISOString(),
+                paymentMethod: methodUsed || 'ONLINE', 
+              }
+              
+              handleDownloadInvoice(paidInvoice)
+            }
+            setCheckoutInvoice(null)
+          }}
+          invoice={checkoutInvoice}
+          walletBalance={walletBalance}
+          onPayWithWallet={payInvoiceWallet}
+          onPayWithRazorpay={payInvoiceRazorpay}
+          onVerifyRazorpay={verifyRazorpay}
+          isLoading={loadingStates.settleInvoice}
+          totalPortfolioDue={totalOutstanding}
+        />
 
-            <div className="mb-3">
-              <CFormLabel htmlFor="pay-method" className="small fw-semibold">Payment Method</CFormLabel>
-              <CFormSelect id="pay-method" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} size="sm">
-                <option value="CHEQUE">Cheque</option>
-                <option value="BANK_TRANSFER">Bank Transfer (NEFT/IMPS/UPI)</option>
-              </CFormSelect>
-            </div>
+        {/* ── Pay Offline / Record Settlement Modal ─────────────────────────── */}
+        <CModal
+          visible={!!payOfflineInvoice}
+          onClose={() => setPayOfflineInvoice(null)}
+          alignment="center"
+        >
+          <CModalHeader>
+            <CModalTitle className="fw-semibold">Submit Offline Payment Confirmation</CModalTitle>
+          </CModalHeader>
+          <CForm
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleConfirmOfflinePay()
+            }}
+          >
+            <CModalBody>
+              <div className="alert alert-info py-2 px-3 small mb-3">
+                You are clearing Invoice <strong>{payOfflineInvoice?.invoiceNumber}</strong> of{' '}
+                <strong>₹{(payOfflineInvoice?.outstandingAmount ?? payOfflineInvoice?.totalDue)?.toLocaleString('en-IN')}</strong>.
+              </div>
 
-            <div className="mb-3">
-              <CFormLabel htmlFor="pay-ref" className="small fw-semibold">
-                Transaction ID / Reference ID *
-              </CFormLabel>
-              <CFormInput
-                id="pay-ref"
-                type="text"
-                placeholder="e.g. UTR-932842 or CHQ-48192"
-                value={offlineRef}
-                onChange={(e) => setOfflineRef(e.target.value)}
-                required
-                autoFocus
+              <div className="mb-3">
+                <CFormLabel htmlFor="pay-method" className="small fw-semibold">
+                  Payment Method
+                </CFormLabel>
+                <CFormSelect
+                  id="pay-method"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  size="sm"
+                >
+                  <option value="CHEQUE">Cheque</option>
+                  <option value="NEFT">Bank Transfer (NEFT/IMPS/UPI)</option>
+                </CFormSelect>
+              </div>
+
+              <div className="mb-3">
+                <CFormLabel htmlFor="pay-ref" className="small fw-semibold">
+                  Transaction ID / Reference ID *
+                </CFormLabel>
+                <CFormInput
+                  id="pay-ref"
+                  type="text"
+                  placeholder="e.g. UTR-932842 or CHQ-48192"
+                  value={offlineRef}
+                  onChange={(e) => setOfflineRef(e.target.value)}
+                  required
+                  autoFocus
+                  size="sm"
+                />
+              </div>
+            </CModalBody>
+            <CModalFooter>
+              <CButton
+                type="button"
+                color="secondary"
                 size="sm"
-              />
-            </div>
-          </CModalBody>
-          <CModalFooter>
-            <CButton type="button" color="secondary" size="sm" onClick={() => setPayOfflineInvoice(null)} disabled={submitting}>
-              Cancel
-            </CButton>
-            <CButton type="submit" color="primary" size="sm" disabled={submitting || !offlineRef.trim()}>
-              {submitting ? 'Submitting...' : 'Submit Confirmation'}
-            </CButton>
-          </CModalFooter>
-        </CForm>
-      </CModal>
-    </div>
-  );
-});
+                onClick={() => setPayOfflineInvoice(null)}
+                disabled={submitting}
+              >
+                Cancel
+              </CButton>
+              <CButton
+                type="submit"
+                color="primary"
+                size="sm"
+                disabled={submitting || !offlineRef.trim()}
+              >
+                {submitting ? 'Submitting...' : 'Submit Confirmation'}
+              </CButton>
+            </CModalFooter>
+          </CForm>
+        </CModal>
+      </div>
+    )
+  },
+)
 
-HeroLiabilityBanner.displayName = 'HeroLiabilityBanner';
-export default HeroLiabilityBanner;
+HeroLiabilityBanner.displayName = 'HeroLiabilityBanner'
+export default HeroLiabilityBanner

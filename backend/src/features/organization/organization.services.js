@@ -75,13 +75,25 @@ export class OrganizationService {
 
       // Generate a new token if userId is provided
       let token = null;
+      let userPayload = null;
       if (userId) {
         const authService = (await import('../auth/auth.services.js')).default;
         const user = await authService.getUserById(userId);
-        token = await authService.generateToken(user, orgId);
+        const { tokenPayload, permissions } = await authService.getScopedTokenPayload(user, orgId);
+        const { signToken } = await import('../../utils/jwt.utils.js');
+        token = signToken(tokenPayload);
+        userPayload = {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          role: tokenPayload.role,
+          permissions: permissions,
+          orgId: tokenPayload.orgId,
+          isPlatform: tokenPayload.isPlatform,
+        };
       }
 
-      return token ? { organization: updatedOrg, token } : updatedOrg;
+      return token ? { organization: updatedOrg, token, user: userPayload } : updatedOrg;
     } catch (error) {
       if (localSession) {
         await localSession.abortTransaction();
@@ -160,7 +172,7 @@ export class OrganizationService {
     return !org;
   }
 
-  async setupWorkspace({ name, userId }) {
+  async setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId }) {
     // Enforce name uniqueness checks BEFORE starting the write transaction
     const trimmedName = name.trim();
     const existingOrg = await organizationRepository.findByName(trimmedName);
@@ -175,6 +187,11 @@ export class OrganizationService {
       const newOrg = await organizationRepository.create({
         name: trimmedName,
         status: 'Active',
+        organizationType: organizationType || 'Residential',
+        contactEmail,
+        contactPhone,
+        expectedMemberCount,
+        timezone: timezone || 'Asia/Kolkata',
         allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices', 'complaints', 'visitor', 'billing']
       }, session);
 
@@ -254,7 +271,7 @@ export class OrganizationService {
       // 3. Create the Organization Membership linking user, org, and role
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       await orgMembershipService.createMembership(
-        { userId, orgId: newOrg._id, roleIds: [adminRole._id] },
+        { userId, orgId: newOrg._id, roleIds: [adminRole._id], status: 'Active' },
         session
       );
 

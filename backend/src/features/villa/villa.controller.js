@@ -182,7 +182,7 @@ export class VillaController {
         'Occupancy Status(Occupied,Vacant)',
         'Email',
         'ResidentType(Family Member,Resident Owner,Tenant)',
-        'Role(Admin,Owner,Tenant,Family Member,Security)'
+        'Phone No'
       ];
 
       const exampleRow = [
@@ -193,7 +193,7 @@ export class VillaController {
         'Occupied',
         'resident@example.com',
         'Resident Owner',
-        'Owner'
+        '1234567890'
       ];
 
       const escapeCSV = (arr) => arr.map(val => `"${val}"`).join(',');
@@ -205,6 +205,9 @@ export class VillaController {
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename="bulk_upload_units_template.csv"');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       
       res.send(csvContent);
     } catch (error) {

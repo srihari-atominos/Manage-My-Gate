@@ -1,11 +1,11 @@
-import React from 'react';
-import VisitorTopNav from '../components/VisitorTopNav.jsx';
-import GuardInviteVisitorForm from '../components/GuardInviteVisitorForm.jsx';
-import GuardScannerConsole from '../components/GuardScannerConsole.jsx';
-import LiveEntriesTable from '../components/LiveEntriesTable.jsx';
-import VillaDirectoryList from '../components/VillaDirectoryList.jsx';
-import useGuardVisitorManagement from '../hooks/useGuardVisitorManagement.js';
-import '../styles/_visitorManagement.scss';
+import React from 'react'
+import VisitorTopNav from '../components/VisitorTopNav.jsx'
+import GuardInviteVisitorForm from '../components/GuardInviteVisitorForm.jsx'
+import GuardScannerConsole from '../components/GuardScannerConsole.jsx'
+import LiveEntriesTable from '../components/LiveEntriesTable.jsx'
+import VillaDirectoryList from '../components/VillaDirectoryList.jsx'
+import useGuardVisitorManagement from '../hooks/useGuardVisitorManagement.js'
+import '../styles/_visitorManagement.scss'
 
 export const GuardVisitormanagementViews = () => {
   const {
@@ -19,17 +19,16 @@ export const GuardVisitormanagementViews = () => {
     loadingDirectory,
     handleCheckInSuccess,
     handleCheckOutSuccess,
-    handleInitiateWalkIn
-  } = useGuardVisitorManagement();
+    handleInitiateWalkIn,
+  } = useGuardVisitorManagement()
 
   return (
     <div className="visitor-management-module-wrapper visitor-os-theme">
       <VisitorTopNav activeTab={activeTab} onTabChange={setActiveTab} />
       <div className="view-container">
         <div className="view active" id="view-guard-visitor">
-          
           {activeTab === 'invite' && (
-            <GuardInviteVisitorForm 
+            <GuardInviteVisitorForm
               dbVillas={dbVillas}
               dbUsers={dbUsers}
               loadingDirectory={loadingDirectory}
@@ -39,7 +38,7 @@ export const GuardVisitormanagementViews = () => {
           )}
 
           {activeTab === 'scanner' && (
-            <GuardScannerConsole 
+            <GuardScannerConsole
               passes={passes}
               liveEntries={liveEntries}
               onCheckInSuccess={handleCheckInSuccess}
@@ -48,22 +47,14 @@ export const GuardVisitormanagementViews = () => {
           )}
 
           {activeTab === 'live' && (
-            <LiveEntriesTable 
-              liveEntries={liveEntries} 
-              onCheckOutSuccess={handleCheckOutSuccess} 
-            />
+            <LiveEntriesTable liveEntries={liveEntries} onCheckOutSuccess={handleCheckOutSuccess} />
           )}
 
-          {activeTab === 'directory' && (
-            <VillaDirectoryList 
-              villas={villas} 
-            />
-          )}
-
+          {activeTab === 'directory' && <VillaDirectoryList villas={villas} />}
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default GuardVisitormanagementViews;
+export default GuardVisitormanagementViews

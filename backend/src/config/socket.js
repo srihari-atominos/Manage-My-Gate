@@ -4,6 +4,7 @@ import { initRoleSocket } from '../features/role/role.socket.js';
 import { initUserSocket } from '../features/user/user.socket.js';
 import { setupPaymentSocketListeners } from '../features/payment/payment.socket.js';
 import { setupWalletSocketListeners } from '../features/wallet/wallet.socket.js';
+import { initComplaintSockets } from '../features/complaint/complaint.socket.js';
 
 let io = null;
 
@@ -76,6 +77,7 @@ export const initSocket = async (httpServer) => {
   // Initialize feature-level socket dispatchers
   initRoleSocket();
   initUserSocket();
+  initComplaintSockets();
   setupPaymentSocketListeners().catch((err) => logger.error('Failed to init payment socket listeners', err));
   setupWalletSocketListeners().catch((err) => logger.error('Failed to init wallet socket listeners', err));
 

@@ -25,9 +25,7 @@ export const useRoleIntegrationConfigurator = (isOpen, mappings, onApply, onClos
   }, [mappings, isOpen])
 
   // Filter connections by currently selected provider
-  const filteredConnections = connections.filter(
-    (conn) => conn.provider === selectedProvider
-  )
+  const filteredConnections = connections.filter((conn) => conn.provider === selectedProvider)
 
   const handleSelectConnection = (connectionId) => {
     setTempMappings((prev) => ({

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 import {
   CModal,
   CModalHeader,
@@ -11,78 +11,87 @@ import {
   CInputGroup,
   CInputGroupText,
   CAlert,
-  CSpinner
-} from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilEnvelopeOpen, cilLockLocked } from '@coreui/icons';
-import { useTranslation } from 'react-i18next';
-import useAuth from '../hooks/useAuth.js';
+  CSpinner,
+} from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilEnvelopeOpen, cilLockLocked } from '@coreui/icons'
+import { useTranslation } from 'react-i18next'
+import useAuth from '../hooks/useAuth.js'
 
 export const ForgotPasswordModal = ({ visible, setVisible }) => {
-  const { t } = useTranslation();
-  const { sendPasswordResetOtp, verifyResetOtp, resetAccountPassword, loading, otpSent, error, successMsg, clearStatus } = useAuth();
-  
-  const [step, setStep] = useState(0); // 0: identifier, 1: OTP, 2: New Password
-  const [identifier, setIdentifier] = useState('');
-  const [code, setCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [localError, setLocalError] = useState('');
+  const { t } = useTranslation()
+  const {
+    sendPasswordResetOtp,
+    verifyResetOtp,
+    resetAccountPassword,
+    loading,
+    otpSent,
+    error,
+    successMsg,
+    clearStatus,
+  } = useAuth()
+
+  const [step, setStep] = useState(0) // 0: identifier, 1: OTP, 2: New Password
+  const [identifier, setIdentifier] = useState('')
+  const [code, setCode] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [localError, setLocalError] = useState('')
 
   // Watch for otpSent to progress to step 1
   useEffect(() => {
     if (otpSent && step === 0) {
-      setStep(1);
+      setStep(1)
     }
-  }, [otpSent, step]);
+  }, [otpSent, step])
 
   const handleClose = () => {
-    setVisible(false);
-    clearStatus();
-    setStep(0);
-    setIdentifier('');
-    setCode('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setLocalError('');
-  };
+    setVisible(false)
+    clearStatus()
+    setStep(0)
+    setIdentifier('')
+    setCode('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setLocalError('')
+  }
 
   const handleSendOtp = async (e) => {
-    e.preventDefault();
-    if (!identifier) return;
-    await sendPasswordResetOtp(identifier);
-  };
+    e.preventDefault()
+    if (!identifier) return
+    await sendPasswordResetOtp(identifier)
+  }
 
   const handleNextToPassword = async (e) => {
-    e.preventDefault();
-    setLocalError('');
+    e.preventDefault()
+    setLocalError('')
     if (!code) {
-      setLocalError('Please enter the OTP');
-      return;
+      setLocalError('Please enter the OTP')
+      return
     }
     if (code.length < 6) {
-      setLocalError('OTP must be at least 6 characters');
-      return;
+      setLocalError('OTP must be at least 6 characters')
+      return
     }
-    const res = await verifyResetOtp(identifier, code);
+    const res = await verifyResetOtp(identifier, code)
     if (res.meta.requestStatus === 'fulfilled') {
-      setStep(2);
+      setStep(2)
     }
-  };
+  }
 
   const handleResetPassword = async (e) => {
-    e.preventDefault();
-    setLocalError('');
-    if (!code || !newPassword || !confirmPassword) return;
+    e.preventDefault()
+    setLocalError('')
+    if (!code || !newPassword || !confirmPassword) return
     if (newPassword !== confirmPassword) {
-      setLocalError('Passwords do not match');
-      return;
+      setLocalError('Passwords do not match')
+      return
     }
-    const res = await resetAccountPassword(identifier, code, newPassword);
+    const res = await resetAccountPassword(identifier, code, newPassword)
     if (res.meta.requestStatus === 'fulfilled') {
-      setTimeout(handleClose, 2000);
+      setTimeout(handleClose, 2000)
     }
-  };
+  }
 
   return (
     <CModal visible={visible} onClose={handleClose} alignment="center">
@@ -95,10 +104,17 @@ export const ForgotPasswordModal = ({ visible, setVisible }) => {
 
         {step === 0 && (
           <CForm onSubmit={handleSendOtp}>
-            <p>{t('auth.forgot.instruction', 'Enter your email or phone number to receive a reset code.')}</p>
+            <p>
+              {t(
+                'auth.forgot.instruction',
+                'Enter your email or phone number to receive a reset code.',
+              )}
+            </p>
             <CInputGroup className="mb-3">
-              <CInputGroupText><CIcon icon={cilEnvelopeOpen} /></CInputGroupText>
-              <CFormInput 
+              <CInputGroupText>
+                <CIcon icon={cilEnvelopeOpen} />
+              </CInputGroupText>
+              <CFormInput
                 placeholder={t('auth.forgot.identifier', 'Email or Phone')}
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
@@ -119,7 +135,7 @@ export const ForgotPasswordModal = ({ visible, setVisible }) => {
             <p>{t('auth.forgot.verifyInstruction', 'Enter the code sent to your device.')}</p>
             <CInputGroup className="mb-3">
               <CInputGroupText>OTP</CInputGroupText>
-              <CFormInput 
+              <CFormInput
                 placeholder={t('auth.forgot.code', '6-digit Code')}
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
@@ -140,8 +156,10 @@ export const ForgotPasswordModal = ({ visible, setVisible }) => {
           <CForm onSubmit={handleResetPassword}>
             <p>{t('auth.forgot.newPasswordInstruction', 'Enter your new password.')}</p>
             <CInputGroup className="mb-3">
-              <CInputGroupText><CIcon icon={cilLockLocked} /></CInputGroupText>
-              <CFormInput 
+              <CInputGroupText>
+                <CIcon icon={cilLockLocked} />
+              </CInputGroupText>
+              <CFormInput
                 type="password"
                 placeholder={t('auth.forgot.newPassword', 'New Password')}
                 value={newPassword}
@@ -152,8 +170,10 @@ export const ForgotPasswordModal = ({ visible, setVisible }) => {
               />
             </CInputGroup>
             <CInputGroup className="mb-3">
-              <CInputGroupText><CIcon icon={cilLockLocked} /></CInputGroupText>
-              <CFormInput 
+              <CInputGroupText>
+                <CIcon icon={cilLockLocked} />
+              </CInputGroupText>
+              <CFormInput
                 type="password"
                 placeholder={t('auth.forgot.confirmPassword', 'Confirm Password')}
                 value={confirmPassword}
@@ -164,10 +184,20 @@ export const ForgotPasswordModal = ({ visible, setVisible }) => {
               />
             </CInputGroup>
             <div className="d-flex justify-content-between mt-3">
-              <CButton type="button" color="secondary" variant="ghost" onClick={() => setStep(1)} disabled={loading}>
+              <CButton
+                type="button"
+                color="secondary"
+                variant="ghost"
+                onClick={() => setStep(1)}
+                disabled={loading}
+              >
                 {t('common.back', 'Back')}
               </CButton>
-              <CButton type="submit" color="success" disabled={loading || !newPassword || !confirmPassword}>
+              <CButton
+                type="submit"
+                color="success"
+                disabled={loading || !newPassword || !confirmPassword}
+              >
                 {loading ? <CSpinner size="sm" /> : t('auth.forgot.resetBtn', 'Reset Password')}
               </CButton>
             </div>
@@ -182,7 +212,7 @@ export const ForgotPasswordModal = ({ visible, setVisible }) => {
         )}
       </CModalFooter>
     </CModal>
-  );
-};
+  )
+}
 
-export default ForgotPasswordModal;
+export default ForgotPasswordModal

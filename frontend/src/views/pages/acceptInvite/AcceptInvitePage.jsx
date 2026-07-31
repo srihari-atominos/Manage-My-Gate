@@ -10,8 +10,8 @@ import AcceptInviteForm from '../../../features/auth/components/AcceptInviteForm
 const AcceptInvitePage = () => {
   return (
     <div
-      className="bg-body-tertiary min-vh-100 d-flex flex-row align-items-center"
-      style={{ backgroundColor: '#0b0f19' }}
+      className="min-vh-100 d-flex flex-row align-items-center"
+      style={{ backgroundColor: '#f8f9fa' }}
     >
       <CContainer>
         <CRow className="justify-content-center">

@@ -12,8 +12,8 @@ import Razorpay from 'razorpay';
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'dummy_key',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummy_secret',
+  key_id: process.env.RAZORPAY_KEY_ID || 'test_key',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'test_secret',
 });
 
 class WalletService {
@@ -102,7 +102,7 @@ class WalletService {
   /**
    * Pay open invoice dues using user's digital wallet balance within a Mongoose Transaction.
    */
-  async payInvoiceWithWallet({ userId, orgId, invoiceId }) {
+  async payInvoiceWithWallet({ userId, orgId, invoiceId, amount }) {
     if (!userId || !invoiceId) {
       throw new HttpError(400, 'User ID and Invoice ID are required');
     }
@@ -122,8 +122,16 @@ class WalletService {
         throw new HttpError(400, 'Invoice is already paid');
       }
 
-      const amountDue = invoice.totalDue;
+      const amountDue = amount || invoice.outstandingAmount || invoice.totalDue;
       const targetOrgId = orgId || invoice.communityId;
+
+      if (amountDue <= 0) {
+        throw new HttpError(400, 'Invalid payment amount');
+      }
+
+      if (amountDue > (invoice.outstandingAmount || invoice.totalDue)) {
+        throw new HttpError(400, 'Payment amount cannot exceed the outstanding balance');
+      }
 
       // 2. Fetch wallet and verify balance
       const wallet = await walletRepository.getWallet(userId, targetOrgId, session);
@@ -150,6 +158,7 @@ class WalletService {
       // 5. Settle Invoice using InvoiceService (passing session)
       const updatedInvoice = await invoiceService.settleInvoicePayment(invoiceId, {
         paymentMethod: 'WALLET',
+        amount: amountDue,
         paid_at: new Date(),
         settled_at: new Date(),
       }, session);
@@ -230,7 +239,7 @@ class WalletService {
   }
 
   async createRechargeOrder(userId, amount) {
-    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'dummy_key';
+    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'dummy_key' || process.env.RAZORPAY_KEY_ID === 'test_key';
 
     if (isMock) {
       logger.info('Creating Mock Razorpay Recharge Order', { userId, amount });
@@ -245,7 +254,7 @@ class WalletService {
     const options = {
       amount: amount * 100, // Razorpay works in paise
       currency: "INR",
-      receipt: `recharge_rcptid_${userId}_${Date.now()}`
+      receipt: `rcpt_${userId}_${Date.now()}`.substring(0, 40)
     };
 
     try {
@@ -260,7 +269,7 @@ class WalletService {
   async verifyPaymentSignature(userId, orgId, paymentData) {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = paymentData;
 
-    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'dummy_key';
+    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'dummy_key' || process.env.RAZORPAY_KEY_ID === 'test_key';
 
     if (isMock) {
       logger.info('Verifying Mock Razorpay Signature', { userId, orgId, paymentData });

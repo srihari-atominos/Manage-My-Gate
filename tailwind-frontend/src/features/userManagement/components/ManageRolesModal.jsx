@@ -18,7 +18,7 @@ import { Label } from 'src/components/ui/label';
 import usePermission from '../../../hooks/usePermission';
 
 const schema = yup.object().shape({
-  selectedRoles: yup.array().of(yup.string().required()).required('Roles selection is required'),
+  selectedRoles: yup.array().of(yup.string()),
 });
 
 const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] }) => {
@@ -36,7 +36,7 @@ const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] 
       const userRoles = typeof user.role === 'string'
         ? user.role.split(',').map((r) => r.trim()).filter(Boolean)
         : [];
-      reset({ selectedRoles: userRoles });
+      reset({ selectedRoles: userRoles.length > 0 ? [userRoles[0]] : [] });
     } else if (!visible) {
       reset({ selectedRoles: [] });
     }
@@ -48,9 +48,9 @@ const ManageRolesModal = ({ visible, user, onClose, onSave, availableRoles = [] 
     if (!hasPermission) return;
     let newRoles;
     if (checked) {
-      newRoles = [...selectedRoles, role];
+      newRoles = [role]; // Single selection: replace instead of append
     } else {
-      newRoles = selectedRoles.filter((r) => r !== role);
+      newRoles = [];
     }
     setValue('selectedRoles', newRoles, { shouldValidate: true, shouldDirty: true });
   };

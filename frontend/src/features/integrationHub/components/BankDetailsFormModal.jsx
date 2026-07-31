@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
-import PropTypes from 'prop-types';
-import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import React, { useEffect } from 'react'
+import PropTypes from 'prop-types'
+import { useTranslation } from 'react-i18next'
+import { useForm } from 'react-hook-form'
+import { yupResolver } from '@hookform/resolvers/yup'
+import * as yup from 'yup'
 import {
   CModal,
   CModalHeader,
@@ -19,8 +19,8 @@ import {
   CAlert,
   CRow,
   CCol,
-} from '@coreui/react';
-import '../styles/_integrationHub.scss';
+} from '@coreui/react'
+import '../styles/_integrationHub.scss'
 
 /**
  * Yup validation schema for Indian Bank Account & Gateway Credential management
@@ -30,9 +30,7 @@ const bankDetailsSchema = yup.object().shape({
     .string()
     .required('Account holder name is required')
     .min(2, 'Name must be at least 2 characters'),
-  bankName: yup
-    .string()
-    .required('Bank name is required'),
+  bankName: yup.string().required('Bank name is required'),
   accountNumber: yup
     .string()
     .required('Account number is required')
@@ -47,7 +45,7 @@ const bankDetailsSchema = yup.object().shape({
     .required('Account type is required'),
   razorpayKeyId: yup.string().nullable(),
   razorpayKeySecret: yup.string().nullable(),
-});
+})
 
 /**
  * Dumb Form Modal Component for Bank Details & Gateway Credentials.
@@ -61,7 +59,7 @@ export const BankDetailsFormModal = ({
   isLoading,
   actionError,
 }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   const {
     register,
@@ -79,7 +77,7 @@ export const BankDetailsFormModal = ({
       razorpayKeyId: '',
       razorpayKeySecret: '',
     },
-  });
+  })
 
   // Populate form with initialValues when modal opens or initialValues change
   useEffect(() => {
@@ -92,13 +90,13 @@ export const BankDetailsFormModal = ({
         accountType: initialValues?.accountType || 'Current',
         razorpayKeyId: initialValues?.razorpayKeyId || '',
         razorpayKeySecret: initialValues?.razorpayKeySecret || '',
-      });
+      })
     }
-  }, [isOpen, initialValues, reset]);
+  }, [isOpen, initialValues, reset])
 
   const handleFormSubmit = (data) => {
-    onSubmit(data);
-  };
+    onSubmit(data)
+  }
 
   return (
     <CModal
@@ -136,13 +134,19 @@ export const BankDetailsFormModal = ({
               </label>
               <CFormInput
                 type="text"
-                placeholder={t('integrationHub.bankModal.accountHolderPlaceholder', 'e.g. Apex Resident Association')}
+                placeholder={t(
+                  'integrationHub.bankModal.accountHolderPlaceholder',
+                  'e.g. Apex Resident Association',
+                )}
                 invalid={!!errors.accountHolderName}
                 {...register('accountHolderName')}
               />
               {errors.accountHolderName && (
                 <CFormFeedback invalid className="text-start">
-                  {t(`integrationHub.bankModal.errors.${errors.accountHolderName.message}`, errors.accountHolderName.message)}
+                  {t(
+                    `integrationHub.bankModal.errors.${errors.accountHolderName.message}`,
+                    errors.accountHolderName.message,
+                  )}
                 </CFormFeedback>
               )}
             </CCol>
@@ -154,13 +158,19 @@ export const BankDetailsFormModal = ({
               </label>
               <CFormInput
                 type="text"
-                placeholder={t('integrationHub.bankModal.bankNamePlaceholder', 'e.g. State Bank of India')}
+                placeholder={t(
+                  'integrationHub.bankModal.bankNamePlaceholder',
+                  'e.g. State Bank of India',
+                )}
                 invalid={!!errors.bankName}
                 {...register('bankName')}
               />
               {errors.bankName && (
                 <CFormFeedback invalid className="text-start">
-                  {t(`integrationHub.bankModal.errors.${errors.bankName.message}`, errors.bankName.message)}
+                  {t(
+                    `integrationHub.bankModal.errors.${errors.bankName.message}`,
+                    errors.bankName.message,
+                  )}
                 </CFormFeedback>
               )}
             </CCol>
@@ -174,13 +184,19 @@ export const BankDetailsFormModal = ({
               </label>
               <CFormInput
                 type="text"
-                placeholder={t('integrationHub.bankModal.accountNumberPlaceholder', 'e.g. 123456789012')}
+                placeholder={t(
+                  'integrationHub.bankModal.accountNumberPlaceholder',
+                  'e.g. 123456789012',
+                )}
                 invalid={!!errors.accountNumber}
                 {...register('accountNumber')}
               />
               {errors.accountNumber && (
                 <CFormFeedback invalid className="text-start">
-                  {t(`integrationHub.bankModal.errors.${errors.accountNumber.message}`, errors.accountNumber.message)}
+                  {t(
+                    `integrationHub.bankModal.errors.${errors.accountNumber.message}`,
+                    errors.accountNumber.message,
+                  )}
                 </CFormFeedback>
               )}
             </CCol>
@@ -196,12 +212,15 @@ export const BankDetailsFormModal = ({
                 invalid={!!errors.ifscCode}
                 {...register('ifscCode')}
                 onChange={(e) => {
-                  e.target.value = e.target.value.toUpperCase();
+                  e.target.value = e.target.value.toUpperCase()
                 }}
               />
               {errors.ifscCode && (
                 <CFormFeedback invalid className="text-start">
-                  {t(`integrationHub.bankModal.errors.${errors.ifscCode.message}`, errors.ifscCode.message)}
+                  {t(
+                    `integrationHub.bankModal.errors.${errors.ifscCode.message}`,
+                    errors.ifscCode.message,
+                  )}
                 </CFormFeedback>
               )}
             </CCol>
@@ -213,12 +232,13 @@ export const BankDetailsFormModal = ({
                 {t('integrationHub.bankModal.accountType', 'Account Type')}{' '}
                 <span className="text-danger">*</span>
               </label>
-              <CFormSelect
-                invalid={!!errors.accountType}
-                {...register('accountType')}
-              >
-                <option value="Current">{t('integrationHub.bankModal.accountTypeCurrent', 'Current Account')}</option>
-                <option value="Savings">{t('integrationHub.bankModal.accountTypeSavings', 'Savings Account')}</option>
+              <CFormSelect invalid={!!errors.accountType} {...register('accountType')}>
+                <option value="Current">
+                  {t('integrationHub.bankModal.accountTypeCurrent', 'Current Account')}
+                </option>
+                <option value="Savings">
+                  {t('integrationHub.bankModal.accountTypeSavings', 'Savings Account')}
+                </option>
               </CFormSelect>
               {errors.accountType && (
                 <CFormFeedback invalid className="text-start">
@@ -240,7 +260,10 @@ export const BankDetailsFormModal = ({
               </label>
               <CFormInput
                 type="text"
-                placeholder={t('integrationHub.bankModal.keyIdPlaceholder', 'rzp_live_xxxxxxxxxxxxx')}
+                placeholder={t(
+                  'integrationHub.bankModal.keyIdPlaceholder',
+                  'rzp_live_xxxxxxxxxxxxx',
+                )}
                 invalid={!!errors.razorpayKeyId}
                 {...register('razorpayKeyId')}
               />
@@ -277,8 +300,8 @@ export const BankDetailsFormModal = ({
         </CModalFooter>
       </CForm>
     </CModal>
-  );
-};
+  )
+}
 
 BankDetailsFormModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
@@ -295,12 +318,12 @@ BankDetailsFormModal.propTypes = {
   onSubmit: PropTypes.func.isRequired,
   isLoading: PropTypes.bool,
   actionError: PropTypes.string,
-};
+}
 
 BankDetailsFormModal.defaultProps = {
   initialValues: null,
   isLoading: false,
   actionError: null,
-};
+}
 
-export default BankDetailsFormModal;
+export default BankDetailsFormModal

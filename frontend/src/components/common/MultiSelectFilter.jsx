@@ -11,17 +11,11 @@ import {
 
 /**
  * MultiSelectFilter Component
- * 
+ *
  * Reusable generic dropdown filter rendering checkbox options.
  * Integrates standard CoreUI secondary outlines, count badges, and clear actions.
  */
-const MultiSelectFilter = ({
-  label,
-  options,
-  selectedValues,
-  onToggle,
-  onClear,
-}) => {
+const MultiSelectFilter = ({ label, options, selectedValues, onToggle, onClear }) => {
   return (
     <CDropdown>
       <CDropdownToggle

@@ -56,6 +56,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
 
   // Form states for Tab 2 (Invite via Email)
   const [inviteEmail, setInviteEmail] = useState('');
+  const [invitePhone, setInvitePhone] = useState('');
   const [inviteResidencyType, setInviteResidencyType] = useState('');
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState(null);
@@ -124,6 +125,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
 
       const actionResult = await dispatch(inviteUserAsync({
         email: inviteEmail.trim(),
+        phone: invitePhone.trim(),
         villaId,
         residentType: getResidentType(inviteResidencyType),
         roleName: inviteResidencyType
@@ -132,6 +134,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
       if (inviteUserAsync.fulfilled.match(actionResult)) {
         toast.success(t('villas.details.inviteSuccess', `Invitation sent successfully to ${inviteEmail}`));
         setInviteEmail('');
+        setInvitePhone('');
         dispatch(fetchVillaByIdAsync(villaId));
       } else {
         setInviteError(actionResult.payload || t('villas.details.inviteFailed', 'Failed to send invitation'));
@@ -144,7 +147,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
   };
 
   const startEditResidencyType = (resident) => {
-    setEditingUserId(resident.id);
+    setEditingUserId(resident._id || resident.id);
     setEditResidencyType(resident.residentType || 'Tenant');
   };
 
@@ -237,13 +240,14 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                   ) : (
                     <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
                       {selectedVilla.residents.map((res) => {
-                        const isEditing = editingUserId === res.id;
+                        const residentId = res._id || res.id;
+                        const isEditing = editingUserId === residentId;
                         const isPrimary = selectedVilla.villa.primaryResidentId && 
-                          (String(selectedVilla.villa.primaryResidentId) === String(res.id) || 
-                           String(selectedVilla.villa.primaryResidentId._id) === String(res.id));
+                          (String(selectedVilla.villa.primaryResidentId) === String(residentId) || 
+                           String(selectedVilla.villa.primaryResidentId._id) === String(residentId));
 
                         return (
-                          <div key={res.id} className="flex flex-col p-3 border border-stroke dark:border-strokedark rounded-lg bg-white dark:bg-boxdark space-y-2">
+                          <div key={residentId} className="flex flex-col p-3 border border-stroke dark:border-strokedark rounded-lg bg-white dark:bg-boxdark space-y-2">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs shrink-0">
@@ -291,7 +295,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                                   </select>
                                   <Button
                                     size="sm"
-                                    onClick={() => handleSaveResidencyType(res.id)}
+                                    onClick={() => handleSaveResidencyType(residentId)}
                                     className="h-7 text-[10px] font-semibold px-2"
                                   >
                                     {t('villas.details.save', 'Save')}
@@ -320,7 +324,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                                       <button
                                         type="button"
                                         className="hover:text-primary transition-colors text-primary"
-                                        onClick={() => handleSetPrimaryResident(res.id)}
+                                        onClick={() => handleSetPrimaryResident(residentId)}
                                       >
                                         {t('villas.details.setPrimary', 'Set Primary')}
                                       </button>
@@ -341,7 +345,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                                   <button
                                     type="button"
                                     className="hover:text-red-500 transition-colors text-red-500/80"
-                                    onClick={() => handleRemoveResident(res.id)}
+                                    onClick={() => handleRemoveResident(residentId)}
                                   >
                                     {t('villas.details.remove', 'Remove')}
                                   </button>
@@ -405,9 +409,9 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                           >
                             <option value="" className="bg-white dark:bg-boxdark">{t('villas.details.chooseUser', 'Choose a user...')}</option>
                             {workspaceUsers
-                              .filter((u) => !selectedVilla.residents.some((r) => r.id === u.id))
+                              .filter((u) => !selectedVilla.residents.some((r) => (r._id || r.id) === (u._id || u.id)))
                               .map((u) => (
-                                <option key={u.id} value={u.id} className="bg-white dark:bg-boxdark">
+                                <option key={u._id || u.id} value={u._id || u.id} className="bg-white dark:bg-boxdark">
                                   {u.name || u.email} ({u.email})
                                 </option>
                               ))}
@@ -479,6 +483,20 @@ export const VillaDetailsModal = ({ visible, onClose, villaId }) => {
                             value={inviteEmail}
                             onChange={(e) => setInviteEmail(e.target.value)}
                             required
+                            className="mt-1.5 w-full text-xs bg-transparent border-stroke dark:border-strokedark text-black dark:text-white"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="invite-phone" className="text-xs font-semibold">
+                            {t('villas.details.phoneLabel', 'Phone Number (Optional)')}
+                          </Label>
+                          <Input
+                            id="invite-phone"
+                            type="text"
+                            placeholder="+1234567890"
+                            value={invitePhone}
+                            onChange={(e) => setInvitePhone(e.target.value)}
                             className="mt-1.5 w-full text-xs bg-transparent border-stroke dark:border-strokedark text-black dark:text-white"
                           />
                         </div>

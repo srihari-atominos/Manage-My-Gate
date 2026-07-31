@@ -5,8 +5,9 @@ import PollVote from './pollVote.model.js';
 
 export const createPoll = async (pollData) => {
   const newPoll = await pollRepo.createPoll(pollData);
-  pollEvents.emit('poll_created', newPoll);
-  return newPoll;
+  const populatedPoll = await pollRepo.getPopulatedPollById(newPoll._id, pollData.orgId);
+  pollEvents.emit('poll_created', populatedPoll || newPoll);
+  return populatedPoll || newPoll;
 };
 
 export const getPollById = async (pollId, orgId) => {
@@ -130,8 +131,19 @@ export const voteOnPoll = async (pollId, orgId, residentId, optionIndex) => {
   }
 
   try {
-    const updatedPoll = await pollRepo.recordVote(pollId, orgId, residentId, optionIndex);
+    const { poll: updatedPoll, action } = await pollRepo.recordVote(pollId, orgId, residentId, optionIndex);
     
+    if (action === 'unvoted') {
+      pollEvents.emit('poll_vote_removed', {
+        pollId: updatedPoll._id,
+        orgId,
+        residentId,
+        optionIndex,
+        updatedPoll
+      });
+      return { ...updatedPoll.toObject(), hasVoted: false, votedOptionIndex: null };
+    }
+
     pollEvents.emit('poll_vote_added', {
       pollId: updatedPoll._id,
       orgId,
@@ -140,7 +152,7 @@ export const voteOnPoll = async (pollId, orgId, residentId, optionIndex) => {
       updatedPoll
     });
     
-    return updatedPoll;
+    return { ...updatedPoll.toObject(), hasVoted: true, votedOptionIndex: optionIndex };
   } catch (error) {
     if (error.code === 11000) { // MongoDB duplicate key error code
       throw new HttpError(409, 'You have already voted on this poll');
@@ -151,4 +163,24 @@ export const voteOnPoll = async (pollId, orgId, residentId, optionIndex) => {
 
 export const getPollResults = async (pollId, orgId) => {
   return await getPollById(pollId, orgId); // Result is basically the poll object with options.votesCount
+};
+
+export const getPollVoters = async (pollId, orgId) => {
+  const poll = await getPollById(pollId, orgId);
+
+  const voters = await pollRepo.getPollVoters(pollId, orgId);
+  
+  // Group voters by optionIndex for easier frontend consumption
+  const groupedVoters = {};
+  poll.options.forEach((opt, idx) => {
+    groupedVoters[idx] = [];
+  });
+  
+  voters.forEach(voter => {
+    if (groupedVoters[voter.optionIndex]) {
+      groupedVoters[voter.optionIndex].push({ name: voter.name, unit: voter.unit });
+    }
+  });
+  
+  return groupedVoters;
 };

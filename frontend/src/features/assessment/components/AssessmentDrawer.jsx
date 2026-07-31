@@ -1,22 +1,22 @@
-import React, { useState, useCallback, memo } from 'react';
-import '../styles/_assessment.scss';
+import React, { useState, useCallback, memo } from 'react'
+import '../styles/_assessment.scss'
 
 // ── Mock data ─────────────────────────────────────────────────────────────
 
 const SCOPE_OPTIONS = [
-  { value: 'ALL_COMMUNITY',  label: 'All Community'  },
-  { value: 'VILLA_BLOCK',    label: 'Villa / Block'  },
-  { value: 'UNIT_TYPE',      label: 'Unit Type'      },
+  { value: 'ALL_COMMUNITY', label: 'All Community' },
+  { value: 'VILLA_BLOCK', label: 'Villa / Block' },
+  { value: 'UNIT_TYPE', label: 'Unit Type' },
   { value: 'SPECIFIC_UNITS', label: 'Specific Units' },
   { value: 'SPECIFIC_USERS', label: 'Specific Users' },
-];
+]
 
 const MOCK_ROLES = [
-  { _id: '1', name: 'Resident Owner',  isTenantRole: true  },
-  { _id: '2', name: 'Resident Tenant', isTenantRole: true  },
-  { _id: '3', name: 'Family Member',   isTenantRole: true  },
-  { _id: '4', name: 'Admin',           isTenantRole: false }, // filtered out
-];
+  { _id: '1', name: 'Resident Owner', isTenantRole: true },
+  { _id: '2', name: 'Resident Tenant', isTenantRole: true },
+  { _id: '3', name: 'Family Member', isTenantRole: true },
+  { _id: '4', name: 'Admin', isTenantRole: false }, // filtered out
+]
 
 const MOCK_UNITS = [
   { _id: 'u1', label: 'Villa 101', block: 'Block A', type: '2BHK' },
@@ -26,10 +26,10 @@ const MOCK_UNITS = [
   { _id: 'u5', label: 'Villa 301', block: 'Block C', type: 'Penthouse' },
   { _id: 'u6', label: 'Villa 302', block: 'Block C', type: '2BHK' },
   { _id: 'u7', label: 'Villa 401', block: 'Block D', type: '4BHK' },
-];
+]
 
 // Filter roles to only those where isTenantRole === true
-const TENANT_ROLES = MOCK_ROLES.filter(r => r.isTenantRole === true);
+const TENANT_ROLES = MOCK_ROLES.filter((r) => r.isTenantRole === true)
 
 // ── Inner sub-components (all module-level for stable references) ─────────
 
@@ -43,8 +43,8 @@ const ScopePill = memo(({ option, isActive, onClick }) => (
   >
     {option.label}
   </button>
-));
-ScopePill.displayName = 'ScopePill';
+))
+ScopePill.displayName = 'ScopePill'
 
 /** Role checkbox row */
 const RoleItem = memo(({ role, isChecked, onToggle }) => (
@@ -57,17 +57,17 @@ const RoleItem = memo(({ role, isChecked, onToggle }) => (
       className="assessment-role-item__checkbox"
       checked={isChecked}
       onChange={() => onToggle(role._id)}
-      onClick={e => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     />
     <span className="assessment-role-item__label">{role.name}</span>
     <span className="assessment-role-item__badge">Tenant / Unit</span>
   </label>
-));
-RoleItem.displayName = 'RoleItem';
+))
+RoleItem.displayName = 'RoleItem'
 
 /** Scrollable unit checklist */
 const UnitChecklist = memo(({ selectedUnitIds, onToggle, onSelectAll, onDeselectAll }) => {
-  const allSelected = MOCK_UNITS.every(u => selectedUnitIds.includes(u._id));
+  const allSelected = MOCK_UNITS.every((u) => selectedUnitIds.includes(u._id))
 
   return (
     <div className="assessment-unit-list">
@@ -84,9 +84,10 @@ const UnitChecklist = memo(({ selectedUnitIds, onToggle, onSelectAll, onDeselect
           <button
             type="button"
             className="assessment-unit-list__select-all-btn"
-            onClick={() => allSelected
-              ? onDeselectAll(MOCK_UNITS.map(u => u._id))
-              : onSelectAll(MOCK_UNITS.map(u => u._id))
+            onClick={() =>
+              allSelected
+                ? onDeselectAll(MOCK_UNITS.map((u) => u._id))
+                : onSelectAll(MOCK_UNITS.map((u) => u._id))
             }
           >
             {allSelected ? 'Deselect All' : 'Select All'}
@@ -94,8 +95,8 @@ const UnitChecklist = memo(({ selectedUnitIds, onToggle, onSelectAll, onDeselect
         </div>
       </div>
 
-      {MOCK_UNITS.map(unit => {
-        const isChecked = selectedUnitIds.includes(unit._id);
+      {MOCK_UNITS.map((unit) => {
+        const isChecked = selectedUnitIds.includes(unit._id)
         return (
           <label
             key={unit._id}
@@ -107,19 +108,19 @@ const UnitChecklist = memo(({ selectedUnitIds, onToggle, onSelectAll, onDeselect
               className="assessment-unit-item__checkbox"
               checked={isChecked}
               onChange={() => onToggle(unit._id)}
-              onClick={e => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
             />
             <span className="assessment-unit-item__text">
               {unit.label} — {unit.block}
             </span>
             <span className="assessment-unit-item__meta">{unit.type}</span>
           </label>
-        );
+        )
       })}
     </div>
-  );
-});
-UnitChecklist.displayName = 'UnitChecklist';
+  )
+})
+UnitChecklist.displayName = 'UnitChecklist'
 
 // ── AssessmentDrawer ──────────────────────────────────────────────────────
 
@@ -134,40 +135,48 @@ UnitChecklist.displayName = 'UnitChecklist';
  */
 const AssessmentDrawer = ({ visible, onClose, assessment }) => {
   // Scope state
-  const [scopeType, setScopeType]       = useState('ALL_COMMUNITY');
+  const [scopeType, setScopeType] = useState('ALL_COMMUNITY')
 
   // Role checkbox state (pre-select all tenant roles)
-  const [checkedRoles, setCheckedRoles] = useState(TENANT_ROLES.map(r => r._id));
+  const [checkedRoles, setCheckedRoles] = useState(TENANT_ROLES.map((r) => r._id))
 
   // Unit selection state
-  const [selectedUnits, setSelectedUnits] = useState([]);
+  const [selectedUnits, setSelectedUnits] = useState([])
 
   // Stable handlers
-  const handleToggleRole = useCallback((id) =>
-    setCheckedRoles(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-  , []);
+  const handleToggleRole = useCallback(
+    (id) =>
+      setCheckedRoles((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])),
+    [],
+  )
 
-  const handleToggleUnit = useCallback((id) =>
-    setSelectedUnits(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-  , []);
+  const handleToggleUnit = useCallback(
+    (id) =>
+      setSelectedUnits((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      ),
+    [],
+  )
 
-  const handleSelectAllUnits   = useCallback((ids) =>
-    setSelectedUnits(prev => Array.from(new Set([...prev, ...ids])))
-  , []);
+  const handleSelectAllUnits = useCallback(
+    (ids) => setSelectedUnits((prev) => Array.from(new Set([...prev, ...ids]))),
+    [],
+  )
 
-  const handleDeselectAllUnits = useCallback((ids) =>
-    setSelectedUnits(prev => prev.filter(id => !ids.includes(id)))
-  , []);
+  const handleDeselectAllUnits = useCallback(
+    (ids) => setSelectedUnits((prev) => prev.filter((id) => !ids.includes(id))),
+    [],
+  )
 
   const handleScopeChange = useCallback((val) => {
-    setScopeType(val);
-    if (val !== 'SPECIFIC_UNITS') setSelectedUnits([]);
-  }, []);
+    setScopeType(val)
+    if (val !== 'SPECIFIC_UNITS') setSelectedUnits([])
+  }, [])
 
-  if (!visible) return null;
+  if (!visible) return null
 
-  const displayName = assessment?.name ?? 'Monthly Maintenance Charge';
-  const displayCycle = assessment?.billingCycle ?? 'Monthly';
+  const displayName = assessment?.name ?? 'Monthly Maintenance Charge'
+  const displayCycle = assessment?.billingCycle ?? 'Monthly'
 
   return (
     <div className="assessment-os-theme">
@@ -178,11 +187,7 @@ const AssessmentDrawer = ({ visible, onClose, assessment }) => {
         aria-modal="true"
         aria-label="Assessment Configuration"
       >
-        <div
-          className="assessment-drawer-panel"
-          onClick={e => e.stopPropagation()}
-        >
-
+        <div className="assessment-drawer-panel" onClick={(e) => e.stopPropagation()}>
           {/* ── Header ────────────────────────────────────────────────── */}
           <div className="assessment-drawer-header">
             <div className="d-flex align-items-center gap-3">
@@ -208,7 +213,6 @@ const AssessmentDrawer = ({ visible, onClose, assessment }) => {
 
           {/* ── Body ──────────────────────────────────────────────────── */}
           <div className="assessment-drawer-body">
-
             {/* SECTION: Who Gets Billed */}
             <p className="assessment-drawer-section-label">
               <i className="fa-solid fa-users me-1" />
@@ -216,7 +220,7 @@ const AssessmentDrawer = ({ visible, onClose, assessment }) => {
             </p>
 
             <div className="assessment-scope-pills" role="group" aria-label="Target scope">
-              {SCOPE_OPTIONS.map(opt => (
+              {SCOPE_OPTIONS.map((opt) => (
                 <ScopePill
                   key={opt.value}
                   option={opt}
@@ -233,7 +237,7 @@ const AssessmentDrawer = ({ visible, onClose, assessment }) => {
             </p>
 
             <div className="assessment-role-grid" role="group" aria-label="Charge to roles">
-              {TENANT_ROLES.map(role => (
+              {TENANT_ROLES.map((role) => (
                 <RoleItem
                   key={role._id}
                   role={role}
@@ -261,8 +265,10 @@ const AssessmentDrawer = ({ visible, onClose, assessment }) => {
 
             {/* ALL_COMMUNITY banner */}
             {scopeType === 'ALL_COMMUNITY' && (
-              <div className="d-flex align-items-center gap-2 p-3 rounded-3 mb-3"
-                style={{ background: '#D1FAE5', border: '1px solid #A7F3D0' }}>
+              <div
+                className="d-flex align-items-center gap-2 p-3 rounded-3 mb-3"
+                style={{ background: '#D1FAE5', border: '1px solid #A7F3D0' }}
+              >
                 <i className="fa-solid fa-circle-check text-success" />
                 <span style={{ fontSize: '13px', fontWeight: 600, color: '#065F46' }}>
                   All active residents in the community will be charged.
@@ -274,20 +280,16 @@ const AssessmentDrawer = ({ visible, onClose, assessment }) => {
             <div className="assessment-mid-cycle-warning" role="alert">
               <i className="fa-solid fa-triangle-exclamation assessment-mid-cycle-warning__icon" />
               <p className="assessment-mid-cycle-warning__text">
-                <strong>Note:</strong> Changes to active recurring assessments will only apply
-                to future billing cycles starting next month.
+                <strong>Note:</strong> Changes to active recurring assessments will only apply to
+                future billing cycles starting next month.
               </p>
             </div>
-
-          </div>{/* end body */}
+          </div>
+          {/* end body */}
 
           {/* ── Footer ────────────────────────────────────────────────── */}
           <div className="assessment-drawer-footer">
-            <button
-              type="button"
-              className="btn btn-light fw-semibold"
-              onClick={onClose}
-            >
+            <button type="button" className="btn btn-light fw-semibold" onClick={onClose}>
               Cancel
             </button>
             <button
@@ -298,18 +300,17 @@ const AssessmentDrawer = ({ visible, onClose, assessment }) => {
                   scopeType,
                   checkedRoles,
                   selectedUnits,
-                });
+                })
               }}
             >
               <i className="fa-solid fa-check me-2" />
               Save Configuration
             </button>
           </div>
-
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AssessmentDrawer;
+export default AssessmentDrawer

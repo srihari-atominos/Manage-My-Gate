@@ -1,12 +1,12 @@
-import React, { useEffect } from 'react';
-import useAssessment from '../hooks/useAssessment.js';
+import React, { useEffect } from 'react'
+import useAssessment from '../hooks/useAssessment.js'
 
 export const AssessmentManagementView = () => {
-  const { assessmentsList, loading, loadAssessments } = useAssessment();
+  const { assessmentsList, loading, loadAssessments } = useAssessment()
 
   useEffect(() => {
-    loadAssessments();
-  }, [loadAssessments]);
+    loadAssessments()
+  }, [loadAssessments])
 
   return (
     <div className="container-fluid py-4">
@@ -23,7 +23,7 @@ export const AssessmentManagementView = () => {
           <div className="col-12">
             <div className="card border-0 shadow-sm p-4">
               <h4>Active Templates Configuration</h4>
-              
+
               {assessmentsList.length === 0 ? (
                 <p className="text-muted mt-3">No templates registered yet.</p>
               ) : (
@@ -36,11 +36,16 @@ export const AssessmentManagementView = () => {
                       <div>
                         <div className="fw-semibold">{template.name}</div>
                         <div className="small text-muted mt-1">
-                          Billing Cycle: <span className="badge bg-secondary assessment-cycle-tag">{template.billingCycle}</span>
+                          Billing Cycle:{' '}
+                          <span className="badge bg-secondary assessment-cycle-tag">
+                            {template.billingCycle}
+                          </span>
                         </div>
                       </div>
                       <div className="text-end">
-                        <small className="text-muted">Generation Day: {template.generationDay}</small>
+                        <small className="text-muted">
+                          Generation Day: {template.generationDay}
+                        </small>
                       </div>
                     </div>
                   ))}
@@ -51,7 +56,7 @@ export const AssessmentManagementView = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default AssessmentManagementView;
+export default AssessmentManagementView

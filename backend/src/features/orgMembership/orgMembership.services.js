@@ -31,8 +31,8 @@ export class OrgMembershipService {
     };
   }
 
-  async updateMembershipRole(userId, orgId, roleIds, session = null) {
-    return await orgMembershipRepository.updateRoles(userId, orgId, roleIds, session);
+  async updateMembershipRole(userId, orgId, roleIds, villaId = null, residentType = null, session = null) {
+    return await orgMembershipRepository.updateRoles(userId, orgId, roleIds, villaId, residentType, session);
   }
 
   async updateStatus(userId, orgId, status, session = null) {

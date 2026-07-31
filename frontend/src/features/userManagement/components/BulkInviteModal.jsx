@@ -14,7 +14,13 @@ import {
   CBadge,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilCloudDownload, cilCloudUpload, cilCheckCircle, cilWarning, cilXCircle } from '@coreui/icons'
+import {
+  cilCloudDownload,
+  cilCloudUpload,
+  cilCheckCircle,
+  cilWarning,
+  cilXCircle,
+} from '@coreui/icons'
 
 const TEMPLATE_CONTENT = `Email,Type,VillaNumber,ResidentType,Role
 resident.owner@example.com,Resident,Villa 01,Owner,Resident Owner
@@ -43,11 +49,14 @@ const splitCSVLine = (line) => {
 }
 
 const parseCSV = (text) => {
-  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
   if (lines.length < 2) return []
 
-  const headers = splitCSVLine(lines[0]).map(h => h.trim().toLowerCase())
-  
+  const headers = splitCSVLine(lines[0]).map((h) => h.trim().toLowerCase())
+
   const parsed = []
   for (let i = 1; i < lines.length; i++) {
     const values = splitCSVLine(lines[i])
@@ -82,7 +91,12 @@ const parseCSV = (text) => {
       row.isValidResidentType = true
     }
 
-    row.isValid = row.isValidEmail && row.isValidType && row.isValidRole && row.isValidVilla && row.isValidResidentType
+    row.isValid =
+      row.isValidEmail &&
+      row.isValidType &&
+      row.isValidRole &&
+      row.isValidVilla &&
+      row.isValidResidentType
 
     parsed.push(row)
   }
@@ -163,7 +177,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
   }
 
   const handleSubmit = async () => {
-    const validRows = parsedRows.filter(r => r.isValid)
+    const validRows = parsedRows.filter((r) => r.isValid)
     if (validRows.length === 0) {
       setErrorMsg('No valid rows found to invite.')
       return
@@ -172,7 +186,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
     setLoading(true)
     setErrorMsg('')
     try {
-      const payload = validRows.map(r => ({
+      const payload = validRows.map((r) => ({
         email: r.email,
         residentType: r.type === 'Resident' ? r.residentType : 'None',
         roleName: r.roleName,
@@ -197,7 +211,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
     onClose()
   }
 
-  const validCount = parsedRows.filter(r => r.isValid).length
+  const validCount = parsedRows.filter((r) => r.isValid).length
   const invalidCount = parsedRows.length - validCount
 
   return (
@@ -209,18 +223,19 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
       size="lg"
     >
       <CModalHeader className="border-bottom">
-        <CModalTitle className="bulk-modal-title">
-          Bulk Invite Members & Staff
-        </CModalTitle>
+        <CModalTitle className="bulk-modal-title">Bulk Invite Members & Staff</CModalTitle>
       </CModalHeader>
 
       <CModalBody className="p-4">
         {/* Step 1: Template Download */}
         {!fileName && !parsedRows.length && !results && (
           <div className="mb-4 text-center p-4 border rounded-3 bg-body-secondary">
-            <h5 className="fw-semibold mb-2" style={{ fontSize: '0.95rem' }}>1. Download CSV Template</h5>
+            <h5 className="fw-semibold mb-2" style={{ fontSize: '0.95rem' }}>
+              1. Download CSV Template
+            </h5>
             <p className="text-muted small mb-3">
-              Use our standard format to prepare your invitation list. You can specify whether each invitee is a resident or staff/worker.
+              Use our standard format to prepare your invitation list. You can specify whether each
+              invitee is a resident or staff/worker.
             </p>
             <CButton
               color="primary"
@@ -261,7 +276,12 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
               />
-              <CIcon icon={cilCloudUpload} size="xl" className="text-muted mb-2" style={{ opacity: 0.6 }} />
+              <CIcon
+                icon={cilCloudUpload}
+                size="xl"
+                className="text-muted mb-2"
+                style={{ opacity: 0.6 }}
+              />
               {fileName ? (
                 <div>
                   <div className="fw-semibold text-primary mb-1">{fileName}</div>
@@ -281,7 +301,9 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
         {!results && parsedRows.length > 0 && (
           <div className="parsed-preview mb-3">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="fw-semibold mb-0" style={{ fontSize: '0.95rem' }}>3. Preview Uploaded List</h5>
+              <h5 className="fw-semibold mb-0" style={{ fontSize: '0.95rem' }}>
+                3. Preview Uploaded List
+              </h5>
               <div className="d-flex gap-2">
                 <CBadge color="success">{validCount} Valid</CBadge>
                 {invalidCount > 0 && <CBadge color="danger">{invalidCount} Invalid</CBadge>}
@@ -292,17 +314,25 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
               <table className="table table-hover align-middle mb-0 small">
                 <thead className="table-light sticky-top">
                   <tr>
-                    <th scope="col" className="ps-3">Email</th>
+                    <th scope="col" className="ps-3">
+                      Email
+                    </th>
                     <th scope="col">Type</th>
                     <th scope="col">Villa Number</th>
                     <th scope="col">Resident Type</th>
                     <th scope="col">Role</th>
-                    <th scope="col" className="pe-3 text-center">Status</th>
+                    <th scope="col" className="pe-3 text-center">
+                      Status
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {parsedRows.map((row, idx) => (
-                    <tr key={idx} className={row.isValid ? '' : 'table-warning-row'} style={{ opacity: row.isValid ? 1 : 0.8 }}>
+                    <tr
+                      key={idx}
+                      className={row.isValid ? '' : 'table-warning-row'}
+                      style={{ opacity: row.isValid ? 1 : 0.8 }}
+                    >
                       <td className="ps-3 fw-semibold text-truncate bulk-text-truncate-email">
                         {row.email || <span className="text-danger">Missing</span>}
                       </td>
@@ -313,12 +343,17 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                       </td>
                       <td>{row.villaNumber || <span className="text-muted">—</span>}</td>
                       <td>{row.residentType || <span className="text-muted">—</span>}</td>
-                      <td className="text-truncate bulk-text-truncate-role">{row.roleName || <span className="text-danger">Missing</span>}</td>
+                      <td className="text-truncate bulk-text-truncate-role">
+                        {row.roleName || <span className="text-danger">Missing</span>}
+                      </td>
                       <td className="pe-3 text-center">
                         {row.isValid ? (
                           <CBadge color="success">Valid</CBadge>
                         ) : (
-                          <CBadge color="danger" title="Validation failed: Verify email, type, role or villa link.">
+                          <CBadge
+                            color="danger"
+                            title="Validation failed: Verify email, type, role or villa link."
+                          >
                             Fix Row
                           </CBadge>
                         )}
@@ -339,7 +374,10 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
         {/* Results Screen */}
         {results && (
           <div className="invitation-results">
-            <CAlert color={results.failureCount === 0 ? 'success' : 'warning'} className="mb-4 py-3">
+            <CAlert
+              color={results.failureCount === 0 ? 'success' : 'warning'}
+              className="mb-4 py-3"
+            >
               <div className="d-flex align-items-center gap-2 mb-2">
                 <CIcon icon={results.failureCount === 0 ? cilCheckCircle : cilWarning} size="xl" />
                 <h6 className="fw-semibold mb-0">Bulk Invitation Completed</h6>
@@ -352,10 +390,15 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
             {/* Success List */}
             {results.successes.length > 0 && (
               <div className="mb-4">
-                <h6 className="fw-semibold text-success mb-2" style={{ fontSize: '0.88rem' }}>Successfully Invited:</h6>
+                <h6 className="fw-semibold text-success mb-2" style={{ fontSize: '0.88rem' }}>
+                  Successfully Invited:
+                </h6>
                 <div className="list-group rounded-3 max-vh-25 bulk-list-container">
                   {results.successes.map((s, idx) => (
-                    <div key={idx} className="list-group-item d-flex justify-content-between align-items-center py-2 small">
+                    <div
+                      key={idx}
+                      className="list-group-item d-flex justify-content-between align-items-center py-2 small"
+                    >
                       <span className="fw-semibold">{s.email}</span>
                       <CBadge color="success">Invited</CBadge>
                     </div>
@@ -367,10 +410,15 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
             {/* Failure List */}
             {results.failures.length > 0 && (
               <div>
-                <h6 className="fw-semibold text-danger mb-2" style={{ fontSize: '0.88rem' }}>Failed to Invite:</h6>
+                <h6 className="fw-semibold text-danger mb-2" style={{ fontSize: '0.88rem' }}>
+                  Failed to Invite:
+                </h6>
                 <div className="list-group rounded-3 max-vh-25 bulk-list-container">
                   {results.failures.map((f, idx) => (
-                    <div key={idx} className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-body-secondary-danger">
+                    <div
+                      key={idx}
+                      className="list-group-item d-flex justify-content-between align-items-start py-2 small bg-body-secondary-danger"
+                    >
                       <div className="ms-2 me-auto">
                         <div className="fw-semibold text-body">{f.email}</div>
                         <span className="text-muted bulk-text-xxs">Reason: {f.error}</span>
@@ -386,12 +434,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
       </CModalBody>
 
       <CModalFooter className="border-0 pt-0">
-        <CButton
-          color="light"
-          size="sm"
-          onClick={handleClose}
-          disabled={loading}
-        >
+        <CButton color="light" size="sm" onClick={handleClose} disabled={loading}>
           {results ? 'Close' : 'Cancel'}
         </CButton>
         {!results && parsedRows.length > 0 && (
@@ -409,9 +452,7 @@ export const BulkInviteModal = ({ visible, onClose, onBulkInvite }) => {
                 Inviting...
               </>
             ) : (
-              <>
-                Send {validCount} Invites
-              </>
+              <>Send {validCount} Invites</>
             )}
           </CButton>
         )}

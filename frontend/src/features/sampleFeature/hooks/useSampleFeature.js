@@ -1,55 +1,55 @@
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import {
   getSamples,
   addSample,
   editSample,
   removeSample,
   clearStatus,
-} from '../store/sampleFeatureSlice.js';
+} from '../store/sampleFeatureSlice.js'
 
 export const useSampleFeature = () => {
-  const dispatch = useDispatch();
-  const { items, loading, error, successMsg } = useSelector((state) => state.sampleFeature);
+  const dispatch = useDispatch()
+  const { items, loading, error, successMsg } = useSelector((state) => state.sampleFeature)
 
-  const [editingItem, setEditingItem] = useState(null);
+  const [editingItem, setEditingItem] = useState(null)
 
   useEffect(() => {
-    dispatch(getSamples());
-  }, [dispatch]);
+    dispatch(getSamples())
+  }, [dispatch])
 
   useEffect(() => {
     if (successMsg || error) {
       const timer = setTimeout(() => {
-        dispatch(clearStatus());
-      }, 5002);
-      return () => clearTimeout(timer);
+        dispatch(clearStatus())
+      }, 5002)
+      return () => clearTimeout(timer)
     }
-  }, [successMsg, error, dispatch]);
+  }, [successMsg, error, dispatch])
 
   const handleFormSubmit = (data) => {
     if (editingItem) {
       dispatch(editSample({ id: editingItem._id, sampleData: data }))
         .unwrap()
-        .then(() => setEditingItem(null));
+        .then(() => setEditingItem(null))
     } else {
-      dispatch(addSample(data));
+      dispatch(addSample(data))
     }
-  };
+  }
 
   const handleEditSelect = (item) => {
-    setEditingItem(item);
-  };
+    setEditingItem(item)
+  }
 
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this sample record?')) {
-      dispatch(removeSample(id));
+      dispatch(removeSample(id))
     }
-  };
+  }
 
   const handleCancelEdit = () => {
-    setEditingItem(null);
-  };
+    setEditingItem(null)
+  }
 
   return {
     items,
@@ -61,7 +61,7 @@ export const useSampleFeature = () => {
     handleEditSelect,
     handleDelete,
     handleCancelEdit,
-  };
-};
+  }
+}
 
-export default useSampleFeature;
+export default useSampleFeature

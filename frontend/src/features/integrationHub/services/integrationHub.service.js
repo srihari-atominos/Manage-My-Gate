@@ -1,13 +1,13 @@
-import apiClient from '../../../services/apiClient.js';
+import apiClient from '../../../services/apiClient.js'
 
 /**
  * Integration Hub API Service
- * 
+ *
  * Handles client-server communication using the configured global apiClient.
  */
 export const fetchCatalog = async () => {
-  return await apiClient.get('/integrations/catalog');
-};
+  return await apiClient.get('/integrations/catalog')
+}
 
 /**
  * Fetch user connections with optional provider filtering and pagination.
@@ -16,21 +16,21 @@ export const fetchCatalog = async () => {
  * @param {number} [limit=10] - Connections per page limit
  */
 export const fetchConnections = async (provider, page = 1, limit = 10) => {
-  const params = new URLSearchParams();
-  if (provider) params.append('provider', provider);
-  if (page) params.append('page', page.toString());
-  if (limit) params.append('limit', limit.toString());
+  const params = new URLSearchParams()
+  if (provider) params.append('provider', provider)
+  if (page) params.append('page', page.toString())
+  if (limit) params.append('limit', limit.toString())
 
-  return await apiClient.get(`/integrations?${params.toString()}`);
-};
+  return await apiClient.get(`/integrations?${params.toString()}`)
+}
 
 /**
  * Create/connect a new integration credential set.
  * @param {object} payload - Connection request payload (provider, accountLabel, credentials)
  */
 export const createConnection = async (payload) => {
-  return await apiClient.post('/integrations/connect', payload);
-};
+  return await apiClient.post('/integrations/connect', payload)
+}
 
 /**
  * Update the account label of a connection.
@@ -38,31 +38,31 @@ export const createConnection = async (payload) => {
  * @param {string} accountLabel - The new account label
  */
 export const updateConnectionLabel = async (id, accountLabel) => {
-  return await apiClient.put(`/integrations/${id}`, { accountLabel });
-};
+  return await apiClient.put(`/integrations/${id}`, { accountLabel })
+}
 
 /**
  * Disconnect (delete) an integration connection.
  * @param {string} id - Connection ObjectId to delete
  */
 export const deleteConnection = async (id) => {
-  return await apiClient.delete(`/integrations/${id}`);
-};
+  return await apiClient.delete(`/integrations/${id}`)
+}
 
 /**
  * Fetch organization bank and gateway details.
  */
 export const fetchBankDetails = async () => {
-  return await apiClient.get('/integrations/bank-details');
-};
+  return await apiClient.get('/integrations/bank-details')
+}
 
 /**
  * Save / update organization bank and gateway details.
  * @param {object} payload - Bank details and gateway credentials
  */
 export const saveBankDetails = async (payload) => {
-  return await apiClient.post('/integrations/bank-details', payload);
-};
+  return await apiClient.post('/integrations/bank-details', payload)
+}
 
 export default {
   fetchCatalog,
@@ -72,4 +72,4 @@ export default {
   deleteConnection,
   fetchBankDetails,
   saveBankDetails,
-};
+}

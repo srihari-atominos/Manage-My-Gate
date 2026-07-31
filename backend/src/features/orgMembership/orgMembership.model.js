@@ -62,7 +62,7 @@ const orgMembershipSchema = new mongoose.Schema(
   }
 );
 
-orgMembershipSchema.index({ userId: 1, orgId: 1 }, { unique: true });
+orgMembershipSchema.index({ userId: 1, orgId: 1, villaId: 1 }, { unique: true });
 
 export const OrgMembership = mongoose.models.OrgMembership || mongoose.model('OrgMembership', orgMembershipSchema);
 export default OrgMembership;

@@ -13,11 +13,11 @@ import { CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { CSVImportZone, DownloadTemplateButton } from 'src/components/common';
 
-const TEMPLATE_CONTENT = `UnitNumber,BlockOrBuilding,Type,Email,ResidentType,Role
+const TEMPLATE_CONTENT = `UnitNumber,BlockOrBuilding,Type,Email,ResidentType,Phone No
 Unit 101,Block A,Apartment,,,
-Unit 102,Block A,Apartment,resident.owner@example.com,Owner,Resident Owner
-Unit 103,Block B,Villa,resident.tenant@example.com,Tenant,Resident Tenant
-Unit 104,Block B,Penthouse,resident.family@example.com,Family,Family Member`;
+Unit 102,Block A,Apartment,resident.owner@example.com,Owner,1234567890
+Unit 103,Block B,Villa,resident.tenant@example.com,Tenant,1234567891
+Unit 104,Block B,Penthouse,resident.family@example.com,Family,1234567892`;
 
 const splitCSVLine = (line) => {
   const result = [];
@@ -56,8 +56,9 @@ const parseCSV = (text) => {
       else if (header === 'blockorbuilding' || header === 'block' || header === 'building') key = 'blockOrBuilding';
       else if (header === 'type' || header === 'configuration') key = 'type';
       else if (header === 'email') key = 'email';
-      else if (header === 'residenttype' || header === 'resident type') key = 'residentType';
-      else if (header === 'role') key = 'roleName';
+      else if (header.includes('occupancy status') || header.includes('status')) key = 'status';
+      else if (header.includes('role')) key = 'roleName';
+      else if (header.includes('phone') || header.includes('mobile')) key = 'phone';
 
       row[key] = values[index] || '';
     });
@@ -115,6 +116,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
         blockOrBuilding: r.blockOrBuilding || undefined,
         type: r.type || 'Apartment',
         email: r.email || undefined,
+        phone: r.phone || undefined,
         residentType: r.email ? r.residentType : undefined,
         roleName: r.email ? r.roleName : undefined,
       }));

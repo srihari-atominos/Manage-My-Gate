@@ -17,7 +17,7 @@ export const useNoticeSocket = () => {
     if (!user) return
 
     // Resolve socket URL from environment configuration with backend fallback
-    const socketUrl = config.socketUrl;
+    const socketUrl = config.socketUrl
 
     const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],

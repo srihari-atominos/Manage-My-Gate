@@ -1,40 +1,40 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import { useTranslation } from 'react-i18next';
-import { CCard, CCardBody } from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilChevronRight } from '@coreui/icons';
-import '../styles/_integrationHub.scss';
+import React from 'react'
+import PropTypes from 'prop-types'
+import { useTranslation } from 'react-i18next'
+import { CCard, CCardBody } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilChevronRight } from '@coreui/icons'
+import '../styles/_integrationHub.scss'
 
 /**
  * Dumb UI component for rendering supported integration providers.
  */
 export const ProviderCard = ({ provider, onClick }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   const getBrandColor = (id) => {
     switch (id) {
       case 'twilio':
-        return '#f22f46';
+        return '#f22f46'
       case 'openai':
-        return '#10a37f';
+        return '#10a37f'
       case 'resend':
-        return '#2563eb';
+        return '#2563eb'
       case 'firebase':
-        return '#FFCA28';
+        return '#FFCA28'
       case 'messageCentral':
-        return '#1565C0';
+        return '#1565C0'
       default:
-        return 'var(--cui-primary, #4f46e5)';
+        return 'var(--cui-primary, #4f46e5)'
     }
-  };
+  }
 
   const getDefaultDescription = (provider) => {
     if (provider.id === 'messageCentral') {
-      return 'Configure Message Central for SMS OTP and Transactional SMS.';
+      return 'Configure Message Central for SMS OTP and Transactional SMS.'
     }
-    return `Connect to ${provider.name} Integration`;
-  };
+    return `Connect to ${provider.name} Integration`
+  }
 
   return (
     <CCard className="provider-card h-100 shadow-sm border-0" onClick={() => onClick(provider)}>
@@ -68,8 +68,8 @@ export const ProviderCard = ({ provider, onClick }) => {
         </div>
       </CCardBody>
     </CCard>
-  );
-};
+  )
+}
 
 ProviderCard.propTypes = {
   provider: PropTypes.shape({
@@ -80,10 +80,10 @@ ProviderCard.propTypes = {
         name: PropTypes.string.isRequired,
         label: PropTypes.string.isRequired,
         type: PropTypes.string.isRequired,
-      })
+      }),
     ).isRequired,
   }).isRequired,
   onClick: PropTypes.func.isRequired,
-};
+}
 
-export default ProviderCard;
+export default ProviderCard

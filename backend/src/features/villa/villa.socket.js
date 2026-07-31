@@ -52,6 +52,20 @@ export const setupVillaSocketListeners = async () => {
       logger.error('Failed to emit resident_assigned socket event:', error);
     }
   });
+
+  villaEvents.on('resident_type_updated', (payload) => {
+    try {
+      if (!payload || !payload.orgId) {
+        logger.warn('Socket dispatch ignored: payload or orgId missing for resident_type_updated');
+        return;
+      }
+      const room = `org:${payload.orgId}`;
+      logger.info(`Broadcasting resident_type_updated to room: ${room}`);
+      getIO().to(room).emit('resident_type_updated', payload);
+    } catch (error) {
+      logger.error('Failed to emit resident_type_updated socket event:', error);
+    }
+  });
 };
 
 export default setupVillaSocketListeners;

@@ -5,7 +5,7 @@ import { mapPermission } from '../utils/permissionMapper.js';
 /**
  * Helper to dynamically resolve user permissions from the cache or database.
  */
-const getPermissionsForUser = async (user) => {
+export const getPermissionsForUser = async (user) => {
   if (!user) return [];
   
   let roleId = user.roleId;

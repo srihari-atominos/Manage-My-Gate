@@ -13,15 +13,30 @@ const paymentSchema = new mongoose.Schema({
     required: true
   },
   referenceId: {
-    type: mongoose.Schema.Types.ObjectId, // Usually the booking ID
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Invoice',
     required: true,
     index: true
   },
   referenceType: {
     type: String,
-    enum: ['AmenityBooking', 'MaintenanceFee', 'Invoice', 'Other'],
-    default: 'AmenityBooking'
+    default: 'Invoice',
+    enum: ['AmenityBooking', 'MaintenanceFee', 'Invoice', 'Other']
   },
+  type: {
+    type: String,
+    enum: ['Payment', 'Refund', 'CreditNote', 'WriteOff', 'Adjustment'],
+    default: 'Payment'
+  },
+  parentPaymentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Payment',
+    default: null
+  },
+  allocations: [{
+    invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
+    amountApplied: Number
+  }],
   amount: {
     type: Number,
     required: true
@@ -42,7 +57,8 @@ const paymentSchema = new mongoose.Schema({
   },
   gatewayTransactionId: {
     type: String,
-    default: null
+    default: null,
+    index: { unique: true, sparse: true }
   },
   paymentMethod: {
     type: String,
@@ -51,6 +67,47 @@ const paymentSchema = new mongoose.Schema({
   errorReason: {
     type: String,
     default: null
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  deletedAt: {
+    type: Date,
+    default: null
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  receiptDocuments: [{
+    documentId: String,
+    generatedAt: Date,
+    url: String
+  }],
+  verifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  verifiedAt: {
+    type: Date,
+    default: null
+  },
+  approvalStatus: {
+    type: String,
+    enum: ['PENDING_L1', 'PENDING_L2', 'APPROVED', 'REJECTED', 'NOT_REQUIRED'],
+    default: 'NOT_REQUIRED'
+  },
+  approvedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  idempotencyKey: {
+    type: String,
+    index: { unique: true, sparse: true }
   }
 }, { timestamps: true });
 

@@ -11,8 +11,29 @@ import userIdentityService from '../userIdentity/userIdentity.services.js';
 import integrationHubService from '../integrationHub/integrationHub.service.js';
 import config from '../../config/config.js';
 import authEvents from './auth.events.js';
+import userEvents from '../user/user.events.js';
+import emailValidator from 'deep-email-validator';
 
 export class AuthService {
+  /**
+   * Deep Email Verification using MX and SMTP checks
+   * Blocks disposable emails and verifies mailbox existence.
+   * @param {string} email - The email address to verify
+   */
+  async verifyEmailDeep(email) {
+    const res = await emailValidator({
+      email: email,
+      validateRegex: true,
+      validateMx: true,
+      validateTypo: false,
+      validateDisposable: true,
+      validateSMTP: true,
+    });
+    
+    if (!res.valid) {
+      throw new HttpError(400, 'This email address does not appear to exist or cannot receive mail.');
+    }
+  }
   /**
    * Registers a new user with standard credentials.
    * Decoupled from organization setup.
@@ -28,6 +49,11 @@ export class AuthService {
 
     try {
       const { email, password, phone } = registerData;
+
+      // Deep Email Verification before registration
+      if (email) {
+        await this.verifyEmailDeep(email);
+      }
 
       // Extract name from registerData
       let nameToUse = registerData.name || (registerData.firstName || registerData.lastName ? `${registerData.firstName || ''} ${registerData.lastName || ''}`.trim() : '');
@@ -104,8 +130,8 @@ export class AuthService {
         availableWorkspaces: [],
       };
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
@@ -121,7 +147,7 @@ export class AuthService {
    * @param {string} [targetOrgId=null] - Optional target organization ID to scope the context to
    * @returns {Promise<{tokenPayload: object, availableWorkspaces: Array}>}
    */
-  async getScopedTokenPayload(user, targetOrgId = null, targetRole = null) {
+  async getScopedTokenPayload(user, targetOrgId = null, targetRole = null, targetVillaId = null) {
     const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
     const memberships = await orgMembershipService.getUserMemberships(user._id);
 
@@ -132,7 +158,18 @@ export class AuthService {
     const targetOrgIdStr = targetOrgId ? targetOrgId.toString() : null;
 
     if (targetOrgIdStr) {
-      selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgIdStr);
+      if (targetVillaId) {
+        const targetVillaIdStr = targetVillaId.toString();
+        selectedMembership = activeMemberships.find((m) => 
+          m.orgId._id.toString() === targetOrgIdStr && 
+          m.villaId && 
+          (m.villaId._id ? m.villaId._id.toString() === targetVillaIdStr : m.villaId.toString() === targetVillaIdStr)
+        );
+      }
+      // Fallback to first membership in org if no specific villa requested or found
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => m.orgId._id.toString() === targetOrgIdStr);
+      }
       if (!selectedMembership) {
         throw new HttpError(403, 'Access denied. You do not have an active membership in this workspace.');
       }
@@ -201,6 +238,9 @@ export class AuthService {
         isPlatform: m.orgId.isPlatform || false,
         roleName: validRoles.map(r => r.name).join(', ') || null,
         roles: validRoles.map(r => r.name),
+        villaId: m.villaId ? (m.villaId._id ? m.villaId._id.toString() : m.villaId.toString()) : null,
+        villaNumber: m.villaId?.unitNumber || null,
+        residentType: m.residentType || 'None',
       };
     });
 
@@ -289,6 +329,11 @@ export class AuthService {
   async login(loginData) {
     const { login, password, inviteToken } = loginData;
 
+    // Deep Email Verification before login (if identifier is formatted as an email)
+    if (login && login.includes('@')) {
+      await this.verifyEmailDeep(login);
+    }
+
     // 1. Fetch user by email or username
     const user = await userService.getUserByEmailOrUsername(login);
     if (!user) {
@@ -370,12 +415,12 @@ export class AuthService {
    * @param {string} userId - User ID
    * @param {string} targetOrgId - Target organization ID
    */
-  async switchContext(userId, targetOrgId, targetRole = null) {
+  async switchContext(userId, targetOrgId, targetVillaId = null, targetRole = null) {
     // Fetch user details for the token payload
     const user = await userService.getUserById(userId);
 
     // Resolve context for the target organization
-    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgId, targetRole);
+    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgId, targetRole, targetVillaId);
 
     // Generate fresh JWT token
     const token = signToken(tokenPayload);
@@ -454,6 +499,8 @@ export class AuthService {
 
       // Emit event for successful activation and login write operations
       authEvents.emit('USER_ACTIVATED', { userId: user._id });
+      userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
+      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
       authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'invitation' });
 
       return {
@@ -473,8 +520,8 @@ export class AuthService {
         availableWorkspaces,
       };
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
@@ -499,7 +546,7 @@ export class AuthService {
   }
 
   /**
-   * Verifies Google token, finds or registers the user, and logs them in.
+   * Verifies Google token, finds the user, and returns conditional response.
    * @param {string} googleToken - The Google ID token
    * @param {string} [inviteToken=null] - Optional invitation token
    */
@@ -508,7 +555,102 @@ export class AuthService {
     if (inviteToken) {
       identityData.inviteToken = inviteToken;
     }
-    return await this._handleSsoAuthentication(identityData);
+    
+    const { providerEmail: email, profileData, provider, providerId } = identityData;
+    const name = profileData?.name || '';
+    
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
+    try {
+      let existingIdentity = await userIdentityService.getIdentityByProviderId(provider, providerId, session);
+      let user = null;
+
+      if (existingIdentity) {
+        try {
+          user = await userService.getUserById(existingIdentity.userId, session);
+        } catch (err) {
+          if (err.statusCode === 404) {
+            user = null;
+          } else {
+            throw err;
+          }
+        }
+        
+        if (user && user.status !== 'Active' && user.status !== 'Pending Verification' && user.status !== 'Pending') {
+          throw new HttpError(403, 'Account is inactive or suspended.');
+        }
+      } 
+      
+      if (!user) {
+        user = await userService.getUserByEmail(email, session);
+      }
+
+      if (!user) {
+        // New User Flow
+        await session.commitTransaction();
+        return {
+          isNewUser: true,
+          googleData: { email, name }
+        };
+      }
+
+      // Existing User Flow
+      user = await this._updateExistingSsoUser(user, identityData, session);
+
+      let targetOrgIdFromInvite = null;
+      if (inviteToken) {
+        try {
+          const { orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
+          targetOrgIdFromInvite = orgId;
+          const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+          await orgMembershipService.updateStatus(user._id, orgId, 'Active', session);
+        } catch (tokenError) {
+          if (user.status === 'Pending Verification') {
+            throw tokenError;
+          }
+          console.warn('SSO login processed with invalid or expired invite token for active user:', tokenError.message);
+        }
+      }
+
+      const refreshToken = await sessionService.createSession(user._id, {}, session);
+      await session.commitTransaction();
+
+      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
+      const token = signToken(tokenPayload);
+      
+      authEvents.emit('PROVIDER_LOGIN', { userId: user._id, provider });
+      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: provider });
+
+      return {
+        isNewUser: false,
+        token,
+        refreshToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          role: tokenPayload.role,
+          roles: tokenPayload.roles,
+          permissions: permissions,
+          orgId: tokenPayload.orgId,
+          isPlatform: tokenPayload.isPlatform,
+          visitorContext: tokenPayload.visitorContext,
+        },
+        availableWorkspaces,
+      };
+    } catch (error) {
+      authEvents.emit('LOGIN_FAILED', { email: email, reason: error.message, method: provider });
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
+      }
+      throw error;
+    } finally {
+      if (session) {
+        await session.endSession();
+      }
+    }
   }
 
   /**
@@ -614,11 +756,22 @@ export class AuthService {
 
       if (existingIdentity) {
         // Find existing user linked to identity
-        user = await userService.getUserById(existingIdentity.userId, session);
-        if (!user || user.status !== 'Active') {
+        try {
+          user = await userService.getUserById(existingIdentity.userId, session);
+        } catch (err) {
+          if (err.statusCode === 404) {
+            user = null; // Dangling identity
+          } else {
+            throw err;
+          }
+        }
+        
+        if (user && user.status !== 'Active') {
           throw new HttpError(403, 'Account is inactive or suspended.');
         }
-      } else {
+      } 
+      
+      if (!user) {
         // Fallback: Check if user exists by email to link them
         user = await userService.getUserByEmail(email, session);
       }
@@ -673,8 +826,8 @@ export class AuthService {
       };
     } catch (error) {
       authEvents.emit('LOGIN_FAILED', { email: email, reason: error.message, method: provider });
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
@@ -689,9 +842,10 @@ export class AuthService {
    * @param {string} phone - User phone number
    */
   async initiatePhoneLogin(phone) {
-    const user = await userService.getUserByPhone(phone);
+    const normalizedPhone = phone ? phone.replace(/\s+/g, '') : '';
+    const user = await userService.getUserByPhone(normalizedPhone);
     if (!user) {
-      throw new HttpError(404, 'No account found with this phone number.');
+      throw new HttpError(404, 'This phone number is not registered. Please sign up first.');
     }
 
     // Check for Firebase Integration globally
@@ -820,8 +974,8 @@ export class AuthService {
         availableWorkspaces,
       };
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
@@ -906,8 +1060,8 @@ export class AuthService {
         availableWorkspaces,
       };
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
@@ -981,8 +1135,8 @@ export class AuthService {
 
       return true;
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {
@@ -1073,6 +1227,8 @@ export class AuthService {
       authEvents.emit('PROVIDER_LOGIN', { userId: activatedUser._id, provider });
       authEvents.emit('LOGIN_SUCCESS', { userId: activatedUser._id, method: provider });
       authEvents.emit('USER_ACTIVATED', { userId: activatedUser._id });
+      userEvents.emit('USER_ACTIVATED', { userId: activatedUser._id, orgId });
+      userEvents.emit('USER_UPDATED', { userId: activatedUser._id, orgId, action: 'activated' });
 
       return {
         token,
@@ -1091,8 +1247,8 @@ export class AuthService {
         availableWorkspaces,
       };
     } catch (error) {
-      if (session && session.inTransaction()) {
-        await session.abortTransaction();
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
       }
       throw error;
     } finally {

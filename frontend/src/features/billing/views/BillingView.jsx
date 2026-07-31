@@ -1,25 +1,19 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { useSearchParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import {
-  CModal,
-  CModalHeader,
-  CModalTitle,
-  CModalBody,
-  CModalFooter,
-  CButton
-} from '@coreui/react';
-import BillingTopNav           from '../components/BillingTopNav.jsx';
-import AssessmentList          from '../components/AssessmentList.jsx';
-import AssessmentDetail        from '../components/AssessmentDetail.jsx';
-import AssessmentFormModal     from '../components/AssessmentFormModal.jsx';
-import BillingDashboardView    from './BillingDashboardView.jsx';
-import ResidentActionCenterView from './ResidentActionCenterView.jsx';
-import { useAssessment }       from '../../assessment/hooks/useAssessment';
-import { useBillingSocket }    from '../hooks/useBillingSocket.js';
-import usePermission           from '../../../hooks/usePermission';
-import '../styles/_billing.scss';
+import React, { useState, useCallback, useEffect } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { useSearchParams } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import { CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CButton } from '@coreui/react'
+import BillingTopNav from '../components/BillingTopNav.jsx'
+import AssessmentList from '../components/AssessmentList.jsx'
+import AssessmentDetail from '../components/AssessmentDetail.jsx'
+import AssessmentFormModal from '../components/AssessmentFormModal.jsx'
+import BillingDashboardView from './BillingDashboardView.jsx'
+import ResidentActionCenterView from './ResidentActionCenterView.jsx'
+import { useAssessment } from '../../assessment/hooks/useAssessment'
+import { clearAssessments } from '../../assessment/store/assessmentSlice'
+import { useBillingSocket } from '../hooks/useBillingSocket.js'
+import usePermission from '../../../hooks/usePermission'
+import '../styles/_billing.scss'
 
 /**
  * BillingView — Parent container / entry point for the entire Billing module.
@@ -28,40 +22,45 @@ import '../styles/_billing.scss';
  * active nav selection.
  */
 export const BillingView = () => {
-  const user = useSelector((state) => state.auth?.user);
-  const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId);
-  useBillingSocket(user?.id || user?._id, activeOrgId);
+  const dispatch = useDispatch()
+  const user = useSelector((state) => state.auth?.user)
+  const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId)
+  useBillingSocket(user?.id || user?._id, activeOrgId)
 
-  const hasDashboard = usePermission('billing', 'dashboard');
-  const hasActionCenter = usePermission('billing', 'action_center');
-  const hasAssessmentManager = usePermission('billing', 'assessment_manager');
+  const hasDashboard = usePermission('billing', 'dashboard')
+  const hasActionCenter = usePermission('billing', 'action_center')
+  const hasAssessmentManager = usePermission('billing', 'assessment_manager')
 
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useSearchParams()
 
   // Dynamically resolve default tab based on user permissions
-  const defaultTab = hasDashboard 
-    ? 'dashboard' 
-    : (hasActionCenter ? 'action-center' : (hasAssessmentManager ? 'assessment-manager' : ''));
+  const defaultTab = hasDashboard
+    ? 'dashboard'
+    : hasActionCenter
+      ? 'action-center'
+      : hasAssessmentManager
+        ? 'assessment-manager'
+        : ''
 
-  const [activeTab, setActiveTab]         = useState(defaultTab);
-  const [isModalOpen, setIsModalOpen]     = useState(false);
-  const [editingAssessment, setEditingAssessment] = useState(null);
-  const [deleteTargetTemplate, setDeleteTargetTemplate] = useState(null);
+  const [activeTab, setActiveTab] = useState(defaultTab)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingAssessment, setEditingAssessment] = useState(null)
+  const [deleteTargetTemplate, setDeleteTargetTemplate] = useState(null)
 
   // Sync activeTab if defaultTab changes (e.g. on async auth hydration)
   useEffect(() => {
     if (defaultTab && !activeTab) {
-      setActiveTab(defaultTab);
+      setActiveTab(defaultTab)
     }
-  }, [defaultTab, activeTab]);
+  }, [defaultTab, activeTab])
 
   // Sync activeTab from query param if provided (e.g. when clicked from notification)
   useEffect(() => {
-    const tabParam = searchParams.get('tab');
+    const tabParam = searchParams.get('tab')
     if (tabParam && ['dashboard', 'action-center', 'assessment-manager'].includes(tabParam)) {
-      setActiveTab(tabParam);
+      setActiveTab(tabParam)
     }
-  }, [searchParams]);
+  }, [searchParams])
 
   const {
     assessmentsList: assessments,
@@ -72,57 +71,65 @@ export const BillingView = () => {
     deleteTemplate,
     selectTemplate: setSelectedAssessment,
     triggerBilling,
-  } = useAssessment();
+  } = useAssessment()
 
-  const handleRunBilling = useCallback(async (assessment) => {
-    try {
-      await triggerBilling(assessment._id).unwrap();
-      toast.success(`Successfully generated invoices for "${assessment.name}"!`);
-    } catch (err) {
-      toast.error(`Failed to run billing cycle: ${err}`);
-    }
-  }, [triggerBilling]);
+  const handleRunBilling = useCallback(
+    async (assessment) => {
+      try {
+        await triggerBilling(assessment._id).unwrap()
+        toast.success(`Successfully generated invoices for "${assessment.name}"!`)
+      } catch (err) {
+        toast.error(`Failed to run billing cycle: ${err}`)
+      }
+    },
+    [triggerBilling],
+  )
 
   useEffect(() => {
     if (activeTab === 'assessment-manager') {
-      loadAssessments();
+      if (activeOrgId) {
+        dispatch(clearAssessments())
+        loadAssessments()
+      }
     }
-  }, [activeTab, loadAssessments]);
+  }, [activeTab, activeOrgId, loadAssessments, dispatch])
 
   const handleOpenEditModal = useCallback((assessment) => {
-    setEditingAssessment(assessment);
-    setIsModalOpen(true);
-  }, []);
+    setEditingAssessment(assessment)
+    setIsModalOpen(true)
+  }, [])
 
-  const handlePageChange = useCallback((page) => {
-    loadAssessments({ page });
-  }, [loadAssessments]);
+  const handlePageChange = useCallback(
+    (page) => {
+      loadAssessments({ page })
+    },
+    [loadAssessments],
+  )
 
   const handleDeleteAssessment = useCallback((assessment) => {
-    setDeleteTargetTemplate(assessment);
-  }, []);
+    setDeleteTargetTemplate(assessment)
+  }, [])
 
   const handleConfirmDelete = async () => {
-    if (!deleteTargetTemplate) return;
+    if (!deleteTargetTemplate) return
     try {
-      await deleteTemplate(deleteTargetTemplate._id);
-      toast.success('Assessment template deleted successfully.');
+      await deleteTemplate(deleteTargetTemplate._id)
+      toast.success('Assessment template deleted successfully.')
     } catch (err) {
-      toast.error('Failed to delete template: ' + err.message);
+      toast.error('Failed to delete template: ' + err.message)
     } finally {
-      setDeleteTargetTemplate(null);
+      setDeleteTargetTemplate(null)
     }
-  };
+  }
 
   return (
     <div className="billing-module-wrapper billing-os-theme">
-
       {/* ── Assessment Form Modal ─────────────────────────────────────── */}
       <AssessmentFormModal
         visible={isModalOpen}
         onClose={() => {
-          setIsModalOpen(false);
-          setEditingAssessment(null);
+          setIsModalOpen(false)
+          setEditingAssessment(null)
         }}
         onSuccess={loadAssessments}
         assessment={editingAssessment}
@@ -132,9 +139,10 @@ export const BillingView = () => {
 
       <div className="view-container">
         <div className="view active" id="view-billing">
-
           {/* ── Tab: Dashboard ─────────────────────────────────────────── */}
-          {activeTab === 'dashboard' && hasDashboard && <BillingDashboardView />}
+          {activeTab === 'dashboard' && hasDashboard && (
+            <BillingDashboardView onRunBillingClick={() => setActiveTab('assessment-manager')} />
+          )}
 
           {/* ── Tab: Action Center ─────────────────────────────────────── */}
           {activeTab === 'action-center' && hasActionCenter && <ResidentActionCenterView />}
@@ -156,7 +164,7 @@ export const BillingView = () => {
               {/* ── Two-column panel grid ─────────────────────────────── */}
               <div className="dashboard-grid">
                 {/* Left panel — Assessment templates list */}
-                <AssessmentList 
+                <AssessmentList
                   assessments={assessments}
                   selectedAssessment={selectedAssessment}
                   onSelectAssessment={setSelectedAssessment}
@@ -168,7 +176,7 @@ export const BillingView = () => {
                 />
 
                 {/* Right panel — Configured residents for selected assessment */}
-                <AssessmentDetail 
+                <AssessmentDetail
                   assessment={selectedAssessment}
                   onEdit={handleOpenEditModal}
                   onRunBilling={handleRunBilling}
@@ -176,17 +184,22 @@ export const BillingView = () => {
               </div>
             </>
           )}
-
         </div>
       </div>
 
       {/* ── Confirm Delete Template Modal ─────────────────────────────── */}
-      <CModal visible={!!deleteTargetTemplate} onClose={() => setDeleteTargetTemplate(null)} alignment="center">
+      <CModal
+        visible={!!deleteTargetTemplate}
+        onClose={() => setDeleteTargetTemplate(null)}
+        alignment="center"
+      >
         <CModalHeader>
           <CModalTitle className="fw-semibold text-danger">Delete Assessment Template</CModalTitle>
         </CModalHeader>
         <CModalBody>
-          Are you sure you want to delete the template <strong>"{deleteTargetTemplate?.name}"</strong>? This action will archive or delete the template based on associated invoices history.
+          Are you sure you want to delete the template{' '}
+          <strong>"{deleteTargetTemplate?.name}"</strong>? This action will archive or delete the
+          template based on associated invoices history.
         </CModalBody>
         <CModalFooter>
           <CButton color="secondary" size="sm" onClick={() => setDeleteTargetTemplate(null)}>
@@ -197,9 +210,8 @@ export const BillingView = () => {
           </CButton>
         </CModalFooter>
       </CModal>
-
     </div>
-  );
-};
+  )
+}
 
-export default BillingView;
+export default BillingView

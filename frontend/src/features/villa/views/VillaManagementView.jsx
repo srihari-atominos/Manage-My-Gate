@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'
 import {
   CContainer,
   CRow,
@@ -11,29 +11,29 @@ import {
   CSpinner,
   CAlert,
   CPagination,
-  CPaginationItem
-} from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilPlus, cilGrid } from '@coreui/icons';
-import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../auth/hooks/useAuth';
-import useVilla from '../hooks/useVilla';
-import useVillaSocket from '../hooks/useVillaSocket';
-import VillaGrid from '../components/VillaGrid';
-import VillaDetailsModal from '../components/VillaDetailsModal';
-import BatchGenerateModal from '../components/BatchGenerateModal';
-import BulkUploadVillasModal from '../components/BulkUploadVillasModal';
-import VillaFormModal from '../components/VillaFormModal';
-import '../styles/_villa.scss';
+  CPaginationItem,
+} from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilPlus, cilGrid } from '@coreui/icons'
+import { useTranslation } from 'react-i18next'
+import { useAuth } from '../../auth/hooks/useAuth'
+import useVilla from '../hooks/useVilla'
+import useVillaSocket from '../hooks/useVillaSocket'
+import VillaGrid from '../components/VillaGrid'
+import VillaDetailsModal from '../components/VillaDetailsModal'
+import BatchGenerateModal from '../components/BatchGenerateModal'
+import BulkUploadVillasModal from '../components/BulkUploadVillasModal'
+import VillaFormModal from '../components/VillaFormModal'
+import '../styles/_villa.scss'
 
 /**
  * VillaManagementView container
  * Orchestrates layout, state hooks, search queries, pagination, and modals.
  */
 export const VillaManagementView = () => {
-  const { t } = useTranslation();
-  const { checkPermission } = useAuth();
-  const canCreate = checkPermission('villas:create');
+  const { t } = useTranslation()
+  const { checkPermission } = useAuth()
+  const canCreate = checkPermission('villas:create')
 
   const {
     villas,
@@ -72,19 +72,19 @@ export const VillaManagementView = () => {
     handlePageChange,
     createVilla,
     updateVilla,
-    bulkUploadVillas
-  } = useVilla();
+    bulkUploadVillas,
+  } = useVilla()
 
   // Mount silent socket listener for real-time state sync
-  useVillaSocket(orgId);
+  useVillaSocket(orgId)
 
   const handleFormSubmit = async (formData) => {
     if (editingVilla) {
-      await updateVilla(editingVilla._id, formData);
+      await updateVilla(editingVilla._id, formData)
     } else {
-      await createVilla(formData);
+      await createVilla(formData)
     }
-  };
+  }
 
   return (
     <div className="villa-manager-view py-3">
@@ -170,7 +170,9 @@ export const VillaManagementView = () => {
                   <option value="">{t('villas.allStatuses', 'All Statuses')}</option>
                   <option value="Vacant">{t('villas.statusTypes.Vacant', 'Vacant')}</option>
                   <option value="Occupied">{t('villas.statusTypes.Occupied', 'Occupied')}</option>
-                  <option value="Under Maintenance">{t('villas.statusTypes.UnderMaintenance', 'Under Maintenance')}</option>
+                  <option value="Under Maintenance">
+                    {t('villas.statusTypes.UnderMaintenance', 'Under Maintenance')}
+                  </option>
                 </CFormSelect>
               </CCol>
               <CCol md={5} sm={12} xs={12} className="text-md-end text-center d-flex gap-2">
@@ -212,7 +214,11 @@ export const VillaManagementView = () => {
         </CCard>
 
         {/* Global Error Banner */}
-        {error && <CAlert color="danger" dismissible>{error}</CAlert>}
+        {error && (
+          <CAlert color="danger" dismissible>
+            {error}
+          </CAlert>
+        )}
 
         {/* Grid Area */}
         {loading && villas.length === 0 ? (
@@ -225,7 +231,12 @@ export const VillaManagementView = () => {
             <CCardBody>
               <CIcon icon={cilGrid} size="xl" className="text-muted mb-3 icon-opacity-30" />
               <h4>{t('villas.noVillas', 'No Units Configured')}</h4>
-              <p className="text-muted mb-4">{t('villas.noVillasDesc', 'You can manually create or batch generate the community units grid.')}</p>
+              <p className="text-muted mb-4">
+                {t(
+                  'villas.noVillasDesc',
+                  'You can manually create or batch generate the community units grid.',
+                )}
+              </p>
               {canCreate && (
                 <CButton color="primary" size="sm" onClick={openBatch} className="fw-semibold">
                   {t('villas.generateVillas', 'Generate 54 Units')}
@@ -280,8 +291,8 @@ export const VillaManagementView = () => {
         onClose={closeDetails}
         villaId={selectedVillaId}
         onEdit={(villa) => {
-          closeDetails();
-          openForm(villa);
+          closeDetails()
+          openForm(villa)
         }}
       />
 
@@ -294,10 +305,7 @@ export const VillaManagementView = () => {
       />
 
       {/* Batch Dialog */}
-      <BatchGenerateModal
-        visible={batchVisible}
-        onClose={closeBatch}
-      />
+      <BatchGenerateModal visible={batchVisible} onClose={closeBatch} />
 
       {/* Bulk Upload Dialog */}
       <BulkUploadVillasModal
@@ -306,7 +314,7 @@ export const VillaManagementView = () => {
         onBulkUpload={bulkUploadVillas}
       />
     </div>
-  );
-};
+  )
+}
 
-export default VillaManagementView;
+export default VillaManagementView

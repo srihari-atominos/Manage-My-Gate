@@ -1,4 +1,4 @@
-import apiClient from '../../../services/apiClient.js';
+import apiClient from '../../../services/apiClient.js'
 
 export const assessmentService = {
   /**
@@ -6,7 +6,7 @@ export const assessmentService = {
    * @param {Object} [params]
    */
   async getAssessments(params = {}) {
-    return await apiClient.get('/assessments', { params });
+    return await apiClient.get('/assessments', { params })
   },
 
   /**
@@ -14,7 +14,7 @@ export const assessmentService = {
    * @param {Object} payload
    */
   async createAssessment(payload) {
-    return await apiClient.post('/assessments', payload);
+    return await apiClient.post('/assessments', payload)
   },
 
   /**
@@ -23,7 +23,7 @@ export const assessmentService = {
    * @param {Object} payload
    */
   async updateAssessment(id, payload) {
-    return await apiClient.patch(`/assessments/${id}`, payload);
+    return await apiClient.patch(`/assessments/${id}`, payload)
   },
 
   /**
@@ -31,7 +31,7 @@ export const assessmentService = {
    * @param {string} id
    */
   async deleteAssessment(id) {
-    return await apiClient.delete(`/assessments/${id}`);
+    return await apiClient.delete(`/assessments/${id}`)
   },
 
   /**
@@ -39,8 +39,8 @@ export const assessmentService = {
    * @param {string} id
    */
   async runAssessment(id) {
-    return await apiClient.post(`/assessments/${id}/run`);
+    return await apiClient.post(`/assessments/${id}/run`)
   },
-};
+}
 
-export default assessmentService;
+export default assessmentService

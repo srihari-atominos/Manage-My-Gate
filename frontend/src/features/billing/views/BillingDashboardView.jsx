@@ -1,16 +1,19 @@
-import React, { memo, useEffect } from 'react';
-import BillingLedgerTable from '../components/BillingLedgerTable.jsx';
-import { useBilling } from '../hooks/useBilling';
-import '../styles/_billing.scss';
+import React, { memo, useEffect } from 'react'
+import { useDispatch } from 'react-redux'
+import BillingLedgerTable from '../components/BillingLedgerTable.jsx'
+import { useBilling } from '../hooks/useBilling'
+import { clearInvoicesGrid } from '../store/billingSlice'
+import '../styles/_billing.scss'
 
 /**
  * BillingDashboardView
  *
  * Admin dashboard tab — community billing ledger with KPI strip and data grid.
  */
-const BillingDashboardView = memo(() => {
-  const billingData = useBilling();
-  
+const BillingDashboardView = memo(({ onRunBillingClick }) => {
+  const dispatch = useDispatch()
+  const billingData = useBilling()
+
   const {
     kpis,
     invoicesList,
@@ -21,18 +24,21 @@ const BillingDashboardView = memo(() => {
     changeTablePage,
     settleOffline,
     approveOffline,
-  } = billingData;
+  } = billingData
 
   useEffect(() => {
     if (activeOrgId) {
-      loadAdminDashboard(activeOrgId);
-      changeTablePage(1);
+      loadAdminDashboard(activeOrgId)
+      changeTablePage(1)
     }
-  }, [activeOrgId, loadAdminDashboard, changeTablePage]);
+
+    return () => {
+      dispatch(clearInvoicesGrid())
+    }
+  }, [activeOrgId, loadAdminDashboard, changeTablePage, dispatch])
 
   return (
     <div className="billing-os-theme billing-dashboard-view">
-
       <div className="billing-dashboard-view__header">
         <div>
           <h4 className="billing-dashboard-view__title">Billing Ledger</h4>
@@ -40,7 +46,18 @@ const BillingDashboardView = memo(() => {
             All community invoices for the current billing period.
           </p>
         </div>
-        <div className="billing-dashboard-view__header-actions">
+        <div className="billing-dashboard-view__header-actions d-flex align-items-center">
+          {onRunBillingClick && (
+            <button
+              type="button"
+              className="btn btn-primary d-inline-flex align-items-center me-2"
+              style={{ borderRadius: '10px', padding: '9px 18px', fontSize: '13px', fontWeight: 600 }}
+              onClick={onRunBillingClick}
+            >
+              <i className="fa-solid fa-play me-2" />
+              Run Billing
+            </button>
+          )}
           <button type="button" className="billing-dashboard-view__export-btn">
             <i className="fa-solid fa-file-export me-2" />
             Export CSV
@@ -57,11 +74,10 @@ const BillingDashboardView = memo(() => {
         onSettleOffline={settleOffline}
         onApproveOffline={approveOffline}
       />
-
     </div>
-  );
-});
+  )
+})
 
-BillingDashboardView.displayName = 'BillingDashboardView';
+BillingDashboardView.displayName = 'BillingDashboardView'
 
-export default BillingDashboardView;
+export default BillingDashboardView

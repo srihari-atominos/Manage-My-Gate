@@ -1,12 +1,12 @@
-import React, { useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { CAlert, CSpinner, CCard, CCardBody, CCardHeader, CButton } from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilBell, cilChevronLeft, cilChevronRight } from '@coreui/icons';
-import useNotifications from '../hooks/useNotifications.js';
-import NotificationItem from '../components/NotificationItem.jsx';
-import PageHeader from '../../../components/common/PageHeader.jsx';
-import '../styles/_notification.scss';
+import React, { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { CAlert, CSpinner, CCard, CCardBody, CCardHeader, CButton } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilBell, cilChevronLeft, cilChevronRight } from '@coreui/icons'
+import useNotifications from '../hooks/useNotifications.js'
+import NotificationItem from '../components/NotificationItem.jsx'
+import PageHeader from '../../../components/common/PageHeader.jsx'
+import '../styles/_notification.scss'
 
 /**
  * Top-level view orchestrator for `/notifications` full-page route.
@@ -15,7 +15,7 @@ import '../styles/_notification.scss';
  * @component
  */
 export const NotificationView = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
   const {
     notifications,
     unreadCount,
@@ -26,40 +26,40 @@ export const NotificationView = () => {
     handleMarkAsRead,
     handleMarkAllAsRead,
     handleDelete,
-  } = useNotifications();
+  } = useNotifications()
 
-  const { currentPage, totalPages, totalRecords } = pagination;
-  const limit = 10;
+  const { currentPage, totalPages, totalRecords } = pagination
+  const limit = 10
 
   // On initial mount, fetch the first page
   useEffect(() => {
-    fetchNotifications(1, limit);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchNotifications(1, limit)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePrevPage = () => {
     if (currentPage > 1) {
-      fetchNotifications(currentPage - 1, limit);
+      fetchNotifications(currentPage - 1, limit)
     }
-  };
+  }
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
-      fetchNotifications(currentPage + 1, limit);
+      fetchNotifications(currentPage + 1, limit)
     }
-  };
+  }
 
   const handlePageClick = (pageNumber) => {
-    fetchNotifications(pageNumber, limit);
-  };
+    fetchNotifications(pageNumber, limit)
+  }
 
   // Generate page numbers array to render
-  const pageNumbers = [];
+  const pageNumbers = []
   for (let i = 1; i <= totalPages; i++) {
-    pageNumbers.push(i);
+    pageNumbers.push(i)
   }
 
   // Calculate slice of items to display for the current page
-  // Since Redux store getNotifications.fulfilled appends items when page > 1, 
+  // Since Redux store getNotifications.fulfilled appends items when page > 1,
   // items array accumulates. To show page-by-page strictly in the list view,
   // we slice the items that correspond to the current page.
   // Wait, if we want to display only the items of the current page, we can slice:
@@ -67,8 +67,8 @@ export const NotificationView = () => {
   // endIndex = startIndex + limit
   // Wait! What if the items count is smaller (e.g. some items got read/deleted, or real-time added)?
   // Using the index slice is a good way to handle this:
-  const startIndex = (currentPage - 1) * limit;
-  const currentPageNotifications = notifications.slice(startIndex, startIndex + limit);
+  const startIndex = (currentPage - 1) * limit
+  const currentPageNotifications = notifications.slice(startIndex, startIndex + limit)
 
   return (
     <div className="notifications-view-container p-4">
@@ -185,7 +185,7 @@ export const NotificationView = () => {
         </CCardBody>
       </CCard>
     </div>
-  );
-};
+  )
+}
 
-export default NotificationView;
+export default NotificationView

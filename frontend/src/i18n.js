@@ -1,5 +1,5 @@
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
+import i18n from 'i18next'
+import { initReactI18next } from 'react-i18next'
 
 const resources = {
   en: {
@@ -37,7 +37,8 @@ const resources = {
         },
         login: {
           promoTitle: 'Enterprise Workspace Platform',
-          promoText: 'Access our industry-leading multi-tenant architecture. Instantly provision your organization, manage granular permissions, and scale your team securely.',
+          promoText:
+            'Access our industry-leading multi-tenant architecture. Instantly provision your organization, manage granular permissions, and scale your team securely.',
         },
       },
       header: {
@@ -70,7 +71,8 @@ const resources = {
       workspace: {
         wizard: {
           title: 'Configure Workspace Features',
-          subtitle: 'Select the features you want to enable in your workspace. You can change these at any time.',
+          subtitle:
+            'Select the features you want to enable in your workspace. You can change these at any time.',
           users: {
             title: 'User Management',
             desc: 'Manage workspace users, roles, and permissions',
@@ -212,7 +214,8 @@ const resources = {
           uploadImagesLabel: 'Upload Images',
           browseFiles: 'Browse Files',
           capturePhotoLive: 'Capture Photo',
-          uploadHint: 'Accepted formats: JPG, JPEG, PNG, WEBP. Max 10MB per image. Max 5 images total.',
+          uploadHint:
+            'Accepted formats: JPG, JPEG, PNG, WEBP. Max 10MB per image. Max 5 images total.',
           maxImagesError: 'Maximum of 5 images allowed per notice.',
           invalidTypeError: 'Invalid file type. Only JPG, JPEG, PNG, WEBP are accepted.',
           sizeLimitError: 'File too large. Maximum size is 10MB.',
@@ -231,7 +234,8 @@ const resources = {
         },
         camera: {
           title: 'Capture Photo',
-          denied: 'Camera access is required to capture photos. Please enable camera permission in your browser settings.',
+          denied:
+            'Camera access is required to capture photos. Please enable camera permission in your browser settings.',
           cancel: 'Cancel',
           capture: 'Capture',
           retake: 'Retake',
@@ -333,7 +337,8 @@ const resources = {
         bulk: {
           title: 'Bulk Upload Units & Residents',
           step1Title: '1. Download Excel Template',
-          step1Desc: 'Use our template to upload your community units grid. If you supply resident emails, invitations will be sent automatically.',
+          step1Desc:
+            'Use our template to upload your community units grid. If you supply resident emails, invitations will be sent automatically.',
           download: 'Download Template',
           step2Title: '2. Upload Excel File',
           uploadedFile: 'Uploaded File',
@@ -378,17 +383,15 @@ const resources = {
       },
     },
   },
-};
+}
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
-    lng: 'en',
-    fallbackLng: 'en',
-    interpolation: {
-      escapeValue: false,
-    },
-  });
+i18n.use(initReactI18next).init({
+  resources,
+  lng: 'en',
+  fallbackLng: 'en',
+  interpolation: {
+    escapeValue: false,
+  },
+})
 
-export default i18n;
+export default i18n

@@ -12,5 +12,5 @@ export const logo = [
     <text x="46" y="25" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="15" fill="#ffffff" letter-spacing="0.05em">
       MANAGE<tspan fill="#80d0ff">MY</tspan>GATE
     </text>
-  </g>`
+  </g>`,
 ]

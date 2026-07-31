@@ -1,13 +1,13 @@
-import apiClient from '../../../services/apiClient.js';
+import apiClient from '../../../services/apiClient.js'
 
-const BASE_URL = '/complaints/settings';
+const BASE_URL = '/complaints/settings'
 
 export const complaintSettingsService = {
   getSettings: async () => {
-    return await apiClient.get(BASE_URL);
+    return await apiClient.get(BASE_URL)
   },
 
   updateSettings: async (data) => {
-    return await apiClient.put(BASE_URL, data);
-  }
-};
+    return await apiClient.put(BASE_URL, data)
+  },
+}

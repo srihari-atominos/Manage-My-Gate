@@ -139,10 +139,7 @@ export const RoleIntegrationConfigurator = ({ isOpen, onClose, mappings, onApply
             </CTableHead>
             <CTableBody>
               {/* None / Disconnect Option */}
-              <CTableRow
-                onClick={() => handleSelectConnection(null)}
-                className="pointer-row"
-              >
+              <CTableRow onClick={() => handleSelectConnection(null)} className="pointer-row">
                 <CTableDataCell className="text-center">
                   <CFormCheck
                     type="radio"

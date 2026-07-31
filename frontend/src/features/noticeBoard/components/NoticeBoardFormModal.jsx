@@ -274,7 +274,6 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
 
   const onSubmit = async (data) => {
     try {
-
       const formDataToSend = new FormData()
       formDataToSend.append('title', data.title)
       formDataToSend.append('description', data.description)
@@ -467,11 +466,11 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
                           width: '20px',
                           height: '20px',
                           fontSize: '10px',
-                          zIndex: 10
+                          zIndex: 10,
                         }}
                         onClick={(e) => {
-                          e.stopPropagation();
-                          removeExistingImage(idx);
+                          e.stopPropagation()
+                          removeExistingImage(idx)
                         }}
                         title="Remove"
                       >
@@ -537,11 +536,11 @@ export const NoticeBoardFormModal = ({ visible, notice, onClose, onSave }) => {
                             width: '20px',
                             height: '20px',
                             fontSize: '10px',
-                            zIndex: 10
+                            zIndex: 10,
                           }}
                           onClick={(e) => {
-                            e.stopPropagation();
-                            removeSelectedFile(idx);
+                            e.stopPropagation()
+                            removeSelectedFile(idx)
                           }}
                           title="Remove"
                         >

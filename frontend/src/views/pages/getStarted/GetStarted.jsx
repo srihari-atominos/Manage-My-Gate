@@ -1,35 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import { useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
-import { CContainer, CRow, CCol, CCard, CCardBody, CForm, CFormInput, CInputGroup, CInputGroupText, CButton, CAlert, CSpinner, CNav, CNavItem, CNavLink } from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilLockLocked, cilUser } from '@coreui/icons';
-import { loginUser, registerUser } from '../../../features/auth/store/authSlice.js';
-import useAuthRouting from '../../../features/auth/hooks/useAuthRouting.js';
+import React, { useState, useEffect } from 'react'
+import { useDispatch } from 'react-redux'
+import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import {
+  CContainer,
+  CRow,
+  CCol,
+  CCard,
+  CCardBody,
+  CForm,
+  CFormInput,
+  CInputGroup,
+  CInputGroupText,
+  CButton,
+  CAlert,
+  CSpinner,
+  CNav,
+  CNavItem,
+  CNavLink,
+} from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilLockLocked, cilUser } from '@coreui/icons'
+import { loginUser, registerUser } from '../../../features/auth/store/authSlice.js'
+import useAuthRouting from '../../../features/auth/hooks/useAuthRouting.js'
 
 /**
  * GetStarted View Component
- * 
- * Multi-intent Authentication view supporting direct Tab-based toggling 
+ *
+ * Multi-intent Authentication view supporting direct Tab-based toggling
  * between User Signup and Login layout. Matches parameters e.g. intent=create
  * to setup workspaces.
  *
  * Adheres to the "Thin View" architectural pattern.
  */
 export const GetStarted = () => {
-  const { t } = useTranslation();
-  const dispatch = useDispatch();
-  const [activeTab, setActiveTab] = useState('login');
-  
-  const { handlePostAuthRedirect, isAuthenticated, loading, error } = useAuthRouting();
+  const { t } = useTranslation()
+  const dispatch = useDispatch()
+  const [activeTab, setActiveTab] = useState('login')
+
+  const { handlePostAuthRedirect, isAuthenticated, loading, error } = useAuthRouting()
 
   // Redirect automatically on auth success
   useEffect(() => {
     if (isAuthenticated) {
-      handlePostAuthRedirect();
+      handlePostAuthRedirect()
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated])
 
   // Form management for Login
   const {
@@ -37,8 +53,8 @@ export const GetStarted = () => {
     handleSubmit: handleLoginSubmit,
     formState: { errors: loginErrors },
   } = useForm({
-    defaultValues: { login: '', password: '' }
-  });
+    defaultValues: { login: '', password: '' },
+  })
 
   // Form management for Signup
   const {
@@ -46,24 +62,29 @@ export const GetStarted = () => {
     handleSubmit: handleSignupSubmit,
     formState: { errors: signupErrors },
   } = useForm({
-    defaultValues: { email: '', username: '', name: '', password: '' }
-  });
+    defaultValues: { email: '', username: '', name: '', password: '' },
+  })
 
   const onLoginSubmit = (data) => {
-    dispatch(loginUser({ login: data.login.trim(), password: data.password }));
-  };
+    dispatch(loginUser({ login: data.login.trim(), password: data.password }))
+  }
 
   const onSignupSubmit = (data) => {
-    dispatch(registerUser({
-      email: data.email.trim(),
-      username: data.username.trim(),
-      name: data.name.trim(),
-      password: data.password,
-    }));
-  };
+    dispatch(
+      registerUser({
+        email: data.email.trim(),
+        username: data.username.trim(),
+        name: data.name.trim(),
+        password: data.password,
+      }),
+    )
+  }
 
   return (
-    <div className="bg-body-tertiary min-vh-100 d-flex flex-row align-items-center" style={{ backgroundColor: '#0b0f19' }}>
+    <div
+      className="bg-body-tertiary min-vh-100 d-flex flex-row align-items-center"
+      style={{ backgroundColor: '#0b0f19' }}
+    >
       <CContainer>
         <CRow className="justify-content-center">
           <CCol md={6} lg={5}>
@@ -74,7 +95,9 @@ export const GetStarted = () => {
                     {t('auth.getStarted.title', { defaultValue: 'Get Started' })}
                   </h2>
                   <p style={{ color: '#a1a1aa', fontSize: '14px' }}>
-                    {t('auth.getStarted.subtitle', { defaultValue: 'Access your specialized workspace context' })}
+                    {t('auth.getStarted.subtitle', {
+                      defaultValue: 'Access your specialized workspace context',
+                    })}
                   </p>
                 </div>
 
@@ -84,7 +107,12 @@ export const GetStarted = () => {
                   </CAlert>
                 )}
 
-                <CNav variant="pills" layout="justified" className="mb-4 p-1" style={styles.navPills}>
+                <CNav
+                  variant="pills"
+                  layout="justified"
+                  className="mb-4 p-1"
+                  style={styles.navPills}
+                >
                   <CNavItem>
                     <CNavLink
                       active={activeTab === 'login'}
@@ -114,15 +142,21 @@ export const GetStarted = () => {
                         </CInputGroupText>
                         <CFormInput
                           style={styles.input}
-                          placeholder={t('auth.login.usernamePlaceholder', { defaultValue: 'Username or Email' })}
+                          placeholder={t('auth.login.usernamePlaceholder', {
+                            defaultValue: 'Username or Email',
+                          })}
                           disabled={loading}
                           {...registerLogin('login', {
-                            required: t('auth.login.loginRequired', { defaultValue: 'Username or Email is required.' }),
+                            required: t('auth.login.loginRequired', {
+                              defaultValue: 'Username or Email is required.',
+                            }),
                           })}
                         />
                       </CInputGroup>
                       {loginErrors.login && (
-                        <div className="text-danger small mt-1 ms-1">{loginErrors.login.message}</div>
+                        <div className="text-danger small mt-1 ms-1">
+                          {loginErrors.login.message}
+                        </div>
                       )}
                     </div>
 
@@ -134,25 +168,42 @@ export const GetStarted = () => {
                         <CFormInput
                           style={styles.input}
                           type="password"
-                          placeholder={t('auth.login.passwordPlaceholder', { defaultValue: 'Password' })}
+                          placeholder={t('auth.login.passwordPlaceholder', {
+                            defaultValue: 'Password',
+                          })}
                           disabled={loading}
                           {...registerLogin('password', {
-                            required: t('auth.login.passwordRequired', { defaultValue: 'Password is required.' }),
+                            required: t('auth.login.passwordRequired', {
+                              defaultValue: 'Password is required.',
+                            }),
                             minLength: {
                               value: 6,
-                              message: t('auth.login.passwordLength', { defaultValue: 'Password must be at least 6 characters long.' }),
+                              message: t('auth.login.passwordLength', {
+                                defaultValue: 'Password must be at least 6 characters long.',
+                              }),
                             },
                           })}
                         />
                       </CInputGroup>
                       {loginErrors.password && (
-                        <div className="text-danger small mt-1 ms-1">{loginErrors.password.message}</div>
+                        <div className="text-danger small mt-1 ms-1">
+                          {loginErrors.password.message}
+                        </div>
                       )}
                     </div>
 
                     <div className="d-grid">
-                      <CButton type="submit" color="primary" style={styles.submitButton} disabled={loading}>
-                        {loading ? <CSpinner size="sm" variant="grow" /> : t('auth.login.submit', { defaultValue: 'Login' })}
+                      <CButton
+                        type="submit"
+                        color="primary"
+                        style={styles.submitButton}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <CSpinner size="sm" variant="grow" />
+                        ) : (
+                          t('auth.login.submit', { defaultValue: 'Login' })
+                        )}
                       </CButton>
                     </div>
                   </CForm>
@@ -165,15 +216,21 @@ export const GetStarted = () => {
                         </CInputGroupText>
                         <CFormInput
                           style={styles.input}
-                          placeholder={t('auth.register.namePlaceholder', { defaultValue: 'Full Name' })}
+                          placeholder={t('auth.register.namePlaceholder', {
+                            defaultValue: 'Full Name',
+                          })}
                           disabled={loading}
                           {...registerSignup('name', {
-                            required: t('auth.register.nameRequired', { defaultValue: 'Name is required.' }),
+                            required: t('auth.register.nameRequired', {
+                              defaultValue: 'Name is required.',
+                            }),
                           })}
                         />
                       </CInputGroup>
                       {signupErrors.name && (
-                        <div className="text-danger small mt-1 ms-1">{signupErrors.name.message}</div>
+                        <div className="text-danger small mt-1 ms-1">
+                          {signupErrors.name.message}
+                        </div>
                       )}
                     </div>
 
@@ -183,19 +240,27 @@ export const GetStarted = () => {
                         <CFormInput
                           style={styles.input}
                           type="email"
-                          placeholder={t('auth.register.emailPlaceholder', { defaultValue: 'Email Address' })}
+                          placeholder={t('auth.register.emailPlaceholder', {
+                            defaultValue: 'Email Address',
+                          })}
                           disabled={loading}
                           {...registerSignup('email', {
-                            required: t('auth.register.emailRequired', { defaultValue: 'Email is required.' }),
+                            required: t('auth.register.emailRequired', {
+                              defaultValue: 'Email is required.',
+                            }),
                             pattern: {
                               value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                              message: t('auth.register.emailInvalid', { defaultValue: 'Invalid email address.' }),
+                              message: t('auth.register.emailInvalid', {
+                                defaultValue: 'Invalid email address.',
+                              }),
                             },
                           })}
                         />
                       </CInputGroup>
                       {signupErrors.email && (
-                        <div className="text-danger small mt-1 ms-1">{signupErrors.email.message}</div>
+                        <div className="text-danger small mt-1 ms-1">
+                          {signupErrors.email.message}
+                        </div>
                       )}
                     </div>
 
@@ -206,19 +271,27 @@ export const GetStarted = () => {
                         </CInputGroupText>
                         <CFormInput
                           style={styles.input}
-                          placeholder={t('auth.register.usernamePlaceholder', { defaultValue: 'Username' })}
+                          placeholder={t('auth.register.usernamePlaceholder', {
+                            defaultValue: 'Username',
+                          })}
                           disabled={loading}
                           {...registerSignup('username', {
-                            required: t('auth.register.usernameRequired', { defaultValue: 'Username is required.' }),
+                            required: t('auth.register.usernameRequired', {
+                              defaultValue: 'Username is required.',
+                            }),
                             minLength: {
                               value: 3,
-                              message: t('auth.register.usernameLength', { defaultValue: 'Username must be at least 3 characters.' }),
+                              message: t('auth.register.usernameLength', {
+                                defaultValue: 'Username must be at least 3 characters.',
+                              }),
                             },
                           })}
                         />
                       </CInputGroup>
                       {signupErrors.username && (
-                        <div className="text-danger small mt-1 ms-1">{signupErrors.username.message}</div>
+                        <div className="text-danger small mt-1 ms-1">
+                          {signupErrors.username.message}
+                        </div>
                       )}
                     </div>
 
@@ -230,25 +303,42 @@ export const GetStarted = () => {
                         <CFormInput
                           style={styles.input}
                           type="password"
-                          placeholder={t('auth.register.passwordPlaceholder', { defaultValue: 'Password' })}
+                          placeholder={t('auth.register.passwordPlaceholder', {
+                            defaultValue: 'Password',
+                          })}
                           disabled={loading}
                           {...registerSignup('password', {
-                            required: t('auth.register.passwordRequired', { defaultValue: 'Password is required.' }),
+                            required: t('auth.register.passwordRequired', {
+                              defaultValue: 'Password is required.',
+                            }),
                             minLength: {
                               value: 6,
-                              message: t('auth.register.passwordLength', { defaultValue: 'Password must be at least 6 characters long.' }),
+                              message: t('auth.register.passwordLength', {
+                                defaultValue: 'Password must be at least 6 characters long.',
+                              }),
                             },
                           })}
                         />
                       </CInputGroup>
                       {signupErrors.password && (
-                        <div className="text-danger small mt-1 ms-1">{signupErrors.password.message}</div>
+                        <div className="text-danger small mt-1 ms-1">
+                          {signupErrors.password.message}
+                        </div>
                       )}
                     </div>
 
                     <div className="d-grid">
-                      <CButton type="submit" color="primary" style={styles.submitButton} disabled={loading}>
-                        {loading ? <CSpinner size="sm" variant="grow" /> : t('auth.register.submit', { defaultValue: 'Create Account' })}
+                      <CButton
+                        type="submit"
+                        color="primary"
+                        style={styles.submitButton}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <CSpinner size="sm" variant="grow" />
+                        ) : (
+                          t('auth.register.submit', { defaultValue: 'Create Account' })
+                        )}
                       </CButton>
                     </div>
                   </CForm>
@@ -259,8 +349,8 @@ export const GetStarted = () => {
         </CRow>
       </CContainer>
     </div>
-  );
-};
+  )
+}
 
 const styles = {
   card: {
@@ -324,6 +414,6 @@ const styles = {
     boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
     transition: 'all 0.2s',
   },
-};
+}
 
-export default GetStarted;
+export default GetStarted
