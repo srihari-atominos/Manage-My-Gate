@@ -748,10 +748,34 @@ export class VillaService {
   async removeUserFromAllVillasInOrg(userId, orgId, session = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info(`removeUserFromAllVillasInOrg request received`, { userId, orgId, correlationId });
-    await Villa.updateMany(
-      { orgId, 'residents.userId': userId },
-      { $pull: { residents: { userId: userId } } }
-    ).session(session);
+    
+    const villas = await Villa.find({
+      orgId,
+      $or: [
+        { 'residents.userId': userId },
+        { primaryResidentId: userId },
+        { ownerId: userId }
+      ]
+    }).session(session);
+
+    for (const villa of villas) {
+      villa.residents = villa.residents.filter(r => String(r.userId) !== String(userId));
+      
+      if (villa.primaryResidentId && String(villa.primaryResidentId) === String(userId)) {
+        villa.primaryResidentId = null;
+      }
+      
+      if (villa.ownerId && String(villa.ownerId) === String(userId)) {
+        villa.ownerId = null;
+      }
+
+      if (villa.residents.length === 0) {
+        villa.status = 'Vacant';
+      }
+
+      await villa.save({ session });
+      villaEvents.emit('unit_updated', villa);
+    }
   }
 
   async assignResidentToVilla(villaId, userId, residencyType, session = null) {
