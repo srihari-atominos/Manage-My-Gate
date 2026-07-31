@@ -54,10 +54,9 @@ const setupWorkspaceRules = [
     .withMessage('Password must be at least 8 characters long'),
 ];
 
-// Check Organization Name availability route (authenticated context, decoupled setup)
+// Check Organization Name availability route (decoupled setup)
 router.get(
   '/check-name',
-  isAuthenticated,
   validate(checkNameRules),
   organizationController.checkName
 );

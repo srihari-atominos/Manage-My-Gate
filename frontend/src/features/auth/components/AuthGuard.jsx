@@ -1,7 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { useSelector } from 'react-redux'
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 /**
  * AuthGuard Component
@@ -11,10 +11,14 @@ import { Navigate, Outlet } from 'react-router-dom'
  * Otherwise, checks if allowedRoles criteria is met, else redirects to /403.
  * Renders children or standard nested Outlet.
  */
-export const AuthGuard = ({ children, allowedRoles = [] }) => {
+export const AuthGuard = ({ children, allowedRoles = [], allowSsoBypass = false }) => {
   const { isAuthenticated, user } = useSelector((state) => state.auth)
+  const location = useLocation()
 
   if (!isAuthenticated) {
+    if (allowSsoBypass && location.search.includes('intent=sso-register')) {
+      return children ? children : <Outlet />
+    }
     return <Navigate to="/login" replace />
   }
 

@@ -14,7 +14,8 @@ import {
   forgotPasswordRules,
   verifyResetPasswordOtpRules,
   resetPasswordRules,
-  acceptInviteSsoRules
+  acceptInviteSsoRules,
+  registerSsoWithOrgRules
 } from './auth.validateRules.js';
 import { isAuthenticated } from '../../middlewares/auth.middleware.js';
 import { authLimiter, otpLimiter } from '../../middlewares/rateLimiter.middleware.js';
@@ -159,6 +160,8 @@ router.post('/accept-invite', validate(acceptInviteRules), authController.accept
  *         description: Validation error.
  */
 router.post('/accept-invite/sso', validate(acceptInviteSsoRules), authController.acceptInviteWithSSO);
+
+router.post('/register-with-org/sso', authLimiter, validate(registerSsoWithOrgRules), authController.registerSsoWithOrg);
 
 /**
  * @swagger

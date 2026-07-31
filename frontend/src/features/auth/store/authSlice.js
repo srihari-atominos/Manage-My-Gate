@@ -274,6 +274,40 @@ export const createWorkspace = createAsyncThunk(
   },
 )
 
+export const registerSsoWithOrg = createAsyncThunk(
+  'auth/registerSsoWithOrg',
+  async (payload, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await authService.registerSsoWithOrg(payload)
+
+      const token = response.data?.token
+      const user = response.data?.user
+      const availableWorkspaces = response.data?.availableWorkspaces || []
+
+      dispatch(updateTokenAndUser({ token, user }))
+
+      if (user) {
+        dispatch(
+          setActiveWorkspace({
+            activeOrganizationId: user.orgId,
+            activeVillaId: user.villaId || null,
+            activeRole: user.role,
+            allowedFeatures: user.permissions || [],
+            isPlatform: user.isPlatform || false,
+            availableWorkspaces: availableWorkspaces,
+          }),
+        )
+      }
+
+      return response
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to register and create organization',
+      )
+    }
+  },
+)
+
 export const requestOtp = createAsyncThunk(
   'auth/requestOtp',
   async ({ identifier, isEmail }, { rejectWithValue }) => {
@@ -550,6 +584,36 @@ const authSlice = createSlice({
         }
       })
       .addCase(registerUser.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload || 'Registration failed'
+      })
+      // Register SSO With Org
+      .addCase(registerSsoWithOrg.pending, (state) => {
+        state.loading = true
+        state.error = null
+        state.successMsg = null
+      })
+      .addCase(registerSsoWithOrg.fulfilled, (state, action) => {
+        state.loading = false
+        state.isAuthenticated = true
+        state.token = action.payload.data?.token
+        state.user = action.payload.data?.user
+        state.successMsg = action.payload.message || 'Registration successful!'
+
+        if (action.payload.data?.token) {
+          localStorage.setItem('token', action.payload.data.token)
+        }
+        if (action.payload.data?.user) {
+          localStorage.setItem('user', JSON.stringify(action.payload.data.user))
+        }
+        if (action.payload.data?.availableWorkspaces) {
+          localStorage.setItem(
+            'availableWorkspaces',
+            JSON.stringify(action.payload.data.availableWorkspaces),
+          )
+        }
+      })
+      .addCase(registerSsoWithOrg.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload || 'Registration failed'
       })

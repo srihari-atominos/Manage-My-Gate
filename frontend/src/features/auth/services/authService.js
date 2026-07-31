@@ -85,6 +85,10 @@ export const switchContext = async ({ targetOrgId, targetVillaId, targetRole }) 
   return await apiClient.post('/auth/switch-context', { targetOrgId, targetVillaId, targetRole })
 }
 
+export const registerSsoWithOrg = async (payload) => {
+  return await apiClient.post('/auth/register-with-org/sso', payload)
+}
+
 export default {
   login,
   register,
@@ -106,4 +110,5 @@ export default {
   emailOtpLogin,
   acceptSsoInvite,
   switchContext,
+  registerSsoWithOrg,
 }

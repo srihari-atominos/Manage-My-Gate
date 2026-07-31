@@ -33,7 +33,7 @@ const resources = {
           confirmPasswordPlaceholder: 'Repeat password',
           orgName: 'Organization Name',
           submit: 'Create Account',
-          loginLink: 'Already have an account? Log In',
+          loginLink: 'Already have an account? Log in',
         },
         login: {
           promoTitle: 'Enterprise Workspace Platform',

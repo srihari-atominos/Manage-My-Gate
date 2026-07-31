@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
-import { createWorkspace } from '../../auth/store/authSlice.js'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { createWorkspace, registerSsoWithOrg } from '../../auth/store/authSlice.js'
 import useAuthRouting from '../../auth/hooks/useAuthRouting.js'
 import { checkOrganizationName } from '../services/workspaceApi.js'
 
@@ -13,8 +13,15 @@ export const useSetupWorkspace = () => {
   const navigate = useNavigate()
 
   const authUser = useSelector((state) => state.auth.user)
+  const location = useLocation()
 
   const { loading, error } = useAuthRouting()
+  
+  const isSsoRegister = location.search.includes('intent=sso-register')
+  const ssoToken = location.state?.ssoToken
+  const ssoProvider = location.state?.provider
+  const ssoEmail = location.state?.email || ''
+  const ssoName = location.state?.name || ''
 
   const [checking, setChecking] = useState(false)
   const [isAvailable, setIsAvailable] = useState(null)
@@ -31,7 +38,7 @@ export const useSetupWorkspace = () => {
     defaultValues: {
       name: '',
       timezone: 'Asia/Kolkata',
-      contactEmail: authUser?.email || '',
+      contactEmail: isSsoRegister ? ssoEmail : (authUser?.email || ''),
       contactPhone: authUser?.phone || '',
     },
     mode: 'onTouched',
@@ -71,19 +78,33 @@ export const useSetupWorkspace = () => {
   }, [orgName, t])
 
   const onSubmit = (data) => {
-    dispatch(
-      createWorkspace({
-        name: data.name.trim(),
-        organizationType: 'Residential', // Default to Residential since UI field is removed
-        timezone: data.timezone,
-        contactEmail: data.contactEmail?.trim(),
-        contactPhone: data.contactPhone?.trim(),
-      }),
-    ).then((action) => {
-      if (createWorkspace.fulfilled.match(action)) {
-        navigate('/workspace-setup')
-      }
-    })
+    const payload = {
+      name: data.name.trim(),
+      organizationType: 'Residential', // Default to Residential since UI field is removed
+      timezone: data.timezone,
+      contactEmail: data.contactEmail?.trim(),
+      contactPhone: data.contactPhone?.trim(),
+    }
+
+    if (isSsoRegister && ssoToken) {
+      dispatch(
+        registerSsoWithOrg({
+          ...payload,
+          ssoToken,
+          provider: ssoProvider,
+        })
+      ).then((action) => {
+        if (registerSsoWithOrg.fulfilled.match(action)) {
+          navigate('/workspace-setup')
+        }
+      })
+    } else {
+      dispatch(createWorkspace(payload)).then((action) => {
+        if (createWorkspace.fulfilled.match(action)) {
+          navigate('/workspace-setup')
+        }
+      })
+    }
   }
 
   const isSubmitDisabled =

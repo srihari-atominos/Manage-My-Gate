@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import useAuthRouting from '../hooks/useAuthRouting.js'
 import useAuth from '../hooks/useAuth.js'
@@ -76,8 +76,11 @@ export const LoginForm = () => {
   const { handlePostAuthRedirect, isAuthenticated, loading, error } = useAuthRouting()
   const { login, loginMicrosoft, sendOtp, verifyOtp, otpSent, clearStatus } = useAuth()
 
+  const location = useLocation()
+
   const inviteTokenParam = searchParams.get('invite_token')
-  const emailParam = searchParams.get('email')
+  const emailParam = searchParams.get('email') || location.state?.email || ''
+  const passwordParam = searchParams.get('password') || location.state?.password || ''
 
   const [expectedPhoneLength, setExpectedPhoneLength] = useState(12) // Default for India (91 + 10 digits)
 
@@ -93,28 +96,43 @@ export const LoginForm = () => {
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
     clearErrors,
     setError,
+    watch,
     control,
+    reset,
     formState: { errors },
   } = useForm({
     defaultValues: {
-      login: emailParam
-        ? decodeURIComponent(emailParam)
-        : localStorage.getItem('rememberedEmail') || '',
-      password: '',
+      login: emailParam || localStorage.getItem('rememberedEmail') || '',
+      password: passwordParam || '',
     },
   })
 
-  // Automatically pre-fill email if invite query param is present
+  // Explicitly force the values into the form fields after mount.
+  // CoreUI components sometimes ignore react-hook-form's defaultValues on initial render, 
+  // so we apply a multi-layered approach to guarantee they appear.
   useEffect(() => {
-    if (emailParam) {
-      setValue('login', decodeURIComponent(emailParam))
-      setLoginMethod('password')
+    const loginVal = emailParam || localStorage.getItem('rememberedEmail') || ''
+    const passVal = passwordParam || ''
+    
+    if (loginVal || passVal) {
+      reset({ login: loginVal, password: passVal })
+      if (emailParam) setLoginMethod('password')
+
+      // Brute-force fallback for UI visual sync
+      setTimeout(() => {
+        setValue('login', loginVal, { shouldValidate: true })
+        setValue('password', passVal, { shouldValidate: true })
+        
+        const loginInput = document.querySelector('input[name="login"]')
+        const passInput = document.querySelector('input[name="password"]')
+        if (loginInput && loginVal) loginInput.value = loginVal
+        if (passInput && passVal) passInput.value = passVal
+      }, 50)
     }
-  }, [emailParam, setValue])
+  }, [emailParam, passwordParam, reset, setValue])
 
   // Automatically handle routing updates post-authentication
   useEffect(() => {
@@ -257,6 +275,10 @@ export const LoginForm = () => {
         <CCard className="login-left-card">
           <CCardBody className="login-card-body">
             <CForm onSubmit={handleSubmit(onSubmit)}>
+              {/* Fake fields to intercept Chrome's aggressive autofill */}
+              <input type="text" name="fakeusernameremembered" style={{ opacity: 0, position: 'absolute', zIndex: -1, width: 0, height: 0 }} tabIndex="-1" aria-hidden="true" autoComplete="off" />
+              <input type="password" name="fakepasswordremembered" style={{ opacity: 0, position: 'absolute', zIndex: -1, width: 0, height: 0 }} tabIndex="-1" aria-hidden="true" autoComplete="new-password" />
+
               <h1 className="login-title">{t('auth.login.title', 'Welcome Back')}</h1>
               <p className="login-subtitle">
                 {t('auth.login.subtitle', 'Choose your preferred sign-in method.')}
@@ -316,7 +338,7 @@ export const LoginForm = () => {
                 </CAlert>
               )}
 
-              <div className="mb-3">
+                <div className="mb-3">
                 {loginMethod === 'phone' ? (
                   <>
                     <Controller
@@ -381,7 +403,7 @@ export const LoginForm = () => {
                             ? t('auth.login.usernamePlaceholder', 'Email Address')
                             : t('auth.login.emailPlaceholder', 'Email Address')
                         }
-                        autoComplete="username"
+                        autoComplete="off"
                         disabled={loading || otpSent}
                         autoFocus
                         maxLength={255}
@@ -415,7 +437,7 @@ export const LoginForm = () => {
                       className="login-input"
                       type={showPassword ? 'text' : 'password'}
                       placeholder={t('auth.login.passwordPlaceholder', 'Password')}
-                      autoComplete="current-password"
+                      autoComplete="new-password"
                       disabled={loading}
                       {...register('password', {
                         required:

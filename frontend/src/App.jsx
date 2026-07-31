@@ -122,7 +122,7 @@ const App = () => {
               path="/workspace-setup"
               name="Workspace Setup Page"
               element={
-                <AuthGuard>
+                <AuthGuard allowSsoBypass={true}>
                   <FeatureConfigWizard />
                 </AuthGuard>
               }

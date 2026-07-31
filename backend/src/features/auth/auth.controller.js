@@ -78,6 +78,24 @@ export class AuthController {
     }
   }
 
+  async registerSsoWithOrg(req, res, next) {
+    try {
+      const payload = req.body;
+      const data = await authService.registerSsoWithOrg(payload);
+      
+      if (data && data.token) {
+        setAuthCookie(res, data.token);
+      }
+      if (data && data.refreshToken) {
+        res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+      }
+
+      res.success(data, 'SSO Registration and Organization setup successful', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async switchContext(req, res, next) {
     try {
       const { targetOrgId, targetVillaId, targetRole } = req.body;
@@ -94,8 +112,8 @@ export class AuthController {
 
   async googleLogin(req, res, next) {
     try {
-      const { token, inviteToken } = req.body;
-      const data = await authService.loginWithGoogle(token, inviteToken);
+      const { token, inviteToken, isRegister } = req.body;
+      const data = await authService.loginWithGoogle(token, inviteToken, isRegister);
       
       if (data.isNewUser) {
         return res.success(data, 'Google token verified. User not found.', 200);

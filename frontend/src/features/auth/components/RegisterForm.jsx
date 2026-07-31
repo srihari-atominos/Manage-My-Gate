@@ -63,6 +63,7 @@ export const RegisterForm = () => {
     watch,
     clearErrors,
     control,
+    getValues,
     formState: { errors, isValid },
   } = useForm({
     defaultValues: {
@@ -76,6 +77,7 @@ export const RegisterForm = () => {
   })
 
   // Watch fields for logic
+  const watchEmail = watch('email', '')
   const watchPassword = watch('password', '')
   const watchPhone = watch('phone', '')
 
@@ -93,10 +95,24 @@ export const RegisterForm = () => {
 
   // When changing mode, navigate to the correct onboarding route
   const toggleMode = () => {
+    const domEmail = document.querySelector('input[name="email"]')?.value || ''
+    const domPassword = document.querySelector('input[name="password"]')?.value || ''
+
+    const currentEmail = getValues('email') || domEmail || ''
+    const currentPassword = getValues('password') || domPassword || ''
+    
+    const emailParam = currentEmail ? `&email=${encodeURIComponent(currentEmail.trim())}` : ''
+    const passwordParam = currentPassword ? `&password=${encodeURIComponent(currentPassword.trim())}` : ''
     if (isLoginMode) {
       navigate('/register', { state: location.state })
     } else {
-      navigate('/login?intent=create-org', { state: location.state })
+      navigate(`/login?intent=create-org${emailParam}${passwordParam}`, {
+        state: {
+          ...location.state,
+          email: currentEmail.trim(),
+          password: currentPassword
+        }
+      })
     }
   }
 
@@ -116,7 +132,14 @@ export const RegisterForm = () => {
         })
         .then((response) => {
           if (response && response.idToken) {
-            loginMicrosoft(response.idToken)
+            navigate('/workspace-setup?intent=sso-register', {
+              state: {
+                ssoToken: response.idToken,
+                provider: 'microsoft',
+                email: response.account?.username,
+                name: response.account?.name
+              }
+            })
           }
         })
         .catch((err) => {
@@ -449,7 +472,7 @@ export const RegisterForm = () => {
           </CRow>
         </CForm>
 
-        {!isLoginMode && !isGoogleSso && (
+        {!isLoginMode && (
           <div style={styles.dividerContainer}>
             <div style={styles.dividerLine}></div>
             <span style={styles.dividerText}>OR</span>
@@ -458,23 +481,21 @@ export const RegisterForm = () => {
         )}
 
         {/* Enterprise SSO Registration */}
-        {!isLoginMode && !isGoogleSso && (
+        {!isLoginMode && (
           <div className="mb-4">
             <CRow className="g-3 align-items-center justify-content-center">
               <CCol xs={12} sm={6} className="d-flex justify-content-center">
                 <div style={{ width: '100%', maxWidth: '210px' }}>
                   <GoogleLogin
                     onSuccess={async (credentialResponse) => {
-                      const res = await loginGoogle(credentialResponse.credential)
-                      if (res.isNewUser) {
-                        navigate('/register', {
-                          state: {
-                            email: res.googleData.email,
-                            name: res.googleData.name,
-                            isGoogleSso: true,
-                          },
-                        })
-                      }
+                      navigate('/workspace-setup?intent=sso-register', {
+                        state: {
+                          ssoToken: credentialResponse.credential,
+                          provider: 'google',
+                          email: ssoEmail,
+                          name: ssoName
+                        }
+                      })
                     }}
                     onError={() => {
                       console.error('Google Sign-In failed')
@@ -507,7 +528,7 @@ export const RegisterForm = () => {
           <CButton color="link" onClick={toggleMode} style={styles.toggleLink} className="p-0">
             {isLoginMode
               ? t('auth.register.signUpLink', { defaultValue: "Don't have an account? Sign Up" })
-              : t('auth.register.loginLink', { defaultValue: 'Already have an account? Login' })}
+              : t('auth.register.loginLink', { defaultValue: 'Already have an account? Log in' })}
           </CButton>
         </div>
       </CCardBody>
