@@ -14,6 +14,7 @@ import {
   cilSettings,
   cilWallet,
   cilSearch,
+  cilWarning,
 } from '@coreui/icons'
 import { CNavItem, CNavTitle, CNavGroup } from '@coreui/react'
 
