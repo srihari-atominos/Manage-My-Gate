@@ -222,6 +222,23 @@ export const syncPermissions = async () => {
       }
     }
 
+    // 6.10 Self-healing: Ensure all occupied units with no residents are marked as 'Vacant'
+    const VillaModel = (await import('../features/villa/villa.model.js')).default;
+    const occupiedVillasWithNoResidents = await VillaModel.find({
+      status: 'Occupied',
+      $or: [
+        { residents: { $size: 0 } },
+        { residents: { $exists: false } }
+      ]
+    });
+    for (const villa of occupiedVillasWithNoResidents) {
+      villa.status = 'Vacant';
+      villa.primaryResidentId = null;
+      villa.ownerId = null;
+      await villa.save({ validateBeforeSave: false });
+      logger.info(`Self-healed unit "${villa.unitNumber}" (${villa._id}) to "Vacant" since it has no residents.`);
+    }
+
     logger.info('Permission synchronization and Super Admin bootstrapping finished successfully.');
   } catch (error) {
     logger.error('Failed to synchronize permissions and bootstrap Super Admin user:', error);
