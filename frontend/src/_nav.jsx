@@ -122,12 +122,6 @@ const _nav = [
   },
   {
     component: CNavItem,
-    name: 'Workspace Settings',
-    to: '/workspace/settings',
-    icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
-  },
-  {
-    component: CNavItem,
     name: 'Organization Manager',
     to: '/super-admin/organizations',
     icon: <CIcon icon={cilBuilding} customClassName="nav-icon" />,
