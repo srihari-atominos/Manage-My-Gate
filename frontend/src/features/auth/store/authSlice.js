@@ -48,7 +48,7 @@ export const loginWithGoogle = createAsyncThunk(
 
       if (user) {
         dispatch(updateTokenAndUser({ token, user }))
-        
+
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
@@ -316,7 +316,9 @@ export const registerSsoWithOrg = createAsyncThunk(
       return response
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || error.message || 'Failed to register and create organization',
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to register and create organization',
       )
     }
   },
@@ -513,7 +515,7 @@ const authSlice = createSlice({
       })
       .addCase(loginWithGoogle.fulfilled, (state, action) => {
         state.loading = false
-        
+
         if (action.payload.data?.isNewUser) {
           state.successMsg = action.payload.message || 'Google token verified'
           return
@@ -610,8 +612,22 @@ const authSlice = createSlice({
       .addCase(verifyRegistration.fulfilled, (state, action) => {
         state.loading = false
         state.isAuthenticated = true
-        state.user = action.payload.data.user
-        state.token = action.payload.data.token
+        state.user = action.payload.data?.user
+        state.token = action.payload.data?.token
+        state.successMsg = action.payload.message || 'Verification successful!'
+
+        if (action.payload.data?.token) {
+          localStorage.setItem('token', action.payload.data.token)
+        }
+        if (action.payload.data?.user) {
+          localStorage.setItem('user', JSON.stringify(action.payload.data.user))
+        }
+        if (action.payload.data?.availableWorkspaces) {
+          localStorage.setItem(
+            'availableWorkspaces',
+            JSON.stringify(action.payload.data.availableWorkspaces),
+          )
+        }
       })
       .addCase(verifyRegistration.rejected, (state, action) => {
         state.loading = false

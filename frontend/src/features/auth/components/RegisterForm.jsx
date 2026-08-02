@@ -103,9 +103,11 @@ export const RegisterForm = () => {
 
     const currentEmail = getValues('email') || domEmail || ''
     const currentPassword = getValues('password') || domPassword || ''
-    
+
     const emailParam = currentEmail ? `&email=${encodeURIComponent(currentEmail.trim())}` : ''
-    const passwordParam = currentPassword ? `&password=${encodeURIComponent(currentPassword.trim())}` : ''
+    const passwordParam = currentPassword
+      ? `&password=${encodeURIComponent(currentPassword.trim())}`
+      : ''
     if (isLoginMode) {
       navigate('/register', { state: location.state })
     } else {
@@ -113,8 +115,8 @@ export const RegisterForm = () => {
         state: {
           ...location.state,
           email: currentEmail.trim(),
-          password: currentPassword
-        }
+          password: currentPassword,
+        },
       })
     }
   }
@@ -140,8 +142,8 @@ export const RegisterForm = () => {
                 ssoToken: response.idToken,
                 provider: 'microsoft',
                 email: response.account?.username,
-                name: response.account?.name
-              }
+                name: response.account?.name,
+              },
             })
           }
         })
@@ -260,7 +262,8 @@ export const RegisterForm = () => {
         {isOtpMode ? (
           <CForm onSubmit={handleSubmit(onVerifyOtp)}>
             <CAlert color="info" className="mb-3">
-              We sent a verification code to <strong>{otpEmail}</strong>. Please enter it below to activate your account.
+              We sent a verification code to <strong>{otpEmail}</strong>. Please enter it below to
+              activate your account.
             </CAlert>
             <div className="mb-3">
               <CInputGroup>
@@ -269,7 +272,9 @@ export const RegisterForm = () => {
                 </CInputGroupText>
                 <CFormInput
                   style={styles.input}
-                  placeholder={t('auth.register.otpPlaceholder', { defaultValue: 'Enter 6-digit code' })}
+                  placeholder={t('auth.register.otpPlaceholder', {
+                    defaultValue: 'Enter 6-digit code',
+                  })}
                   disabled={loading}
                   autoComplete="one-time-code"
                   maxLength={6}
@@ -277,8 +282,10 @@ export const RegisterForm = () => {
                     required: t('auth.register.otpRequired', { defaultValue: 'OTP is required.' }),
                     pattern: {
                       value: /^\d{6}$/,
-                      message: t('auth.register.otpInvalid', { defaultValue: 'OTP must be exactly 6 digits.' })
-                    }
+                      message: t('auth.register.otpInvalid', {
+                        defaultValue: 'OTP must be exactly 6 digits.',
+                      }),
+                    },
                   })}
                 />
               </CInputGroup>
@@ -288,197 +295,157 @@ export const RegisterForm = () => {
             </div>
             <CRow>
               <CCol xs={12} className="d-grid mb-3">
-                <CButton type="submit" color="primary" style={styles.submitButton} disabled={loading}>
-                  {loading ? <CSpinner size="sm" variant="grow" /> : t('auth.register.verifySubmit', { defaultValue: 'Verify Account' })}
+                <CButton
+                  type="submit"
+                  color="primary"
+                  style={styles.submitButton}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <CSpinner size="sm" variant="grow" />
+                  ) : (
+                    t('auth.register.verifySubmit', { defaultValue: 'Verify Account' })
+                  )}
                 </CButton>
               </CCol>
             </CRow>
             <div className="text-center mt-2">
-              <CButton color="link" className="px-0 text-muted text-decoration-none" onClick={() => setIsOtpMode(false)}>
+              <CButton
+                color="link"
+                className="px-0 text-muted text-decoration-none"
+                onClick={() => setIsOtpMode(false)}
+              >
                 {t('auth.register.backToRegister', { defaultValue: 'Back to Registration' })}
               </CButton>
             </div>
           </CForm>
         ) : (
           <CForm onSubmit={handleSubmit(onSubmit)}>
-          {/* Full Name */}
-          {!isLoginMode && (
+            {/* Full Name */}
+            {!isLoginMode && (
+              <div className="mb-3">
+                <CInputGroup>
+                  <CInputGroupText style={styles.inputIconText}>
+                    <CIcon icon={cilUser} style={styles.icon} />
+                  </CInputGroupText>
+                  <CFormInput
+                    style={styles.input}
+                    placeholder={t('auth.register.fullNamePlaceholder', {
+                      defaultValue: 'Full Name',
+                    })}
+                    autoComplete="name"
+                    disabled={loading}
+                    {...register('name', {
+                      required:
+                        !isLoginMode &&
+                        t('auth.register.nameRequired', { defaultValue: 'Full Name is required.' }),
+                    })}
+                  />
+                </CInputGroup>
+                {errors.name && (
+                  <div className="text-danger small mt-1 ms-1">{errors.name.message}</div>
+                )}
+              </div>
+            )}
+
+            {/* Email */}
             <div className="mb-3">
               <CInputGroup>
                 <CInputGroupText style={styles.inputIconText}>
-                  <CIcon icon={cilUser} style={styles.icon} />
+                  <CIcon icon={cilEnvelopeOpen} style={styles.icon} />
                 </CInputGroupText>
                 <CFormInput
-                  style={styles.input}
-                  placeholder={t('auth.register.fullNamePlaceholder', {
-                    defaultValue: 'Full Name',
-                  })}
-                  autoComplete="name"
+                  style={
+                    isGoogleSso
+                      ? { ...styles.input, backgroundColor: '#f9fafb', color: '#6b7280' }
+                      : styles.input
+                  }
+                  type="email"
+                  placeholder={t('auth.register.emailPlaceholder', { defaultValue: 'Email' })}
+                  autoComplete="email"
                   disabled={loading}
-                  {...register('name', {
-                    required:
-                      !isLoginMode &&
-                      t('auth.register.nameRequired', { defaultValue: 'Full Name is required.' }),
+                  readOnly={isGoogleSso}
+                  {...register('email', {
+                    required: t('auth.register.emailRequired', {
+                      defaultValue: 'Email address is required.',
+                    }),
+                    pattern: {
+                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                      message: t('auth.register.emailInvalid', {
+                        defaultValue: 'Invalid email address.',
+                      }),
+                    },
                   })}
                 />
               </CInputGroup>
-              {errors.name && (
-                <div className="text-danger small mt-1 ms-1">{errors.name.message}</div>
-              )}
-            </div>
-          )}
-
-          {/* Email */}
-          <div className="mb-3">
-            <CInputGroup>
-              <CInputGroupText style={styles.inputIconText}>
-                <CIcon icon={cilEnvelopeOpen} style={styles.icon} />
-              </CInputGroupText>
-              <CFormInput
-                style={
-                  isGoogleSso
-                    ? { ...styles.input, backgroundColor: '#f9fafb', color: '#6b7280' }
-                    : styles.input
-                }
-                type="email"
-                placeholder={t('auth.register.emailPlaceholder', { defaultValue: 'Email' })}
-                autoComplete="email"
-                disabled={loading}
-                readOnly={isGoogleSso}
-                {...register('email', {
-                  required: t('auth.register.emailRequired', {
-                    defaultValue: 'Email address is required.',
-                  }),
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: t('auth.register.emailInvalid', {
-                      defaultValue: 'Invalid email address.',
-                    }),
-                  },
-                })}
-              />
-            </CInputGroup>
-            {isGoogleSso && (
-              <div className="text-success small mt-1 ms-1 fw-medium d-flex align-items-center">
-                <CIcon icon={cilLockLocked} size="sm" className="me-1" />
-                Verified via Google
-              </div>
-            )}
-            {errors.email && (
-              <div className="text-danger small mt-1 ms-1">{errors.email.message}</div>
-            )}
-          </div>
-
-          {/* Phone */}
-          {!isLoginMode && (
-            <div className="mb-3">
-              <Controller
-                name="phone"
-                control={control}
-                rules={{
-                  required: t('auth.register.phoneRequired', {
-                    defaultValue: 'Phone number is required.',
-                  }),
-                  validate: (value) => {
-                    if (!value) return true
-                    if (value.length < expectedPhoneLength) {
-                      return t('auth.register.phoneInvalid', {
-                        defaultValue: 'Invalid phone number length for this country.',
-                      })
-                    }
-                    return true
-                  },
-                }}
-                render={({ field: { onChange, value } }) => (
-                  <PhoneInput
-                    country={'in'}
-                    value={value}
-                    onChange={(phone, country) => {
-                      if (country && country.format) {
-                        setExpectedPhoneLength(country.format.replace(/[^.]/g, '').length)
-                      }
-                      onChange(phone)
-                    }}
-                    containerStyle={{
-                      width: '100%',
-                    }}
-                    inputStyle={{
-                      width: '100%',
-                      height: '42px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem',
-                      fontSize: '14px',
-                    }}
-                    buttonStyle={{
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.375rem 0 0 0.375rem',
-                      backgroundColor: '#f3f4f6',
-                    }}
-                    disabled={loading}
-                  />
-                )}
-              />
-              {errors.phone && (
-                <div className="text-danger small mt-1 ms-1">{errors.phone.message}</div>
-              )}
-            </div>
-          )}
-
-          {/* Password */}
-          <div className="mb-3">
-            <CInputGroup>
-              <CInputGroupText style={styles.inputIconText}>
-                <CIcon icon={cilLockLocked} style={styles.icon} />
-              </CInputGroupText>
-              <CFormInput
-                style={styles.input}
-                type="password"
-                placeholder={t('auth.register.passwordPlaceholder', { defaultValue: 'Password' })}
-                autoComplete="new-password"
-                disabled={loading}
-                {...register('password', {
-                  required: t('auth.register.passwordRequired', {
-                    defaultValue: 'Password is required.',
-                  }),
-                  validate: (value) => {
-                    if (isLoginMode) return true
-                    if (value.length < 8) return 'Password must be at least 8 characters long.'
-                    if (!/[A-Z]/.test(value))
-                      return 'Password must contain at least one uppercase letter.'
-                    if (!/[a-z]/.test(value))
-                      return 'Password must contain at least one lowercase letter.'
-                    if (!/[0-9]/.test(value)) return 'Password must contain at least one number.'
-                    if (!/[^A-Za-z0-9]/.test(value))
-                      return 'Password must contain at least one special character.'
-                    return true
-                  },
-                })}
-              />
-            </CInputGroup>
-            {errors.password && (
-              <div className="text-danger small mt-1 ms-1">{errors.password.message}</div>
-            )}
-            {!isLoginMode && watchPassword && (
-              <div className="mt-2 ms-1">
-                <CProgress
-                  value={strength.score}
-                  color={strength.color}
-                  height={6}
-                  className="mb-1 rounded"
-                />
-                <div className="small text-muted d-flex justify-content-between">
-                  <span>
-                    Password strength:{' '}
-                    <strong className={`text-${strength.color}`}>{strength.label}</strong>
-                  </span>
+              {isGoogleSso && (
+                <div className="text-success small mt-1 ms-1 fw-medium d-flex align-items-center">
+                  <CIcon icon={cilLockLocked} size="sm" className="me-1" />
+                  Verified via Google
                 </div>
+              )}
+              {errors.email && (
+                <div className="text-danger small mt-1 ms-1">{errors.email.message}</div>
+              )}
+            </div>
+
+            {/* Phone */}
+            {!isLoginMode && (
+              <div className="mb-3">
+                <Controller
+                  name="phone"
+                  control={control}
+                  rules={{
+                    required: t('auth.register.phoneRequired', {
+                      defaultValue: 'Phone number is required.',
+                    }),
+                    validate: (value) => {
+                      if (!value) return true
+                      if (value.length < expectedPhoneLength) {
+                        return t('auth.register.phoneInvalid', {
+                          defaultValue: 'Invalid phone number length for this country.',
+                        })
+                      }
+                      return true
+                    },
+                  }}
+                  render={({ field: { onChange, value } }) => (
+                    <PhoneInput
+                      country={'in'}
+                      value={value}
+                      onChange={(phone, country) => {
+                        if (country && country.format) {
+                          setExpectedPhoneLength(country.format.replace(/[^.]/g, '').length)
+                        }
+                        onChange(phone)
+                      }}
+                      containerStyle={{
+                        width: '100%',
+                      }}
+                      inputStyle={{
+                        width: '100%',
+                        height: '42px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.375rem',
+                        fontSize: '14px',
+                      }}
+                      buttonStyle={{
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.375rem 0 0 0.375rem',
+                        backgroundColor: '#f3f4f6',
+                      }}
+                      disabled={loading}
+                    />
+                  )}
+                />
+                {errors.phone && (
+                  <div className="text-danger small mt-1 ms-1">{errors.phone.message}</div>
+                )}
               </div>
             )}
-          </div>
 
-          {/* Confirm Password */}
-          {!isLoginMode && (
-            <div className="mb-4">
+            {/* Password */}
+            <div className="mb-3">
               <CInputGroup>
                 <CInputGroupText style={styles.inputIconText}>
                   <CIcon icon={cilLockLocked} style={styles.icon} />
@@ -486,46 +453,106 @@ export const RegisterForm = () => {
                 <CFormInput
                   style={styles.input}
                   type="password"
-                  placeholder={t('auth.register.confirmPasswordPlaceholder', {
-                    defaultValue: 'Repeat password',
-                  })}
+                  placeholder={t('auth.register.passwordPlaceholder', { defaultValue: 'Password' })}
                   autoComplete="new-password"
                   disabled={loading}
-                  {...register('confirmPassword', {
-                    required:
-                      !isLoginMode &&
-                      t('auth.register.confirmPasswordRequired', {
-                        defaultValue: 'Please repeat your password.',
-                      }),
-                    validate: (value, formValues) =>
-                      isLoginMode ||
-                      value === formValues.password ||
-                      t('auth.register.passwordsMustMatch', {
-                        defaultValue: 'Passwords do not match.',
-                      }),
+                  {...register('password', {
+                    required: t('auth.register.passwordRequired', {
+                      defaultValue: 'Password is required.',
+                    }),
+                    validate: (value) => {
+                      if (isLoginMode) return true
+                      if (value.length < 8) return 'Password must be at least 8 characters long.'
+                      if (!/[A-Z]/.test(value))
+                        return 'Password must contain at least one uppercase letter.'
+                      if (!/[a-z]/.test(value))
+                        return 'Password must contain at least one lowercase letter.'
+                      if (!/[0-9]/.test(value)) return 'Password must contain at least one number.'
+                      if (!/[^A-Za-z0-9]/.test(value))
+                        return 'Password must contain at least one special character.'
+                      return true
+                    },
                   })}
                 />
               </CInputGroup>
-              {errors.confirmPassword && (
-                <div className="text-danger small mt-1 ms-1">{errors.confirmPassword.message}</div>
+              {errors.password && (
+                <div className="text-danger small mt-1 ms-1">{errors.password.message}</div>
+              )}
+              {!isLoginMode && watchPassword && (
+                <div className="mt-2 ms-1">
+                  <CProgress
+                    value={strength.score}
+                    color={strength.color}
+                    height={6}
+                    className="mb-1 rounded"
+                  />
+                  <div className="small text-muted d-flex justify-content-between">
+                    <span>
+                      Password strength:{' '}
+                      <strong className={`text-${strength.color}`}>{strength.label}</strong>
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
-          )}
 
-          <CRow>
-            <CCol xs={12} className="d-grid mb-3">
-              <CButton type="submit" color="primary" style={styles.submitButton} disabled={loading}>
-                {loading ? (
-                  <CSpinner size="sm" variant="grow" />
-                ) : isLoginMode ? (
-                  t('auth.register.loginSubmit', { defaultValue: 'Log In' })
-                ) : (
-                  t('auth.register.submit', { defaultValue: 'Create Account' })
+            {/* Confirm Password */}
+            {!isLoginMode && (
+              <div className="mb-4">
+                <CInputGroup>
+                  <CInputGroupText style={styles.inputIconText}>
+                    <CIcon icon={cilLockLocked} style={styles.icon} />
+                  </CInputGroupText>
+                  <CFormInput
+                    style={styles.input}
+                    type="password"
+                    placeholder={t('auth.register.confirmPasswordPlaceholder', {
+                      defaultValue: 'Repeat password',
+                    })}
+                    autoComplete="new-password"
+                    disabled={loading}
+                    {...register('confirmPassword', {
+                      required:
+                        !isLoginMode &&
+                        t('auth.register.confirmPasswordRequired', {
+                          defaultValue: 'Please repeat your password.',
+                        }),
+                      validate: (value, formValues) =>
+                        isLoginMode ||
+                        value === formValues.password ||
+                        t('auth.register.passwordsMustMatch', {
+                          defaultValue: 'Passwords do not match.',
+                        }),
+                    })}
+                  />
+                </CInputGroup>
+                {errors.confirmPassword && (
+                  <div className="text-danger small mt-1 ms-1">
+                    {errors.confirmPassword.message}
+                  </div>
                 )}
-              </CButton>
-            </CCol>
-          </CRow>
-        </CForm>
+              </div>
+            )}
+
+            <CRow>
+              <CCol xs={12} className="d-grid mb-3">
+                <CButton
+                  type="submit"
+                  color="primary"
+                  style={styles.submitButton}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <CSpinner size="sm" variant="grow" />
+                  ) : isLoginMode ? (
+                    t('auth.register.loginSubmit', { defaultValue: 'Log In' })
+                  ) : (
+                    t('auth.register.submit', { defaultValue: 'Create Account' })
+                  )}
+                </CButton>
+              </CCol>
+            </CRow>
+          </CForm>
         )}
 
         {!isLoginMode && !isOtpMode && (
@@ -549,8 +576,8 @@ export const RegisterForm = () => {
                           ssoToken: credentialResponse.credential,
                           provider: 'google',
                           email: ssoEmail,
-                          name: ssoName
-                        }
+                          name: ssoName,
+                        },
                       })
                     }}
                     onError={() => {
