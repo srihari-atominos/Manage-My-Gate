@@ -37,6 +37,8 @@ export const RegisterForm = () => {
 
   const isLoginModeParam = location.pathname === '/login-createOrg'
   const [isLoginMode, setIsLoginMode] = useState(isLoginModeParam)
+  const [isOtpMode, setIsOtpMode] = useState(false)
+  const [otpEmail, setOtpEmail] = useState('')
 
   const isGoogleSso = location.state?.isGoogleSso || false
   const ssoEmail = location.state?.email || ''
@@ -48,6 +50,7 @@ export const RegisterForm = () => {
     successMsg,
     login,
     register: authRegister,
+    verifyRegistration,
     loginGoogle,
     loginMicrosoft,
     clearStatus,
@@ -181,12 +184,21 @@ export const RegisterForm = () => {
         isGoogleSso,
       }).then((action) => {
         if (action.meta.requestStatus === 'fulfilled') {
-          setTimeout(() => {
-            navigate('/workspace-setup?intent=create')
-          }, 1500)
+          setIsOtpMode(true)
+          setOtpEmail(data.email.trim().toLowerCase())
         }
       })
     }
+  }
+
+  const onVerifyOtp = (data) => {
+    verifyRegistration(otpEmail, data.otp).then((res) => {
+      if (res.success) {
+        setTimeout(() => {
+          navigate('/workspace-setup?intent=create')
+        }, 1500)
+      }
+    })
   }
 
   // Password Strength Calculation
@@ -244,8 +256,51 @@ export const RegisterForm = () => {
           </CAlert>
         )}
 
-        {/* Form Registration */}
-        <CForm onSubmit={handleSubmit(onSubmit)}>
+        {/* Form Registration OR OTP Verification */}
+        {isOtpMode ? (
+          <CForm onSubmit={handleSubmit(onVerifyOtp)}>
+            <CAlert color="info" className="mb-3">
+              We sent a verification code to <strong>{otpEmail}</strong>. Please enter it below to activate your account.
+            </CAlert>
+            <div className="mb-3">
+              <CInputGroup>
+                <CInputGroupText style={styles.inputIconText}>
+                  <CIcon icon={cilLockLocked} style={styles.icon} />
+                </CInputGroupText>
+                <CFormInput
+                  style={styles.input}
+                  placeholder={t('auth.register.otpPlaceholder', { defaultValue: 'Enter 6-digit code' })}
+                  disabled={loading}
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  {...register('otp', {
+                    required: t('auth.register.otpRequired', { defaultValue: 'OTP is required.' }),
+                    pattern: {
+                      value: /^\d{6}$/,
+                      message: t('auth.register.otpInvalid', { defaultValue: 'OTP must be exactly 6 digits.' })
+                    }
+                  })}
+                />
+              </CInputGroup>
+              {errors.otp && (
+                <div className="text-danger small mt-1 ms-1">{errors.otp.message}</div>
+              )}
+            </div>
+            <CRow>
+              <CCol xs={12} className="d-grid mb-3">
+                <CButton type="submit" color="primary" style={styles.submitButton} disabled={loading}>
+                  {loading ? <CSpinner size="sm" variant="grow" /> : t('auth.register.verifySubmit', { defaultValue: 'Verify Account' })}
+                </CButton>
+              </CCol>
+            </CRow>
+            <div className="text-center mt-2">
+              <CButton color="link" className="px-0 text-muted text-decoration-none" onClick={() => setIsOtpMode(false)}>
+                {t('auth.register.backToRegister', { defaultValue: 'Back to Registration' })}
+              </CButton>
+            </div>
+          </CForm>
+        ) : (
+          <CForm onSubmit={handleSubmit(onSubmit)}>
           {/* Full Name */}
           {!isLoginMode && (
             <div className="mb-3">
@@ -471,8 +526,9 @@ export const RegisterForm = () => {
             </CCol>
           </CRow>
         </CForm>
+        )}
 
-        {!isLoginMode && (
+        {!isLoginMode && !isOtpMode && (
           <div style={styles.dividerContainer}>
             <div style={styles.dividerLine}></div>
             <span style={styles.dividerText}>OR</span>

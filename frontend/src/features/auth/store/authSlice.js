@@ -102,9 +102,23 @@ export const loginWithMicrosoft = createAsyncThunk(
 
 export const registerUser = createAsyncThunk(
   'auth/registerUser',
-  async (userData, { dispatch, rejectWithValue }) => {
+  async (userData, { rejectWithValue }) => {
     try {
       const response = await authService.register(userData)
+      return response // Now returns { data: { message, email, status } }
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Registration failed',
+      )
+    }
+  },
+)
+
+export const verifyRegistration = createAsyncThunk(
+  'auth/verifyRegistration',
+  async ({ email, code }, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await authService.verifyRegistration(email, code)
 
       const user = response.data?.user
       const availableWorkspaces = response.data?.availableWorkspaces || []
@@ -124,7 +138,7 @@ export const registerUser = createAsyncThunk(
       return response
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || error.message || 'Registration failed',
+        error.response?.data?.message || error.message || 'Verification failed',
       )
     }
   },
@@ -585,7 +599,24 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload || 'Registration failed'
+        state.error = action.payload
+        state.message = action.payload
+      })
+      // verifyRegistration
+      .addCase(verifyRegistration.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(verifyRegistration.fulfilled, (state, action) => {
+        state.loading = false
+        state.isAuthenticated = true
+        state.user = action.payload.data.user
+        state.token = action.payload.data.token
+      })
+      .addCase(verifyRegistration.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+        state.message = action.payload
       })
       // Register SSO With Org
       .addCase(registerSsoWithOrg.pending, (state) => {

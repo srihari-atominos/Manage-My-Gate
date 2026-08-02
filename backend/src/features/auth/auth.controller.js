@@ -7,8 +7,22 @@ export class AuthController {
   async register(req, res, next) {
     try {
       const data = await authService.register(req.body);
-      res.success(data, 'User registered successfully', 201);
+      res.success(data, 'User registered successfully, pending verification', 201);
     } catch (error) {
+      console.error('[AuthController.register] Error:', error);
+      next(error);
+    }
+  }
+
+  async verifyRegistrationOtp(req, res, next) {
+    try {
+      const { email, code } = req.body;
+      const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
+      const data = await authService.verifyRegistrationOtp(email, code, deviceInfo);
+      setAuthCookie(res, data.token);
+      res.success(data, 'Account verified and activated successfully');
+    } catch (error) {
+      console.error('[AuthController.verifyRegistrationOtp] Error:', error);
       next(error);
     }
   }

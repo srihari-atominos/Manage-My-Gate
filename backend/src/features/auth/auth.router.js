@@ -65,6 +65,33 @@ router.post('/register', authLimiter, validate(registerRules), authController.re
 
 /**
  * @swagger
+ * /auth/register/verify:
+ *   post:
+ *     summary: Verify registration OTP
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - code
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               code:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Verified successfully.
+ */
+router.post('/register/verify', otpLimiter, validate(emailOtpVerifyRules), authController.verifyRegistrationOtp);
+
+/**
+ * @swagger
  * /auth/login:
  *   post:
  *     summary: Authenticate user

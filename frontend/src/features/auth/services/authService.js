@@ -11,6 +11,10 @@ export const register = async (userData) => {
   return await apiClient.post('/auth/register', userData)
 }
 
+export const verifyRegistration = async (email, code) => {
+  return await apiClient.post('/auth/register/verify', { email, code })
+}
+
 export const acceptInvite = async ({ token, password }) => {
   return await apiClient.post('/auth/accept-invite', { token, password })
 }
@@ -92,6 +96,7 @@ export const registerSsoWithOrg = async (payload) => {
 export default {
   login,
   register,
+  verifyRegistration,
   acceptInvite,
   createWorkspace,
   loginWithGoogle,

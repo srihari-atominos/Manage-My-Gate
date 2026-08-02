@@ -13,6 +13,7 @@ import {
   loginWithGoogle,
   loginWithMicrosoft,
   registerUser,
+  verifyRegistration as verifyRegistrationAction,
   requestOtp,
   verifyOtpLogin,
   requestPasswordReset,
@@ -153,6 +154,14 @@ export const useAuth = () => {
     return dispatch(registerUser(userData))
   }
 
+  const verifyRegistration = async (email, code) => {
+    const resultAction = await dispatch(verifyRegistrationAction({ email, code }))
+    if (verifyRegistrationAction.fulfilled.match(resultAction)) {
+      return { success: true, payload: resultAction.payload }
+    }
+    return { success: false, error: resultAction.payload }
+  }
+
   const checkPermission = (permissionName) => {
     if (!currentUser) return false
 
@@ -217,6 +226,7 @@ export const useAuth = () => {
     loginGoogle,
     loginMicrosoft,
     register,
+    verifyRegistration,
     checkPermission,
     otpSent,
     sendOtp,

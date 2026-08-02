@@ -16,12 +16,21 @@ import logger from './src/utils/logger.utils.js';
 import { syncPermissions } from './src/utils/permissionSync.util.js';
 import complaintCron from './src/features/complaint/complaint.cron.js';
 import assessmentCron from './src/features/assessment/utils/assessmentCron.js';
+import userCron from './src/features/user/user.cron.js';
 import outboxWorker from './src/workers/outbox.worker.js';
+
+const initCronJobs = () => {
+  if (config.nodeEnv !== 'test') {
+    complaintCron.init();
+    assessmentCron.init();
+    userCron.init();
+    logger.info('Background Cron Jobs Initialized');
+  }
+};
 
 const startServer = async () => {
   try {
-    complaintCron.init();
-    assessmentCron.init();
+    initCronJobs();
     outboxWorker.init();
     // 1. Connect the database FIRST
     await connectToDb();

@@ -50,9 +50,21 @@ export class AuthService {
     try {
       const { email, password, phone } = registerData;
 
-      // Deep Email Verification before registration
-      if (email) {
-        await this.verifyEmailDeep(email);
+      // If user already exists and is pending, just resend OTP instead of throwing an error
+      const existingUser = await userService.getUserByEmail(email, session);
+      if (existingUser) {
+        if (existingUser.status === 'Pending Verification') {
+          const plainCode = await otpService.createOTP(email, 'REGISTER', 15, session);
+          await session.commitTransaction();
+          authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
+          return {
+            message: 'Registration successful. OTP sent for verification.',
+            email: existingUser.email,
+            status: 'Pending Verification'
+          };
+        } else {
+          throw new HttpError(400, `User with email '${email}' already exists.`);
+        }
       }
 
       // Extract name from registerData
@@ -91,18 +103,72 @@ export class AuthService {
 
       // Create the User (passing session for transactional execution)
       const newUser = await userService.createUser(
-        { email, username: uniqueUsername, password, phone, name: nameToUse || undefined, status: 'Active' },
+        { email, username: uniqueUsername, password, phone, name: nameToUse || undefined, status: 'Pending Verification' },
         session
       );
+      
+      // Generate OTP
+      const plainCode = await otpService.createOTP(email, 'REGISTER', 15, session);
 
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
 
-      // Return standard user/token payload with null/empty tenant context
-      const tokenPayload = {
-        id: newUser._id,
+      // Emit internal event to trigger email sending
+      authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
+      authEvents.emit('USER_CREATED', { userId: newUser._id, provider: 'local' });
+
+      return {
+        message: 'Registration successful. OTP sent for verification.',
         email: newUser.email,
-        username: newUser.username,
+        status: 'Pending Verification'
+      };
+    } catch (error) {
+      if (session) {
+        try { await session.abortTransaction(); } catch (e) {}
+      }
+      throw error;
+    } finally {
+      if (session) {
+        await session.endSession();
+      }
+    }
+  }
+
+  /**
+   * Verifies the registration OTP and activates the user.
+   * @param {string} email - User email address
+   * @param {string} code - OTP verification code
+   * @param {object} deviceInfo - Client device meta
+   */
+  async verifyRegistrationOtp(email, code, deviceInfo) {
+    const mongoose = (await import('mongoose')).default;
+    const session = await mongoose.startSession();
+    
+    session.startTransaction();
+
+    try {
+      await otpService.verifyOTP(email, code, 'REGISTER', session);
+
+      const user = await userService.getUserByEmail(email, session);
+      if (!user) {
+        throw new HttpError(404, 'User not found.');
+      }
+
+      if (user.status !== 'Pending Verification') {
+        throw new HttpError(400, `Account is already ${user.status}`);
+      }
+
+      // Activate user
+      await userService.updateUser(user._id, { status: 'Active', emailVerified: true }, session);
+
+      const refreshToken = await sessionService.createSession(user._id, deviceInfo, session);
+
+      await session.commitTransaction();
+
+      const tokenPayload = {
+        id: user._id,
+        email: user.email,
+        username: user.username,
         role: null,
         permissions: [],
         orgId: null,
@@ -111,16 +177,15 @@ export class AuthService {
 
       const token = signToken(tokenPayload);
 
-      // Emit internal event on successful user registration/auth write
-      authEvents.emit('USER_CREATED', { userId: newUser._id, provider: 'local' });
-      authEvents.emit('LOGIN_SUCCESS', { userId: newUser._id, method: 'local_register' });
+      authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'register_otp' });
 
       return {
         token,
+        refreshToken,
         user: {
-          id: newUser._id,
-          email: newUser.email,
-          username: newUser.username,
+          id: user._id,
+          email: user.email,
+          username: user.username,
           role: null,
           permissions: [],
           orgId: null,
