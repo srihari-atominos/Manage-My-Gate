@@ -24,14 +24,14 @@ export class AuthService {
     const res = await emailValidator({
       email: email,
       validateRegex: true,
-      validateMx: false, // Disabled: Live servers may block external DNS MX queries
+      validateMx: true, // Re-enabled at user request
       validateTypo: false,
-      validateDisposable: false, // Disabled: Prevent blocking valid testing
-      validateSMTP: false, // Disabled: Cloud providers block outbound port 25
+      validateDisposable: true, // Re-enabled at user request
+      validateSMTP: false, // Disabled: Cloud providers strictly block outbound port 25
     });
     
     if (!res.valid) {
-      throw new HttpError(400, 'This email address format is invalid.');
+      throw new HttpError(400, 'This email address does not appear to exist or cannot receive mail.');
     }
   }
   /**
