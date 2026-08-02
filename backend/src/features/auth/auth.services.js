@@ -27,7 +27,7 @@ export class AuthService {
       validateMx: true,
       validateTypo: false,
       validateDisposable: true,
-      validateSMTP: true,
+      validateSMTP: false, // Disabled for live servers because cloud providers block outbound port 25
     });
     
     if (!res.valid) {
