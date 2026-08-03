@@ -12,6 +12,8 @@ import { store } from '../src/store/store';
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '../src/features/auth/hooks/useAuth';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -58,14 +60,18 @@ export default function RootLayout() {
   const { colorScheme } = useColorScheme();
 
   return (
-    <Provider store={store}>
-      <AppInitializer>
-        <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
-          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          <Stack screenOptions={{ headerShown: false }} />
-          <PortalHost />
-        </ThemeProvider>
-      </AppInitializer>
-    </Provider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Provider store={store}>
+        <BottomSheetModalProvider>
+          <AppInitializer>
+            <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
+              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+              <Stack screenOptions={{ headerShown: false }} />
+              <PortalHost />
+            </ThemeProvider>
+          </AppInitializer>
+        </BottomSheetModalProvider>
+      </Provider>
+    </GestureHandlerRootView>
   );
 }

@@ -3,7 +3,7 @@ const { hairlineWidth } = require('nativewind/theme');
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: 'class',
-  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
@@ -40,6 +40,14 @@ module.exports = {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
+        },
+        status: {
+          success: { DEFAULT: '#16a34a', light: '#dcfce7', foreground: '#15803d' },
+          warning: { DEFAULT: '#ea580c', light: '#ffedd5', foreground: '#c2410c' },
+          danger:  { DEFAULT: '#dc2626', light: '#fee2e2', foreground: '#b91c1c' },
+          info:    { DEFAULT: '#2563eb', light: '#dbeafe', foreground: '#1d4ed8' },
+          neutral: { DEFAULT: '#737373', light: '#f5f5f5', foreground: '#525252' },
+          critical:{ DEFAULT: '#9333ea', light: '#f3e8ff', foreground: '#7e22ce' },
         },
       },
       borderRadius: {
