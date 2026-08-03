@@ -16,23 +16,13 @@ import emailValidator from 'deep-email-validator';
 
 export class AuthService {
   /**
-   * Deep Email Verification using MX and SMTP checks
-   * Blocks disposable emails and verifies mailbox existence.
+   * Deep Email Verification mechanism (ON HOLD)
+   * Simple format validation is handled at the router level via express-validator.
    * @param {string} email - The email address to verify
    */
   async verifyEmailDeep(email) {
-    const res = await emailValidator({
-      email: email,
-      validateRegex: true,
-      validateMx: true,
-      validateTypo: false,
-      validateDisposable: true,
-      validateSMTP: true,
-    });
-    
-    if (!res.valid) {
-      throw new HttpError(400, 'This email address does not appear to exist or cannot receive mail.');
-    }
+    // Mechanism placed on hold.
+    return true;
   }
   /**
    * Registers a new user with standard credentials.
@@ -49,11 +39,6 @@ export class AuthService {
 
     try {
       const { email, password, phone } = registerData;
-
-      // Deep Email Verification before registration
-      if (email) {
-        await this.verifyEmailDeep(email);
-      }
 
       // Extract name from registerData
       let nameToUse = registerData.name || (registerData.firstName || registerData.lastName ? `${registerData.firstName || ''} ${registerData.lastName || ''}`.trim() : '');
@@ -328,11 +313,6 @@ export class AuthService {
    */
   async login(loginData) {
     const { login, password, inviteToken } = loginData;
-
-    // Deep Email Verification before login (if identifier is formatted as an email)
-    if (login && login.includes('@')) {
-      await this.verifyEmailDeep(login);
-    }
 
     // 1. Fetch user by email or username
     const user = await userService.getUserByEmailOrUsername(login);
