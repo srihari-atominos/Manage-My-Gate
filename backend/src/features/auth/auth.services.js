@@ -12,27 +12,15 @@ import integrationHubService from '../integrationHub/integrationHub.service.js';
 import config from '../../config/config.js';
 import authEvents from './auth.events.js';
 import userEvents from '../user/user.events.js';
-import emailValidator from 'deep-email-validator';
 
 export class AuthService {
   /**
-   * Deep Email Verification using MX and SMTP checks
-   * Blocks disposable emails and verifies mailbox existence.
+   * Deep Email Verification (Disabled per configuration requirement)
    * @param {string} email - The email address to verify
    */
   async verifyEmailDeep(email) {
-    const res = await emailValidator({
-      email: email,
-      validateRegex: true,
-      validateMx: true, // Re-enabled at user request
-      validateTypo: false,
-      validateDisposable: true, // Re-enabled at user request
-      validateSMTP: false, // Disabled: Cloud providers strictly block outbound port 25
-    });
-    
-    if (!res.valid) {
-      throw new HttpError(400, 'This email address does not appear to exist or cannot receive mail.');
-    }
+    // Deep email verification disabled
+    return true;
   }
   /**
    * Registers a new user with standard credentials.
@@ -393,11 +381,6 @@ export class AuthService {
    */
   async login(loginData) {
     const { login, password, inviteToken } = loginData;
-
-    // Deep Email Verification before login (if identifier is formatted as an email)
-    if (login && login.includes('@')) {
-      await this.verifyEmailDeep(login);
-    }
 
     // 1. Fetch user by email or username
     const user = await userService.getUserByEmailOrUsername(login);

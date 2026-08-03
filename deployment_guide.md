@@ -256,9 +256,9 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # 5. Frontend React Client Routing & WebSockets (React running on port 3004)
-    location / {
-        proxy_pass http://127.0.0.1:3004;
+    # 5. Socket.IO Real-Time WebSockets (Node.js Backend running on port 5006)
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:5006;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -268,6 +268,17 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+
+    # 6. Frontend React Client Routing (React running on port 3004)
+    location / {
+        proxy_pass http://127.0.0.1:3004;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
