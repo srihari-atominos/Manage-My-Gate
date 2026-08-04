@@ -29,7 +29,7 @@ const prepareInvoicePayload = async (payload) => {
  * Listen to native invoice EventEmitter events and dispatch them via Socket.io.
  */
 export const setupInvoiceSocketListeners = async () => {
-  const { invoiceEventEmitter, INVOICE_GENERATED, INVOICE_STATUS_UPDATED } = await import('./invoice.events.js');
+  const { invoiceEventEmitter, INVOICE_GENERATED, INVOICE_STATUS_UPDATED, OFFLINE_PAYMENT_SUBMITTED } = await import('./invoice.events.js');
 
   logger.info('Registering real-time Socket.io listeners for Invoice events.');
 
@@ -92,8 +92,73 @@ export const setupInvoiceSocketListeners = async () => {
         logger.info(`Broadcasting invoice_status_updated to room: ${orgRoom}`);
         getIO().to(orgRoom).emit('invoice_status_updated', populatedPayload);
       }
+
+      if (populatedPayload.status === 'PAID') {
+        try {
+          const notificationService = (await import('../notification/notification.service.js')).default;
+          await notificationService.createNotification({
+            recipientId: targetUserId,
+            senderId: null,
+            title: 'Payment Verified',
+            body: `Your offline payment has been successfully verified and settled.`,
+            actionUrl: '/billing',
+            type: 'SUCCESS',
+          });
+        } catch (err) {
+          logger.error('Failed to create user notification for paid invoice:', err);
+        }
+      }
     } catch (error) {
       logger.error('Failed to emit invoice_status_updated socket event:', error);
+    }
+  });
+
+  invoiceEventEmitter.on(OFFLINE_PAYMENT_SUBMITTED, async (payload) => {
+    try {
+      if (!payload || !payload.communityId) {
+        logger.warn('Socket dispatch ignored: payload or communityId missing for OFFLINE_PAYMENT_SUBMITTED');
+        return;
+      }
+
+      const orgRoom = `org:${payload.communityId}`;
+      logger.info(`Broadcasting offline_payment_submitted to room: ${orgRoom}`);
+      getIO().to(orgRoom).emit('offline_payment_submitted', payload);
+
+      try {
+        const notificationService = (await import('../notification/notification.service.js')).default;
+        const Role = (await import('../role/role.model.js')).default;
+        const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+        
+        // Check for common admin role names
+        const adminRoles = await Role.find({ 
+          name: { $in: ['Admin', 'Community Admin', 'Super Admin'] }, 
+          $or: [{ orgId: payload.communityId }, { orgId: null }] 
+        });
+        const adminRoleIds = adminRoles.map(r => r._id);
+        
+        if (adminRoleIds.length > 0) {
+          const memberships = await OrgMembership.find({ 
+            orgId: payload.communityId, 
+            $or: [{ roleIds: { $in: adminRoleIds } }, { roleId: { $in: adminRoleIds } }] 
+          });
+
+          for (const member of memberships) {
+              const amtStr = (payload.invoice?.offlineAmount || payload.invoice?.amount || payload.invoice?.totalAmount || 0).toLocaleString('en-IN');
+              await notificationService.createNotification({
+                recipientId: member.userId,
+                senderId: null,
+                title: 'Offline Payment Submitted',
+                body: `Resident ${payload.residentName} submitted offline payment ${payload.reference} (₹${amtStr}) for verification.`,
+                actionUrl: '/billing?tab=action-center',
+              type: 'INFO',
+            });
+          }
+        }
+      } catch (err) {
+        logger.error('Failed to create notification for offline payment:', err);
+      }
+    } catch (error) {
+      logger.error('Failed to emit offline_payment_submitted socket event:', error);
     }
   });
 };

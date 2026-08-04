@@ -238,6 +238,10 @@ const invoiceSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    offlineAmount: {
+      type: Number,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -297,8 +301,8 @@ invoiceSchema.pre('save', function () {
   }
 
   // Automatic Status Calculation based on payments and due date
-  // Do not alter CANCELLED invoices
-  if (this.status !== 'CANCELLED') {
+  // Do not alter CANCELLED or VERIFICATION_PENDING invoices
+  if (this.status !== 'CANCELLED' && this.status !== 'VERIFICATION_PENDING') {
     const now = new Date();
     
     if (this.paidAmount === 0) {

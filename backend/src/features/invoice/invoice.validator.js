@@ -34,6 +34,11 @@ export const offlineSettleSchema = [
     .withMessage('Payment method is required')
     .isIn(['CHEQUE', 'NEFT', 'CASH'])
     .withMessage('Payment method must be one of CHEQUE, NEFT, or CASH'),
+
+  body('amount')
+    .optional()
+    .isFloat({ gt: 0 })
+    .withMessage('Amount must be a number strictly greater than 0'),
 ];
 
 export const approveInvoiceSchema = [

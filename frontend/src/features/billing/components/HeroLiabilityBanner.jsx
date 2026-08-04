@@ -37,12 +37,13 @@ const HeroLiabilityBanner = memo(
     // Determine if there is any cheque/offline payment currently clearing (VERIFICATION_PENDING)
     const clearingInvoice = unitBreakdown.find((inv) => inv.status === 'VERIFICATION_PENDING')
     const isClearing = !!clearingInvoice
-    const clearingAmount = clearingInvoice?.totalDue || 0
+    const clearingAmount = clearingInvoice?.offlineAmount || clearingInvoice?.outstandingAmount || clearingInvoice?.totalDue || 0
     const clearingRef = clearingInvoice?.offlineReference || 'Cheque'
 
     const [checkoutInvoice, setCheckoutInvoice] = useState(null)
     const [payOfflineInvoice, setPayOfflineInvoice] = useState(null)
     const [offlineRef, setOfflineRef] = useState('')
+    const [offlineAmount, setOfflineAmount] = useState('')
     const [paymentMethod, setPaymentMethod] = useState('CHEQUE')
     const [submitting, setSubmitting] = useState(false)
 
@@ -68,6 +69,7 @@ const HeroLiabilityBanner = memo(
       setPayOfflineInvoice(firstUnpaid)
       setOfflineRef('')
       setPaymentMethod('CHEQUE')
+      setOfflineAmount(firstUnpaid.outstandingAmount ?? firstUnpaid.totalDue ?? 0)
     }
 
     const handleConfirmOfflinePay = async () => {
@@ -77,6 +79,7 @@ const HeroLiabilityBanner = memo(
         if (settleOffline) {
           await settleOffline(payOfflineInvoice.invoiceId || payOfflineInvoice._id, {
             offlineReference: offlineRef,
+            offlineAmount: Number(offlineAmount),
             paymentMethod: paymentMethod,
           })
         }
@@ -126,9 +129,16 @@ const HeroLiabilityBanner = memo(
                   <i className="fa-solid fa-circle-dot me-2 opacity-50" />
                   {item.unitNumber || 'Unit'} — {item.assessmentName || 'Maintenance'} ({item.billingPeriodString})
                 </span>
-                <span className="hero-liability-card__breakdown-value">
-                  ₹{(item.outstandingAmount ?? item.totalDue ?? 0).toLocaleString('en-IN')}
-                </span>
+                <div className="text-end">
+                  <span className="hero-liability-card__breakdown-value d-block">
+                    ₹{(item.outstandingAmount ?? item.totalDue ?? 0).toLocaleString('en-IN')}
+                  </span>
+                  {item.paidAmount > 0 && (
+                     <span className="small text-white-50" style={{ fontSize: '0.75rem' }}>
+                       Paid: ₹{(item.paidAmount || 0).toLocaleString('en-IN')} / Total: ₹{(item.totalDue || 0).toLocaleString('en-IN')}
+                     </span>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -252,6 +262,33 @@ const HeroLiabilityBanner = memo(
                   <option value="CHEQUE">Cheque</option>
                   <option value="NEFT">Bank Transfer (NEFT/IMPS/UPI)</option>
                 </CFormSelect>
+              </div>
+
+              <div className="mb-3">
+                <CFormLabel htmlFor="pay-amount" className="small fw-semibold">
+                  Payment Amount (₹) *
+                </CFormLabel>
+                <CFormInput
+                  id="pay-amount"
+                  type="number"
+                  value={offlineAmount}
+                  onChange={(e) => {
+                    const rawVal = e.target.value
+                    if (rawVal === '') {
+                      setOfflineAmount('')
+                      return
+                    }
+                    let val = Number(rawVal)
+                    const max = payOfflineInvoice?.outstandingAmount ?? payOfflineInvoice?.totalDue ?? 0
+                    if (val > max) val = max
+                    if (val < 0) val = 0
+                    setOfflineAmount(val.toString())
+                  }}
+                  required
+                  min="1"
+                  max={payOfflineInvoice?.outstandingAmount ?? payOfflineInvoice?.totalDue ?? 0}
+                  size="sm"
+                />
               </div>
 
               <div className="mb-3">

@@ -15,14 +15,6 @@ import userEvents from '../user/user.events.js';
 
 export class AuthService {
   /**
-   * Deep Email Verification (Disabled per configuration requirement)
-   * @param {string} email - The email address to verify
-   */
-  async verifyEmailDeep(email) {
-    // Deep email verification disabled
-    return true;
-  }
-  /**
    * Registers a new user with standard credentials.
    * Decoupled from organization setup.
    * @param {object} registerData - Payload containing email, username, and password

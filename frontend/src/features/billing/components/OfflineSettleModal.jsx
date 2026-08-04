@@ -13,7 +13,7 @@ import {
 } from '@coreui/react'
 
 export const OfflineSettleModal = memo(
-  ({ visible, onClose, settleRef, setSettleRef, onSubmit }) => {
+  ({ visible, onClose, settleRef, setSettleRef, settleAmount, setSettleAmount, maxAmount, onSubmit }) => {
     if (!visible) return null
 
     return (
@@ -43,12 +43,44 @@ export const OfflineSettleModal = memo(
                 size="sm"
               />
             </div>
+            <div className="mb-3">
+              <CFormLabel htmlFor="offline-amount" className="small fw-semibold">
+                Payment Amount (₹) *
+              </CFormLabel>
+              <CFormInput
+                id="offline-amount"
+                type="number"
+                placeholder="0.00"
+                value={settleAmount}
+                onChange={(e) => {
+                  const rawVal = e.target.value;
+                  if (rawVal === '') {
+                    setSettleAmount('');
+                    return;
+                  }
+                  let val = Number(rawVal);
+                  if (maxAmount && val > maxAmount) val = maxAmount;
+                  if (val < 0) val = 0;
+                  setSettleAmount(val.toString());
+                }}
+                required
+                min="1"
+                max={maxAmount}
+                step="0.01"
+                size="sm"
+              />
+              {maxAmount && (
+                <div className="small text-muted mt-1">
+                  Maximum allowed: ₹{maxAmount.toLocaleString('en-IN')}
+                </div>
+              )}
+            </div>
           </CModalBody>
           <CModalFooter>
             <CButton type="button" color="secondary" size="sm" onClick={onClose}>
               Cancel
             </CButton>
-            <CButton type="submit" color="primary" size="sm" disabled={!settleRef.trim()}>
+            <CButton type="submit" color="primary" size="sm" disabled={!settleRef.trim() || !settleAmount || settleAmount <= 0}>
               Record Settlement
             </CButton>
           </CModalFooter>
@@ -65,6 +97,9 @@ OfflineSettleModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   settleRef: PropTypes.string.isRequired,
   setSettleRef: PropTypes.func.isRequired,
+  settleAmount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  setSettleAmount: PropTypes.func.isRequired,
+  maxAmount: PropTypes.number,
   onSubmit: PropTypes.func.isRequired,
 }
 
