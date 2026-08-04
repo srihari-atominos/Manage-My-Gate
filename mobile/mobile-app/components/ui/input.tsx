@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { TextInput, View, Text, TouchableOpacity, TextInputProps } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 
 export interface InputProps extends TextInputProps {
   label?: string;
@@ -12,6 +13,9 @@ export interface InputProps extends TextInputProps {
 export const Input = React.forwardRef<TextInput, InputProps>(
   ({ label, error, isPassword = false, leftIcon, className = '', ...props }, ref) => {
     const [secureTextEntry, setSecureTextEntry] = React.useState(isPassword);
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === 'dark';
+    const iconColor = isDark ? '#9ca3af' : '#6b7280';
 
     return (
       <View className="w-full gap-1.5">
@@ -27,7 +31,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
           <TextInput
             ref={ref}
             secureTextEntry={isPassword ? secureTextEntry : props.secureTextEntry}
-            placeholderTextColor="#888888"
+            placeholderTextColor={props.placeholderTextColor || iconColor}
             className={`flex-1 text-foreground py-3.5 text-sm ${className}`}
             {...props}
           />
@@ -39,9 +43,9 @@ export const Input = React.forwardRef<TextInput, InputProps>(
               className="p-1 ml-2"
             >
               {secureTextEntry ? (
-                <EyeOff size={18} color="#888888" />
+                <EyeOff size={18} color={iconColor} />
               ) : (
-                <Eye size={18} color="#888888" />
+                <Eye size={18} color={iconColor} />
               )}
             </TouchableOpacity>
           )}
@@ -59,3 +63,4 @@ export const Input = React.forwardRef<TextInput, InputProps>(
 
 Input.displayName = 'Input';
 export default Input;
+

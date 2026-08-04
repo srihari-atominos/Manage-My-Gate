@@ -10,6 +10,7 @@ export default function GateConsoleScreen() {
       permission="visitor:guard"
       iconName="ScanLine"
       iconColor="#10b981"
+      noticeBadge="Guard Domain"
       description="Security Guard check-in console for QR code scanning, manual visitor verification, and walk-in logs."
     />
   );

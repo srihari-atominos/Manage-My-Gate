@@ -2,8 +2,9 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import authService from '../services/authService';
 import storage from '../../../utils/storage';
 
-interface User {
+export interface User {
   id: string;
+  _id?: string;
   email: string;
   name?: string;
   role?: string;
@@ -11,6 +12,28 @@ interface User {
   permissions?: string[];
   isPlatform?: boolean;
 }
+
+export const normalizeUser = (user: any): User | null => {
+  if (!user) return null;
+  const canonicalId = user.id || user._id || '';
+  const canonicalOrgId =
+    user.orgId ||
+    user.organizationId ||
+    user.org?._id ||
+    user.organization?._id ||
+    user.activeOrgId ||
+    user.activeOrganizationId ||
+    (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces[0]?.orgId) ||
+    (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces[0]?._id) ||
+    '';
+
+  return {
+    ...user,
+    id: canonicalId,
+    _id: canonicalId || user._id,
+    orgId: user.orgId || canonicalOrgId,
+  };
+};
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -168,8 +191,11 @@ const authSlice = createSlice({
         storage.setItem('token', token);
       }
       if (user) {
-        state.user = user;
-        storage.setItem('user', JSON.stringify(user));
+        const normalized = normalizeUser(user);
+        state.user = normalized;
+        if (normalized) {
+          storage.setItem('user', JSON.stringify(normalized));
+        }
       }
     },
   },
@@ -178,8 +204,8 @@ const authSlice = createSlice({
       // Bootstrap
       .addCase(bootstrapAuth.fulfilled, (state, action) => {
         state.token = action.payload.token;
-        state.user = action.payload.user;
-        state.isAuthenticated = !!(action.payload.token && action.payload.user);
+        state.user = normalizeUser(action.payload.user);
+        state.isAuthenticated = !!(action.payload.token && state.user?.id);
         state.isInitialized = true;
       })
       // Login User
@@ -190,9 +216,10 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = true;
         state.token = action.payload?.token || action.payload?.data?.token || null;
-        state.user = action.payload?.user || action.payload?.data?.user || null;
+        const rawUser = action.payload?.user || action.payload?.data?.user || null;
+        state.user = normalizeUser(rawUser);
+        state.isAuthenticated = !!(state.token && state.user?.id);
         state.successMsg = action.payload?.message || 'Login successful!';
       })
       .addCase(loginUser.rejected, (state, action) => {
@@ -222,10 +249,11 @@ const authSlice = createSlice({
       })
       .addCase(verifyOtpLogin.fulfilled, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = true;
         state.otpSent = false;
         state.token = action.payload?.token || action.payload?.data?.token || null;
-        state.user = action.payload?.user || action.payload?.data?.user || null;
+        const rawUser = action.payload?.user || action.payload?.data?.user || null;
+        state.user = normalizeUser(rawUser);
+        state.isAuthenticated = !!(state.token && state.user?.id);
         state.successMsg = action.payload?.message || 'Login successful!';
       })
       .addCase(verifyOtpLogin.rejected, (state, action) => {
@@ -243,7 +271,7 @@ const authSlice = createSlice({
           state.token = action.payload.token;
         }
         if (action.payload?.user) {
-          state.user = action.payload.user;
+          state.user = normalizeUser(action.payload.user);
         }
         state.successMsg = 'Workspace context updated';
       })

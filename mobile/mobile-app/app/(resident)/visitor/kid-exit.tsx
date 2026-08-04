@@ -10,6 +10,7 @@ export default function KidExitScreen() {
       permission="visitor:resident"
       iconName="Baby"
       iconColor="#f43f5e"
+      noticeBadge="Parental Control Module"
       description="Grant parental gate exit permission and receive instant alerts when children exit the community gate."
     />
   );

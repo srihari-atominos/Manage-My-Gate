@@ -13,6 +13,7 @@ export interface AppFeatureItem {
   iconName: string;
   colorBg: string;
   colorIcon: string;
+  route?: string;
   categoryKey?: string;
   categoryName?: string;
   badge?: string;
@@ -22,9 +23,9 @@ export interface AppFeatureItem {
 
 export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   // Visitor & Gate Security (Web App Aligned)
-  { id: 'visitor_resident_passes', name: 'Resident Passes', subtitle: 'QR Visitor Pass', iconName: 'QrCode', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-  { id: 'visitor_admin_logs', name: 'Admin Gate Logs', subtitle: 'Live Gate Audit', iconName: 'ShieldAlert', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-  { id: 'visitor_gate_console', name: 'Gate Console', subtitle: 'Guard Check-in', iconName: 'ScanLine', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', permission: 'visitor:guard', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
+  { id: 'visitor_resident_passes', name: 'Resident Passes', subtitle: 'QR Visitor Pass', iconName: 'QrCode', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/visitor', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
+  { id: 'visitor_admin_logs', name: 'Admin Gate Logs', subtitle: 'Live Gate Audit', iconName: 'ShieldAlert', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/visitor/admin-logs', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
+  { id: 'visitor_gate_console', name: 'Gate Console', subtitle: 'Guard Check-in', iconName: 'ScanLine', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/visitor/gate-console', permission: 'visitor:guard', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
 
   // Amenities & Facilities (Web App Aligned)
   { id: 'amenities_discover', name: 'Discover Amenities', subtitle: 'Browse Facilities', iconName: 'Search', colorBg: 'bg-blue-500/10', colorIcon: '#3b82f6', permission: 'amenities:discover', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Facilities' },

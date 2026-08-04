@@ -85,7 +85,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
         onLongPress={onLongPress}
         className={cn(listCardVariants(), className)}
         style={style}
-        accessibilityRole="button"
+        accessibilityRole={rightContent !== undefined ? undefined : 'button'}
         {...props}
       >
         {/* Left Icon Container */}

@@ -35,6 +35,27 @@ export const createPassRules = [
     .optional()
     .isBoolean()
     .withMessage('isIdProofPass must be a boolean'),
+  body('isGroupPass')
+    .optional()
+    .isBoolean()
+    .withMessage('isGroupPass must be a boolean'),
+
+  body('groupGuests')
+    .optional()
+    .isArray()
+    .withMessage('groupGuests must be an array'),
+
+  body('groupGuests.*.name')
+    .optional()
+    .isString()
+    .withMessage('Guest name must be a string')
+    .trim(),
+
+  body('groupGuests.*.phone')
+    .optional()
+    .isString()
+    .withMessage('Guest phone must be a string')
+    .trim(),
 
   body('visitorDetails.name')
     .optional()
@@ -72,6 +93,54 @@ export const createPassRules = [
     .withMessage('Vehicle number must be a string')
     .trim()
     .toUpperCase(),
+
+  body('vehicleDetails.vehicleType')
+    .optional()
+    .isString()
+    .withMessage('Vehicle type must be a string')
+    .trim()
+    .toUpperCase(),
+
+  body('deliveryDetails.partner')
+    .optional()
+    .isString()
+    .withMessage('Delivery partner must be a string')
+    .trim(),
+
+  body('deliveryDetails.orderId')
+    .optional()
+    .isString()
+    .withMessage('Order ID must be a string')
+    .trim(),
+
+  body('deliveryDetails.packageCount')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Package count must be an integer of at least 1'),
+
+  body('deliveryDetails.deliveryAction')
+    .optional()
+    .isString()
+    .withMessage('Delivery action must be a string')
+    .trim(),
+
+  body('deliveryDetails.instructions')
+    .optional()
+    .isString()
+    .withMessage('Delivery instructions must be a string')
+    .trim(),
+
+  body('serviceDetails.category')
+    .optional()
+    .isString()
+    .withMessage('Service category must be a string')
+    .trim(),
+
+  body('serviceDetails.notes')
+    .optional()
+    .isString()
+    .withMessage('Service notes must be a string')
+    .trim(),
 
   body('validity.startDate')
     .notEmpty()

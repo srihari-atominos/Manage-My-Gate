@@ -10,6 +10,7 @@ export default function AdminGateLogsScreen() {
       permission="visitor:admin"
       iconName="ShieldAlert"
       iconColor="#6366f1"
+      noticeBadge="Admin Domain"
       description="View live gate entries, check-in timestamps, exit logs, and community entry security audits."
     />
   );

@@ -6,7 +6,7 @@ export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string): st
     // Fallback routes based on type
     switch (type) {
       case 'VISITOR':
-        return '/(resident)/visitor/resident-passes';
+        return '/(resident)/visitor';
       case 'BILLING':
         return '/(resident)/billing/dashboard';
       case 'COMPLAINT':
@@ -27,7 +27,7 @@ export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string): st
 
   // Exact Web Action URL to Mobile Expo Router Route Mappings
   if (cleanUrl.includes('visitor-management-resident') || cleanUrl === '/visitor/resident') {
-    return '/(resident)/visitor/resident-passes';
+    return '/(resident)/visitor';
   }
   if (cleanUrl.includes('visitor-management-admin') || cleanUrl === '/visitor/admin') {
     return '/(resident)/visitor/admin-logs';

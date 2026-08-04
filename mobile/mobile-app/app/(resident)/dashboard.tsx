@@ -26,9 +26,14 @@ export default function DashboardScreen() {
   };
 
   const handleTilePress = (tileId: string) => {
+    if (tileId === 'visitor_resident_passes') {
+      router.push('/(resident)/visitor' as any);
+      return;
+    }
     const feature = allFeaturesList.find((item) => item.id === tileId);
     if (feature && feature.route) {
-      router.push(feature.route as any);
+      const targetRoute = feature.route.endsWith('/resident-passes') ? '/(resident)/visitor' : feature.route;
+      router.push(targetRoute as any);
     }
   };
 

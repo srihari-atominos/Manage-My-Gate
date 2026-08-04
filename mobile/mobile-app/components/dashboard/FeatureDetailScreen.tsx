@@ -13,6 +13,11 @@ interface FeatureDetailScreenProps {
   iconName: string;
   iconColor?: string;
   description: string;
+  actionButton?: {
+    label: string;
+    onPress: () => void;
+  };
+  noticeBadge?: string;
 }
 
 export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
@@ -21,8 +26,10 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
   sharedSlice,
   permission,
   iconName,
-  iconColor = '#03A9F4',
+  iconColor = 'hsl(var(--primary))',
   description,
+  actionButton,
+  noticeBadge = 'Active Sub-Feature',
 }) => {
   const router = useRouter();
 
@@ -35,7 +42,7 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
           activeOpacity={0.7}
           className="flex-row items-center gap-1.5 p-1 bg-muted/50 rounded-full px-2.5 py-1 border border-border"
         >
-          <ArrowLeft size={16} color="#555" />
+          <ArrowLeft size={16} className="text-muted-foreground" />
           <Text className="text-xs font-bold text-foreground">Back</Text>
         </TouchableOpacity>
 
@@ -60,7 +67,7 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
                 <View className="flex-row items-center gap-2 flex-wrap">
                   <Text className="text-base font-extrabold text-foreground">{title}</Text>
                   <View className="bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                    <Text className="text-[10px] font-bold text-emerald-600">Active Sub-Feature</Text>
+                    <Text className="text-[10px] font-bold text-emerald-600">{noticeBadge}</Text>
                   </View>
                 </View>
                 <Text className="text-xs text-muted-foreground mt-1 line-clamp-2">
@@ -72,7 +79,7 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
             {/* Shared Redux Slice & Domain Info Pill */}
             <View className="mt-4 pt-3 border-t border-border flex-row items-center justify-between flex-wrap gap-2">
               <View className="flex-row items-center gap-1.5">
-                <Zap size={13} color="#03A9F4" />
+                <Zap size={13} className="text-primary" />
                 <Text className="text-[11px] font-semibold text-foreground">
                   Domain: <Text className="font-extrabold text-primary">{categoryName}</Text>
                 </Text>
@@ -121,13 +128,13 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
             </View>
           </View>
 
-          {/* Action Console Placeholder Panel */}
+          {/* Action Console Panel */}
           <View className="bg-card border border-border rounded-2xl p-4 gap-3 shadow-xs">
             <Text className="text-xs font-extrabold text-foreground uppercase tracking-wider">
               Sub-Feature Console
             </Text>
             
-            <View className="bg-muted/40 border border-dashed border-border rounded-xl p-6 items-center justify-center gap-2">
+            <View className="bg-muted/40 border border-dashed border-border rounded-xl p-6 items-center justify-center gap-3">
               <View className="size-10 rounded-full bg-primary/10 items-center justify-center">
                 <FeatureIcon iconName={iconName} color={iconColor} size={20} />
               </View>
@@ -137,6 +144,18 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
               <Text className="text-xs text-muted-foreground text-center max-w-[260px]">
                 This view is connected to <Text className="font-bold">{sharedSlice}</Text> and ready for interactive sub-feature operations.
               </Text>
+
+              {actionButton ? (
+                <TouchableOpacity
+                  onPress={actionButton.onPress}
+                  activeOpacity={0.8}
+                  className="mt-2 bg-primary px-4 py-2.5 rounded-xl items-center justify-center"
+                >
+                  <Text className="text-xs font-bold text-primary-foreground">
+                    {actionButton.label}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           </View>
         </View>

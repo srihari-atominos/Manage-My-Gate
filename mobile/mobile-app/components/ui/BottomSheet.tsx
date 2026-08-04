@@ -1,18 +1,8 @@
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
-import { cva } from 'class-variance-authority';
-import { useColorScheme } from 'nativewind';
-import * as React from 'react';
-import { useCallback, useEffect, useRef } from 'react';
-import { View } from 'react-native';
-
+import React from 'react';
+import { View, Modal, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { THEME } from '@/lib/theme';
-import { cn } from '@/lib/utils';
+import { X } from 'lucide-react-native';
+import { cva } from 'class-variance-authority';
 
 export interface AppBottomSheetProps {
   visible: boolean;
@@ -24,88 +14,60 @@ export interface AppBottomSheetProps {
 }
 
 const bottomSheetHeaderVariants = cva(
-  'w-full pb-2 mb-4 border-b border-border items-center justify-center'
+  'w-full pb-2.5 border-b border-border items-center justify-between flex-row px-5 py-3.5'
 );
 
 const bottomSheetTitleVariants = cva(
-  'text-center font-semibold text-lg text-foreground'
+  'text-base font-extrabold text-foreground'
 );
 
-const bottomSheetContentVariants = cva('px-4 pb-4');
+const bottomSheetContentVariants = cva('px-4 pb-5');
 
 function BottomSheet({
   visible,
   onClose,
   title,
-  snapPoints = ['50%'],
   children,
-  enableDynamicSizing = false,
 }: AppBottomSheetProps) {
-  const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const currentTheme = THEME[isDark ? 'dark' : 'light'];
-
-  useEffect(() => {
-    if (visible) {
-      bottomSheetRef.current?.present();
-    } else {
-      bottomSheetRef.current?.dismiss();
-    }
-  }, [visible]);
-
-  const handleSheetChanges = useCallback(
-    (index: number) => {
-      if (index === -1) {
-        onClose();
-      }
-    },
-    [onClose]
-  );
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        appearsOnIndex={0}
-        disappearsOnIndex={-1}
-        opacity={0.5}
-        pressBehavior="close"
-      />
-    ),
-    []
-  );
+  if (!visible) return null;
 
   return (
-    <BottomSheetModal
-      ref={bottomSheetRef}
-      snapPoints={enableDynamicSizing ? undefined : snapPoints}
-      enableDynamicSizing={enableDynamicSizing}
-      onChange={handleSheetChanges}
-      onDismiss={onClose}
-      enablePanDownToClose
-      backdropComponent={renderBackdrop}
-      backgroundStyle={{
-        backgroundColor: currentTheme.background,
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-      }}
-      handleIndicatorStyle={{
-        backgroundColor: currentTheme.mutedForeground,
-        width: 40,
-        height: 4,
-        borderRadius: 2,
-      }}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
     >
-      <BottomSheetView className={bottomSheetContentVariants()}>
-        {title ? (
-          <View className={bottomSheetHeaderVariants()}>
-            <Text className={bottomSheetTitleVariants()}>{title}</Text>
-          </View>
-        ) : null}
-        {children}
-      </BottomSheetView>
-    </BottomSheetModal>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View className="flex-1 bg-black/60 justify-end">
+          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+            <View className="bg-card border-t border-border rounded-t-3xl max-h-[85%] shadow-2xl overflow-hidden">
+              {/* Top grab handle */}
+              <View className="items-center pt-2.5 pb-1 bg-card">
+                <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+              </View>
+
+              {/* Title Header with Close X */}
+              {title ? (
+                <View className={bottomSheetHeaderVariants()}>
+                  <Text className={bottomSheetTitleVariants()}>{title}</Text>
+                  <TouchableOpacity
+                    onPress={onClose}
+                    activeOpacity={0.7}
+                    className="p-1.5 rounded-full bg-muted/60 border border-border"
+                  >
+                    <X size={16} className="text-foreground" />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {/* Body Content */}
+              <View className={bottomSheetContentVariants()}>{children}</View>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
   );
 }
 

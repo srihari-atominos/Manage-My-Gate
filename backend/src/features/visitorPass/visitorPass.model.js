@@ -50,6 +50,18 @@ const visitorPassSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    groupGuests: [
+      {
+        name: {
+          type: String,
+          trim: true,
+        },
+        phone: {
+          type: String,
+          trim: true,
+        },
+      },
+    ],
     visitorDetails: {
       name: {
         type: String,
@@ -77,6 +89,43 @@ const visitorPassSchema = new mongoose.Schema(
         type: String,
         trim: true,
         uppercase: true,
+      },
+      vehicleType: {
+        type: String,
+        trim: true,
+        uppercase: true,
+      },
+    },
+    deliveryDetails: {
+      partner: {
+        type: String,
+        trim: true,
+      },
+      orderId: {
+        type: String,
+        trim: true,
+      },
+      packageCount: {
+        type: Number,
+        default: 1,
+      },
+      deliveryAction: {
+        type: String,
+        trim: true,
+      },
+      instructions: {
+        type: String,
+        trim: true,
+      },
+    },
+    serviceDetails: {
+      category: {
+        type: String,
+        trim: true,
+      },
+      notes: {
+        type: String,
+        trim: true,
       },
     },
     validity: {

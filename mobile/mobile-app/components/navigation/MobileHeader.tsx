@@ -17,6 +17,8 @@ interface MobileHeaderProps {
   onNotificationPress?: () => void;
 }
 
+const EMPTY_ARRAY: any[] = [];
+
 export const MobileHeader: React.FC<MobileHeaderProps> = ({
   unitName,
   communityName,
@@ -31,7 +33,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     ? unreadNotificationCount 
     : (typeof storeUnreadCount === 'number' ? storeUnreadCount : 0);
 
-  const reduxWorkspaces = useSelector((state: any) => state.auth?.user?.availableWorkspaces || state.workspace?.availableWorkspaces || []);
+  const reduxWorkspaces = useSelector((state: any) => state.auth?.user?.availableWorkspaces || state.workspace?.availableWorkspaces || EMPTY_ARRAY);
 
   // Fully dynamic active villa & community from user session
   const dynamicVilla = React.useMemo(() => {

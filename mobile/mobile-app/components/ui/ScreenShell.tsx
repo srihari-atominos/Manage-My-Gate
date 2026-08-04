@@ -52,12 +52,12 @@ export function ScreenShell({
         style={{ paddingTop: topInsetPadding }}
         className="bg-background border-b border-border px-4 pb-3"
       >
-        <View className="relative flex-row items-center justify-between min-h-[44px]">
-          <View className={cn('flex-row items-center flex-1', headerRight ? 'pr-12' : '')}>
+        <View className="flex-row items-center justify-between gap-2 min-h-[44px]">
+          <View className="flex-row items-center flex-1 mr-2">
             {showBackButton && (
               <Pressable
                 onPress={() => router.back()}
-                className="mr-3 p-1.5 rounded-full active:bg-muted/60 dark:active:bg-muted/40 -ml-1.5"
+                className="mr-2.5 p-1.5 rounded-full active:bg-muted/60 dark:active:bg-muted/40 -ml-1.5 shrink-0"
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel="Go back"
@@ -85,7 +85,7 @@ export function ScreenShell({
           </View>
 
           {headerRight ? (
-            <View className="absolute right-0 top-0 bottom-0 justify-center">
+            <View className="shrink-0 justify-center items-end">
               {headerRight}
             </View>
           ) : null}
