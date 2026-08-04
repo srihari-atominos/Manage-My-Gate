@@ -224,7 +224,11 @@ export const switchWorkspaceContext = createAsyncThunk(
   'auth/switchWorkspaceContext',
   async (arg, { dispatch, rejectWithValue }) => {
     try {
-      const payload = typeof arg === 'string' ? { targetOrgId: arg } : arg
+      const rawPayload = typeof arg === 'string' ? { targetOrgId: arg } : { ...arg }
+      const payload = { targetOrgId: rawPayload.targetOrgId }
+      if (rawPayload.targetVillaId) payload.targetVillaId = rawPayload.targetVillaId
+      if (rawPayload.targetRole) payload.targetRole = rawPayload.targetRole
+
       const response = await authService.switchContext(payload)
 
       const token = response.data?.token
