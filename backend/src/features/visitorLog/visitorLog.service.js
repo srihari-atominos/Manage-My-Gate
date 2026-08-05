@@ -134,22 +134,23 @@ export class VisitorLogService {
 
     const updatedLog = await visitorLogRepository.updateLogForCheckout(logId, new Date(), session);
     
-    // Cleanup expired tokens from mapping if no other visitors remain inside under this pass
+    // Update pass status to EXPIRED upon check-out if usage limit reached and no other visitors remain inside
     if (updatedLog.passId) {
       try {
         const pass = await visitorPassService.getPassById(updatedLog.passId, session);
-        if (pass && pass.status === 'EXPIRED') {
+        if (pass && (pass.status === 'ACTIVE' || pass.status === 'PENDING')) {
           const logsInside = await visitorLogRepository.findActiveLogsInside(log.orgId, session);
           const anyoneLeft = logsInside.some(l => 
             l.passId?.toString() === pass._id?.toString() && 
             l._id?.toString() !== logId.toString()
           );
-          if (!anyoneLeft) {
+          if (!anyoneLeft && (pass.usageLimit?.currentUses >= pass.usageLimit?.maxUses)) {
+            await visitorPassService.updatePassStatus(pass._id, 'EXPIRED', session);
             await visitorPassTokenService.deleteTokenByPassId(pass._id, session);
           }
         }
       } catch (err) {
-        console.error('Failed to clean up expired token mapping:', err);
+        console.error('Failed to update pass status on checkout:', err);
       }
     }
 

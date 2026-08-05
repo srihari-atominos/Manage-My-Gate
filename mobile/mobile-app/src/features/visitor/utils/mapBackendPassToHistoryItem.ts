@@ -56,20 +56,20 @@ export const mapBackendPassToHistoryItem = (backendPass: any): ExtendedVisitorPa
     }
 
     case 'GROUP': {
+      const maxPasses = backendPass.usageLimit?.maxUses || backendPass.groupGuests?.length || 0;
       if (!visitorName) {
-        const count = backendPass.groupGuests?.length || 0;
-        visitorName = count > 0 ? `Group Visit (${count} guests)` : 'Group Visit';
+        visitorName = maxPasses > 0 ? `Group Visit (${maxPasses} passes)` : 'Group Visit';
       }
       if (!phone && backendPass.groupGuests?.[0]?.phone) {
         phone = backendPass.groupGuests[0].phone;
       }
-      guestCount = backendPass.groupGuests?.length || 0;
-      guestList = Array.isArray(backendPass.groupGuests)
+      guestCount = maxPasses;
+      guestList = Array.isArray(backendPass.groupGuests) && backendPass.groupGuests.length > 0
         ? backendPass.groupGuests.map((g: any) => ({
             name: g.name || 'Guest',
             phone: g.phone || '',
           }))
-        : [];
+        : undefined;
       break;
     }
 

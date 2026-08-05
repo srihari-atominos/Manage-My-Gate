@@ -145,6 +145,18 @@ const visitorPassSchema = new mongoose.Schema(
         type: String,
         trim: true,
       },
+      timeWindows: [
+        {
+          start: {
+            type: String,
+            trim: true,
+          },
+          end: {
+            type: String,
+            trim: true,
+          },
+        },
+      ],
       allowedDays: [
         {
           type: Number,

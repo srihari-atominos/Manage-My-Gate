@@ -94,11 +94,23 @@ export class VisitorPassService {
     }
 
     // 3. Check Time Window Validity
-    if (pass.validity.timeWindowStart && pass.validity.timeWindowEnd) {
-      const currentHours = String(now.getHours()).padStart(2, '0');
-      const currentMinutes = String(now.getMinutes()).padStart(2, '0');
-      const currentTimeStr = `${currentHours}:${currentMinutes}`;
+    const currentHours = String(now.getHours()).padStart(2, '0');
+    const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTimeStr = `${currentHours}:${currentMinutes}`;
 
+    if (Array.isArray(pass.validity.timeWindows) && pass.validity.timeWindows.length > 0) {
+      const isWithinAnySlot = pass.validity.timeWindows.some((tw) => {
+        if (!tw || !tw.start || !tw.end) return false;
+        return currentTimeStr >= tw.start && currentTimeStr <= tw.end;
+      });
+
+      if (!isWithinAnySlot) {
+        const slotsStr = pass.validity.timeWindows
+          .map((tw) => `${tw.start} - ${tw.end}`)
+          .join(', ');
+        throw new HttpError(400, `Visitor pass is only valid during time slots: ${slotsStr}.`);
+      }
+    } else if (pass.validity.timeWindowStart && pass.validity.timeWindowEnd) {
       if (currentTimeStr < pass.validity.timeWindowStart || currentTimeStr > pass.validity.timeWindowEnd) {
         throw new HttpError(400, `Visitor pass is only valid between ${pass.validity.timeWindowStart} and ${pass.validity.timeWindowEnd}.`);
       }
@@ -145,10 +157,7 @@ export class VisitorPassService {
     if (passDoc.status === 'PENDING') {
       updates.status = 'ACTIVE';
     }
-    updates['usageLimit.currentUses'] = passDoc.usageLimit.currentUses + 1;
-    if (updates['usageLimit.currentUses'] >= passDoc.usageLimit.maxUses) {
-      updates.status = 'EXPIRED';
-    }
+    updates['usageLimit.currentUses'] = (passDoc.usageLimit?.currentUses || 0) + 1;
 
     const updated = await visitorPassRepository.update(passDoc._id, { $set: updates }, session);
 

@@ -123,7 +123,11 @@ export const GeneratedPassView: React.FC<GeneratedPassViewProps> = ({
             <DetailRow label="Vehicle Number" value={passData.vehicleNo} iconName="Car" copyable />
           ) : null}
           {passData.guestCount ? (
-            <DetailRow label="Total Guests" value={`${passData.guestCount} Visitors`} iconName="Users" />
+            <DetailRow
+              label={passData.passType === 'GROUP' ? 'Total Passes Issued' : 'Total Guests'}
+              value={`${passData.guestCount} ${passData.passType === 'GROUP' ? 'Passes' : 'Visitors'}`}
+              iconName={passData.passType === 'GROUP' ? 'Ticket' : 'Users'}
+            />
           ) : null}
           {passData.purpose ? (
             <DetailRow label="Purpose / Note" value={passData.purpose} iconName="Tag" />

@@ -442,6 +442,25 @@ export const InvitationForm = ({
                         {provider}
                       </div>
                     ))}
+
+                  {formData.companyName &&
+                    !providers.some(
+                      (p) => p.toLowerCase() === formData.companyName.trim().toLowerCase(),
+                    ) && (
+                      <div
+                        onClick={() => setSearchOpen(false)}
+                        style={{
+                          padding: '10px 16px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: 'var(--primary, #0084FF)',
+                          backgroundColor: '#F0F7FF',
+                        }}
+                      >
+                        + Use custom provider: "{formData.companyName}"
+                      </div>
+                    )}
                 </div>
               )}
             </div>
@@ -557,25 +576,95 @@ export const InvitationForm = ({
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div className="form-group">
-                    <label className="form-label">Start Time</label>
-                    <input
-                      type="time"
-                      className="form-control"
-                      value={formData.eventStartTime}
-                      onChange={(e) => handleInputChange('eventStartTime', e.target.value)}
-                    />
+                <div className="form-group" style={{ marginTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label className="form-label" style={{ marginBottom: 0 }}>Allowed Entry Time Windows</label>
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary btn-sm"
+                      style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '16px' }}
+                      onClick={() => {
+                        const current = formData.timeWindows || [
+                          { start: formData.eventStartTime || '07:30', end: formData.eventEndTime || '09:00' },
+                        ]
+                        const updated = [...current, { start: '15:30', end: '17:00' }]
+                        handleInputChange('timeWindows', updated)
+                      }}
+                    >
+                      + Add Time Slot
+                    </button>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">End Time</label>
-                    <input
-                      type="time"
-                      className="form-control"
-                      value={formData.eventEndTime}
-                      onChange={(e) => handleInputChange('eventEndTime', e.target.value)}
-                    />
-                  </div>
+
+                  {(formData.timeWindows && formData.timeWindows.length > 0
+                    ? formData.timeWindows
+                    : [{ start: formData.eventStartTime || '07:30', end: formData.eventEndTime || '19:00' }]
+                  ).map((slot, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr auto',
+                        gap: '12px',
+                        alignItems: 'center',
+                        marginBottom: '12px',
+                        padding: '10px 12px',
+                        backgroundColor: '#F8FAFC',
+                        borderRadius: '8px',
+                        border: '1px solid #E2E8F0',
+                      }}
+                    >
+                      <div>
+                        <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                          Slot #{idx + 1} Start
+                        </label>
+                        <input
+                          type="time"
+                          className="form-control"
+                          value={slot.start}
+                          onChange={(e) => {
+                            const current = formData.timeWindows || [
+                              { start: formData.eventStartTime || '07:30', end: formData.eventEndTime || '19:00' },
+                            ]
+                            const updated = current.map((s, i) => (i === idx ? { ...s, start: e.target.value } : s))
+                            handleInputChange('timeWindows', updated)
+                            if (idx === 0) handleInputChange('eventStartTime', e.target.value)
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                          Slot #{idx + 1} End
+                        </label>
+                        <input
+                          type="time"
+                          className="form-control"
+                          value={slot.end}
+                          onChange={(e) => {
+                            const current = formData.timeWindows || [
+                              { start: formData.eventStartTime || '07:30', end: formData.eventEndTime || '19:00' },
+                            ]
+                            const updated = current.map((s, i) => (i === idx ? { ...s, end: e.target.value } : s))
+                            handleInputChange('timeWindows', updated)
+                            if (idx === 0) handleInputChange('eventEndTime', e.target.value)
+                          }}
+                        />
+                      </div>
+                      {(formData.timeWindows || []).length > 1 && (
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger btn-sm"
+                          style={{ padding: '6px 10px', height: '36px', marginTop: '18px', borderRadius: '6px' }}
+                          onClick={() => {
+                            const current = formData.timeWindows || []
+                            const updated = current.filter((_, i) => i !== idx)
+                            handleInputChange('timeWindows', updated)
+                          }}
+                        >
+                          &times;
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </>
             )}

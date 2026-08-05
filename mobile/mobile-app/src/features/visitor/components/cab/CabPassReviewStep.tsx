@@ -6,6 +6,7 @@ import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { CabVehicleData } from './CabVehicleStep';
 import { CabScheduleData } from './CabScheduleStep';
+import { MOCK_WEEKDAYS } from '../../mocks/visitorMocks';
 
 export interface CabPassReviewStepProps {
   provider: string;
@@ -18,6 +19,16 @@ export const CabPassReviewStep: React.FC<CabPassReviewStepProps> = ({
   vehicle,
   schedule,
 }) => {
+  const isMultiUse = schedule.usageType === 'MULTI_USE';
+
+  const weekdayLabels = (schedule.selectedWeekdays || [])
+    .map((id) => MOCK_WEEKDAYS.find((w) => w.id === id)?.label || id)
+    .join(', ');
+
+  const timeSlotLabels = Array.isArray(schedule.timeSlots) && schedule.timeSlots.length > 0
+    ? schedule.timeSlots.map((ts) => `${ts.startTime} - ${ts.endTime}`).join(', ')
+    : 'Full Day (07:00 AM - 09:00 PM)';
+
   return (
     <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 gap-4">
       <View className="gap-1">
@@ -44,12 +55,34 @@ export const CabPassReviewStep: React.FC<CabPassReviewStepProps> = ({
           iconName="Phone"
         />
         <DetailRow
-          label="Expected Window"
-          value={<StatusBadge label={schedule.arrivalWindow} variant="info" />}
-          iconName="Clock"
-          isLast
+          label="Pass Type"
+          value={<StatusBadge label={isMultiUse ? 'Multi-Use Pass' : 'One-Time Ride'} variant={isMultiUse ? 'success' : 'info'} />}
+          iconName="ShieldCheck"
         />
+        {isMultiUse ? (
+          <>
+            <DetailRow
+              label="Authorized Weekdays"
+              value={weekdayLabels || 'Mon - Fri'}
+              iconName="Calendar"
+            />
+            <DetailRow
+              label="Time Windows"
+              value={timeSlotLabels}
+              iconName="Clock"
+              isLast
+            />
+          </>
+        ) : (
+          <DetailRow
+            label="Expected Window"
+            value={<StatusBadge label={schedule.arrivalWindow} variant="info" />}
+            iconName="Clock"
+            isLast
+          />
+        )}
       </DetailSection>
     </ScrollView>
   );
 };
+

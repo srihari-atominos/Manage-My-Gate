@@ -28,32 +28,38 @@ export const GroupPassReviewStep: React.FC<GroupPassReviewStepProps> = ({
 
       <DetailSection title="Group Event Overview" iconName="PartyPopper">
         <DetailRow label="Event Title" value={details.eventTitle} iconName="PartyPopper" />
-        <DetailRow label="Event Purpose" value={details.purpose} iconName="Tag" />
+        <DetailRow label="Event Purpose" value={details.purpose || 'Group Event'} iconName="Tag" />
         <DetailRow label="Visit Date" value={details.visitDate} iconName="Calendar" />
         <DetailRow
           label="Expected Arrival Window"
-          value={details.expectedTime || 'Full Day'}
+          value={
+            details.startTime && details.endTime
+              ? `${details.startTime} - ${details.endTime}`
+              : details.startTime || details.endTime || 'Full Day'
+          }
           iconName="Clock"
         />
         <DetailRow
-          label="Total Approved Guests"
-          value={`${guests.length} Visitors`}
-          iconName="Users"
-          isLast
+          label="Total Passes Issued"
+          value={`${details.numberOfPasses || '10'} Passes`}
+          iconName="Ticket"
+          isLast={!guests || guests.length === 0}
         />
       </DetailSection>
 
-      <DetailSection title="Guest List Breakdown" iconName="Users">
-        {guests.map((g, idx) => (
-          <DetailRow
-            key={g.id}
-            label={`${idx + 1}. ${g.name}`}
-            value={g.phone || 'Guest'}
-            iconName="User"
-            isLast={idx === guests.length - 1}
-          />
-        ))}
-      </DetailSection>
+      {guests && guests.length > 0 && (
+        <DetailSection title="Guest List Breakdown" iconName="Users">
+          {guests.map((g, idx) => (
+            <DetailRow
+              key={g.id}
+              label={`${idx + 1}. ${g.name}`}
+              value={g.phone || 'Guest'}
+              iconName="User"
+              isLast={idx === guests.length - 1}
+            />
+          ))}
+        </DetailSection>
+      )}
     </ScrollView>
   );
 };

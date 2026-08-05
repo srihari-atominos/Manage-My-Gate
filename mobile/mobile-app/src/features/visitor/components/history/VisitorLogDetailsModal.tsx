@@ -179,31 +179,29 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
               ) : null}
             </DetailSection>
 
-            {/* Group Pass Details */}
-            {passType === 'GROUP' && (
+            {/* Group Pass Guest Details (Only if named guests exist) */}
+            {passType === 'GROUP' && Array.isArray(pass.guestList) && pass.guestList.length > 0 && (
               <DetailSection title="Group Guest List" iconName="Users">
                 <DetailRow
-                  label="Total Guests"
-                  value={`${pass.guestCount || pass.guestList?.length || 0} Guests`}
+                  label="Total Named Guests"
+                  value={`${pass.guestList.length} Guests`}
                   iconName="Users"
                 />
-                {Array.isArray(pass.guestList) && pass.guestList.length > 0 ? (
-                  <View className="p-3 bg-muted/30 rounded-xl gap-2 mt-1">
-                    {pass.guestList.map((guest, idx) => (
-                      <View
-                        key={idx}
-                        className="flex-row items-center justify-between py-1 border-b border-border/50 last:border-b-0"
-                      >
-                        <Text className="text-xs font-medium text-foreground">
-                          {idx + 1}. {guest.name}
-                        </Text>
-                        {guest.phone ? (
-                          <Text className="text-xs text-muted-foreground">{guest.phone}</Text>
-                        ) : null}
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
+                <View className="p-3 bg-muted/30 rounded-xl gap-2 mt-1">
+                  {pass.guestList.map((guest, idx) => (
+                    <View
+                      key={idx}
+                      className="flex-row items-center justify-between py-1 border-b border-border/50 last:border-b-0"
+                    >
+                      <Text className="text-xs font-medium text-foreground">
+                        {idx + 1}. {guest.name}
+                      </Text>
+                      {guest.phone ? (
+                        <Text className="text-xs text-muted-foreground">{guest.phone}</Text>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
               </DetailSection>
             )}
 

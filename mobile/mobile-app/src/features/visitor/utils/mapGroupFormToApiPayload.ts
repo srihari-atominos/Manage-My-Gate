@@ -1,6 +1,7 @@
 import { GroupVisitDetailsData } from '../components/group/GroupVisitDetailsStep';
 import { GroupGuestItem } from '../components/group/AddGroupGuestsStep';
 import { UserAuthContext } from './mapGuestFormToApiPayload';
+import { convert12To24Time } from './mapServiceFormToApiPayload';
 
 export interface ApiGroupVisitorPassPayload {
   orgId?: string;
@@ -19,6 +20,8 @@ export interface ApiGroupVisitorPassPayload {
   validity: {
     startDate: string;
     endDate: string;
+    timeWindowStart?: string;
+    timeWindowEnd?: string;
   };
   usageLimit: {
     maxUses: number;
@@ -51,9 +54,25 @@ export const mapGroupFormToApiPayload = (
     phone: g.phone && g.phone.trim() !== '' ? g.phone.trim() : undefined,
   }));
 
+  const passCount = parseInt(details.numberOfPasses || '', 10);
+  const maxUses = !isNaN(passCount) && passCount > 0 ? passCount : Math.max(guests.length, 10);
+
+  const countNote = `${maxUses} Total Passes`;
   const purposeNote = details.purpose
-    ? `${details.purpose.trim()} (${guests.length} Approved Guests)`
-    : `Group Event: ${details.eventTitle.trim()} (${guests.length} Guests)`;
+    ? `${details.purpose.trim()} (${guests.length > 0 ? `${guests.length} Named Guests, ` : ''}${countNote})`
+    : `Group Event: ${details.eventTitle.trim()} (${countNote})`;
+
+  const validityObj: ApiGroupVisitorPassPayload['validity'] = {
+    startDate: startDate.toISOString(),
+    endDate: endDate.toISOString(),
+  };
+
+  if (details.startTime && details.startTime.trim() !== '') {
+    validityObj.timeWindowStart = convert12To24Time(details.startTime);
+  }
+  if (details.endTime && details.endTime.trim() !== '') {
+    validityObj.timeWindowEnd = convert12To24Time(details.endTime);
+  }
 
   const payload: ApiGroupVisitorPassPayload = {
     passType: 'GUEST',
@@ -63,12 +82,9 @@ export const mapGroupFormToApiPayload = (
     },
     purpose: purposeNote,
     groupGuests: formattedGuests,
-    validity: {
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-    },
+    validity: validityObj,
     usageLimit: {
-      maxUses: Math.max(guests.length, 1),
+      maxUses,
     },
   };
 

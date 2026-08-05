@@ -1,17 +1,22 @@
 import React from 'react';
 import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { Input } from '@/components/ui/input';
 import { MOCK_CAB_PROVIDERS } from '../../mocks/visitorMocks';
-import { Car, Bike, Check } from 'lucide-react-native';
+import { Car, Check } from 'lucide-react-native';
 
 export interface CabProviderStepProps {
   selectedProvider: string;
   onSelectProvider: (providerId: string) => void;
+  customProviderName?: string;
+  onCustomProviderChange?: (name: string) => void;
 }
 
 export const CabProviderStep: React.FC<CabProviderStepProps> = ({
   selectedProvider,
   onSelectProvider,
+  customProviderName,
+  onCustomProviderChange,
 }) => {
   return (
     <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 gap-4">
@@ -57,6 +62,22 @@ export const CabProviderStep: React.FC<CabProviderStepProps> = ({
           );
         })}
       </View>
+
+      {selectedProvider === 'other' && (
+        <View className="gap-2 bg-card border border-primary/40 rounded-2xl p-4 mt-1">
+          <Text className="text-xs font-bold text-primary">Specify Cab / Taxi Brand Name</Text>
+          <Input
+            placeholder="e.g. BluSmart, Meru Cabs, Local City Taxi"
+            value={customProviderName || ''}
+            onChangeText={(txt) => onCustomProviderChange && onCustomProviderChange(txt)}
+            autoFocus
+          />
+          <Text variant="muted" className="text-xs">
+            This name will be displayed to security guards at the barrier gate console.
+          </Text>
+        </View>
+      )}
     </ScrollView>
   );
 };
+

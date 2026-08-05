@@ -26,8 +26,8 @@ import { GuestPassReviewStep } from '@/src/features/visitor/components/guest/Gue
 
 // Group Steps
 import { GroupVisitDetailsStep, GroupVisitDetailsData } from '@/src/features/visitor/components/group/GroupVisitDetailsStep';
-import { AddGroupGuestsStep, GroupGuestItem } from '@/src/features/visitor/components/group/AddGroupGuestsStep';
-import { GroupGuestListStep } from '@/src/features/visitor/components/group/GroupGuestListStep';
+import { GroupScheduleStep } from '@/src/features/visitor/components/group/GroupScheduleStep';
+import { GroupGuestItem } from '@/src/features/visitor/components/group/AddGroupGuestsStep';
 import { GroupPassReviewStep } from '@/src/features/visitor/components/group/GroupPassReviewStep';
 
 // Cab Steps
@@ -61,8 +61,7 @@ const STEP_DEFINITIONS: Record<PassTypeKey, { key: string; title: string }[]> = 
   ],
   GROUP: [
     { key: 'event', title: 'Event Details' },
-    { key: 'add-guests', title: 'Add Guests' },
-    { key: 'guest-list', title: 'Review Guest List' },
+    { key: 'schedule', title: 'Event Schedule' },
     { key: 'review', title: 'Review Group Pass' },
   ],
   CAB: [
@@ -126,19 +125,26 @@ export default function InviteVisitorScreen() {
     eventTitle: '',
     purpose: '',
     visitDate: new Date().toISOString().split('T')[0],
-    expectedTime: '',
+    timePreset: 'FULL_DAY',
+    startTime: '07:00 AM',
+    endTime: '11:59 PM',
+    numberOfPasses: '10',
   });
   const [groupGuests, setGroupGuests] = useState<GroupGuestItem[]>([]);
 
   // Cab Form State
   const [cabProvider, setCabProvider] = useState<string>('uber');
+  const [customCabProvider, setCustomCabProvider] = useState<string>('');
   const [cabVehicle, setCabVehicle] = useState<CabVehicleData>({
     vehicleNo: '',
     vehicleType: 'CAB',
     driverPhone: '',
   });
   const [cabSchedule, setCabSchedule] = useState<CabScheduleData>({
+    usageType: 'ONE_TIME',
     arrivalWindow: 'IMMEDIATE',
+    selectedWeekdays: ['MON', 'TUE', 'WED', 'THU', 'FRI'],
+    timeSlots: [{ startTime: '07:30 AM', endTime: '09:00 AM' }],
   });
 
   // Delivery Form State
@@ -178,16 +184,44 @@ export default function InviteVisitorScreen() {
   const handleNext = () => {
     setSubmitError(null);
 
-    // Validate group pass has at least one guest before advancing past Step 2 (Guest List step)
-    if (activePassType === 'GROUP' && currentStepIndex === 2 && groupGuests.length === 0) {
-      setSubmitError('Add at least one guest to continue.');
-      return;
+    // Validate group pass event title & pass count on Step 0
+    if (activePassType === 'GROUP') {
+      if (currentStepIndex === 0) {
+        if (!groupDetails.eventTitle || !groupDetails.eventTitle.trim()) {
+          setSubmitError('Event title is required.');
+          return;
+        }
+        const passesNum = parseInt(groupDetails.numberOfPasses, 10);
+        if (isNaN(passesNum) || passesNum <= 0) {
+          setSubmitError('Total Expected Passes must be a positive number.');
+          return;
+        }
+      } else if (currentStepIndex === 1) {
+        if (!groupDetails.visitDate || !groupDetails.visitDate.trim()) {
+          setSubmitError('Event visit date is required.');
+          return;
+        }
+      }
     }
 
-    // Validate cab pass has vehicle registration plate before advancing past Step 1 (Vehicle step)
-    if (activePassType === 'CAB' && currentStepIndex === 1 && (!cabVehicle.vehicleNo || !cabVehicle.vehicleNo.trim())) {
-      setSubmitError('License plate number is required.');
-      return;
+    // Validate cab pass steps
+    if (activePassType === 'CAB') {
+      if (currentStepIndex === 0 && cabProvider === 'other' && (!customCabProvider || !customCabProvider.trim())) {
+        setSubmitError('Please specify the cab or taxi company name.');
+        return;
+      }
+      if (currentStepIndex === 1 && (!cabVehicle.vehicleNo || !cabVehicle.vehicleNo.trim())) {
+        setSubmitError('License plate number is required.');
+        return;
+      }
+      if (
+        currentStepIndex === 2 &&
+        cabSchedule.usageType === 'MULTI_USE' &&
+        (!cabSchedule.selectedWeekdays || cabSchedule.selectedWeekdays.length === 0)
+      ) {
+        setSubmitError('Please select at least one active weekday for recurring cab entry.');
+        return;
+      }
     }
 
     // Validate service pass steps
@@ -292,8 +326,8 @@ export default function InviteVisitorScreen() {
         setLoading(false);
       }
     } else if (activePassType === 'GROUP') {
-      if (groupGuests.length === 0) {
-        setSubmitError('Add at least one guest to generate group pass.');
+      if (!groupDetails.eventTitle || !groupDetails.eventTitle.trim()) {
+        setSubmitError('Event Title is required.');
         setLoading(false);
         return;
       }
@@ -318,8 +352,8 @@ export default function InviteVisitorScreen() {
             validFrom: createdPass.validity?.startDate || new Date().toISOString(),
             validUntil: createdPass.validity?.endDate || new Date(Date.now() + 86400000).toISOString(),
             purpose: createdPass.purpose || groupDetails.purpose,
-            guestCount: createdPass.groupGuests?.length || groupGuests.length,
-            guestList: createdPass.groupGuests || groupGuests.map((g) => ({ name: g.name, phone: g.phone })),
+            guestCount: createdPass.usageLimit?.maxUses || parseInt(groupDetails.numberOfPasses, 10) || 10,
+            timeWindow: groupDetails.startTime && groupDetails.endTime ? { startTime: groupDetails.startTime, endTime: groupDetails.endTime } : undefined,
           });
 
           // Refresh passes list
@@ -342,16 +376,28 @@ export default function InviteVisitorScreen() {
       }
 
       try {
-        const payload = mapCabFormToApiPayload(cabProvider, cabVehicle, cabSchedule, {
-          orgId: authUser?.orgId,
-          createdById: userId,
-        });
+        const payload = mapCabFormToApiPayload(
+          cabProvider,
+          cabVehicle,
+          cabSchedule,
+          {
+            orgId: authUser?.orgId,
+            createdById: userId,
+          },
+          customCabProvider
+        );
 
         const actionResult = await createNewPass(payload);
         const createdPass = (actionResult as any)?.payload || (actionResult as any);
 
         if (createdPass && (createdPass._id || createdPass.shortKey)) {
           const passCode = createdPass.shortKey || createdPass.code || (createdPass._id ? createdPass._id.slice(-6) : '849201');
+
+          const allowedWeekdays = Array.isArray(createdPass.validity?.allowedDays)
+            ? createdPass.validity.allowedDays.map((n: number) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][n])
+            : cabSchedule.usageType === 'MULTI_USE'
+            ? (cabSchedule.selectedWeekdays || []).map((id) => id.charAt(0) + id.slice(1).toLowerCase())
+            : undefined;
 
           setGeneratedPass({
             id: createdPass._id || `pass-${Date.now()}`,
@@ -364,6 +410,7 @@ export default function InviteVisitorScreen() {
             purpose: createdPass.purpose,
             provider: createdPass.vehicleDetails?.vendor || cabProvider.toUpperCase(),
             vehicleNo: createdPass.vehicleDetails?.number || cabVehicle.vehicleNo,
+            allowedWeekdays,
           });
 
           // Refresh passes list
@@ -497,28 +544,29 @@ export default function InviteVisitorScreen() {
         if (currentStepIndex === 0) {
           return <GroupVisitDetailsStep data={groupDetails} onChange={setGroupDetails} />;
         } else if (currentStepIndex === 1) {
-          return <AddGroupGuestsStep guests={groupGuests} onAddGuest={(g) => setGroupGuests([...groupGuests, g])} />;
-        } else if (currentStepIndex === 2) {
-          return (
-            <GroupGuestListStep
-              guests={groupGuests}
-              onRemoveGuest={(id) => setGroupGuests(groupGuests.filter((x) => x.id !== id))}
-              onAddMore={() => setCurrentStepIndex(1)}
-            />
-          );
+          return <GroupScheduleStep data={groupDetails} onChange={setGroupDetails} />;
         } else {
           return <GroupPassReviewStep details={groupDetails} guests={groupGuests} />;
         }
 
       case 'CAB':
         if (currentStepIndex === 0) {
-          return <CabProviderStep selectedProvider={cabProvider} onSelectProvider={setCabProvider} />;
+          return (
+            <CabProviderStep
+              selectedProvider={cabProvider}
+              onSelectProvider={setCabProvider}
+              customProviderName={customCabProvider}
+              onCustomProviderChange={setCustomCabProvider}
+            />
+          );
         } else if (currentStepIndex === 1) {
           return <CabVehicleStep data={cabVehicle} onChange={setCabVehicle} />;
         } else if (currentStepIndex === 2) {
           return <CabScheduleStep data={cabSchedule} onChange={setCabSchedule} />;
         } else {
-          return <CabPassReviewStep provider={cabProvider} vehicle={cabVehicle} schedule={cabSchedule} />;
+          const displayProvider =
+            cabProvider === 'other' && customCabProvider.trim() ? customCabProvider.trim() : cabProvider;
+          return <CabPassReviewStep provider={displayProvider} vehicle={cabVehicle} schedule={cabSchedule} />;
         }
 
       case 'DELIVERY':
