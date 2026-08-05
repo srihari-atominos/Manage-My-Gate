@@ -8,10 +8,13 @@ export class VillaController {
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 12;
 
-      // Extract filters
+      // Extract filters & sorting
       const filters = {};
       if (req.query.blockOrBuilding) {
         filters.blockOrBuilding = req.query.blockOrBuilding.trim();
+      }
+      if (req.query.floor) {
+        filters.floor = req.query.floor.trim();
       }
       if (req.query.status) {
         filters.status = req.query.status.trim();
@@ -21,6 +24,12 @@ export class VillaController {
       }
       if (req.query.search) {
         filters.search = req.query.search.trim();
+      }
+      if (req.query.sortBy) {
+        filters.sortBy = req.query.sortBy.trim();
+      }
+      if (req.query.sortOrder) {
+        filters.sortOrder = req.query.sortOrder.trim();
       }
 
       const { data, pagination } = await villaService.getUnitsPaginated({ orgId, page, limit, ...filters });
@@ -49,6 +58,23 @@ export class VillaController {
       const { id } = req.params;
       const orgId = req.tenant.orgId;
       const villaDetails = await villaService.getVillaDetailsWithResidents(id, orgId);
+
+      // Cross-unit security check for residents (bug-006, bug-007)
+      const userRole = req.user?.roleName || req.user?.role || '';
+      if (userRole.toLowerCase().includes('resident') || userRole.toLowerCase().includes('tenant') || userRole.toLowerCase().includes('family')) {
+        const userIdStr = String(req.user._id || req.user.id);
+        const isOwner = String(villaDetails.villa?.ownerId) === userIdStr;
+        const isPrimary = String(villaDetails.villa?.primaryResidentId) === userIdStr;
+        const isResident = (villaDetails.residents || []).some(r => String(r.id) === userIdStr);
+
+        if (!isOwner && !isPrimary && !isResident) {
+          return res.status(403).json({
+            success: false,
+            message: 'Access denied. You can only view details of your own assigned unit.'
+          });
+        }
+      }
+
       res.success(villaDetails, 'Unit details retrieved successfully');
     } catch (error) {
       next(error);
@@ -82,6 +108,17 @@ export class VillaController {
       const orgId = req.tenant.orgId;
       await villaService.deleteUnit(id, orgId);
       res.success({ id }, 'Unit deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deactivate(req, res, next) {
+    try {
+      const { id } = req.params;
+      const orgId = req.tenant.orgId;
+      const villa = await villaService.deactivateUnit(id, orgId);
+      res.success(villa, 'Unit deactivated successfully');
     } catch (error) {
       next(error);
     }
@@ -177,9 +214,11 @@ export class VillaController {
       const headers = [
         'UnitNumber(101,102,103)',
         'BlockOrBuilding',
+        'Floor',
         'Unit Type(1BHA,2BHA,3BHA,Villa)',
         'Floor Area (Sq Ft)',
         'Occupancy Status(Occupied,Vacant)',
+        'Name',
         'Email',
         'ResidentType(Family Member,Resident Owner,Tenant)',
         'Phone No'
@@ -188,9 +227,11 @@ export class VillaController {
       const exampleRow = [
         '101',
         'Block A',
+        '1st Floor',
         '3BHA',
         '1500',
         'Occupied',
+        'John Doe',
         'resident@example.com',
         'Resident Owner',
         '1234567890'
@@ -205,6 +246,38 @@ export class VillaController {
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename="bulk_upload_units_template.csv"');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
+      res.send(csvContent);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async exportUnits(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const { data } = await villaService.getUnitsPaginated({ orgId, page: 1, limit: 10000 });
+
+      const headers = ['Unit Number', 'Block / Tower', 'Floor', 'Unit Type', 'Status', 'Floor Area (Sq Ft)', 'Created At'];
+      const escapeCSV = (arr) => arr.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',');
+
+      const rows = data.map(unit => [
+        unit.unitNumber || '',
+        unit.blockOrBuilding || '',
+        unit.floor || '',
+        unit.type || '',
+        unit.status || '',
+        unit.floorAreaSqFt || '',
+        unit.createdAt ? new Date(unit.createdAt).toISOString().split('T')[0] : ''
+      ]);
+
+      const csvContent = [escapeCSV(headers), ...rows.map(row => escapeCSV(row))].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="unit_list_export.csv"');
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');

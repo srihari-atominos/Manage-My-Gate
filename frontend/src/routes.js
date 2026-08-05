@@ -59,7 +59,7 @@ const ResidentHistoryView = React.lazy(
 const SecurityScannerView = React.lazy(
   () => import('./features/amenities/views/SecurityScannerView'),
 )
-const AdminSettingsView = React.lazy(() => import('./features/amenities/views/AdminSettingsView'))
+
 const SecurityLogsView = React.lazy(() => import('./features/amenities/views/SecurityLogsView'))
 const AdminLedgersView = React.lazy(() => import('./features/amenities/views/AdminLedgersView'))
 const AdminMaintenanceView = React.lazy(
@@ -253,12 +253,6 @@ export const routes = [
     name: 'Security Scanner',
     element: SecurityScannerView,
     requiredPermission: 'amenities:scanner',
-  },
-  {
-    path: '/admin/amenities/settings',
-    name: 'Amenity Settings',
-    element: AdminSettingsView,
-    requiredPermission: 'amenities:settings',
   },
   {
     path: '/admin/amenities/security-logs',

@@ -51,9 +51,17 @@ const ScannerCamera = memo(({ onScan }) => {
   return (
     <div
       className="position-relative bg-dark rounded overflow-hidden shadow-sm"
-      style={{ aspectRatio: '1/1', maxHeight: '500px', margin: '0 auto' }}
+      style={{ aspectRatio: '1/1', maxHeight: '500px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
-      <div id="reader" style={{ width: '100%', height: '100%' }}></div>
+      <style>{`
+        #reader video {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover !important;
+          border-radius: 6px;
+        }
+      `}</style>
+      <div id="reader" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}></div>
 
       {/* Target Overlay (CSS-based viewfinder) */}
       {isScanning && (

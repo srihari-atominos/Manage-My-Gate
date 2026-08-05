@@ -8,16 +8,22 @@ export const fetchVillas = async ({
   limit = 12,
   search = '',
   blockOrBuilding = '',
+  floor = '',
   status = '',
   type = '',
+  sortBy = 'unitNumber',
+  sortOrder = 'asc',
 } = {}) => {
   const params = new URLSearchParams()
   params.append('page', page)
   params.append('limit', limit)
   if (search) params.append('search', search)
   if (blockOrBuilding) params.append('blockOrBuilding', blockOrBuilding)
+  if (floor) params.append('floor', floor)
   if (status) params.append('status', status)
   if (type) params.append('type', type)
+  if (sortBy) params.append('sortBy', sortBy)
+  if (sortOrder) params.append('sortOrder', sortOrder)
 
   const response = await apiClient.get(`/villas?${params.toString()}`)
   return response.data
@@ -135,6 +141,24 @@ export const removeResident = async (villaId, userId) => {
   return response.data
 }
 
+/**
+ * Deactivates a unit.
+ */
+export const deactivateVilla = async (id) => {
+  const response = await apiClient.patch(`/villas/${id}/deactivate`)
+  return response.data
+}
+
+/**
+ * Exports unit list as CSV.
+ */
+export const exportVillas = async () => {
+  const response = await apiClient.get('/villas/export', {
+    responseType: 'blob',
+  })
+  return response
+}
+
 export default {
   fetchVillas,
   fetchVillaBlocks,
@@ -142,6 +166,8 @@ export default {
   createVilla,
   updateVilla,
   deleteVilla,
+  deactivateVilla,
+  exportVillas,
   assignPrimaryResident,
   batchGenerateVillas,
   fetchVillaStats,

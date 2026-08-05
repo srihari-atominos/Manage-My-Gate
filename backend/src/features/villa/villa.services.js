@@ -44,12 +44,13 @@ export class VillaService {
     if (!unitData || !unitData.unitNumber) throw new HttpError(400, 'Unit number is required.');
 
     const trimmedNumber = unitData.unitNumber.trim();
-    const existing = await villaRepository.findByUnitNumber(trimmedNumber, orgId, session);
+    const blockOrBuilding = unitData.blockOrBuilding ? unitData.blockOrBuilding.trim() : '';
+    const existing = await villaRepository.findByUnitNumber(trimmedNumber, orgId, blockOrBuilding, session);
     if (existing) {
-      throw new HttpError(409, `Conflict. Unit number "${trimmedNumber}" already exists in this community.`);
+      throw new HttpError(409, `Conflict. Unit number "${trimmedNumber}" already exists in ${blockOrBuilding || 'this community'}.`);
     }
 
-    const villa = await villaRepository.create(orgId, { ...unitData, unitNumber: trimmedNumber }, session);
+    const villa = await villaRepository.create(orgId, { ...unitData, unitNumber: trimmedNumber, blockOrBuilding }, session);
     
     // Emit native event bus event
     villaEvents.emit('unit_created', villa);
@@ -64,14 +65,17 @@ export class VillaService {
     if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
     const villa = await this.getUnitById(id, orgId, session);
 
-    // If unit number is changing, verify uniqueness
-    if (updateData.unitNumber && updateData.unitNumber.trim() !== villa.unitNumber) {
-      const trimmedNumber = updateData.unitNumber.trim();
-      const existing = await villaRepository.findByUnitNumber(trimmedNumber, orgId, session);
-      if (existing) {
-        throw new HttpError(409, `Conflict. Unit number "${trimmedNumber}" already exists in this community.`);
+    // If unit number or block is changing, verify uniqueness
+    const newUnitNumber = updateData.unitNumber ? updateData.unitNumber.trim() : villa.unitNumber;
+    const newBlock = updateData.blockOrBuilding !== undefined ? updateData.blockOrBuilding.trim() : villa.blockOrBuilding;
+
+    if (newUnitNumber !== villa.unitNumber || newBlock !== villa.blockOrBuilding) {
+      const existing = await villaRepository.findByUnitNumber(newUnitNumber, orgId, newBlock, session);
+      if (existing && String(existing._id) !== String(id)) {
+        throw new HttpError(409, `Conflict. Unit number "${newUnitNumber}" already exists in ${newBlock || 'this community'}.`);
       }
-      updateData.unitNumber = trimmedNumber;
+      updateData.unitNumber = newUnitNumber;
+      updateData.blockOrBuilding = newBlock;
     }
 
     const updatedVilla = await villaRepository.update(id, orgId, updateData, session);
@@ -86,10 +90,28 @@ export class VillaService {
     logger.info(`deleteUnit request received`, { id, orgId, correlationId });
 
     if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
-    await this.getUnitById(id, orgId, session);
+    const villa = await this.getUnitById(id, orgId, session);
+
+    // Prevent deletion if unit is occupied or has active residents
+    if (villa.status === 'Occupied' || (villa.residents && villa.residents.length > 0)) {
+      throw new HttpError(400, 'Cannot delete an occupied unit. Please remove or reassign all residents first.');
+    }
+
     const deleted = await villaRepository.delete(id, orgId, session);
-    
+    villaEvents.emit('unit_deleted', { id, orgId });
     return deleted;
+  }
+
+  async deactivateUnit(id, orgId, session = null) {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info(`deactivateUnit request received`, { id, orgId, correlationId });
+
+    if (!orgId) throw new HttpError(400, 'Organization ID (orgId) is required.');
+    await this.getUnitById(id, orgId, session);
+
+    const deactivated = await villaRepository.update(id, orgId, { status: 'Inactive' }, session);
+    villaEvents.emit('unit_updated', deactivated);
+    return deactivated;
   }
 
   async getUnitsPaginated({ orgId, page = 1, limit = 10, search, ...filters }, session = null) {
@@ -335,7 +357,7 @@ export class VillaService {
     const userService = (await import('../user/user.services.js')).default;
 
     for (const item of villasArray) {
-      const { unitNumber, blockOrBuilding = '', type = 'Apartment', status = 'Vacant', floorAreaSqFt = null, email, residentType = 'None', roleName, phone = '' } = item;
+      const { unitNumber, blockOrBuilding = '', floor = '', type = 'Apartment', status = 'Vacant', floorAreaSqFt = null, email, name = '', residentType = 'None', roleName, phone = '' } = item;
       const trimmedNumber = unitNumber ? unitNumber.trim() : '';
       const trimmedEmail = email ? email.trim().toLowerCase() : '';
 
@@ -349,12 +371,13 @@ export class VillaService {
       }
 
       try {
-        let villa = await villaRepository.findByUnitNumber(trimmedNumber, orgId);
+        let villa = await villaRepository.findByUnitNumber(trimmedNumber, orgId, blockOrBuilding);
         let action = 'Created';
 
         if (villa) {
           const updateData = {};
           if (blockOrBuilding) updateData.blockOrBuilding = blockOrBuilding;
+          if (floor) updateData.floor = floor;
           if (type) updateData.type = type;
           if (status) updateData.status = status;
           if (floorAreaSqFt !== null && floorAreaSqFt !== undefined) updateData.floorAreaSqFt = floorAreaSqFt;
@@ -365,6 +388,7 @@ export class VillaService {
           villa = await villaRepository.create(orgId, {
             unitNumber: trimmedNumber,
             blockOrBuilding,
+            floor,
             type,
             status,
             floorAreaSqFt
@@ -388,7 +412,7 @@ export class VillaService {
               else throw new Error('Role name is required to invite user.');
             }
 
-            await userService.inviteUser(trimmedEmail, orgId, villa._id, residentType, finalRoleName, phone);
+            await userService.inviteUser(trimmedEmail, orgId, villa._id, residentType, finalRoleName, phone, name);
             userInvited = true;
           } catch (err) {
             inviteError = err.message || 'User invitation failed';
@@ -632,7 +656,18 @@ export class VillaService {
         throw new HttpError(404, `Unit with ID ${villaId} not found.`);
       }
 
-      // 2. Pull resident from the array
+      // 2. Record historical assignment before pulling resident from array
+      const residentToRemove = villa.residents.find(r => String(r.userId) === String(userId));
+      if (residentToRemove) {
+        if (!villa.history) villa.history = [];
+        villa.history.push({
+          userId: residentToRemove.userId,
+          residencyType: residentToRemove.residencyType,
+          moveInDate: residentToRemove.assignedAt || new Date(),
+          moveOutDate: new Date()
+        });
+      }
+
       villa.residents = villa.residents.filter(r => String(r.userId) !== String(userId));
       
       // If the removed user was primary, clear it

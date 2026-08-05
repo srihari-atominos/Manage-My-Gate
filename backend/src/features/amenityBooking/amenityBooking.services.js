@@ -79,8 +79,8 @@ export class AmenityBookingService {
       }
 
       if (amenity.pricing?.pricingType === 'daily') {
-        startTime = amenity.bookingRules?.openTime;
-        endTime = amenity.bookingRules?.closeTime;
+        startTime = amenity.bookingRules?.openTime || '00:00';
+        endTime = amenity.bookingRules?.closeTime || '23:59';
         bookingData.startTime = startTime;
         bookingData.endTime = endTime;
       }
@@ -114,29 +114,32 @@ export class AmenityBookingService {
 
       // 6. Holiday / Weekly Off Validation
       const dayOfWeek = bookingDateTimeStart.getDay();
-      if (amenity.bookingRules.weeklyOffDays && amenity.bookingRules.weeklyOffDays.includes(dayOfWeek)) {
+      if (amenity.bookingRules?.weeklyOffDays?.includes(dayOfWeek)) {
         throw new HttpError(400, 'Amenity is closed on this day of the week');
       }
 
       // 7. Operating Hours Validation
       if (amenity.pricing?.pricingType !== 'daily') {
-        const openTimeParsed = moment.tz(`${bookingDate}T${amenity.bookingRules.openTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
-        let closeTimeParsed = moment.tz(`${bookingDate}T${amenity.bookingRules.closeTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        const openTime = amenity.bookingRules?.openTime || '00:00';
+        const closeTime = amenity.bookingRules?.closeTime || '23:59';
+        const openTimeParsed = moment.tz(`${bookingDate}T${openTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        let closeTimeParsed = moment.tz(`${bookingDate}T${closeTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
         
         if (closeTimeParsed < openTimeParsed) {
           closeTimeParsed = moment(closeTimeParsed).add(1, 'days').toDate();
         }
 
         if (bookingDateTimeStart < openTimeParsed || bookingDateTimeEnd > closeTimeParsed) {
-          throw new HttpError(400, `Booking must be within operating hours (${amenity.bookingRules.openTime} to ${amenity.bookingRules.closeTime})`);
+          throw new HttpError(400, `Booking must be within operating hours (${openTime} to ${closeTime})`);
         }
       }
 
       // 12. Booking Window Validation
       const diffTime = Math.abs(bookingDateTimeStart - now);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays > amenity.bookingRules.advanceBookingDays) {
-        throw new HttpError(400, `Cannot book more than ${amenity.bookingRules.advanceBookingDays} days in advance`);
+      const advanceBookingDays = amenity.bookingRules?.advanceBookingDays ?? 30;
+      if (diffDays > advanceBookingDays) {
+        throw new HttpError(400, `Cannot book more than ${advanceBookingDays} days in advance`);
       }
 
       // 8, 10 & 11. Overlapping Slot, Buffer Time, and Capacity Validation
@@ -265,7 +268,7 @@ export class AmenityBookingService {
     booking.paymentStatus = 'success';
     booking.status = 'confirmed';
     
-    booking.paymentId = gatewayTransactionId;
+    booking.razorpayTransactionId = gatewayTransactionId;
     booking.paymentMethod = paymentMethod;
     booking.qrCode = qrCodeUrl;
     booking.qrStatus = 'active';
@@ -326,8 +329,8 @@ export class AmenityBookingService {
       if (!amenity) throw new HttpError(404, 'Amenity not found');
       
       if (amenity.pricing?.pricingType === 'daily') {
-        startTime = amenity.bookingRules?.openTime;
-        endTime = amenity.bookingRules?.closeTime;
+        startTime = amenity.bookingRules?.openTime || '00:00';
+        endTime = amenity.bookingRules?.closeTime || '23:59';
         bookingData.startTime = startTime;
         bookingData.endTime = endTime;
       }
@@ -392,11 +395,10 @@ export class AmenityBookingService {
 
   async cancelBooking(bookingId, userId, orgId, reason = '', isAdmin = false) {
     const mongoose = (await import('mongoose')).default;
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
+    // Removed transaction to support standalone local MongoDB
+    
     try {
-      const booking = await amenityBookingRepository.findById(bookingId, orgId, session);
+      const booking = await amenityBookingRepository.findById(bookingId, orgId);
       if (!booking) throw new HttpError(404, 'Booking not found');
       
       if (!isAdmin && booking.userId.toString() !== userId.toString()) {
@@ -409,7 +411,7 @@ export class AmenityBookingService {
 
       // 1. Load the Amenity bookingRules
       const amenityService = (await import('../amenity/amenity.services.js')).default;
-      const amenity = await amenityService.getAmenityById(booking.amenityId, orgId, session);
+      const amenity = await amenityService.getAmenityById(booking.amenityId, orgId);
       
       let refundPercentage = 100; // default to full refund if no rules
       let refundAmount = booking.pricingDetails?.totalAmount || booking.totalPrice || 0;
@@ -443,15 +445,26 @@ export class AmenityBookingService {
       if (booking.paymentStatus === 'success' && booking.paymentId) {
         const paymentService = (await import('../payment/payment.service.js')).default;
         if (refundAmount > 0) {
-          await paymentService.processRefund(booking.paymentId, refundAmount, session);
-          newPaymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
+          try {
+            const isValidObjectId = mongoose.Types.ObjectId.isValid(booking.paymentId);
+            if (!isValidObjectId) {
+              console.warn(`[CANCEL BOOKING] Warning: booking.paymentId '${booking.paymentId}' is not a valid ObjectId. Refund may fail.`);
+            }
+            await paymentService.processRefund(booking.paymentId, refundAmount);
+            newPaymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
+          } catch (refundError) {
+             console.error(`[CANCEL BOOKING] Refund failed for booking ${bookingId}:`, refundError.message);
+             // If refund fails (e.g. corrupted data from old mock tests), we still allow the cancellation to proceed
+             newPaymentStatus = 'failed';
+          }
         }
-        // If refundAmount is 0, we do not call processRefund, but we update the paymentStatus manually
-        if (refundAmount === 0) {
-          newPaymentStatus = 'success'; // Kept as success, or maybe 'no_refund' ? Wait, the requirement says "Payment Status Updated".
-        }
+      } else if (booking.paymentStatus === 'pending') {
+         newPaymentStatus = 'failed';
+         refundAmount = 0;
+         refundPercentage = 0;
       }
 
+      // 4. Update the AmenityBooking status
       const cancelUpdateData = {
         status: 'cancelled',
         paymentStatus: newPaymentStatus,
@@ -463,16 +476,12 @@ export class AmenityBookingService {
         refundAmount
       };
 
-      const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, 'cancelled', cancelUpdateData, session);
-      
-      await session.commitTransaction();
-      session.endSession();
+      const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, 'cancelled', cancelUpdateData);
 
       amenityBookingEventEmitter.emit(AMENITY_BOOKING_CANCELLED, updated);
+      
       return updated;
     } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
       throw error;
     }
   }

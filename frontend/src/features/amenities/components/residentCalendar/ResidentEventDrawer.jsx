@@ -85,7 +85,7 @@ const BookingTimeline = ({ status }) => {
   )
 }
 
-const ResidentEventDrawer = memo(({ visible, onClose, event, onCancel }) => {
+const ResidentEventDrawer = memo(({ visible, onClose, event, onCancel, onPayNow }) => {
   const [cancelModalVisible, setCancelModalVisible] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancelError, setCancelError] = useState('')
@@ -275,7 +275,7 @@ const ResidentEventDrawer = memo(({ visible, onClose, event, onCancel }) => {
           <div className="d-grid gap-2 mt-auto">
             {isPending && (
               <>
-                <CButton color="warning" className="fw-bold">
+                <CButton color="warning" className="fw-bold" onClick={() => onPayNow && onPayNow(event)}>
                   <i className="fa-solid fa-credit-card me-2"></i> Complete Payment
                 </CButton>
                 <CButton color="danger" variant="ghost" onClick={handleCancelClick}>

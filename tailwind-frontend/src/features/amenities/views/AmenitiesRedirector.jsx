@@ -20,8 +20,6 @@ const AmenitiesRedirector = () => {
       navigate('/admin/amenities/maintenance', { replace: true });
     } else if (checkPermission('amenities:scanner')) {
       navigate('/admin/amenities/scanner', { replace: true });
-    } else if (checkPermission('amenities:settings')) {
-      navigate('/admin/amenities/settings', { replace: true });
     } else if (checkPermission('amenities:security_logs')) {
       navigate('/admin/amenities/security-logs', { replace: true });
     } 

@@ -12,7 +12,6 @@ import workspaceRouter from '../features/workspace/workspace.router.js';
 import messageTemplateRouter from '../features/messageTemplate/messageTemplate.router.js';
 import villaRouter from '../features/villa/villa.router.js';
 import amenityRouter from '../features/amenity/amenity.router.js';
-import amenitySettingsRouter from '../features/amenitySettings/amenitySettings.router.js';
 import bookingRouter from '../features/booking/booking.router.js';
 import amenityBookingRouter from '../features/amenityBooking/amenityBooking.router.js';
 import paymentRouter from '../features/payment/payment.router.js';
@@ -66,7 +65,6 @@ router.use('/dashboard-feed', dashboardFeedRouter);
 
 router.use('/templates', messageTemplateRouter);
 router.use('/villas', villaRouter);
-router.use('/amenities/settings', amenitySettingsRouter);
 router.use('/amenities', amenityRouter);
 router.use('/bookings', bookingRouter);
 router.use('/amenity-bookings', amenityBookingRouter);

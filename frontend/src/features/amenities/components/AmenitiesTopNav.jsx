@@ -7,7 +7,6 @@ import {
   cilCalendar,
   cilList,
   cilBuilding,
-  cilSettings,
   cilLayers,
   cilWallet,
   cilSearch,
@@ -45,12 +44,7 @@ const navItems = [
     icon: cilBuilding,
     requiredPermission: 'amenities:maintenance',
   },
-  {
-    name: 'Settings',
-    to: '/admin/amenities/settings',
-    icon: cilSettings,
-    requiredPermission: 'amenities:settings',
-  },
+
   {
     name: 'Discover',
     to: '/resident/amenities/discover',

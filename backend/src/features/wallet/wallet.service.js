@@ -58,7 +58,7 @@ class WalletService {
       userId: booking.userId,
       bookingId: booking.bookingId,
       type,
-      amount,
+      amount: Math.abs(amount),
       paymentMethod,
       paymentStatus,
       referenceType: 'AmenityBooking',
@@ -70,7 +70,8 @@ class WalletService {
     const transaction = await walletRepository.createTransaction(transactionData);
 
     if (paymentMethod === 'wallet' || type === 'Credit') {
-      const delta = type === 'Debit' ? -amount : amount;
+      const absAmount = Math.abs(amount);
+      const delta = type === 'Debit' ? -absAmount : absAmount;
       await walletRepository.updateBalance(booking.userId, booking.orgId, delta);
     }
 

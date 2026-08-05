@@ -20,16 +20,16 @@ const ScannerFallback = memo(({ onSubmit }) => {
       </p>
 
       <CForm onSubmit={handleSubmit}>
-        <CInputGroup>
+        <div className="d-flex gap-2">
           <CFormInput
             placeholder="Enter Booking ID..."
             value={bookingId}
             onChange={(e) => setBookingId(e.target.value)}
           />
-          <CButton type="submit" color="primary" disabled={!bookingId.trim()}>
+          <CButton type="submit" color="primary" disabled={!bookingId.trim()} className="px-4 fw-semibold">
             Verify
           </CButton>
-        </CInputGroup>
+        </div>
       </CForm>
     </div>
   )

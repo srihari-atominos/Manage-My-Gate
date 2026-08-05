@@ -80,25 +80,56 @@ export class VillaRepository {
    * @param {string} [params.search]
    * @param {ClientSession} [session]
    */
-  async findPaginated({ orgId, page = 1, limit = 10, search, ...filters }, session) {
+  async findPaginated({ orgId, page = 1, limit = 10, search, sortBy = 'unitNumber', sortOrder = 'asc', ...filters }, session) {
     if (!orgId) throw new Error('orgId is required');
 
-    // Build match query
     const matchQuery = { 
       orgId: typeof orgId === 'string' ? new mongoose.Types.ObjectId(orgId) : orgId,
-      ...filters 
     };
 
-    if (search) {
-      matchQuery.unitNumber = { $regex: search.trim(), $options: 'i' };
-    }
+    if (filters.blockOrBuilding) matchQuery.blockOrBuilding = filters.blockOrBuilding;
+    if (filters.status) matchQuery.status = filters.status;
+    if (filters.type) matchQuery.type = filters.type;
+    if (filters.floor) matchQuery.floor = filters.floor;
 
     const skip = (page - 1) * limit;
 
-    // Build Mongoose aggregation pipeline using $facet
+    const sortObj = {};
+    const order = sortOrder === 'desc' ? -1 : 1;
+    sortObj[sortBy || 'unitNumber'] = order;
+
     const pipeline = [
       { $match: matchQuery },
-      { $sort: { unitNumber: 1 } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'residents.userId',
+          foreignField: '_id',
+          as: 'residentUsers',
+        },
+      },
+    ];
+
+    if (search) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      pipeline.push({
+        $match: {
+          $or: [
+            { unitNumber: searchRegex },
+            { blockOrBuilding: searchRegex },
+            { floor: searchRegex },
+            { 'residentUsers.name': searchRegex },
+            { 'residentUsers.username': searchRegex },
+            { 'residentUsers.email': searchRegex },
+            { 'residentUsers.phone': searchRegex },
+          ],
+        },
+      });
+    }
+
+    pipeline.push(
+      { $project: { residentUsers: 0 } },
+      { $sort: sortObj },
       {
         $facet: {
           data: [
@@ -110,7 +141,7 @@ export class VillaRepository {
           ]
         }
       }
-    ];
+    );
 
     const query = session ? Villa.aggregate(pipeline).session(session) : Villa.aggregate(pipeline);
     const [result] = await query;
@@ -122,14 +153,19 @@ export class VillaRepository {
   }
 
   /**
-   * Find a villa by unit number within the tenant scope.
+   * Find a villa by unit number (and optional blockOrBuilding) within the tenant scope.
    * @param {string} unitNumber
    * @param {string|ObjectId} orgId
+   * @param {string} [blockOrBuilding]
    * @param {ClientSession} [session]
    */
-  async findByUnitNumber(unitNumber, orgId, session) {
+  async findByUnitNumber(unitNumber, orgId, blockOrBuilding, session) {
     if (!orgId) throw new Error('orgId is required');
-    const query = Villa.findOne({ unitNumber, orgId });
+    const queryObj = { unitNumber, orgId };
+    if (blockOrBuilding !== undefined && blockOrBuilding !== null) {
+      queryObj.blockOrBuilding = blockOrBuilding;
+    }
+    const query = Villa.findOne(queryObj);
     if (session) query.session(session);
     return await query;
   }

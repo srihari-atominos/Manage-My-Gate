@@ -6,20 +6,28 @@ export const createVillaRules = [
     .withMessage('Unit number is required')
     .isString()
     .withMessage('Unit number must be a string')
-    .trim(),
+    .trim()
+    .escape(),
   body('blockOrBuilding')
     .optional({ nullable: true, checkFalsy: true })
     .isString()
     .withMessage('Block or building must be a string')
-    .trim(),
+    .trim()
+    .escape(),
+  body('floor')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('Floor must be a string')
+    .trim()
+    .escape(),
   body('type')
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['Studio', 'Apartment', 'Villa', 'Penthouse'])
-    .withMessage('Type must be one of: Studio, Apartment, Villa, Penthouse'),
+    .isIn(['Studio', 'Apartment', 'Villa', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex', '1BHA', '2BHA', '3BHA'])
+    .withMessage('Type must be a valid unit type'),
   body('status')
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['Vacant', 'Occupied', 'Under Maintenance'])
-    .withMessage('Status must be one of: Vacant, Occupied, Under Maintenance'),
+    .isIn(['Vacant', 'Occupied', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent', 'Reserved', 'Inactive'])
+    .withMessage('Status must be a valid unit status'),
   body('primaryResidentId')
     .optional({ nullable: true })
     .custom((val) => {
@@ -40,21 +48,29 @@ export const updateVillaRules = [
     .isString()
     .withMessage('Unit number must be a string')
     .trim()
+    .escape()
     .notEmpty()
     .withMessage('Unit number cannot be empty'),
   body('blockOrBuilding')
     .optional({ nullable: true, checkFalsy: true })
     .isString()
     .withMessage('Block or building must be a string')
-    .trim(),
+    .trim()
+    .escape(),
+  body('floor')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('Floor must be a string')
+    .trim()
+    .escape(),
   body('type')
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['Studio', 'Apartment', 'Villa', 'Penthouse'])
-    .withMessage('Type must be one of: Studio, Apartment, Villa, Penthouse'),
+    .isIn(['Studio', 'Apartment', 'Villa', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex', '1BHA', '2BHA', '3BHA'])
+    .withMessage('Type must be a valid unit type'),
   body('status')
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['Vacant', 'Occupied', 'Under Maintenance'])
-    .withMessage('Status must be one of: Vacant, Occupied, Under Maintenance'),
+    .isIn(['Vacant', 'Occupied', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent', 'Reserved', 'Inactive'])
+    .withMessage('Status must be a valid unit status'),
   body('primaryResidentId')
     .optional({ nullable: true })
     .custom((val) => {
@@ -84,7 +100,8 @@ export const batchGenerateRules = [
     .optional()
     .isString()
     .withMessage('Prefix must be a string')
-    .trim(),
+    .trim()
+    .escape(),
   body('config')
     .optional()
     .isObject()
@@ -99,18 +116,20 @@ export const bulkUploadVillasRules = [
     .notEmpty()
     .withMessage('Unit number is required')
     .isString()
-    .trim(),
+    .trim()
+    .escape(),
   body('villas.*.blockOrBuilding')
     .optional({ nullable: true, checkFalsy: true })
     .isString()
-    .trim(),
+    .trim()
+    .escape(),
   body('villas.*.type')
     .optional({ nullable: true, checkFalsy: true })
     .isIn(['1BHA', '2BHA', '3BHA', 'Villa', 'Studio', 'Apartment', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex'])
     .withMessage('Type must be a valid unit type (e.g., 1BHA, 2BHA, 3BHA, Villa)'),
   body('villas.*.status')
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['Occupied', 'Vacant', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent', 'Reserved'])
+    .isIn(['Occupied', 'Vacant', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent', 'Reserved', 'Inactive'])
     .withMessage('Status must be Occupied or Vacant'),
   body('villas.*.floorAreaSqFt')
     .optional({ nullable: true, checkFalsy: true })
@@ -141,7 +160,8 @@ export const assignExistingUserRules = [
     .withMessage('Residency type (residencyType) is required')
     .isString()
     .withMessage('Residency type must be a string')
-    .trim(),
+    .trim()
+    .escape(),
 ];
 
 export const updateResidencyTypeRules = [
@@ -150,7 +170,8 @@ export const updateResidencyTypeRules = [
     .withMessage('Residency type (residencyType) is required')
     .isString()
     .withMessage('Residency type must be a string')
-    .trim(),
+    .trim()
+    .escape(),
 ];
 
 export default {

@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchStaffVendorsAnalytics } from '../store/complaintSlice'
 import ComplaintTopNav from '../components/ComplaintTopNav'
 import TechnicianModal from '../components/TechnicianModal'
+import { technicianService } from '../services/technician.service'
+import { toast } from 'react-hot-toast'
 import { Button } from 'src/components/ui/button'
 import { Badge } from 'src/components/ui/badge'
 import { Input } from 'src/components/ui/input'
@@ -51,6 +53,17 @@ const StaffAndVendor = () => {
     setIsModalOpen(false)
     setSelectedTechnician(null)
     dispatch(fetchStaffVendorsAnalytics({})) // Refresh data after update
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this staff/vendor?')) return
+    try {
+      await technicianService.delete(id)
+      toast.success('Deleted successfully')
+      dispatch(fetchStaffVendorsAnalytics({}))
+    } catch (error) {
+      toast.error(error?.message || 'Failed to delete')
+    }
   }
 
   const StatCard = ({ icon: Icon, value, label, iconBg, iconColor }) => (
@@ -196,14 +209,24 @@ const StaffAndVendor = () => {
                         </Badge>
                       </td>
                       <td className="py-3 px-5 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(s)}
-                          className="text-xs font-semibold text-primary hover:bg-primary/10"
-                        >
-                          Edit
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(s)}
+                            className="text-xs font-semibold text-primary hover:bg-primary/10"
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(s._id)}
+                            className="text-xs font-semibold text-danger hover:bg-danger/10"
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))

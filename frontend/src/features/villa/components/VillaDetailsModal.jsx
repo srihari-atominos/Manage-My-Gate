@@ -30,6 +30,8 @@ import useVilla from '../hooks/useVilla'
 import toast from 'react-hot-toast'
 import { useTranslation } from 'react-i18next'
 import apiClient from '../../../services/apiClient'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 
 export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
   const { t } = useTranslation()
@@ -66,6 +68,7 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
   const [inviteResidencyType, setInviteResidencyType] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState(null)
+  const [expectedPhoneLength, setExpectedPhoneLength] = useState(12)
 
   // Inline residency type editor states
   const [editingUserId, setEditingUserId] = useState(null)
@@ -125,6 +128,12 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
 
     setInviting(true)
     setInviteError(null)
+
+    if (invitePhone && invitePhone.length < expectedPhoneLength) {
+      setInviteError(t('villas.details.phoneInvalid', 'Invalid phone number length for this country.'))
+      setInviting(false)
+      return
+    }
 
     try {
       const getResidentType = (type) => {
@@ -566,13 +575,30 @@ export const VillaDetailsModal = ({ visible, onClose, villaId, onEdit }) => {
                           <CFormLabel htmlFor="invite-phone" className="small fw-semibold">
                             {t('villas.details.phoneLabel', 'Phone Number (Optional)')}
                           </CFormLabel>
-                          <CFormInput
-                            id="invite-phone"
-                            type="text"
-                            placeholder="+1234567890"
+                          <PhoneInput
+                            country={'in'}
                             value={invitePhone}
-                            onChange={(e) => setInvitePhone(e.target.value)}
-                            size="sm"
+                            onChange={(phone, country) => {
+                              if (country && country.format) {
+                                setExpectedPhoneLength(country.format.replace(/[^.]/g, '').length)
+                              }
+                              setInvitePhone(phone)
+                            }}
+                            containerStyle={{
+                              width: '100%',
+                            }}
+                            inputStyle={{
+                              width: '100%',
+                              height: '31px', // matches size="sm" height
+                              border: '1px solid #d8dbe0', // coreui default border
+                              borderRadius: '0.375rem',
+                              fontSize: '14px',
+                            }}
+                            buttonStyle={{
+                              border: '1px solid #d8dbe0',
+                              borderRadius: '0.375rem 0 0 0.375rem',
+                              backgroundColor: '#ebedef',
+                            }}
                           />
                         </div>
                         <div className="mb-3">

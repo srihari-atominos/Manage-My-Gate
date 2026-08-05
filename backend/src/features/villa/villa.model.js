@@ -20,6 +20,11 @@ const villaSchema = new mongoose.Schema(
       default: '',
       alias: 'block',
     },
+    floor: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     type: {
       type: String,
       enum: ['Studio', 'Apartment', 'Villa', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex', '1BHA', '2BHA', '3BHA'],
@@ -27,7 +32,7 @@ const villaSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Vacant', 'Occupied', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent', 'Reserved'],
+      enum: ['Vacant', 'Occupied', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent', 'Reserved', 'Inactive'],
       default: 'Vacant',
     },
     primaryResidentId: {
@@ -91,14 +96,16 @@ const villaSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    optimisticConcurrency: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
   }
 );
 
-// Compound index on { orgId: 1, unitNumber: 1 } with unique: true
-// to prevent duplicate unit numbers within the same organization.
-villaSchema.index({ orgId: 1, unitNumber: 1 }, { unique: true });
+// Compound index on { orgId: 1, blockOrBuilding: 1, unitNumber: 1 } with unique: true
+// to prevent duplicate unit numbers within the same block in an organization,
+// while allowing identical unit numbers across different blocks.
+villaSchema.index({ orgId: 1, blockOrBuilding: 1, unitNumber: 1 }, { unique: true });
 
 export const Villa = mongoose.model('Villa', villaSchema);
 export default Villa;

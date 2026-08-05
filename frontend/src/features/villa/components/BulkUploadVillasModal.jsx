@@ -53,9 +53,11 @@ const parseXLSX = (arrayBuffer) => {
         key = 'type'
       else if (header.includes('floor area') || header.includes('sq ft') || header.includes('area'))
         key = 'floorAreaSqFt'
+      else if (header.includes('floor')) key = 'floor'
       else if (header.includes('occupancy status') || header.includes('status')) key = 'status'
       else if (header.includes('role')) key = 'roleName'
       else if (header.includes('phone') || header.includes('mobile')) key = 'phone'
+      else if (header.includes('name') || header.includes('resident name')) key = 'name'
 
       row[key] =
         values[index] !== undefined && values[index] !== null ? values[index].toString().trim() : ''
@@ -146,9 +148,11 @@ const parseCSV = (csvText) => {
         key = 'type'
       else if (header.includes('floor area') || header.includes('sq ft') || header.includes('area'))
         key = 'floorAreaSqFt'
+      else if (header.includes('floor')) key = 'floor'
       else if (header.includes('occupancy status') || header.includes('status')) key = 'status'
       else if (header.includes('role')) key = 'roleName'
       else if (header.includes('phone') || header.includes('mobile')) key = 'phone'
+      else if (header.includes('name') || header.includes('resident name')) key = 'name'
 
       row[key] =
         values[index] !== undefined && values[index] !== null ? values[index].toString().trim() : ''
@@ -274,9 +278,11 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
       const payload = validRows.map((r) => ({
         unitNumber: r.unitNumber,
         blockOrBuilding: r.blockOrBuilding || undefined,
+        floor: r.floor || '',
         type: r.type || 'Apartment',
         status: r.status || 'Vacant',
         floorAreaSqFt: r.floorAreaSqFt ? parseFloat(r.floorAreaSqFt) : undefined,
+        name: r.name || undefined,
         email: r.email || undefined,
         phone: r.phone || undefined,
         residentType: r.email ? r.residentType : undefined,
@@ -420,9 +426,11 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
                       {t('villas.bulk.csvUnitNumber', 'Unit Number')}
                     </th>
                     <th scope="col">{t('villas.bulk.csvBlock', 'Block/Building')}</th>
+                    <th scope="col">{t('villas.bulk.csvFloor', 'Floor')}</th>
                     <th scope="col">{t('villas.bulk.csvUnitType', 'Unit Type')}</th>
                     <th scope="col">{t('villas.bulk.csvFloorArea', 'Floor Area (Sq.Ft)')}</th>
                     <th scope="col">{t('villas.bulk.csvStatus', 'Occupancy Status')}</th>
+                    <th scope="col">{t('villas.bulk.csvName', 'Name')}</th>
                     <th scope="col">{t('villas.bulk.csvEmail', 'Email')}</th>
                     <th scope="col">{t('villas.bulk.csvResidentType', 'Resident Type')}</th>
                     <th scope="col">{t('villas.bulk.csvRole', 'Role')}</th>
@@ -438,9 +446,11 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
                         {row.unitNumber || <span className="text-danger">Missing</span>}
                       </td>
                       <td>{row.blockOrBuilding || <span className="text-muted">—</span>}</td>
+                      <td>{row.floor || <span className="text-muted">—</span>}</td>
                       <td>{row.type || <span className="text-muted">—</span>}</td>
                       <td>{row.floorAreaSqFt || <span className="text-muted">—</span>}</td>
                       <td>{row.status || <span className="text-muted">—</span>}</td>
+                      <td>{row.name || <span className="text-muted">—</span>}</td>
                       <td>{row.email || <span className="text-muted">—</span>}</td>
                       <td>{row.residentType || <span className="text-muted">—</span>}</td>
                       <td>{row.roleName || <span className="text-muted">—</span>}</td>
@@ -496,7 +506,7 @@ export const BulkUploadVillasModal = ({ visible, onClose, onBulkUpload }) => {
                         <span className="text-muted ms-2">({s.action})</span>
                         {s.email && (
                           <div className="text-muted bulk-text-xxs">
-                            Resident: <span className="fw-semibold">{s.email}</span>
+                            Resident: <span className="fw-semibold">{s.name ? `${s.name} (${s.email})` : s.email}</span>
                             {s.userInvited ? (
                               <span className="text-success ms-1">✓ Invited</span>
                             ) : (

@@ -1,6 +1,8 @@
 import React, { memo } from 'react'
 import { CCard, CCardBody, CButton } from '@coreui/react'
 import { useNavigate } from 'react-router-dom'
+import CIcon from '@coreui/icons-react'
+import { cilQrCode } from '@coreui/icons'
 
 const WalletEmptyState = memo(() => {
   const navigate = useNavigate()
@@ -13,7 +15,7 @@ const WalletEmptyState = memo(() => {
             className="rounded-circle bg-body text-muted d-inline-flex align-items-center justify-content-center shadow-sm"
             style={{ width: '80px', height: '80px' }}
           >
-            <i className="fa-solid fa-qrcode fs-1 opacity-50"></i>
+            <CIcon icon={cilQrCode} customClassName="fs-1 opacity-50" size="xl" />
           </div>
         </div>
         <h4 className="fw-bold mb-3">No Active Passes</h4>

@@ -37,6 +37,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
   const [assignmentType, setAssignmentType] = useState('broadcast')
   const [techniciansList, setTechniciansList] = useState([])
   const [isFetchingTechs, setIsFetchingTechs] = useState(true)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   const [enlargedImage, setEnlargedImage] = useState(null)
   const [form, setForm] = useState({
@@ -60,7 +61,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
       .get('/technicians')
       .then((res) => {
         const activeTechs = res?.data || []
-        setTechniciansList(activeTechs.filter((t) => t.status === 'Active'))
+        setTechniciansList(activeTechs.filter((t) => ['Active', 'Pending'].includes(t.status)))
       })
       .catch((err) => {
         console.error('Failed to fetch technicians:', err)
@@ -213,49 +214,71 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
 
           {/* Form Fields based on Assignment Type */}
           {assignmentType === 'broadcast' ? (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 relative">
               <Label className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                 Select Multiple Staff to Request <span className="text-danger">*</span>
               </Label>
               {isFetchingTechs ? (
-                <div className="h-20 w-full bg-slate-100 dark:bg-meta-4 animate-pulse rounded-lg" />
+                <div className="h-10 w-full bg-slate-100 dark:bg-meta-4 animate-pulse rounded-lg" />
               ) : (
-                <div className="max-h-48 overflow-y-auto border border-stroke dark:border-strokedark rounded-lg p-2 divide-y divide-stroke dark:divide-strokedark">
-                  {techniciansList.map((t) => {
-                    const status = getAvailability(t._id)
-                    const statusText = status === 'Available' ? '✅ Available' : '🔴 Busy'
-                    const isChecked = form.technicianIds.includes(t._id)
-                    return (
-                      <label
-                        key={t._id}
-                        className={`flex items-center gap-3 p-2.5 rounded-md cursor-pointer select-none transition-colors ${
-                          isChecked ? 'bg-primary/5 dark:bg-primary/10' : 'hover:bg-slate-50 dark:hover:bg-meta-4/20'
-                        }`}
-                      >
-                        <Checkbox
-                          checked={isChecked}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setForm({ ...form, technicianIds: [...form.technicianIds, t._id] })
-                            } else {
-                              setForm({
-                                ...form,
-                                technicianIds: form.technicianIds.filter((id) => id !== t._id),
-                              })
-                            }
-                          }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-bold text-black dark:text-white truncate">
-                            {t.name}
-                          </div>
-                          <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
-                            {t.department} - {statusText}
-                          </div>
+                <div className="relative">
+                  <div
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="w-full rounded-lg border border-stroke bg-transparent py-2 px-3 text-xs outline-none focus:border-primary active:border-primary dark:border-strokedark dark:bg-meta-4 text-black dark:text-white cursor-pointer flex justify-between items-center"
+                  >
+                    <span>
+                      {form.technicianIds.length > 0
+                        ? `${form.technicianIds.length} staff selected`
+                        : '-- Select Assignees --'}
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  </div>
+
+                  {isDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto border border-stroke dark:border-strokedark rounded-lg p-2 divide-y divide-stroke dark:divide-strokedark bg-white dark:bg-boxdark z-50 shadow-default">
+                      {techniciansList.length === 0 ? (
+                        <div className="p-2 text-center text-xs text-gray-400 dark:text-gray-500">
+                          No staff available
                         </div>
-                      </label>
-                    )
-                  })}
+                      ) : (
+                        techniciansList.map((t) => {
+                          const status = getAvailability(t._id)
+                          const statusText = status === 'Available' ? '✅ Available' : '🔴 Busy'
+                          const isChecked = form.technicianIds.includes(t._id)
+                          return (
+                            <label
+                              key={t._id}
+                              className={`flex items-center gap-3 p-2.5 rounded-md cursor-pointer select-none transition-colors ${
+                                isChecked ? 'bg-primary/5 dark:bg-primary/10' : 'hover:bg-slate-50 dark:hover:bg-meta-4/20'
+                              }`}
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setForm({ ...form, technicianIds: [...form.technicianIds, t._id] })
+                                  } else {
+                                    setForm({
+                                      ...form,
+                                      technicianIds: form.technicianIds.filter((id) => id !== t._id),
+                                    })
+                                  }
+                                }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-bold text-black dark:text-white truncate">
+                                  {t.name}
+                                </div>
+                                <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                                  {t.department} - {statusText}
+                                </div>
+                              </div>
+                            </label>
+                          )
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -32,3 +32,31 @@ export const getDayName = (dayIndex) => {
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   return days[dayIndex] || ''
 }
+
+/**
+ * Returns a fallback image URL for an amenity based on its name
+ * @param {string} name - Amenity name
+ * @returns {string} Image URL
+ */
+export const getAmenityImagePlaceholder = (name) => {
+  if (!name) return 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1470&auto=format&fit=crop'
+  
+  const lowerName = name.toLowerCase()
+  if (lowerName.includes('gym') || lowerName.includes('fitness') || lowerName.includes('workout')) {
+    return 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1470&auto=format&fit=crop'
+  }
+  if (lowerName.includes('pool') || lowerName.includes('swim')) {
+    return 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?q=80&w=1470&auto=format&fit=crop'
+  }
+  if (lowerName.includes('tennis')) {
+    return 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=1470&auto=format&fit=crop'
+  }
+  if (lowerName.includes('badminton') || lowerName.includes('court')) {
+    return 'https://images.unsplash.com/photo-1622279457486-69d73ce58b09?q=80&w=1470&auto=format&fit=crop'
+  }
+  if (lowerName.includes('club') || lowerName.includes('hall') || lowerName.includes('party')) {
+    return 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=1498&auto=format&fit=crop'
+  }
+  
+  return 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1470&auto=format&fit=crop' // Default
+}

@@ -1,5 +1,6 @@
 import React from 'react'
-
+import CIcon from '@coreui/icons-react'
+import { cilQrCode } from '@coreui/icons'
 import useSecurityScanner from '../hooks/useSecurityScanner.js'
 import ScannerCamera from '../components/scanner/ScannerCamera.jsx'
 import ScannerFallback from '../components/scanner/ScannerFallback.jsx'
@@ -39,7 +40,6 @@ const SecurityScannerView = () => {
                   <div className="bg-body-secondary p-3 rounded mb-4 text-center">
                     {loading ? <ScannerLoading /> : <ScannerCamera onScan={handleScan} />}
                   </div>
-                  <h6 className="fw-semibold mb-2">Manual Entry</h6>
                   <ScannerFallback onSubmit={handleManualEntry} />
                 </div>
               </div>
@@ -98,7 +98,7 @@ const SecurityScannerView = () => {
                     </div>
                   ) : (
                     <div className="d-flex flex-column align-items-center justify-content-center h-100 text-muted">
-                      <i className="fa-solid fa-qrcode fa-3x mb-3 opacity-25"></i>
+                      <CIcon icon={cilQrCode} customClassName="mb-3 opacity-25" size="3xl" />
                       <p>Scan a QR code to view details</p>
                     </div>
                   )}

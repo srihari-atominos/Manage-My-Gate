@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchStaffVendorsAnalytics } from '../store/complaintSlice'
 import ComplaintTopNav from '../components/ComplaintTopNav'
 import TechnicianModal from '../components/TechnicianModal'
+import { technicianService } from '../services/technician.service'
+import { toast } from 'react-hot-toast'
 import '../styles/_complaints.scss'
 
 const StaffAndVendor = () => {
@@ -43,6 +45,17 @@ const StaffAndVendor = () => {
     setIsModalOpen(false)
     setSelectedTechnician(null)
     dispatch(fetchStaffVendorsAnalytics({})) // Refresh data after update
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this staff/vendor?')) return
+    try {
+      await technicianService.delete(id)
+      toast.success('Deleted successfully')
+      dispatch(fetchStaffVendorsAnalytics({}))
+    } catch (error) {
+      toast.error(error?.message || 'Failed to delete')
+    }
   }
 
   return (
@@ -264,9 +277,14 @@ const StaffAndVendor = () => {
                           </span>
                         </td>
                         <td>
-                          <button className="btn btn-ghost btn-sm" onClick={() => handleEdit(s)}>
-                            Edit
-                          </button>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button className="btn btn-ghost btn-sm" onClick={() => handleEdit(s)}>
+                              Edit
+                            </button>
+                            <button className="btn btn-ghost btn-sm" style={{ color: '#ef4444' }} onClick={() => handleDelete(s._id)}>
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

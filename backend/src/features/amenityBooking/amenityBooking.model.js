@@ -60,7 +60,7 @@ const amenityBookingSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ['pending', 'captured', 'refunded', 'failed'],
+    enum: ['pending', 'captured', 'refunded', 'failed', 'success'],
     default: 'pending'
   },
   razorpayTransactionId: {
@@ -147,11 +147,10 @@ const amenityBookingSchema = new mongoose.Schema({
 amenityBookingSchema.set('optimisticConcurrency', true);
 
 // Pre-save middleware to explicitly enforce version increment for all saves
-amenityBookingSchema.pre('save', function (next) {
+amenityBookingSchema.pre('save', function () {
   if (!this.isNew) {
     this.increment(); // Forces __v to increment on every save, triggering the OCC check
   }
-  next();
 });
 
 // Post-save middleware to catch the VersionError and throw a specific message

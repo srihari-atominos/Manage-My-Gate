@@ -151,6 +151,36 @@ router.put(
 
 /**
  * @swagger
+ * /villas/export:
+ *   get:
+ *     summary: Export units to CSV format
+ */
+router.get(
+  '/export',
+  correlationIdMiddleware,
+  isAuthenticated,
+  tenantContext,
+  authorizePermission('villas', 'read'),
+  villaController.exportUnits
+);
+
+/**
+ * @swagger
+ * /villas/{id}/deactivate:
+ *   patch:
+ *     summary: Deactivate a unit
+ */
+router.patch(
+  '/:id/deactivate',
+  correlationIdMiddleware,
+  isAuthenticated,
+  tenantContext,
+  authorizePermission('villas', 'update'),
+  villaController.deactivate
+);
+
+/**
+ * @swagger
  * /villas/{id}/assign:
  *   patch:
  *     summary: Assign primary resident to unit
@@ -160,7 +190,7 @@ router.patch(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
-  authorizeAnyPermission(['villas:update', 'villas:read']),
+  authorizePermission('villas', 'update'),
   villaController.assignResident
 );
 
@@ -190,7 +220,7 @@ router.post(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
-  authorizeAnyPermission(['villas:update', 'villas:read']),
+  authorizePermission('villas', 'update'),
   validate(assignExistingUserRules),
   villaController.assignExistingUser
 );
@@ -206,7 +236,7 @@ router.patch(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
-  authorizeAnyPermission(['villas:update', 'villas:read']),
+  authorizePermission('villas', 'update'),
   validate(updateResidencyTypeRules),
   villaController.updateResidencyType
 );
@@ -222,7 +252,7 @@ router.delete(
   correlationIdMiddleware,
   isAuthenticated,
   tenantContext,
-  authorizeAnyPermission(['villas:update', 'villas:read']),
+  authorizePermission('villas', 'update'),
   villaController.removeResident
 );
 

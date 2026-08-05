@@ -1,12 +1,17 @@
 import React, { memo } from 'react'
 import { CCard, CCardBody, CRow, CCol, CButton } from '@coreui/react'
 import BookingPricing from './BookingPricing.jsx'
+import { getAmenityImagePlaceholder } from '../../utils/amenityUtils.js'
 
 const BookingSummary = memo(({ amenity, draft, onConfirm, onBack }) => {
   if (!amenity) return null
 
   return (
-    <CCard className="border-0 shadow-sm mb-4">
+    <CCard className="border-0 shadow-sm mb-4" style={{
+      backgroundImage: `linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.96)), url(${amenity.image || getAmenityImagePlaceholder(amenity.name)})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }}>
       <CCardBody className="p-4">
         <h5 className="mb-4">Review Your Booking</h5>
 

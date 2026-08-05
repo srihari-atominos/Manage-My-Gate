@@ -1,5 +1,7 @@
 import AmenityBooking from './amenityBooking.model.js';
 import mongoose from 'mongoose';
+import '../amenity/amenity.model.js';
+import '../user/user.model.js';
 
 export class AmenityBookingRepository {
   async findConflicts(orgId, amenityId, date, startTime, endTime, session = null) {
@@ -47,6 +49,9 @@ export class AmenityBookingRepository {
     if (filters.bookingDate) matchStage.bookingDate = filters.bookingDate;
     if (filters.userId) matchStage.userId = new mongoose.Types.ObjectId(filters.userId);
     if (filters.checkedInBy) matchStage.checkedInBy = new mongoose.Types.ObjectId(filters.checkedInBy);
+
+    // Remove the pending concept for ledgers by filtering out pending payments
+    matchStage.paymentStatus = { $ne: 'pending' };
 
     const pipeline = [
       { $match: matchStage },
@@ -122,6 +127,9 @@ export class AmenityBookingRepository {
       query.bookingDate = { $lte: filters.endDate };
     }
 
+    // Remove the pending concept for ledgers by filtering out pending payments
+    query.paymentStatus = { $ne: 'pending' };
+
     return await AmenityBooking.find(query)
       .sort({ bookingDate: -1, startTime: -1 })
       .populate('amenityId', 'name type images location bookingRules pricing')
@@ -131,7 +139,8 @@ export class AmenityBookingRepository {
   async findEventsForCalendar(orgId, startDate, endDate) {
     return await AmenityBooking.find({
       orgId: new mongoose.Types.ObjectId(orgId),
-      bookingDate: { $gte: startDate, $lte: endDate }
+      bookingDate: { $gte: startDate, $lte: endDate },
+      paymentStatus: { $ne: 'pending' }
     })
     .populate('userId', 'name email profilePicture flatNumber building tower phoneNumber')
     .populate('amenityId', 'name type images location bookingRules pricing')

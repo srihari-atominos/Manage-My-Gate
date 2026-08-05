@@ -22,16 +22,17 @@ import { useTranslation } from 'react-i18next'
 const schema = yup.object().shape({
   unitNumber: yup.string().required('Unit number is required').trim(),
   blockOrBuilding: yup.string().optional(),
+  floor: yup.string().optional(),
   type: yup
     .string()
     .oneOf(
-      ['Studio', 'Apartment', 'Villa', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex'],
+      ['Studio', 'Apartment', 'Villa', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex', '1BHA', '2BHA', '3BHA'],
       'Invalid type',
     )
     .default('Apartment'),
   status: yup
     .string()
-    .oneOf(['Vacant', 'Occupied', 'Under Maintenance'], 'Invalid status')
+    .oneOf(['Vacant', 'Occupied', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent', 'Reserved', 'Inactive'], 'Invalid status')
     .default('Vacant'),
   floorAreaSqFt: yup
     .number()
@@ -54,6 +55,7 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
     defaultValues: {
       unitNumber: '',
       blockOrBuilding: '',
+      floor: '',
       type: 'Apartment',
       status: 'Vacant',
       floorAreaSqFt: '',
@@ -66,6 +68,7 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
       reset({
         unitNumber: editingVilla.unitNumber || '',
         blockOrBuilding: editingVilla.blockOrBuilding || '',
+        floor: editingVilla.floor || '',
         type: editingVilla.type || 'Apartment',
         status: villaStatusMapBack(editingVilla.status),
         floorAreaSqFt: editingVilla.floorAreaSqFt || '',
@@ -74,6 +77,7 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
       reset({
         unitNumber: '',
         blockOrBuilding: '',
+        floor: '',
         type: 'Apartment',
         status: 'Vacant',
         floorAreaSqFt: '',
@@ -97,6 +101,9 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
       }
       if (payload.blockOrBuilding === '') {
         payload.blockOrBuilding = null
+      }
+      if (payload.floor === '') {
+        payload.floor = null
       }
       await onSubmit(payload)
       reset()
@@ -147,6 +154,20 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
           </div>
 
           <div className="mb-3">
+            <CFormLabel htmlFor="floor" className="small fw-semibold">
+              {t('villas.form.floor', 'Floor')}
+            </CFormLabel>
+            <CFormInput
+              id="floor"
+              type="text"
+              {...register('floor')}
+              invalid={!!errors.floor}
+              size="sm"
+              placeholder="e.g. 1st Floor / Ground"
+            />
+          </div>
+
+          <div className="mb-3">
             <CFormLabel htmlFor="type" className="small fw-semibold">
               {t('villas.form.type', 'Unit Type')}
             </CFormLabel>
@@ -173,6 +194,7 @@ export const VillaFormModal = ({ visible, onClose, onSubmit, editingVilla }) => 
               <option value="Under Maintenance">
                 {t('villas.statusTypes.UnderMaintenance', 'Under Maintenance')}
               </option>
+              <option value="Inactive">{t('villas.statusTypes.Inactive', 'Inactive')}</option>
             </CFormSelect>
           </div>
 

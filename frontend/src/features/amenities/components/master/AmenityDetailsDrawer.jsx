@@ -136,10 +136,10 @@ const AmenityDetailsDrawer = ({ visible, onClose, amenity }) => {
             </div>
 
             <div style={{ color: 'var(--text-muted)' }} className="fw-semibold small">
-              Buffer Time
+              Max Advance Booking
             </div>
             <div className="fw-semibold small">
-              {amenity.bookingRules?.bufferTimeMinutes || 0} mins
+              {amenity.bookingRules?.advanceBookingDays || 7} Days
             </div>
 
             <div style={{ color: 'var(--text-muted)' }} className="fw-semibold small">

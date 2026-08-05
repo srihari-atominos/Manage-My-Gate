@@ -585,16 +585,16 @@ const AmenityFormModal = ({ visible, onClose, onSave, initialData }) => {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Buffer (Mins)</label>
+                <label className="form-label">Max Advance Booking (Days)</label>
                 <Controller
-                  name="bookingRules.bufferTimeMinutes"
+                  name="bookingRules.advanceBookingDays"
                   control={control}
                   render={({ field, fieldState }) => (
                     <>
                       <input
                         type="number"
                         className={`form-control ${fieldState.error ? 'is-invalid' : ''}`}
-                        placeholder="0"
+                        placeholder="7"
                         {...field}
                       />
                       {fieldState.error && (

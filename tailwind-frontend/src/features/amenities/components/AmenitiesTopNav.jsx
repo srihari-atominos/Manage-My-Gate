@@ -7,7 +7,6 @@ import {
   cilCalendar, 
   cilList, 
   cilBuilding, 
-  cilSettings,
   cilLayers,
   cilWallet,
   cilSearch
@@ -20,7 +19,6 @@ const navItems = [
   { name: 'Ledgers', to: '/admin/amenities/ledgers', icon: cilList, requiredPermission: 'amenities:ledgers' },
   { name: 'Amenities', to: '/admin/amenities/master', icon: cilLayers, requiredPermission: 'amenities:amenities' },
   { name: 'Maintenance', to: '/admin/amenities/maintenance', icon: cilBuilding, requiredPermission: 'amenities:maintenance' },
-  { name: 'Settings', to: '/admin/amenities/settings', icon: cilSettings, requiredPermission: 'amenities:settings' },
   { name: 'Discover', to: '/resident/amenities/discover', icon: cilSearch, requiredPermission: 'amenities:discover' },
   { name: 'My Bookings', to: '/resident/amenities/calendar', icon: cilCalendar, requiredPermission: 'amenities:my_booking' },
   { name: 'Wallet', to: '/resident/amenities/wallet', icon: cilWallet, requiredPermission: 'amenities:wallet' },

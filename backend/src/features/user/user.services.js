@@ -193,7 +193,7 @@ export class UserService {
     }
   }
 
-  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null, phone = '') {
+  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null, phone = '', name = '') {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -215,12 +215,18 @@ export class UserService {
         const userData = {
           email: trimmedEmail,
           username: username,
+          name: name || username,
           status: 'Pending Verification',
           phone: phone || '',
         };
         user = await userRepository.create(userData, session);
-      } else if (phone && !user.phone) {
-        user = await userRepository.update(user._id, { phone }, session);
+      } else {
+        const updates = {};
+        if (phone && !user.phone) updates.phone = phone;
+        if (name && !user.name) updates.name = name;
+        if (Object.keys(updates).length > 0) {
+          user = await userRepository.update(user._id, updates, session);
+        }
       }
 
       // Check if membership already exists

@@ -44,11 +44,21 @@ export const errorHandler = (err, req, res, next) => {
   else if (err.name === 'MongoServerError' && err.code === 11000) {
     statusCode = 409; // Conflict
     if (err.keyValue) {
-      const field = Object.keys(err.keyValue)[0];
-      const value = err.keyValue[field];
-      // Format field name nicely if needed, e.g. "phone" -> "Phone"
-      const formattedField = field.charAt(0).toUpperCase() + field.slice(1);
-      message = `${formattedField} '${value}' is already registered or in use.`;
+      const keys = Object.keys(err.keyValue);
+      if (keys.length === 1) {
+        const field = keys[0];
+        const value = err.keyValue[field];
+        const formattedField = field.charAt(0).toUpperCase() + field.slice(1);
+        message = `${formattedField} '${value}' is already registered or in use.`;
+      } else {
+        const fieldDetails = keys
+          .filter(k => k !== 'orgId')
+          .map(k => `${k}: '${err.keyValue[k]}'`)
+          .join(', ');
+        message = fieldDetails 
+          ? `A record with these details already exists (${fieldDetails}).`
+          : 'A duplicate record already exists.';
+      }
     } else {
       message = 'A duplicate record already exists.';
     }

@@ -447,6 +447,83 @@
   }
 
   /* Scanner Console specific classes */
+  .scanner-console-layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    align-items: stretch;
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  .scanner-console-left {
+    flex: 1 1 500px;
+    max-width: 700px;
+  }
+
+  .scanner-console-right {
+    flex: 1 1 400px;
+    max-width: 500px;
+  }
+
+  /* Typography and Layout alignment mapped to Amenities OS Theme */
+  .scanner-card-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  .scanner-form-label {
+    display: block;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+  }
+  
+  .scanner-card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: var(--surface-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+  }
+
+  .scanner-meta-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 600;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border-light);
+  }
+  .scanner-meta-item:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+  .scanner-meta-item strong {
+    color: var(--text-main);
+    font-weight: 800;
+  }
+
+  .scanner-result-img {
+    max-width: 110px;
+    max-height: 110px;
+    width: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 3px solid var(--surface-bg);
+  }
+
   .scanner-viewfinder-wrapper {
     display: flex;
     flex-direction: column;

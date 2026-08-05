@@ -191,6 +191,8 @@ export class PaymentService {
 
       // 2. Create Refund ledger record
       const refundRecord = await Payment.create({
+        orgId: payment.orgId,
+        userId: payment.userId,
         referenceId: payment.referenceId,
         referenceType: payment.referenceType,
         amount: -Math.abs(refundAmount), // Negative amount for refund

@@ -358,9 +358,9 @@ export const GuardScannerConsole = ({
   const showCheckOut = matchedPass && (isGroupPass ? isVisitorInside : isInside)
 
   return (
-    <div className="dashboard-grid">
+    <div className="scanner-console-layout">
       {/* Left Box: Scanner / Type Selector Console */}
-      <div style={{ flex: 1.2 }}>
+      <div className="scanner-console-left">
         <div className="card invite-form-card" style={{ minHeight: '380px' }}>
           <div
             style={{
@@ -368,9 +368,11 @@ export const GuardScannerConsole = ({
               justifyContent: 'space-between',
               alignItems: 'center',
               marginBottom: '20px',
+              flexWrap: 'wrap',
+              gap: '12px'
             }}
           >
-            <h3 style={{ fontSize: '17px', margin: 0, fontWeight: '700' }}>
+            <h3 className="scanner-card-title">
               <i
                 className="fa-solid fa-camera"
                 style={{ color: 'var(--primary)', marginRight: '8px' }}
@@ -517,27 +519,21 @@ export const GuardScannerConsole = ({
               style={{ padding: '20px 0' }}
             >
               <div className="mb-4">
-                <label
-                  style={{
-                    fontWeight: '600',
-                    fontSize: '13px',
-                    color: 'var(--text-muted)',
-                    marginBottom: '8px',
-                  }}
-                >
+                <label className="scanner-form-label">
                   Enter Visitor Details / Pass Code / QR number
                 </label>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <CFormInput
                     type="text"
                     placeholder="e.g. G-10029, Alice, Robert"
                     value={typedCode}
                     onChange={(e) => setTypedCode(e.target.value)}
+                    style={{ flex: '1 1 200px' }}
                   />
                   <CButton
                     type="submit"
                     color="primary"
-                    style={{ whiteSpace: 'nowrap', fontWeight: '600' }}
+                    style={{ whiteSpace: 'nowrap', fontWeight: '600', flex: '0 0 auto' }}
                   >
                     Verify Pass
                   </CButton>
@@ -566,7 +562,7 @@ export const GuardScannerConsole = ({
       </div>
 
       {/* Right Box: Scanned Code Details Summary */}
-      <div style={{ flex: 0.8 }}>
+      <div className="scanner-console-right">
         <div
           className="card"
           style={{
@@ -583,14 +579,22 @@ export const GuardScannerConsole = ({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyBetween: 'center',
+                    justifyContent: 'center',
                     gap: '10px',
                     marginBottom: '16px',
                   }}
                 >
-                  <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-main)' }}>
-                    Pass Verification Results
-                  </span>
+                  <h3 className="scanner-card-title text-center">
+                    Last Scan Details
+                  </h3>
+                </div>
+
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <img
+                    src={matchedPass.photo || matchedPass.visitorDetails?.photo || 'https://via.placeholder.com/150'}
+                    alt="Visitor"
+                    className="scanner-result-img"
+                  />
                 </div>
 
                 <div
@@ -646,71 +650,35 @@ export const GuardScannerConsole = ({
                     fontSize: '13px',
                   }}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      borderBottom: '1px solid var(--border-light)',
-                      paddingBottom: '6px',
-                    }}
-                  >
-                    <span style={{ color: 'var(--text-muted)' }}>Visitor:</span>
-                    <strong style={{ color: 'var(--text-main)' }}>
-                      {matchedPass.visitorName || matchedPass.visitorDetails?.name}
-                    </strong>
+                <div className="scanner-card-meta">
+                  <div className="scanner-meta-item">
+                    <span>Visitor:</span>
+                    <strong>{matchedPass.visitorName || matchedPass.visitorDetails?.name}</strong>
                   </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      borderBottom: '1px solid var(--border-light)',
-                      paddingBottom: '6px',
-                    }}
-                  >
-                    <span style={{ color: 'var(--text-muted)' }}>Ticket Type:</span>
-                    <strong style={{ color: 'var(--text-main)', textTransform: 'capitalize' }}>
+                  
+                  <div className="scanner-meta-item">
+                    <span>Ticket Type:</span>
+                    <strong style={{ textTransform: 'capitalize' }}>
                       {matchedPass.passType || matchedPass.method || 'GUEST'}
                     </strong>
                   </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      borderBottom: '1px solid var(--border-light)',
-                      paddingBottom: '6px',
-                    }}
-                  >
-                    <span style={{ color: 'var(--text-muted)' }}>Plate No:</span>
-                    <strong style={{ color: 'var(--text-main)' }}>
-                      {matchedPass.vehicleNumber || matchedPass.vehicleDetails?.number || '—'}
-                    </strong>
+                  
+                  <div className="scanner-meta-item">
+                    <span>Plate No:</span>
+                    <strong>{matchedPass.vehicleNumber || matchedPass.vehicleDetails?.number || '—'}</strong>
                   </div>
+                  
                   {matchedPass.usageLimit && matchedPass.usageLimit.maxUses > 1 && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        borderBottom: '1px solid var(--border-light)',
-                        paddingBottom: '6px',
-                      }}
-                    >
-                      <span style={{ color: 'var(--text-muted)' }}>
-                        {isGroupPass ? 'Group Code Entries:' : 'Pass Entries Used:'}
-                      </span>
-                      <strong style={{ color: 'var(--text-main)' }}>
+                    <div className="scanner-meta-item">
+                      <span>{isGroupPass ? 'Group Code Entries:' : 'Pass Entries Used:'}</span>
+                      <strong>
                         {matchedPass.usageLimit.currentUses || 0} / {matchedPass.usageLimit.maxUses}
                       </strong>
                     </div>
                   )}
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      borderBottom: '1px solid var(--border-light)',
-                      paddingBottom: '6px',
-                    }}
-                  >
-                    <span style={{ color: 'var(--text-muted)' }}>Status:</span>
+                  
+                  <div className="scanner-meta-item">
+                    <span>Status:</span>
                     <strong
                       style={{
                         color: isExpiredOrRevoked
@@ -729,12 +697,12 @@ export const GuardScannerConsole = ({
               {/* Action Buttons */}
               <div style={{ marginTop: '24px' }}>
                 {showCheckIn && showCheckOut ? (
-                  <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <CButton
                       color="success"
                       onClick={handleCheckIn}
                       disabled={isLoading}
-                      style={{ flex: 1, color: '#fff', fontWeight: '700', padding: '12px 0' }}
+                      style={{ flex: '1 1 140px', color: '#fff', fontWeight: '700', padding: '12px 0' }}
                     >
                       <i
                         className="fa-solid fa-right-to-bracket"
@@ -746,7 +714,7 @@ export const GuardScannerConsole = ({
                       color="warning"
                       onClick={handleCheckOut}
                       disabled={isLoading}
-                      style={{ flex: 1, color: '#fff', fontWeight: '700', padding: '12px 0' }}
+                      style={{ flex: '1 1 140px', color: '#fff', fontWeight: '700', padding: '12px 0' }}
                     >
                       <i className="fa-solid fa-door-open" style={{ marginRight: '6px' }}></i>
                       Check-Out Guest

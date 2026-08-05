@@ -9,6 +9,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
   const [assignmentType, setAssignmentType] = useState('broadcast')
   const [techniciansList, setTechniciansList] = useState([])
   const [isFetchingTechs, setIsFetchingTechs] = useState(true)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   const [enlargedImage, setEnlargedImage] = useState(null)
   const [form, setForm] = useState({
@@ -33,7 +34,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
       .get('/technicians')
       .then((res) => {
         const activeTechs = res?.data || []
-        setTechniciansList(activeTechs.filter((t) => t.status === 'Active'))
+        setTechniciansList(activeTechs.filter((t) => ['Active', 'Pending'].includes(t.status)))
       })
       .catch((err) => {
         console.error('Failed to fetch technicians:', err)
@@ -246,61 +247,107 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                       }}
                     ></div>
                   ) : (
-                    <div
-                      style={{
-                        maxHeight: '200px',
-                        overflowY: 'auto',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '8px',
-                        padding: '8px',
-                      }}
-                    >
-                      {techniciansList.map((t) => {
-                        const status = getAvailability(t._id)
-                        const statusText = status === 'Available' ? '✅ Available' : '🔴 Busy'
-                        const isChecked = form.technicianIds.includes(t._id)
-                        return (
-                          <label
-                            key={t._id}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '12px',
-                              padding: '8px 12px',
-                              cursor: 'pointer',
-                              borderRadius: '6px',
-                              backgroundColor: isChecked ? '#eff6ff' : 'transparent',
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setForm({
-                                    ...form,
-                                    technicianIds: [...form.technicianIds, t._id],
-                                  })
-                                } else {
-                                  setForm({
-                                    ...form,
-                                    technicianIds: form.technicianIds.filter((id) => id !== t._id),
-                                  })
-                                }
-                              }}
-                              style={{ width: '18px', height: '18px', accentColor: '#2563eb' }}
-                            />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ color: 'var(--ink)' }} className="fw-semibold">
-                                {t.name}
-                              </div>
-                              <div style={{ color: 'var(--ink-soft)' }} className="small">
-                                {t.department} - {statusText}
-                              </div>
+                    <div style={{ position: 'relative' }}>
+                      <div
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '15px',
+                          backgroundColor: 'var(--surface)',
+                          color: 'var(--ink)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                        }}
+                      >
+                        <span>
+                          {form.technicianIds.length > 0
+                            ? `${form.technicianIds.length} staff selected`
+                            : '-- Select Assignees --'}
+                        </span>
+                        <i
+                          className={`fa-solid fa-chevron-${isDropdownOpen ? 'up' : 'down'}`}
+                          style={{ color: '#94a3b8' }}
+                        ></i>
+                      </div>
+
+                      {isDropdownOpen && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            marginTop: '8px',
+                            maxHeight: '250px',
+                            overflowY: 'auto',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '8px',
+                            padding: '8px',
+                            backgroundColor: 'var(--surface)',
+                            zIndex: 50,
+                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
+                          }}
+                        >
+                          {techniciansList.length === 0 ? (
+                            <div style={{ padding: '8px', color: 'var(--ink-soft)', textAlign: 'center' }}>
+                              No staff available
                             </div>
-                          </label>
-                        )
-                      })}
+                          ) : (
+                            techniciansList.map((t) => {
+                              const status = getAvailability(t._id)
+                              const statusText = status === 'Available' ? '✅ Available' : '🔴 Busy'
+                              const isChecked = form.technicianIds.includes(t._id)
+                              return (
+                                <label
+                                  key={t._id}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '8px 12px',
+                                    cursor: 'pointer',
+                                    borderRadius: '6px',
+                                    backgroundColor: isChecked ? '#eff6ff' : 'transparent',
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setForm({
+                                          ...form,
+                                          technicianIds: [...form.technicianIds, t._id],
+                                        })
+                                      } else {
+                                        setForm({
+                                          ...form,
+                                          technicianIds: form.technicianIds.filter((id) => id !== t._id),
+                                        })
+                                      }
+                                    }}
+                                    style={{ width: '18px', height: '18px', accentColor: '#2563eb' }}
+                                  />
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ color: 'var(--ink)' }} className="fw-semibold">
+                                      {t.name}
+                                    </div>
+                                    <div style={{ color: 'var(--ink-soft)' }} className="small">
+                                      {t.department} - {statusText}
+                                    </div>
+                                  </div>
+                                </label>
+                              )
+                            })
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
