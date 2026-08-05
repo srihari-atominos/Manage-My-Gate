@@ -221,8 +221,12 @@ export class AuthService {
       }
     } else {
       // Primary context selection:
-      // 1. If user has a non-platform community workspace, prefer that for community roles
-      selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform);
+      // 1. Prefer a non-platform community workspace that has a villa assigned
+      selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform && m.villaId);
+      // 1b. Fallback to any non-platform community workspace
+      if (!selectedMembership) {
+        selectedMembership = activeMemberships.find((m) => !m.orgId.isPlatform);
+      }
       // 2. Fall back to the first active workspace (e.g. System Platform for Platform Super Admin)
       if (!selectedMembership && activeMemberships.length > 0) {
         selectedMembership = activeMemberships[0];

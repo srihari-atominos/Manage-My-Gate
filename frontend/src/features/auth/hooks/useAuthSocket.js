@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { io } from 'socket.io-client'
 import config from '../../../config/config.js'
-import { logout } from '../store/authSlice'
+import { logout, switchWorkspaceContext } from '../store/authSlice'
 import { toast } from 'react-hot-toast'
 import { useTranslation } from 'react-i18next'
 
@@ -42,6 +42,9 @@ export const useAuthSocket = () => {
     // Join room dedicated to current user
     socket.on('connect', () => {
       socket.emit('join_room', `user:${user.id}`)
+      if (user.orgId) {
+        socket.emit('join_room', `org:${user.orgId}`)
+      }
     })
 
     // Listen to session revocation events
@@ -51,16 +54,34 @@ export const useAuthSocket = () => {
       dispatch(logout())
     }
 
+    // Listen to real-time unit allocation or user updates to refresh state seamlessly
+      const handleResidentAssigned = (data) => {
+      if (data?.userId === user.id || data?.residentId === user.id) {
+        toast.success(t('auth.unit.allocated', 'You have been allocated to a unit.'))
+        dispatch(switchWorkspaceContext({ targetOrgId: user.orgId, targetVillaId: data.villaId }))
+      }
+    }
+
+    const handleRecordUpdated = (data) => {
+      if (data?.type === 'USER' && data?.userId === user.id) {
+        dispatch(switchWorkspaceContext({ targetOrgId: user.orgId }))
+      }
+    }
+
     socket.on('SESSION_REVOKED', handleSessionRevoked)
+    socket.on('resident_assigned', handleResidentAssigned)
+    socket.on('RECORD_UPDATED', handleRecordUpdated)
 
     return () => {
       socket.off('SESSION_REVOKED', handleSessionRevoked)
+      socket.off('resident_assigned', handleResidentAssigned)
+      socket.off('RECORD_UPDATED', handleRecordUpdated)
       socket.disconnect()
       socketRef.current = null
     }
   }, [dispatch, user, token, t])
 
-  return socketRef.current
+  // Hook doesn't need to return anything
 }
 
 export default useAuthSocket

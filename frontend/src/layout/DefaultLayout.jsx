@@ -27,6 +27,7 @@ import { loadCurrentModules } from '../features/workspace/store/workspaceSlice.j
 import useNotificationSocket from '../features/notification/hooks/useNotificationSocket.js'
 import useWalkInListener from '../features/visitorManagement/hooks/useWalkInListener.js'
 import useRoleSocket from '../features/roleBuilder/hooks/useRoleSocket.js'
+import useAuthSocket from '../features/auth/hooks/useAuthSocket.js'
 import GlobalGateApprovalModal from '../features/visitorManagement/components/GlobalGateApprovalModal.jsx'
 
 /**
@@ -56,6 +57,9 @@ const DefaultLayout = () => {
 
   // Initialize real-time role update listener
   useRoleSocket()
+
+  // Initialize real-time auth and session listener
+  useAuthSocket()
 
   useEffect(() => {
     if (token && activeOrgId) {

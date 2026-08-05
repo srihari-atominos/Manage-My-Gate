@@ -17,6 +17,7 @@ export const loginUser = createAsyncThunk(
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
+            activeVillaId: user.villaId || null,
             activeRole: user.role,
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
@@ -52,6 +53,7 @@ export const loginWithGoogle = createAsyncThunk(
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
+            activeVillaId: user.villaId || null,
             activeRole: user.role,
             activeVillaId: user.villaId || null,
             allowedFeatures: user.permissions || [],
@@ -83,6 +85,7 @@ export const loginWithMicrosoft = createAsyncThunk(
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
+            activeVillaId: user.villaId || null,
             activeRole: user.role,
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
@@ -127,6 +130,7 @@ export const verifyRegistration = createAsyncThunk(
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
+            activeVillaId: user.villaId || null,
             activeRole: user.role,
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
@@ -175,6 +179,7 @@ export const acceptInvitation = createAsyncThunk(
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
+            activeVillaId: user.villaId || null,
             activeRole: user.role,
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
@@ -204,6 +209,7 @@ export const acceptSsoInvitation = createAsyncThunk(
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
+            activeVillaId: user.villaId || null,
             activeRole: user.role,
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
@@ -275,6 +281,7 @@ export const createWorkspace = createAsyncThunk(
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
+            activeVillaId: user.villaId || null,
             activeRole: user.role,
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,
@@ -359,6 +366,7 @@ export const verifyOtpLogin = createAsyncThunk(
         dispatch(
           setActiveWorkspace({
             activeOrganizationId: user.orgId,
+            activeVillaId: user.villaId || null,
             activeRole: user.role,
             allowedFeatures: user.permissions || [],
             isPlatform: user.isPlatform || false,

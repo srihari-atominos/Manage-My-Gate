@@ -13,7 +13,7 @@ export const useWorkspaceSwitcher = () => {
   const isPlatform = useSelector((state) => state.workspace.isPlatform)
   const name = useSelector((state) => state.workspace.organizationName)
 
-  const activeVillaId = useSelector((state) => state.auth.currentUser?.villaId) || null
+  const activeVillaId = useSelector((state) => state.auth.user?.villaId) || null
   const activeWorkspace = { orgId, role, isPlatform, name, villaId: activeVillaId }
 
   const handleSwitchWorkspace = async (targetOrgId, targetVillaId = null) => {
