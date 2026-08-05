@@ -32,6 +32,7 @@ export const INVOICE_PAID = 'INVOICE_PAID';
 export const INVOICE_OVERDUE = 'INVOICE_OVERDUE';
 export const CARRY_FORWARD_CREATED = 'CARRY_FORWARD_CREATED';
 export const SEND_WHATSAPP_LINK = 'SEND_WHATSAPP_LINK';
+export const OFFLINE_PAYMENT_SUBMITTED = 'OFFLINE_PAYMENT_SUBMITTED';
 
 export const invoiceEventEmitter = new EventEmitter();
 

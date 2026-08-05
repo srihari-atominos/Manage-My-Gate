@@ -83,6 +83,7 @@ export const useBilling = () => {
         submitOfflineSettlement({
           invoiceId,
           offlineReference: referenceData.offlineReference,
+          offlineAmount: referenceData.offlineAmount,
           paymentMethod: referenceData.paymentMethod,
         }),
       ).unwrap()

@@ -76,11 +76,12 @@ export const triggerInvoiceGenerationThunk = createAsyncThunk(
 
 export const submitOfflineSettlement = createAsyncThunk(
   'billing/submitOfflineSettlement',
-  async ({ invoiceId, offlineReference, paymentMethod }, { rejectWithValue }) => {
+  async ({ invoiceId, offlineReference, paymentMethod, amount }, { rejectWithValue }) => {
     try {
       const response = await billingService.settleInvoiceOffline(invoiceId, {
         offlineReference,
         paymentMethod,
+        amount,
       })
       const body = response?.success !== undefined ? response : response?.data
       return body?.data || body

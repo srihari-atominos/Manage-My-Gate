@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
@@ -9,6 +9,18 @@ import { loginWithGoogle } from '../store/authSlice.js'
 import ForgotPasswordModal from './ForgotPasswordModal.jsx'
 import { GoogleLogin } from '@react-oauth/google'
 import { useMsal } from '@azure/msal-react'
+
+const MemoizedGoogleLogin = React.memo(({ onSuccess, onError }) => (
+  <GoogleLogin
+    onSuccess={onSuccess}
+    onError={onError}
+    type="standard"
+    theme="outline"
+    size="large"
+    width="220px"
+  />
+))
+MemoizedGoogleLogin.displayName = 'MemoizedGoogleLogin'
 import PhoneInput from 'react-phone-input-2'
 import 'react-phone-input-2/lib/style.css'
 import { toast } from 'react-hot-toast'
@@ -156,27 +168,34 @@ export const LoginForm = () => {
 
   const { instance: msalInstance } = useMsal()
 
-  const handleGoogleSuccess = async (credentialResponse) => {
-    try {
-      const response = await dispatch(
-        loginWithGoogle({ token: credentialResponse.credential, inviteToken: inviteTokenParam }),
-      ).unwrap()
+  const handleGoogleSuccess = useCallback(
+    async (credentialResponse) => {
+      try {
+        const response = await dispatch(
+          loginWithGoogle({ token: credentialResponse.credential, inviteToken: inviteTokenParam }),
+        ).unwrap()
 
-      if (response.data?.isNewUser) {
-        navigate('/register', {
-          state: {
-            email: response.data.googleData.email,
-            name: response.data.googleData.name,
-            isGoogleSso: true,
-          },
-        })
-      } else {
-        handlePostAuthRedirect()
+        if (response.data?.isNewUser) {
+          navigate('/register', {
+            state: {
+              email: response.data.googleData.email,
+              name: response.data.googleData.name,
+              isGoogleSso: true,
+            },
+          })
+        } else {
+          handlePostAuthRedirect()
+        }
+      } catch (err) {
+        toast.error(err || 'Failed to verify Google account')
       }
-    } catch (err) {
-      toast.error(err || 'Failed to verify Google account')
-    }
-  }
+    },
+    [dispatch, inviteTokenParam, navigate, handlePostAuthRedirect],
+  )
+
+  const handleGoogleError = useCallback(() => {
+    toast.error('Google Sign-In failed')
+  }, [])
 
   const handleMicrosoftLogin = () => {
     let retries = 0
@@ -560,13 +579,9 @@ export const LoginForm = () => {
               <CRow className="g-3 align-items-center justify-content-center">
                 <CCol xs={12} sm={6} className="d-flex justify-content-center">
                   <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                    <GoogleLogin
+                    <MemoizedGoogleLogin
                       onSuccess={handleGoogleSuccess}
-                      onError={() => toast.error('Google Sign-In failed')}
-                      type="standard"
-                      theme="outline"
-                      size="large"
-                      width="220px"
+                      onError={handleGoogleError}
                     />
                   </div>
                 </CCol>

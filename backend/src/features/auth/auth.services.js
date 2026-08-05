@@ -15,27 +15,7 @@ import userEvents from '../user/user.events.js';
 
 export class AuthService {
   /**
-   * Deep Email Verification (Disabled per configuration requirement)
-   * @param {string} email - The email address to verify
-   */
-  async verifyEmailDeep(email) {
-    if (process.env.NODE_ENV !== 'production' || process.env.SKIP_DEEP_EMAIL_VALIDATION === 'true') {
-      return;
-    }
-    const res = await emailValidator({
-      email: email,
-      validateRegex: true,
-      validateMx: true,
-      validateTypo: false,
-      validateDisposable: true,
-      validateSMTP: true,
-    });
-    
-    if (!res.valid) {
-      throw new HttpError(400, 'This email address does not appear to exist or cannot receive mail.');
-    }
-  }
-  /**
+
    * Registers a new user with standard credentials.
    * Decoupled from organization setup.
    * @param {object} registerData - Payload containing email, username, and password

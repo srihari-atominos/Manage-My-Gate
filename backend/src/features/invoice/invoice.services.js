@@ -432,14 +432,19 @@ export class InvoiceService {
   /**
    * Settle payment with offline cheque / NEFT / cash.
    */
-  async logOfflinePayment(invoiceId, offlineReference) {
+  async logOfflinePayment(invoiceId, offlineReference, amount) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    logger.info('logOfflinePayment called', { invoiceId, offlineReference, correlationId });
+    logger.info('logOfflinePayment called', { invoiceId, offlineReference, amount, correlationId });
+
+    const updatePayload = { offlineReference };
+    if (amount) {
+      updatePayload.offlineAmount = amount;
+    }
 
     const updated = await invoiceRepository.updateStatusWithLock(
       invoiceId,
       'VERIFICATION_PENDING',
-      { offlineReference }
+      updatePayload
     );
 
     const Invoice = (await import('./invoice.model.js')).default;
@@ -450,7 +455,12 @@ export class InvoiceService {
 
     const result = populated || (updated.toObject ? updated.toObject() : updated);
 
-    invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, result);
+    invoiceEventEmitter.emit('OFFLINE_PAYMENT_SUBMITTED', {
+      invoice: result,
+      communityId: result.orgId,
+      residentName: result.targetUserId?.username || 'Unknown',
+      reference: offlineReference
+    });
 
     return result;
   }
@@ -462,16 +472,48 @@ export class InvoiceService {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info('approveOfflinePayment called', { invoiceId, correlationId });
 
+    const Invoice = (await import('./invoice.model.js')).default;
+    const invoice = await Invoice.findById(invoiceId);
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
+
+    const amountToApply = invoice.offlineAmount || invoice.outstandingAmount || invoice.totalAmount;
+    const offlineReference = invoice.offlineReference || 'UNKNOWN';
+    const paymentMethod = invoice.paymentMethod || 'CHEQUE';
+    
+    const newOutstanding = (invoice.outstandingAmount || invoice.totalAmount) - amountToApply;
+    const finalStatus = newOutstanding > 0 ? 'PARTIALLY_PAID' : 'PAID';
+
     const updated = await invoiceRepository.updateStatusWithLock(
       invoiceId,
-      'PAID',
+      finalStatus,
       {
         paid_at: new Date(),
         settled_at: new Date(),
+        amount: amountToApply
       }
     );
 
-    const Invoice = (await import('./invoice.model.js')).default;
+    try {
+      const Payment = (await import('../payment/payment.model.js')).default;
+      await Payment.create({
+        orgId: invoice.communityId || invoice.orgId,
+        userId: invoice.targetUserId,
+        referenceId: invoice._id,
+        referenceType: 'Invoice',
+        amount: amountToApply,
+        status: 'success',
+        paymentMethod: paymentMethod,
+        gatewayTransactionId: offlineReference,
+        verifiedBy: adminUserId || null,
+        verifiedAt: new Date(),
+        approvalStatus: 'APPROVED'
+      });
+    } catch (err) {
+      logger.error('Failed to create Payment ledger record during offline settlement approval', err);
+    }
+
     const populated = await Invoice.findById(updated._id)
       .populate('targetUserId', 'name username email')
       .populate('unitId', 'unitNumber')

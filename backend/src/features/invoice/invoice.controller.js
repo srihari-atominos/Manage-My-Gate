@@ -46,8 +46,9 @@ export class InvoiceController {
   async settleOffline(req, res, next) {
     try {
       const { id } = req.params;
-      const { offlineReference } = req.body;
-      const data = await invoiceService.logOfflinePayment(id, offlineReference);
+      const { offlineReference, amount, offlineAmount } = req.body;
+      const amountToUse = offlineAmount !== undefined ? offlineAmount : amount;
+      const data = await invoiceService.logOfflinePayment(id, offlineReference, amountToUse);
       res.success(data, 'Offline payment recorded and pending clearance verification');
     } catch (error) {
       next(error);
@@ -60,7 +61,8 @@ export class InvoiceController {
   async approvePayment(req, res, next) {
     try {
       const { id } = req.params;
-      const data = await invoiceService.approveOfflinePayment(id);
+      const adminUserId = req.user?.id || req.user?._id;
+      const data = await invoiceService.approveOfflinePayment(id, adminUserId);
       res.success(data, 'Offline payment cleared and verified successfully');
     } catch (error) {
       next(error);

@@ -77,6 +77,11 @@ const LedgerRow = memo(({ invoice, onMarkPaid, onOfflineSettle }) => (
         {invoice.currency || '₹'}
         {(invoice.amount || 0).toLocaleString('en-IN')}
       </span>
+      {invoice.status === 'VERIFICATION_PENDING' && invoice.offlineAmount && invoice.offlineAmount !== invoice.amount && (
+        <div className="small text-muted mt-1" style={{ fontSize: '0.75rem' }}>
+          (Pending: ₹{invoice.offlineAmount.toLocaleString('en-IN')})
+        </div>
+      )}
     </td>
     <td className="billing-ledger__cell">
       <StatusBadge status={invoice.status} paymentMethod={invoice.paymentMethod} />
@@ -124,6 +129,8 @@ const BillingLedgerGrid = memo(
     const [confirmPaidId, setConfirmPaidId] = useState(null)
     const [settleInvoiceId, setSettleInvoiceId] = useState(null)
     const [settleRef, setSettleRef] = useState('')
+    const [settleAmount, setSettleAmount] = useState('')
+    const [maxAmount, setMaxAmount] = useState(0)
 
     const handleMarkPaid = useCallback((invoiceId) => {
       setConfirmPaidId(invoiceId)
@@ -147,14 +154,19 @@ const BillingLedgerGrid = memo(
     const handleOfflineSettle = useCallback((invoiceId) => {
       setSettleInvoiceId(invoiceId)
       setSettleRef('')
-    }, [])
+      const inv = invoices.find(i => i._id === invoiceId)
+      const maxAmt = inv ? (inv.outstandingAmount || inv.amount || 0) : 0
+      setMaxAmount(maxAmt)
+      setSettleAmount(maxAmt > 0 ? maxAmt : '')
+    }, [invoices])
 
     const handleConfirmOfflineSettle = async () => {
-      if (!settleInvoiceId || !settleRef.trim() || !onSettleOffline) return
+      if (!settleInvoiceId || !settleRef.trim() || !onSettleOffline || !settleAmount || settleAmount <= 0) return
       try {
         const res = await onSettleOffline(settleInvoiceId, {
           offlineReference: settleRef,
           paymentMethod: 'CHEQUE',
+          amount: Number(settleAmount),
         })
         if (res && typeof res.unwrap === 'function') {
           await res.unwrap()
@@ -165,6 +177,7 @@ const BillingLedgerGrid = memo(
       } finally {
         setSettleInvoiceId(null)
         setSettleRef('')
+        setSettleAmount('')
       }
     }
 
@@ -338,8 +351,21 @@ const BillingLedgerGrid = memo(
             <CModalTitle className="fw-semibold">Confirm Payment Clearance</CModalTitle>
           </CModalHeader>
           <CModalBody>
-            Are you sure you want to mark this invoice as <strong>PAID</strong>? This will clear the
-            outstanding balance.
+            {(() => {
+              const inv = invoices.find((i) => i._id === confirmPaidId)
+              const verifyAmt = inv?.offlineAmount || inv?.amount || 0
+              return (
+                <>
+                  Are you sure you want to verify and approve the offline payment of{' '}
+                  <strong>₹{verifyAmt.toLocaleString('en-IN')}</strong>?
+                  {inv?.offlineAmount && inv.offlineAmount < (inv.amount || 0) && (
+                    <div className="mt-2 text-danger small">
+                      Note: This is a partial payment. The invoice will be marked as "Partially Paid" and the remaining balance will still be due.
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </CModalBody>
           <CModalFooter>
             <CButton color="secondary" size="sm" onClick={() => setConfirmPaidId(null)}>
@@ -385,6 +411,28 @@ const BillingLedgerGrid = memo(
                   size="sm"
                 />
               </div>
+              <div className="mb-3">
+                <CFormLabel htmlFor="offline-amount" className="small fw-semibold">
+                  Payment Amount (₹) *
+                </CFormLabel>
+                <CFormInput
+                  id="offline-amount"
+                  type="number"
+                  placeholder="0.00"
+                  value={settleAmount}
+                  onChange={(e) => setSettleAmount(e.target.value)}
+                  required
+                  min="1"
+                  max={maxAmount || undefined}
+                  step="0.01"
+                  size="sm"
+                />
+                {maxAmount > 0 && (
+                  <div className="small text-muted mt-1">
+                    Maximum allowed: ₹{maxAmount.toLocaleString('en-IN')}
+                  </div>
+                )}
+              </div>
             </CModalBody>
             <CModalFooter>
               <CButton
@@ -394,11 +442,12 @@ const BillingLedgerGrid = memo(
                 onClick={() => {
                   setSettleInvoiceId(null)
                   setSettleRef('')
+                  setSettleAmount('')
                 }}
               >
                 Cancel
               </CButton>
-              <CButton type="submit" color="primary" size="sm" disabled={!settleRef.trim()}>
+              <CButton type="submit" color="primary" size="sm" disabled={!settleRef.trim() || !settleAmount || settleAmount <= 0}>
                 Record Settlement
               </CButton>
             </CModalFooter>

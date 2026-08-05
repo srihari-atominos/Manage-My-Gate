@@ -72,6 +72,14 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
     socket.on('PAYMENT_SUCCESS', handlePaymentSuccess)
     socket.on('WALLET_UPDATED', handleWalletUpdated)
     socket.on('walletUpdated', handleWalletUpdated)
+    
+    // Listen for offline payment submission to update the admin billing ledger instantly
+    socket.on('offline_payment_submitted', (payload) => {
+      logger.info('Real-time notification: offline_payment_submitted', payload)
+      if (payload?.invoice) {
+        dispatch(syncRealtimeInvoice(payload.invoice))
+      }
+    })
 
     // Lifecycle Cleanup
     return () => {
@@ -83,6 +91,7 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
       socket.off('PAYMENT_SUCCESS', handlePaymentSuccess)
       socket.off('WALLET_UPDATED', handleWalletUpdated)
       socket.off('walletUpdated', handleWalletUpdated)
+      socket.off('offline_payment_submitted')
     }
   }, [socket, dispatch, rooms])
 }

@@ -31,6 +31,7 @@ const BillingLedgerTable = memo(
     const [confirmPaidId, setConfirmPaidId] = useState(null)
     const [settleInvoiceId, setSettleInvoiceId] = useState(null)
     const [settleRef, setSettleRef] = useState('')
+    const [settleAmount, setSettleAmount] = useState('')
 
     // Debounce search query to prevent API request spam on every keystroke
     useEffect(() => {
@@ -62,16 +63,26 @@ const BillingLedgerTable = memo(
       }
     }
 
-    const handleOfflineSettle = useCallback((invoiceId) => {
-      setSettleInvoiceId(invoiceId)
-      setSettleRef('')
-    }, [])
+    const handleOfflineSettle = useCallback(
+      (invoiceId) => {
+        setSettleInvoiceId(invoiceId)
+        setSettleRef('')
+        const inv = invoices.find((i) => i._id === invoiceId)
+        if (inv) {
+          setSettleAmount(inv.outstandingAmount ?? inv.amount ?? inv.totalDue ?? '')
+        } else {
+          setSettleAmount('')
+        }
+      },
+      [invoices],
+    )
 
     const handleConfirmOfflineSettle = async () => {
-      if (!settleInvoiceId || !settleRef.trim()) return
+      if (!settleInvoiceId || !settleRef.trim() || !settleAmount || settleAmount <= 0) return
       try {
         const res = await onSettleOffline(settleInvoiceId, {
           offlineReference: settleRef,
+          offlineAmount: Number(settleAmount),
           paymentMethod: 'CHEQUE',
         })
         if (res && typeof res.unwrap === 'function') {
@@ -83,6 +94,7 @@ const BillingLedgerTable = memo(
       } finally {
         setSettleInvoiceId(null)
         setSettleRef('')
+        setSettleAmount('')
       }
     }
 
@@ -275,9 +287,13 @@ const BillingLedgerTable = memo(
           onClose={() => {
             setSettleInvoiceId(null)
             setSettleRef('')
+            setSettleAmount('')
           }}
           settleRef={settleRef}
           setSettleRef={setSettleRef}
+          settleAmount={settleAmount}
+          setSettleAmount={setSettleAmount}
+          maxAmount={invoices.find((inv) => inv._id === settleInvoiceId)?.amount || 0}
           onSubmit={handleConfirmOfflineSettle}
         />
       </div>

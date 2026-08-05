@@ -259,23 +259,34 @@ export class InvoiceRepository {
     }
 
     invoice.status = newStatus;
-    if (newStatus === 'PAID') {
+    if (newStatus === 'PAID' || newStatus === 'PARTIALLY_PAID') {
       invoice.paid_at = paymentData.paid_at || new Date();
       invoice.settled_at = paymentData.settled_at || null;
       invoice.paymentMethod = paymentData.paymentMethod || invoice.paymentMethod || null;
       invoice.offlineReference = paymentData.offlineReference || invoice.offlineReference || null;
       
+      let applyAmount = 0;
       if (paymentData.amount) {
-        invoice.paidAmount = (invoice.paidAmount || 0) + Number(paymentData.amount);
+        applyAmount = Number(paymentData.amount);
       } else if (!paymentData.amount && paymentData.paymentMethod !== 'WALLET') {
-        // Legacy fallback: if no amount provided, assume full payment
-        invoice.paidAmount = invoice.totalAmount;
+        // Legacy fallback: if no amount provided, assume full payment of outstanding
+        applyAmount = invoice.outstandingAmount || invoice.totalAmount;
       }
+
+      invoice.paidAmount = (invoice.paidAmount || 0) + applyAmount;
+      invoice.outstandingAmount = (invoice.outstandingAmount || invoice.totalAmount) - applyAmount;
+      if (invoice.outstandingAmount < 0) invoice.outstandingAmount = 0;
+      
+      // Reset offline amount since it has been processed
+      invoice.offlineAmount = 0;
     } else if (newStatus === 'CANCELLED') {
       invoice.paid_at = null;
       invoice.settled_at = null;
       invoice.paymentMethod = null;
       invoice.offlineReference = null;
+    } else if (newStatus === 'VERIFICATION_PENDING') {
+      if (paymentData.offlineReference !== undefined) invoice.offlineReference = paymentData.offlineReference;
+      if (paymentData.offlineAmount !== undefined) invoice.offlineAmount = paymentData.offlineAmount;
     }
 
     return await invoice.save(session ? { session } : undefined);
@@ -371,6 +382,7 @@ export class InvoiceRepository {
                 status: 1,
                 paymentMethod: { $ifNull: ['$paymentMethod', '—'] },
                 offlineReference: 1,
+                offlineAmount: 1,
               },
             },
           ],

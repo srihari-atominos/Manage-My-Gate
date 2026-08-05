@@ -76,12 +76,12 @@ export const switchContextRules = [
     .withMessage('targetOrgId must be a valid Mongo ID')
     .trim(),
   body('targetVillaId')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isMongoId()
     .withMessage('targetVillaId must be a valid Mongo ID')
     .trim(),
   body('targetRole')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isString()
     .withMessage('targetRole must be a string')
     .trim(),
