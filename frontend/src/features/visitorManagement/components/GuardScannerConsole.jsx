@@ -30,11 +30,11 @@ export const GuardScannerConsole = ({
     let html5QrCode = null
 
     if (scannerMode === 'camera') {
-      setCameraActive(false)
-      setCameraError('')
-
       // Create a small delay to make sure the div #qr-reader is mounted in the DOM
       const timer = setTimeout(() => {
+        setCameraActive(false)
+        setCameraError('')
+
         const element = document.getElementById('qr-reader')
         if (!element) return
 
@@ -62,6 +62,7 @@ export const GuardScannerConsole = ({
                 }
                 lastScannedCodeRef.current = { code: decodedText, time: now }
                 toast.success('QR Code scanned successfully!')
+                // eslint-disable-next-line react-hooks/immutability
                 handleVerifyCode(decodedText)
               },
               (errorMessage) => {
@@ -102,13 +103,16 @@ export const GuardScannerConsole = ({
         }
       }
     } else {
-      setCameraActive(false)
-      setCameraError('')
+      setTimeout(() => {
+        setCameraActive(false)
+        setCameraError('')
+      }, 0)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scannerMode])
 
   // Check if pass dates and times are active
-  const isPassDateActive = (pass) => {
+  function isPassDateActive(pass) {
     if (!pass || !pass.validity) return false
     const now = new Date()
     const start = new Date(pass.validity.startDate)
@@ -142,7 +146,7 @@ export const GuardScannerConsole = ({
   }
 
   // Perform search / verify logic
-  const handleVerifyCode = async (code) => {
+  async function handleVerifyCode(code) {
     if (!code || !code.trim()) {
       toast.error('Please enter or select a valid pass code.')
       return
@@ -243,7 +247,7 @@ export const GuardScannerConsole = ({
   }
 
   // Check if visitor is inside
-  const isVisitorCurrentlyInside = (pass) => {
+  function isVisitorCurrentlyInside(pass) {
     if (!pass) return false
     if (pass.isWalkInLog) return true
     const passIdStr = (pass._id || pass.id)?.toString()
@@ -369,7 +373,7 @@ export const GuardScannerConsole = ({
               alignItems: 'center',
               marginBottom: '20px',
               flexWrap: 'wrap',
-              gap: '12px'
+              gap: '12px',
             }}
           >
             <h3 className="scanner-card-title">
@@ -584,14 +588,16 @@ export const GuardScannerConsole = ({
                     marginBottom: '16px',
                   }}
                 >
-                  <h3 className="scanner-card-title text-center">
-                    Last Scan Details
-                  </h3>
+                  <h3 className="scanner-card-title text-center">Last Scan Details</h3>
                 </div>
 
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                   <img
-                    src={matchedPass.photo || matchedPass.visitorDetails?.photo || 'https://via.placeholder.com/150'}
+                    src={
+                      matchedPass.photo ||
+                      matchedPass.visitorDetails?.photo ||
+                      'https://via.placeholder.com/150'
+                    }
                     alt="Visitor"
                     className="scanner-result-img"
                   />
@@ -650,46 +656,50 @@ export const GuardScannerConsole = ({
                     fontSize: '13px',
                   }}
                 >
-                <div className="scanner-card-meta">
-                  <div className="scanner-meta-item">
-                    <span>Visitor:</span>
-                    <strong>{matchedPass.visitorName || matchedPass.visitorDetails?.name}</strong>
-                  </div>
-                  
-                  <div className="scanner-meta-item">
-                    <span>Ticket Type:</span>
-                    <strong style={{ textTransform: 'capitalize' }}>
-                      {matchedPass.passType || matchedPass.method || 'GUEST'}
-                    </strong>
-                  </div>
-                  
-                  <div className="scanner-meta-item">
-                    <span>Plate No:</span>
-                    <strong>{matchedPass.vehicleNumber || matchedPass.vehicleDetails?.number || '—'}</strong>
-                  </div>
-                  
-                  {matchedPass.usageLimit && matchedPass.usageLimit.maxUses > 1 && (
+                  <div className="scanner-card-meta">
                     <div className="scanner-meta-item">
-                      <span>{isGroupPass ? 'Group Code Entries:' : 'Pass Entries Used:'}</span>
-                      <strong>
-                        {matchedPass.usageLimit.currentUses || 0} / {matchedPass.usageLimit.maxUses}
+                      <span>Visitor:</span>
+                      <strong>{matchedPass.visitorName || matchedPass.visitorDetails?.name}</strong>
+                    </div>
+
+                    <div className="scanner-meta-item">
+                      <span>Ticket Type:</span>
+                      <strong style={{ textTransform: 'capitalize' }}>
+                        {matchedPass.passType || matchedPass.method || 'GUEST'}
                       </strong>
                     </div>
-                  )}
-                  
-                  <div className="scanner-meta-item">
-                    <span>Status:</span>
-                    <strong
-                      style={{
-                        color: isExpiredOrRevoked
-                          ? 'var(--danger)'
-                          : isInside
-                            ? 'var(--info)'
-                            : 'var(--success)',
-                      }}
-                    >
-                      {matchedPass.status}
-                    </strong>
+
+                    <div className="scanner-meta-item">
+                      <span>Plate No:</span>
+                      <strong>
+                        {matchedPass.vehicleNumber || matchedPass.vehicleDetails?.number || '—'}
+                      </strong>
+                    </div>
+
+                    {matchedPass.usageLimit && matchedPass.usageLimit.maxUses > 1 && (
+                      <div className="scanner-meta-item">
+                        <span>{isGroupPass ? 'Group Code Entries:' : 'Pass Entries Used:'}</span>
+                        <strong>
+                          {matchedPass.usageLimit.currentUses || 0} /{' '}
+                          {matchedPass.usageLimit.maxUses}
+                        </strong>
+                      </div>
+                    )}
+
+                    <div className="scanner-meta-item">
+                      <span>Status:</span>
+                      <strong
+                        style={{
+                          color: isExpiredOrRevoked
+                            ? 'var(--danger)'
+                            : isInside
+                              ? 'var(--info)'
+                              : 'var(--success)',
+                        }}
+                      >
+                        {matchedPass.status}
+                      </strong>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -702,7 +712,12 @@ export const GuardScannerConsole = ({
                       color="success"
                       onClick={handleCheckIn}
                       disabled={isLoading}
-                      style={{ flex: '1 1 140px', color: '#fff', fontWeight: '700', padding: '12px 0' }}
+                      style={{
+                        flex: '1 1 140px',
+                        color: '#fff',
+                        fontWeight: '700',
+                        padding: '12px 0',
+                      }}
                     >
                       <i
                         className="fa-solid fa-right-to-bracket"
@@ -714,7 +729,12 @@ export const GuardScannerConsole = ({
                       color="warning"
                       onClick={handleCheckOut}
                       disabled={isLoading}
-                      style={{ flex: '1 1 140px', color: '#fff', fontWeight: '700', padding: '12px 0' }}
+                      style={{
+                        flex: '1 1 140px',
+                        color: '#fff',
+                        fontWeight: '700',
+                        padding: '12px 0',
+                      }}
                     >
                       <i className="fa-solid fa-door-open" style={{ marginRight: '6px' }}></i>
                       Check-Out Guest
