@@ -26,6 +26,11 @@ last_error.json
 scratch/
 **/scratch/
 
+# Expo
+.expo/
+expo-env.d.ts
+
+
 # OS Files
 .DS_Store
 Thumbs.db

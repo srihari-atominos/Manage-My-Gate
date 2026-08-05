@@ -7,7 +7,12 @@ import { authorizePermission, authorizeAnyPermission } from '../../middlewares/r
 import { upload, imageSignatureValidator } from './middlewares/upload.middleware.js'
 import tenantContext from '../../middlewares/tenant.middleware.js'
 
+import userPreferenceRouter from '../userPreference/userPreference.router.js'
+
 const router = Router()
+
+// Mount user preferences sub-router
+router.use('/preferences', userPreferenceRouter)
 
 // Protect all user routes
 router.use(isAuthenticated)
