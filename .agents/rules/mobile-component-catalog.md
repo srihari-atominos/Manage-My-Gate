@@ -58,6 +58,9 @@ NEVER hardcode hex codes or physical margin classes (`mr-`, `ml-`, `pr-`, `pl-`)
 | Modal Confirmations | `<ConfirmationModal>` | `@/components` or `@/components/ui` |
 | Hardware Scanning | `<QRScannerOverlay>`, `<NFCScanIndicator>` | `@/components` or `@/components/hardware` |
 | User / Tenant Header | `<MobileHeader>`, `<VillaSwitchModal>` | `@/components` or `@/components/navigation` |
+| Visitor Pass Cards | `<ListCard>` + `<StatusBadge>` | `@/components/ui` & `@/features/visitor/components` |
+| Gate Approval CTAs | `<Button>` (Action Row) | `@/components/ui` & `@/features/visitor/components/walkin` |
+| Multi-Step Pass Wizard | Step Indicators + Flow Header/Footer | `@/components/ui` & `@/features/visitor/components/shared` |
 
 ---
 

@@ -29,7 +29,12 @@ trigger: always_on
 * **Resilience:** Wrap all major feature navigators and complex screens in React Error Boundaries to prevent full application crashes.
 
 ## IV. Component & Screen Architecture (Strict Modularity & Component Catalog Mandate)
-* **Mandatory Component Catalog Lookup (Catalog First):** BEFORE creating any mobile screen, modal, list, or feature module component, you MUST inspect the authoritative catalog in `mobile/mobile-app/COMPONENTS_CATALOG.md` and check `mobile/mobile-app/components/`. If a matching component exists (`ScreenShell`, `ListCard`, `StatusBadge`, `Button`, `TextInput`, `DropdownSelect`, `EmptyState`, `BottomSheet`, `ConfirmationModal`, `MobileHeader`, `SkeletonLoader`, etc.), you MUST import and reuse it.
+* **Mandatory Component Catalog Lookup (Catalog First):** BEFORE creating any mobile screen, modal, list, or feature module component, you MUST inspect the authoritative catalog in `mobile/mobile-app/COMPONENTS_CATALOG.md` and check `mobile/mobile-app/components/`. If a matching component exists (`ScreenShell`, `ListCard`, `StatusBadge`, `Button`, `TextInput`, `DropdownSelect`, `EmptyState`, `BottomSheet`, `ConfirmationModal`, `MobileHeader`, `SkeletonLoader`, `QRScannerOverlay`, etc.), you MUST import and reuse it.
+* **Visitor Management Reference Standard:** Use `src/features/visitor/components/` as the architectural baseline for domain components:
+  - **Pass Cards & List Items:** Extend `<ListCard>` with `<StatusBadge>` as demonstrated in `VisitorPassCard.tsx`.
+  - **Approval CTAs:** Wrap action buttons in sticky or inline action rows using `<Button>` variants as demonstrated in `WalkInApprovalCard.tsx`.
+  - **Scanner & Hardware Modals:** Modal overlays wrapping hardware functionality MUST consume `<QRScannerOverlay>` or `<FlashlightToggle>` from `@/components/hardware` as demonstrated in `GuardQRScannerModal.tsx`.
+  - **Multi-Step Wizards:** Pass creation, booking, and multi-step entry workflows MUST use step indicators (`VisitorPassStepIndicator`) and standard header/footer controls (`VisitorPassFlowHeader`, `VisitorPassFlowFooter`).
 * **Barrel Export Imports:** Always import reusable components cleanly via barrel exports using `@/components` or category aliases like `@/components/ui`, `@/components/common`, `@/components/forms`, `@/components/feedback`, `@/components/navigation`, `@/components/hardware`.
 * **Forbidden Primitive Duplication:** NEVER build inline custom buttons, text inputs, status badges, modal overlays, cards, or loading skeletons using raw React Native primitives (`View`, `Text`, `TouchableOpacity`, `TextInput`, `ActivityIndicator`) when a matching catalog component exists.
 * **Screens vs. Components:** 
