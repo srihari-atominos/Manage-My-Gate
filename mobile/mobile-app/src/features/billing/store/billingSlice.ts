@@ -9,26 +9,33 @@ export interface Invoice {
   targetUser?: string;
   amount: number;
   currency: string;
-  status: 'PAID' | 'UNPAID' | 'VERIFICATION_PENDING' | 'OVERDUE';
+  status: 'PAID' | 'UNPAID' | 'VERIFICATION_PENDING' | 'OVERDUE' | 'CANCELLED';
   paymentMethod?: string;
   offlineReference?: string;
   dueDate?: string;
+  lineItems?: Array<{ title: string; amount: number; description?: string }>;
+  proofUrl?: string;
+  notes?: string;
+}
+
+export interface BillingKPIs {
+  grossDemand: number;
+  grossDemandCount: number;
+  totalCollected: number;
+  inTransitGateway: number;
+  totalUnpaidArrears: number;
 }
 
 interface BillingState {
-  kpis: {
-    grossDemand: number;
-    grossDemandCount: number;
-    totalCollected: number;
-    inTransitGateway: number;
-    totalUnpaidArrears: number;
-  };
+  kpis: BillingKPIs;
   activeDues: {
     totalPortfolioDue: number;
     unitBreakdown: any[];
     secondaryCompliance: any[];
   };
   invoicesList: Invoice[];
+  selectedInvoice: Invoice | null;
+  assessmentTemplates: any[];
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -39,7 +46,9 @@ interface BillingState {
     fetchKPIs: boolean;
     fetchDues: boolean;
     fetchGrid: boolean;
+    fetchDetails: boolean;
     settleInvoice: boolean;
+    triggerManual: boolean;
   };
   error: string | null;
 }
@@ -58,6 +67,8 @@ const initialState: BillingState = {
     secondaryCompliance: [],
   },
   invoicesList: [],
+  selectedInvoice: null,
+  assessmentTemplates: [],
   pagination: {
     currentPage: 1,
     totalPages: 1,
@@ -68,12 +79,27 @@ const initialState: BillingState = {
     fetchKPIs: false,
     fetchDues: false,
     fetchGrid: false,
+    fetchDetails: false,
     settleInvoice: false,
+    triggerManual: false,
   },
   error: null,
 };
 
-// Thunks
+// Async Thunks
+export const fetchKPIs = createAsyncThunk(
+  'billing/fetchKPIs',
+  async (communityId: string, { rejectWithValue }) => {
+    try {
+      const response = await billingService.getKPIs(communityId);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      return (body?.data || body) as BillingKPIs;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch billing KPIs');
+    }
+  }
+);
+
 export const fetchMyDues = createAsyncThunk(
   'billing/fetchMyDues',
   async (_, { rejectWithValue }) => {
@@ -107,6 +133,19 @@ export const fetchInvoicesGrid = createAsyncThunk(
   }
 );
 
+export const fetchInvoiceDetails = createAsyncThunk(
+  'billing/fetchInvoiceDetails',
+  async (invoiceId: string, { rejectWithValue }) => {
+    try {
+      const response = await billingService.getInvoiceDetails(invoiceId);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      return (body?.data || body) as Invoice;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch invoice details');
+    }
+  }
+);
+
 export const submitOfflineSettlement = createAsyncThunk(
   'billing/submitOfflineSettlement',
   async (
@@ -122,6 +161,35 @@ export const submitOfflineSettlement = createAsyncThunk(
       return (body?.data || body) as any;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to record offline payment');
+    }
+  }
+);
+
+export const approveOfflineInvoice = createAsyncThunk(
+  'billing/approveOfflineInvoice',
+  async (invoiceId: string, { rejectWithValue }) => {
+    try {
+      const response = await billingService.approveInvoiceOffline(invoiceId);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      return (body?.data || body) as any;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to approve offline settlement');
+    }
+  }
+);
+
+export const triggerManualBilling = createAsyncThunk(
+  'billing/triggerManualBilling',
+  async (
+    { assessmentId, billingPeriodString }: { assessmentId: string; billingPeriodString: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await billingService.triggerManualBilling(assessmentId, billingPeriodString);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      return (body?.data || body) as any;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to trigger batch invoice generation');
     }
   }
 );
@@ -159,12 +227,12 @@ const performInvoiceSync = (state: BillingState, updatedInvoice: any) => {
   const index = state.invoicesList.findIndex((inv) => String(inv._id) === targetId);
 
   const mappedInvoice: Invoice = {
-    _id: updatedInvoice._id,
-    invoiceNumber: updatedInvoice.invoiceNumber,
+    _id: updatedInvoice._id || targetId,
+    invoiceNumber: updatedInvoice.invoiceNumber || '—',
     date: updatedInvoice.createdAt ? new Date(updatedInvoice.createdAt).toISOString().split('T')[0] : '',
     amount: updatedInvoice.totalDue || updatedInvoice.amount || 0,
     currency: '₹',
-    status: updatedInvoice.status,
+    status: updatedInvoice.status || 'UNPAID',
     paymentMethod: updatedInvoice.paymentMethod || '—',
     offlineReference: updatedInvoice.offlineReference || undefined,
   };
@@ -175,7 +243,10 @@ const performInvoiceSync = (state: BillingState, updatedInvoice: any) => {
     state.invoicesList.unshift(mappedInvoice);
   }
 
-  // Remove from active dues if settled
+  if (state.selectedInvoice && String(state.selectedInvoice._id) === targetId) {
+    state.selectedInvoice = { ...state.selectedInvoice, ...mappedInvoice };
+  }
+
   if (updatedInvoice.status === 'PAID') {
     state.activeDues.unitBreakdown = state.activeDues.unitBreakdown.filter(
       (item) => String(item.invoiceId || item._id) !== targetId
@@ -193,9 +264,32 @@ export const billingSlice = createSlice({
     syncRealtimeInvoice: (state, action: PayloadAction<any>) => {
       performInvoiceSync(state, action.payload);
     },
+    syncRealtimeKPIs: (state, action: PayloadAction<Partial<BillingKPIs>>) => {
+      state.kpis = { ...state.kpis, ...action.payload };
+    },
+    setSelectedInvoice: (state, action: PayloadAction<Invoice | null>) => {
+      state.selectedInvoice = action.payload;
+    },
+    clearSelectedInvoice: (state) => {
+      state.selectedInvoice = null;
+    },
   },
   extraReducers: (builder) => {
     builder
+      // fetchKPIs
+      .addCase(fetchKPIs.pending, (state) => {
+        state.loadingStates.fetchKPIs = true;
+        state.error = null;
+      })
+      .addCase(fetchKPIs.fulfilled, (state, action) => {
+        state.loadingStates.fetchKPIs = false;
+        state.kpis = action.payload;
+      })
+      .addCase(fetchKPIs.rejected, (state, action) => {
+        state.loadingStates.fetchKPIs = false;
+        state.error = (action.payload as string) || 'Failed to fetch KPIs';
+      })
+
       // fetchMyDues
       .addCase(fetchMyDues.pending, (state) => {
         state.loadingStates.fetchDues = true;
@@ -235,6 +329,20 @@ export const billingSlice = createSlice({
         state.error = (action.payload as string) || 'Failed to fetch invoices';
       })
 
+      // fetchInvoiceDetails
+      .addCase(fetchInvoiceDetails.pending, (state) => {
+        state.loadingStates.fetchDetails = true;
+        state.error = null;
+      })
+      .addCase(fetchInvoiceDetails.fulfilled, (state, action) => {
+        state.loadingStates.fetchDetails = false;
+        state.selectedInvoice = action.payload;
+      })
+      .addCase(fetchInvoiceDetails.rejected, (state, action) => {
+        state.loadingStates.fetchDetails = false;
+        state.error = (action.payload as string) || 'Failed to fetch invoice details';
+      })
+
       // submitOfflineSettlement
       .addCase(submitOfflineSettlement.pending, (state) => {
         state.loadingStates.settleInvoice = true;
@@ -247,6 +355,33 @@ export const billingSlice = createSlice({
       .addCase(submitOfflineSettlement.rejected, (state, action) => {
         state.loadingStates.settleInvoice = false;
         state.error = (action.payload as string) || 'Failed to settle offline';
+      })
+
+      // approveOfflineInvoice
+      .addCase(approveOfflineInvoice.pending, (state) => {
+        state.loadingStates.settleInvoice = true;
+        state.error = null;
+      })
+      .addCase(approveOfflineInvoice.fulfilled, (state, action) => {
+        state.loadingStates.settleInvoice = false;
+        performInvoiceSync(state, action.payload);
+      })
+      .addCase(approveOfflineInvoice.rejected, (state, action) => {
+        state.loadingStates.settleInvoice = false;
+        state.error = (action.payload as string) || 'Failed to approve settlement';
+      })
+
+      // triggerManualBilling
+      .addCase(triggerManualBilling.pending, (state) => {
+        state.loadingStates.triggerManual = true;
+        state.error = null;
+      })
+      .addCase(triggerManualBilling.fulfilled, (state) => {
+        state.loadingStates.triggerManual = false;
+      })
+      .addCase(triggerManualBilling.rejected, (state, action) => {
+        state.loadingStates.triggerManual = false;
+        state.error = (action.payload as string) || 'Failed to trigger batch billing';
       })
 
       // payWithWallet
@@ -283,5 +418,12 @@ export const billingSlice = createSlice({
   },
 });
 
-export const { clearBillingError, syncRealtimeInvoice } = billingSlice.actions;
+export const {
+  clearBillingError,
+  syncRealtimeInvoice,
+  syncRealtimeKPIs,
+  setSelectedInvoice,
+  clearSelectedInvoice,
+} = billingSlice.actions;
+
 export default billingSlice.reducer;

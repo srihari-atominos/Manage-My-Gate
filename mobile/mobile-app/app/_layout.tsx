@@ -9,6 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import { Provider } from 'react-redux';
 import { store } from '../src/store/store';
+<<<<<<< HEAD
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '../src/features/auth/hooks/useAuth';
@@ -55,11 +56,17 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
+=======
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AuthInitializer } from '../src/features/auth';
+import '../global.css';
+>>>>>>> mobile-frontend/visitor-management
 
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
 
   return (
+<<<<<<< HEAD
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Provider store={store}>
         <BottomSheetModalProvider>
@@ -73,5 +80,22 @@ export default function RootLayout() {
         </BottomSheetModalProvider>
       </Provider>
     </GestureHandlerRootView>
+=======
+    <Provider store={store}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <AuthInitializer>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(resident)" options={{ headerShown: false }} />
+              <Stack.Screen name="(visitor)" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" options={{ presentation: 'modal' }} />
+            </Stack>
+          </AuthInitializer>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </Provider>
+>>>>>>> mobile-frontend/visitor-management
   );
 }
+

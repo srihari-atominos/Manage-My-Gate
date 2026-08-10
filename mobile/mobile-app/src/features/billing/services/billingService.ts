@@ -42,6 +42,14 @@ export const billingService = {
     });
   },
 
+  getInvoiceDetails: async (invoiceId: string) => {
+    return await apiClient.get(`/invoices/${invoiceId}`);
+  },
+
+  getAssessmentTemplates: async (params: any = {}) => {
+    return await apiClient.get('/assessments', { params });
+  },
+
   verifyRazorpayPayment: async (payload: any) => {
     const formattedPayload = {
       paymentId: payload.paymentId || payload.payment_id,

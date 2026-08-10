@@ -33,7 +33,9 @@ const FALLBACK_HERO_SLIDE: HeroNoticeSlide = {
 
 export const useHeroNotices = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { notices, loading } = useSelector((state: RootState) => state.noticeBoard);
+  const { notices = [], loading = false } = useSelector(
+    (state: RootState) => (state as any)?.noticeBoard || {}
+  );
   const initialFetchRef = useRef(false);
 
   useEffect(() => {

@@ -11,9 +11,13 @@ import { FeatureCategory, FeatureItem } from '../dashboardService';
 export const useQuickActions = () => {
   const dispatch = useDispatch<AppDispatch>();
 
-  const { activeQuickActions, featureCatalog, loading, updating, error } = useSelector(
-    (state: RootState) => state.dashboard
-  );
+  const {
+    activeQuickActions = [],
+    featureCatalog = [],
+    loading = false,
+    updating = false,
+    error = null,
+  } = useSelector((state: RootState) => (state as any)?.dashboard || {});
 
   useEffect(() => {
     dispatch(fetchQuickActionsThunk());
@@ -51,11 +55,11 @@ export const useQuickActions = () => {
   const equippedFeatures = useMemo<FeatureItem[]>(() => {
     if (!activeQuickActions || activeQuickActions.length === 0) return [];
     const itemMap = new Map<string, FeatureItem>();
-    allFeaturesList.forEach((item) => itemMap.set(item.id, item));
+    allFeaturesList.forEach((item: FeatureItem) => itemMap.set(item.id, item));
 
     return activeQuickActions
-      .map((id) => itemMap.get(id))
-      .filter((item): item is FeatureItem => Boolean(item))
+      .map((id: string) => itemMap.get(id))
+      .filter((item: FeatureItem | undefined): item is FeatureItem => Boolean(item))
       .slice(0, 7);
   }, [activeQuickActions, allFeaturesList]);
 
