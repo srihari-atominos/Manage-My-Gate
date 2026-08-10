@@ -54,16 +54,28 @@ const initialState: AuthState = {
   error: null,
   successMsg: null,
   otpSent: false,
-  isInitialized: false,
+  isInitialized: true,
 };
 
 export const bootstrapAuth = createAsyncThunk(
   'auth/bootstrapAuth',
-  async (_, { dispatch }) => {
-    const token = await storage.getItem('token');
-    const userStr = await storage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
-    return { token, user };
+  async () => {
+    try {
+      const token = await storage.getItem('token');
+      const userStr = await storage.getItem('user');
+      let user = null;
+      if (userStr) {
+        try {
+          user = JSON.parse(userStr);
+        } catch (e) {
+          console.warn('Failed to parse cached user JSON', e);
+        }
+      }
+      return { token, user };
+    } catch (err) {
+      console.warn('bootstrapAuth storage lookup error:', err);
+      return { token: null, user: null };
+    }
   }
 );
 
@@ -206,6 +218,9 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.user = normalizeUser(action.payload.user);
         state.isAuthenticated = !!(action.payload.token && state.user?.id);
+        state.isInitialized = true;
+      })
+      .addCase(bootstrapAuth.rejected, (state) => {
         state.isInitialized = true;
       })
       // Login User

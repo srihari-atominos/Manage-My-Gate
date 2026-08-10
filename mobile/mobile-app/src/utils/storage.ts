@@ -1,10 +1,17 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 const memoryCache: Record<string, string> = {};
 
 export const storage = {
   getItem: async (key: string): Promise<string | null> => {
     try {
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          return window.localStorage.getItem(key);
+        }
+        return memoryCache[key] || null;
+      }
       const isAvailable = await SecureStore.isAvailableAsync();
       if (isAvailable) {
         return await SecureStore.getItemAsync(key);
@@ -17,6 +24,14 @@ export const storage = {
 
   setItem: async (key: string, value: string): Promise<void> => {
     try {
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem(key, value);
+          return;
+        }
+        memoryCache[key] = value;
+        return;
+      }
       const isAvailable = await SecureStore.isAvailableAsync();
       if (isAvailable) {
         await SecureStore.setItemAsync(key, value);
@@ -30,6 +45,14 @@ export const storage = {
 
   removeItem: async (key: string): Promise<void> => {
     try {
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem(key);
+          return;
+        }
+        delete memoryCache[key];
+        return;
+      }
       const isAvailable = await SecureStore.isAvailableAsync();
       if (isAvailable) {
         await SecureStore.deleteItemAsync(key);
@@ -42,3 +65,4 @@ export const storage = {
   },
 };
 export default storage;
+

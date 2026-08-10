@@ -24,10 +24,17 @@ const SCREEN_OPTIONS = {
 };
 
 export default function Screen() {
-  const { isAuthenticated, user, loading, error, otpSent, requestOtp, verifyOtp, logout } = useAuth();
+  const { isAuthenticated, user, loading, error, otpSent, login, requestOtp, verifyOtp, logout } = useAuth();
   useAppSocket(); // Establish Socket.io connection when authenticated
 
   const [backendStatus, setBackendStatus] = React.useState<'checking' | 'online' | 'offline'>('checking');
+  const [authMode, setAuthMode] = React.useState<'password' | 'otp'>('password');
+  
+  // Basic Auth state
+  const [loginInput, setLoginInput] = React.useState('');
+  const [passwordInput, setPasswordInput] = React.useState('');
+
+  // OTP Auth state
   const [phoneNumber, setPhoneNumber] = React.useState('');
   const [otpCode, setOtpCode] = React.useState('');
   const [step, setStep] = React.useState<'phone' | 'otp'>('phone');
@@ -58,6 +65,11 @@ export default function Screen() {
       setStep('phone');
     }
   }, [otpSent]);
+
+  const handlePasswordLogin = async () => {
+    if (!loginInput || !passwordInput) return;
+    await login({ login: loginInput, password: passwordInput });
+  };
 
   const handleSendOtp = async () => {
     if (!phoneNumber) return;
@@ -131,7 +143,7 @@ export default function Screen() {
                 <Icon as={CheckCircle2Icon} className="size-12 text-emerald-500" />
                 <Text className="text-lg font-bold text-foreground text-center">Welcome Back!</Text>
                 <Text className="text-muted-foreground text-sm text-center">
-                  Logged in as: {user?.email || 'User'}
+                  Logged in as: {user?.email || user?.name || 'User'}
                 </Text>
                 {user?.role && (
                   <Text className="text-xs bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-semibold">
@@ -147,40 +159,110 @@ export default function Screen() {
             </View>
           ) : (
             <View className="bg-card border border-border rounded-xl p-5 gap-4">
-              <Text className="font-bold text-foreground text-lg mb-1">Resident / Guard Login</Text>
+              {/* Authentication Mode Switcher */}
+              <View className="flex-row bg-muted/60 p-1 rounded-lg border border-border mb-1">
+                <Button
+                  variant={authMode === 'password' ? 'default' : 'ghost'}
+                  onPress={() => setAuthMode('password')}
+                  className="flex-1 py-1.5 h-auto rounded-md">
+                  <Text className={`text-xs font-semibold ${authMode === 'password' ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
+                    Password Login
+                  </Text>
+                </Button>
+                <Button
+                  variant={authMode === 'otp' ? 'default' : 'ghost'}
+                  onPress={() => setAuthMode('otp')}
+                  className="flex-1 py-1.5 h-auto rounded-md">
+                  <Text className={`text-xs font-semibold ${authMode === 'otp' ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
+                    Phone OTP Login
+                  </Text>
+                </Button>
+              </View>
 
-              {step === 'phone' ? (
+              {/* Password Basic Auth Form */}
+              {authMode === 'password' ? (
                 <View className="gap-3">
-                  <Text className="text-muted-foreground text-xs font-medium">Enter your mobile number to receive an OTP</Text>
-                  <TextInput
-                    placeholder="Mobile Number (e.g. +919988776655)"
-                    placeholderTextColor="#888"
-                    value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    keyboardType="phone-pad"
-                    className="bg-muted/50 text-foreground border border-border rounded-lg px-3.5 py-2.5 text-sm"
-                  />
-                  <Button onPress={handleSendOtp} disabled={loading} className="mt-1">
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text>Request OTP Code</Text>}
+                  <View className="flex-row items-center justify-between">
+                    <Text className="font-bold text-foreground text-base">Account Sign In</Text>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onPress={() => {
+                        setLoginInput('admin@your-domain.com');
+                        setPasswordInput('superadmin');
+                      }}
+                      className="py-0.5 px-2 h-auto">
+                      <Text className="text-xs text-primary font-medium">⚡ Demo Credentials</Text>
+                    </Button>
+                  </View>
+                  
+                  <View className="gap-1">
+                    <Text className="text-muted-foreground text-xs font-medium">Email or Username</Text>
+                    <TextInput
+                      placeholder="e.g. admin@your-domain.com"
+                      placeholderTextColor="#888"
+                      value={loginInput}
+                      onChangeText={setLoginInput}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      onSubmitEditing={handlePasswordLogin}
+                      className="bg-muted/50 text-foreground border border-border rounded-lg px-3.5 py-2.5 text-sm"
+                    />
+                  </View>
+                  <View className="gap-1">
+                    <Text className="text-muted-foreground text-xs font-medium">Password</Text>
+                    <TextInput
+                      placeholder="Enter your password"
+                      placeholderTextColor="#888"
+                      value={passwordInput}
+                      onChangeText={setPasswordInput}
+                      secureTextEntry
+                      onSubmitEditing={handlePasswordLogin}
+                      className="bg-muted/50 text-foreground border border-border rounded-lg px-3.5 py-2.5 text-sm"
+                    />
+                  </View>
+                  <Button onPress={handlePasswordLogin} disabled={loading} className="mt-2">
+                    {loading ? <ActivityIndicator color="#fff" /> : <Text>Sign In</Text>}
                   </Button>
                 </View>
               ) : (
+                /* Phone OTP Auth Form */
                 <View className="gap-3">
-                  <Text className="text-muted-foreground text-xs font-medium">Enter the code sent to {phoneNumber}</Text>
-                  <TextInput
-                    placeholder="OTP Code"
-                    placeholderTextColor="#888"
-                    value={otpCode}
-                    onChangeText={setOtpCode}
-                    keyboardType="number-pad"
-                    className="bg-muted/50 text-foreground border border-border rounded-lg px-3.5 py-2.5 text-sm"
-                  />
-                  <Button onPress={handleVerifyOtp} disabled={loading} className="mt-1">
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text>Verify & Log In</Text>}
-                  </Button>
-                  <Button onPress={() => setStep('phone')} variant="ghost" className="mt-1">
-                    <Text className="text-muted-foreground text-xs">Back to Phone Number</Text>
-                  </Button>
+                  <Text className="font-bold text-foreground text-base">Resident / Guard Login</Text>
+                  {step === 'phone' ? (
+                    <View className="gap-3">
+                      <Text className="text-muted-foreground text-xs font-medium">Enter your mobile number to receive an OTP</Text>
+                      <TextInput
+                        placeholder="Mobile Number (e.g. +919988776655)"
+                        placeholderTextColor="#888"
+                        value={phoneNumber}
+                        onChangeText={setPhoneNumber}
+                        keyboardType="phone-pad"
+                        className="bg-muted/50 text-foreground border border-border rounded-lg px-3.5 py-2.5 text-sm"
+                      />
+                      <Button onPress={handleSendOtp} disabled={loading} className="mt-1">
+                        {loading ? <ActivityIndicator color="#fff" /> : <Text>Request OTP Code</Text>}
+                      </Button>
+                    </View>
+                  ) : (
+                    <View className="gap-3">
+                      <Text className="text-muted-foreground text-xs font-medium">Enter the code sent to {phoneNumber}</Text>
+                      <TextInput
+                        placeholder="OTP Code"
+                        placeholderTextColor="#888"
+                        value={otpCode}
+                        onChangeText={setOtpCode}
+                        keyboardType="number-pad"
+                        className="bg-muted/50 text-foreground border border-border rounded-lg px-3.5 py-2.5 text-sm"
+                      />
+                      <Button onPress={handleVerifyOtp} disabled={loading} className="mt-1">
+                        {loading ? <ActivityIndicator color="#fff" /> : <Text>Verify & Log In</Text>}
+                      </Button>
+                      <Button onPress={() => setStep('phone')} variant="ghost" className="mt-1">
+                        <Text className="text-muted-foreground text-xs">Back to Phone Number</Text>
+                      </Button>
+                    </View>
+                  )}
                 </View>
               )}
             </View>

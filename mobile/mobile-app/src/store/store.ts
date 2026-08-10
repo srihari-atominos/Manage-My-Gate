@@ -9,6 +9,10 @@ import amenityReducer from '../features/amenities/store/amenitySlice';
 import dashboardReducer from '../features/dashboard/dashboardSlice';
 import notificationReducer from '../features/notification/store/notificationSlice';
 
+import visitorReducer from '../modules/visitor-management/visitorSlice';
+import staffReducer from '../modules/staff-operations/staffSlice';
+import automationReducer from '../modules/automation-engine/automationSlice';
+
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -20,6 +24,9 @@ export const store = configureStore({
     amenities: amenityReducer,
     dashboard: dashboardReducer,
     notification: notificationReducer,
+    visitor: visitorReducer,
+    staff: staffReducer,
+    automation: automationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
