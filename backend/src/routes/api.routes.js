@@ -37,6 +37,7 @@ import crmInquiryRouter from '../features/crmInquiry/crmInquiry.router.js';
 import crmTaskRouter from '../features/crmTask/crmTask.router.js';
 import crmThreadRouter from '../features/crmThread/crmThread.router.js';
 import crmMeetingRouter from '../features/crmMeeting/crmMeeting.router.js';
+import platformCrmRouter from '../features/platformCrm/enquiry.routes.js';
 
 // Complaint and Technician routes
 import complaintRouter from '../features/complaint/complaint.router.js';
@@ -47,7 +48,12 @@ const router = Router();
 
 import dashboardFeedRouter from '../features/dashboardFeed/dashboardFeed.routes.js';
 
+import publicRouter from './public.routes.js';
+import webhookRouter from '../features/webhook/webhook.routes.js';
+
 // Mount feature routers here
+router.use('/public', publicRouter);
+router.use('/webhooks', webhookRouter);
 router.use('/sample', sampleFeatureRouter);
 router.use('/auth', authRouter);
 router.use('/roles', roleRouter);
@@ -93,6 +99,7 @@ router.use('/crm/inquiries', crmInquiryRouter);
 router.use('/crm/tasks', crmTaskRouter);
 router.use('/crm/threads', crmThreadRouter);
 router.use('/crm/meetings', crmMeetingRouter);
+router.use('/platform-crm', platformCrmRouter);
 
 import onboardingWizardRouter from '../features/onboardingWizard/onboardingWizard.router.js';
 

@@ -14,10 +14,16 @@ const generateQuoteNumber = () => {
 };
 
 class PlatformQuoteService {
-  /**
-   * Helper function to calculate pricing breakdown.
-   * Formula: Final Price = (Base Plan + (Units * Per-Unit Rate) + Add-ons + Setup Fees - Discount) + Tax
-   */
+  getCycleMultiplier(billingCycle) {
+    switch (billingCycle) {
+      case 'MONTHLY': return 1 / 12;
+      case 'QUARTERLY': return 0.25;
+      case 'HALF_YEARLY': return 0.5;
+      case 'YEARLY':
+      default: return 1;
+    }
+  }
+
   calculatePricingBreakdown({
     basePrice = 0,
     perUnitRate = 0,
@@ -26,21 +32,25 @@ class PlatformQuoteService {
     setupFee = 0,
     appliedDiscountPercent = 0,
     taxRatePercent = 15,
+    cycleMultiplier = 1,
   }) {
+    const round2 = (val) => Math.round((val + Number.EPSILON) * 100) / 100;
+
     const addOnsTotal = (selectedAddOns || []).reduce((sum, item) => sum + (Number(item.price) || 0), 0);
-    const baseCost = Number(basePrice) + (Number(unitCount) * Number(perUnitRate)) + addOnsTotal + Number(setupFee);
+    const baseSubtotal = (Number(basePrice) + (Number(unitCount) * Number(perUnitRate)) + addOnsTotal) * Number(cycleMultiplier);
 
-    const discountAmount = baseCost * (Number(appliedDiscountPercent) / 100);
-    const subtotal = Math.max(0, baseCost - discountAmount);
+    const preDiscountTotal = baseSubtotal + Number(setupFee);
+    const discountAmount = preDiscountTotal * (Number(appliedDiscountPercent) / 100);
+    const taxableAmount = Math.max(0, preDiscountTotal - discountAmount);
 
-    const taxAmount = subtotal * (Number(taxRatePercent) / 100);
-    const totalAmount = subtotal + taxAmount;
+    const taxAmount = taxableAmount * (Number(taxRatePercent) / 100);
+    const totalAmount = taxableAmount + taxAmount;
 
     return {
-      subtotal: Number(subtotal.toFixed(2)),
-      discountAmount: Number(discountAmount.toFixed(2)),
-      taxAmount: Number(taxAmount.toFixed(2)),
-      totalAmount: Number(totalAmount.toFixed(2)),
+      subtotal: round2(taxableAmount),
+      discountAmount: round2(discountAmount),
+      taxAmount: round2(taxAmount),
+      totalAmount: round2(totalAmount),
     };
   }
 
@@ -56,9 +66,10 @@ class PlatformQuoteService {
     selectedAddOnKeys = [],
     appliedDiscountPercent = 0,
     expiresInDays = 30,
+    billingCycle = 'YEARLY',
+    trialDays = 0,
     createdBy,
   }) {
-    // 1. Cross-feature call to masterPricingService (DO NOT import repository directly)
     const masterPricing = await masterPricingService.getPricingById(masterPricingId);
     if (!masterPricing) {
       throw new HttpError(404, `Master pricing plan with ID '${masterPricingId}' not found.`);
@@ -68,7 +79,6 @@ class PlatformQuoteService {
       throw new HttpError(400, `Master pricing plan '${masterPricing.planName}' is inactive.`);
     }
 
-    // Filter selected add-ons based on keys from masterPricing
     const selectedAddOns = (masterPricing.addOns || []).filter((item) =>
       selectedAddOnKeys.includes(item.key)
     );
@@ -85,7 +95,8 @@ class PlatformQuoteService {
       taxRatePercent: masterPricing.taxRatePercent,
     };
 
-    // Calculate amounts
+    const cycleMultiplier = this.getCycleMultiplier(billingCycle);
+
     const calculatedAmounts = this.calculatePricingBreakdown({
       basePrice: masterPricing.basePrice,
       perUnitRate: masterPricing.perUnitRate,
@@ -94,15 +105,10 @@ class PlatformQuoteService {
       setupFee: masterPricing.setupFee,
       appliedDiscountPercent,
       taxRatePercent: masterPricing.taxRatePercent,
+      cycleMultiplier,
     });
 
-    // Approval Threshold Check:
-    // If appliedDiscountPercent > masterPricing.maxAgentDiscountPercent -> PENDING_APPROVAL else APPROVED
-    const status =
-      appliedDiscountPercent > masterPricing.maxAgentDiscountPercent
-        ? 'PENDING_APPROVAL'
-        : 'APPROVED';
-
+    const status = 'DRAFT';
     const quoteNumber = generateQuoteNumber();
     const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
 
@@ -110,22 +116,86 @@ class PlatformQuoteService {
     try {
       session.startTransaction();
 
-      const createdQuote = await platformQuoteRepository.create(
-        {
-          quoteNumber,
-          inquiryId: inquiryId || null,
-          organisationId,
-          masterPricingId,
-          pricingSnapshot,
-          unitCount,
-          appliedDiscountPercent,
-          calculatedAmounts,
-          status,
-          expiresAt,
-          createdBy: createdBy || null,
-        },
-        session
-      );
+      let finalOrgId = organisationId;
+
+      if (!finalOrgId && inquiryId) {
+        const CrmInquiry = mongoose.model('CrmInquiry');
+        const inquiry = await CrmInquiry.findById(inquiryId).session(session);
+        if (!inquiry) throw new HttpError(404, `Inquiry with ID '${inquiryId}' not found.`);
+
+        const Organization = mongoose.model('Organization');
+        // Check if an organization already exists for this inquiry's email to avoid duplicates
+        let org = await Organization.findOne({ contactEmail: inquiry.contactEmail }).session(session);
+        
+        if (!org) {
+          const [newOrg] = await Organization.create([{
+            name: inquiry.organizationName,
+            status: 'Pending',
+            organizationType: 'Residential',
+            contactEmail: inquiry.contactEmail,
+            contactPhone: inquiry.contactPhone,
+            expectedMemberCount: inquiry.unitCount,
+            timezone: 'Asia/Kolkata',
+            allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices', 'complaints', 'visitor', 'billing']
+          }], { session });
+          org = newOrg;
+        }
+        finalOrgId = org._id;
+      }
+
+      if (!finalOrgId) {
+        throw new HttpError(400, 'Organisation ID is required to create a quote.');
+      }
+
+      // Idempotency: Check if quote already exists for this inquiry
+      let createdQuote;
+      if (inquiryId) {
+        const QuoteModel = mongoose.model('PlatformQuote'); // Use model since we are in session
+        const existingQuotes = await QuoteModel.find({ inquiryId }).session(session);
+        
+        const acceptedQuote = existingQuotes.find(q => q.status === 'ACCEPTED');
+        if (acceptedQuote) {
+          throw new HttpError(409, 'An order has already been generated for this inquiry.');
+        }
+        
+        const draftQuote = existingQuotes.find(q => q.status === 'DRAFT');
+        if (draftQuote) {
+          // Update the existing draft instead of creating a new one
+          createdQuote = await platformQuoteRepository.updateById(draftQuote._id, {
+            masterPricingId,
+            pricingSnapshot,
+            unitCount,
+            appliedDiscountPercent,
+            billingCycle,
+            trialDays,
+            cycleMultiplier,
+            calculatedAmounts,
+            expiresAt
+          }, session);
+        }
+      }
+
+      if (!createdQuote) {
+        createdQuote = await platformQuoteRepository.create(
+          {
+            quoteNumber,
+            inquiryId: inquiryId || null,
+            organisationId: finalOrgId,
+            masterPricingId,
+            pricingSnapshot,
+            unitCount,
+            appliedDiscountPercent,
+            billingCycle,
+            trialDays,
+            cycleMultiplier,
+            calculatedAmounts,
+            status,
+            expiresAt,
+            createdBy: createdBy || null,
+          },
+          session
+        );
+      }
 
       await session.commitTransaction();
 
@@ -141,91 +211,101 @@ class PlatformQuoteService {
   }
 
   /**
-   * Manager Approval for Quote.
+   * Instantly generate an order from a DRAFT quote.
    * @param {string} quoteId
-   * @param {string} managerUserId
    */
-  async approveQuote(quoteId, managerUserId) {
+  async generateInstantOrder(quoteId) {
     const existingQuote = await platformQuoteRepository.findById(quoteId);
     if (!existingQuote) {
       throw new HttpError(404, `Platform quote with ID '${quoteId}' not found.`);
     }
 
-    if (existingQuote.status === 'APPROVED') {
-      return existingQuote;
-    }
-
-    if (!['PENDING_APPROVAL', 'DRAFT'].includes(existingQuote.status)) {
-      throw new HttpError(
-        400,
-        `Quote status '${existingQuote.status}' cannot be approved.`
-      );
+    if (existingQuote.status !== 'DRAFT') {
+      throw new HttpError(400, `Only quotes in DRAFT status can generate an order.`);
     }
 
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
 
+      // Mark quote as ACCEPTED
       const updatedQuote = await platformQuoteRepository.updateById(
         quoteId,
-        {
-          status: 'APPROVED',
-          approvalDetails: {
-            approvedBy: managerUserId,
-            approvedAt: new Date(),
-            rejectionReason: null,
-          },
-        },
+        { status: 'ACCEPTED' },
         session
       );
 
-      await session.commitTransaction();
+      // Create PlatformOrder
+      const platformOrderService = (await import('../platformOrder/platformOrder.service.js')).default;
+      const platformInvoiceService = (await import('../platformInvoice/platformInvoice.service.js')).default;
+      const platformPaymentService = (await import('../platformPayment/platformPayment.service.js')).default;
+      const Organization = mongoose.model('Organization');
+      
+      const orderStatus = (existingQuote.trialDays || 0) > 0 ? 'PROVISIONING' : 'PAYMENT_PENDING';
+      
+      const orderPayload = {
+        organisationId: existingQuote.organisationId,
+        quoteId: existingQuote._id,
+        masterPricingId: existingQuote.masterPricingId,
+        pricingSnapshot: existingQuote.pricingSnapshot,
+        unitCount: existingQuote.unitCount,
+        billingCycle: existingQuote.billingCycle || 'YEARLY',
+        trialDays: existingQuote.trialDays || 0,
+        cycleMultiplier: existingQuote.cycleMultiplier || 1,
+        calculatedAmounts: existingQuote.calculatedAmounts,
+        status: orderStatus,
+      };
 
-      platformQuoteEvents.emit('platform_quote_approved', updatedQuote);
+      const newOrder = await platformOrderService.createOrder(orderPayload, session);
 
-      return updatedQuote;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
-  }
-
-  /**
-   * Manager Rejection for Quote.
-   * @param {string} quoteId
-   * @param {string} managerUserId
-   * @param {string} rejectionReason
-   */
-  async rejectQuote(quoteId, managerUserId, rejectionReason) {
-    const existingQuote = await platformQuoteRepository.findById(quoteId);
-    if (!existingQuote) {
-      throw new HttpError(404, `Platform quote with ID '${quoteId}' not found.`);
-    }
-
-    const session = await mongoose.startSession();
-    try {
-      session.startTransaction();
-
-      const updatedQuote = await platformQuoteRepository.updateById(
-        quoteId,
-        {
-          status: 'REJECTED',
-          approvalDetails: {
-            approvedBy: managerUserId,
-            approvedAt: new Date(),
-            rejectionReason: rejectionReason || 'Discount exceeded authorized threshold',
-          },
-        },
-        session
-      );
+      // Generate invoice
+      const newInvoice = await platformInvoiceService.generateInvoiceFromOrder(newOrder._id.toString(), session);
 
       await session.commitTransaction();
 
-      platformQuoteEvents.emit('platform_quote_rejected', updatedQuote);
+      // Emit quote event
+      platformQuoteEvents.emit('platform_quote_status_updated', {
+        quote: updatedQuote,
+        previousStatus: 'DRAFT',
+        newStatus: 'ACCEPTED',
+      });
+      
+      // Emit order created event for listeners
+      const platformOrderEvents = (await import('../platformOrder/platformOrder.events.js')).default;
+      platformOrderEvents.emit('order.created', newOrder);
+      
+      if (orderStatus === 'PROVISIONING') {
+        platformOrderEvents.emit('platform_order_status_updated', {
+          order: newOrder,
+          previousStatus: 'ACCEPTED',
+          newStatus: 'PROVISIONING'
+        });
+      }
 
-      return updatedQuote;
+      // Automatically advance upstream CRM Inquiry status to CLOSED_WON
+      try {
+        if (existingQuote.inquiryId) {
+          const crmInquiryService = (await import('../crmInquiry/crmInquiry.service.js')).default;
+          await crmInquiryService.updateInquiry(existingQuote.inquiryId.toString(), { status: 'CLOSED_WON' });
+        }
+      } catch (err) {
+        console.error('Failed to update upstream CRM inquiry status:', err);
+      }
+
+      // Generate Razorpay Payment Link (outside transaction, external API call)
+      try {
+        const orgData = await Organization.findById(existingQuote.organisationId);
+        await platformPaymentService.generateRazorpayPaymentLink(newInvoice._id.toString(), {
+          name: orgData?.name || 'Customer',
+          email: orgData?.contactEmail || 'admin@example.com',
+          contact: orgData?.contactPhone || ''
+        });
+      } catch (err) {
+        // We catch here so the order/quote generation doesn't fail if Razorpay fails
+        console.error('Failed to generate razorpay link during instant order:', err);
+      }
+
+      return newOrder;
     } catch (error) {
       await session.abortTransaction();
       throw error;
@@ -359,6 +439,8 @@ class PlatformQuoteService {
     unitCount = 1,
     selectedAddOnKeys = [],
     appliedDiscountPercent = 0,
+    billingCycle = 'YEARLY',
+    trialDays = 0,
     createdBy,
   }) {
     let existingQuote = null;
@@ -394,6 +476,8 @@ class PlatformQuoteService {
       taxRatePercent: masterPricing.taxRatePercent,
     };
 
+    const cycleMultiplier = this.getCycleMultiplier(billingCycle);
+
     const calculatedAmounts = this.calculatePricingBreakdown({
       basePrice: masterPricing.basePrice,
       perUnitRate: masterPricing.perUnitRate,
@@ -402,6 +486,7 @@ class PlatformQuoteService {
       setupFee: masterPricing.setupFee,
       appliedDiscountPercent,
       taxRatePercent: masterPricing.taxRatePercent,
+      cycleMultiplier,
     });
 
     const session = await mongoose.startSession();
@@ -417,6 +502,9 @@ class PlatformQuoteService {
             pricingSnapshot,
             unitCount,
             appliedDiscountPercent,
+            billingCycle,
+            trialDays,
+            cycleMultiplier,
             calculatedAmounts,
             status: 'DRAFT',
           },
@@ -433,6 +521,9 @@ class PlatformQuoteService {
             pricingSnapshot,
             unitCount,
             appliedDiscountPercent,
+            billingCycle,
+            trialDays,
+            cycleMultiplier,
             calculatedAmounts,
             status: 'DRAFT',
             expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -445,61 +536,6 @@ class PlatformQuoteService {
       await session.commitTransaction();
       platformQuoteEvents.emit(existingQuote ? 'quote.updated' : 'quote.created', quote);
       return quote;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
-  }
-
-  /**
-   * Finalize and generate quote from a DRAFT, resetting the 30-day expiry countdown upon generation.
-   * Transitions status to PENDING_APPROVAL or APPROVED based on discount threshold.
-   * @param {string} quoteId
-   * @param {number} [expiresInDays=30]
-   */
-  async generateQuote(quoteId, expiresInDays = 30) {
-    const existingQuote = await platformQuoteRepository.findById(quoteId);
-    if (!existingQuote) {
-      throw new HttpError(404, `Platform quote with ID '${quoteId}' not found.`);
-    }
-
-    if (existingQuote.status !== 'DRAFT') {
-      throw new HttpError(400, `Only quotes in DRAFT status can be generated. Current status: '${existingQuote.status}'.`);
-    }
-
-    const maxDiscount = existingQuote.pricingSnapshot?.maxAgentDiscountPercent ?? 10;
-    const targetStatus =
-      existingQuote.appliedDiscountPercent > maxDiscount
-        ? 'PENDING_APPROVAL'
-        : 'APPROVED';
-
-    // Reset expiry 30-day countdown starting from generation time
-    const freshExpiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
-
-    const session = await mongoose.startSession();
-    try {
-      session.startTransaction();
-
-      const updatedQuote = await platformQuoteRepository.updateById(
-        quoteId,
-        {
-          status: targetStatus,
-          expiresAt: freshExpiresAt,
-        },
-        session
-      );
-
-      await session.commitTransaction();
-
-      platformQuoteEvents.emit('platform_quote_status_updated', {
-        quote: updatedQuote,
-        previousStatus: 'DRAFT',
-        newStatus: targetStatus,
-      });
-
-      return updatedQuote;
     } catch (error) {
       await session.abortTransaction();
       throw error;
@@ -535,8 +571,7 @@ class PlatformQuoteService {
     const updatePayload = { expiresAt };
 
     if (existingQuote.status === 'EXPIRED') {
-      const maxDiscount = existingQuote.pricingSnapshot?.maxAgentDiscountPercent ?? 10;
-      updatePayload.status = existingQuote.appliedDiscountPercent > maxDiscount ? 'PENDING_APPROVAL' : 'APPROVED';
+      updatePayload.status = 'DRAFT';
     }
 
     const session = await mongoose.startSession();

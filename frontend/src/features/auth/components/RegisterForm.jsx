@@ -23,7 +23,7 @@ import {
   CProgress,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilLockLocked, cilUser, cilPhone, cilEnvelopeOpen } from '@coreui/icons'
+import { cilLockLocked, cilUser, cilPhone, cilEnvelopeOpen, cilBuilding } from '@coreui/icons'
 
 /**
  * RegisterForm Component
@@ -75,6 +75,7 @@ export const RegisterForm = () => {
       phone: '',
       password: '',
       confirmPassword: '',
+      totalUnits: '',
     },
     mode: 'onChange',
   })
@@ -182,8 +183,9 @@ export const RegisterForm = () => {
         username: derivedUsername,
         email: data.email.trim().toLowerCase(),
         phone: data.phone?.trim() ? `+${data.phone.trim()}` : undefined,
-        password: data.password,
+        totalUnits: data.totalUnits ? parseInt(data.totalUnits, 10) : undefined,
         isGoogleSso,
+        ...(data.password ? { password: data.password } : {})
       }).then((action) => {
         if (action.meta.requestStatus === 'fulfilled') {
           setIsOtpMode(true)
@@ -197,7 +199,7 @@ export const RegisterForm = () => {
     verifyRegistration(otpEmail, data.otp).then((res) => {
       if (res.success) {
         setTimeout(() => {
-          navigate('/workspace-setup?intent=create')
+          navigate('/workspace-setup?intent=create', { state: { totalUnits: getValues('totalUnits') } })
         }, 1500)
       }
     })
@@ -444,8 +446,9 @@ export const RegisterForm = () => {
               </div>
             )}
 
-            {/* Password */}
-            <div className="mb-3">
+            {/* Password (Only for Login) */}
+            {isLoginMode && (
+              <div className="mb-3">
               <CInputGroup>
                 <CInputGroupText style={styles.inputIconText}>
                   <CIcon icon={cilLockLocked} style={styles.icon} />
@@ -495,44 +498,36 @@ export const RegisterForm = () => {
                 </div>
               )}
             </div>
+            )}
 
-            {/* Confirm Password */}
+            {/* Total Units */}
             {!isLoginMode && (
-              <div className="mb-4">
+              <div className="mb-3">
                 <CInputGroup>
                   <CInputGroupText style={styles.inputIconText}>
-                    <CIcon icon={cilLockLocked} style={styles.icon} />
+                    <CIcon icon={cilBuilding} style={styles.icon} />
                   </CInputGroupText>
                   <CFormInput
                     style={styles.input}
-                    type="password"
-                    placeholder={t('auth.register.confirmPasswordPlaceholder', {
-                      defaultValue: 'Repeat password',
-                    })}
-                    autoComplete="new-password"
+                    type="number"
+                    placeholder="Total Units (e.g., 50)"
                     disabled={loading}
-                    {...register('confirmPassword', {
-                      required:
-                        !isLoginMode &&
-                        t('auth.register.confirmPasswordRequired', {
-                          defaultValue: 'Please repeat your password.',
-                        }),
-                      validate: (value, formValues) =>
-                        isLoginMode ||
-                        value === formValues.password ||
-                        t('auth.register.passwordsMustMatch', {
-                          defaultValue: 'Passwords do not match.',
-                        }),
+                    {...register('totalUnits', {
+                      required: t('auth.register.unitsRequired', { defaultValue: 'Total Units is required.' }),
+                      min: {
+                        value: 1,
+                        message: 'Must be at least 1 unit'
+                      }
                     })}
                   />
                 </CInputGroup>
-                {errors.confirmPassword && (
-                  <div className="text-danger small mt-1 ms-1">
-                    {errors.confirmPassword.message}
-                  </div>
+                {errors.totalUnits && (
+                   <div className="text-danger small mt-1 ms-1">{errors.totalUnits.message}</div>
                 )}
               </div>
             )}
+
+
 
             <CRow>
               <CCol xs={12} className="d-grid mb-3">

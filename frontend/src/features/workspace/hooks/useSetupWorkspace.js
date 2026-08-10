@@ -99,10 +99,12 @@ export const useSetupWorkspace = () => {
         }
       })
     } else {
-      dispatch(createWorkspace(payload)).then((action) => {
-        if (createWorkspace.fulfilled.match(action)) {
-          navigate('/workspace-setup')
-        }
+      // Instead of creating workspace immediately, navigate to feature selection step
+      navigate('/workspace-setup?step=features', { 
+        state: { 
+          ...location.state, 
+          orgName: payload.name 
+        } 
       })
     }
   }

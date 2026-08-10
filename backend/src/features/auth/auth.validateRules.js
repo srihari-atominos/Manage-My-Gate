@@ -21,8 +21,7 @@ export const registerRules = [
     .isLength({ min: 3, max: 30 })
     .withMessage('Username must be between 3 and 30 characters'),
   body('password')
-    .notEmpty()
-    .withMessage('Password is required')
+    .optional()
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters long')
     .matches(passwordRegex)

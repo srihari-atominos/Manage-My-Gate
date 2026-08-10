@@ -2,51 +2,34 @@ import mongoose from 'mongoose';
 import masterPricingRepository from './masterPricing.repository.js';
 import masterPricingEvents from './masterPricing.events.js';
 import HttpError from '../../utils/httpError.utils.js';
+import PlatformQuote from '../platformQuote/platformQuote.model.js';
+import PlatformOrder from '../platformOrder/platformOrder.model.js';
 
 class MasterPricingService {
-  /**
-   * Create a new Master Pricing Plan within a database transaction.
-   * @param {Object} pricingData
-   */
-  async createPlan(pricingData) {
-    const existing = await masterPricingRepository.findByPlanName(pricingData.planName);
+  async createPlan(pricingData, xRequestId) {
+    if (xRequestId) console.log(`[${xRequestId}] MasterPricingService.createPlan: Creating plan ${pricingData.planCode}`);
+    
+    const existing = await masterPricingRepository.findByPlanCode(pricingData.planCode);
     if (existing) {
-      throw new HttpError(409, `Plan name '${pricingData.planName}' is already registered.`);
+      throw new HttpError(409, `Plan code '${pricingData.planCode}' is already registered.`);
     }
 
-    const session = await mongoose.startSession();
     try {
-      session.startTransaction();
-
-      const createdPlan = await masterPricingRepository.create(pricingData, session);
-
-      await session.commitTransaction();
-
-      // Emit event after transaction succeeds
+      const createdPlan = await masterPricingRepository.create(pricingData);
       masterPricingEvents.emit('master_pricing_created', createdPlan);
-
       return createdPlan;
     } catch (error) {
-      await session.abortTransaction();
       throw error;
-    } finally {
-      session.endSession();
     }
   }
 
-  /**
-   * Retrieve all Master Pricing plans with pagination and filters.
-   * @param {Object} queryParams
-   */
-  async getAllPlans(queryParams) {
+  async getAllPlans(queryParams, xRequestId) {
+    if (xRequestId) console.log(`[${xRequestId}] MasterPricingService.getAllPlans`);
     return await masterPricingRepository.findAllPaginated(queryParams);
   }
 
-  /**
-   * Get a single Master Pricing plan by ID.
-   * @param {string} id
-   */
-  async getPlanById(id) {
+  async getPlanById(id, xRequestId) {
+    if (xRequestId) console.log(`[${xRequestId}] MasterPricingService.getPlanById: ${id}`);
     const plan = await masterPricingRepository.findById(id);
     if (!plan) {
       throw new HttpError(404, `Master pricing plan with ID '${id}' not found.`);
@@ -54,77 +37,76 @@ class MasterPricingService {
     return plan;
   }
 
-  /**
-   * Alias for getPlanById.
-   * @param {string} id
-   */
-  async getPricingById(id) {
-    return await this.getPlanById(id);
+  async getPricingById(id, xRequestId) {
+    return await this.getPlanById(id, xRequestId);
   }
 
-  /**
-   * Update an existing Master Pricing Plan within a transaction.
-   * @param {string} id
-   * @param {Object} updateData
-   */
-  async updatePlan(id, updateData) {
+  async _checkDependencies(id) {
+    const quoteExists = await PlatformQuote.exists({ masterPricingId: id, status: { $nin: ['CANCELLED', 'EXPIRED'] } }).catch(() => false);
+    if (quoteExists) {
+      throw new HttpError(409, `Cannot deactivate or delete. Active quotes reference this pricing plan.`);
+    }
+    
+    // Check PlatformOrder just in case it also has a direct reference
+    // Not all architectures link it directly to order, but we check if the model exists and has reference
+    const orderExists = await PlatformOrder.exists({ masterPricingId: id, status: { $nin: ['CANCELLED', 'EXPIRED'] } }).catch(() => false);
+    if (orderExists) {
+      throw new HttpError(409, `Cannot deactivate or delete. Active orders reference this pricing plan.`);
+    }
+  }
+
+  async updatePlan(id, updateData, xRequestId) {
+    if (xRequestId) console.log(`[${xRequestId}] MasterPricingService.updatePlan: ${id}`);
     const existingPlan = await masterPricingRepository.findById(id);
     if (!existingPlan) {
       throw new HttpError(404, `Master pricing plan with ID '${id}' not found.`);
     }
 
-    if (updateData.planName && updateData.planName.trim().toLowerCase() !== existingPlan.planName.toLowerCase()) {
-      const nameConflict = await masterPricingRepository.findByPlanName(updateData.planName);
+    if (updateData.planCode && updateData.planCode.trim().toLowerCase() !== existingPlan.planCode.toLowerCase()) {
+      const nameConflict = await masterPricingRepository.findByPlanCode(updateData.planCode);
       if (nameConflict && nameConflict._id.toString() !== id) {
-        throw new HttpError(409, `Plan name '${updateData.planName}' is already in use by another plan.`);
+        throw new HttpError(409, `Plan code '${updateData.planCode}' is already in use by another plan.`);
       }
     }
 
-    const session = await mongoose.startSession();
+    // Check dependency locks before archiving
+    if (updateData.status === 'ARCHIVED' && existingPlan.status !== 'ARCHIVED') {
+      await this._checkDependencies(id);
+    }
+
+    // Version increment on breaking changes (e.g., price change)
+    if (
+      (updateData.basePrice !== undefined && updateData.basePrice !== existingPlan.basePrice) ||
+      (updateData.unitPrice !== undefined && updateData.unitPrice !== existingPlan.unitPrice) ||
+      (updateData.pricingModel !== undefined && updateData.pricingModel !== existingPlan.pricingModel)
+    ) {
+      updateData.version = (existingPlan.version || 1) + 1;
+    }
+
     try {
-      session.startTransaction();
-
-      const updatedPlan = await masterPricingRepository.updateById(id, updateData, session);
-
-      await session.commitTransaction();
-
+      const updatedPlan = await masterPricingRepository.updateById(id, updateData);
       masterPricingEvents.emit('master_pricing_updated', updatedPlan);
-
       return updatedPlan;
     } catch (error) {
-      await session.abortTransaction();
       throw error;
-    } finally {
-      session.endSession();
     }
   }
 
-  /**
-   * Delete a Master Pricing plan within a transaction.
-   * @param {string} id
-   */
-  async deletePlan(id) {
+  async deletePlan(id, xRequestId) {
+    if (xRequestId) console.log(`[${xRequestId}] MasterPricingService.deletePlan: ${id}`);
     const existingPlan = await masterPricingRepository.findById(id);
     if (!existingPlan) {
       throw new HttpError(404, `Master pricing plan with ID '${id}' not found.`);
     }
 
-    const session = await mongoose.startSession();
+    await this._checkDependencies(id);
+
     try {
-      session.startTransaction();
-
-      const deletedPlan = await masterPricingRepository.deleteById(id, session);
-
-      await session.commitTransaction();
-
+      const deletedPlan = await masterPricingRepository.deleteById(id);
       masterPricingEvents.emit('master_pricing_deleted', deletedPlan);
-
       return deletedPlan;
     } catch (error) {
-      await session.abortTransaction();
       throw error;
-    } finally {
-      session.endSession();
     }
   }
 }

@@ -1,84 +1,86 @@
 import mongoose from 'mongoose';
 
-const addOnSchema = new mongoose.Schema(
-  {
-    key: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    price: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-  },
-  { _id: false }
-);
-
 const masterPricingSchema = new mongoose.Schema(
   {
-    planName: {
+    planCode: {
       type: String,
-      required: [true, 'Plan name is required'],
+      required: [true, 'Plan code is required'],
       unique: true,
       trim: true,
       index: true,
+      uppercase: true,
     },
-    tier: {
+    name: {
+      type: String,
+      required: [true, 'Name is required'],
+      trim: true,
+    },
+    type: {
       type: String,
       enum: {
-        values: ['TIER_1', 'TIER_2', 'TIER_3', 'ENTERPRISE'],
-        message: '{VALUE} is not a valid tier',
+        values: ['BASE_PLAN', 'UNIT_ADDON', 'FEATURE_ADDON'],
+        message: '{VALUE} is not a valid type',
       },
-      required: [true, 'Tier is required'],
-      index: true,
+      required: [true, 'Type is required'],
+    },
+    pricingModel: {
+      type: String,
+      enum: {
+        values: ['FLAT', 'PER_UNIT', 'TIERED'],
+        message: '{VALUE} is not a valid pricing model',
+      },
+      required: [true, 'Pricing model is required'],
     },
     basePrice: {
       type: Number,
       required: [true, 'Base price is required'],
       min: [0, 'Base price must be greater than or equal to 0'],
     },
-    perUnitRate: {
+    unitPrice: {
       type: Number,
-      default: 0,
-      min: [0, 'Per unit rate must be greater than or equal to 0'],
-    },
-    addOns: {
-      type: [addOnSchema],
-      default: [],
+      min: [0, 'Unit price must be greater than or equal to 0'],
     },
     setupFee: {
       type: Number,
       default: 0,
-      min: [0, 'Setup fee must be greater than or equal to 0'],
+      min: [0, 'Setup fee must be non-negative'],
     },
-    validityInMonths: {
+    freeTrialDuration: {
       type: Number,
-      default: 12,
-      min: [1, 'Validity in months must be at least 1'],
+      default: 0,
+      min: [0, 'Free trial duration must be non-negative'],
+    },
+    billingInterval: {
+      type: String,
+      enum: {
+        values: ['MONTHLY', 'ANNUAL'],
+        message: '{VALUE} is not a valid billing interval',
+      },
+      required: [true, 'Billing interval is required'],
+    },
+    features: {
+      type: [String],
+      required: [true, 'Features array is required'],
+      default: [],
+    },
+    status: {
+      type: String,
+      enum: {
+        values: ['ACTIVE', 'ARCHIVED'],
+        message: '{VALUE} is not a valid status',
+      },
+      default: 'ACTIVE',
+      index: true,
     },
     maxAgentDiscountPercent: {
       type: Number,
       default: 10,
-      min: [0, 'Discount percent cannot be negative'],
+      min: [0, 'Discount percent cannot be less than 0'],
       max: [100, 'Discount percent cannot exceed 100'],
     },
-    taxRatePercent: {
+    version: {
       type: Number,
-      default: 15,
-      min: [0, 'Tax rate percent cannot be negative'],
-      max: [100, 'Tax rate percent cannot exceed 100'],
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-      index: true,
+      default: 1,
     },
   },
   {

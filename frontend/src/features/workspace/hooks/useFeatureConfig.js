@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import apiClient from '../../../services/apiClient.js'
 const updateOrganizationFeatures = async (id, features) => {
   return await apiClient.patch(`/organizations/${id}/features`, { features })
@@ -14,6 +14,10 @@ import { updateTokenAndUser } from '../../auth/store/authSlice.js'
 export const useFeatureConfig = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
+  
+  const searchParams = new URLSearchParams(location.search)
+  const isFeaturesStep = searchParams.get('step') === 'features'
 
   const activeOrganizationId = useSelector((state) => state.workspace.activeOrganizationId)
   const activeRole = useSelector((state) => state.workspace.activeRole)
@@ -102,6 +106,37 @@ export const useFeatureConfig = () => {
   }
 
   const submitFeatures = async () => {
+    if (isFeaturesStep) {
+      setLoading(true)
+      setError(null)
+      try {
+        const { orgName, totalUnits } = location.state || {}
+        
+        if (!orgName) {
+          setError('Organization name is missing. Please restart setup.')
+          setLoading(false)
+          return
+        }
+
+        const payload = {
+          username: currentUser?.username || currentUser?.email?.split('@')[0] || 'admin',
+          email: currentUser?.email,
+          phone: currentUser?.phone || '0000000000',
+          organizationName: orgName,
+          totalUnits: totalUnits ? parseInt(totalUnits, 10) : 1,
+          selectedFeatures,
+        }
+        
+        await apiClient.post('/platform-crm/enquiry', payload)
+        setLoading(false)
+        navigate('/enquiry-pending')
+      } catch (err) {
+        setLoading(false)
+        setError(err.response?.data?.message || err.message || 'workspace.wizard.error')
+      }
+      return
+    }
+
     if (!activeOrganizationId) {
       setError('workspace.wizard.errors.noOrganization')
       return

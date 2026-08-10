@@ -7,8 +7,9 @@ const QUOTE_STATUSES = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'EX
  */
 export const createQuoteRules = [
   body('organisationId')
+    .if(body('inquiryId').not().exists({ checkFalsy: true }))
     .notEmpty()
-    .withMessage('Organisation ID is required')
+    .withMessage('Organisation ID is required when inquiryId is not provided')
     .isMongoId()
     .withMessage('Invalid Organisation ID format'),
 

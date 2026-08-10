@@ -84,6 +84,10 @@ const AppSidebar = () => {
   }
 
   const isPermitted = (item) => {
+    if (item.requirePlatform && !isPlatform) {
+      return false
+    }
+
     if (!item.requiredPermission) {
       return true
     }

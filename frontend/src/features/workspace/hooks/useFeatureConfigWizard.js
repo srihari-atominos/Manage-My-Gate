@@ -14,7 +14,7 @@ export const useFeatureConfigWizard = () => {
 
   const { selectedFeatures, loading, error, toggleFeature, submitFeatures } = useFeatureConfig()
 
-  const showWorkspaceSetup = !activeOrganizationId || isCreateIntent
+  const showWorkspaceSetup = (!activeOrganizationId || isCreateIntent) && searchParams.get('step') !== 'features'
 
   return {
     showWorkspaceSetup,

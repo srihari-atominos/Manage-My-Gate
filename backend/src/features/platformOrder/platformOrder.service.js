@@ -15,6 +15,28 @@ const generateOrderNumber = () => {
 
 class PlatformOrderService {
   /**
+   * Create an order directly from a payload within a transaction.
+   * @param {Object} payload 
+   * @param {ClientSession} session 
+   */
+  async createOrder(payload, session = null) {
+    const orderNumber = generateOrderNumber();
+    const newOrder = await platformOrderRepository.create(
+      {
+        ...payload,
+        orderNumber,
+        acceptedAt: new Date(),
+      },
+      session
+    );
+    
+    if (!session) {
+      platformOrderEvents.emit('order.created', newOrder);
+    }
+    return newOrder;
+  }
+
+  /**
    * Create an order from an approved quote within a transaction.
    * @param {Object} payload - { quoteId, acceptedBy, organisationId }
    */
@@ -158,6 +180,34 @@ class PlatformOrderService {
     } finally {
       session.endSession();
     }
+  }
+
+  /**
+   * Handle Razorpay Payment Success webhook idempotently.
+   * @param {Object} razorpayPayload
+   */
+  async handlePaymentSuccess(razorpayPayload) {
+    const paymentEntity = razorpayPayload?.payload?.payment?.entity || razorpayPayload?.payment?.entity;
+    if (!paymentEntity) return;
+
+    const orderId = paymentEntity.notes?.orderId;
+    if (!orderId) return;
+
+    // OCC: strictly check status is 'PAYMENT_PENDING'
+    const updatedOrder = await platformOrderRepository.findAndUpdatePaymentPending(
+      orderId,
+      {
+        status: 'PAID',
+        razorpayPaymentId: paymentEntity.id,
+        paymentSettledAt: new Date(),
+      }
+    );
+
+    // If null, it means order doesn't exist or already processed (duplicate webhook)
+    if (!updatedOrder) return;
+
+    // Emit event for automated tenant provisioning
+    platformOrderEvents.emit('PAYMENT_SETTLED', updatedOrder);
   }
 
   /**

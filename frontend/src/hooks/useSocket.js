@@ -1,44 +1,50 @@
-import { useEffect, useRef } from 'react'
-import { io } from 'socket.io-client'
+import { useEffect, useState, useCallback } from 'react';
+import { io } from 'socket.io-client';
+import { useSelector } from 'react-redux';
+import config from '../config/config.js';
 
-import config from '../config/config.js'
-
-/**
- * Global Socket hook
- * Manages standard socket connection setup.
- */
-export const useSocket = (room) => {
-  const socketRef = useRef(null)
+export const useSocket = (namespace = '') => {
+  const [socket, setSocket] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const { token } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    const socketUrl = config.socketUrl
-
-    socketRef.current = io(socketUrl, {
+    if (!token) return;
+    
+    // Ensure namespace starts with slash if provided, e.g. '/platform'
+    const socketInstance = io(`${config.socketUrl}${namespace}`, {
+      auth: { token },
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
       withCredentials: true,
-      transports: ['websocket', 'polling'],
-      autoConnect: true,
-    })
+    });
 
-    const socket = socketRef.current
+    socketInstance.on('connect', () => {
+      setIsConnected(true);
+      console.log(`Socket connected: ${socketInstance.id}`);
+    });
 
-    socket.on('connect', () => {
-      if (room) {
-        if (Array.isArray(room)) {
-          room.forEach((r) => {
-            if (r) socket.emit('join_room', r)
-          })
-        } else {
-          socket.emit('join_room', room)
-        }
-      }
-    })
+    socketInstance.on('disconnect', () => {
+      setIsConnected(false);
+      console.log('Socket disconnected');
+    });
+
+    setSocket(socketInstance);
 
     return () => {
-      socket.disconnect()
+      socketInstance.disconnect();
+    };
+  }, [token, namespace]);
+
+  const emit = useCallback((eventName, data) => {
+    if (socket) {
+      socket.emit(eventName, data);
     }
-  }, [room])
+  }, [socket]);
 
-  return socketRef.current
-}
+  return { socket, isConnected, emit };
+};
 
-export default useSocket
+export default useSocket;

@@ -3,7 +3,6 @@ import platformQuoteController from './platformQuote.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
 import {
   createQuoteRules,
-  rejectQuoteRules,
   queryQuoteRules,
   getByIdQuoteRules,
   updateQuoteRules,
@@ -70,32 +69,17 @@ router.get(
 
 /**
  * @swagger
- * /platform-quotes/{id}/approve:
+ * /platform-quotes/{id}/generate-order:
  *   post:
- *     summary: Manager approval for a platform quote exceeding discount threshold
+ *     summary: Instantly generate an order from a DRAFT quote
  *     tags: [PlatformQuotes]
  */
 router.post(
-  '/:id/approve',
+  '/:id/generate-order',
   isAuthenticated,
   authorizeRoles('SUPER_ADMIN', 'ADMIN', 'MANAGER'),
   validate(getByIdQuoteRules),
-  platformQuoteController.approve
-);
-
-/**
- * @swagger
- * /platform-quotes/{id}/reject:
- *   post:
- *     summary: Manager rejection for a platform quote
- *     tags: [PlatformQuotes]
- */
-router.post(
-  '/:id/reject',
-  isAuthenticated,
-  authorizeRoles('SUPER_ADMIN', 'ADMIN', 'MANAGER'),
-  validate(rejectQuoteRules),
-  platformQuoteController.reject
+  platformQuoteController.generateInstantOrder
 );
 
 /**

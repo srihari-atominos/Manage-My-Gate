@@ -35,15 +35,6 @@ const calculatedAmountsSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const approvalDetailsSchema = new mongoose.Schema(
-  {
-    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    approvedAt: { type: Date, default: null },
-    rejectionReason: { type: String, default: null },
-  },
-  { _id: false }
-);
-
 const platformQuoteSchema = new mongoose.Schema(
   {
     quoteNumber: {
@@ -91,18 +82,30 @@ const platformQuoteSchema = new mongoose.Schema(
       type: calculatedAmountsSchema,
       required: [true, 'Calculated amounts are required'],
     },
+    billingCycle: {
+      type: String,
+      enum: {
+        values: ['MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'YEARLY', 'CUSTOM'],
+        message: '{VALUE} is not a valid billing cycle',
+      },
+      default: 'YEARLY',
+    },
+    trialDays: {
+      type: Number,
+      default: 0,
+    },
+    cycleMultiplier: {
+      type: Number,
+      default: 1,
+    },
     status: {
       type: String,
       enum: {
-        values: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'EXPIRED', 'ACCEPTED'],
+        values: ['DRAFT', 'ACCEPTED', 'REJECTED', 'EXPIRED'],
         message: '{VALUE} is not a valid quote status',
       },
       default: 'DRAFT',
       index: true,
-    },
-    approvalDetails: {
-      type: approvalDetailsSchema,
-      default: () => ({}),
     },
     expiresAt: {
       type: Date,

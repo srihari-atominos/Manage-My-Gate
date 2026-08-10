@@ -19,6 +19,9 @@ const VillaManagementView = React.lazy(() => import('./features/villa/views/Vill
 const OrganizationManager = React.lazy(
   () => import('./features/organization/views/OrganizationManager'),
 )
+const PlatformBillingLayout = React.lazy(
+  () => import('./features/platformBilling/views/PlatformBillingLayout'),
+)
 const AuditLogViewer = React.lazy(() => import('./features/auditLog/views/AuditLogViewer'))
 const NoticeBoardRedirector = React.lazy(
   () => import('./features/noticeBoard/views/NoticeBoardRedirector'),
@@ -175,6 +178,12 @@ export const routes = [
     path: '/super-admin/organizations',
     name: 'Organization Manager',
     element: OrganizationManager,
+    requirePlatform: true,
+  },
+  {
+    path: '/super-admin/crm',
+    name: 'Platform Billing & CRM',
+    element: PlatformBillingLayout,
     requirePlatform: true,
   },
   {

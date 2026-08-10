@@ -161,6 +161,20 @@ apiClient.interceptors.response.use(
       error.message = error.response.data.message
     }
 
+    // Phase 7.1: Intercept 403 SUBSCRIPTION_EXPIRED globally
+    if (
+      error.response &&
+      error.response.status === 403 &&
+      error.message === 'SUBSCRIPTION_EXPIRED'
+    ) {
+      if (store) {
+        store.dispatch({ type: 'auth/setLockedOut', payload: true })
+      }
+      // Force redirect strictly to renewal page
+      window.location.href = '/#/tenant/subscription-renewal'
+      return Promise.reject(error)
+    }
+
     return Promise.reject(error)
   },
 )

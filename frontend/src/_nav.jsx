@@ -31,6 +31,13 @@ const _nav = [
   },
   {
     component: CNavItem,
+    name: 'Platform Billing & CRM',
+    to: '/super-admin/crm',
+    icon: <CIcon icon={cilWallet} customClassName="nav-icon" />,
+    requirePlatform: true,
+  },
+  {
+    component: CNavItem,
     name: 'Workspace Settings',
     to: '/workspace/settings',
     icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,

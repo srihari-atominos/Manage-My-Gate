@@ -58,7 +58,8 @@ import { Wallet, WalletTransaction } from './src/features/wallet/wallet.model.js
 
 const MONGO_URI           = process.env.MONGODB_URI || 'mongodb://localhost:27017/manage_my_gate_dev';
 const DEFAULT_PASSWORD    = 'Test@1234';
-const SUPER_ADMIN_PASSWORD = 'SuperAdminPwd@123';
+const SUPER_ADMIN_EMAIL   = process.env.SUPER_ADMIN_EMAIL || 'admin@enterprise.com';
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || 'SuperAdminPwd@123';
 
 // ── Role Permissions Mapping Matrix ────────────────────────
 const ROLE_PERMISSIONS = {
@@ -228,10 +229,10 @@ async function seedMultiCommunity() {
   }
 
   // Super Admin user
-  let superAdmin = await User.findOne({ $or: [{ email: 'admin@enterprise.com' }, { username: 'superadmin' }] });
+  let superAdmin = await User.findOne({ $or: [{ email: SUPER_ADMIN_EMAIL }, { username: 'superadmin' }] });
   if (!superAdmin) {
     superAdmin = await User.create({
-      email: 'admin@enterprise.com',
+      email: SUPER_ADMIN_EMAIL,
       username: 'superadmin',
       password: hashedSuperAdminPassword,
       status: 'Active',
@@ -275,8 +276,8 @@ async function seedMultiCommunity() {
     'Community Name': 'PLATFORM GLOBAL',
     'Role / Category': 'Super Admin',
     'Full Name': 'Super Admin',
-    'Email / Login': 'admin@enterprise.com',
-    'Password': SUPER_ADMIN_PASSWORD,
+    'Email / Login': process.env.SUPER_ADMIN_EMAIL,
+    'Password': process.env.SUPER_ADMIN_PASSWORD,
     'Username': 'superadmin',
     'Phone': '+919900000000',
     'Assigned Unit': 'All / Platform',
@@ -284,7 +285,7 @@ async function seedMultiCommunity() {
     'Key Testing Focus': 'Global administration, community creation, system configuration.',
   });
 
-  console.log('✔  Super Admin account ready: admin@enterprise.com / SuperAdminPwd@123\n');
+  console.log(`✔  Super Admin account ready: ${SUPER_ADMIN_EMAIL} / ${SUPER_ADMIN_PASSWORD}\n`);
 
   // ── PROCESS EACH COMMUNITY ────────────────────────────────────
   let globalUserIndex = 1;
@@ -871,7 +872,7 @@ async function seedMultiCommunity() {
 
   // Sheet 6: Testing Scenarios
   const scenarioRows = [
-    { 'Scenario ID': 'SCEN-001', 'Actor': 'Super Admin', 'Target Feature': 'Platform Multi-Community Switch', 'Step-by-Step Test Procedure': '1. Login with admin@enterprise.com / SuperAdminPwd@123.\n2. Open workspace dropdown in header.\n3. Verify all 3 communities (Greenfield Heights, Sunrise Valley, Palm Meadows) are listed.\n4. Switch workspace and verify context changes.' },
+    { 'Scenario ID': 'SCEN-001', 'Actor': 'Super Admin', 'Target Feature': 'Platform Multi-Community Switch', 'Step-by-Step Test Procedure': `1. Login with ${SUPER_ADMIN_EMAIL} / ${SUPER_ADMIN_PASSWORD}.\n2. Open workspace dropdown in header.\n3. Verify all 3 communities (Greenfield Heights, Sunrise Valley, Palm Meadows) are listed.\n4. Switch workspace and verify context changes.` },
     { 'Scenario ID': 'SCEN-002', 'Actor': 'Community Admin', 'Target Feature': 'Community Dashboard & Users', 'Step-by-Step Test Procedure': '1. Login with admin1@greenfield.com / Test@1234.\n2. Navigate to User Management.\n3. Verify members list and active roles.\n4. Create a new member or modify roles.' },
     { 'Scenario ID': 'SCEN-003', 'Actor': 'Facility Manager', 'Target Feature': 'Amenity Booking Approval', 'Step-by-Step Test Procedure': '1. Login with fm1@greenfield.com / Test@1234.\n2. Open Amenities tab.\n3. View pending bookings for Banquet Hall.\n4. Click Approve or Reject.\n5. Verify status updates to Confirmed.' },
     { 'Scenario ID': 'SCEN-004', 'Actor': 'Facility Manager', 'Target Feature': 'Complaint Ticket Assignment', 'Step-by-Step Test Procedure': '1. Login with fm1@sunrisevalley.com / Test@1234.\n2. Go to Complaints.\n3. Filter by Open status.\n4. Assign ticket to staff.\n5. Update status to In Progress.' },
@@ -890,7 +891,7 @@ async function seedMultiCommunity() {
     { 'Metric / Parameter': 'Community 2', 'Value': 'Sunrise Valley Estates (SVE)' },
     { 'Metric / Parameter': 'Community 3', 'Value': 'Palm Meadows Residency (PMR)' },
     { 'Metric / Parameter': 'Total User Credentials Created', 'Value': masterCredRows.length },
-    { 'Metric / Parameter': 'Super Admin Account', 'Value': 'admin@enterprise.com (Password: SuperAdminPwd@123)' },
+    { 'Metric / Parameter': 'Super Admin Account', 'Value': `${SUPER_ADMIN_EMAIL} (Password: ${SUPER_ADMIN_PASSWORD})` },
     { 'Metric / Parameter': 'All Other Accounts Password', 'Value': DEFAULT_PASSWORD },
     { 'Metric / Parameter': 'Total Roles Configured per Org', 'Value': Object.keys(ROLE_PERMISSIONS).length },
     { 'Metric / Parameter': 'Seed Execution Timestamp', 'Value': new Date().toISOString() },

@@ -1,5 +1,31 @@
 import { body, param, query } from 'express-validator';
 
+export const validatePublicLead = [
+  body('customerName')
+    .isString().withMessage('Customer name must be a string')
+    .trim()
+    .isLength({ min: 2 }).withMessage('Customer name must be at least 2 characters long'),
+  body('contactEmail')
+    .isEmail().withMessage('Contact email must be a valid email address')
+    .normalizeEmail(),
+  body('contactPhone')
+    .optional({ checkFalsy: true })
+    .isString().withMessage('Contact phone must be a string')
+    .trim()
+    .matches(/^\+?[\d\s-]+$/).withMessage('Contact phone format is invalid'),
+  body('organizationName')
+    .notEmpty().withMessage('Organization name is required')
+    .isString().withMessage('Organization name must be a string')
+    .trim(),
+  body('unitCount')
+    .notEmpty().withMessage('Unit count is required')
+    .isInt({ min: 1 }).withMessage('Unit count must be an integer of at least 1')
+    .toInt(),
+  body('selectedFeatures')
+    .optional()
+    .isArray().withMessage('selectedFeatures must be an array')
+];
+
 export const createInquiryRules = [
   body('customerName')
     .notEmpty()
@@ -7,6 +33,18 @@ export const createInquiryRules = [
     .isString()
     .withMessage('Customer name must be a string')
     .trim(),
+  body('organizationName')
+    .notEmpty()
+    .withMessage('Organization name is required')
+    .isString()
+    .withMessage('Organization name must be a string')
+    .trim(),
+  body('unitCount')
+    .notEmpty()
+    .withMessage('Unit count is required')
+    .isInt({ min: 1 })
+    .withMessage('Unit count must be an integer of at least 1')
+    .toInt(),
   body('contactEmail')
     .notEmpty()
     .withMessage('Contact email is required')
@@ -26,6 +64,9 @@ export const createInquiryRules = [
     .optional({ checkFalsy: true })
     .isMongoId()
     .withMessage('assignedAgentId must be a valid MongoDB ObjectId'),
+  body('selectedFeatures')
+    .optional()
+    .isArray().withMessage('selectedFeatures must be an array'),
 ];
 
 export const updateInquiryRules = [

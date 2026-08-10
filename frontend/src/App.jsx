@@ -40,6 +40,9 @@ const GetStarted = React.lazy(() => import('./views/pages/getStarted/GetStarted'
 const FeatureConfigWizard = React.lazy(
   () => import('./features/workspace/views/FeatureConfigWizard'),
 )
+const EnquiryPendingView = React.lazy(
+  () => import('./features/workspace/views/EnquiryPendingView'),
+)
 
 /**
  * Main Application Component
@@ -124,6 +127,16 @@ const App = () => {
               element={
                 <AuthGuard allowSsoBypass={true}>
                   <FeatureConfigWizard />
+                </AuthGuard>
+              }
+            />
+            <Route
+              exact
+              path="/enquiry-pending"
+              name="Enquiry Pending Page"
+              element={
+                <AuthGuard allowSsoBypass={true}>
+                  <EnquiryPendingView />
                 </AuthGuard>
               }
             />

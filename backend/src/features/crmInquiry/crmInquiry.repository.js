@@ -94,9 +94,22 @@ export class CrmInquiryRepository {
               $project: {
                 inquiryId: 1,
                 customerName: 1,
+                contactName: '$customerName', // alias for frontend
+                organizationName: 1,
+                unitCount: 1,
                 contactEmail: 1,
+                email: '$contactEmail', // alias for frontend
                 contactPhone: 1,
+                phone: '$contactPhone', // alias for frontend
                 status: 1,
+                features: {
+                  $cond: {
+                    if: { $isArray: '$selectedFeatures' },
+                    then: { $size: '$selectedFeatures' },
+                    else: 0
+                  }
+                },
+                selectedFeatures: 1,
                 createdAt: 1,
                 updatedAt: 1,
                 assignedAgent: {

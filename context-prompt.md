@@ -108,3 +108,5 @@ When assisting on this project, ALWAYS enforce these rules:
 5. **Form Validation:** Use `React Hook Form` with `Yup`/`Zod` schema validation for all forms.
 6. **RTL Support:** Use CSS logical properties (`ms-`, `pe-`, `text-start`) to support Arabic (RTL) localization.
 7. **Strict Correlation ID:** Ensure all custom HTTP requests include `X-Request-ID` headers for observability.
+8. **Mobile Component Reuse Mandate:** When working on `mobile/mobile-app`, inspect `COMPONENTS_CATALOG.md` and MUST strictly reuse existing components from `mobile/mobile-app/components/` (`ui`, `common`, `forms`, `feedback`, `layout`, `navigation`, `hardware`, `data`, `dashboard`, `auth`, `analytics`, `settings`). Raw inline UI duplicates are strictly prohibited.
+

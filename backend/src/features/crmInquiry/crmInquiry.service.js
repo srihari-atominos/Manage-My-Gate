@@ -16,6 +16,35 @@ export class CrmInquiryService {
   }
 
   /**
+   * Create a public lead (Phase 2).
+   * @param {Object} payload
+   */
+  async registerPublicLead(payload) {
+    let inquiryId = this.generateInquiryId();
+    let existing = await crmInquiryRepository.findByInquiryId(inquiryId);
+    let attempts = 0;
+    while (existing && attempts < 5) {
+      inquiryId = this.generateInquiryId();
+      existing = await crmInquiryRepository.findByInquiryId(inquiryId);
+      attempts++;
+    }
+
+    const inquiryData = {
+      ...payload,
+      inquiryId,
+      status: 'NEW',
+      originSource: 'WEB_FORM',
+    };
+
+    const newInquiry = await crmInquiryRepository.create(inquiryData);
+
+    // Emit domain event
+    crmInquiryEvents.emit('LEAD_REGISTERED', newInquiry);
+
+    return newInquiry;
+  }
+
+  /**
    * Create a new CRM Inquiry.
    * @param {Object} payload
    */

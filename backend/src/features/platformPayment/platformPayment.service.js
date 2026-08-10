@@ -5,6 +5,18 @@ import platformInvoiceService from '../platformInvoice/platformInvoice.service.j
 import platformOrderService from '../platformOrder/platformOrder.service.js';
 import IdempotencyError from './utils/idempotencyError.js';
 import HttpError from '../../utils/httpError.utils.js';
+import Razorpay from 'razorpay';
+
+// Helper to get razorpay instance
+const getRazorpayInstance = () => {
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    throw new Error('Razorpay credentials missing in environment variables');
+  }
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+};
 
 class PlatformPaymentService {
   /**
@@ -200,6 +212,68 @@ class PlatformPaymentService {
       throw error;
     } finally {
       session.endSession();
+    }
+  }
+
+  /**
+   * Generate a Razorpay Payment Link for an invoice.
+   * @param {string} invoiceId
+   * @param {Object} customerData - { name, email, contact }
+   */
+  async generateRazorpayPaymentLink(invoiceId, customerData) {
+    const invoice = await platformInvoiceService.getInvoiceById(invoiceId);
+    if (!invoice) {
+      throw new HttpError(404, `Platform invoice with ID '${invoiceId}' not found.`);
+    }
+
+    if (invoice.status === 'PAID') {
+      throw new HttpError(400, 'Invoice is already paid.');
+    }
+
+    const razorpay = getRazorpayInstance();
+
+    // Razorpay amount is in paise (multiply by 100)
+    const amountInPaise = Math.round(invoice.amounts.totalAmount * 100);
+
+    const paymentLinkRequest = {
+      amount: amountInPaise,
+      currency: invoice.currency || 'INR',
+      accept_partial: false,
+      description: `Payment for Invoice ${invoice.invoiceNumber}`,
+      customer: {
+        name: customerData.name || 'Customer',
+        email: customerData.email,
+        contact: customerData.contact || '',
+      },
+      notify: {
+        sms: true,
+        email: true, // Razorpay will send the email
+      },
+      reminder_enable: true,
+      notes: {
+        invoiceId: invoice._id.toString(),
+        orderId: invoice.orderId.toString(),
+      },
+      callback_url: `${process.env.CLIENT_URL || 'http://localhost:3004'}/payment-success?invoice_id=${invoice._id}`,
+      callback_method: 'get'
+    };
+
+    try {
+      const paymentLink = await razorpay.paymentLink.create(paymentLinkRequest);
+
+      // Save the payment link in the Invoice record
+      const updatedInvoice = await platformInvoiceService.updateInvoice(invoiceId, {
+        paymentLinkUrl: paymentLink.short_url,
+      });
+
+      return {
+        paymentLink: paymentLink.short_url,
+        paymentLinkId: paymentLink.id,
+        invoice: updatedInvoice,
+      };
+    } catch (error) {
+      console.error('Razorpay payment link creation failed:', error);
+      throw new HttpError(500, 'Failed to generate Razorpay payment link.');
     }
   }
 }

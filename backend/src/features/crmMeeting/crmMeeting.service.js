@@ -2,20 +2,81 @@ import crmMeetingRepository from './crmMeeting.repository.js';
 import crmMeetingEvents from './crmMeeting.events.js';
 import crmInquiryService from '../crmInquiry/crmInquiry.service.js';
 import HttpError from '../../utils/httpError.utils.js';
+import { google } from 'googleapis';
+import logger from '../../utils/logger.utils.js';
 
 export class CrmMeetingService {
   /**
-   * Mock/Stub method for Google Calendar API interaction to generate Google Meet links.
-   * In a live environment, this would call the Google Calendar API client using OAuth tokens.
+   * Generates a Google Meet URL by creating an event on Google Calendar.
+   * Falls back to a mock link if Google API credentials are not configured.
    * @param {string} title
    * @param {Date|string} scheduledAt
-   * @returns {string} Google Meet URL
+   * @param {Date|string} endAt
+   * @returns {Promise<string>} Google Meet URL
    */
-  generateMockGoogleMeetLink(title, scheduledAt) {
-    const part1 = Math.random().toString(36).substring(2, 5);
-    const part2 = Math.random().toString(36).substring(2, 6);
-    const part3 = Math.random().toString(36).substring(2, 5);
-    return `https://meet.google.com/${part1}-${part2}-${part3}`;
+  async generateGoogleMeetLink(title, scheduledAt, endAt) {
+    const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN } = process.env;
+
+    // Fallback to mock link if credentials are not set
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
+      logger.warn('[CrmMeetingService] Missing Google API credentials (CLIENT_ID, CLIENT_SECRET, or REFRESH_TOKEN). Falling back to mock Google Meet link.');
+      const chars = 'abcdefghijklmnopqrstuvwxyz';
+      const getRandomString = (length) => {
+        let result = '';
+        for (let i = 0; i < length; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+      };
+      
+      const part1 = getRandomString(3);
+      const part2 = getRandomString(4);
+      const part3 = getRandomString(3);
+      return `https://meet.google.com/${part1}-${part2}-${part3}`;
+    }
+
+    try {
+      const oAuth2Client = new google.auth.OAuth2(
+        GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET,
+        'urn:ietf:wg:oauth:2.0:oob' // Out of band (no redirect)
+      );
+
+      oAuth2Client.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
+
+      const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+
+      const event = {
+        summary: title,
+        start: {
+          dateTime: new Date(scheduledAt).toISOString(),
+          timeZone: 'UTC', // Ensure it's correctly interpreted
+        },
+        end: {
+          dateTime: new Date(endAt).toISOString(),
+          timeZone: 'UTC',
+        },
+        conferenceData: {
+          createRequest: {
+            requestId: `meet-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            conferenceSolutionKey: {
+              type: 'hangoutsMeet',
+            },
+          },
+        },
+      };
+
+      const response = await calendar.events.insert({
+        calendarId: 'primary',
+        resource: event,
+        conferenceDataVersion: 1, // Required to create the meeting link
+      });
+
+      return response.data.hangoutLink;
+    } catch (error) {
+      logger.error(`[CrmMeetingService] Error creating Google Meet link: ${error.message}`);
+      throw new HttpError(500, 'Failed to generate Google Meet link from Google Calendar.');
+    }
   }
 
   /**
@@ -81,10 +142,10 @@ export class CrmMeetingService {
       await this.checkPlatformUserAvailability(platformParticipants, start, end);
     }
 
-    // Mock Google Calendar API link generation if not provided
+    // Generate Google Meet Link if not provided
     const meetLink = googleMeetLink && googleMeetLink.trim() !== ''
       ? googleMeetLink.trim()
-      : this.generateMockGoogleMeetLink(title, start);
+      : await this.generateGoogleMeetLink(title, start, end);
 
     const meetingData = {
       inquiryId,

@@ -23,11 +23,28 @@ const platformSubscriptionSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: {
-        values: ['TRIAL', 'ACTIVE', 'GRACE_PERIOD', 'SUSPENDED', 'CANCELLED', 'EXPIRED'],
+        values: ['TRIAL', 'ACTIVE', 'EXPIRING_SOON', 'EXPIRED', 'RENEWED', 'SUSPENDED'],
         message: '{VALUE} is not a valid subscription status',
       },
-      default: 'ACTIVE',
+      default: 'TRIAL',
       index: true,
+    },
+    billingCycle: {
+      type: String,
+      enum: {
+        values: ['MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'YEARLY', 'CUSTOM'],
+        message: '{VALUE} is not a valid billing cycle',
+      },
+      default: 'YEARLY',
+    },
+    validFrom: {
+      type: Date,
+    },
+    validTill: {
+      type: Date,
+    },
+    trialEndsAt: {
+      type: Date,
     },
     billingPeriodStart: {
       type: Date,

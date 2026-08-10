@@ -6,7 +6,8 @@ class MasterPricingController {
    */
   async create(req, res, next) {
     try {
-      const result = await masterPricingService.createPlan(req.body);
+      const xRequestId = req.headers['x-request-id'] || req.id;
+      const result = await masterPricingService.createPlan(req.body, xRequestId);
       res.success(result, 'Master pricing plan created successfully', 201);
     } catch (error) {
       next(error);
@@ -18,7 +19,8 @@ class MasterPricingController {
    */
   async getAll(req, res, next) {
     try {
-      const result = await masterPricingService.getAllPlans(req.query);
+      const xRequestId = req.headers['x-request-id'] || req.id;
+      const result = await masterPricingService.getAllPlans(req.query, xRequestId);
       res.success(result, 'Master pricing plans retrieved successfully');
     } catch (error) {
       next(error);
@@ -30,8 +32,9 @@ class MasterPricingController {
    */
   async getById(req, res, next) {
     try {
+      const xRequestId = req.headers['x-request-id'] || req.id;
       const { id } = req.params;
-      const result = await masterPricingService.getPlanById(id);
+      const result = await masterPricingService.getPlanById(id, xRequestId);
       res.success(result, 'Master pricing plan retrieved successfully');
     } catch (error) {
       next(error);
@@ -43,8 +46,9 @@ class MasterPricingController {
    */
   async update(req, res, next) {
     try {
+      const xRequestId = req.headers['x-request-id'] || req.id;
       const { id } = req.params;
-      const result = await masterPricingService.updatePlan(id, req.body);
+      const result = await masterPricingService.updatePlan(id, req.body, xRequestId);
       res.success(result, 'Master pricing plan updated successfully');
     } catch (error) {
       next(error);
@@ -56,8 +60,9 @@ class MasterPricingController {
    */
   async delete(req, res, next) {
     try {
+      const xRequestId = req.headers['x-request-id'] || req.id;
       const { id } = req.params;
-      const result = await masterPricingService.deletePlan(id);
+      const result = await masterPricingService.deletePlan(id, xRequestId);
       res.success(result, 'Master pricing plan deleted successfully');
     } catch (error) {
       next(error);

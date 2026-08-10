@@ -24,12 +24,12 @@ class MasterPricingRepository {
   }
 
   /**
-   * Find Master Pricing by plan name (case insensitive exact match or standard).
-   * @param {string} planName
+   * Find Master Pricing by plan code (case insensitive exact match).
+   * @param {string} planCode
    * @param {ClientSession} [session=null]
    */
-  async findByPlanName(planName, session = null) {
-    const query = MasterPricing.findOne({ planName: { $regex: new RegExp(`^${planName}$`, 'i') } });
+  async findByPlanCode(planCode, session = null) {
+    const query = MasterPricing.findOne({ planCode: { $regex: new RegExp(`^${planCode}$`, 'i') } });
     if (session) query.session(session);
     return await query.exec();
   }
@@ -39,23 +39,23 @@ class MasterPricingRepository {
    * for single round-trip data retrieval and pagination counts.
    * @param {Object} queryOptions
    */
-  async findAllPaginated({ page = 1, limit = 10, search = '', tier, isActive }) {
+  async findAllPaginated({ page = 1, limit = 10, search = '', type, status }) {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.max(1, parseInt(limit, 10) || 10);
     const skip = (pageNum - 1) * limitNum;
 
     const matchStage = {};
 
-    if (tier) {
-      matchStage.tier = tier;
+    if (type) {
+      matchStage.type = type;
     }
 
-    if (isActive !== undefined && isActive !== null && isActive !== '') {
-      matchStage.isActive = isActive === 'true' || isActive === true;
+    if (status) {
+      matchStage.status = status;
     }
 
     if (search && search.trim() !== '') {
-      matchStage.planName = { $regex: search.trim(), $options: 'i' };
+      matchStage.name = { $regex: search.trim(), $options: 'i' };
     }
 
     const pipeline = [

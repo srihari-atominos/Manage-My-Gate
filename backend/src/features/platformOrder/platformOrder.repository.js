@@ -133,6 +133,20 @@ class PlatformOrderRepository {
   }
 
   /**
+   * Optimistic Concurrency Control update for payment settled.
+   * Updates only if order status is strictly 'PAYMENT_PENDING'.
+   * @param {string} orderId 
+   * @param {Object} updateData
+   */
+  async findAndUpdatePaymentPending(orderId, updateData) {
+    return await PlatformOrder.findOneAndUpdate(
+      { _id: orderId, status: 'PAYMENT_PENDING' },
+      updateData,
+      { new: true, runValidators: true }
+    ).exec();
+  }
+
+  /**
    * Delete Platform Order by ID.
    * @param {string} id
    * @param {ClientSession} [session=null]

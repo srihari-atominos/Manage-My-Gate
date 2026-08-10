@@ -1,188 +1,140 @@
 import { body, query, param } from 'express-validator';
 
-/**
- * Validation rules for creating a Master Pricing plan.
- */
 export const createMasterPricingRules = [
-  body('planName')
-    .notEmpty()
-    .withMessage('Plan name is required')
-    .isString()
-    .withMessage('Plan name must be a string')
-    .trim()
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Plan name must be between 2 and 100 characters'),
+  body('planCode')
+    .notEmpty().withMessage('Plan code is required')
+    .isString().withMessage('Plan code must be a string')
+    .trim(),
 
-  body('tier')
-    .notEmpty()
-    .withMessage('Tier is required')
-    .isIn(['TIER_1', 'TIER_2', 'TIER_3', 'ENTERPRISE'])
-    .withMessage('Tier must be one of: TIER_1, TIER_2, TIER_3, ENTERPRISE'),
+  body('name')
+    .notEmpty().withMessage('Name is required')
+    .isString().withMessage('Name must be a string')
+    .trim()
+    .isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters'),
+
+  body('type')
+    .notEmpty().withMessage('Type is required')
+    .isIn(['BASE_PLAN', 'UNIT_ADDON', 'FEATURE_ADDON'])
+    .withMessage('Type must be one of: BASE_PLAN, UNIT_ADDON, FEATURE_ADDON'),
+
+  body('pricingModel')
+    .notEmpty().withMessage('Pricing model is required')
+    .isIn(['FLAT', 'PER_UNIT', 'TIERED'])
+    .withMessage('Pricing model must be one of: FLAT, PER_UNIT, TIERED'),
 
   body('basePrice')
-    .notEmpty()
-    .withMessage('Base price is required')
-    .isFloat({ min: 0 })
-    .withMessage('Base price must be a non-negative number'),
+    .notEmpty().withMessage('Base price is required')
+    .isFloat({ min: 0 }).withMessage('Base price must be a non-negative number'),
 
-  body('perUnitRate')
+  body('unitPrice')
     .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Per unit rate must be a non-negative number'),
-
-  body('addOns')
-    .optional()
-    .isArray()
-    .withMessage('Add-ons must be an array'),
-
-  body('addOns.*.key')
-    .optional()
-    .isString()
-    .withMessage('Add-on key must be a string')
-    .trim(),
-
-  body('addOns.*.name')
-    .optional()
-    .isString()
-    .withMessage('Add-on name must be a string')
-    .trim(),
-
-  body('addOns.*.price')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Add-on price must be a non-negative number'),
+    .isFloat({ min: 0 }).withMessage('Unit price must be a non-negative number'),
 
   body('setupFee')
     .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Setup fee must be a non-negative number'),
+    .isFloat({ min: 0 }).withMessage('Setup fee must be a non-negative number'),
+
+  body('freeTrialDuration')
+    .optional()
+    .isInt({ min: 0 }).withMessage('Free trial duration must be a non-negative integer'),
+
+  body('billingInterval')
+    .notEmpty().withMessage('Billing interval is required')
+    .isIn(['MONTHLY', 'ANNUAL'])
+    .withMessage('Billing interval must be one of: MONTHLY, ANNUAL'),
+
+  body('features')
+    .isArray().withMessage('Features must be an array'),
+
+  body('features.*')
+    .isString().withMessage('Feature must be a string')
+    .trim(),
+
+  body('status')
+    .optional()
+    .isIn(['ACTIVE', 'ARCHIVED'])
+    .withMessage('Status must be ACTIVE or ARCHIVED'),
 
   body('maxAgentDiscountPercent')
     .optional()
     .isFloat({ min: 0, max: 100 })
-    .withMessage('Max agent discount percent must be between 0 and 100'),
-
-  body('taxRatePercent')
-    .optional()
-    .isFloat({ min: 0, max: 100 })
-    .withMessage('Tax rate percent must be between 0 and 100'),
-
-  body('isActive')
-    .optional()
-    .isBoolean()
-    .withMessage('isActive must be a boolean value'),
+    .withMessage('Discount percent must be between 0 and 100'),
 ];
 
-/**
- * Validation rules for updating a Master Pricing plan.
- */
 export const updateMasterPricingRules = [
   param('id')
-    .isMongoId()
-    .withMessage('Invalid master pricing plan ID'),
+    .isMongoId().withMessage('Invalid master pricing plan ID'),
 
-  body('planName')
+  body('planCode')
     .optional()
-    .isString()
-    .withMessage('Plan name must be a string')
+    .isString().withMessage('Plan code must be a string')
+    .trim(),
+
+  body('name')
+    .optional()
+    .isString().withMessage('Name must be a string')
     .trim()
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Plan name must be between 2 and 100 characters'),
+    .isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters'),
 
-  body('tier')
+  body('type')
     .optional()
-    .isIn(['TIER_1', 'TIER_2', 'TIER_3', 'ENTERPRISE'])
-    .withMessage('Tier must be one of: TIER_1, TIER_2, TIER_3, ENTERPRISE'),
+    .isIn(['BASE_PLAN', 'UNIT_ADDON', 'FEATURE_ADDON'])
+    .withMessage('Type must be one of: BASE_PLAN, UNIT_ADDON, FEATURE_ADDON'),
+
+  body('pricingModel')
+    .optional()
+    .isIn(['FLAT', 'PER_UNIT', 'TIERED'])
+    .withMessage('Pricing model must be one of: FLAT, PER_UNIT, TIERED'),
 
   body('basePrice')
     .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Base price must be a non-negative number'),
+    .isFloat({ min: 0 }).withMessage('Base price must be a non-negative number'),
 
-  body('perUnitRate')
+  body('unitPrice')
     .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Per unit rate must be a non-negative number'),
-
-  body('addOns')
-    .optional()
-    .isArray()
-    .withMessage('Add-ons must be an array'),
-
-  body('addOns.*.key')
-    .optional()
-    .isString()
-    .withMessage('Add-on key must be a string')
-    .trim(),
-
-  body('addOns.*.name')
-    .optional()
-    .isString()
-    .withMessage('Add-on name must be a string')
-    .trim(),
-
-  body('addOns.*.price')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Add-on price must be a non-negative number'),
+    .isFloat({ min: 0 }).withMessage('Unit price must be a non-negative number'),
 
   body('setupFee')
     .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Setup fee must be a non-negative number'),
+    .isFloat({ min: 0 }).withMessage('Setup fee must be a non-negative number'),
+
+  body('freeTrialDuration')
+    .optional()
+    .isInt({ min: 0 }).withMessage('Free trial duration must be a non-negative integer'),
+
+  body('billingInterval')
+    .optional()
+    .isIn(['MONTHLY', 'ANNUAL'])
+    .withMessage('Billing interval must be one of: MONTHLY, ANNUAL'),
+
+  body('features')
+    .optional()
+    .isArray().withMessage('Features must be an array'),
+
+  body('features.*')
+    .optional()
+    .isString().withMessage('Feature must be a string')
+    .trim(),
+
+  body('status')
+    .optional()
+    .isIn(['ACTIVE', 'ARCHIVED'])
+    .withMessage('Status must be ACTIVE or ARCHIVED'),
 
   body('maxAgentDiscountPercent')
     .optional()
     .isFloat({ min: 0, max: 100 })
-    .withMessage('Max agent discount percent must be between 0 and 100'),
-
-  body('taxRatePercent')
-    .optional()
-    .isFloat({ min: 0, max: 100 })
-    .withMessage('Tax rate percent must be between 0 and 100'),
-
-  body('isActive')
-    .optional()
-    .isBoolean()
-    .withMessage('isActive must be a boolean value'),
+    .withMessage('Discount percent must be between 0 and 100'),
 ];
 
-/**
- * Validation rules for querying master pricing list.
- */
 export const queryMasterPricingRules = [
-  query('page')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('Page must be a positive integer'),
-
-  query('limit')
-    .optional()
-    .isInt({ min: 1, max: 100 })
-    .withMessage('Limit must be between 1 and 100'),
-
-  query('tier')
-    .optional()
-    .isIn(['TIER_1', 'TIER_2', 'TIER_3', 'ENTERPRISE'])
-    .withMessage('Tier filter must be one of: TIER_1, TIER_2, TIER_3, ENTERPRISE'),
-
-  query('isActive')
-    .optional()
-    .isBoolean()
-    .withMessage('isActive filter must be a boolean'),
-
-  query('search')
-    .optional()
-    .isString()
-    .withMessage('Search query must be a string')
-    .trim(),
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+  query('type').optional().isIn(['BASE_PLAN', 'UNIT_ADDON', 'FEATURE_ADDON']).withMessage('Invalid type filter'),
+  query('status').optional().isIn(['ACTIVE', 'ARCHIVED']).withMessage('Status filter must be ACTIVE or ARCHIVED'),
+  query('search').optional().isString().withMessage('Search query must be a string').trim(),
 ];
 
-/**
- * Validation rules for ID param based requests.
- */
 export const getByIdMasterPricingRules = [
-  param('id')
-    .isMongoId()
-    .withMessage('Invalid master pricing plan ID'),
+  param('id').isMongoId().withMessage('Invalid master pricing plan ID'),
 ];

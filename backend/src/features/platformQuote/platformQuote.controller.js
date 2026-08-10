@@ -56,29 +56,13 @@ class PlatformQuoteController {
   }
 
   /**
-   * Manager Approve Quote.
+   * Instantly Generate Order from Quote.
    */
-  async approve(req, res, next) {
+  async generateInstantOrder(req, res, next) {
     try {
       const { id } = req.params;
-      const managerUserId = req.user ? req.user._id : req.body.approvedBy;
-      const result = await platformQuoteService.approveQuote(id, managerUserId);
-      res.success(result, 'Platform quote approved successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Manager Reject Quote.
-   */
-  async reject(req, res, next) {
-    try {
-      const { id } = req.params;
-      const { reason } = req.body;
-      const managerUserId = req.user ? req.user._id : req.body.approvedBy;
-      const result = await platformQuoteService.rejectQuote(id, managerUserId, reason);
-      res.success(result, 'Platform quote rejected successfully');
+      const result = await platformQuoteService.generateInstantOrder(id);
+      res.success(result, 'Order generated successfully from quote', 201);
     } catch (error) {
       next(error);
     }

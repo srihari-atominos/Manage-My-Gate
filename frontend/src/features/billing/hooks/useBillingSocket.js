@@ -25,12 +25,15 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
     return list
   }, [userId, communityOrOrgId])
 
-  const socket = useSocket(rooms)
+  const { socket, isConnected, emit } = useSocket()
 
   useEffect(() => {
-    if (!socket) return
+    if (!socket || !isConnected) return
 
     logger.info(`Registering billing & wallet real-time listeners for rooms: ${rooms.join(', ')}`)
+
+    // Join rooms dynamically
+    rooms.forEach(room => emit('join_room', room))
 
     // 1. Invoice Generation Handler
     const handleInvoiceGenerated = (payload) => {

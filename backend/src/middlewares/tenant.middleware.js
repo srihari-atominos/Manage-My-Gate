@@ -16,7 +16,7 @@ export const tenantContext = (optionsOrReq, res, next) => {
   const makeMiddleware = (options = {}) => {
     const { requirePlatformContext = false } = options;
 
-    return (req, res, next) => {
+    return async (req, res, next) => {
       try {
         if (!req.user) {
           throw new HttpError(401, 'Unauthorized. Authentication required.');
@@ -49,6 +49,23 @@ export const tenantContext = (optionsOrReq, res, next) => {
         if (orgIdHeader !== req.user.orgId) {
           console.error(`[TENANT DEBUG] 403 Forbidden. Header: ${orgIdHeader}, Token: ${req.user.orgId}`);
           throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
+        }
+
+        // Phase 6 Expiry Lockout
+        const PlatformSubscription = (await import('../features/platformSubscription/platformSubscription.model.js')).default;
+        
+        // Optimize with lean(), index is already on organisationId
+        // Caching Note: Can be cached in Redis in the future for high performance
+        const subscription = await PlatformSubscription.findOne({ organisationId: req.user.orgId })
+          .select('status')
+          .lean();
+
+        if (subscription && subscription.status === 'EXPIRED') {
+          // Exempt billing/payment routes so users can pay
+          const isExempt = req.originalUrl.match(/\/(platform-invoices|platform-payments|platform-quotes|billing)/i);
+          if (!isExempt) {
+            throw new HttpError(403, 'SUBSCRIPTION_EXPIRED');
+          }
         }
 
         // Attach validated context to request

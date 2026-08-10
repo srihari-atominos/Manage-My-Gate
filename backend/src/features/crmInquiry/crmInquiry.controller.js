@@ -2,6 +2,18 @@ import crmInquiryService from './crmInquiry.service.js';
 
 export class CrmInquiryController {
   /**
+   * Register a public CRM lead.
+   */
+  async registerPublicLead(req, res, next) {
+    try {
+      const data = await crmInquiryService.registerPublicLead(req.body);
+      res.success(data, 'Public lead registered successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Create a new CRM Inquiry.
    */
   async create(req, res, next) {

@@ -61,8 +61,10 @@ export class UserService {
         throw new HttpError(400, `User with username '${userData.username}' already exists.`);
       }
 
-      // Hash the password securely using crypto utilities
-      userData.password = await hashPassword(userData.password);
+      // Hash the password securely using crypto utilities if provided
+      if (userData.password) {
+        userData.password = await hashPassword(userData.password);
+      }
 
       const newUser = await userRepository.create(userData, currentSession);
       

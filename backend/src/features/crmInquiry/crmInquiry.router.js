@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import crmInquiryController from './crmInquiry.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
 import {
@@ -6,7 +7,9 @@ import {
   updateInquiryRules,
   getInquiryRules,
   queryInquiryRules,
+  validatePublicLead,
 } from './crmInquiry.validator.js';
+import './crmInquiry.listeners.js';
 
 const router = Router();
 

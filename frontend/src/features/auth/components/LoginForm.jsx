@@ -288,359 +288,448 @@ export const LoginForm = () => {
   }
 
   return (
-    <div className="login-container">
-      <CCardGroup className="login-card-group">
-        {/* Left Side: Login Form */}
-        <CCard className="login-left-card">
-          <CCardBody className="login-card-body">
-            <CForm onSubmit={handleSubmit(onSubmit)}>
-              {/* Fake fields to intercept Chrome's aggressive autofill */}
-              <input type="text" name="fakeusernameremembered" style={{ opacity: 0, position: 'absolute', zIndex: -1, width: 0, height: 0 }} tabIndex="-1" aria-hidden="true" autoComplete="off" />
-              <input type="password" name="fakepasswordremembered" style={{ opacity: 0, position: 'absolute', zIndex: -1, width: 0, height: 0 }} tabIndex="-1" aria-hidden="true" autoComplete="new-password" />
+    <CCard style={styles.card}>
+      <CCardBody style={styles.cardBody}>
+        {/* Top Section Info Alert */}
+        <CAlert color="info" style={styles.alertHeader}>
+          <h5 className="alert-heading fw-semibold">
+            {t('auth.login.promoTitle', 'Enterprise Workspace Platform')}
+          </h5>
+          <p className="mb-0">
+            {t('auth.login.promoText', 'Access your secure organization workspace, manage team privileges, configure third-party API integrations, and view full audit records in one unified dashboard.')}
+          </p>
+        </CAlert>
 
-              <h1 className="login-title">{t('auth.login.title', 'Welcome Back')}</h1>
-              <p className="login-subtitle">
-                {t('auth.login.subtitle', 'Choose your preferred sign-in method.')}
-              </p>
+        <CForm onSubmit={handleSubmit(onSubmit)}>
+          {/* Fake fields to intercept Chrome's aggressive autofill */}
+          <input type="text" name="fakeusernameremembered" style={{ opacity: 0, position: 'absolute', zIndex: -1, width: 0, height: 0 }} tabIndex="-1" aria-hidden="true" autoComplete="off" />
+          <input type="password" name="fakepasswordremembered" style={{ opacity: 0, position: 'absolute', zIndex: -1, width: 0, height: 0 }} tabIndex="-1" aria-hidden="true" autoComplete="new-password" />
 
-              <div className="login-method-toggle">
-                <button
-                  type="button"
-                  className={`login-method-tab ${loginMethod === 'password' ? 'active' : ''}`}
-                  onClick={() => {
-                    setLoginMethod('password')
-                    clearStatus()
-                    setOtpTimer(0)
-                    setOtpCode('')
-                    setValue('login', localStorage.getItem('rememberedEmail') || '')
-                    setValue('phone', '')
-                    clearErrors()
+          <h1 style={styles.title}>{t('auth.login.title', 'Welcome Back')}</h1>
+          <p style={styles.subtitle}>
+            {t('auth.login.subtitle', 'Choose your preferred sign-in method.')}
+          </p>
+
+          <div className="login-method-toggle mb-4">
+            <button
+              type="button"
+              className={`login-method-tab ${loginMethod === 'password' ? 'active' : ''}`}
+              onClick={() => {
+                setLoginMethod('password')
+                clearStatus()
+                setOtpTimer(0)
+                setOtpCode('')
+                setValue('login', localStorage.getItem('rememberedEmail') || '')
+                setValue('phone', '')
+                clearErrors()
+              }}
+            >
+              {t('auth.login.passwordTab', 'Password Login')}
+            </button>
+            <button
+              type="button"
+              className={`login-method-tab ${loginMethod === 'phone' ? 'active' : ''}`}
+              onClick={() => {
+                setLoginMethod('phone')
+                clearStatus()
+                setOtpTimer(0)
+                setOtpCode('')
+                setValue('login', '')
+                setValue('phone', '')
+                clearErrors()
+              }}
+            >
+              {t('auth.login.mobileTab', 'Mobile Login')}
+            </button>
+            <button
+              type="button"
+              className={`login-method-tab ${loginMethod === 'email' ? 'active' : ''}`}
+              onClick={() => {
+                setLoginMethod('email')
+                clearStatus()
+                setOtpTimer(0)
+                setOtpCode('')
+                setValue('login', '')
+                setValue('phone', '')
+                clearErrors()
+              }}
+            >
+              {t('auth.login.emailOtpTab', 'Email OTP')}
+            </button>
+          </div>
+
+          {error && (
+            <CAlert color="danger" style={styles.alert}>
+              {error}
+            </CAlert>
+          )}
+
+          <div className="mb-3">
+            {loginMethod === 'phone' ? (
+              <>
+                <Controller
+                  name="phone"
+                  control={control}
+                  rules={{
+                    required: t('auth.login.phoneRequired', 'Phone number is required.'),
+                    validate: (value) => {
+                      if (!value) return true
+                      if (value.length < expectedPhoneLength) {
+                        return t(
+                          'auth.login.phoneInvalid',
+                          'Invalid phone number length for this country.',
+                        )
+                      }
+                      return true
+                    },
                   }}
-                >
-                  {t('auth.login.passwordTab', 'Password Login')}
-                </button>
-                <button
-                  type="button"
-                  className={`login-method-tab ${loginMethod === 'phone' ? 'active' : ''}`}
-                  onClick={() => {
-                    setLoginMethod('phone')
-                    clearStatus()
-                    setOtpTimer(0)
-                    setOtpCode('')
-                    setValue('login', '')
-                    setValue('phone', '')
-                    clearErrors()
-                  }}
-                >
-                  {t('auth.login.mobileTab', 'Mobile Login')}
-                </button>
-                <button
-                  type="button"
-                  className={`login-method-tab ${loginMethod === 'email' ? 'active' : ''}`}
-                  onClick={() => {
-                    setLoginMethod('email')
-                    clearStatus()
-                    setOtpTimer(0)
-                    setOtpCode('')
-                    setValue('login', '')
-                    setValue('phone', '')
-                    clearErrors()
-                  }}
-                >
-                  {t('auth.login.emailOtpTab', 'Email OTP')}
-                </button>
-              </div>
-
-              {error && (
-                <CAlert color="danger" className="login-alert">
-                  {error}
-                </CAlert>
-              )}
-
-                <div className="mb-3">
-                {loginMethod === 'phone' ? (
-                  <>
-                    <Controller
-                      name="phone"
-                      control={control}
-                      rules={{
-                        required: t('auth.login.phoneRequired', 'Phone number is required.'),
-                        validate: (value) => {
-                          if (!value) return true
-                          if (value.length < expectedPhoneLength) {
-                            return t(
-                              'auth.login.phoneInvalid',
-                              'Invalid phone number length for this country.',
-                            )
-                          }
-                          return true
-                        },
-                      }}
-                      render={({ field: { onChange, value } }) => (
-                        <PhoneInput
-                          country={'in'}
-                          value={value}
-                          onChange={(phone, country) => {
-                            if (country && country.format) {
-                              setExpectedPhoneLength(country.format.replace(/[^.]/g, '').length)
-                            }
-                            onChange(phone)
-                          }}
-                          containerStyle={{
-                            width: '100%',
-                          }}
-                          inputStyle={{
-                            width: '100%',
-                            height: '42px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '0.375rem',
-                            fontSize: '14px',
-                          }}
-                          buttonStyle={{
-                            border: '1px solid #d1d5db',
-                            borderRadius: '0.375rem 0 0 0.375rem',
-                            backgroundColor: '#f3f4f6',
-                          }}
-                          disabled={loading || otpSent}
-                        />
-                      )}
-                    />
-                    {errors.phone && (
-                      <div className="text-danger small mt-1 ms-1">{errors.phone.message}</div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <CInputGroup>
-                      <CInputGroupText className="login-input-icon-text">
-                        <CIcon icon={cilUser} className="login-icon" />
-                      </CInputGroupText>
-                      <CFormInput
-                        className="login-input"
-                        placeholder={
-                          loginMethod === 'password'
-                            ? t('auth.login.usernamePlaceholder', 'Email Address')
-                            : t('auth.login.emailPlaceholder', 'Email Address')
+                  render={({ field: { onChange, value } }) => (
+                    <PhoneInput
+                      country={'in'}
+                      value={value}
+                      onChange={(phone, country) => {
+                        if (country && country.format) {
+                          setExpectedPhoneLength(country.format.replace(/[^.]/g, '').length)
                         }
-                        autoComplete="off"
-                        disabled={loading || otpSent}
-                        autoFocus
-                        maxLength={255}
-                        {...register('login', {
-                          required: t('auth.login.loginRequired', 'Email is required.'),
-                          maxLength: {
-                            value: 255,
-                            message: t('auth.login.emailMaxLength', 'Email cannot exceed 255 characters'),
-                          },
-                          pattern: {
-                            value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-                            message: t('auth.login.emailInvalidFormat', 'Please enter a valid email address format'),
-                          },
-                        })}
-                      />
-                    </CInputGroup>
-                    {errors.login && (
-                      <div className="text-danger small mt-1 ms-1">{errors.login.message}</div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {loginMethod === 'password' && (
-                <div className="mb-4">
-                  <CInputGroup>
-                    <CInputGroupText className="login-input-icon-text">
-                      <CIcon icon={cilLockLocked} className="login-icon" />
-                    </CInputGroupText>
-                    <CFormInput
-                      className="login-input"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder={t('auth.login.passwordPlaceholder', 'Password')}
-                      autoComplete="new-password"
-                      disabled={loading}
-                      {...register('password', {
-                        required:
-                          loginMethod === 'password'
-                            ? t('auth.login.passwordRequired', 'Password is required.')
-                            : false,
-                        minLength:
-                          loginMethod === 'password'
-                            ? {
-                                value: 6,
-                                message: t(
-                                  'auth.login.passwordLength',
-                                  'Password must be at least 6 characters long.',
-                                ),
-                              }
-                            : undefined,
-                      })}
-                    />
-                    <CInputGroupText
-                      onClick={() => setShowPassword(!showPassword)}
-                      style={{
-                        cursor: 'pointer',
-                        background: '#f3f4f6',
+                        onChange(phone)
+                      }}
+                      containerStyle={{ width: '100%' }}
+                      inputStyle={{
+                        width: '100%',
+                        height: '42px',
                         border: '1px solid #d1d5db',
-                        color: '#6b7280',
-                        fontSize: '13px',
+                        borderRadius: '0.375rem',
+                        fontSize: '14px',
                       }}
-                    >
-                      {showPassword ? t('auth.login.hide', 'Hide') : t('auth.login.show', 'Show')}
-                    </CInputGroupText>
-                  </CInputGroup>
-                  {errors.password && (
-                    <div className="text-danger small mt-1 ms-1">{errors.password.message}</div>
-                  )}
-                </div>
-              )}
-
-              {loginMethod !== 'password' && otpSent && (
-                <div className="mb-4">
-                  <CInputGroup>
-                    <CInputGroupText className="login-input-icon-text">OTP</CInputGroupText>
-                    <CFormInput
-                      className="login-input"
-                      placeholder={t('auth.login.otpPlaceholder', 'Enter 6-digit Code')}
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value)}
-                      disabled={loading}
-                      required
-                    />
-                  </CInputGroup>
-                  <div className="text-end mt-2">
-                    <CButton
-                      color="link"
-                      className="px-0 small text-muted text-decoration-none"
-                      disabled={loading || otpTimer > 0}
-                      onClick={() => {
-                        const isEmail = loginMethod === 'email'
-                        const identifier =
-                          loginMethod === 'phone'
-                            ? `+${(watch('phone') || '').trim()}`
-                            : (watch('login') || '').trim()
-                        handleSendOtp(identifier, isEmail)
+                      buttonStyle={{
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.375rem 0 0 0.375rem',
+                        backgroundColor: '#f3f4f6',
                       }}
-                    >
-                      {otpTimer > 0
-                        ? `${t('auth.login.resendOtpIn', 'Resend OTP in')} ${otpTimer}s`
-                        : t('auth.login.resendOtp', 'Resend OTP')}
-                    </CButton>
-                  </div>
-                </div>
-              )}
-
-              {loginMethod === 'password' && (
-                <CRow className="mb-3">
-                  <CCol xs={6}>
-                    <CFormCheck
-                      id="rememberMe"
-                      label={t('auth.login.rememberMe', 'Remember Me')}
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
+                      disabled={loading || otpSent}
                     />
-                  </CCol>
-                  <CCol xs={6} className="text-end">
-                    <CButton
-                      color="link"
-                      className="px-0 text-decoration-none login-forgot-link"
-                      onClick={() => setForgotModalVisible(true)}
-                    >
-                      {t('auth.login.forgotPassword', 'Forgot password?')}
-                    </CButton>
-                  </CCol>
-                </CRow>
-              )}
-
-              <div className="d-grid mb-1">
-                <CButton
-                  type="submit"
-                  color="primary"
-                  className="login-submit-btn"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <CSpinner size="sm" variant="grow" />
-                  ) : loginMethod !== 'password' && !otpSent ? (
-                    t('auth.login.sendOtp', 'Send OTP')
-                  ) : (
-                    t('auth.login.submit', 'Login')
                   )}
-                </CButton>
-              </div>
-
-              <div className="login-divider">
-                <div className="login-divider-line"></div>
-                <span className="login-divider-text">
-                  {t('auth.login.orContinueWith', 'or continue with')}
-                </span>
-                <div className="login-divider-line"></div>
-              </div>
-
-              <CRow className="g-3 align-items-center justify-content-center">
-                <CCol xs={12} sm={6} className="d-flex justify-content-center">
-                  <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                    <MemoizedGoogleLogin
-                      onSuccess={handleGoogleSuccess}
-                      onError={handleGoogleError}
-                    />
-                  </div>
-                </CCol>
-                <CCol xs={12} sm={6}>
-                  <button
-                    type="button"
-                    onClick={handleMicrosoftLogin}
-                    className="login-sso-btn"
-                    disabled={loading}
-                  >
-                    {/* Official Microsoft 4-square SVG */}
-                    <svg
-                      className="login-sso-icon"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 23 23"
-                    >
-                      <path fill="#f35325" d="M1 1h10v10H1z" />
-                      <path fill="#81bc06" d="M12 1h10v10H12z" />
-                      <path fill="#05a6f0" d="M1 12h10v10H1z" />
-                      <path fill="#ffba08" d="M12 12h10v10H12z" />
-                    </svg>
-                    {t('auth.login.continueWithMicrosoft', 'Continue with Microsoft')}
-                  </button>
-                </CCol>
-              </CRow>
-            </CForm>
-          </CCardBody>
-        </CCard>
-
-        {/* Right Side: Promotional Panel */}
-        <CCard className="login-right-card">
-          <CCardBody className="login-right-card-body">
-            <div>
-              <h2 className="login-right-title">
-                {t('auth.login.promoTitle', 'Enterprise Workspace Platform')}
-              </h2>
-              <p className="login-right-text">
-                {t(
-                  'auth.login.promoText',
-                  'Access your secure organization workspace, manage team privileges, configure third-party API integrations, and view full audit records in one unified dashboard.',
+                />
+                {errors.phone && (
+                  <div className="text-danger small mt-1 ms-1">{errors.phone.message}</div>
                 )}
-              </p>
-              <div className="d-grid mt-4">
-                <CButton
-                  color="light"
-                  className="login-register-btn"
-                  onClick={() => navigate('/register')}
+              </>
+            ) : (
+              <>
+                <CInputGroup>
+                  <CInputGroupText style={styles.inputIconText}>
+                    <CIcon icon={cilUser} style={styles.icon} />
+                  </CInputGroupText>
+                  <CFormInput
+                    style={styles.input}
+                    placeholder={
+                      loginMethod === 'password'
+                        ? t('auth.login.usernamePlaceholder', 'Email Address')
+                        : t('auth.login.emailPlaceholder', 'Email Address')
+                    }
+                    autoComplete="off"
+                    disabled={loading || otpSent}
+                    autoFocus
+                    maxLength={255}
+                    {...register('login', {
+                      required: t('auth.login.loginRequired', 'Email is required.'),
+                      maxLength: {
+                        value: 255,
+                        message: t('auth.login.emailMaxLength', 'Email cannot exceed 255 characters'),
+                      },
+                      pattern: {
+                        value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+                        message: t('auth.login.emailInvalidFormat', 'Please enter a valid email address format'),
+                      },
+                    })}
+                  />
+                </CInputGroup>
+                {errors.login && (
+                  <div className="text-danger small mt-1 ms-1">{errors.login.message}</div>
+                )}
+              </>
+            )}
+          </div>
+
+          {loginMethod === 'password' && (
+            <div className="mb-4">
+              <CInputGroup>
+                <CInputGroupText style={styles.inputIconText}>
+                  <CIcon icon={cilLockLocked} style={styles.icon} />
+                </CInputGroupText>
+                <CFormInput
+                  style={styles.input}
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder={t('auth.login.passwordPlaceholder', 'Password')}
+                  autoComplete="new-password"
+                  disabled={loading}
+                  {...register('password', {
+                    required:
+                      loginMethod === 'password'
+                        ? t('auth.login.passwordRequired', 'Password is required.')
+                        : false,
+                    minLength:
+                      loginMethod === 'password'
+                        ? {
+                            value: 6,
+                            message: t(
+                              'auth.login.passwordLength',
+                              'Password must be at least 6 characters long.',
+                            ),
+                          }
+                        : undefined,
+                  })}
+                />
+                <CInputGroupText
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    cursor: 'pointer',
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    color: '#6b7280',
+                    fontSize: '13px',
+                  }}
                 >
-                  {t('auth.login.registerNow', 'Register Now!')}
+                  {showPassword ? t('auth.login.hide', 'Hide') : t('auth.login.show', 'Show')}
+                </CInputGroupText>
+              </CInputGroup>
+              {errors.password && (
+                <div className="text-danger small mt-1 ms-1">{errors.password.message}</div>
+              )}
+            </div>
+          )}
+
+          {loginMethod !== 'password' && otpSent && (
+            <div className="mb-4">
+              <CInputGroup>
+                <CInputGroupText style={styles.inputIconText}>OTP</CInputGroupText>
+                <CFormInput
+                  style={styles.input}
+                  placeholder={t('auth.login.otpPlaceholder', 'Enter 6-digit Code')}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  disabled={loading}
+                  required
+                />
+              </CInputGroup>
+              <div className="text-end mt-2">
+                <CButton
+                  color="link"
+                  className="px-0 small text-muted text-decoration-none"
+                  disabled={loading || otpTimer > 0}
+                  onClick={() => {
+                    const isEmail = loginMethod === 'email'
+                    const identifier =
+                      loginMethod === 'phone'
+                        ? `+${(watch('phone') || '').trim()}`
+                        : (watch('login') || '').trim()
+                    handleSendOtp(identifier, isEmail)
+                  }}
+                >
+                  {otpTimer > 0
+                    ? `${t('auth.login.resendOtpIn', 'Resend OTP in')} ${otpTimer}s`
+                    : t('auth.login.resendOtp', 'Resend OTP')}
                 </CButton>
               </div>
             </div>
-          </CCardBody>
-        </CCard>
-      </CCardGroup>
+          )}
+
+          {loginMethod === 'password' && (
+            <CRow className="mb-3">
+              <CCol xs={6}>
+                <CFormCheck
+                  id="rememberMe"
+                  label={t('auth.login.rememberMe', 'Remember Me')}
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+              </CCol>
+              <CCol xs={6} className="text-end">
+                <CButton
+                  color="link"
+                  className="px-0 text-decoration-none"
+                  style={styles.toggleLink}
+                  onClick={() => setForgotModalVisible(true)}
+                >
+                  {t('auth.login.forgotPassword', 'Forgot password?')}
+                </CButton>
+              </CCol>
+            </CRow>
+          )}
+
+          <CRow>
+            <CCol xs={12} className="d-grid mb-3">
+              <CButton
+                type="submit"
+                color="primary"
+                style={styles.submitButton}
+                disabled={loading}
+              >
+                {loading ? (
+                  <CSpinner size="sm" variant="grow" />
+                ) : loginMethod !== 'password' && !otpSent ? (
+                  t('auth.login.sendOtp', 'Send OTP')
+                ) : (
+                  t('auth.login.submit', 'Sign In')
+                )}
+              </CButton>
+            </CCol>
+          </CRow>
+
+          <div style={styles.dividerContainer}>
+            <div style={styles.dividerLine}></div>
+            <span style={styles.dividerText}>
+              {t('auth.login.orContinueWith', 'or continue with')}
+            </span>
+            <div style={styles.dividerLine}></div>
+          </div>
+
+          <CRow className="g-3 align-items-center justify-content-center">
+            <CCol xs={12} sm={6} className="d-flex justify-content-center">
+              <div style={{ width: '100%', display: 'flex', justifyContent: 'center', maxWidth: '210px' }}>
+                <MemoizedGoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                />
+              </div>
+            </CCol>
+            <CCol xs={12} sm={6} className="d-flex justify-content-center">
+              <CButton
+                onClick={handleMicrosoftLogin}
+                style={styles.msButton}
+                disabled={loading}
+                className="w-100"
+              >
+                <span style={styles.msIcon}>❖</span>
+                {t('auth.login.continueWithMicrosoft', 'Continue with Microsoft')}
+              </CButton>
+            </CCol>
+          </CRow>
+        </CForm>
+
+        <div className="text-center mt-3">
+          <CButton color="link" onClick={() => navigate('/register')} style={styles.toggleLink} className="p-0">
+            {t('auth.login.noAccount', 'Don\'t have an account? Sign up')}
+          </CButton>
+        </div>
+      </CCardBody>
 
       <ForgotPasswordModal visible={forgotModalVisible} setVisible={setForgotModalVisible} />
-    </div>
+    </CCard>
   )
+}
+
+const styles = {
+  card: {
+    maxWidth: '520px',
+    width: '100%',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+    borderRadius: '16px',
+    overflow: 'hidden',
+    background: '#ffffff',
+    border: 'none',
+    padding: '24px 16px',
+    color: '#1f2937',
+  },
+  cardBody: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  alertHeader: {
+    borderRadius: '12px',
+    background: '#eff6ff',
+    border: '1px solid #bfdbfe',
+    color: '#1e3a8a',
+    marginBottom: '28px',
+    padding: '16px',
+  },
+  title: {
+    fontSize: '32px',
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: '8px',
+    letterSpacing: '-0.025em',
+  },
+  subtitle: {
+    color: '#6b7280',
+    fontSize: '15px',
+    marginBottom: '24px',
+  },
+  inputIconText: {
+    background: '#f3f4f6',
+    border: '1px solid #e5e7eb',
+    color: '#6b7280',
+    minWidth: '50px',
+    justifyContent: 'center',
+  },
+  icon: {
+    width: '18px',
+    height: '18px',
+  },
+  input: {
+    background: '#ffffff',
+    border: '1px solid #d1d5db',
+    color: '#1f2937',
+    padding: '12px',
+  },
+  alert: {
+    borderRadius: '8px',
+    fontSize: '14px',
+    marginBottom: '20px',
+  },
+  submitButton: {
+    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+    border: 'none',
+    padding: '12px',
+    fontSize: '16px',
+    fontWeight: '600',
+    borderRadius: '8px',
+    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+    transition: 'all 0.2s',
+  },
+  toggleLink: {
+    color: '#2563eb',
+    fontSize: '14px',
+    textDecoration: 'none',
+    fontWeight: '500',
+  },
+  dividerContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '24px 0',
+  },
+  dividerLine: {
+    flex: 1,
+    height: '1px',
+    backgroundColor: '#e5e7eb',
+  },
+  dividerText: {
+    padding: '0 12px',
+    color: '#9ca3af',
+    fontSize: '13px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    fontWeight: '500',
+  },
+  msButton: {
+    background: '#2f2f2f',
+    color: '#ffffff',
+    border: 'none',
+    padding: '9px 16px',
+    fontSize: '14px',
+    fontWeight: '500',
+    borderRadius: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '40px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  },
+  msIcon: {
+    marginRight: '8px',
+    fontSize: '16px',
+  },
 }
 
 export default function LoginFormWithBoundary(props) {
