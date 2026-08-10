@@ -108,6 +108,7 @@ async function seed() {
   const org = await Organization.create({
     name: ORG_NAME,
     status: 'Active',
+    organizationType: 'Residential',
     allowedFeatures: ['billing', 'villas', 'visitor', 'complaints', 'amenities', 'noticeBoard'],
     isPlatform: false,
   });
@@ -468,10 +469,16 @@ async function seed() {
 
     invoiceDocs.push({
       invoiceNumber:      uuidv4(),
+      communityId:        org._id,
+      orgId:              org._id,
       assessmentId:       asnMaint._id,
       targetUserId:       u._id,
       unitId:             unit._id,
       billingPeriodString:'2026-07',
+      currentCharge:      amount,
+      totalAmount:        amount,
+      outstandingAmount:  isPaid ? 0 : amount,
+      paidAmount:         isPaid ? amount : 0,
       hardcodedAmount:    amount,
       taxAmount:          0,
       totalDue:           amount,
@@ -488,15 +495,22 @@ async function seed() {
   for (const { user: u, unit } of usersCreated.owners) {
     const status = rnd(['UNPAID', 'PAID', 'VERIFICATION_PENDING']);
     const isPaid = status === 'PAID';
+    const amount = 10000;
     invoiceDocs.push({
       invoiceNumber:      uuidv4(),
+      communityId:        org._id,
+      orgId:              org._id,
       assessmentId:       asnSecurity._id,
       targetUserId:       u._id,
       unitId:             unit._id,
       billingPeriodString:'2026-07',
-      hardcodedAmount:    10000,
+      currentCharge:      amount,
+      totalAmount:        amount,
+      outstandingAmount:  isPaid ? 0 : amount,
+      paidAmount:         isPaid ? amount : 0,
+      hardcodedAmount:    amount,
       taxAmount:          0,
-      totalDue:           10000,
+      totalDue:           amount,
       dueDate:            daysAhead(30),
       status,
       paymentMethod:      isPaid ? rnd(PAY_METHS) : null,
@@ -509,17 +523,25 @@ async function seed() {
   for (const { user: u, unit } of allResidents) {
     const sqft   = unit.floorAreaSqFt || 900;
     const amount = Math.round(sqft * 2.5);
+    const tax    = Math.round(amount * 0.05);
+    const total  = Math.round(amount * 1.05);
     const status = rnd(STATUSES);
     const isPaid = status === 'PAID';
     invoiceDocs.push({
       invoiceNumber:      uuidv4(),
+      communityId:        org._id,
+      orgId:              org._id,
       assessmentId:       asnWater._id,
       targetUserId:       u._id,
       unitId:             unit._id,
       billingPeriodString:'2026-07',
+      currentCharge:      amount,
+      taxAmount:          tax,
+      totalAmount:        total,
+      outstandingAmount:  isPaid ? 0 : total,
+      paidAmount:         isPaid ? total : 0,
       hardcodedAmount:    amount,
-      taxAmount:          Math.round(amount * 0.05),
-      totalDue:           Math.round(amount * 1.05),
+      totalDue:           total,
       dueDate:            daysAhead(20),
       status,
       paymentMethod:      isPaid ? rnd(PAY_METHS) : null,

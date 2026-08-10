@@ -6,6 +6,7 @@ export interface ApiCabVisitorPassPayload {
   orgId?: string;
   createdById?: string;
   villaId?: string;
+  roleId?: string;
   passType: 'CAB';
   visitorDetails: {
     name: string;
@@ -94,6 +95,25 @@ export const mapCabFormToApiPayload = (
       endDate = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours
     } else if (schedule.arrivalWindow === 'TODAY_LATER') {
       endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    } else if (schedule.arrivalWindow === 'CUSTOM') {
+      const visitDateStr = schedule.customVisitDate && schedule.customVisitDate.trim()
+        ? schedule.customVisitDate.trim()
+        : now.toISOString().split('T')[0];
+      const start24 = convertTo24Hr(schedule.customStartTime || '02:00 PM');
+      const end24 = convertTo24Hr(schedule.customEndTime || '06:00 PM');
+
+      const [sHours, sMins] = start24.split(':').map(Number);
+      const [eHours, eMins] = end24.split(':').map(Number);
+
+      startDate = new Date(visitDateStr);
+      if (isNaN(startDate.getTime())) startDate = new Date(now);
+      startDate.setHours(sHours || 0, sMins || 0, 0, 0);
+
+      endDate = new Date(visitDateStr);
+      if (isNaN(endDate.getTime())) endDate = new Date(now);
+      endDate.setHours(eHours || 23, eMins || 59, 59, 999);
+
+      timeWindows = [{ start: start24, end: end24 }];
     }
   }
 
@@ -141,6 +161,9 @@ export const mapCabFormToApiPayload = (
   }
   if (context.villaId) {
     payload.villaId = context.villaId;
+  }
+  if (context.roleId) {
+    payload.roleId = context.roleId;
   }
 
   return payload;

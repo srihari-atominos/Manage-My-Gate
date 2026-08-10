@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import { useAppSocket } from '../../../hooks/useAppSocket';
 import { mapBackendWalkInToApprovalItem } from '../utils/mapBackendWalkInToApprovalItem';
+import { selectActiveOrgId } from '../../auth/store/authSelectors';
 import {
   walkInPendingReceived,
   walkInResolvedReceived,
@@ -19,18 +20,7 @@ export const useVisitorSocket = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { socket } = useAppSocket();
 
-  const activeOrgId = useSelector((state: RootState) => {
-    const user = (state as any).auth?.user;
-    return (
-      user?.orgId ||
-      user?.organizationId ||
-      user?.org?._id ||
-      user?.organization?._id ||
-      (Array.isArray(user?.availableWorkspaces) && user?.availableWorkspaces[0]?.orgId) ||
-      (Array.isArray(user?.availableWorkspaces) && user?.availableWorkspaces[0]?._id) ||
-      ''
-    );
-  });
+  const activeOrgId = useSelector(selectActiveOrgId);
 
   useEffect(() => {
     if (!socket) return;

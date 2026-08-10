@@ -13,7 +13,7 @@ interface VisitorPassDetailsModalProps {
   visible: boolean;
   pass: VisitorPass | null;
   onClose: () => void;
-  onRevokePress: (pass: VisitorPass) => void;
+  onRevokePress?: (pass: VisitorPass) => void;
 }
 
 const mapPassStatusVariant = (status: string): StatusVariant => {
@@ -161,7 +161,7 @@ export const VisitorPassDetailsModal: React.FC<VisitorPassDetailsModalProps> = (
             variant="destructive"
             onPress={() => {
               onClose();
-              onRevokePress(pass);
+              onRevokePress?.(pass);
             }}
             className="mt-2 h-12 rounded-xl flex-row items-center gap-2"
           >

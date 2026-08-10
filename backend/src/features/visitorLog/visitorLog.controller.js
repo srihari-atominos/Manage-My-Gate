@@ -19,7 +19,16 @@ export class VisitorLogController {
    */
   async initiateWalkIn(req, res, next) {
     try {
-      const data = await visitorLogService.initiateWalkInRequest(req.body);
+      const guardId = req.body.guardId || req.user?.id || req.user?._id;
+      let residentId = req.body.residentId;
+      if (residentId && !/^[0-9a-fA-F]{24}$/.test(residentId)) {
+        residentId = undefined;
+      }
+      const data = await visitorLogService.initiateWalkInRequest({
+        ...req.body,
+        guardId,
+        ...(residentId ? { residentId } : {}),
+      });
       res.success(data, 'Walk-in visitor check-in request initiated', 201);
     } catch (error) {
       next(error);

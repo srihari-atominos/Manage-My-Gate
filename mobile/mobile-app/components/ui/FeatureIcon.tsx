@@ -45,6 +45,8 @@ import {
   SlidersHorizontal,
   FolderGit2,
   UserPlus,
+  ShieldX,
+  Filter,
 } from 'lucide-react-native';
 
 export interface FeatureIconProps {
@@ -145,6 +147,10 @@ export const FeatureIcon: React.FC<FeatureIconProps> = ({ iconName, color, size 
       return <FolderGit2 size={size} color={color} />;
     case 'UserPlus':
       return <UserPlus size={size} color={color} />;
+    case 'ShieldX':
+      return <ShieldX size={size} color={color} />;
+    case 'Filter':
+      return <Filter size={size} color={color} />;
     default:
       return <Building2 size={size} color={color} />;
   }

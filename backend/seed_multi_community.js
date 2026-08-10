@@ -228,7 +228,7 @@ async function seedMultiCommunity() {
   }
 
   // Super Admin user
-  let superAdmin = await User.findOne({ email: 'admin@enterprise.com' });
+  let superAdmin = await User.findOne({ $or: [{ email: 'admin@enterprise.com' }, { username: 'superadmin' }] });
   if (!superAdmin) {
     superAdmin = await User.create({
       email: 'admin@enterprise.com',

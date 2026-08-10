@@ -4,6 +4,7 @@ import GuardInviteVisitorForm from '../components/GuardInviteVisitorForm.jsx'
 import GuardScannerConsole from '../components/GuardScannerConsole.jsx'
 import LiveEntriesTable from '../components/LiveEntriesTable.jsx'
 import VillaDirectoryList from '../components/VillaDirectoryList.jsx'
+import WalkInApprovalList from '../components/WalkInApprovalList.jsx'
 import useGuardVisitorManagement from '../hooks/useGuardVisitorManagement.js'
 import '../styles/_visitorManagement.scss'
 
@@ -34,6 +35,14 @@ export const GuardVisitormanagementViews = () => {
               loadingDirectory={loadingDirectory}
               onInitiateWalkIn={handleInitiateWalkIn}
               onCheckInSuccess={handleCheckInSuccess}
+            />
+          )}
+
+          {activeTab === 'walkin' && (
+            <WalkInApprovalList
+              walkins={liveEntries}
+              setWalkins={() => {}}
+              logs={liveEntries}
             />
           )}
 

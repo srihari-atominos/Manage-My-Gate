@@ -20,7 +20,10 @@ export class VisitorPassService {
       }
       if (passData.validity.endDate) {
         const end = new Date(passData.validity.endDate);
-        end.setHours(23, 59, 59, 999);
+        // Preserve intraday expiration times if explicit time was passed (e.g. 30-min or 1-hr passes)
+        if (end.getHours() === 0 && end.getMinutes() === 0 && end.getSeconds() === 0) {
+          end.setHours(23, 59, 59, 999);
+        }
         passData.validity.endDate = end;
       }
     }

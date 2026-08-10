@@ -32,19 +32,19 @@ export const dispatchWalkInPending = (log) => {
  */
 export const dispatchWalkInResolved = (log) => {
   try {
-    const orgId = log.orgId;
-    if (!orgId) {
-      logger.info('Walk-in resolution log does not specify an organization; skipping socket dispatch.');
-      return;
+    const io = getIO();
+
+    if (log.orgId) {
+      const guardRoom = `org:${log.orgId}:guards`;
+      logger.info(`Dispatching GATE_APPROVAL_RESOLVED to guard room ${guardRoom} for log ${log._id} with status ${log.logStatus}`);
+      io.to(guardRoom).emit('GATE_APPROVAL_RESOLVED', log);
     }
 
-    const io = getIO();
-    const roomName = `org:${orgId}:guards`;
-
-    logger.info(`Dispatching GATE_APPROVAL_RESOLVED to room ${roomName} for log ${log._id} with status ${log.logStatus}`);
-    
-    // Safely emit to all guards in this organization
-    io.to(roomName).emit('GATE_APPROVAL_RESOLVED', log);
+    if (log.residentId) {
+      const residentRoom = `user:${log.residentId}`;
+      logger.info(`Dispatching GATE_APPROVAL_RESOLVED to resident room ${residentRoom} for log ${log._id} with status ${log.logStatus}`);
+      io.to(residentRoom).emit('GATE_APPROVAL_RESOLVED', log);
+    }
   } catch (error) {
     logger.error('Failed to emit GATE_APPROVAL_RESOLVED via Socket.io:', error);
     // Safe try/catch prevents this error from crashing the main Node execution thread

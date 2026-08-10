@@ -3,6 +3,18 @@ import visitorService from '../services/visitorService';
 import { WalkInApprovalItem } from '../mocks/visitorMocks';
 import { mapBackendWalkInToApprovalItem } from '../utils/mapBackendWalkInToApprovalItem';
 
+import {
+  fetchCommunityPasses,
+  fetchAdminAnalytics,
+  fetchBlacklist,
+  addBlacklistEntry,
+  removeBlacklistEntry,
+  forceRevokeAdminPass,
+  forceCheckoutAdminVisitor,
+  BlacklistVisitorItem,
+  VisitorAnalyticsData,
+} from './adminVisitorThunks';
+
 export interface VisitorPass {
   _id: string;
   visitorName: string;
@@ -29,11 +41,27 @@ export interface WalkInState {
   error: string | null;
 }
 
+export interface AdminVisitorState {
+  communityPasses: VisitorPass[];
+  blacklist: BlacklistVisitorItem[];
+  analytics: VisitorAnalyticsData | null;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalRecords: number;
+    limit: number;
+  };
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  actionStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
+  error: string | null;
+}
+
 interface VisitorPassState {
   passes: VisitorPass[];
   activePass: VisitorPass | null;
   dashboard: DashboardSummary;
   walkIns: WalkInState;
+  admin: AdminVisitorState;
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -57,6 +85,20 @@ const initialState: VisitorPassState = {
   },
   walkIns: {
     pendingList: [],
+    status: 'idle',
+    actionStatus: 'idle',
+    error: null,
+  },
+  admin: {
+    communityPasses: [],
+    blacklist: [],
+    analytics: null,
+    pagination: {
+      currentPage: 1,
+      totalPages: 1,
+      totalRecords: 0,
+      limit: 10,
+    },
     status: 'idle',
     actionStatus: 'idle',
     error: null,
@@ -464,6 +506,62 @@ export const visitorPassSlice = createSlice({
       .addCase(updatePassStatus.rejected, (state, action) => {
         state.actionStatus = 'failed';
         state.error = (action.payload as string) || 'Failed to update pass status';
+      })
+
+      // Admin fetchCommunityPasses
+      .addCase(fetchCommunityPasses.pending, (state) => {
+        state.admin.status = 'loading';
+        state.admin.error = null;
+      })
+      .addCase(fetchCommunityPasses.fulfilled, (state, action) => {
+        state.admin.status = 'succeeded';
+        if (action.payload.append) {
+          const existingIds = new Set(state.admin.communityPasses.map((p: VisitorPass) => p._id));
+          const newPasses = (action.payload.data || []).filter((p: VisitorPass) => !existingIds.has(p._id));
+          state.admin.communityPasses = [...state.admin.communityPasses, ...newPasses];
+        } else {
+          state.admin.communityPasses = action.payload.data || [];
+        }
+        state.admin.pagination.totalRecords = action.payload.totalRecords || 0;
+        state.admin.pagination.limit = action.payload.limit;
+        state.admin.pagination.currentPage = action.payload.page;
+        state.admin.pagination.totalPages = Math.max(
+          1,
+          Math.ceil((action.payload.totalRecords || 0) / action.payload.limit)
+        );
+      })
+      .addCase(fetchCommunityPasses.rejected, (state, action) => {
+        state.admin.status = 'failed';
+        state.admin.error = (action.payload as string) || 'Failed to fetch community passes';
+      })
+
+      // Admin fetchAdminAnalytics
+      .addCase(fetchAdminAnalytics.fulfilled, (state, action) => {
+        state.admin.analytics = action.payload;
+      })
+
+      // Admin fetchBlacklist
+      .addCase(fetchBlacklist.fulfilled, (state, action) => {
+        state.admin.blacklist = action.payload;
+      })
+
+      // Admin addBlacklistEntry
+      .addCase(addBlacklistEntry.fulfilled, (state, action) => {
+        state.admin.blacklist.unshift(action.payload);
+      })
+
+      // Admin removeBlacklistEntry
+      .addCase(removeBlacklistEntry.fulfilled, (state, action) => {
+        state.admin.blacklist = state.admin.blacklist.filter((b: BlacklistVisitorItem) => b._id !== action.payload);
+      })
+
+      // Admin forceRevokeAdminPass
+      .addCase(forceRevokeAdminPass.fulfilled, (state, action) => {
+        const targetId = action.payload._id || action.payload.id;
+        const idx = state.admin.communityPasses.findIndex((p: VisitorPass) => p._id === targetId);
+        if (idx !== -1) {
+          state.admin.communityPasses[idx].status = 'REVOKED';
+        }
       });
   },
 });

@@ -10,7 +10,10 @@ export const SYSTEM_FEATURE_CATALOG = [
     actionButton: { label: 'View all', type: 'link', route: '/(resident)/visitor/resident-passes' },
     items: [
       { id: 'visitor_resident_passes', name: 'Resident Passes', permission: 'visitor:resident', iconName: 'QrCode', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/visitor/resident-passes' },
-      { id: 'visitor_admin_logs', name: 'Admin Gate Logs', permission: 'visitor:admin', iconName: 'ShieldAlert', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/visitor/admin-logs' },
+      { id: 'visitor_admin_dashboard', name: 'Admin Visitor Console', permission: 'visitor:admin', iconName: 'LayoutDashboard', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/visitor/admin' },
+      { id: 'visitor_community_passes', name: 'All Community Passes', permission: 'visitor:admin', iconName: 'Filter', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/visitor/admin/community-passes' },
+      { id: 'visitor_blacklist', name: 'Visitor Blacklist', permission: 'visitor:admin', iconName: 'ShieldX', colorBg: 'bg-rose-500/10', colorIcon: '#f43f5e', route: '/(resident)/visitor/admin/blacklist' },
+      { id: 'visitor_admin_logs', name: 'Admin Gate Logs', permission: 'visitor:admin', iconName: 'ShieldAlert', colorBg: 'bg-slate-500/10', colorIcon: '#64748b', route: '/(resident)/visitor/admin-logs' },
       { id: 'visitor_gate_console', name: 'Gate Console', permission: 'visitor:guard', iconName: 'ScanLine', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/visitor/gate-console' }
     ]
   },

@@ -50,6 +50,10 @@ const visitorPassSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    purpose: {
+      type: String,
+      trim: true,
+    },
     groupGuests: [
       {
         name: {

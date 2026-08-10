@@ -76,7 +76,16 @@ export const CabPassReviewStep: React.FC<CabPassReviewStepProps> = ({
         ) : (
           <DetailRow
             label="Expected Window"
-            value={<StatusBadge label={schedule.arrivalWindow} variant="info" />}
+            value={
+              schedule.arrivalWindow === 'CUSTOM' ? (
+                <StatusBadge
+                  label={`Custom (${schedule.customStartTime || '02:00 PM'} - ${schedule.customEndTime || '06:00 PM'})`}
+                  variant="info"
+                />
+              ) : (
+                <StatusBadge label={schedule.arrivalWindow} variant="info" />
+              )
+            }
             iconName="Clock"
             isLast
           />

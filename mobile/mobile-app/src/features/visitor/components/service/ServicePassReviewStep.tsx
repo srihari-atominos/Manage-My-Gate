@@ -3,6 +3,7 @@ import { View, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { StaffDetailsData } from './StaffDetailsStep';
 import { ServiceDateRangeData } from './ServiceDateRangeStep';
 import { ServiceTimeWindowData } from './ServiceTimeWindowStep';
@@ -45,6 +46,24 @@ export const ServicePassReviewStep: React.FC<ServicePassReviewStepProps> = ({
           value={serviceCategory.toUpperCase()}
           iconName="Wrench"
         />
+        <DetailRow
+          label="Verification Type"
+          value={
+            staff.isIdProofPass ? (
+              <StatusBadge label="ID-Proof Pass" variant="success" />
+            ) : (
+              <StatusBadge label="Standard Staff Pass" variant="info" />
+            )
+          }
+          iconName="Shield"
+        />
+        {staff.isIdProofPass && (
+          <DetailRow
+            label="ID Proof Registered"
+            value={`${staff.idProofType || 'Aadhaar Card'}: ${staff.idProofNumber || 'N/A'}`}
+            iconName="ShieldAlert"
+          />
+        )}
         <DetailRow
           label="Work Note"
           value={staff.notes || 'Daily Household Staff'}

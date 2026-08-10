@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import { useVisitorSocket } from './useVisitorSocket';
+import { selectActiveOrgId } from '../../auth/store/authSelectors';
 import {
   getPasses,
   getPassDetails,
@@ -26,19 +27,8 @@ export const useVisitorPass = () => {
     (state: RootState) => (state as any).visitorPass
   );
 
-  // Retrieve organization ID from auth user state with fallback logic
-  const activeOrgId = useSelector((state: RootState) => {
-    const user = (state as any).auth?.user;
-    return (
-      user?.orgId ||
-      user?.organizationId ||
-      user?.org?._id ||
-      user?.organization?._id ||
-      (Array.isArray(user?.availableWorkspaces) && user?.availableWorkspaces[0]?.orgId) ||
-      (Array.isArray(user?.availableWorkspaces) && user?.availableWorkspaces[0]?._id) ||
-      ''
-    );
-  });
+  // Retrieve organization ID using centralized selector
+  const activeOrgId = useSelector(selectActiveOrgId);
 
   // 2. Action dispatchers wrapped in useCallback
   const fetchPasses = useCallback(

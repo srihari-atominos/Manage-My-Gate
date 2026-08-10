@@ -11,6 +11,7 @@ interface VisitorPassCardProps {
   pass: VisitorPass;
   onPress: (pass: VisitorPass) => void;
   onShowQR: (pass: VisitorPass) => void;
+  villaBadge?: string;
 }
 
 const mapPassStatusVariant = (status: string): StatusVariant => {
@@ -32,12 +33,17 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
   pass,
   onPress,
   onShowQR,
+  villaBadge,
 }) => {
-  const subtitle = pass.phone 
-    ? `Phone: ${pass.phone}` 
-    : pass.purpose 
-    ? `Purpose: ${pass.purpose}` 
-    : `Pass Code: ${pass.code || pass._id.slice(-6)}`;
+  const displayVilla = villaBadge || (pass as any).villaName || (pass as any).villaNumber || (pass as any).villaId?.name || (pass as any).villaId?.number;
+
+  const subtitleParts = [];
+  if (displayVilla) subtitleParts.push(`Villa: ${displayVilla}`);
+  if (pass.phone) subtitleParts.push(`Ph: ${pass.phone}`);
+  else if (pass.purpose) subtitleParts.push(`For: ${pass.purpose}`);
+  else subtitleParts.push(`Code: ${pass.code || pass._id.slice(-6)}`);
+
+  const subtitle = subtitleParts.join(' • ');
 
   return (
     <ListCard

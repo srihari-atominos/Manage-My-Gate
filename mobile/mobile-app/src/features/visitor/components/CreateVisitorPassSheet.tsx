@@ -102,7 +102,7 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
               <Input
                 label="Visitor Full Name"
                 placeholder="e.g. Rahul Sharma"
-                leftIcon={<User size={18} color="#888" />}
+                leftIcon={<User size={18} className="text-muted-foreground" />}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -120,7 +120,7 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
                 label="Visitor Phone Number (Optional)"
                 placeholder="+919876543210"
                 keyboardType="phone-pad"
-                leftIcon={<Phone size={18} color="#888" />}
+                leftIcon={<Phone size={18} className="text-muted-foreground" />}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -137,7 +137,7 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
               <Input
                 label="Note / Vehicle Info (Optional)"
                 placeholder="e.g. Amazon Delivery / KA-01-AB-1234"
-                leftIcon={<Tag size={18} color="#888" />}
+                leftIcon={<Tag size={18} className="text-muted-foreground" />}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}

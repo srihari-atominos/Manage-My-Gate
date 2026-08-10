@@ -39,9 +39,10 @@ export const VisitorTopNav = ({ activeTab, onTabChange }) => {
   } else if (context === 'Guard') {
     navItems = [
       { name: 'Invite visitor', to: '#', id: 'invite', icon: cilPeople },
-      { name: 'scaner', to: '#', id: 'scanner', icon: cilQrCode },
+      { name: 'Walk-in Queue', to: '#', id: 'walkin', icon: cilShieldAlt },
+      { name: 'Scanner', to: '#', id: 'scanner', icon: cilQrCode },
       { name: 'Live entries', to: '#', id: 'live', icon: cilList },
-      { name: 'villa Directory', to: '#', id: 'directory', icon: cilPeople },
+      { name: 'Villa Directory', to: '#', id: 'directory', icon: cilPeople },
     ]
   }
 

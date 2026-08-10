@@ -51,7 +51,7 @@ export const GuestPassReviewStep: React.FC<GuestPassReviewStepProps> = ({
           label="Time Slot"
           value={
             schedule.timeSlot === 'CUSTOM'
-              ? schedule.customTimeWindow || 'Custom Window'
+              ? `${schedule.customStartTime || '02:00 PM'} - ${schedule.customEndTime || '06:00 PM'}`
               : schedule.timeSlot
           }
           iconName="Clock"
@@ -65,6 +65,24 @@ export const GuestPassReviewStep: React.FC<GuestPassReviewStepProps> = ({
           value={<StatusBadge label={options.entryMode} variant="info" />}
           iconName="ShieldCheck"
         />
+        <DetailRow
+          label="Verification Type"
+          value={
+            options.isIdProofPass ? (
+              <StatusBadge label="ID-Proof Pass" variant="success" />
+            ) : (
+              <StatusBadge label="Standard QR Code Pass" variant="neutral" />
+            )
+          }
+          iconName="Shield"
+        />
+        {options.isIdProofPass && (
+          <DetailRow
+            label="ID Proof Registered"
+            value={`${options.idProofType || 'Aadhaar Card'}: ${options.idProofNumber || 'N/A'}`}
+            iconName="ShieldAlert"
+          />
+        )}
         <DetailRow
           label="Vehicle Number"
           value={options.vehicleNo || 'None / On Foot'}

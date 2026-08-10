@@ -7,10 +7,14 @@ export interface ApiServiceVisitorPassPayload {
   orgId?: string;
   createdById?: string;
   villaId?: string;
+  roleId?: string;
   passType: 'SERVICE';
+  isIdProofPass?: boolean;
   visitorDetails: {
     name: string;
     phone?: string;
+    idProofType?: string;
+    idProofNumber?: string;
   };
   serviceDetails: {
     category: string;
@@ -99,13 +103,17 @@ export const mapServiceFormToApiPayload = (
 
   const serviceCategoryLabel = (category || 'Staff').toUpperCase();
   const staffName = staff.staffName.trim();
+  const isIdProofPass = !!staff.isIdProofPass;
   const purpose = `${serviceCategoryLabel} - ${staffName} (${allowedDays.length} Days/wk | ${timeWindowStart}-${timeWindowEnd})`;
 
   const payload: ApiServiceVisitorPassPayload = {
     passType: 'SERVICE',
+    isIdProofPass,
     visitorDetails: {
       name: staffName,
       phone: staff.phone && staff.phone.trim() !== '' ? staff.phone.trim() : undefined,
+      idProofType: isIdProofPass ? (staff.idProofType || 'Aadhaar Card') : undefined,
+      idProofNumber: isIdProofPass && staff.idProofNumber ? staff.idProofNumber.trim() : undefined,
     },
     serviceDetails: {
       category: serviceCategoryLabel,
@@ -132,6 +140,9 @@ export const mapServiceFormToApiPayload = (
   }
   if (context.villaId) {
     payload.villaId = context.villaId;
+  }
+  if (context.roleId) {
+    payload.roleId = context.roleId;
   }
 
   return payload;

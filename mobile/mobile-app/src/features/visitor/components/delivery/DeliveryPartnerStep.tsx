@@ -1,17 +1,22 @@
 import React from 'react';
 import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { Input } from '@/components/ui/input';
 import { MOCK_DELIVERY_PARTNERS } from '../../mocks/visitorMocks';
 import { Package, Check } from 'lucide-react-native';
 
 export interface DeliveryPartnerStepProps {
   selectedPartner: string;
   onSelectPartner: (partnerId: string) => void;
+  customPartnerName?: string;
+  onCustomPartnerChange?: (name: string) => void;
 }
 
 export const DeliveryPartnerStep: React.FC<DeliveryPartnerStepProps> = ({
   selectedPartner,
   onSelectPartner,
+  customPartnerName,
+  onCustomPartnerChange,
 }) => {
   return (
     <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 gap-4">
@@ -57,6 +62,21 @@ export const DeliveryPartnerStep: React.FC<DeliveryPartnerStepProps> = ({
           );
         })}
       </View>
+
+      {selectedPartner === 'other' && (
+        <View className="gap-2 bg-card border border-primary/40 rounded-2xl p-4 mt-1">
+          <Text className="text-xs font-bold text-primary">Specify Delivery Company / Brand Name</Text>
+          <Input
+            placeholder="e.g. Country Delight, Daily Milk, Local Courier"
+            value={customPartnerName || ''}
+            onChangeText={(txt) => onCustomPartnerChange && onCustomPartnerChange(txt)}
+            autoFocus
+          />
+          <Text variant="muted" className="text-xs">
+            This company name will be displayed to security guards at the gate barrier.
+          </Text>
+        </View>
+      )}
     </ScrollView>
   );
 };

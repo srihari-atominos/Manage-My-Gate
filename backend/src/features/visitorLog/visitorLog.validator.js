@@ -22,15 +22,18 @@ export const walkInRequestRules = [
     .withMessage('Organization ID must be a valid Mongo ID'),
 
   body('guardId')
-    .notEmpty()
-    .withMessage('Guard ID (guardId) is required')
+    .optional()
     .isMongoId()
     .withMessage('Guard ID must be a valid Mongo ID'),
 
   body('residentId')
-    .optional()
-    .isMongoId()
-    .withMessage('Resident ID must be a valid Mongo ID'),
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((val) => {
+      if (val && !/^[0-9a-fA-F]{24}$/.test(val)) {
+        throw new Error('Resident ID must be a valid Mongo ID');
+      }
+      return true;
+    }),
 
   body('snapshot.visitorName')
     .optional()

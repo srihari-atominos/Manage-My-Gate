@@ -7,6 +7,7 @@ export interface ApiGroupVisitorPassPayload {
   orgId?: string;
   createdById?: string;
   villaId?: string;
+  roleId?: string;
   passType: 'GUEST';
   isGroupPass: true;
   visitorDetails: {
@@ -96,6 +97,9 @@ export const mapGroupFormToApiPayload = (
   }
   if (context.villaId) {
     payload.villaId = context.villaId;
+  }
+  if (context.roleId) {
+    payload.roleId = context.roleId;
   }
 
   return payload;

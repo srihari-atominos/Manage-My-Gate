@@ -8,6 +8,8 @@ export interface GuestScheduleData {
   visitDate: string;
   timeSlot: string; // 'NOW' | 'TODAY_EVENING' | 'TOMORROW' | 'CUSTOM'
   customTimeWindow?: string;
+  customStartTime?: string;
+  customEndTime?: string;
 }
 
 export interface GuestScheduleStepProps {
@@ -95,18 +97,31 @@ export const GuestScheduleStep: React.FC<GuestScheduleStepProps> = ({
         <View className="bg-card border border-border rounded-2xl p-4 gap-3">
           <Input
             label="Visit Date (YYYY-MM-DD)"
-            placeholder="2026-08-05"
+            placeholder={new Date().toISOString().split('T')[0]}
             leftIcon={<Calendar size={18} className="text-muted-foreground" />}
             value={data.visitDate}
             onChangeText={(val) => onChange({ ...data, visitDate: val })}
           />
-          <Input
-            label="Custom Time Window"
-            placeholder="e.g. 02:00 PM - 06:00 PM"
-            leftIcon={<Clock size={18} className="text-muted-foreground" />}
-            value={data.customTimeWindow || ''}
-            onChangeText={(val) => onChange({ ...data, customTimeWindow: val })}
-          />
+          <View className="flex-row items-center gap-3">
+            <View className="flex-1">
+              <Input
+                label="Start Time"
+                placeholder="02:00 PM"
+                leftIcon={<Clock size={18} className="text-muted-foreground" />}
+                value={data.customStartTime || '02:00 PM'}
+                onChangeText={(val) => onChange({ ...data, customStartTime: val })}
+              />
+            </View>
+            <View className="flex-1">
+              <Input
+                label="End Time"
+                placeholder="06:00 PM"
+                leftIcon={<Clock size={18} className="text-muted-foreground" />}
+                value={data.customEndTime || '06:00 PM'}
+                onChangeText={(val) => onChange({ ...data, customEndTime: val })}
+              />
+            </View>
+          </View>
         </View>
       ) : null}
     </ScrollView>

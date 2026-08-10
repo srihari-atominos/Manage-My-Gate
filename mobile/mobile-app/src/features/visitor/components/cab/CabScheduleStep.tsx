@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Clock, Zap, Plus, Trash2 } from 'lucide-react-native';
+import { Input } from '@/components/ui/input';
+import { Clock, Zap, Plus, Trash2, Calendar } from 'lucide-react-native';
 import { MOCK_WEEKDAYS } from '../../mocks/visitorMocks';
 
 export interface TimeSlotWindow {
@@ -11,7 +12,11 @@ export interface TimeSlotWindow {
 
 export interface CabScheduleData {
   usageType: 'ONE_TIME' | 'MULTI_USE';
-  arrivalWindow: 'IMMEDIATE' | 'THIRTY_MINS' | 'ONE_HOUR' | 'TODAY_LATER';
+  arrivalWindow: 'IMMEDIATE' | 'THIRTY_MINS' | 'ONE_HOUR' | 'TODAY_LATER' | 'CUSTOM';
+  customVisitDate?: string;
+  customStartTime?: string;
+  customEndTime?: string;
+  customTimeWindow?: string;
   selectedWeekdays: string[];
   timeSlots: TimeSlotWindow[];
 }
@@ -26,6 +31,7 @@ const CAB_SCHEDULE_OPTIONS = [
   { id: 'THIRTY_MINS', label: 'Next 30 Minutes', subtitle: 'Cab booked & on the way' },
   { id: 'ONE_HOUR', label: 'Next 1 Hour', subtitle: 'Scheduled pickup / drop' },
   { id: 'TODAY_LATER', label: 'Later Today (Valid 4 Hours)', subtitle: 'Flexible time window' },
+  { id: 'CUSTOM', label: 'Custom Timing', subtitle: 'Specify custom date & arrival time window' },
 ];
 
 const DEFAULT_TIME_SLOT: TimeSlotWindow = {
@@ -167,6 +173,38 @@ export const CabScheduleStep: React.FC<CabScheduleStepProps> = ({
               );
             })}
           </View>
+
+          {data.arrivalWindow === 'CUSTOM' ? (
+            <View className="bg-card border border-border rounded-2xl p-4 gap-3">
+              <Input
+                label="Visit Date (YYYY-MM-DD)"
+                placeholder={new Date().toISOString().split('T')[0]}
+                leftIcon={<Calendar size={18} className="text-muted-foreground" />}
+                value={data.customVisitDate || new Date().toISOString().split('T')[0]}
+                onChangeText={(val) => onChange({ ...data, customVisitDate: val })}
+              />
+              <View className="flex-row items-center gap-3">
+                <View className="flex-1">
+                  <Input
+                    label="Start Time"
+                    placeholder="02:00 PM"
+                    leftIcon={<Clock size={18} className="text-muted-foreground" />}
+                    value={data.customStartTime || '02:00 PM'}
+                    onChangeText={(val) => onChange({ ...data, customStartTime: val })}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Input
+                    label="End Time"
+                    placeholder="06:00 PM"
+                    leftIcon={<Clock size={18} className="text-muted-foreground" />}
+                    value={data.customEndTime || '06:00 PM'}
+                    onChangeText={(val) => onChange({ ...data, customEndTime: val })}
+                  />
+                </View>
+              </View>
+            </View>
+          ) : null}
         </>
       ) : (
         <>
@@ -263,14 +301,13 @@ export const CabScheduleStep: React.FC<CabScheduleStepProps> = ({
                 </View>
 
                 <View className="flex-row items-center gap-3">
-                  <View className="flex-1 gap-1">
-                    <Text variant="muted" className="text-xs">Start Time</Text>
-                    <TextInput
+                  <View className="flex-1">
+                    <Input
+                      label="Start Time"
                       value={slot.startTime}
                       onChangeText={(txt) => updateTimeSlot(index, 'startTime', txt)}
                       placeholder="e.g. 07:30 AM"
-                      placeholderTextColor="#94A3B8"
-                      className="p-2.5 bg-background border border-border rounded-xl text-xs font-semibold text-foreground"
+                      className="text-xs font-semibold"
                     />
                   </View>
 
@@ -278,14 +315,13 @@ export const CabScheduleStep: React.FC<CabScheduleStepProps> = ({
                     <Text className="text-xs font-bold text-muted-foreground">to</Text>
                   </View>
 
-                  <View className="flex-1 gap-1">
-                    <Text variant="muted" className="text-xs">End Time</Text>
-                    <TextInput
+                  <View className="flex-1">
+                    <Input
+                      label="End Time"
                       value={slot.endTime}
                       onChangeText={(txt) => updateTimeSlot(index, 'endTime', txt)}
                       placeholder="e.g. 09:00 AM"
-                      placeholderTextColor="#94A3B8"
-                      className="p-2.5 bg-background border border-border rounded-xl text-xs font-semibold text-foreground"
+                      className="text-xs font-semibold"
                     />
                   </View>
                 </View>

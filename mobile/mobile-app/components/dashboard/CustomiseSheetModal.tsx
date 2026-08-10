@@ -24,7 +24,10 @@ export interface AppFeatureItem {
 export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   // Visitor & Gate Security (Web App Aligned)
   { id: 'visitor_resident_passes', name: 'Resident Passes', subtitle: 'QR Visitor Pass', iconName: 'QrCode', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/visitor', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-  { id: 'visitor_admin_logs', name: 'Admin Gate Logs', subtitle: 'Live Gate Audit', iconName: 'ShieldAlert', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/visitor/admin-logs', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
+  { id: 'visitor_admin_dashboard', name: 'Admin Visitor Console', subtitle: 'Master Control', iconName: 'LayoutDashboard', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/visitor/admin', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
+  { id: 'visitor_community_passes', name: 'All Community Passes', subtitle: 'All Villa Passes', iconName: 'Filter', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/visitor/admin/community-passes', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
+  { id: 'visitor_blacklist', name: 'Visitor Blacklist', subtitle: 'Restricted Registry', iconName: 'ShieldX', colorBg: 'bg-rose-500/10', colorIcon: '#f43f5e', route: '/(resident)/visitor/admin/blacklist', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
+  { id: 'visitor_admin_logs', name: 'Admin Gate Logs', subtitle: 'Live Gate Audit', iconName: 'ShieldAlert', colorBg: 'bg-slate-500/10', colorIcon: '#64748b', route: '/(resident)/visitor/admin-logs', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
   { id: 'visitor_gate_console', name: 'Gate Console', subtitle: 'Guard Check-in', iconName: 'ScanLine', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/visitor/gate-console', permission: 'visitor:guard', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
 
   // Amenities & Facilities (Web App Aligned)
