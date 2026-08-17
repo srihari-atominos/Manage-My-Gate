@@ -1,23 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Image, ImageSourcePropType } from 'react-native';
 import { Image as ImageIcon } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 
 export interface ImagePreviewProps {
-  source?: ImageSourcePropType | null;
+  source?: ImageSourcePropType | null | any;
   altText: string;
   width?: number | string;
   height?: number | string;
   className?: string;
 }
 
-/**
- * ImagePreview
- * 
- * CRITICAL NOTE: Any images rendered by this component (uploaded by users or provided by the system)
- * are treated STRICTLY as conceptual references to generate variations or to indicate state.
- * They are not meant to be replicated exactly or verified for exact pixel matching.
- */
 export const ImagePreview = ({
   source,
   altText,
@@ -25,6 +18,8 @@ export const ImagePreview = ({
   height = 200,
   className,
 }: ImagePreviewProps) => {
+  const [hasError, setHasError] = useState(false);
+
   return (
     <View
       style={{ width: width as any, height: height as any }}
@@ -33,21 +28,25 @@ export const ImagePreview = ({
         className
       )}
     >
-      {source ? (
+      {source && !hasError ? (
         <Image
           source={source}
           style={{ width: '100%', height: '100%' }}
           resizeMode="cover"
           accessibilityLabel={altText}
+          onError={(e) => {
+            console.error('ImagePreview load error for:', source);
+            setHasError(true);
+          }}
         />
       ) : (
         <View className="items-center justify-center p-4">
           <ImageIcon size={40} className="mb-2 text-slate-300 dark:text-slate-700" />
           <Text className="text-center text-sm font-medium text-slate-500 dark:text-slate-400">
-            [Conceptual Reference]
+            [Failed to Load Image]
           </Text>
-          <Text className="mt-1 text-center text-xs text-slate-400 dark:text-slate-500">
-            {altText || 'Image goes here'}
+          <Text className="mt-1 text-center text-[10px] text-slate-400 dark:text-slate-500 px-2" numberOfLines={3}>
+            {source && source.uri ? source.uri : (altText || 'Image goes here')}
           </Text>
         </View>
       )}

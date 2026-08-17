@@ -283,3 +283,22 @@ export default function VisitorListScreen() {
   );
 }
 ```
+
+---
+
+## Reference Domain Architecture: Visitor Management Component Mapping
+
+The Visitor Management module (`src/features/visitor/components/`) serves as the reference baseline for extending catalog primitives into domain-specific features:
+
+| Visitor Domain Component | Physical Path | Primary Catalog Primitives Reused |
+| :--- | :--- | :--- |
+| **`VisitorPassCard`** | `src/features/visitor/components/VisitorPassCard.tsx` | `<ListCard>`, `<StatusBadge>`, `<Button>` |
+| **`VisitorPassDetailsModal`** | `src/features/visitor/components/VisitorPassDetailsModal.tsx` | `<BottomSheet>`, `<DetailSection>`, `<DetailRow>`, `<StatusBadge>` |
+| **`CreateVisitorPassSheet`** | `src/features/visitor/components/CreateVisitorPassSheet.tsx` | `<BottomSheet>`, `<TextInput>`, `<DropdownSelect>`, `<DatePicker>` |
+| **`WalkInApprovalCard`** | `src/features/visitor/components/walkin/WalkInApprovalCard.tsx` | `<Card>`, `<StatusBadge>`, `<Button>` |
+| **`GuardQRScannerModal`** | `src/features/visitor/components/guard/GuardQRScannerModal.tsx` | `<Modal>`, `<QRScannerOverlay>`, `<TextInput>`, `<Button>` |
+| **`VisitorHistoryView`** | `src/features/visitor/components/history/VisitorHistoryView.tsx` | `<PaginatedList>`, `<SearchFilterBar>`, `<EmptyState>` |
+| **`VisitorAnalyticsCard`** | `src/features/visitor/components/admin/VisitorAnalyticsCard.tsx` | `<KPICard>`, `<KPIRow>` |
+| **`AdminBlacklistModal`** | `src/features/visitor/components/admin/AdminBlacklistModal.tsx` | `<Modal>`, `<TextInput>`, `<Button>` |
+| **`VisitorPassWizard`** | `src/features/visitor/components/wizard/VisitorPassWizard.tsx` | `VisitorPassStepIndicator`, `VisitorPassFlowHeader`, `VisitorPassFlowFooter` |
+

@@ -32,7 +32,15 @@ export default function DashboardScreen() {
     }
     const feature = allFeaturesList.find((item) => item.id === tileId);
     if (feature && feature.route) {
-      const targetRoute = feature.route.endsWith('/resident-passes') ? '/(resident)/visitor' : feature.route;
+      let targetRoute = feature.route;
+      
+      // Fallback routing mappings for dynamically loaded backend routes
+      if (targetRoute.endsWith('/resident-passes')) {
+        targetRoute = '/(resident)/visitor';
+      } else if (targetRoute.endsWith('/notices/active-board')) {
+        targetRoute = '/(resident)/notices';
+      }
+      
       router.push(targetRoute as any);
     }
   };

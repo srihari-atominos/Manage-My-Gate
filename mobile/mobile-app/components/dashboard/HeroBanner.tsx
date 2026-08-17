@@ -1,68 +1,73 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { ArrowRight, Sparkles, Megaphone, AlertCircle, ShieldAlert, Wrench, Calendar, Building2 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-import { useHeroNotices, HeroNoticeSlide } from '@/src/features/noticeBoard/hooks/useHeroNotices';
+import { Bell, ArrowRight, Sparkles, Megaphone } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 400);
 
+export interface BannerItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  tag: string;
+  bgGradient: string;
+  badgeBg: string;
+}
+
+const BANNERS: BannerItem[] = [
+  {
+    id: '1',
+    title: 'Welcome to Manage My Gate',
+    subtitle: 'Your all-in-one community and security management solution.',
+    tag: 'Welcome',
+    bgGradient: 'bg-indigo-600',
+    badgeBg: 'bg-indigo-500/30',
+  },
+  {
+    id: '2',
+    title: 'Seamless Visitor Passes',
+    subtitle: 'Generate instant QR passes for quick and secure gate entry.',
+    tag: 'Security Gate',
+    bgGradient: 'bg-emerald-600',
+    badgeBg: 'bg-emerald-500/30',
+  },
+  {
+    id: '3',
+    title: 'Smart Community Living',
+    subtitle: 'Book amenities, track notices, and pay dues effortlessly.',
+    tag: 'Community',
+    bgGradient: 'bg-amber-600',
+    badgeBg: 'bg-amber-500/30',
+  },
+];
+
 interface HeroBannerProps {
-  onBannerPress?: (banner: HeroNoticeSlide) => void;
+  onBannerPress?: (banner: BannerItem) => void;
 }
 
 export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
-  const router = useRouter();
-  const { slides } = useHeroNotices();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    if (slides.length <= 1) return;
-
     const timer = setInterval(() => {
-      const nextIndex = (activeIndex + 1) % slides.length;
+      const nextIndex = (activeIndex + 1) % BANNERS.length;
       setActiveIndex(nextIndex);
       scrollViewRef.current?.scrollTo({
         x: nextIndex * BANNER_WIDTH,
         animated: true,
       });
-    }, 5000);
+    }, 4000);
 
     return () => clearInterval(timer);
-  }, [activeIndex, slides.length]);
+  }, [activeIndex]);
 
   const handleScroll = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(contentOffsetX / BANNER_WIDTH);
-    if (index !== activeIndex && index >= 0 && index < slides.length) {
+    if (index !== activeIndex && index >= 0 && index < BANNERS.length) {
       setActiveIndex(index);
-    }
-  };
-
-  const handlePress = (slide: HeroNoticeSlide) => {
-    if (onBannerPress) {
-      onBannerPress(slide);
-    } else {
-      router.push(slide.route as any);
-    }
-  };
-
-  const renderIcon = (iconName: string) => {
-    switch (iconName) {
-      case 'AlertCircle':
-        return <AlertCircle size={12} color="#fff" />;
-      case 'ShieldAlert':
-        return <ShieldAlert size={12} color="#fff" />;
-      case 'Wrench':
-        return <Wrench size={12} color="#fff" />;
-      case 'Calendar':
-        return <Calendar size={12} color="#fff" />;
-      case 'Building2':
-        return <Building2 size={12} color="#fff" />;
-      default:
-        return <Megaphone size={12} color="#fff" />;
     }
   };
 
@@ -78,54 +83,45 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
         snapToInterval={BANNER_WIDTH}
         decelerationRate="fast"
       >
-        {slides.map((slide) => (
+        {BANNERS.map((banner) => (
           <TouchableOpacity
-            key={slide.id}
+            key={banner.id}
             activeOpacity={0.9}
-            onPress={() => handlePress(slide)}
+            onPress={() => onBannerPress && onBannerPress(banner)}
             style={{ width: BANNER_WIDTH }}
             className="px-1"
           >
             <View
-              style={{ backgroundColor: slide.cardBgHex || '#047857' }}
-              className="rounded-3xl p-5 gap-3 relative overflow-hidden shadow-md"
+              className={`${banner.bgGradient} rounded-3xl p-5 gap-3 relative overflow-hidden shadow-md`}
             >
               {/* Decorative Background Element */}
               <View className="absolute -right-6 -bottom-6 size-28 rounded-full bg-white/10" />
 
-              {/* Badge & Category Header */}
+              {/* Tag Header */}
               <View className="flex-row items-center justify-between">
-                <View
-                  style={{ backgroundColor: slide.badgeBgHex || 'rgba(255, 255, 255, 0.2)' }}
-                  className="border border-white/20 px-3 py-1 rounded-full flex-row items-center gap-1.5"
-                >
-                  {renderIcon(slide.iconName)}
-                  <Text
-                    style={{ color: slide.badgeTextHex || '#ffffff' }}
-                    className="text-[10px] font-extrabold uppercase tracking-wider"
-                  >
-                    {slide.badgeText}
+                <View className={`${banner.badgeBg} border border-white/20 px-3 py-1 rounded-full flex-row items-center gap-1.5`}>
+                  <Megaphone size={12} color="#fff" />
+                  <Text className="text-white text-[10px] font-bold uppercase tracking-wider">
+                    {banner.tag}
                   </Text>
                 </View>
 
                 <Sparkles size={16} color="#ffffff80" />
               </View>
 
-              {/* Title & Description */}
+              {/* Title & Subtitle */}
               <View className="gap-1 pr-6">
-                <Text className="text-white text-lg font-black tracking-tight" numberOfLines={1}>
-                  {slide.title}
+                <Text className="text-white text-lg font-black tracking-tight">
+                  {banner.title}
                 </Text>
-                <Text className="text-white/80 text-xs font-medium" numberOfLines={2}>
-                  {slide.description}
+                <Text className="text-white/80 text-xs font-medium">
+                  {banner.subtitle}
                 </Text>
               </View>
 
-              {/* Action Link */}
+              {/* CTA Link */}
               <View className="flex-row items-center gap-1.5 pt-1">
-                <Text className="text-white text-xs font-bold">
-                  {slide.isFallback ? 'Explore Notice Board' : 'View Notice Details'}
-                </Text>
+                <Text className="text-white text-xs font-bold">Learn More</Text>
                 <ArrowRight size={14} color="#fff" />
               </View>
             </View>
@@ -133,19 +129,17 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
         ))}
       </ScrollView>
 
-      {/* Pagination Indicators (rendered if 2 or more notices exist) */}
-      {slides.length > 1 && (
-        <View className="flex-row justify-center items-center gap-1.5 pt-1">
-          {slides.map((_, idx) => (
-            <View
-              key={idx}
-              className={`h-1.5 rounded-full transition-all ${
-                idx === activeIndex ? 'w-5 bg-primary' : 'w-1.5 bg-muted-foreground/30'
-              }`}
-            />
-          ))}
-        </View>
-      )}
+      {/* Pagination Dots */}
+      <View className="flex-row justify-center items-center gap-1.5 pt-1">
+        {BANNERS.map((_, idx) => (
+          <View
+            key={idx}
+            className={`h-1.5 rounded-full transition-all ${
+              idx === activeIndex ? 'w-5 bg-primary' : 'w-1.5 bg-muted-foreground/30'
+            }`}
+          />
+        ))}
+      </View>
     </View>
   );
 };

@@ -12,7 +12,7 @@ export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string): st
       case 'COMPLAINT':
         return '/(resident)/complaints/my-tickets';
       case 'NOTICE':
-        return '/(resident)/notices/active-board';
+        return '/(resident)/notices';
       case 'AMENITY':
         return '/(resident)/amenities/discover';
       default:
@@ -45,7 +45,7 @@ export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string): st
     return '/(resident)/complaints/my-tickets';
   }
   if (cleanUrl.includes('notices/board') || cleanUrl.includes('notice-board')) {
-    return '/(resident)/notices/active-board';
+    return '/(resident)/notices';
   }
   if (cleanUrl.includes('billing')) {
     return '/(resident)/billing/dashboard';

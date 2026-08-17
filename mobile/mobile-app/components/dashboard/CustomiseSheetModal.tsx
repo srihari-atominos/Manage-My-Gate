@@ -50,11 +50,11 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   { id: 'complaints_staff', name: 'Staff & Vendors', subtitle: 'Roster & Contacts', iconName: 'Users2', colorBg: 'bg-teal-500/10', colorIcon: '#14b8a6', permission: 'complaints:staff', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
   { id: 'complaints_assignee', name: 'Assignee Console', subtitle: 'Work Orders', iconName: 'UserCheck', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', permission: 'complaints:assignee', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
 
-  // Notice Board & Polls (Web App Aligned)
-  { id: 'notices_active_board', name: 'Notice Board', subtitle: 'Community Circulars', iconName: 'BellRing', colorBg: 'bg-teal-500/10', colorIcon: '#14b8a6', permission: 'notices:active_board', badge: '8', badgeColor: 'bg-teal-600 text-white', categoryKey: 'notice_board_polls', categoryName: 'Notice Board & Polls' },
-  { id: 'notices_dashboard', name: 'Notice Dashboard', subtitle: 'Broadcast Stats', iconName: 'LayoutDashboard', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', permission: 'notices:dashboard', categoryKey: 'notice_board_polls', categoryName: 'Notice Board & Polls' },
-  { id: 'notices_manage_notices', name: 'Manage Notices', subtitle: 'Draft & Publish', iconName: 'FileEdit', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', permission: 'notices:manage_notices', categoryKey: 'notice_board_polls', categoryName: 'Notice Board & Polls' },
-  { id: 'notices_polls', name: 'Community Polls', subtitle: 'Resident Voting', iconName: 'Vote', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', permission: 'notices:polls', categoryKey: 'notice_board_polls', categoryName: 'Notice Board & Polls' },
+  // Notice Board (Web App Aligned)
+  { id: 'notices_active_board', name: 'Notice Board', subtitle: 'Community Circulars', iconName: 'BellRing', colorBg: 'bg-teal-500/10', colorIcon: '#14b8a6', permission: 'notices:active_board', badge: '8', badgeColor: 'bg-teal-600 text-white', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
+  { id: 'notices_dashboard', name: 'Notice Dashboard', subtitle: 'Broadcast Stats', iconName: 'LayoutDashboard', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', permission: 'notices:dashboard', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
+  { id: 'notices_manage_notices', name: 'Manage Notices', subtitle: 'Draft & Publish', iconName: 'FileEdit', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', permission: 'notices:manage_notices', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
+  { id: 'notices_polls', name: 'Community Polls', subtitle: 'Resident Voting', iconName: 'Vote', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', permission: 'notices:polls', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
 
   // Financial Suite & Billing (Web App Aligned)
   { id: 'billing_dashboard', name: 'Billing & Dues', subtitle: 'Pay Invoices', iconName: 'CreditCard', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', permission: 'billing:dashboard', badge: 'Due', badgeColor: 'bg-amber-500 text-white', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },

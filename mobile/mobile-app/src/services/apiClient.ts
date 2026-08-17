@@ -9,8 +9,17 @@ const generateUUID = (): string => {
   });
 };
 
+import { Platform } from 'react-native';
+
+const getDefaultBaseUrl = () => {
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:5002/api';
+  }
+  return 'http://localhost:5002/api';
+};
+
 const apiClient = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5002/api',
+  baseURL: process.env.EXPO_PUBLIC_API_URL || getDefaultBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -50,11 +59,25 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
 
-      if (state.workspace?.activeOrganizationId) {
-        config.headers['x-organization-id'] = state.workspace.activeOrganizationId;
+      // Attach active organization (tenant) ID if available
+      // The workspace slice does not exist; pull from the auth user context
+      if (state.auth?.user?.orgId) {
+        config.headers['x-organization-id'] = state.auth.user.orgId;
+      } else if (state.auth?.user?.availableWorkspaces?.[0]?.orgId) {
+        config.headers['x-organization-id'] = state.auth.user.availableWorkspaces[0].orgId;
       }
     } catch (err) {
       console.error('Failed to inject headers in mobile request interceptor:', err);
+    }
+
+    // Handle multipart form data Content-Type override for FormData payloads
+    if (config.data && config.data instanceof FormData) {
+      if (Platform.OS === 'web') {
+        // Let browser set the header with boundary
+        delete config.headers['Content-Type'];
+      } else {
+        config.headers['Content-Type'] = 'multipart/form-data';
+      }
     }
 
     return config;

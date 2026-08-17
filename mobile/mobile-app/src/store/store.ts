@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import authReducer from '../features/auth/store/authSlice';
 import visitorPassReducer from '../features/visitor/store/visitorPassSlice';
 import noticeBoardReducer from '../features/noticeBoard/store/noticeBoardSlice';
+import pollReducer from '../features/poll/store/pollSlice';
 import complaintReducer from '../features/complaints/store/complaintSlice';
 import billingReducer from '../features/billing/store/billingSlice';
 import villaReducer from '../features/villa/store/villaSlice';
@@ -14,6 +15,7 @@ export const store = configureStore({
     auth: authReducer,
     visitorPass: visitorPassReducer,
     noticeBoard: noticeBoardReducer,
+    poll: pollReducer,
     complaints: complaintReducer,
     billing: billingReducer,
     villa: villaReducer,
