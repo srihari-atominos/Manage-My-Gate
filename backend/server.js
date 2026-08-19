@@ -57,6 +57,22 @@ const startServer = async () => {
     server.listen(port, () => {
       logger.info(`🚀 Server is running on http://${host}:${port}`);
     });
+
+    const shutdown = (signal) => {
+      logger.info(`Received ${signal}, shutting down server...`);
+      server.close(() => {
+        logger.info('HTTP server closed successfully.');
+        if (signal === 'SIGUSR2') {
+          process.kill(process.pid, 'SIGUSR2');
+        } else {
+          process.exit(0);
+        }
+      });
+    };
+
+    process.once('SIGTERM', () => shutdown('SIGTERM'));
+    process.once('SIGINT', () => shutdown('SIGINT'));
+    process.once('SIGUSR2', () => shutdown('SIGUSR2'));
   } catch (error) {
     logger.error('Server startup FAILED: ', error);
     process.exit(1);
@@ -75,4 +91,4 @@ startServer();
 
 // trigger restart 5
 
-// trigger restart 7
+// trigger restart 9

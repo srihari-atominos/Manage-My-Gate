@@ -57,9 +57,12 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   { id: 'notices_polls', name: 'Community Polls', subtitle: 'Resident Voting', iconName: 'Vote', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', permission: 'notices:polls', categoryKey: 'notice_board_polls', categoryName: 'Notice Board & Polls' },
 
   // Financial Suite & Billing (Web App Aligned)
-  { id: 'billing_dashboard', name: 'Billing & Dues', subtitle: 'Pay Invoices', iconName: 'CreditCard', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', permission: 'billing:dashboard', badge: 'Due', badgeColor: 'bg-amber-500 text-white', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
-  { id: 'billing_assessment_manager', name: 'Assessments', subtitle: 'Levy Generation', iconName: 'Calculator', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', permission: 'billing:assessment_manager', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
-  { id: 'billing_action_center', name: 'Dispute Center', subtitle: 'Tax Receipts', iconName: 'FileText', colorBg: 'bg-blue-500/10', colorIcon: '#3b82f6', permission: 'billing:action_center', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
+  { id: 'billing_dashboard', name: 'Billing Dashboard', subtitle: 'Collection Overview', iconName: 'CreditCard', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/billing', permission: 'billing:action_center', badge: 'Due', badgeColor: 'bg-amber-500 text-white', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
+  { id: 'billing_my_dues', name: 'My Personal Dues', subtitle: 'Unit Liabilities', iconName: 'Receipt', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/billing/my-dues', permission: 'billing:action_center', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
+  { id: 'billing_wallet', name: 'Digital Wallet', subtitle: 'Prepaid Top-Up', iconName: 'Wallet', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/billing/wallet', permission: 'billing:action_center', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
+  { id: 'billing_assessment_manager', name: 'Assessments', subtitle: 'Levy Generation', iconName: 'Calculator', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/admin/billing/assessments', permission: 'billing:assessment_manager', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
+  { id: 'billing_action_center', name: 'Billing Ledger', subtitle: 'Community Audits', iconName: 'Receipt', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/admin/billing/ledger', permission: 'billing:dashboard', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
+
 
   // Administration & Security (Web App Aligned)
   { id: 'admin_users', name: 'User Management', subtitle: 'Residents & Staff', iconName: 'Users', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', permission: 'users:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },

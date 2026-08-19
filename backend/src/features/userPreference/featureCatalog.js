@@ -61,11 +61,13 @@ export const SYSTEM_FEATURE_CATALOG = [
   {
     categoryKey: 'financial_billing',
     categoryName: 'Financial Suite & Billing',
-    actionButton: { label: 'View all', type: 'link', route: '/(resident)/billing/dashboard' },
+    actionButton: { label: 'View all', type: 'link', route: '/(resident)/billing' },
     items: [
-      { id: 'billing_dashboard', name: 'Billing & Dues', permission: 'billing:dashboard', iconName: 'CreditCard', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/billing/dashboard', badge: 'Due', badgeColor: 'bg-amber-500 text-white' },
-      { id: 'billing_assessment_manager', name: 'Assessment Manager', permission: 'billing:assessment_manager', iconName: 'Calculator', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/billing/assessments' },
-      { id: 'billing_action_center', name: 'Action & Dispute Center', permission: 'billing:action_center', iconName: 'FileText', colorBg: 'bg-blue-500/10', colorIcon: '#3b82f6', route: '/(resident)/billing/action-center' }
+      { id: 'billing_dashboard', name: 'Billing Dashboard', permission: 'billing:action_center', iconName: 'CreditCard', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/billing', badge: 'Due', badgeColor: 'bg-amber-500 text-white' },
+      { id: 'billing_my_dues', name: 'My Personal Dues', permission: 'billing:action_center', iconName: 'Receipt', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/billing/my-dues' },
+      { id: 'billing_wallet', name: 'Digital Wallet', permission: 'billing:action_center', iconName: 'Wallet', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/billing/wallet' },
+      { id: 'billing_assessment_manager', name: 'Assessment Manager', permission: 'billing:assessment_manager', iconName: 'Calculator', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/admin/billing/assessments' },
+      { id: 'billing_action_center', name: 'Billing Ledger', permission: 'billing:dashboard', iconName: 'FileText', colorBg: 'bg-blue-500/10', colorIcon: '#3b82f6', route: '/(resident)/admin/billing/ledger' }
     ]
   },
   {

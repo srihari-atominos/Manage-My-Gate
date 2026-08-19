@@ -50,8 +50,16 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
 
-      if (state.workspace?.activeOrganizationId) {
-        config.headers['x-organization-id'] = state.workspace.activeOrganizationId;
+      const activeOrgId =
+        state.workspace?.activeOrganizationId ||
+        state.auth?.user?.orgId ||
+        state.auth?.user?.organizationId ||
+        state.auth?.user?.org?._id ||
+        state.auth?.user?.activeOrgId ||
+        state.auth?.user?.activeOrganizationId;
+
+      if (activeOrgId) {
+        config.headers['x-organization-id'] = activeOrgId;
       }
     } catch (err) {
       console.error('Failed to inject headers in mobile request interceptor:', err);
