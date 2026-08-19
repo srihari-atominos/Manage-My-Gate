@@ -2,7 +2,7 @@
 import '@/global.css';
 
 import { NAV_THEME } from '@/lib/theme';
-import { ThemeProvider } from 'expo-router/react-navigation';
+import { ThemeProvider } from '@react-navigation/native';
 import { PortalHost } from '@rn-primitives/portal';
 import { Stack, useSegments, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';

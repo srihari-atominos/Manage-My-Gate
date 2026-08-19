@@ -6,3 +6,4 @@ export * from './OptimizedDataGrid';
 export * from './RawPayrollTable';
 export * from './VirtualizedList';
 export * from './WorkflowTriggerLog';
+export * from './ActivityLogItem';

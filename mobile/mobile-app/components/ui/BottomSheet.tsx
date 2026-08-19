@@ -21,7 +21,7 @@ const bottomSheetTitleVariants = cva(
   'text-base font-extrabold text-foreground'
 );
 
-const bottomSheetContentVariants = cva('px-4 pb-5');
+const bottomSheetContentVariants = cva('px-4 pb-5 shrink');
 
 function BottomSheet({
   visible,
