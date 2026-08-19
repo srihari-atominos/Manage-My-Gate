@@ -322,6 +322,7 @@ export class InvoiceRepository {
         $match: {
           $or: [
             { communityId: communityObjId, ...matchConditions },
+            { orgId: communityObjId, ...matchConditions },
             { communityId: { $exists: false } }
           ]
         }
@@ -334,11 +335,12 @@ export class InvoiceRepository {
           as: 'assessment',
         },
       },
-      { $unwind: '$assessment' },
+      { $unwind: { path: '$assessment', preserveNullAndEmptyArrays: true } },
       {
         $match: {
           $or: [
             { communityId: communityObjId },
+            { orgId: communityObjId },
             { 'assessment.communityId': communityObjId }
           ],
           ...matchConditions,
@@ -374,10 +376,16 @@ export class InvoiceRepository {
               $project: {
                 _id: 1,
                 invoiceNumber: 1,
+                billingPeriodString: 1,
+                dueDate: 1,
+                createdAt: 1,
+                assessmentName: { $ifNull: ['$snapshot.assessmentName', 'Maintenance Assessment'] },
                 date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
                 unitNumber: '$unitInfo.unitNumber',
                 targetUser: { $ifNull: ['$userInfo.name', '$userInfo.username'] },
-                amount: '$totalDue',
+                amount: { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', { $ifNull: ['$outstandingAmount', { $ifNull: ['$currentCharge', 0] }] }] }] },
+                totalDue: { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', { $ifNull: ['$outstandingAmount', { $ifNull: ['$currentCharge', 0] }] }] }] },
+                outstandingAmount: { $ifNull: ['$outstandingAmount', { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', 0] }] }] },
                 currency: { $literal: 'INR' },
                 status: 1,
                 paymentMethod: { $ifNull: ['$paymentMethod', '—'] },

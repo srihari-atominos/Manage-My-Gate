@@ -30,6 +30,18 @@ export default function DashboardScreen() {
       router.push('/(resident)/visitor' as any);
       return;
     }
+    if (tileId === 'billing_dashboard') {
+      router.push('/(resident)/billing' as any);
+      return;
+    }
+    if (tileId === 'billing_action_center') {
+      router.push('/(resident)/admin/billing/ledger' as any);
+      return;
+    }
+    if (tileId === 'billing_assessment_manager') {
+      router.push('/(resident)/admin/billing/assessments' as any);
+      return;
+    }
     const feature = allFeaturesList.find((item) => item.id === tileId);
     if (feature && feature.route) {
       let targetRoute = feature.route;

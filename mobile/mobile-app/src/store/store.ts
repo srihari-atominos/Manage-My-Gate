@@ -5,10 +5,12 @@ import noticeBoardReducer from '../features/noticeBoard/store/noticeBoardSlice';
 import pollReducer from '../features/poll/store/pollSlice';
 import complaintReducer from '../features/complaints/store/complaintSlice';
 import billingReducer from '../features/billing/store/billingSlice';
+import walletReducer from '../features/billing/store/walletSlice';
 import villaReducer from '../features/villa/store/villaSlice';
 import amenityReducer from '../features/amenities/store/amenitySlice';
 import dashboardReducer from '../features/dashboard/dashboardSlice';
 import notificationReducer from '../features/notification/store/notificationSlice';
+
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +20,7 @@ export const store = configureStore({
     poll: pollReducer,
     complaints: complaintReducer,
     billing: billingReducer,
+    wallet: walletReducer,
     villa: villaReducer,
     amenities: amenityReducer,
     dashboard: dashboardReducer,
@@ -33,3 +36,4 @@ export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 
 export default store;
+

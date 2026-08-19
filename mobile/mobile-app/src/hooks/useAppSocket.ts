@@ -17,12 +17,14 @@ export const useAppSocket = () => {
       return;
     }
 
-    const socketUrl = process.env.EXPO_PUBLIC_SOCKET_URL || 'http://localhost:5000';
+    const socketUrl = process.env.EXPO_PUBLIC_SOCKET_URL || 'http://localhost:5002';
     console.log(`Connecting socket to: ${socketUrl}`);
 
     // Create the Socket.io client
     const socket = io(socketUrl, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+      timeout: 10000,
+      reconnectionAttempts: 5,
       auth: {
         token: token,
       },
@@ -46,7 +48,7 @@ export const useAppSocket = () => {
     });
 
     socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+      console.warn('Socket connection error (backend server may be offline):', error.message || error);
     });
 
     socket.on('disconnect', (reason) => {

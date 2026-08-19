@@ -1,48 +1,62 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import billingService from '../services/billingService';
+import billingService from '@/src/features/billing/services/billingService';
+import { BillingKPIs, ActiveDues, Invoice, InvoicesGridPagination, BillingState } from '@/src/features/billing/types';
 
-export interface Invoice {
-  _id: string;
-  invoiceNumber: string;
-  date: string;
-  unitNumber?: string;
-  targetUser?: string;
-  amount: number;
-  currency: string;
-  status: 'PAID' | 'UNPAID' | 'VERIFICATION_PENDING' | 'OVERDUE';
-  paymentMethod?: string;
-  offlineReference?: string;
-  dueDate?: string;
-}
+// Helper to perform optimistic sync when an invoice status changes
+const performInvoiceSync = (state: BillingState, updatedInvoice: any) => {
+  if (!updatedInvoice) return;
 
-interface BillingState {
-  kpis: {
-    grossDemand: number;
-    grossDemandCount: number;
-    totalCollected: number;
-    inTransitGateway: number;
-    totalUnpaidArrears: number;
-  };
-  activeDues: {
-    totalPortfolioDue: number;
-    unitBreakdown: any[];
-    secondaryCompliance: any[];
-  };
-  invoicesList: Invoice[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalRecords: number;
-    limit: number;
-  };
-  loadingStates: {
-    fetchKPIs: boolean;
-    fetchDues: boolean;
-    fetchGrid: boolean;
-    settleInvoice: boolean;
-  };
-  error: string | null;
-}
+  // 1. Sync invoicesList grid
+  if (state.invoicesList && Array.isArray(state.invoicesList)) {
+    const gridIndex = state.invoicesList.findIndex(
+      (inv: any) => inv._id === updatedInvoice._id || inv.invoiceNumber === updatedInvoice.invoiceNumber
+    );
+    if (gridIndex !== -1) {
+      state.invoicesList[gridIndex] = {
+        ...state.invoicesList[gridIndex],
+        ...updatedInvoice,
+      };
+    }
+  }
+
+  // 2. Sync unitBreakdown list in activeDues
+  if (state.activeDues?.unitBreakdown && Array.isArray(state.activeDues.unitBreakdown)) {
+    const targetId = String(updatedInvoice._id || '');
+    const targetNum = String(updatedInvoice.invoiceNumber || '');
+    const unitNumber = updatedInvoice.unitNumber || updatedInvoice.unitId?.unitNumber || '—';
+
+    const breakdownIndex = state.activeDues.unitBreakdown.findIndex(
+      (item) =>
+        (targetId && String(item.invoiceId || '') === targetId) ||
+        (targetNum && String(item.invoiceNumber || '') === targetNum)
+    );
+
+    if (breakdownIndex !== -1) {
+      if (updatedInvoice.status === 'PAID') {
+        state.activeDues.unitBreakdown.splice(breakdownIndex, 1);
+      } else {
+        state.activeDues.unitBreakdown[breakdownIndex] = {
+          ...state.activeDues.unitBreakdown[breakdownIndex],
+          status: updatedInvoice.status,
+          totalDue: updatedInvoice.totalDue || updatedInvoice.amount || 0,
+        };
+      }
+    } else if (updatedInvoice.status !== 'PAID') {
+      const newDue = {
+        invoiceId: updatedInvoice._id,
+        invoiceNumber: updatedInvoice.invoiceNumber,
+        unitId: updatedInvoice.unitId?._id || updatedInvoice.unitId,
+        unitNumber,
+        totalDue: updatedInvoice.totalDue || updatedInvoice.amount || 0,
+        billingPeriodString: updatedInvoice.billingPeriodString,
+        status: updatedInvoice.status,
+        dueDate: updatedInvoice.dueDate,
+      };
+      state.activeDues.unitBreakdown.push(newDue);
+      state.activeDues.totalPortfolioDue += newDue.totalDue;
+    }
+  }
+};
 
 const initialState: BillingState = {
   kpis: {
@@ -51,11 +65,13 @@ const initialState: BillingState = {
     totalCollected: 0,
     inTransitGateway: 0,
     totalUnpaidArrears: 0,
+    pendingOffline: 0,
   },
   activeDues: {
     totalPortfolioDue: 0,
     unitBreakdown: [],
     secondaryCompliance: [],
+    recentInvoices: [],
   },
   invoicesList: [],
   pagination: {
@@ -68,19 +84,31 @@ const initialState: BillingState = {
     fetchKPIs: false,
     fetchDues: false,
     fetchGrid: false,
+    triggerRun: false,
     settleInvoice: false,
   },
   error: null,
 };
 
 // Thunks
+export const fetchAdminKPIs = createAsyncThunk(
+  'billing/fetchAdminKPIs',
+  async (communityId: string, { rejectWithValue }) => {
+    try {
+      const data = await billingService.getKPIs(communityId);
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch KPIs');
+    }
+  }
+);
+
 export const fetchMyDues = createAsyncThunk(
   'billing/fetchMyDues',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await billingService.getMyDues();
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return (body?.data || body) as any;
+      const data = await billingService.getMyDues();
+      return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch personal dues');
     }
@@ -89,13 +117,11 @@ export const fetchMyDues = createAsyncThunk(
 
 export const fetchInvoicesGrid = createAsyncThunk(
   'billing/fetchInvoicesGrid',
-  async ({ page, limit, filters }: { page: number; limit: number; filters?: any }, { rejectWithValue }) => {
+  async ({ page, limit, filters }: { page: number; limit: number; filters?: Record<string, any> }, { rejectWithValue }) => {
     try {
-      const response = await billingService.getInvoicesTable(page, limit, filters);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      const innerData = body?.data || body;
+      const innerData = await billingService.getInvoicesTable(page, limit, filters);
       return {
-        data: (Array.isArray(innerData) ? innerData : (innerData?.data || [])) as Invoice[],
+        data: Array.isArray(innerData) ? innerData : innerData?.data || [],
         totalRecords: innerData?.pagination?.totalRecords || innerData?.totalRecords || 0,
         currentPage: innerData?.pagination?.currentPage || page || 1,
         limit: innerData?.pagination?.limit || limit || 10,
@@ -107,34 +133,83 @@ export const fetchInvoicesGrid = createAsyncThunk(
   }
 );
 
+export const executeManualTrigger = createAsyncThunk(
+  'billing/executeManualTrigger',
+  async ({ assessmentId, billingPeriodString }: { assessmentId: string; billingPeriodString: string }, { rejectWithValue }) => {
+    try {
+      const data = await billingService.triggerManualBilling(assessmentId, billingPeriodString);
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to trigger manual billing');
+    }
+  }
+);
+
+export const triggerInvoiceGenerationThunk = createAsyncThunk(
+  'billing/triggerInvoiceGenerationThunk',
+  async (payload: Record<string, any> | undefined, { rejectWithValue }) => {
+    try {
+      const data = await billingService.triggerInvoiceGeneration(payload || {});
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to trigger invoice generation');
+    }
+  }
+);
+
 export const submitOfflineSettlement = createAsyncThunk(
   'billing/submitOfflineSettlement',
   async (
-    { invoiceId, offlineReference, paymentMethod }: { invoiceId: string; offlineReference: string; paymentMethod: string },
+    { invoiceId, offlineReference, paymentMethod, amount }: { invoiceId: string; offlineReference: string; paymentMethod: string; amount?: number },
     { rejectWithValue }
   ) => {
     try {
-      const response = await billingService.settleInvoiceOffline(invoiceId, {
+      const data = await billingService.settleInvoiceOffline(invoiceId, {
+        invoiceId,
         offlineReference,
         paymentMethod,
+        offlineAmount: amount,
+        amount,
       });
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return (body?.data || body) as any;
+      return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to record offline payment');
     }
   }
 );
 
-export const payWithWallet = createAsyncThunk(
-  'billing/payWithWallet',
+export const clearOfflineSettlement = createAsyncThunk(
+  'billing/clearOfflineSettlement',
   async (invoiceId: string, { rejectWithValue }) => {
     try {
-      const response = await billingService.payInvoiceWithWallet(invoiceId);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return (body?.data || body) as any;
+      const data = await billingService.approveInvoiceOffline(invoiceId);
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to approve offline payment');
+    }
+  }
+);
+
+export const payWithWallet = createAsyncThunk(
+  'billing/payWithWallet',
+  async ({ invoiceId, amount }: { invoiceId: string; amount: number }, { rejectWithValue }) => {
+    try {
+      const data = await billingService.payInvoiceWithWallet(invoiceId, amount);
+      return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to pay invoice with wallet');
+    }
+  }
+);
+
+export const createRazorpayOrder = createAsyncThunk(
+  'billing/createRazorpayOrder',
+  async ({ invoiceId, amount }: { invoiceId: string; amount: number }, { rejectWithValue }) => {
+    try {
+      const data = await billingService.createRazorpayOrder(invoiceId, amount);
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to create Razorpay order');
     }
   }
 );
@@ -143,45 +218,13 @@ export const verifyRazorpaySignature = createAsyncThunk(
   'billing/verifyRazorpaySignature',
   async (payload: any, { rejectWithValue }) => {
     try {
-      const response = await billingService.verifyRazorpayPayment(payload);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return (body?.data || body) as any;
+      const data = await billingService.verifyRazorpayPayment(payload);
+      return data;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Payment verification failed');
+      return rejectWithValue(error.message || 'Razorpay signature verification failed');
     }
   }
 );
-
-const performInvoiceSync = (state: BillingState, updatedInvoice: any) => {
-  if (!updatedInvoice) return;
-
-  const targetId = String(updatedInvoice._id || updatedInvoice.id || '');
-  const index = state.invoicesList.findIndex((inv) => String(inv._id) === targetId);
-
-  const mappedInvoice: Invoice = {
-    _id: updatedInvoice._id,
-    invoiceNumber: updatedInvoice.invoiceNumber,
-    date: updatedInvoice.createdAt ? new Date(updatedInvoice.createdAt).toISOString().split('T')[0] : '',
-    amount: updatedInvoice.totalDue || updatedInvoice.amount || 0,
-    currency: '₹',
-    status: updatedInvoice.status,
-    paymentMethod: updatedInvoice.paymentMethod || '—',
-    offlineReference: updatedInvoice.offlineReference || undefined,
-  };
-
-  if (index !== -1) {
-    state.invoicesList[index] = { ...state.invoicesList[index], ...mappedInvoice };
-  } else {
-    state.invoicesList.unshift(mappedInvoice);
-  }
-
-  // Remove from active dues if settled
-  if (updatedInvoice.status === 'PAID') {
-    state.activeDues.unitBreakdown = state.activeDues.unitBreakdown.filter(
-      (item) => String(item.invoiceId || item._id) !== targetId
-    );
-  }
-};
 
 export const billingSlice = createSlice({
   name: 'billing',
@@ -193,9 +236,29 @@ export const billingSlice = createSlice({
     syncRealtimeInvoice: (state, action: PayloadAction<any>) => {
       performInvoiceSync(state, action.payload);
     },
+    clearInvoicesGrid: (state) => {
+      state.invoicesList = [];
+      state.pagination = { ...initialState.pagination };
+      state.kpis = { ...initialState.kpis };
+      state.activeDues = { ...initialState.activeDues };
+    },
   },
   extraReducers: (builder) => {
     builder
+      // fetchAdminKPIs
+      .addCase(fetchAdminKPIs.pending, (state) => {
+        state.loadingStates.fetchKPIs = true;
+        state.error = null;
+      })
+      .addCase(fetchAdminKPIs.fulfilled, (state, action) => {
+        state.loadingStates.fetchKPIs = false;
+        state.kpis = action.payload || initialState.kpis;
+      })
+      .addCase(fetchAdminKPIs.rejected, (state, action) => {
+        state.loadingStates.fetchKPIs = false;
+        state.error = action.payload as string;
+      })
+
       // fetchMyDues
       .addCase(fetchMyDues.pending, (state) => {
         state.loadingStates.fetchDues = true;
@@ -203,16 +266,20 @@ export const billingSlice = createSlice({
       })
       .addCase(fetchMyDues.fulfilled, (state, action) => {
         state.loadingStates.fetchDues = false;
-        const duesData = action.payload || {};
+        const payload = action.payload || {};
+        const duesData = payload.data || payload;
+        const personalDues = duesData.personalDues || (duesData.totalPortfolioDue !== undefined ? duesData : null);
+
         state.activeDues = {
-          totalPortfolioDue: duesData.personalDues?.totalPortfolioDue || 0,
-          unitBreakdown: duesData.personalDues?.unitBreakdown || [],
-          secondaryCompliance: duesData.secondaryCompliance || [],
+          totalPortfolioDue: personalDues?.totalPortfolioDue || 0,
+          unitBreakdown: personalDues?.unitBreakdown || [],
+          secondaryCompliance: duesData.secondaryCompliance || payload.secondaryCompliance || [],
+          recentInvoices: duesData.recentInvoices || payload.recentInvoices || [],
         };
       })
       .addCase(fetchMyDues.rejected, (state, action) => {
         state.loadingStates.fetchDues = false;
-        state.error = (action.payload as string) || 'Failed to fetch personal dues';
+        state.error = action.payload as string;
       })
 
       // fetchInvoicesGrid
@@ -222,7 +289,14 @@ export const billingSlice = createSlice({
       })
       .addCase(fetchInvoicesGrid.fulfilled, (state, action) => {
         state.loadingStates.fetchGrid = false;
-        state.invoicesList = action.payload.data;
+        const page = action.meta.arg?.page || 1;
+        if (page > 1) {
+          const existingIds = new Set(state.invoicesList.map((inv: any) => inv._id));
+          const newItems = (action.payload.data || []).filter((inv: any) => !existingIds.has(inv._id));
+          state.invoicesList = [...state.invoicesList, ...newItems];
+        } else {
+          state.invoicesList = action.payload.data || [];
+        }
         state.pagination = {
           currentPage: action.payload.currentPage,
           totalPages: action.payload.totalPages,
@@ -232,7 +306,20 @@ export const billingSlice = createSlice({
       })
       .addCase(fetchInvoicesGrid.rejected, (state, action) => {
         state.loadingStates.fetchGrid = false;
-        state.error = (action.payload as string) || 'Failed to fetch invoices';
+        state.error = action.payload as string;
+      })
+
+      // executeManualTrigger
+      .addCase(executeManualTrigger.pending, (state) => {
+        state.loadingStates.triggerRun = true;
+        state.error = null;
+      })
+      .addCase(executeManualTrigger.fulfilled, (state) => {
+        state.loadingStates.triggerRun = false;
+      })
+      .addCase(executeManualTrigger.rejected, (state, action) => {
+        state.loadingStates.triggerRun = false;
+        state.error = action.payload as string;
       })
 
       // submitOfflineSettlement
@@ -246,7 +333,21 @@ export const billingSlice = createSlice({
       })
       .addCase(submitOfflineSettlement.rejected, (state, action) => {
         state.loadingStates.settleInvoice = false;
-        state.error = (action.payload as string) || 'Failed to settle offline';
+        state.error = action.payload as string;
+      })
+
+      // clearOfflineSettlement
+      .addCase(clearOfflineSettlement.pending, (state) => {
+        state.loadingStates.settleInvoice = true;
+        state.error = null;
+      })
+      .addCase(clearOfflineSettlement.fulfilled, (state, action) => {
+        state.loadingStates.settleInvoice = false;
+        performInvoiceSync(state, action.payload);
+      })
+      .addCase(clearOfflineSettlement.rejected, (state, action) => {
+        state.loadingStates.settleInvoice = false;
+        state.error = action.payload as string;
       })
 
       // payWithWallet
@@ -256,13 +357,11 @@ export const billingSlice = createSlice({
       })
       .addCase(payWithWallet.fulfilled, (state, action) => {
         state.loadingStates.settleInvoice = false;
-        if (action.payload?.invoice) {
-          performInvoiceSync(state, action.payload.invoice);
-        }
+        performInvoiceSync(state, action.payload);
       })
       .addCase(payWithWallet.rejected, (state, action) => {
         state.loadingStates.settleInvoice = false;
-        state.error = (action.payload as string) || 'Failed to pay with wallet';
+        state.error = action.payload as string;
       })
 
       // verifyRazorpaySignature
@@ -272,16 +371,14 @@ export const billingSlice = createSlice({
       })
       .addCase(verifyRazorpaySignature.fulfilled, (state, action) => {
         state.loadingStates.settleInvoice = false;
-        if (action.payload?.invoice) {
-          performInvoiceSync(state, action.payload.invoice);
-        }
+        performInvoiceSync(state, action.payload);
       })
       .addCase(verifyRazorpaySignature.rejected, (state, action) => {
         state.loadingStates.settleInvoice = false;
-        state.error = (action.payload as string) || 'Payment verification failed';
+        state.error = action.payload as string;
       });
   },
 });
 
-export const { clearBillingError, syncRealtimeInvoice } = billingSlice.actions;
+export const { clearBillingError, syncRealtimeInvoice, clearInvoicesGrid } = billingSlice.actions;
 export default billingSlice.reducer;

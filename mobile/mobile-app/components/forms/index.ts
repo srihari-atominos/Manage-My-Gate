@@ -1,4 +1,5 @@
 export * from './Checkbox';
+export * from './DayOfMonthPicker';
 export * from './DropdownSelect';
 export * from './FileUploadField';
 export * from './PasswordInput';

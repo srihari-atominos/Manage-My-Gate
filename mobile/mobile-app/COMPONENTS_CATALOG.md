@@ -110,6 +110,7 @@
 | **`Checkbox`** | `Checkbox.tsx` | Checkbox form input with label and helper text. |
 | **`ToggleSwitch`** | `ToggleSwitch.tsx` | On/Off boolean toggle switch with smooth animation. |
 | **`SliderInput`** | `SliderInput.tsx` | Range slider control for numeric values. |
+| **`DayOfMonthPicker`**| `DayOfMonthPicker.tsx` | Reusable day-of-month selector with configurable maxDay range (e.g. 28) and quick pick grid. |
 | **`SearchBar`** | `SearchBar.tsx` | Standalone search input box with clear button. |
 
 ---

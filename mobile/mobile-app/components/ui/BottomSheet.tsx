@@ -21,7 +21,7 @@ const bottomSheetTitleVariants = cva(
   'text-base font-extrabold text-foreground'
 );
 
-const bottomSheetContentVariants = cva('px-4 pb-5 shrink');
+const bottomSheetContentVariants = cva('px-4 pb-8');
 
 function BottomSheet({
   visible,
@@ -41,7 +41,7 @@ function BottomSheet({
       <TouchableWithoutFeedback onPress={onClose}>
         <View className="flex-1 bg-black/60 justify-end">
           <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-            <View className="bg-card border-t border-border rounded-t-3xl max-h-[85%] shadow-2xl overflow-hidden">
+            <View className="bg-card border-t border-border rounded-t-3xl max-h-[90%] shadow-2xl overflow-hidden">
               {/* Top grab handle */}
               <View className="items-center pt-2.5 pb-1 bg-card">
                 <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />

@@ -59,12 +59,17 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
 
-      // Attach active organization (tenant) ID if available
-      // The workspace slice does not exist; pull from the auth user context
-      if (state.auth?.user?.orgId) {
-        config.headers['x-organization-id'] = state.auth.user.orgId;
-      } else if (state.auth?.user?.availableWorkspaces?.[0]?.orgId) {
-        config.headers['x-organization-id'] = state.auth.user.availableWorkspaces[0].orgId;
+      const activeOrgId =
+        state.workspace?.activeOrganizationId ||
+        state.auth?.user?.orgId ||
+        state.auth?.user?.organizationId ||
+        state.auth?.user?.org?._id ||
+        state.auth?.user?.activeOrgId ||
+        state.auth?.user?.activeOrganizationId ||
+        state.auth?.user?.availableWorkspaces?.[0]?.orgId;
+
+      if (activeOrgId) {
+        config.headers['x-organization-id'] = activeOrgId;
       }
     } catch (err) {
       console.error('Failed to inject headers in mobile request interceptor:', err);

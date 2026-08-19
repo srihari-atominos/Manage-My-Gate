@@ -34,11 +34,23 @@ export default defineConfig(() => {
         '/api': {
           target: 'http://127.0.0.1:5002',
           changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on('error', (err) => {
+              if (['ECONNRESET', 'ECONNABORTED', 'ECONNREFUSED'].includes(err.code)) return;
+              console.warn('[vite-proxy-api-error]', err);
+            });
+          },
         },
         '/socket.io': {
           target: 'http://127.0.0.1:5002',
           ws: true,
           changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on('error', (err) => {
+              if (['ECONNRESET', 'ECONNABORTED', 'ECONNREFUSED'].includes(err.code)) return;
+              console.warn('[vite-proxy-ws-error]', err);
+            });
+          },
         },
         '/public': {
           target: 'http://127.0.0.1:5002',
