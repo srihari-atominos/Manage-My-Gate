@@ -2,6 +2,7 @@ import sessionService from './session.services.js';
 import { asyncHandler } from '../../utils/asyncHandler.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
 import authService from '../auth/auth.services.js'; // To generate new access tokens
+import { setAuthCookie } from '../../utils/cookie.utils.js';
 
 export const getUserSessions = asyncHandler(async (req, res) => {
   const userId = req.user.id;
@@ -46,12 +47,7 @@ export const refreshToken = asyncHandler(async (req, res) => {
   // Generate a new access token for the user's primary context
   const newAccessToken = await authService.generateToken(user);
   
-  // Optionally rotate the refresh token here for better security
-  // const newRefreshToken = await sessionService.rotateToken(validSession._id, user._id, {
-  //   ipAddress: req.ip,
-  //   userAgent: req.headers['user-agent']
-  // });
-  // res.cookie('refreshToken', newRefreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+  setAuthCookie(res, newAccessToken);
 
   res.status(200).json({
     success: true,

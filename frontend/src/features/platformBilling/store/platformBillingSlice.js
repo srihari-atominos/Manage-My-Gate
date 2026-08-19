@@ -35,11 +35,20 @@ const initialState = {
   isLoading: false,
   error: null,
   pricingPlans: [],
-  quotes: [...mockQuotes],
-  orders: [...mockOrders],
-  invoices: [...mockInvoices],
-  subscriptions: [...mockSubscriptions],
-  jobs: [...mockJobs]
+  quotes: [],
+  orders: [],
+  invoices: [],
+  subscriptions: [],
+  jobs: []
+};
+
+const extractArrayData = (res) => {
+  if (!res) return [];
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res.data)) return res.data;
+  if (res.data && Array.isArray(res.data.data)) return res.data.data;
+  if (Array.isArray(res.docs)) return res.docs;
+  return [];
 };
 
 // --- Thunks ---
@@ -49,8 +58,7 @@ export const fetchLeadsThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await platformBillingService.fetchInquiries();
-      // Assume paginated backend response { data, total, page, limit }
-      return response.data || response;
+      return extractArrayData(response);
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -70,36 +78,30 @@ export const createInquiryThunk = createAsyncThunk(
   }
 );
 
-let mockMasterPricing = [
-  { id: '1', name: 'Starter Tier', tier: 'TIER_1', basePrice: 999, perUnit: 0, setupFee: 0, maxDiscount: 0, trialDays: 15, status: 'ACTIVE' },
-];
-
 export const fetchMasterPricingThunk = createAsyncThunk(
   'platformBilling/fetchMasterPricing',
   async (_, { rejectWithValue }) => {
     try {
-      await new Promise(r => setTimeout(r, 500));
-      return { data: [...mockMasterPricing] };
+      const response = await platformBillingService.fetchMasterPricing();
+      return extractArrayData(response);
     } catch (error) {
       return rejectWithValue(error.message);
     }
   }
 );
 
-// Data is mocked at the top of the file
-
 export const saveMasterPricingThunk = createAsyncThunk(
   'platformBilling/saveMasterPricing',
   async (planData, { rejectWithValue, dispatch }) => {
     try {
-      await new Promise(r => setTimeout(r, 500));
-      if (planData.id && mockMasterPricing.find(p => p.id === planData.id)) {
-        mockMasterPricing = mockMasterPricing.map(p => p.id === planData.id ? { ...p, ...planData } : p);
+      let response;
+      if (planData.id || planData._id) {
+        response = await platformBillingService.updateMasterPricing(planData.id || planData._id, planData);
       } else {
-        mockMasterPricing.unshift({ ...planData, id: Date.now().toString() });
+        response = await platformBillingService.createMasterPricing(planData);
       }
       dispatch(fetchMasterPricingThunk());
-      return planData;
+      return response;
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -111,11 +113,9 @@ export const fetchQuotesThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await platformBillingService.fetchQuotes();
-      const data = response.data || response;
-      return data.length ? data : mockQuotes;
+      return extractArrayData(response);
     } catch (error) {
-      // Fallback to mock on error
-      return mockQuotes;
+      return [];
     }
   }
 );
@@ -145,10 +145,9 @@ export const fetchOrdersThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await platformBillingService.fetchOrders();
-      const data = response.data || response;
-      return data.length ? data : mockOrders;
+      return extractArrayData(response);
     } catch (error) {
-      return mockOrders;
+      return [];
     }
   }
 );
@@ -158,10 +157,9 @@ export const fetchInvoicesThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await platformBillingService.fetchInvoices();
-      const data = response.data || response;
-      return data.length ? data : mockInvoices;
+      return extractArrayData(response);
     } catch (error) {
-      return mockInvoices;
+      return [];
     }
   }
 );
@@ -171,10 +169,9 @@ export const fetchSubscriptionsThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await platformBillingService.fetchSubscriptions();
-      const data = response.data || response;
-      return data.length ? data : mockSubscriptions;
+      return extractArrayData(response);
     } catch (error) {
-      return mockSubscriptions;
+      return [];
     }
   }
 );
@@ -184,10 +181,9 @@ export const fetchJobsThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await platformBillingService.fetchProvisioningJobs();
-      const data = response.data || response;
-      return data.length ? data : mockJobs;
+      return extractArrayData(response);
     } catch (error) {
-      return mockJobs;
+      return [];
     }
   }
 );
@@ -204,19 +200,29 @@ const handleRejected = (state, action) => {
   state.error = action.payload || 'An error occurred';
 };
 
+const extractArray = (payload) => {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (payload.data && Array.isArray(payload.data)) return payload.data;
+  if (payload.data?.docs && Array.isArray(payload.data.docs)) return payload.data.docs;
+  if (payload.data?.data && Array.isArray(payload.data.data)) return payload.data.data;
+  if (payload.docs && Array.isArray(payload.docs)) return payload.docs;
+  return [];
+};
+
 const platformBillingSlice = createSlice({
   name: 'platformBilling',
   initialState,
   reducers: {
-    setActivePage(state, action) {
-      state.activePage = action.payload;
-    },
-    setSelectedLeadId(state, action) {
+    setSelectedLeadId: (state, action) => {
       state.selectedLeadId = action.payload;
     },
-    setActiveTab(state, action) {
+    setActiveTab: (state, action) => {
       state.activeTab = action.payload;
-    }
+    },
+    setActivePage: (state, action) => {
+      state.activePage = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -224,7 +230,7 @@ const platformBillingSlice = createSlice({
       .addCase(fetchLeadsThunk.pending, handlePending)
       .addCase(fetchLeadsThunk.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.leads = Array.isArray(action.payload) ? action.payload : action.payload.docs || action.payload.data || [];
+        state.leads = extractArray(action.payload);
         if (state.leads.length > 0 && !state.selectedLeadId) {
           state.selectedLeadId = state.leads[0]._id || state.leads[0].id;
         }
@@ -242,7 +248,7 @@ const platformBillingSlice = createSlice({
       .addCase(fetchMasterPricingThunk.pending, handlePending)
       .addCase(fetchMasterPricingThunk.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.pricingPlans = Array.isArray(action.payload) ? action.payload : action.payload.docs || [];
+        state.pricingPlans = extractArray(action.payload);
       })
       .addCase(fetchMasterPricingThunk.rejected, handleRejected)
 
@@ -257,7 +263,7 @@ const platformBillingSlice = createSlice({
       .addCase(fetchQuotesThunk.pending, handlePending)
       .addCase(fetchQuotesThunk.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.quotes = Array.isArray(action.payload) ? action.payload : action.payload.docs || action.payload.data || [];
+        state.quotes = extractArray(action.payload);
       })
       .addCase(fetchQuotesThunk.rejected, handleRejected)
 
@@ -272,7 +278,7 @@ const platformBillingSlice = createSlice({
       .addCase(fetchOrdersThunk.pending, handlePending)
       .addCase(fetchOrdersThunk.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.orders = Array.isArray(action.payload) ? action.payload : action.payload.docs || action.payload.data || [];
+        state.orders = extractArray(action.payload);
       })
       .addCase(fetchOrdersThunk.rejected, handleRejected)
 
@@ -280,7 +286,7 @@ const platformBillingSlice = createSlice({
       .addCase(fetchInvoicesThunk.pending, handlePending)
       .addCase(fetchInvoicesThunk.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.invoices = Array.isArray(action.payload) ? action.payload : action.payload.docs || action.payload.data || [];
+        state.invoices = extractArray(action.payload);
       })
       .addCase(fetchInvoicesThunk.rejected, handleRejected)
 
@@ -288,7 +294,7 @@ const platformBillingSlice = createSlice({
       .addCase(fetchSubscriptionsThunk.pending, handlePending)
       .addCase(fetchSubscriptionsThunk.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.subscriptions = Array.isArray(action.payload) ? action.payload : action.payload.docs || action.payload.data || [];
+        state.subscriptions = extractArray(action.payload);
       })
       .addCase(fetchSubscriptionsThunk.rejected, handleRejected)
 
@@ -296,7 +302,7 @@ const platformBillingSlice = createSlice({
       .addCase(fetchJobsThunk.pending, handlePending)
       .addCase(fetchJobsThunk.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.jobs = Array.isArray(action.payload) ? action.payload : action.payload.docs || action.payload.data || [];
+        state.jobs = extractArray(action.payload);
       })
       .addCase(fetchJobsThunk.rejected, handleRejected);
   },

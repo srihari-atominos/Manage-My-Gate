@@ -143,8 +143,8 @@ export const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClose
       finalActionUrl !== '/admin/complaints/assignee'
     ) {
       finalActionUrl = '/complaints'
-    } else if (finalActionUrl === '/resident/notice-board') {
-      finalActionUrl = '/notices/board'
+    } else if (finalActionUrl === '/tenant/platform-crm/enquiries' || finalActionUrl.includes('platform-crm/enquiries')) {
+      finalActionUrl = '/super-admin/crm'
     } else if (finalActionUrl.startsWith('#/')) {
       finalActionUrl = finalActionUrl.replace('#', '')
     }

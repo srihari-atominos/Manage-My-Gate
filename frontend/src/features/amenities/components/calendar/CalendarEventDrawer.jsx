@@ -1,4 +1,5 @@
 import React, { memo, useState, useEffect } from 'react'
+import { useSelector } from 'react-redux'
 import {
   COffcanvas,
   COffcanvasHeader,
@@ -12,6 +13,7 @@ import {
 import AmenityStatusBadge from '../AmenityStatusBadge.jsx'
 
 const CalendarEventDrawer = memo(({ visible, onClose, event, onCancelClick }) => {
+  const { user } = useSelector((state) => state.auth || {})
   const [selectedSubEvent, setSelectedSubEvent] = useState(null)
 
   useEffect(() => {
@@ -23,6 +25,10 @@ const CalendarEventDrawer = memo(({ visible, onClose, event, onCancelClick }) =>
   const activeEvent =
     selectedSubEvent ||
     (event?.isGroup && event.subEvents?.length === 1 ? event.subEvents[0] : event)
+
+  const currentUserId = user?.id || user?._id
+  const bookingUserId = activeEvent?.userId?._id || activeEvent?.userId || activeEvent?.metadata?.userId
+  const isOwner = Boolean(currentUserId && bookingUserId && String(currentUserId) === String(bookingUserId))
 
   if (activeEvent?.isGroup && activeEvent.subEvents?.length > 1) {
     return (
@@ -177,12 +183,20 @@ const CalendarEventDrawer = memo(({ visible, onClose, event, onCancelClick }) =>
 
         <div className="d-grid gap-2 mt-auto pt-4">
           {event.status === 'confirmed' ? (
-            <CButton color="danger" variant="outline" onClick={() => onCancelClick(event)}>
-              Cancel Booking
-            </CButton>
+            isOwner ? (
+              <CButton color="danger" variant="outline" onClick={() => onCancelClick(event)}>
+                Cancel Booking
+              </CButton>
+            ) : (
+              <div className="text-center p-2 bg-body-secondary rounded border">
+                <small className="text-muted fw-semibold">
+                  <i className="fa-solid fa-lock me-1 text-warning"></i>Only the booking owner can cancel this reservation.
+                </small>
+              </div>
+            )
           ) : (
             <CButton color="primary" variant="outline" disabled>
-              Manage Booking (Coming Soon)
+              Manage Booking
             </CButton>
           )}
         </div>

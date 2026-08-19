@@ -7,39 +7,7 @@ import nodemailer from 'nodemailer';
 authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
   if (type === 'EMAIL') {
     try {
-      // 1. Check if Resend is configured
-      const resendIntegration = await IntegrationHub.findOne({ provider: 'resend', status: 'connected' });
-      
-      if (resendIntegration) {
-        const apiKeyCred = resendIntegration.credentials.find((c) => c.key === 'apiKey');
-        if (apiKeyCred) {
-          const apiKey = decrypt(apiKeyCred.encryptedValue, apiKeyCred.iv);
-          
-          const response = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-              from: 'ManageMyGate <onboarding@resend.dev>',
-              to: [identifier],
-              subject: 'Your One-Time Password (OTP)',
-              html: `<h3>Your Verification Code</h3><p>Your code is: <strong>${code}</strong></p><p>This code will expire in 5 minutes.</p>`,
-            }),
-          });
-
-          if (response.ok) {
-            logger.info(`OTP email sent to ${identifier} via Resend`);
-            return;
-          } else {
-            const errData = await response.json();
-            logger.error(`Resend email failed: ${errData.message}`);
-          }
-        }
-      }
-
-      // 2. Fallback to SMTP if configured
+      // 1. Prioritize Gmail SMTP if configured
       const smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp', status: 'connected' });
       
       if (smtpIntegration) {
@@ -71,8 +39,40 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
             html: `<h3>Your Verification Code</h3><p>Your code is: <strong>${code}</strong></p><p>This code will expire in 5 minutes.</p>`,
           });
 
-          logger.info(`OTP email sent to ${identifier} via SMTP`);
+          logger.info(`OTP email sent to ${identifier} via Gmail SMTP`);
           return;
+        }
+      }
+
+      // 2. Fallback to Resend API
+      const resendIntegration = await IntegrationHub.findOne({ provider: 'resend', status: 'connected' });
+      
+      if (resendIntegration) {
+        const apiKeyCred = resendIntegration.credentials.find((c) => c.key === 'apiKey');
+        if (apiKeyCred) {
+          const apiKey = decrypt(apiKeyCred.encryptedValue, apiKeyCred.iv);
+          
+          const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              from: 'ManageMyGate <onboarding@resend.dev>',
+              to: [identifier],
+              subject: 'Your One-Time Password (OTP)',
+              html: `<h3>Your Verification Code</h3><p>Your code is: <strong>${code}</strong></p><p>This code will expire in 5 minutes.</p>`,
+            }),
+          });
+
+          if (response.ok) {
+            logger.info(`OTP email sent to ${identifier} via Resend`);
+            return;
+          } else {
+            const errData = await response.json();
+            logger.error(`Resend email failed: ${errData.message}`);
+          }
         }
       }
 

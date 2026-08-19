@@ -13,15 +13,14 @@ const paymentSchema = new mongoose.Schema({
     required: true
   },
   referenceId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Invoice',
+    type: mongoose.Schema.Types.Mixed,
     required: true,
     index: true
   },
   referenceType: {
     type: String,
     default: 'Invoice',
-    enum: ['AmenityBooking', 'MaintenanceFee', 'Invoice', 'Other']
+    enum: ['AmenityBooking', 'MaintenanceFee', 'Invoice', 'INQUIRY_PAYMENT', 'Inquiry', 'PlatformOrder', 'Quote', 'Other']
   },
   type: {
     type: String,

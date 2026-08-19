@@ -77,17 +77,38 @@ export const useDashboard = () => {
     )
   }
 
-  // Filter based on required permissions, also cleaning up any empty titles
+  const isFeatureEnabled = (perm) => {
+    const featurePart = perm.split(':')[0]
+    if (featurePart === 'workspaces' || featurePart === 'dashboard') return true
+
+    if (featurePart === 'amenities' || featurePart === 'booking') {
+      return allowedFeatures.some((f) => ['amenities', 'booking', 'amenity', 'amenitiesBooking'].includes(f))
+    }
+
+    return allowedFeatures.includes(featurePart) || allowedFeatures.includes(perm)
+  }
+
+  const isPermitted = (item) => {
+    if (item.requirePlatform && !isPlatform) {
+      return false
+    }
+
+    if (!item.requiredPermission) {
+      return true
+    }
+
+    if (Array.isArray(item.requiredPermission)) {
+      return item.requiredPermission.some((perm) => isFeatureEnabled(perm) && (isPlatform || checkPermission(perm)))
+    }
+
+    return isFeatureEnabled(item.requiredPermission) && (isPlatform || checkPermission(item.requiredPermission))
+  }
+
+  // Filter based on allowedFeatures and required permissions, also cleaning up any empty titles
   const filteredNavigationItems = navigationItems.reduce((result, item) => {
     if (item.component === CNavTitle || !item.to) {
       if (item.items) {
-        const permittedItems = item.items.filter((nextItem) => {
-          if (!nextItem.requiredPermission) return true
-          if (Array.isArray(nextItem.requiredPermission)) {
-            return nextItem.requiredPermission.some((perm) => checkPermission(perm))
-          }
-          return checkPermission(nextItem.requiredPermission)
-        })
+        const permittedItems = item.items.filter((nextItem) => isPermitted(nextItem))
 
         if (permittedItems.length > 0) {
           result.push({ ...item, items: permittedItems })
@@ -96,13 +117,7 @@ export const useDashboard = () => {
         result.push(item)
       }
     } else {
-      if (!item.requiredPermission) {
-        result.push(item)
-      } else if (Array.isArray(item.requiredPermission)) {
-        if (item.requiredPermission.some((perm) => checkPermission(perm))) {
-          result.push(item)
-        }
-      } else if (checkPermission(item.requiredPermission)) {
+      if (isPermitted(item)) {
         result.push(item)
       }
     }

@@ -2,77 +2,86 @@ import { body, param, query } from 'express-validator';
 
 export const validatePublicLead = [
   body('customerName')
+    .optional({ checkFalsy: true })
     .isString().withMessage('Customer name must be a string')
-    .trim()
-    .isLength({ min: 2 }).withMessage('Customer name must be at least 2 characters long'),
+    .trim(),
   body('contactEmail')
-    .isEmail().withMessage('Contact email must be a valid email address')
-    .normalizeEmail(),
+    .optional({ checkFalsy: true })
+    .isEmail().withMessage('Contact email must be a valid email address'),
   body('contactPhone')
     .optional({ checkFalsy: true })
     .isString().withMessage('Contact phone must be a string')
-    .trim()
-    .matches(/^\+?[\d\s-]+$/).withMessage('Contact phone format is invalid'),
+    .trim(),
   body('organizationName')
-    .notEmpty().withMessage('Organization name is required')
+    .optional({ checkFalsy: true })
     .isString().withMessage('Organization name must be a string')
     .trim(),
   body('unitCount')
-    .notEmpty().withMessage('Unit count is required')
+    .optional({ checkFalsy: true })
     .isInt({ min: 1 }).withMessage('Unit count must be an integer of at least 1')
     .toInt(),
-  body('selectedFeatures')
-    .optional()
-    .isArray().withMessage('selectedFeatures must be an array')
-];
-
-export const createInquiryRules = [
-  body('customerName')
-    .notEmpty()
-    .withMessage('Customer name is required')
-    .isString()
-    .withMessage('Customer name must be a string')
-    .trim(),
-  body('organizationName')
-    .notEmpty()
-    .withMessage('Organization name is required')
-    .isString()
-    .withMessage('Organization name must be a string')
-    .trim(),
-  body('unitCount')
-    .notEmpty()
-    .withMessage('Unit count is required')
-    .isInt({ min: 1 })
-    .withMessage('Unit count must be an integer of at least 1')
-    .toInt(),
-  body('contactEmail')
-    .notEmpty()
-    .withMessage('Contact email is required')
-    .isEmail()
-    .withMessage('Contact email must be a valid email address')
-    .normalizeEmail(),
-  body('contactPhone')
-    .optional({ checkFalsy: true })
-    .isString()
-    .withMessage('Contact phone must be a string')
-    .trim(),
-  body('status')
-    .optional()
-    .isIn(['NEW', 'QUALIFIED', 'DEMO_SCHEDULED', 'PROPOSAL_SENT', 'CLOSED_WON', 'CLOSED_LOST'])
-    .withMessage('Invalid status value'),
-  body('assignedAgentId')
-    .optional({ checkFalsy: true })
-    .isMongoId()
-    .withMessage('assignedAgentId must be a valid MongoDB ObjectId'),
   body('selectedFeatures')
     .optional()
     .isArray().withMessage('selectedFeatures must be an array'),
 ];
 
+export const createInquiryRules = [
+  body('customerName')
+    .custom((val, { req }) => {
+      const name = val || req.body.contactName;
+      if (!name || typeof name !== 'string' || !name.trim()) {
+        throw new Error('Customer name is required');
+      }
+      return true;
+    }),
+  body('contactEmail')
+    .custom((val, { req }) => {
+      const email = val || req.body.email;
+      if (!email || typeof email !== 'string' || !email.includes('@')) {
+        throw new Error('Valid contact email is required');
+      }
+      return true;
+    }),
+  body('organizationName')
+    .custom((val, { req }) => {
+      const org = val || req.body.communityName;
+      if (!org || typeof org !== 'string' || !org.trim()) {
+        throw new Error('Organization / Community name is required');
+      }
+      return true;
+    }),
+  body('unitCount')
+    .custom((val, { req }) => {
+      const units = val ?? req.body.villaCount ?? 1;
+      if (isNaN(Number(units)) || Number(units) < 1) {
+        throw new Error('Villa / Unit count must be at least 1');
+      }
+      return true;
+    }),
+  body('assignedAgentId')
+    .optional({ checkFalsy: true })
+    .isMongoId()
+    .withMessage('assignedAgentId must be a valid MongoDB ObjectId'),
+];
+
+export const validateStatusTransition = [
+  param('id')
+    .notEmpty()
+    .withMessage('Inquiry ID is required'),
+  body('nextStatus')
+    .optional({ checkFalsy: true })
+    .isIn(['NEW_INQUIRY', 'QUALIFIED', 'DEMO_SCHEDULED', 'DEMO_COMPLETED'])
+    .withMessage('Invalid nextStatus value'),
+  body('status')
+    .optional({ checkFalsy: true })
+    .isIn(['NEW_INQUIRY', 'QUALIFIED', 'DEMO_SCHEDULED', 'DEMO_COMPLETED'])
+    .withMessage('Invalid status value'),
+];
+
 export const updateInquiryRules = [
   param('id')
-    .isMongoId()
-    .withMessage('Invalid CRM Inquiry ID'),
+    .notEmpty()
+    .withMessage('Inquiry ID is required'),
   body('customerName')
     .optional()
     .isString()
@@ -81,27 +90,13 @@ export const updateInquiryRules = [
   body('contactEmail')
     .optional()
     .isEmail()
-    .withMessage('Contact email must be a valid email address')
-    .normalizeEmail(),
-  body('contactPhone')
-    .optional({ nullable: true })
-    .isString()
-    .withMessage('Contact phone must be a string')
-    .trim(),
-  body('status')
-    .optional()
-    .isIn(['NEW', 'QUALIFIED', 'DEMO_SCHEDULED', 'PROPOSAL_SENT', 'CLOSED_WON', 'CLOSED_LOST'])
-    .withMessage('Invalid status value'),
-  body('assignedAgentId')
-    .optional({ nullable: true })
-    .isMongoId()
-    .withMessage('assignedAgentId must be a valid MongoDB ObjectId'),
+    .withMessage('Contact email must be a valid email address'),
 ];
 
 export const getInquiryRules = [
   param('id')
-    .isMongoId()
-    .withMessage('Invalid CRM Inquiry ID'),
+    .notEmpty()
+    .withMessage('Inquiry ID is required'),
 ];
 
 export const queryInquiryRules = [
@@ -115,10 +110,6 @@ export const queryInquiryRules = [
     .withMessage('Limit must be an integer between 1 and 100'),
   query('status')
     .optional()
-    .isIn(['NEW', 'QUALIFIED', 'DEMO_SCHEDULED', 'PROPOSAL_SENT', 'CLOSED_WON', 'CLOSED_LOST'])
+    .isIn(['NEW_INQUIRY', 'QUALIFIED', 'DEMO_SCHEDULED', 'DEMO_COMPLETED'])
     .withMessage('Invalid status query filter'),
-  query('assignedAgentId')
-    .optional()
-    .isMongoId()
-    .withMessage('assignedAgentId query filter must be a valid MongoId'),
 ];

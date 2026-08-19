@@ -101,7 +101,7 @@ const amenitySchema = new mongoose.Schema({
   type: {
     type: String,
     required: [true, 'Amenity type is required'],
-    enum: ['clubhouse', 'pool', 'gym', 'court', 'hall', 'other', 'Event Space', 'Fitness', 'Sports', 'Workspace', 'Wellness'],
+    enum: ['clubhouse', 'pool', 'gym', 'court', 'hall', 'other', 'Event Space', 'Fitness', 'Sports', 'Workspace', 'Wellness', 'Pool & Spa', 'General'],
   },
   images: {
     type: [String],

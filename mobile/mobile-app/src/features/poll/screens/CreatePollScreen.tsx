@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -156,7 +156,7 @@ export default function CreatePollScreen() {
           variant="default"
           className="flex-1 ml-2"
           onPress={handleSubmit(onSubmit)}
-          isLoading={isSubmitting}
+          disabled={isSubmitting}
         >
           <Text>Create Poll</Text>
         </Button>

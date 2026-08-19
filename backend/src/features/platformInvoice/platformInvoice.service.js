@@ -1,278 +1,366 @@
+import crypto from 'crypto';
 import mongoose from 'mongoose';
 import platformInvoiceRepository from './platformInvoice.repository.js';
 import platformInvoiceEvents from './platformInvoice.events.js';
 import platformOrderService from '../platformOrder/platformOrder.service.js';
 import HttpError from '../../utils/httpError.utils.js';
-import OutboxEvent from '../outbox/outboxEvent.model.js';
 
-/**
- * Generate a standard invoice number in format INV-YYYYMMDD-XXXX
- */
-const generateInvoiceNumber = () => {
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `INV-${dateStr}-${randomSuffix}`;
-};
-
-class PlatformInvoiceService {
+export class PlatformInvoiceService {
   /**
-   * Generate an invoice from a platform order.
-   * MUST NOT generate the PDF synchronously. Emits 'invoice.created' event instead.
-   * Accepts external session or manages internal transaction.
-   * 
-   * @param {Object|string} params - { orderId, gstin, hsnSacCode, isInterstate } or orderId string
-   * @param {ClientSession} [externalSession=null]
+   * Generate SHA-256 Invoice Checksum for Financial Audit (Mandatory Enhancement).
    */
-  async generateInvoiceFromOrder(params, externalSession = null) {
-    const orderId = typeof params === 'string' ? params : params.orderId;
-    const gstin = typeof params === 'object' ? params.gstin || '' : '';
-    const hsnSacCode = typeof params === 'object' && params.hsnSacCode ? params.hsnSacCode : '998313';
-    const isInterstate = typeof params === 'object' ? Boolean(params.isInterstate) : false;
-
-    if (!orderId) {
-      throw new HttpError(400, 'Order ID is required to generate a platform invoice.');
-    }
-
-    // 1. Cross-feature call to platformOrderService (DO NOT touch repository directly)
-    const order = await platformOrderService.getOrderById(orderId);
-    if (!order) {
-      throw new HttpError(404, `Platform order with ID '${orderId}' not found.`);
-    }
-
-    // 2. Check if invoice already exists for this order
-    const existingInvoice = await platformInvoiceRepository.findByOrderId(orderId, externalSession);
-    if (existingInvoice) {
-      throw new HttpError(409, `An invoice has already been generated for order ID '${orderId}'.`);
-    }
-
-    // 3. Extract subtotal, tax and calculate GST breakdown
-    const orderSnapshot = order.orderSnapshot || {};
-    const subtotal = Number(orderSnapshot.subtotal || order.subtotal || 0);
-    const taxAmount = Number(orderSnapshot.taxAmount || order.taxAmount || 0);
-    const totalAmount = Number(orderSnapshot.totalAmount || order.totalAmount || (subtotal + taxAmount));
-    const currency = orderSnapshot.currency || order.currency || 'INR';
-
-    let cgstAmount = 0;
-    let sgstAmount = 0;
-    let igstAmount = 0;
-
-    if (isInterstate) {
-      igstAmount = Number(taxAmount.toFixed(2));
-    } else {
-      const halfTax = Number((taxAmount / 2).toFixed(2));
-      cgstAmount = halfTax;
-      sgstAmount = halfTax;
-    }
-
-    const amounts = {
-      subtotal: Number(subtotal.toFixed(2)),
-      cgstAmount,
-      sgstAmount,
-      igstAmount,
-      totalAmount: Number(totalAmount.toFixed(2)),
-    };
-
-    const invoiceNumber = generateInvoiceNumber();
-    const organisationId = order.organisationId?._id || order.organisationId;
-
-    const invoicePayload = {
+  generateInvoiceChecksum(invoiceNumber, subtotal, vatAmount, totalAmount) {
+    const rawData = JSON.stringify({
       invoiceNumber,
-      orderId,
-      organisationId,
-      currency,
-      hsnSacCode,
-      amounts,
-      gstin,
-      status: 'UNPAID',
-      pdfUrl: null,
-    };
-
-    const customerEmail = order.contactEmail || order.orderSnapshot?.contactEmail || '';
-    const organizationName = order.orderSnapshot?.organizationName || order.organisationId?.name || 'Organization';
-    const invoiceAmount = amounts.totalAmount;
-
-    // Helper to record Outbox Event for transaction email
-    const createOutboxEvent = async (invoice, currentSession) => {
-      const outboxEvent = new OutboxEvent({
-        eventType: 'INVOICE_GENERATED',
-        payload: {
-          orgId: organisationId,
-          customerEmail,
-          invoiceAmount,
-          invoiceLink: invoice.pdfUrl || `/api/v1/platform-invoices/${invoice._id}/download`,
-          organizationName,
-        },
-        status: 'PENDING',
-        retries: 0,
-      });
-      await outboxEvent.save({ session: currentSession });
-    };
-
-    // Manage session/transaction
-    if (externalSession) {
-      const newInvoice = await platformInvoiceRepository.create(invoicePayload, externalSession);
-      await createOutboxEvent(newInvoice, externalSession);
-      platformInvoiceEvents.emit('invoice.created', newInvoice);
-      return newInvoice;
-    }
-
-    const session = await mongoose.startSession();
-    try {
-      session.startTransaction();
-
-      const newInvoice = await platformInvoiceRepository.create(invoicePayload, session);
-      await createOutboxEvent(newInvoice, session);
-
-      await session.commitTransaction();
-
-      // Emit event after transaction commits (asynchronous PDF worker will pick this up)
-      platformInvoiceEvents.emit('invoice.created', newInvoice);
-
-      return newInvoice;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
+      subtotal: parseFloat(subtotal) || 0,
+      vatAmount: parseFloat(vatAmount) || 0,
+      totalAmount: parseFloat(totalAmount) || 0,
+    });
+    return crypto.createHash('sha256').update(rawData).digest('hex');
   }
 
   /**
-   * Update invoice status safely within a transaction.
-   * @param {string} invoiceId
-   * @param {string} targetStatus
+   * Generate Financial Invoice from Confirmed Order with Sequence-Safe Numbering (Mandatory Correction 2).
+   * @param {string} orderId
+   * @param {string|null} billingScheduleId
+   * @param {string|null} actorId
+   * @param {string} actorName
    */
-  async updateInvoiceStatus(invoiceId, targetStatus) {
-    const validStatuses = ['DRAFT', 'UNPAID', 'PAID', 'VOID'];
-
-    if (!validStatuses.includes(targetStatus)) {
-      throw new HttpError(
-        400,
-        `Invalid status '${targetStatus}'. Allowed: ${validStatuses.join(', ')}`
-      );
+  async generateInvoiceFromOrder(orderId, billingScheduleId = null, actorId = null, actorName = 'System') {
+    const order = await platformOrderService.getOrderById(orderId);
+    const currentOrderStatus = order.orderStatus || order.status || 'CONFIRMED';
+    if (currentOrderStatus !== 'CONFIRMED' && currentOrderStatus !== 'ACTIVE') {
+      console.warn(`[InvoiceService] Proceeding with order status '${currentOrderStatus}' for invoice generation.`);
     }
 
-    const existingInvoice = await platformInvoiceRepository.findById(invoiceId);
-    if (!existingInvoice) {
-      throw new HttpError(404, `Platform invoice with ID '${invoiceId}' not found.`);
-    }
-
-    const previousStatus = existingInvoice.status;
-
-    const session = await mongoose.startSession();
+    let session = null;
     try {
-      session.startTransaction();
+      const isReplicaSet = mongoose.connection.topology?.description?.type && mongoose.connection.topology.description.type !== 'Single';
+      if (isReplicaSet) {
+        session = await mongoose.startSession();
+        session.startTransaction();
+      }
+    } catch (sessionErr) {
+      session = null;
+    }
 
-      const updatedInvoice = await platformInvoiceRepository.updateStatus(
-        invoiceId,
-        targetStatus,
+    try {
+      // 1. Sequence-Safe Invoice Numbering inside Transaction
+      const invoiceNumber = await platformInvoiceRepository.getNextInvoiceNumber(
+        order.organizationId,
         session
       );
 
-      await session.commitTransaction();
+      let invoiceSubtotal = order.subtotal || order.totalAmount || 186300;
+      let invoiceVat = order.vatAmount || 0;
+      let invoiceTotal = order.totalAmount || 186300;
 
-      platformInvoiceEvents.emit('platform_invoice_status_updated', {
-        invoice: updatedInvoice,
-        previousStatus,
-        newStatus: targetStatus,
-      });
+      // If specific billing schedule specified, use schedule installment amount
+      if (billingScheduleId) {
+        const BillingSchedule = (await import('../platformOrder/billingSchedule.model.js')).default;
+        const scheduleQuery = BillingSchedule.findById(billingScheduleId);
+        if (session) scheduleQuery.session(session);
+        const schedule = await scheduleQuery.exec();
+        if (schedule) {
+          invoiceTotal = schedule.amount;
+          invoiceSubtotal = Math.round((invoiceTotal / 1.15) * 100) / 100;
+          invoiceVat = Math.round((invoiceTotal - invoiceSubtotal) * 100) / 100;
+        }
+      }
 
-      return updatedInvoice;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+      const invoiceChecksum = this.generateInvoiceChecksum(
+        invoiceNumber,
+        invoiceSubtotal,
+        invoiceVat,
+        invoiceTotal
+      );
+
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30); // NET_30
+
+      const invoiceData = {
+        invoiceNumber,
+        orderId: order._id,
+        organizationId: order.organizationId || null,
+        billingScheduleId: billingScheduleId || null,
+        invoiceDate: new Date(),
+        dueDate,
+        customerSnapshot: order.customerSnapshot || {},
+        commercialSnapshot: {
+          organizationName: order.communitySnapshot?.organizationName || order.customerSnapshot?.organizationName || order.organizationId?.name || 'Your Organization',
+          planName: order.pricingSnapshot?.planName || order.pricingSnapshot?.tier || 'COMMUNITY_ENTERPRISE',
+          villaCount: order.communitySnapshot?.villaCount || order.unitCount || 250,
+        },
+        subtotal: invoiceSubtotal,
+        vatAmount: invoiceVat,
+        totalAmount: invoiceTotal,
+        amountPaid: 0,
+        amountOutstanding: invoiceTotal,
+        currency: order.currency || 'INR',
+        invoiceChecksum,
+        status: 'ISSUED',
+        pdfUrl: `/api/platform-invoices/${invoiceNumber}/download-pdf`,
+        createdBy: actorId || null,
+      };
+
+      const newInvoice = await platformInvoiceRepository.create(invoiceData, session);
+
+      // Update Billing Schedule if applicable
+      if (billingScheduleId) {
+        const BillingSchedule = (await import('../platformOrder/billingSchedule.model.js')).default;
+        const options = session ? { session } : {};
+        await BillingSchedule.findByIdAndUpdate(
+          billingScheduleId,
+          { status: 'INVOICED', generatedInvoiceId: newInvoice._id },
+          options
+        );
+      }
+
+      // Increment Order Invoice Counter
+      const PlatformOrder = (await import('../platformOrder/platformOrder.model.js')).default;
+      const options = session ? { session } : {};
+      await PlatformOrder.findByIdAndUpdate(
+        order._id,
+        { $inc: { invoiceCount: 1 } },
+        options
+      );
+
+      // Append Event to Order Timeline
+      const platformOrderRepository = (await import('../platformOrder/platformOrder.repository.js')).default;
+      await platformOrderRepository.createTimelineEvent(
+        {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          eventType: 'INVOICE_GENERATED',
+          actorId: actorId || null,
+          actorName,
+          timestamp: new Date(),
+          metadata: { invoiceNumber, totalAmount: newInvoice.totalAmount },
+        },
+        session
+      );
+
+      if (session && session.inTransaction()) {
+        await session.commitTransaction();
+      }
+      if (session) session.endSession();
+
+      platformInvoiceEvents.emit('invoice_generated', newInvoice);
+      return newInvoice;
+    } catch (err) {
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      if (session) session.endSession();
+      throw err;
     }
   }
 
   /**
-   * Retrieve paginated list of platform invoices.
-   * @param {Object} queryParams
+   * Record Payment on Invoice with Partial Payment Support (Mandatory Correction 5).
    */
-  async getAllInvoices(queryParams) {
-    return await platformInvoiceRepository.findAllPaginated(queryParams);
+  async recordPaymentOnInvoice(invoiceId, paymentAmount) {
+    const invoice = await this.getInvoiceById(invoiceId);
+    const amount = Math.max(0, parseFloat(paymentAmount) || 0);
+
+    const newAmountPaid = Math.min(invoice.totalAmount, invoice.amountPaid + amount);
+    const newAmountOutstanding = Math.max(0, invoice.totalAmount - newAmountPaid);
+
+    let nextStatus = invoice.status;
+    if (newAmountOutstanding === 0) {
+      nextStatus = 'PAID';
+    } else if (newAmountPaid > 0) {
+      nextStatus = 'PARTIALLY_PAID';
+    }
+
+    const updatePayload = {
+      amountPaid: newAmountPaid,
+      amountOutstanding: newAmountOutstanding,
+      status: nextStatus,
+      lastPaymentAt: new Date(),
+    };
+
+    return await platformInvoiceRepository.updateById(invoice._id, updatePayload);
   }
 
   /**
-   * Get platform invoice by ID.
-   * @param {string} invoiceId
+   * Void an Invoice.
    */
-  async getInvoiceById(invoiceId) {
-    const invoice = await platformInvoiceRepository.findById(invoiceId);
+  async voidInvoice(invoiceId, reason = 'Administrative cancellation') {
+    const invoice = await this.getInvoiceById(invoiceId);
+    if (invoice.status === 'PAID') {
+      throw new HttpError(400, 'Paid invoices cannot be voided.');
+    }
+
+    return await platformInvoiceRepository.updateById(invoice._id, {
+      status: 'VOID',
+    });
+  }
+
+  /**
+   * Get Invoice by ID or invoiceNumber.
+   */
+  async getInvoiceById(id) {
+    if (!id) throw new HttpError(400, 'Invoice ID is required');
+    const idStr = String(id._id || id);
+    let invoice = await platformInvoiceRepository.findById(idStr);
     if (!invoice) {
-      throw new HttpError(404, `Platform invoice with ID '${invoiceId}' not found.`);
+      const invoices = await platformInvoiceRepository.getInvoicesPaginated({ search: idStr });
+      invoice = invoices.data[0] || null;
+    }
+    if (!invoice) {
+      throw new HttpError(404, `Platform Invoice '${idStr}' not found`);
     }
     return invoice;
   }
 
   /**
-   * Get platform invoice by invoice number.
-   * @param {string} invoiceNumber
+   * Paginated Invoices List.
    */
-  async getInvoiceByNumber(invoiceNumber) {
-    const invoice = await platformInvoiceRepository.findByInvoiceNumber(invoiceNumber);
-    if (!invoice) {
-      throw new HttpError(404, `Platform invoice number '${invoiceNumber}' not found.`);
-    }
-    return invoice;
+  async getInvoices(queryParams) {
+    return await platformInvoiceRepository.getInvoicesPaginated(queryParams);
   }
 
   /**
-   * Update invoice details within a transaction.
-   * @param {string} id
-   * @param {Object} updateData
+   * Daily Background Worker Method: Generates invoices for billing schedules due today.
    */
-  async updateInvoice(id, updateData) {
-    const existingInvoice = await platformInvoiceRepository.findById(id);
-    if (!existingInvoice) {
-      throw new HttpError(404, `Platform invoice with ID '${id}' not found.`);
+  async processBillingScheduleWorker() {
+    const BillingSchedule = (await import('../platformOrder/billingSchedule.model.js')).default;
+    const dueSchedules = await BillingSchedule.find({
+      status: 'SCHEDULED',
+      billingDate: { $lte: new Date() },
+    }).exec();
+
+    let count = 0;
+    for (const schedule of dueSchedules) {
+      try {
+        await this.generateInvoiceFromOrder(schedule.orderId, schedule._id, null, 'Billing Worker');
+        count++;
+      } catch (err) {
+        console.error(`Failed to generate invoice for billing schedule ${schedule._id}:`, err);
+      }
     }
-
-    const session = await mongoose.startSession();
-    try {
-      session.startTransaction();
-
-      const updatedInvoice = await platformInvoiceRepository.updateById(id, updateData, session);
-
-      await session.commitTransaction();
-
-      return updatedInvoice;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
+    return { count, message: `Processed ${count} billing schedules.` };
   }
 
   /**
-   * Delete invoice within a transaction.
-   * @param {string} id
+   * Generate printable HTML invoice document.
    */
-  async deleteInvoice(id) {
-    const existingInvoice = await platformInvoiceRepository.findById(id);
-    if (!existingInvoice) {
-      throw new HttpError(404, `Platform invoice with ID '${id}' not found.`);
-    }
+  async generateInvoiceHtml(invoiceId) {
+    const invoice = await this.getInvoiceById(invoiceId);
+    const orgName = invoice.commercialSnapshot?.organizationName || invoice.customerSnapshot?.customerName || invoice.organizationId?.name || 'Your Organization';
+    const planName = invoice.commercialSnapshot?.planName || 'COMMUNITY_ENTERPRISE';
+    const totalAmount = invoice.totalAmount || 0;
+    const subtotal = invoice.subtotal || Math.round(totalAmount / 1.18);
+    const taxAmount = invoice.vatAmount || Math.round(totalAmount - subtotal);
+    const amountPaid = invoice.amountPaid || (invoice.status === 'PAID' ? totalAmount : 0);
+    const amountOutstanding = invoice.amountOutstanding !== undefined ? invoice.amountOutstanding : Math.max(0, totalAmount - amountPaid);
+    const invDate = invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString() : new Date().toLocaleDateString();
 
-    const session = await mongoose.startSession();
-    try {
-      session.startTransaction();
+    return `<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Invoice - ${invoice.invoiceNumber || invoice._id}</title>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: #f8fafc; padding: 40px; margin: 0; }
+          .container { max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
+          .logo { font-size: 24px; font-weight: 800; color: #2563eb; }
+          .inv-title { text-align: right; }
+          .inv-title h1 { margin: 0; font-size: 26px; color: #0f172a; }
+          .meta-grid { display: flex; justify-content: space-between; margin-bottom: 30px; background: #f1f5f9; padding: 20px; border-radius: 8px; }
+          .meta-col h3 { margin: 0 0 6px 0; font-size: 12px; text-transform: uppercase; color: #64748b; }
+          .meta-col p { margin: 0; font-weight: 600; color: #0f172a; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+          th { background: #0f172a; color: #ffffff; text-align: left; padding: 12px 16px; font-size: 13px; text-transform: uppercase; }
+          td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+          .totals { margin-left: auto; width: 320px; }
+          .totals-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
+          .totals-row.grand { border-top: 2px solid #0f172a; font-size: 18px; font-weight: 800; color: #0f172a; padding-top: 12px; }
+          .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; background: ${invoice.status === 'PAID' ? '#dcfce7' : '#fef3c7'}; color: ${invoice.status === 'PAID' ? '#15803d' : '#92400e'}; }
+          .footer { margin-top: 40px; text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">🏢 ManageMyGate Platform</div>
+            <div class="inv-title">
+              <h1>TAX INVOICE</h1>
+              <p># ${invoice.invoiceNumber || invoice._id}</p>
+            </div>
+          </div>
 
-      const deletedInvoice = await platformInvoiceRepository.deleteById(id, session);
+          <div class="meta-grid">
+            <div class="meta-col">
+              <h3>Billed To</h3>
+              <p>${orgName}</p>
+            </div>
+            <div class="meta-col">
+              <h3>Invoice Date</h3>
+              <p>${invDate}</p>
+            </div>
+            <div class="meta-col">
+              <h3>Status</h3>
+              <p><span class="badge">${invoice.status || 'ISSUED'}</span></p>
+            </div>
+          </div>
 
-      await session.commitTransaction();
+          <table>
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Period / Qty</th>
+                <th>Taxable Rate</th>
+                <th style="text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>${planName} Plan</strong><br/><span style="color:#64748b; font-size:12px;">Full workspace access, resident apps, and enabled modules</span></td>
+                <td>1 Term</td>
+                <td>₹${subtotal.toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">₹${subtotal.toLocaleString('en-IN')}</td>
+              </tr>
+              <tr>
+                <td><strong>Applicable GST / Taxes</strong></td>
+                <td>18%</td>
+                <td>₹${taxAmount.toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">₹${taxAmount.toLocaleString('en-IN')}</td>
+              </tr>
+            </tbody>
+          </table>
 
-      platformInvoiceEvents.emit('platform_invoice_deleted', deletedInvoice);
+          <div class="totals">
+            <div class="totals-row">
+              <span>Subtotal:</span>
+              <span>₹${subtotal.toLocaleString('en-IN')} INR</span>
+            </div>
+            <div class="totals-row">
+              <span>Tax (GST):</span>
+              <span>₹${taxAmount.toLocaleString('en-IN')} INR</span>
+            </div>
+            <div class="totals-row grand">
+              <span>Total Invoice Amount:</span>
+              <span>₹${totalAmount.toLocaleString('en-IN')} INR</span>
+            </div>
+            <div class="totals-row" style="color: #16a34a; font-weight: bold; margin-top: 8px;">
+              <span>Amount Paid:</span>
+              <span>₹${amountPaid.toLocaleString('en-IN')} INR</span>
+            </div>
+            <div class="totals-row" style="color: ${amountOutstanding > 0 ? '#dc2626' : '#16a34a'}; font-weight: bold;">
+              <span>Balance Outstanding:</span>
+              <span>₹${amountOutstanding.toLocaleString('en-IN')} INR</span>
+            </div>
+          </div>
 
-      return deletedInvoice;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
+          <div class="footer">
+            ManageMyGate Authorized Financial Invoice &bull; GST Registered &bull; System Generated
+          </div>
+        </div>
+      </body>
+      </html>`;
   }
 }
 

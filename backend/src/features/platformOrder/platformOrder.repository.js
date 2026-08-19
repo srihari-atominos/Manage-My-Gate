@@ -1,160 +1,202 @@
 import PlatformOrder from './platformOrder.model.js';
+import OrderTimeline from './orderTimeline.model.js';
+import OrderAmendment from './orderAmendment.model.js';
+import BillingSchedule from './billingSchedule.model.js';
 
-class PlatformOrderRepository {
+export class PlatformOrderRepository {
   /**
-   * Create a new Platform Order.
+   * Create a new order.
    * @param {Object} orderData
-   * @param {ClientSession} [session=null]
+   * @param {mongoose.ClientSession} [session]
    */
   async create(orderData, session = null) {
     const options = session ? { session } : {};
-    const [created] = await PlatformOrder.create([orderData], options);
-    return created;
+    const [order] = await PlatformOrder.create([orderData], options);
+    return order;
   }
 
   /**
-   * Find Platform Order by ID.
+   * Find order by _id or orderNumber.
    * @param {string} id
-   * @param {ClientSession} [session=null]
+   * @param {mongoose.ClientSession} [session]
    */
   async findById(id, session = null) {
     const query = PlatformOrder.findById(id)
       .populate('quoteId')
-      .populate('organisationId', 'name email code')
-      .populate('acceptedBy', 'name email');
+      .populate('accountManagerId', 'name email role')
+      .populate('implementationManagerId', 'name email role');
     if (session) query.session(session);
     return await query.exec();
   }
 
   /**
-   * Find Platform Order by order number.
-   * @param {string} orderNumber
-   * @param {ClientSession} [session=null]
+   * Find order by quoteId.
+   * @param {string|ObjectId} quoteId
    */
-  async findByOrderNumber(orderNumber, session = null) {
-    const query = PlatformOrder.findOne({ orderNumber })
+  async findByQuoteId(quoteId) {
+    if (!quoteId) return null;
+    const isObjId = mongoose.Types.ObjectId.isValid(quoteId);
+    return await PlatformOrder.findOne({
+      $or: [
+        { quoteId: quoteId },
+        ...(isObjId ? [{ quoteId: new mongoose.Types.ObjectId(String(quoteId)) }] : [])
+      ]
+    })
       .populate('quoteId')
-      .populate('organisationId', 'name email code')
-      .populate('acceptedBy', 'name email');
-    if (session) query.session(session);
-    return await query.exec();
+      .exec();
   }
 
   /**
-   * Find Platform Order by quote ID.
-   * @param {string} quoteId
-   * @param {ClientSession} [session=null]
+   * Find order by conversionId idempotency key.
+   * @param {string} conversionId
    */
-  async findByQuoteId(quoteId, session = null) {
-    const query = PlatformOrder.findOne({ quoteId });
-    if (session) query.session(session);
-    return await query.exec();
+  async findByConversionId(conversionId) {
+    return await PlatformOrder.findOne({ conversionId }).exec();
   }
 
   /**
-   * Find all Platform Orders using Mongoose Aggregation Pipeline ($facet)
-   * for single round-trip pagination and count querying.
-   * @param {Object} queryOptions
+   * Update order by ID.
+   * @param {string} id
+   * @param {Object} updateData
+   * @param {mongoose.ClientSession} [session]
    */
-  async findAllPaginated({ page = 1, limit = 10, search = '', status, organisationId }) {
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, parseInt(limit, 10) || 10);
-    const skip = (pageNum - 1) * limitNum;
+  async updateById(id, updateData, session = null) {
+    const options = { returnDocument: 'after', runValidators: true };
+    if (session) options.session = session;
+    return await PlatformOrder.findByIdAndUpdate(id, updateData, options);
+  }
+
+  /**
+   * Create Timeline event.
+   * @param {Object} eventData
+   * @param {mongoose.ClientSession} [session]
+   */
+  async createTimelineEvent(eventData, session = null) {
+    const options = session ? { session } : {};
+    const [event] = await OrderTimeline.create([eventData], options);
+    return event;
+  }
+
+  /**
+   * Find Order Timeline events.
+   * @param {string} orderId
+   */
+  async findTimelineByOrderId(orderId) {
+    return await OrderTimeline.find({ orderId })
+      .sort({ timestamp: -1 })
+      .exec();
+  }
+
+  /**
+   * Create Order Amendment record (Mandatory Correction 1).
+   * @param {Object} amendmentData
+   * @param {mongoose.ClientSession} [session]
+   */
+  async createAmendment(amendmentData, session = null) {
+    const options = session ? { session } : {};
+    const [amendment] = await OrderAmendment.create([amendmentData], options);
+    return amendment;
+  }
+
+  /**
+   * Find Amendments for an order.
+   * @param {string} orderId
+   */
+  async findAmendmentsByOrderId(orderId) {
+    return await OrderAmendment.find({ orderId })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  /**
+   * Bulk create Billing Schedule items (Mandatory Correction 3).
+   * @param {Array<Object>} schedules
+   * @param {mongoose.ClientSession} [session]
+   */
+  async createBillingSchedules(schedules, session = null) {
+    const options = session ? { session } : {};
+    return await BillingSchedule.insertMany(schedules, options);
+  }
+
+  /**
+   * Get Billing Schedules for an order.
+   * @param {string} orderId
+   */
+  async findBillingSchedulesByOrderId(orderId) {
+    return await BillingSchedule.find({ orderId })
+      .sort({ installmentNumber: 1 })
+      .exec();
+  }
+
+  /**
+   * Find paginated list of orders.
+   * @param {Object} params
+   */
+  async getOrdersPaginated({ page = 1, limit = 10, organizationId, status, search }) {
+    const numericPage = Math.max(1, parseInt(page, 10) || 1);
+    const numericLimit = Math.max(1, parseInt(limit, 10) || 10);
+    const skip = (numericPage - 1) * numericLimit;
 
     const matchStage = {};
-
-    if (status) {
-      matchStage.status = status;
-    }
-
-    if (organisationId) {
-      matchStage.organisationId = new PlatformOrder.base.Types.ObjectId(organisationId);
-    }
-
-    if (search && search.trim() !== '') {
-      const term = search.trim();
+    if (organizationId) matchStage.organizationId = typeof organizationId === 'string' && organizationId.length === 24 ? new mongoose.Types.ObjectId(organizationId) : organizationId;
+    if (status) matchStage.status = status;
+    if (search) {
       matchStage.$or = [
-        { orderNumber: { $regex: term, $options: 'i' } },
-        { 'orderSnapshot.planName': { $regex: term, $options: 'i' } },
-        { 'orderSnapshot.quoteNumber': { $regex: term, $options: 'i' } },
+        { orderNumber: { $regex: search, $options: 'i' } },
+        { 'customerSnapshot.customerName': { $regex: search, $options: 'i' } },
+        { 'communitySnapshot.organizationName': { $regex: search, $options: 'i' } },
       ];
     }
 
-    const pipeline = [
+    const result = await PlatformOrder.aggregate([
       { $match: matchStage },
       { $sort: { createdAt: -1 } },
       {
+        $lookup: {
+          from: 'organizations',
+          localField: 'organizationId',
+          foreignField: '_id',
+          as: 'organizationId'
+        }
+      },
+      {
+        $unwind: {
+          path: '$organizationId',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $lookup: {
+          from: 'platformquotes',
+          localField: 'quoteId',
+          foreignField: '_id',
+          as: 'quoteId'
+        }
+      },
+      {
+        $unwind: {
+          path: '$quoteId',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
         $facet: {
-          data: [{ $skip: skip }, { $limit: limitNum }],
+          data: [{ $skip: skip }, { $limit: numericLimit }],
           totalCount: [{ $count: 'count' }],
         },
       },
-    ];
+    ]);
 
-    const [result] = await PlatformOrder.aggregate(pipeline).exec();
-
-    const data = result?.data || [];
-    const totalRecords = result?.totalCount?.[0]?.count || 0;
-    const totalPages = Math.ceil(totalRecords / limitNum) || 0;
+    const data = result[0]?.data || [];
+    const totalRecords = result[0]?.totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(totalRecords / numericLimit) || 1;
 
     return {
       data,
-      pagination: {
-        currentPage: pageNum,
-        limit: limitNum,
-        totalRecords,
-        totalPages,
-      },
+      totalRecords,
+      currentPage: numericPage,
+      totalPages,
     };
-  }
-
-  /**
-   * Update Platform Order by ID.
-   * @param {string} id
-   * @param {Object} updateData
-   * @param {ClientSession} [session=null]
-   */
-  async updateById(id, updateData, session = null) {
-    const options = { new: true, runValidators: true };
-    if (session) options.session = session;
-    return await PlatformOrder.findByIdAndUpdate(id, updateData, options).exec();
-  }
-
-  /**
-   * Update Platform Order status by ID.
-   * @param {string} id
-   * @param {string} status
-   * @param {ClientSession} [session=null]
-   */
-  async updateStatus(id, status, session = null) {
-    const options = { new: true, runValidators: true };
-    if (session) options.session = session;
-    return await PlatformOrder.findByIdAndUpdate(id, { status }, options).exec();
-  }
-
-  /**
-   * Optimistic Concurrency Control update for payment settled.
-   * Updates only if order status is strictly 'PAYMENT_PENDING'.
-   * @param {string} orderId 
-   * @param {Object} updateData
-   */
-  async findAndUpdatePaymentPending(orderId, updateData) {
-    return await PlatformOrder.findOneAndUpdate(
-      { _id: orderId, status: 'PAYMENT_PENDING' },
-      updateData,
-      { new: true, runValidators: true }
-    ).exec();
-  }
-
-  /**
-   * Delete Platform Order by ID.
-   * @param {string} id
-   * @param {ClientSession} [session=null]
-   */
-  async deleteById(id, session = null) {
-    const options = {};
-    if (session) options.session = session;
-    return await PlatformOrder.findByIdAndDelete(id, options).exec();
   }
 }
 

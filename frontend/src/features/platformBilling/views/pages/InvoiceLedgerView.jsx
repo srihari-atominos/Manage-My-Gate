@@ -1,25 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePlatformBilling } from "../../hooks/usePlatformBilling.js";
 import { toast } from 'react-hot-toast';
 
 const InvoiceLedgerView = () => {
-  const { invoices, downloadPdf } = usePlatformBilling();
+  const { invoices = [], fetchAllData, downloadPdf } = usePlatformBilling();
   const [downloadingId, setDownloadingId] = useState(null);
+
+  useEffect(() => {
+    fetchAllData();
+  }, []);
 
   const handleDownloadPDF = async (invoiceId) => {
     try {
       setDownloadingId(invoiceId);
-      // Trigger backend Puppeteer rendering engine with Arabic RTL layout parameters
       const response = await downloadPdf(invoiceId);
       
       const url = window.URL.createObjectURL(new Blob([response]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Invoice_${invoiceId}_AR.pdf`);
+      link.setAttribute('download', `Invoice_${invoiceId}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success('Arabic RTL PDF Downloaded Successfully');
+      toast.success('Invoice PDF Downloaded Successfully');
     } catch (error) {
       toast.error('Failed to download invoice PDF');
     } finally {
@@ -53,10 +56,10 @@ const InvoiceLedgerView = () => {
               <tr key={item._id || item.id}>
                 <td>{item.invoiceNumber || item._id}</td>
                 <td>{item.orderId?.orderNumber || item.orderId || item.order}</td>
-                <td>{item.organizationName || item.organisationId?.name || item.organisationId || item.org}</td>
+                <td>{item.organizationId?.name || item.organizationName || item.commercialSnapshot?.organizationName || item.customerSnapshot?.customerName || 'Your Organization'}</td>
                 <td>{item.trialStatus || (item.invoiceSnapshot?.trialDays > 0 ? `${item.invoiceSnapshot.trialDays} Days Trial` : 'No Trial')}</td>
                 <td>
-                  <span className={`badge ${item.status === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`} style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                  <span className={`badge ${item.status === 'PAID' ? 'green' : item.status === 'OVERDUE' ? 'red' : 'orange'}`}>
                     {item.status === 'UNPAID' ? 'PENDING' : item.status}
                   </span>
                 </td>
@@ -67,7 +70,7 @@ const InvoiceLedgerView = () => {
                       className="btn small primary"
                       disabled={downloadingId === (item._id || item.id)}
                     >
-                      {downloadingId === (item._id || item.id) ? 'Rendering PDF...' : 'Download Arabic PDF'}
+                      {downloadingId === (item._id || item.id) ? 'Rendering PDF...' : '📄 Download Invoice (PDF)'}
                     </button>
                   ) : (
                     item.paymentLinkUrl ? (

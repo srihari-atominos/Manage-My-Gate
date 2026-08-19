@@ -47,7 +47,7 @@ export const DropdownSelect = ({
       className={cn('w-full relative', className)}
       style={inline && isOpen ? { zIndex: 1000 } : undefined}
     >
-      {label && (
+      {Boolean(label) && (
         <Text className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
           {label}
         </Text>
@@ -56,7 +56,7 @@ export const DropdownSelect = ({
       <Pressable
         className={cn(
           'flex-row items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-3.5 dark:border-slate-800 dark:bg-slate-900',
-          error && 'border-red-500 dark:border-red-500'
+          Boolean(error) && 'border-red-500 dark:border-red-500'
         )}
         onPress={handlePress}
       >
@@ -71,7 +71,7 @@ export const DropdownSelect = ({
         <ChevronDown size={20} className="text-slate-400" />
       </Pressable>
 
-      {error && (
+      {Boolean(error) && (
         <Text className="mt-1.5 text-xs text-red-500">
           {error}
         </Text>

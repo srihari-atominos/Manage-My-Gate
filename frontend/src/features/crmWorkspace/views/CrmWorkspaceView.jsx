@@ -5,45 +5,53 @@ import { useCrmWorkspace } from '../hooks/useCrmWorkspace.js';
 import '../styles/_crmWorkspace.scss';
 
 /**
- * CrmWorkspaceView — Top-level view container for the Unified Customer/Deal Workspace.
+ * CrmWorkspaceView — Top-level view container for the Phase 1 CRM Customer Workspace.
  *
- * Strictly adheres to Frontend Workflow rules:
- * - Uses useCrmWorkspace hook exclusively for logic and state (Thin View pattern).
- * - Layout structure strictly mirrors BillingView for platform-wide consistency.
+ * Strictly obeys Frontend & CRM state machine rules:
+ * - Inquiry is the single authoritative source of truth.
+ * - Actions and CTAs are strictly backend-driven.
  */
 export const CrmWorkspaceView = () => {
   const {
     activeInquiry,
     inquiries,
-    tasks,
     meetings,
+    timeline,
     activeThread,
     activeTab,
     loading,
-    taskLoading,
+    statusTransitionLoading,
     handleTabChange,
+    handleStatusTransition,
+    fetchTimelineData,
     fetchInquiriesList,
-    fetchTasksList,
     fetchMeetingsList,
     fetchThreadData,
-    createTaskItem,
     scheduleMeetingItem,
     sendChatMessage,
   } = useCrmWorkspace();
 
+  const selectedInquiry = activeInquiry || inquiries[0] || null;
+
   // Load initial data on mount
   useEffect(() => {
     fetchInquiriesList({ page: 1, limit: 10 });
-    fetchTasksList({ page: 1, limit: 10 });
     fetchMeetingsList({ page: 1, limit: 10 });
-  }, [fetchInquiriesList, fetchTasksList, fetchMeetingsList]);
+  }, [fetchInquiriesList, fetchMeetingsList]);
 
-  // Load thread data when active inquiry changes or communication tab is selected
+  // Load thread data when active inquiry changes or Conversations tab is selected
   useEffect(() => {
-    if (activeInquiry?._id && activeTab === 'Communication') {
-      fetchThreadData(activeInquiry._id);
+    if (selectedInquiry?._id && (activeTab === 'Conversations' || activeTab === 'Communication')) {
+      fetchThreadData(selectedInquiry._id);
     }
-  }, [activeInquiry?._id, activeTab, fetchThreadData]);
+  }, [selectedInquiry?._id, activeTab, fetchThreadData]);
+
+  // Load immutable timeline data when Activity tab is selected or inquiry changes
+  useEffect(() => {
+    if (selectedInquiry?._id && activeTab === 'Activity') {
+      fetchTimelineData(selectedInquiry._id);
+    }
+  }, [selectedInquiry?._id, activeTab, fetchTimelineData]);
 
   return (
     <div className="billing-module-wrapper billing-os-theme crm-workspace-theme">
@@ -54,10 +62,10 @@ export const CrmWorkspaceView = () => {
           <div className="crm-header-toolbar">
             <div>
               <h4 className="crm-header-toolbar__title">
-                Customer & Deal Workspace
+                CRM Inquiry Workspace (Phase 1)
               </h4>
               <p className="crm-header-toolbar__sub">
-                Unified hub for managing customer inquiries, follow-ups, meetings, and deals.
+                Backend-driven inquiry state machine, meeting scheduler, and immutable activity feed.
               </p>
             </div>
             <div className="crm-header-toolbar__actions">
@@ -73,21 +81,21 @@ export const CrmWorkspaceView = () => {
           </div>
 
           {/* ── Visual Deal Lifecycle Stepper ─────────────────────────── */}
-          <LifecycleStepper status={activeInquiry?.status || 'NEW'} />
+          <LifecycleStepper status={selectedInquiry?.status || 'NEW_INQUIRY'} />
 
           {/* ── Workspace Tabbed Panels ───────────────────────────────── */}
           <WorkspaceTabs
             activeTab={activeTab}
             onTabChange={handleTabChange}
-            activeInquiry={activeInquiry || inquiries[0] || null}
-            tasks={tasks}
+            activeInquiry={selectedInquiry}
+            timeline={timeline}
             meetings={meetings}
             activeThread={activeThread}
             loading={loading}
-            taskLoading={taskLoading}
-            onCreateTask={createTaskItem}
+            statusTransitionLoading={statusTransitionLoading}
             onScheduleMeeting={scheduleMeetingItem}
             onSendMessage={sendChatMessage}
+            onTransitionStatus={(id, targetStatus) => handleStatusTransition(id, targetStatus)}
           />
 
         </div>

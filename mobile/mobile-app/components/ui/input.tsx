@@ -19,7 +19,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
 
     return (
       <View className="w-full gap-1.5">
-        {label && (
+        {Boolean(label) && (
           <Text className="text-foreground font-semibold text-sm">
             {label}
           </Text>

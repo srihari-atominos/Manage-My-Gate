@@ -255,7 +255,7 @@ export function PollCard({
         onCancel={() => setConfirmAction(null)}
         confirmLabel="Confirm"
         cancelLabel="Cancel"
-        variant={confirmAction === 'delete' ? 'danger' : 'primary'}
+        variant={confirmAction === 'delete' ? 'danger' : 'info'}
       />
     </View>
   );

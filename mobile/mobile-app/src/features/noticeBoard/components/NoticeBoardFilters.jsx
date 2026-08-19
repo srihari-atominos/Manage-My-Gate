@@ -3,6 +3,7 @@ import { View, Platform } from 'react-native';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import { Search } from 'lucide-react-native';
 
 const CATEGORIES = {
@@ -104,7 +105,7 @@ export const NoticeBoardFilters = ({
           />
         </View>
         <Button variant="outline" size="sm" onPress={onReset}>
-          Reset
+          <Text>Reset</Text>
         </Button>
       </View>
 

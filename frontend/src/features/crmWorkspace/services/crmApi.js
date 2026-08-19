@@ -36,6 +36,32 @@ export const crmApi = {
   },
 
   /**
+   * Transition inquiry status via backend state machine.
+   * @param {string} id
+   * @param {string} nextStatus
+   * @param {Object} [metadata]
+   */
+  async transitionInquiryStatus(id, nextStatus, metadata = {}) {
+    return await apiClient.patch(`/platform/inquiries/${id}/status`, { nextStatus, metadata });
+  },
+
+  /**
+   * Fetch immutable timeline for an inquiry.
+   * @param {string} id
+   */
+  async getInquiryTimeline(id) {
+    return await apiClient.get(`/platform/inquiries/${id}/timeline`);
+  },
+
+  /**
+   * Fetch inquiry summary metrics.
+   * @param {string} id
+   */
+  async getInquirySummary(id) {
+    return await apiClient.get(`/platform/inquiries/${id}/summary`);
+  },
+
+  /**
    * Delete a CRM inquiry by ID.
    * @param {string} id
    */

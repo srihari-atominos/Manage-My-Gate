@@ -200,25 +200,17 @@ export const syncPermissions = async () => {
       }
     }
 
-    // 6.9 Self-healing: Ensure all existing organizations have all default module features in allowedFeatures
+    // 6.9 Self-healing: Ensure platform orgs or unassigned orgs have initial feature keys
     const OrganizationModel = (await import('../features/organization/organization.model.js')).default;
     const orgsList = await OrganizationModel.find({});
     const defaultFeatureKeys = DEFAULT_MODULES.map(m => m.moduleKey);
     
     for (const org of orgsList) {
-      let modified = false;
-      if (!org.allowedFeatures) {
-        org.allowedFeatures = [];
-      }
-      for (const key of defaultFeatureKeys) {
-        if (!org.allowedFeatures.includes(key)) {
-          org.allowedFeatures.push(key);
-          modified = true;
-        }
-      }
-      if (modified) {
+      // Only set all default features for Platform orgs or orgs that have no allowedFeatures assigned (null/undefined)
+      if (org.isPlatform || !org.allowedFeatures) {
+        org.allowedFeatures = Array.from(new Set([...(org.allowedFeatures || []), ...defaultFeatureKeys]));
         await org.save({ validateBeforeSave: false });
-        logger.info(`Self-healed organization "${org.name}" (${org._id}) by backfilling missing allowedFeatures.`);
+        logger.info(`Self-healed platform/unassigned organization "${org.name}" (${org._id}) allowedFeatures.`);
       }
     }
 

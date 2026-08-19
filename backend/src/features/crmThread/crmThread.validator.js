@@ -19,8 +19,12 @@ export const addMessageRules = [
   body('senderType')
     .notEmpty()
     .withMessage('senderType is required')
-    .isIn(['AGENT', 'CUSTOMER'])
-    .withMessage('senderType must be either AGENT or CUSTOMER'),
+    .isIn(['AGENT', 'CUSTOMER', 'SUPERADMIN'])
+    .withMessage('senderType must be AGENT, CUSTOMER, or SUPERADMIN'),
+  body('channel')
+    .optional()
+    .isIn(['WHATSAPP', 'SMS', 'GMAIL'])
+    .withMessage('channel must be WHATSAPP, SMS, or GMAIL'),
   body('content')
     .notEmpty()
     .withMessage('Message content is required')

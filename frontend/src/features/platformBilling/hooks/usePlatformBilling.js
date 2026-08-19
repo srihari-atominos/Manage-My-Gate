@@ -20,20 +20,29 @@ export const usePlatformBilling = () => {
   const dispatch = useDispatch();
 
   // Extract raw state from the Redux store
-  const { 
-    activePage,
-    leads, 
-    selectedLeadId, 
-    activeTab, 
-    isLoading, 
-    error,
-    pricingPlans,
-    quotes,
-    orders,
-    invoices,
-    subscriptions,
-    jobs
-  } = useSelector((state) => state.platformBilling);
+  const rawState = useSelector((state) => state.platformBilling);
+
+  const toSafeArray = (arr) => {
+    if (!arr) return [];
+    if (Array.isArray(arr)) return arr;
+    if (arr.data && Array.isArray(arr.data)) return arr.data;
+    if (arr.docs && Array.isArray(arr.docs)) return arr.docs;
+    return [];
+  };
+
+  const activePage = rawState.activePage;
+  const activeTab = rawState.activeTab;
+  const selectedLeadId = rawState.selectedLeadId;
+  const isLoading = rawState.isLoading;
+  const error = rawState.error;
+
+  const leads = toSafeArray(rawState.leads);
+  const pricingPlans = toSafeArray(rawState.pricingPlans);
+  const quotes = toSafeArray(rawState.quotes);
+  const orders = toSafeArray(rawState.orders);
+  const invoices = toSafeArray(rawState.invoices);
+  const subscriptions = toSafeArray(rawState.subscriptions);
+  const jobs = toSafeArray(rawState.jobs);
 
   // Compute derived state
   const selectedLead = leads.find((lead) => (lead._id === selectedLeadId || lead.id === selectedLeadId)) || null;

@@ -38,14 +38,14 @@ export const Checkbox = ({
       >
         {checked && <Check size={14} color="#ffffff" strokeWidth={3} />}
       </View>
-      {(label || description) && (
+      {(Boolean(label) || Boolean(description)) && (
         <View className="ml-3 flex-1">
-          {label && (
+          {Boolean(label) && (
             <Text className="text-base font-medium text-slate-900 dark:text-slate-100">
               {label}
             </Text>
           )}
-          {description && (
+          {Boolean(description) && (
             <Text className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {description}
             </Text>

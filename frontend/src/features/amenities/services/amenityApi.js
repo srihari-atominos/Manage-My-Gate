@@ -18,8 +18,8 @@ export const amenityApi = {
   updateAmenity: async (id, data) => {
     return await apiClient.put(`/amenities/${id}`, data)
   },
-  updateAmenityStatus: async (id, status) => {
-    return await apiClient.patch(`/amenities/${id}/status`, { status })
+  updateAmenityStatus: async (id, status, force = false) => {
+    return await apiClient.patch(`/amenities/${id}/status`, { status, force })
   },
   deleteAmenity: async (id) => {
     return await apiClient.delete(`/amenities/${id}`)

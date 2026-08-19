@@ -14,6 +14,7 @@ import {
   forgotPasswordRules,
   verifyResetPasswordOtpRules,
   resetPasswordRules,
+  setupAccountPasswordRules,
   acceptInviteSsoRules,
   registerSsoWithOrgRules
 } from './auth.validateRules.js';
@@ -263,6 +264,8 @@ router.post('/login/email-otp/verify', authLimiter, validate(emailOtpVerifyRules
 router.post('/forgot-password', otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
 router.post('/forgot-password/verify-otp', authLimiter, validate(verifyResetPasswordOtpRules), authController.verifyResetPasswordOtp);
 router.post('/reset-password', authLimiter, validate(resetPasswordRules), authController.resetPassword);
+router.post('/setup-account-password', validate(setupAccountPasswordRules), authController.setupAccountPassword);
+router.get('/check-account-status', authController.checkAccountStatus);
 
 // Session Routes
 router.post('/refresh-token', authController.refreshToken);

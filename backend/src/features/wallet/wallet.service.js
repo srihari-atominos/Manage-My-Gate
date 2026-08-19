@@ -53,6 +53,13 @@ class WalletService {
     const amenityService = (await import('../amenity/amenity.services.js')).default;
     const amenity = await amenityService.getAmenityById(booking.amenityId, booking.orgId);
 
+    const normalizedMethod = (paymentMethod || '').toUpperCase();
+    if (type === 'Debit' && (normalizedMethod === 'WALLET' || normalizedMethod === 'PAY_AT_GATE')) {
+      // WALLET transactions are created synchronously inside the booking creation API.
+      // PAY_AT_GATE does not involve the wallet ledger.
+      return null;
+    }
+
     const transactionData = {
       orgId: booking.orgId,
       userId: booking.userId,

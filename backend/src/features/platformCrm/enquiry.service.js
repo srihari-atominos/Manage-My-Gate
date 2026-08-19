@@ -7,14 +7,82 @@ import EnquiryStageHistory from './enquiryStageHistory.model.js';
 import EnquiryInsight from './enquiryInsight.model.js';
 
 class EnquiryService {
+  async ensureInquiry(payload = {}) {
+    const CrmInquiry = (await import('./enquiry.model.js')).default;
+    const email = (payload.contactEmail || payload.email || '').toLowerCase().trim();
+    if (!email) return null;
+
+    let inquiry = await CrmInquiry.findOne({
+      $or: [{ email: email }, { contactEmail: email }]
+    }).exec();
+    
+    if (!inquiry) {
+      const username = payload.username || payload.customerName || payload.contactName || email.split('@')[0];
+      const phone = payload.phone || payload.contactPhone || '';
+      const organizationName = payload.organizationName || (username ? `${username}'s Community` : 'Community Workspace');
+      const totalUnits = payload.totalUnits || payload.unitCount || 100;
+      const selectedFeatures = payload.selectedFeatures || ['visitor', 'villas', 'users', 'roles', 'complaints', 'billing'];
+
+      inquiry = await CrmInquiry.create({
+        username,
+        email,
+        phone,
+        organizationId: payload.organizationId || null,
+        userId: payload.userId || null,
+        organizationName,
+        totalUnits,
+        selectedFeatures,
+        status: 'New',
+        // Also support legacy alias properties for backward compatibility
+        inquiryId: `INQ-${Date.now().toString().slice(-6)}`,
+        customerName: username,
+        contactEmail: email,
+        contactPhone: phone,
+        unitCount: totalUnits,
+      });
+    } else {
+      let shouldUpdate = false;
+      if (payload.organizationId && !inquiry.organizationId) {
+        inquiry.organizationId = payload.organizationId;
+        shouldUpdate = true;
+      }
+      if (payload.userId && !inquiry.userId) {
+        inquiry.userId = payload.userId;
+        shouldUpdate = true;
+      }
+      if (shouldUpdate) {
+        await inquiry.save().catch(() => null);
+      }
+    }
+    return inquiry;
+  }
+
   async createEnquiry(data, xRequestId) {
     if (xRequestId) console.log(`[${xRequestId}] EnquiryService.createEnquiry: Starting creation for ${data.email}`);
     
-    // Validate uniqueness of email for active inquiries if necessary, or just rely on DB unique index
+    // If phone is missing or default placeholder, attempt to lookup registered user's phone number
+    if (!data.phone || data.phone === '0000000000') {
+      try {
+        const User = (await import('../user/user.model.js')).default;
+        const regUser = await User.findOne({ email: data.email.trim().toLowerCase() });
+        if (regUser && regUser.phone && regUser.phone !== '0000000000') {
+          data.phone = regUser.phone;
+        }
+      } catch (uErr) {
+        // Non-blocking lookup
+      }
+    }
+
+    // Validate uniqueness of email for active inquiries if necessary; update if active enquiry exists
     const existing = await enquiryRepository.findByEmail(data.email);
     if (existing && existing.status !== 'Lost') {
-      // In a real system, you might allow multiple enquiries if they are for different orgs, but per spec email is unique.
-      throw new HttpError(409, `An active enquiry with email ${data.email} already exists.`);
+      if ((!data.phone || data.phone === '0000000000') && existing.phone && existing.phone !== '0000000000') {
+        data.phone = existing.phone;
+      }
+      const updated = await enquiryRepository.updateById(existing._id, data);
+      if (xRequestId) console.log(`[${xRequestId}] EnquiryService.createEnquiry: Updated active enquiry ${existing.enquiryId}`);
+      enquiryEvents.emit('enquiry_created', updated);
+      return updated;
     }
 
     const createdEnquiry = await enquiryRepository.create(data);

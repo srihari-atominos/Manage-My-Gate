@@ -1,32 +1,13 @@
-import { EventEmitter } from 'events';
-import logger from '../../utils/logger.utils.js';
+import platformPaymentService, { platformPaymentEvents } from './platformPayment.service.js';
 
-class PlatformPaymentEvents extends EventEmitter {}
-
-const platformPaymentEvents = new PlatformPaymentEvents();
-
-platformPaymentEvents.on('payment.processed', ({ payment, isDuplicate }) => {
-  logger.info(
-    `[PlatformPayment Event] payment.processed - Payment ID: ${payment._id}, Status: ${payment.status}, EventId: ${payment.gatewayEventId}, TxId: ${payment.gatewayTransactionId}, Duplicate: ${Boolean(isDuplicate)}`
-  );
-});
-
-platformPaymentEvents.on('payment.success', (payload) => {
-  logger.info(
-    `[PlatformPayment Event] payment.success - Order ID: ${payload.orderId}, Payment ID: ${payload.paymentId}`
-  );
-});
-
-platformPaymentEvents.on('payment.failed', (payment) => {
-  logger.warn(
-    `[PlatformPayment Event] payment.failed - Payment ID: ${payment._id}, EventId: ${payment.gatewayEventId}, TxId: ${payment.gatewayTransactionId}`
-  );
-});
-
-platformPaymentEvents.on('payment.refunded', (payment) => {
-  logger.info(
-    `[PlatformPayment Event] payment.refunded - Payment ID: ${payment._id}, TxId: ${payment.gatewayTransactionId}`
-  );
+platformPaymentEvents.on('payment.completed', async (payload) => {
+  console.log('⚡ [Event] payment.completed received:', payload);
+  try {
+    const platformSubscriptionService = (await import('../platformSubscription/platformSubscription.service.js')).default;
+    await platformSubscriptionService.handlePaymentCompletedEvent(payload);
+  } catch (err) {
+    console.error('Failed to handle payment.completed event:', err);
+  }
 });
 
 export default platformPaymentEvents;

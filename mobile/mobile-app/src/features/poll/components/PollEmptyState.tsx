@@ -1,4 +1,5 @@
 import React from 'react';
+import { BarChart2 } from 'lucide-react-native';
 import { EmptyState } from '@/components';
 
 interface PollEmptyStateProps {
@@ -24,7 +25,7 @@ export default function PollEmptyState({ tab }: PollEmptyStateProps) {
     <EmptyState
       title={title}
       description={description}
-      iconName="BarChart2"
+      icon={BarChart2}
     />
   );
 }

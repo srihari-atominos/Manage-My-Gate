@@ -56,7 +56,13 @@ export function ScreenShell({
           <View className="flex-row items-center flex-1 mr-2">
             {showBackButton && (
               <Pressable
-                onPress={() => router.back()}
+                onPress={() => {
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace('/(resident)/all-features' as any);
+                  }
+                }}
                 className="mr-2.5 p-1.5 rounded-full active:bg-muted/60 dark:active:bg-muted/40 -ml-1.5 shrink-0"
                 hitSlop={8}
                 accessibilityRole="button"

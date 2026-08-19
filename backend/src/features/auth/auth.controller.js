@@ -1,6 +1,6 @@
 import authService from './auth.services.js';
 import config from '../../config/config.js';
-import { setAuthCookie } from '../../utils/cookie.utils.js';
+import { setAuthCookie, setRefreshTokenCookie, clearAuthCookie } from '../../utils/cookie.utils.js';
 import * as sessionController from '../session/session.controller.js';
 
 export class AuthController {
@@ -31,6 +31,9 @@ export class AuthController {
     try {
       const data = await authService.login(req.body);
       setAuthCookie(res, data.token);
+      if (data.refreshToken) {
+        setRefreshTokenCookie(res, data.refreshToken);
+      }
       res.success(data, 'Login successful');
     } catch (error) {
       next(error);
@@ -65,7 +68,7 @@ export class AuthController {
         setAuthCookie(res, data.token);
       }
       if (data && data.refreshToken) {
-        res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+        setRefreshTokenCookie(res, data.refreshToken);
       }
 
       res.success(data, 'Invitation accepted and account activated successfully');
@@ -83,7 +86,7 @@ export class AuthController {
         setAuthCookie(res, data.token);
       }
       if (data && data.refreshToken) {
-        res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+        setRefreshTokenCookie(res, data.refreshToken);
       }
 
       res.success(data, 'Invitation accepted via SSO and account activated successfully');
@@ -101,7 +104,7 @@ export class AuthController {
         setAuthCookie(res, data.token);
       }
       if (data && data.refreshToken) {
-        res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+        setRefreshTokenCookie(res, data.refreshToken);
       }
 
       res.success(data, 'SSO Registration and Organization setup successful', 201);
@@ -135,7 +138,7 @@ export class AuthController {
 
       setAuthCookie(res, data.token);
       if (data.refreshToken) {
-        res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+        setRefreshTokenCookie(res, data.refreshToken);
       }
       res.success(data, 'Google login successful');
     } catch (error) {
@@ -148,7 +151,7 @@ export class AuthController {
       const { token, inviteToken } = req.body;
       const data = await authService.loginWithMicrosoft(token, inviteToken);
       setAuthCookie(res, data.token);
-      res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+      setRefreshTokenCookie(res, data.refreshToken);
       res.success(data, 'Microsoft login successful');
     } catch (error) {
       next(error);
@@ -176,7 +179,7 @@ export class AuthController {
       };
       const data = await authService.verifyPhoneLogin(phone, code, deviceInfo);
       setAuthCookie(res, data.token);
-      res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+      setRefreshTokenCookie(res, data.refreshToken);
       res.success(data, 'Login successful');
     } catch (error) {
       next(error);
@@ -204,7 +207,7 @@ export class AuthController {
       };
       const data = await authService.verifyEmailOtpLogin(email, code, deviceInfo);
       setAuthCookie(res, data.token);
-      res.cookie('refreshToken', data.refreshToken, { httpOnly: true, secure: true, sameSite: 'strict' });
+      setRefreshTokenCookie(res, data.refreshToken);
       res.success(data, 'Login successful');
     } catch (error) {
       next(error);
@@ -252,9 +255,34 @@ export class AuthController {
       if (userId) {
         await authService.logout(userId, token);
       }
-      res.clearCookie('token');
-      res.clearCookie('refreshToken');
+      clearAuthCookie(res);
       res.success(null, 'Logged out successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async setupAccountPassword(req, res, next) {
+    try {
+      const { email, password, orgName } = req.body;
+      const deviceInfo = {
+        deviceName: req.headers['user-agent'],
+        browser: 'Browser',
+        os: 'OS',
+        ipAddress: req.ip,
+      };
+      const data = await authService.setupAccountPassword(email, password, deviceInfo, orgName);
+      res.success(data, 'Password configured successfully. Account activated.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async checkAccountStatus(req, res, next) {
+    try {
+      const { email } = req.query;
+      const data = await authService.checkAccountStatus(email);
+      res.success(data, 'Account status fetched successfully.');
     } catch (error) {
       next(error);
     }

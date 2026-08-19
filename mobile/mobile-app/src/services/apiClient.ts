@@ -1,4 +1,5 @@
 import axios, { InternalAxiosRequestConfig } from 'axios';
+import storage from '../utils/storage';
 
 // A pure JavaScript UUID v4 generator to prevent Expo native crypto errors
 const generateUUID = (): string => {
@@ -24,6 +25,7 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 10000,
+  withCredentials: true,
 });
 
 let isRefreshing = false;
@@ -31,6 +33,12 @@ let failedQueue: Array<{
   resolve: (value: string | null) => void;
   reject: (reason: any) => void;
 }> = [];
+
+let store: any;
+
+export const injectStore = (_store: any) => {
+  store = _store;
+};
 
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
@@ -43,6 +51,34 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+// Helper to safely extract payload claims from JWT token
+const decodeJwtPayload = (token: string): any => {
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    if (typeof atob === 'function') {
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    }
+    return null;
+  } catch (e) {
+    try {
+      const parts = token.split('.');
+      if (parts.length >= 2 && typeof atob === 'function') {
+        return JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+      }
+    } catch (e2) {}
+    return null;
+  }
+};
+
 // Request Interceptor: Attach headers and correlation ID
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
@@ -50,25 +86,62 @@ apiClient.interceptors.request.use(
     config.headers['X-Request-ID'] = generateUUID();
 
     try {
-      // Dynamic import to prevent circular dependency issues during initialization
-      const { store } = await import('../store/store');
-      const state = store.getState() as any;
+      const state = store ? (store.getState() as any) : null;
 
-      const token = state.auth?.token;
+      let token = state?.auth?.token;
+      if (!token) {
+        token = await storage.getItem('token');
+      }
+
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
 
-      const activeOrgId =
-        state.workspace?.activeOrganizationId ||
-        state.auth?.user?.orgId ||
-        state.auth?.user?.organizationId ||
-        state.auth?.user?.org?._id ||
-        state.auth?.user?.activeOrgId ||
-        state.auth?.user?.activeOrganizationId ||
-        state.auth?.user?.availableWorkspaces?.[0]?.orgId;
+      let rawOrgId =
+        state?.workspace?.activeOrganizationId ||
+        state?.auth?.user?.orgId ||
+        state?.auth?.user?.organizationId ||
+        state?.auth?.user?.org?._id ||
+        state?.auth?.user?.org ||
+        state?.auth?.user?.activeOrgId ||
+        state?.auth?.user?.activeOrganizationId ||
+        (Array.isArray(state?.auth?.user?.availableWorkspaces) && state?.auth?.user?.availableWorkspaces[0]?.orgId) ||
+        (Array.isArray(state?.auth?.user?.availableWorkspaces) && state?.auth?.user?.availableWorkspaces[0]?._id);
 
-      if (activeOrgId) {
+      if (!rawOrgId) {
+        const userStr = await storage.getItem('user');
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr);
+            rawOrgId =
+              user?.orgId ||
+              user?.organizationId ||
+              user?.org?._id ||
+              user?.org ||
+              user?.activeOrgId ||
+              user?.activeOrganizationId ||
+              (Array.isArray(user?.availableWorkspaces) && user?.availableWorkspaces[0]?.orgId) ||
+              (Array.isArray(user?.availableWorkspaces) && user?.availableWorkspaces[0]?._id);
+          } catch (e) {}
+        }
+      }
+
+      // If orgId is still missing, extract it directly from the JWT token payload claims
+      if (!rawOrgId && token) {
+        const jwtData = decodeJwtPayload(token);
+        rawOrgId =
+          jwtData?.orgId ||
+          jwtData?.organizationId ||
+          jwtData?.org ||
+          jwtData?.activeOrgId;
+      }
+
+      const activeOrgId =
+        typeof rawOrgId === 'object' && rawOrgId !== null
+          ? rawOrgId._id || rawOrgId.id || String(rawOrgId)
+          : rawOrgId;
+
+      if (activeOrgId && activeOrgId !== '[object Object]') {
         config.headers['x-organization-id'] = activeOrgId;
       }
     } catch (err) {
@@ -130,18 +203,19 @@ apiClient.interceptors.response.use(
         const res = await axios.post(
           `${apiClient.defaults.baseURL}/auth/refresh-token`,
           {},
-          { headers: { 'Content-Type': 'application/json' } }
+          { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
         );
 
         if (res.status === 200 || res.status === 201) {
           const newToken = res.data.token;
 
-          try {
-            const { store } = await import('../store/store');
-            const { updateTokenAndUser } = await import('../features/auth/store/authSlice');
-            store.dispatch(updateTokenAndUser({ token: newToken }));
-          } catch (dispatchErr) {
-            console.error('Failed to update refreshed token in store:', dispatchErr);
+          if (store) {
+            try {
+              // Dispatch plain action object to avoid dynamic import of authSlice
+              store.dispatch({ type: 'auth/updateTokenAndUser', payload: { token: newToken } });
+            } catch (dispatchErr) {
+              console.error('Failed to update refreshed token in store:', dispatchErr);
+            }
           }
 
           apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newToken;
@@ -153,16 +227,27 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
 
-        try {
-          const { store } = await import('../store/store');
-          const { logout } = await import('../features/auth/store/authSlice');
-          store.dispatch(logout());
-        } catch (dispatchErr) {
-          console.error('Failed to trigger mobile auto-logout on refresh failure', dispatchErr);
+        if (store) {
+          try {
+            store.dispatch({ type: 'auth/logout' });
+          } catch (dispatchErr) {
+            console.error('Failed to trigger mobile auto-logout on refresh failure', dispatchErr);
+          }
         }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
+      }
+    }
+
+    if (error.response?.status === 400 && error.response?.data?.message === 'Workspace context is required.') {
+      console.warn('Workspace context lost. Forcing auto-logout to recover corrupted local state.');
+      if (store) {
+        try {
+          store.dispatch({ type: 'auth/logout' });
+        } catch (dispatchErr) {
+          console.error('Failed to trigger mobile auto-logout on 400 Bad Request', dispatchErr);
+        }
       }
     }
 

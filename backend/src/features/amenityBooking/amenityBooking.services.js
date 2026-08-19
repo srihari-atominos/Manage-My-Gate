@@ -62,8 +62,16 @@ export class AmenityBookingService {
 
   async createBooking(bookingData) {
     const mongoose = (await import('mongoose')).default;
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const isReplicaSet = ['ReplicaSetNoPrimary', 'ReplicaSetWithPrimary', 'Sharded'].includes(
+      mongoose.connection.client?.topology?.description?.type
+    );
+    let session = null;
+    let sessionOpt = undefined;
+    if (isReplicaSet) {
+      session = await mongoose.startSession();
+      session.startTransaction();
+      sessionOpt = session;
+    }
 
     try {
       let { orgId, amenityId, userId, bookingDate, startTime, endTime } = bookingData;
@@ -98,7 +106,11 @@ export class AmenityBookingService {
       const now = moment().tz(TIMEZONE).toDate();
 
       if (bookingDateTimeStart < now) {
-        throw new HttpError(400, 'Cannot book in the past');
+        if (amenity.pricing?.pricingType === 'daily' && bookingDateTimeEnd > now) {
+          // Allow booking for today if it's a daily amenity and hasn't closed yet
+        } else {
+          throw new HttpError(400, 'Cannot book in the past');
+        }
       }
 
       // 5. Maintenance Validation
@@ -143,7 +155,8 @@ export class AmenityBookingService {
       }
 
       // 8, 10 & 11. Overlapping Slot, Buffer Time, and Capacity Validation
-      const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime, session);
+      const sessionOpt = session?.inTransaction() ? session : undefined;
+      const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime, sessionOpt);
       
       // Daily pricing is exclusive per day regardless of capacity
       if (amenity.pricing?.pricingType === 'daily' && conflicts.length > 0) {
@@ -170,58 +183,98 @@ export class AmenityBookingService {
         throw new HttpError(400, 'You already have a booking that overlaps with this time slot');
       }
 
+      // Per-user slot limit validation
+      const maxLimit = amenity.maxBookingsPerUserPerSlot || amenity.bookingRules?.maxBookingsPerUserPerSlot || 2;
+      const userBookingsInSlot = conflicts.filter(b => 
+        b.userId.toString() === userId.toString() && 
+        b.startTime === startTime && 
+        b.endTime === endTime
+      );
+      
+      const exclusiveTypes = ['hall', 'clubhouse', 'Event Space', 'court'];
+      const isExclusive = exclusiveTypes.includes(amenity.type) || amenity.pricing?.pricingType === 'daily' || amenity.capacity === requestedSpots;
+
+      const existingUserSpots = isExclusive 
+        ? userBookingsInSlot.length 
+        : userBookingsInSlot.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
+      const newUserSpots = isExclusive ? 1 : requestedSpots;
+
+      if (existingUserSpots + newUserSpots > maxLimit) {
+        const errorMsg = isExclusive 
+          ? `Booking limit exceeded. You can only make a maximum of ${maxLimit} bookings per slot.`
+          : `Slot limit exceeded. You can only book a maximum of ${maxLimit} spots per slot.`;
+        throw new HttpError(400, errorMsg);
+      }
+
       // 13. Pricing Calculation
       const pricingDetails = bookingData.pricingDetails || this._calculatePricing(amenity, bookingDateTimeStart, bookingDateTimeEnd, bookingData.numberOfPersons || 1);
       const totalAmount = pricingDetails.totalAmount;
       const deposit = pricingDetails.securityDeposit;
 
-      // 14. Create Pending Booking
-      let finalStatus = 'pending';
-      let requiresPayment = totalAmount > 0;
+      // 14. Create Confirmed Booking (No pending status)
+      const finalStatus = 'confirmed';
+      const finalPaymentStatus = 'success';
+      const finalPaymentMethod = bookingData.paymentMethod || 'WALLET';
 
-      if (!requiresPayment) {
-        finalStatus = 'confirmed';
+      if (finalPaymentMethod.toUpperCase() === 'WALLET' && totalAmount > 0) {
+        const walletRepository = (await import('../wallet/wallet.repository.js')).default;
+        const wallet = await walletRepository.getWallet(userId, orgId, sessionOpt);
+        if (!wallet || wallet.balance < totalAmount) {
+          throw new HttpError(400, `Insufficient wallet balance. Total due is ₹${totalAmount}, but current balance is ₹${wallet ? wallet.balance : 0}.`);
+        }
       }
 
       const newBookingData = {
         ...bookingData,
         status: finalStatus,
-        paymentStatus: requiresPayment ? 'pending' : 'success',
+        paymentStatus: finalPaymentStatus,
         pricingDetails,
         totalPrice: totalAmount,
-        deposit
+        deposit,
+        paymentMethod: finalPaymentMethod
       };
 
-      const booking = await amenityBookingRepository.create(newBookingData, session);
-      
-      let paymentResult = null;
-      if (requiresPayment) {
-        paymentResult = await paymentService.createPaymentOrder({
+      const booking = await amenityBookingRepository.create(newBookingData, sessionOpt);
+
+      if (finalPaymentMethod.toUpperCase() === 'WALLET' && totalAmount > 0) {
+        const walletRepository = (await import('../wallet/wallet.repository.js')).default;
+        
+        await walletRepository.updateBalance(userId, orgId, -totalAmount, sessionOpt);
+        
+        await walletRepository.createTransaction({
           orgId,
           userId,
-          referenceId: booking._id,
-          referenceType: 'AmenityBooking',
+          type: 'Debit',
           amount: totalAmount,
-          currency: 'INR'
-        }, session);
-
-        booking.paymentStatus = 'pending';
-        booking.paymentId = paymentResult.paymentId;
-        await booking.save({ session });
+          paymentMethod: 'WALLET',
+          paymentStatus: 'success',
+          referenceType: 'AmenityBooking',
+          referenceId: booking._id,
+          description: `Payment for Amenity Booking`
+        }, sessionOpt);
       }
 
-      await session.commitTransaction();
-      session.endSession();
+      if (session && session.inTransaction()) {
+        await session.commitTransaction();
+        session.endSession();
+      }
+
+      if (finalPaymentMethod.toUpperCase() === 'WALLET' && totalAmount > 0) {
+         const { walletEventEmitter, WALLET_UPDATED } = await import('../wallet/wallet.events.js');
+         walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId });
+      }
 
       amenityBookingEventEmitter.emit(AMENITY_BOOKING_CREATED, booking);
       
       return {
         booking,
-        paymentIntent: paymentResult
+        paymentIntent: null
       };
     } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw error;
     }
   }
@@ -293,7 +346,8 @@ export class AmenityBookingService {
       multiplier = amenity.pricing?.weekendRateMultiplier || 1.0;
     }
     
-    const baseAmount = baseRate * durationMultiplier * multiplier * numberOfPersons;
+    const personMultiplier = isDaily ? 1 : (numberOfPersons || 1);
+    const baseAmount = baseRate * durationMultiplier * multiplier * personMultiplier;
     const taxAmount = baseAmount * ((amenity.pricing?.taxPercentage || 0) / 100);
     const securityDeposit = amenity.pricing?.securityDeposit || 0;
     const totalAmount = baseAmount + taxAmount + securityDeposit;
@@ -311,21 +365,29 @@ export class AmenityBookingService {
 
   async createManualBooking(bookingData) {
     const mongoose = (await import('mongoose')).default;
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const isReplicaSet = ['ReplicaSetNoPrimary', 'ReplicaSetWithPrimary', 'Sharded'].includes(
+      mongoose.connection.client?.topology?.description?.type
+    );
+    let session = null;
+    let sessionOpt = undefined;
+    if (isReplicaSet) {
+      session = await mongoose.startSession();
+      session.startTransaction();
+      sessionOpt = session;
+    }
 
     try {
       let { orgId, amenityId, userId, bookingDate, startTime, endTime, paymentStatus = 'success' } = bookingData;
       
       // Resident membership check
       const userService = (await import('../user/user.services.js')).default;
-      const user = await userService.getUserById(userId, session);
+      const user = await userService.getUserById(userId, sessionOpt);
       if (!user || user.orgId.toString() !== orgId.toString()) {
         throw new HttpError(400, 'Resident not found in this organization');
       }
       
       const amenityService = (await import('../amenity/amenity.services.js')).default;
-      const amenity = await amenityService.getAmenityById(amenityId, orgId, session);
+      const amenity = await amenityService.getAmenityById(amenityId, orgId, sessionOpt);
       if (!amenity) throw new HttpError(404, 'Amenity not found');
       
       if (amenity.pricing?.pricingType === 'daily') {
@@ -345,8 +407,17 @@ export class AmenityBookingService {
         bookingDateTimeEnd = moment(bookingDateTimeEnd).add(1, 'days').toDate();
       }
       
+      const now = moment().tz(TIMEZONE).toDate();
+      if (bookingDateTimeStart < now) {
+        if (amenity.pricing?.pricingType === 'daily' && bookingDateTimeEnd > now) {
+          // Allow booking for today if it's a daily amenity and hasn't closed yet
+        } else {
+          throw new HttpError(400, 'Cannot book in the past');
+        }
+      }
+      
       // Amenity availability check
-      const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime, session);
+      const conflicts = await amenityBookingRepository.findConflicts(orgId, amenityId, bookingDate, startTime, endTime, sessionOpt);
       
       // Daily pricing is exclusive per day regardless of capacity
       if (amenity.pricing?.pricingType === 'daily' && conflicts.length > 0) {
@@ -376,18 +447,22 @@ export class AmenityBookingService {
         isManual: true
       };
 
-      const booking = await amenityBookingRepository.create(newBookingData, session);
+      const booking = await amenityBookingRepository.create(newBookingData, sessionOpt);
       
-      await session.commitTransaction();
-      session.endSession();
+      if (session && session.inTransaction()) {
+        await session.commitTransaction();
+        session.endSession();
+      }
       
       // Generate QR automatically since it's confirmed
       amenityBookingEventEmitter.emit(AMENITY_BOOKING_CREATED, booking);
       
       return booking;
     } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+        session.endSession();
+      }
       throw error;
     }
   }
@@ -401,8 +476,11 @@ export class AmenityBookingService {
       const booking = await amenityBookingRepository.findById(bookingId, orgId);
       if (!booking) throw new HttpError(404, 'Booking not found');
       
-      if (!isAdmin && booking.userId.toString() !== userId.toString()) {
-        throw new HttpError(403, 'You can only cancel your own bookings');
+      const bookingUserId = booking.userId ? (booking.userId._id ? booking.userId._id.toString() : booking.userId.toString()) : '';
+      const currentUserId = userId ? userId.toString() : '';
+
+      if (bookingUserId && currentUserId && bookingUserId !== currentUserId && !isAdmin) {
+        throw new HttpError(403, 'Only the resident who booked this slot can cancel this reservation.');
       }
       
       if (['rejected', 'cancelled', 'checked-in', 'completed'].includes(booking.status)) {
@@ -619,6 +697,10 @@ export class AmenityBookingService {
     return active.length > 0;
   }
 
+  async findActiveBookingsByAmenity(amenityId, orgId) {
+    return await amenityBookingRepository.findActiveBookingsByAmenity(amenityId, orgId);
+  }
+
   async getBookingById(bookingId, orgId) { return await amenityBookingRepository.findById(bookingId, orgId); }
   async getKpiStats(orgId) { return await amenityBookingRepository.getKpiStats(orgId); }
   async getRevenueStats(orgId) { return await amenityBookingRepository.getRevenueStats(orgId); }
@@ -780,7 +862,7 @@ export class AmenityBookingService {
     }
     
     // 5. Payment Status
-    if (booking.paymentStatus === 'pending') {
+    if (booking.paymentStatus === 'pending' && !['PAY_AT_GATE', 'Pay_At_Gate', 'pay_at_gate'].includes(booking.paymentMethod) && booking.status !== 'confirmed' && booking.status !== 'approved') {
       throw emitDenied('Payment is pending.');
     }
 
@@ -815,7 +897,7 @@ export class AmenityBookingService {
       const formattedDate = new Date(booking.bookingDate).toLocaleDateString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
       });
-      throw emitDenied(`Access Denied: Booking is scheduled for ${formattedDate}.`);
+      throw emitDenied(`Pass Not Active Today: This reservation is scheduled for ${formattedDate}. Please scan on your reserved date.`);
     }
     const parseTimeStr = (timeStr) => {
       // Assuming HH:MM in 24hr format based on regex ^([01]\d|2[0-3]):?([0-5]\d)$

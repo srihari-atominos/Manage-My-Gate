@@ -17,9 +17,9 @@ export default function PollDetailScreen() {
 
   // Find poll from local state first to show it instantly
   const poll = 
-    activePolls.data.find(p => p._id === id) ||
-    closedPolls.data.find(p => p._id === id) ||
-    myPolls.data.find(p => p._id === id);
+    activePolls.data.find((p: any) => p._id === id) ||
+    closedPolls.data.find((p: any) => p._id === id) ||
+    myPolls.data.find((p: any) => p._id === id);
 
   useEffect(() => {
     const fetchVoters = async () => {
@@ -48,7 +48,7 @@ export default function PollDetailScreen() {
   }
 
   const isClosed = poll.status === 'Closed';
-  const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votesCount, 0);
+  const totalVotes = poll.options.reduce((sum: number, opt: any) => sum + opt.votesCount, 0);
 
   const handleVote = async (optionIndex: number) => {
     try {
@@ -68,15 +68,13 @@ export default function PollDetailScreen() {
         <ListCard
           title={poll.title}
           subtitle={poll.description || `Total Votes: ${totalVotes}`}
-          statusBadge={
-            <StatusBadge
-              label={poll.status}
-              variant={poll.status === 'Active' ? 'success' : poll.status === 'Draft' ? 'neutral' : 'warning'}
-            />
-          }
+          status={{
+            label: poll.status,
+            variant: poll.status === 'Active' ? 'success' : poll.status === 'Draft' ? 'neutral' : 'warning',
+          }}
         >
           <View className="mt-4">
-            {poll.options.map((option, index) => {
+            {poll.options.map((option: any, index: number) => {
               const percentage = totalVotes > 0 ? Math.round((option.votesCount / totalVotes) * 100) : 0;
               const optionVoters = voters[index] || [];
               

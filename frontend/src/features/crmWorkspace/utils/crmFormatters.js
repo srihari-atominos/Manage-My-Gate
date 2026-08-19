@@ -1,11 +1,11 @@
 /**
  * Format currency amounts nicely.
  * @param {number} amount
- * @param {string} [currency='USD']
+ * @param {string} [currency='INR']
  */
-export const formatCurrency = (amount, currency = 'USD') => {
-  if (amount === null || amount === undefined) return '$0.00';
-  return new Intl.NumberFormat('en-US', {
+export const formatCurrency = (amount, currency = 'INR') => {
+  if (amount === null || amount === undefined) return '₹0.00';
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency,
   }).format(amount);

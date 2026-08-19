@@ -109,6 +109,11 @@ const amenityBookingSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  checkedInBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   cancellationReason: {
     type: String,
     default: null

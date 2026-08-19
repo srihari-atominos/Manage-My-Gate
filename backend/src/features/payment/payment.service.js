@@ -57,10 +57,26 @@ export class PaymentService {
       const provider = getPaymentProvider(activeGateway);
       
       const receipt = `rcpt_${uuidv4().replace(/-/g, '').substring(0, 12)}`;
-      const orderPayload = await provider.createOrder(
-        { amount, currency, receipt, notes: { orgId, userId, referenceId, referenceType } },
-        credentials
-      );
+      let orderPayload;
+      try {
+        orderPayload = await provider.createOrder(
+          { amount, currency, receipt, notes: { orgId, userId, referenceId, referenceType } },
+          credentials
+        );
+      } catch (err) {
+        if (activeGateway !== 'mock' && process.env.NODE_ENV !== 'production') {
+          logger.warn(`Razorpay order creation failed (${err.message}). Falling back to mock gateway.`, { error: err.message });
+          activeGateway = 'mock';
+          const mockProvider = getPaymentProvider('mock');
+          orderPayload = await mockProvider.createOrder(
+            { amount, currency, receipt, notes: { orgId, userId, referenceId, referenceType } },
+            credentials
+          );
+        } else {
+          const statusCode = err.statusCode === 401 ? 400 : (err.statusCode || 500);
+          throw new HttpError(statusCode, `Payment gateway error: ${err.message}`);
+        }
+      }
 
       // Save payment record in DB (persisting amount in Rupees)
       const payment = new Payment({

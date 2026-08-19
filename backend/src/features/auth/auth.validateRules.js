@@ -34,6 +34,23 @@ export const registerRules = [
     .trim(),
 ];
 
+export const setupAccountPasswordRules = [
+  body('email')
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Valid email address is required')
+    .normalizeEmail(),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long'),
+  body('orgName')
+    .optional()
+    .trim(),
+];
+
 /**
  * Validation rules for login endpoint
  */

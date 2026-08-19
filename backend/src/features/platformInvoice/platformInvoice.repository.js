@@ -1,148 +1,142 @@
 import PlatformInvoice from './platformInvoice.model.js';
+import InvoiceSequence from './invoiceSequence.model.js';
 
-class PlatformInvoiceRepository {
+export class PlatformInvoiceRepository {
   /**
-   * Create a new Platform Invoice.
+   * Sequence-Safe Invoice Number Generator inside Transaction (Mandatory Correction 2).
+   * @param {string} organizationId
+   * @param {mongoose.ClientSession} [session]
+   */
+  async getNextInvoiceNumber(organizationId, session = null) {
+    const year = new Date().getFullYear();
+    const options = { new: true, upsert: true };
+    if (session) options.session = session;
+
+    // Default system org fallback if organizationId is null
+    const targetOrgId = organizationId || '000000000000000000000000';
+
+    const sequence = await InvoiceSequence.findOneAndUpdate(
+      { organizationId: targetOrgId, year },
+      { $inc: { currentNumber: 1 } },
+      options
+    );
+
+    const formattedNum = String(sequence.currentNumber).padStart(6, '0');
+    return `INV-${year}-${formattedNum}`;
+  }
+
+  /**
+   * Create new invoice.
    * @param {Object} invoiceData
-   * @param {ClientSession} [session=null]
+   * @param {mongoose.ClientSession} [session]
    */
   async create(invoiceData, session = null) {
     const options = session ? { session } : {};
-    const [created] = await PlatformInvoice.create([invoiceData], options);
-    return created;
+    const [invoice] = await PlatformInvoice.create([invoiceData], options);
+    return invoice;
   }
 
   /**
-   * Find Platform Invoice by ID.
+   * Find invoice by ID.
    * @param {string} id
-   * @param {ClientSession} [session=null]
    */
-  async findById(id, session = null) {
-    const query = PlatformInvoice.findById(id)
+  async findById(id) {
+    return await PlatformInvoice.findById(id)
       .populate('orderId')
-      .populate('organisationId', 'name email code gstin');
-    if (session) query.session(session);
-    return await query.exec();
+      .exec();
   }
 
   /**
-   * Find Platform Invoice by invoice number.
-   * @param {string} invoiceNumber
-   * @param {ClientSession} [session=null]
-   */
-  async findByInvoiceNumber(invoiceNumber, session = null) {
-    const query = PlatformInvoice.findOne({ invoiceNumber })
-      .populate('orderId')
-      .populate('organisationId', 'name email code gstin');
-    if (session) query.session(session);
-    return await query.exec();
-  }
-
-  /**
-   * Find Platform Invoice by order ID.
+   * Find invoices by order ID.
    * @param {string} orderId
-   * @param {ClientSession} [session=null]
    */
-  async findByOrderId(orderId, session = null) {
-    const query = PlatformInvoice.findOne({ orderId });
-    if (session) query.session(session);
-    return await query.exec();
+  async findByOrderId(orderId) {
+    return await PlatformInvoice.find({ orderId })
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
   /**
-   * Find all Platform Invoices using Mongoose Aggregation Pipeline ($facet)
-   * for single round-trip pagination and count querying.
-   * @param {Object} queryOptions
+   * Update invoice by ID.
+   * @param {string} id
+   * @param {Object} updateData
+   * @param {mongoose.ClientSession} [session]
    */
-  async findAllPaginated({ page = 1, limit = 10, search = '', status, organisationId, orderId }) {
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, parseInt(limit, 10) || 10);
-    const skip = (pageNum - 1) * limitNum;
+  async updateById(id, updateData, session = null) {
+    const options = { returnDocument: 'after', runValidators: true };
+    if (session) options.session = session;
+    return await PlatformInvoice.findByIdAndUpdate(id, updateData, options);
+  }
+
+  /**
+   * Paginated Invoices List.
+   * @param {Object} params
+   */
+  async getInvoicesPaginated({ page = 1, limit = 10, orderId, organizationId, status, search }) {
+    const numericPage = Math.max(1, parseInt(page, 10) || 1);
+    const numericLimit = Math.max(1, parseInt(limit, 10) || 10);
+    const skip = (numericPage - 1) * numericLimit;
 
     const matchStage = {};
-
-    if (status) {
-      matchStage.status = status;
-    }
-
-    if (organisationId) {
-      matchStage.organisationId = new PlatformInvoice.base.Types.ObjectId(organisationId);
-    }
-
-    if (orderId) {
-      matchStage.orderId = new PlatformInvoice.base.Types.ObjectId(orderId);
-    }
-
-    if (search && search.trim() !== '') {
-      const term = search.trim();
+    if (orderId) matchStage.orderId = typeof orderId === 'string' && orderId.length === 24 ? new mongoose.Types.ObjectId(orderId) : orderId;
+    if (organizationId) matchStage.organizationId = typeof organizationId === 'string' && organizationId.length === 24 ? new mongoose.Types.ObjectId(organizationId) : organizationId;
+    if (status) matchStage.status = status;
+    if (search) {
       matchStage.$or = [
-        { invoiceNumber: { $regex: term, $options: 'i' } },
-        { gstin: { $regex: term, $options: 'i' } },
-        { hsnSacCode: { $regex: term, $options: 'i' } },
+        { invoiceNumber: { $regex: search, $options: 'i' } },
+        { 'customerSnapshot.customerName': { $regex: search, $options: 'i' } },
       ];
     }
 
-    const pipeline = [
+    const result = await PlatformInvoice.aggregate([
       { $match: matchStage },
       { $sort: { createdAt: -1 } },
       {
+        $lookup: {
+          from: 'organizations',
+          localField: 'organizationId',
+          foreignField: '_id',
+          as: 'organizationId'
+        }
+      },
+      {
+        $unwind: {
+          path: '$organizationId',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $lookup: {
+          from: 'platformorders',
+          localField: 'orderId',
+          foreignField: '_id',
+          as: 'orderId'
+        }
+      },
+      {
+        $unwind: {
+          path: '$orderId',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
         $facet: {
-          data: [{ $skip: skip }, { $limit: limitNum }],
+          data: [{ $skip: skip }, { $limit: numericLimit }],
           totalCount: [{ $count: 'count' }],
         },
       },
-    ];
+    ]);
 
-    const [result] = await PlatformInvoice.aggregate(pipeline).exec();
-
-    const data = result?.data || [];
-    const totalRecords = result?.totalCount?.[0]?.count || 0;
-    const totalPages = Math.ceil(totalRecords / limitNum) || 0;
+    const data = result[0]?.data || [];
+    const totalRecords = result[0]?.totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(totalRecords / numericLimit) || 1;
 
     return {
       data,
-      pagination: {
-        currentPage: pageNum,
-        limit: limitNum,
-        totalRecords,
-        totalPages,
-      },
+      totalRecords,
+      currentPage: numericPage,
+      totalPages,
     };
-  }
-
-  /**
-   * Update Platform Invoice by ID.
-   * @param {string} id
-   * @param {Object} updateData
-   * @param {ClientSession} [session=null]
-   */
-  async updateById(id, updateData, session = null) {
-    const options = { new: true, runValidators: true };
-    if (session) options.session = session;
-    return await PlatformInvoice.findByIdAndUpdate(id, updateData, options).exec();
-  }
-
-  /**
-   * Update Platform Invoice status by ID.
-   * @param {string} id
-   * @param {string} status
-   * @param {ClientSession} [session=null]
-   */
-  async updateStatus(id, status, session = null) {
-    const options = { new: true, runValidators: true };
-    if (session) options.session = session;
-    return await PlatformInvoice.findByIdAndUpdate(id, { status }, options).exec();
-  }
-
-  /**
-   * Delete Platform Invoice by ID.
-   * @param {string} id
-   * @param {ClientSession} [session=null]
-   */
-  async deleteById(id, session = null) {
-    const options = {};
-    if (session) options.session = session;
-    return await PlatformInvoice.findByIdAndDelete(id, options).exec();
   }
 }
 

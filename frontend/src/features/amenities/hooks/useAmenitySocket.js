@@ -12,7 +12,7 @@ import config from '../../../config/config.js'
  */
 export const useAmenitySocket = (params = {}, onUpdate) => {
   const dispatch = useDispatch()
-  const { user } = useSelector((state) => state.auth || {})
+  const { user, token } = useSelector((state) => state.auth || {})
 
   const paramsRef = useRef(params)
   useEffect(() => {
@@ -21,12 +21,13 @@ export const useAmenitySocket = (params = {}, onUpdate) => {
 
   useEffect(() => {
     // Only connect if user is authenticated
-    if (!user) return
+    if (!user || !token) return
 
     // Resolve socket URL from environment configuration with backend fallback
     const socketUrl = config.socketUrl
 
     const socket = io(socketUrl, {
+      auth: { token },
       transports: ['websocket', 'polling'],
       withCredentials: true,
     })
@@ -84,7 +85,7 @@ export const useAmenitySocket = (params = {}, onUpdate) => {
       socket.off('AMENITY_BOOKING_CONFIRMED', handleBookingConfirmed)
       socket.disconnect()
     }
-  }, [dispatch, user])
+  }, [dispatch, user, token])
 
   return null
 }

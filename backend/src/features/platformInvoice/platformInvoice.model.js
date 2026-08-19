@@ -1,74 +1,119 @@
 import mongoose from 'mongoose';
 
-const amountsSchema = new mongoose.Schema(
+const { Schema } = mongoose;
+
+const customerSnapshotSchema = new Schema(
   {
-    subtotal: { type: Number, default: 0 },
-    cgstAmount: { type: Number, default: 0 },
-    sgstAmount: { type: Number, default: 0 },
-    igstAmount: { type: Number, default: 0 },
-    totalAmount: { type: Number, default: 0 },
+    customerName: { type: String, required: true },
+    contactEmail: { type: String, required: true },
+    contactPhone: { type: String, default: null },
   },
   { _id: false }
 );
 
-const platformInvoiceSchema = new mongoose.Schema(
+const commercialSnapshotSchema = new Schema(
+  {
+    organizationName: { type: String, required: true },
+    planName: { type: String, required: true },
+    villaCount: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
+const platformInvoiceSchema = new Schema(
   {
     invoiceNumber: {
       type: String,
-      required: [true, 'Invoice number is required'],
+      required: true,
       unique: true,
       trim: true,
       index: true,
     },
     orderId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: 'PlatformOrder',
-      required: [true, 'Order ID is required'],
+      required: true,
       index: true,
     },
-    organisationId: {
-      type: mongoose.Schema.Types.ObjectId,
+    organizationId: {
+      type: Schema.Types.ObjectId,
       ref: 'Organization',
-      required: [true, 'Organisation ID is required'],
+      default: null,
       index: true,
+    },
+    billingScheduleId: {
+      type: Schema.Types.ObjectId,
+      ref: 'BillingSchedule',
+      default: null,
+      index: true,
+    },
+    invoiceDate: {
+      type: Date,
+      default: Date.now,
+    },
+    dueDate: {
+      type: Date,
+      required: true,
+    },
+    customerSnapshot: {
+      type: customerSnapshotSchema,
+      required: true,
+    },
+    commercialSnapshot: {
+      type: commercialSnapshotSchema,
+      required: true,
+    },
+    subtotal: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    vatAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    totalAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    amountPaid: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    amountOutstanding: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    lastPaymentAt: {
+      type: Date,
+      default: null,
     },
     currency: {
       type: String,
       default: 'INR',
-      trim: true,
     },
-    hsnSacCode: {
+    invoiceChecksum: {
       type: String,
-      required: [true, 'HSN/SAC code is required for GST compliance'],
+      required: true,
       trim: true,
-      default: '998313',
-    },
-    amounts: {
-      type: amountsSchema,
-      required: [true, 'Invoice amounts breakdown is required'],
-    },
-    gstin: {
-      type: String,
-      trim: true,
-      default: '',
     },
     status: {
       type: String,
-      enum: {
-        values: ['DRAFT', 'UNPAID', 'PAID', 'VOID'],
-        message: '{VALUE} is not a valid invoice status',
-      },
-      default: 'UNPAID',
+      enum: ['DRAFT', 'ISSUED', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'VOID'],
+      default: 'ISSUED',
       index: true,
     },
     pdfUrl: {
       type: String,
-      trim: true,
       default: null,
     },
-    paymentLinkUrl: {
-      type: String,
-      trim: true,
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
       default: null,
     },
   },

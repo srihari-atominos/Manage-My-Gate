@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Amenity from './amenity.model.js';
 
 export class AmenityRepository {
@@ -6,6 +7,7 @@ export class AmenityRepository {
   }
 
   async findById(id, orgId) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     return await Amenity.findOne({ _id: id, orgId, isDeleted: false });
   }
 
@@ -20,6 +22,7 @@ export class AmenityRepository {
   }
 
   async update(id, orgId, updateData, options = {}) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     return await Amenity.findOneAndUpdate(
       { _id: id, orgId, isDeleted: false }, 
       updateData, 
@@ -28,11 +31,13 @@ export class AmenityRepository {
   }
 
   async softDelete(id, orgId) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     return await Amenity.findOneAndUpdate({ _id: id, orgId }, { isDeleted: true, status: 'inactive' }, { returnDocument: 'after' });
   }
   async getAmenityStats(orgId) {
+    const targetOrgId = mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId;
     const stats = await Amenity.aggregate([
-      { $match: { orgId, isDeleted: false } },
+      { $match: { orgId: targetOrgId, isDeleted: false } },
       {
         $facet: {
           total: [{ $count: "count" }],
@@ -44,16 +49,17 @@ export class AmenityRepository {
     ]);
     
     return {
-      total: stats[0].total[0]?.count || 0,
-      active: stats[0].active[0]?.count || 0,
-      inactive: stats[0].inactive[0]?.count || 0,
-      maintenance: stats[0].maintenance[0]?.count || 0,
+      total: stats[0]?.total[0]?.count || 0,
+      active: stats[0]?.active[0]?.count || 0,
+      inactive: stats[0]?.inactive[0]?.count || 0,
+      maintenance: stats[0]?.maintenance[0]?.count || 0,
     };
   }
 
   async getMaintenanceStats(orgId) {
+    const targetOrgId = mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId;
     const stats = await Amenity.aggregate([
-      { $match: { orgId, isDeleted: false } },
+      { $match: { orgId: targetOrgId, isDeleted: false } },
       { $unwind: "$maintenanceSchedules" },
       {
         $facet: {

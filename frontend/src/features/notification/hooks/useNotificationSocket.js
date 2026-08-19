@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useDispatch } from 'react-redux'
 import { io } from 'socket.io-client'
+import { useSelector } from 'react-redux'
 import config from '../../../config/config.js'
 import { addRealTimeNotification } from '../store/notificationSlice.js'
 
@@ -12,9 +13,10 @@ import { addRealTimeNotification } from '../store/notificationSlice.js'
  */
 export const useNotificationSocket = (userId) => {
   const dispatch = useDispatch()
+  const { token } = useSelector((state) => state.auth || {})
 
   useEffect(() => {
-    if (!userId) {
+    if (!userId || !token) {
       return
     }
 
@@ -22,6 +24,7 @@ export const useNotificationSocket = (userId) => {
     const socketUrl = config.socketUrl
 
     const socket = io(socketUrl, {
+      auth: { token },
       withCredentials: true,
       transports: ['websocket', 'polling'],
     })
@@ -43,7 +46,7 @@ export const useNotificationSocket = (userId) => {
       socket.off('INCOMING_NOTIFICATION')
       socket.disconnect()
     }
-  }, [userId, dispatch])
+  }, [userId, token, dispatch])
 }
 
 export default useNotificationSocket

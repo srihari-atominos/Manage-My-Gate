@@ -55,7 +55,7 @@ const TopCards = () => {
     {
       key: "card5",
       title: "Products",
-      desc: "$96k",
+      desc: "₹96k",
       img: iconBriefcase,
       bgcolor: "bg-warning/10 dark:bg-warning/10",
       textclr: "text-warning dark:text-warning",

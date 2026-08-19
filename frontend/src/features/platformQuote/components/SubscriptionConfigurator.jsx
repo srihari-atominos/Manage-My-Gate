@@ -81,6 +81,36 @@ const SubscriptionConfigurator = ({ quoteId, onQuoteTotalChange }) => {
     }
   }, [grandTotal, onQuoteTotalChange]);
 
+  const selectedAddOnsList = useMemo(() => {
+    return addonPlans
+      .filter(addon => selectedFeatures[addon._id] !== undefined)
+      .map(addon => {
+        const qty = selectedFeatures[addon._id] || 1;
+        const customPriceStr = customPrices[addon._id];
+        const defaultPrice = (addon.basePrice || 0) + ((addon.unitPrice || 0) * qty);
+        const addonPrice = (customPriceStr !== undefined && customPriceStr !== '') ? Number(customPriceStr) : defaultPrice;
+        
+        let featureCode = addon.code || addon.key || addon.name?.toLowerCase() || '';
+        if (addon.name?.toLowerCase().includes('billing')) featureCode = 'billing';
+        else if (addon.name?.toLowerCase().includes('complaint')) featureCode = 'complaints';
+        else if (addon.name?.toLowerCase().includes('visitor')) featureCode = 'visitor';
+        else if (addon.name?.toLowerCase().includes('notice')) featureCode = 'notices';
+        else if (addon.name?.toLowerCase().includes('amenit')) featureCode = 'amenities';
+
+        return {
+          addonId: addon._id,
+          code: featureCode,
+          name: addon.name,
+          qty,
+          price: addonPrice
+        };
+      });
+  }, [addonPlans, selectedFeatures, customPrices]);
+
+  const selectedAddOnKeys = useMemo(() => {
+    return selectedAddOnsList.map(a => a.code).filter(Boolean);
+  }, [selectedAddOnsList]);
+
   return (
     <div style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
       {/* Base Plan Card */}
@@ -253,9 +283,9 @@ const SubscriptionConfigurator = ({ quoteId, onQuoteTotalChange }) => {
             <span style={{ fontWeight: '900', fontSize: '22px', color: '#212529' }}>₹{grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
           </div>
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontWeight: 'bold', color: '#007bff' }}>
-            <span>Due Today</span>
-            <span style={{ color: '#28a745' }}>₹{grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontWeight: 'bold', backgroundColor: '#e6f4ea', padding: '10px 14px', borderRadius: '6px' }}>
+            <span style={{ color: '#137333', fontSize: '15px' }}>🎁 Due Today (14-Day Free Trial)</span>
+            <span style={{ color: '#137333', fontSize: '20px', fontWeight: '900' }}>₹0</span>
           </div>
         </div>
 
@@ -263,12 +293,28 @@ const SubscriptionConfigurator = ({ quoteId, onQuoteTotalChange }) => {
           quoteId={quoteId} 
           payload={{ 
             billingCycle: selectedPlan?.billingInterval || 'YEARLY', 
-            trialDays: 15, 
+            trialDays: 14, 
+            isTrial: true,
+            freeTrialDuration: 14,
             adminDiscountPercent, 
             tierPrice: basePrice,
+            basePrice,
+            perUnitRate: unitPrice,
+            setupFee,
+            subtotal,
+            discountAmount,
+            taxAmount,
+            calculatedTotal: grandTotal,
+            totalAmount: grandTotal,
+            grandTotal,
+            dueToday: 0,
             inquiryId: quoteId,
             masterPricingId: selectedPlanId,
-            unitCount: baseUnits
+            unitCount: baseUnits,
+            planName: selectedPlan?.name || selectedPlan?.planName || 'COMMUNITY_ENTERPRISE',
+            selectedAddOns: selectedAddOnsList,
+            selectedFeatures: selectedAddOnKeys,
+            addOns: selectedAddOnsList
           }} 
         />
       </div>

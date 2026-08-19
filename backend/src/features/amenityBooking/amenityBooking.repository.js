@@ -42,16 +42,32 @@ export class AmenityBookingRepository {
   }
 
   async findByOrgPaginated(orgId, filters = {}, skip = 0, limit = 10) {
-    const matchStage = { orgId: new mongoose.Types.ObjectId(orgId) };
-    if (filters.status) matchStage.status = filters.status;
-    if (filters.amenityId) matchStage.amenityId = new mongoose.Types.ObjectId(filters.amenityId);
+    const targetOrgId = mongoose.Types.ObjectId.isValid(orgId) ? new mongoose.Types.ObjectId(orgId) : orgId;
+    const matchStage = { orgId: targetOrgId };
+    if (filters.status && filters.status !== 'All' && filters.status !== 'ALL') {
+      if (typeof filters.status === 'object') {
+        matchStage.status = filters.status;
+      } else if (typeof filters.status === 'string') {
+        matchStage.status = filters.status.toLowerCase();
+      } else {
+        matchStage.status = filters.status;
+      }
+    }
+    if (filters.amenityId && filters.amenityId !== 'All' && filters.amenityId !== 'ALL') {
+      if (typeof filters.amenityId === 'object' && !mongoose.Types.ObjectId.isValid(filters.amenityId)) {
+        matchStage.amenityId = filters.amenityId;
+      } else if (mongoose.Types.ObjectId.isValid(filters.amenityId)) {
+        matchStage.amenityId = new mongoose.Types.ObjectId(filters.amenityId);
+      }
+    }
     if (filters.date) matchStage.bookingDate = filters.date;
     if (filters.bookingDate) matchStage.bookingDate = filters.bookingDate;
-    if (filters.userId) matchStage.userId = new mongoose.Types.ObjectId(filters.userId);
-    if (filters.checkedInBy) matchStage.checkedInBy = new mongoose.Types.ObjectId(filters.checkedInBy);
-
-    // Remove the pending concept for ledgers by filtering out pending payments
-    matchStage.paymentStatus = { $ne: 'pending' };
+    if (filters.userId && mongoose.Types.ObjectId.isValid(filters.userId)) {
+      matchStage.userId = new mongoose.Types.ObjectId(filters.userId);
+    }
+    if (filters.checkedInBy && mongoose.Types.ObjectId.isValid(filters.checkedInBy)) {
+      matchStage.checkedInBy = new mongoose.Types.ObjectId(filters.checkedInBy);
+    }
 
     const pipeline = [
       { $match: matchStage },
@@ -70,7 +86,7 @@ export class AmenityBookingRepository {
                 as: 'amenity'
               }
             },
-            { $unwind: '$amenity' },
+            { $unwind: { path: '$amenity', preserveNullAndEmptyArrays: true } },
             {
               $lookup: {
                 from: 'users',
@@ -112,8 +128,8 @@ export class AmenityBookingRepository {
     ];
 
     const result = await AmenityBooking.aggregate(pipeline);
-    const data = result[0].data;
-    const totalRecords = result[0].metadata.length > 0 ? result[0].metadata[0].totalRecords : 0;
+    const data = result[0]?.data || [];
+    const totalRecords = (result[0]?.metadata && result[0].metadata.length > 0) ? result[0].metadata[0].totalRecords : 0;
     return { data, totalRecords };
   }
 
@@ -126,9 +142,9 @@ export class AmenityBookingRepository {
     } else if (filters.endDate) {
       query.bookingDate = { $lte: filters.endDate };
     }
-
-    // Remove the pending concept for ledgers by filtering out pending payments
-    query.paymentStatus = { $ne: 'pending' };
+    if (filters.status && filters.status !== 'All' && filters.status !== 'ALL') {
+      query.status = filters.status.toLowerCase();
+    }
 
     return await AmenityBooking.find(query)
       .sort({ bookingDate: -1, startTime: -1 })
@@ -137,12 +153,12 @@ export class AmenityBookingRepository {
   }
 
   async findEventsForCalendar(orgId, startDate, endDate) {
-    return await AmenityBooking.find({
-      orgId: new mongoose.Types.ObjectId(orgId),
-      bookingDate: { $gte: startDate, $lte: endDate },
-      paymentStatus: { $ne: 'pending' }
-    })
-    .populate('userId', 'name email profilePicture flatNumber building tower phoneNumber')
+    const query = { orgId: new mongoose.Types.ObjectId(orgId) };
+    if (startDate && endDate) {
+      query.bookingDate = { $gte: startDate, $lte: endDate };
+    }
+    return await AmenityBooking.find(query)
+    .populate('userId', 'name email profilePicture flatNumber building tower phoneNumber villaNumber username')
     .populate('amenityId', 'name type images location bookingRules pricing')
     .sort({ bookingDate: 1, startTime: 1 })
     .lean();
@@ -282,8 +298,11 @@ export class AmenityBookingRepository {
     return await AmenityBooking.find({
       amenityId,
       orgId,
-      status: { $in: ['pending', 'approved', 'confirmed', 'checked-in'] },
-      bookingDate: { $gte: today }
+      status: { $in: ['pending', 'approved', 'confirmed', 'checked-in', 'PENDING', 'APPROVED', 'CONFIRMED', 'CHECKED_IN'] },
+      $or: [
+        { date: { $gte: today } },
+        { bookingDate: { $gte: today } }
+      ]
     });
   }
 

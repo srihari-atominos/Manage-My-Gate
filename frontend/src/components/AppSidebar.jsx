@@ -77,9 +77,13 @@ const AppSidebar = () => {
    * Super-admin platform items are handled via the isPlatform gate.
    */
   const isFeatureEnabled = (perm) => {
-    if (isPlatform) return true
     const featurePart = perm.split(':')[0]
-    if (featurePart === 'workspaces') return true
+    if (featurePart === 'workspaces' || featurePart === 'dashboard') return true
+
+    if (featurePart === 'amenities' || featurePart === 'booking') {
+      return allowedFeatures.some((f) => ['amenities', 'booking', 'amenity', 'amenitiesBooking'].includes(f))
+    }
+
     return allowedFeatures.includes(featurePart) || allowedFeatures.includes(perm)
   }
 
@@ -93,16 +97,10 @@ const AppSidebar = () => {
     }
 
     if (Array.isArray(item.requiredPermission)) {
-      const isAllowed =
-        isPlatform ||
-        item.requiredPermission.some((perm) => isFeatureEnabled(perm) && checkPermission(perm))
-      return isAllowed
+      return item.requiredPermission.some((perm) => isFeatureEnabled(perm) && (isPlatform || checkPermission(perm)))
     }
 
-    const isAllowed =
-      isPlatform ||
-      (isFeatureEnabled(item.requiredPermission) && checkPermission(item.requiredPermission))
-    return isAllowed
+    return isFeatureEnabled(item.requiredPermission) && (isPlatform || checkPermission(item.requiredPermission))
   }
 
   const filterItems = (items) => {

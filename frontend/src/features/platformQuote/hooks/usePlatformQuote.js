@@ -1,6 +1,6 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { generateOrderThunk, clearError } from '../store/platformQuoteSlice.js';
-import { fetchQuotesThunk, fetchOrdersThunk, fetchInvoicesThunk, fetchSubscriptionsThunk, fetchJobsThunk } from '../../platformBilling/store/platformBillingSlice.js';
+import { fetchQuotesThunk, fetchOrdersThunk, fetchInvoicesThunk, fetchSubscriptionsThunk, fetchJobsThunk, fetchLeadsThunk } from '../../platformBilling/store/platformBillingSlice.js';
 import { useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -18,16 +18,17 @@ export const usePlatformQuote = () => {
     try {
       await dispatch(generateOrderThunk({ quoteId, payload })).unwrap();
       
-      // Refresh billing tables in the background
+      // Refresh all billing and CRM tables in background
       dispatch(fetchQuotesThunk());
       dispatch(fetchOrdersThunk());
       dispatch(fetchInvoicesThunk());
       dispatch(fetchSubscriptionsThunk());
       dispatch(fetchJobsThunk());
+      dispatch(fetchLeadsThunk());
 
-      toast.success('Order Dispatched Successfully');
+      toast.success('Order & 14-Day Free Trial Dispatched Successfully!');
       
-      if (payload.trialDays > 0) {
+      if (payload?.trialDays > 0 || payload?.isTrial) {
         setOrderStatus('TRIAL_PENDING');
       } else {
         setOrderStatus('PAYMENT_PENDING');

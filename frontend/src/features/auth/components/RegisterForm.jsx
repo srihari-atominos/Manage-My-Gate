@@ -72,6 +72,7 @@ export const RegisterForm = () => {
     defaultValues: {
       name: ssoName,
       email: ssoEmail,
+      organizationName: '',
       phone: '',
       password: '',
       confirmPassword: '',
@@ -183,11 +184,13 @@ export const RegisterForm = () => {
         username: derivedUsername,
         email: data.email.trim().toLowerCase(),
         phone: data.phone?.trim() ? `+${data.phone.trim()}` : undefined,
+        organizationName: data.organizationName?.trim() || undefined,
         totalUnits: data.totalUnits ? parseInt(data.totalUnits, 10) : undefined,
         isGoogleSso,
         ...(data.password ? { password: data.password } : {})
       }).then((action) => {
         if (action.meta.requestStatus === 'fulfilled') {
+          setValue('otp', '')
           setIsOtpMode(true)
           setOtpEmail(data.email.trim().toLowerCase())
         }
@@ -262,7 +265,7 @@ export const RegisterForm = () => {
 
         {/* Form Registration OR OTP Verification */}
         {isOtpMode ? (
-          <CForm onSubmit={handleSubmit(onVerifyOtp)}>
+          <CForm key="otp-form" onSubmit={handleSubmit(onVerifyOtp)}>
             <CAlert color="info" className="mb-3">
               We sent a verification code to <strong>{otpEmail}</strong>. Please enter it below to
               activate your account.
@@ -273,6 +276,7 @@ export const RegisterForm = () => {
                   <CIcon icon={cilLockLocked} style={styles.icon} />
                 </CInputGroupText>
                 <CFormInput
+                  key="otp-input"
                   style={styles.input}
                   placeholder={t('auth.register.otpPlaceholder', {
                     defaultValue: 'Enter 6-digit code',
@@ -322,7 +326,7 @@ export const RegisterForm = () => {
             </div>
           </CForm>
         ) : (
-          <CForm onSubmit={handleSubmit(onSubmit)}>
+          <CForm key="register-form" onSubmit={handleSubmit(onSubmit)}>
             {/* Full Name */}
             {!isLoginMode && (
               <div className="mb-3">
@@ -331,6 +335,7 @@ export const RegisterForm = () => {
                     <CIcon icon={cilUser} style={styles.icon} />
                   </CInputGroupText>
                   <CFormInput
+                    key="name-input"
                     style={styles.input}
                     placeholder={t('auth.register.fullNamePlaceholder', {
                       defaultValue: 'Full Name',
@@ -357,6 +362,7 @@ export const RegisterForm = () => {
                   <CIcon icon={cilEnvelopeOpen} style={styles.icon} />
                 </CInputGroupText>
                 <CFormInput
+                  key="email-input"
                   style={
                     isGoogleSso
                       ? { ...styles.input, backgroundColor: '#f9fafb', color: '#6b7280' }

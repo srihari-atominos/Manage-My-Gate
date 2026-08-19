@@ -1,302 +1,344 @@
+import crypto from 'crypto';
 import mongoose from 'mongoose';
 import platformOrderRepository from './platformOrder.repository.js';
 import platformOrderEvents from './platformOrder.events.js';
 import platformQuoteService from '../platformQuote/platformQuote.service.js';
 import HttpError from '../../utils/httpError.utils.js';
 
-/**
- * Generate a standard order number in format ORD-YYYYMMDD-XXXX
- */
-const generateOrderNumber = () => {
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `ORD-${dateStr}-${randomSuffix}`;
+export const ORDER_ALLOWED_TRANSITIONS = {
+  DRAFT: ['PENDING_CUSTOMER_CONFIRMATION', 'CONFIRMED', 'CANCELLED'],
+  PENDING_CUSTOMER_CONFIRMATION: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['ACTIVE', 'CANCELLED'],
+  ACTIVE: ['EXPIRED', 'CANCELLED'],
+  CANCELLED: [],
+  EXPIRED: [],
 };
 
-class PlatformOrderService {
+export class PlatformOrderService {
   /**
-   * Create an order directly from a payload within a transaction.
-   * @param {Object} payload 
-   * @param {ClientSession} session 
+   * Generate SHA-256 pricing checksum (Mandatory Correction 3).
    */
-  async createOrder(payload, session = null) {
-    const orderNumber = generateOrderNumber();
-    const newOrder = await platformOrderRepository.create(
-      {
-        ...payload,
-        orderNumber,
-        acceptedAt: new Date(),
-      },
-      session
-    );
-    
-    if (!session) {
-      platformOrderEvents.emit('order.created', newOrder);
-    }
-    return newOrder;
+  generatePricingChecksum(pricingSnapshot, subtotal, discountAmount, vatAmount, totalAmount) {
+    const rawData = JSON.stringify({
+      planName: pricingSnapshot?.planName,
+      basePrice: pricingSnapshot?.basePrice,
+      perUnitRate: pricingSnapshot?.perUnitRate,
+      subtotal: parseFloat(subtotal) || 0,
+      discountAmount: parseFloat(discountAmount) || 0,
+      vatAmount: parseFloat(vatAmount) || 0,
+      totalAmount: parseFloat(totalAmount) || 0,
+    });
+    return crypto.createHash('sha256').update(rawData).digest('hex');
   }
 
   /**
-   * Create an order from an approved quote within a transaction.
-   * @param {Object} payload - { quoteId, acceptedBy, organisationId }
+   * Generate order number: ORD-{YEAR}-{SEQ}
    */
-  async createOrderFromQuote({ quoteId, acceptedBy, organisationId }) {
+  generateOrderNumber() {
+    const year = new Date().getFullYear();
+    const seq = Math.floor(1000 + Math.random() * 9000);
+    return `ORD-${year}-${seq}`;
+  }
+
+  /**
+   * Atomic Transactional Quote to Order Conversion (Gap 1, 2, 3, 7).
+   * @param {string} quoteId
+   * @param {string} conversionId - Idempotency key
+   * @param {string|null} actorId
+   * @param {string} actorName
+   */
+  async convertQuoteToOrder(quoteId, conversionId = null, actorId = null, actorName = 'System') {
+    // 1. Idempotency Check: Return existing order if conversionId matches
+    if (conversionId) {
+      const existingOrder = await platformOrderRepository.findByConversionId(conversionId);
+      if (existingOrder) {
+        return {
+          order: existingOrder,
+          message: 'Order already converted for this idempotency key.',
+          isDuplicateRequest: true,
+        };
+      }
+    }
+
     const quote = await platformQuoteService.getQuoteById(quoteId);
 
-    if (!quote) {
-      throw new HttpError(404, `Quote with ID '${quoteId}' not found.`);
+    // 2. Strict Order Creation Authority Checks
+    if (quote.status !== 'ACCEPTED') {
+      throw new HttpError(400, `Order creation requires Quote status ACCEPTED. Current status: '${quote.status}'`);
+    }
+    if (!quote.isLocked) {
+      throw new HttpError(400, 'Quote must be locked before converting to order.');
+    }
+    if (!quote.isLatestVersion) {
+      throw new HttpError(400, 'Only the latest version of an accepted quote can be converted to an order.');
+    }
+    if (quote.orderEligibility === 'ORDER_CREATED' || quote.convertedToOrderAt) {
+      throw new HttpError(400, 'Quote has already been converted to an order.');
+    }
+    if (quote.orderConversionLock) {
+      throw new HttpError(400, 'Quote is currently locked for order conversion.');
     }
 
-    if (quote.status !== 'APPROVED') {
-      throw new HttpError(
-        400,
-        `Quote must be in APPROVED status to create an order. Current status: ${quote.status}`
-      );
-    }
+    // Compute checksum
+    const computedChecksum = this.generatePricingChecksum(
+      quote.pricingSnapshot,
+      quote.subtotal,
+      quote.discountAmount,
+      quote.vatAmount,
+      quote.totalAmount
+    );
 
-    if (quote.expiresAt && new Date(quote.expiresAt) < new Date()) {
-      throw new HttpError(400, 'Quote has expired and cannot be converted to an order.');
-    }
+    const orderNumber = this.generateOrderNumber();
+    const effectiveConversionId = conversionId || `CONV-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
-    const existingOrder = await platformOrderRepository.findByQuoteId(quoteId);
-    if (existingOrder) {
-      throw new HttpError(409, `An order has already been created for quote ID '${quoteId}'.`);
-    }
-
-    const targetOrgId = organisationId || quote.organisationId || quote.organizationId;
-    if (!targetOrgId) {
-      throw new HttpError(400, 'Organisation ID is required to create a platform order.');
-    }
-
-    const orderNumber = generateOrderNumber();
-
-    const orderSnapshot = {
-      quoteNumber: quote.quoteNumber || '',
-      planName: quote.pricingSnapshot?.planName || quote.planName || 'Custom Plan',
-      tier: quote.pricingSnapshot?.tier || quote.tier || 'ENTERPRISE',
-      unitCount: quote.unitCount || 1,
-      basePrice: quote.basePrice || 0,
-      perUnitRate: quote.perUnitRate || 0,
-      addOns: quote.addOns || [],
-      setupFee: quote.setupFee || 0,
-      validityInMonths: quote.pricingSnapshot?.validityInMonths || quote.validityInMonths || 12,
-      discountPercent: quote.discountPercent || 0,
-      discountAmount: quote.discountAmount || 0,
-      subtotal: quote.subtotal || 0,
-      taxRatePercent: quote.taxRatePercent || 15,
-      taxAmount: quote.taxAmount || 0,
-      totalAmount: quote.totalAmount || 0,
-      currency: quote.currency || 'SAR',
-      snapshotAt: new Date(),
+    const orderData = {
+      orderNumber,
+      conversionId: effectiveConversionId,
+      quoteId: quote._id,
+      organizationId: quote.organizationId || null,
+      accountManagerId: actorId || null,
+      customerSnapshot: {
+        customerName: quote.customerSnapshot.customerName,
+        contactEmail: quote.customerSnapshot.contactEmail,
+        contactPhone: quote.customerSnapshot.contactPhone,
+      },
+      communitySnapshot: {
+        organizationName: quote.communitySnapshot.organizationName,
+        villaCount: quote.communitySnapshot.villaCount,
+      },
+      pricingSnapshot: quote.pricingSnapshot,
+      pricingChecksum: computedChecksum,
+      unitCount: quote.unitCount,
+      subtotal: quote.subtotal,
+      discountAmount: quote.discountAmount,
+      setupFee: quote.setupFee,
+      vatAmount: quote.vatAmount,
+      totalAmount: quote.totalAmount,
+      currency: quote.currency || 'INR',
+      status: 'DRAFT',
+      contractStartDate: new Date(),
+      contractEndDate: new Date(Date.now() + 365 * 24 * 3600 * 1000),
+      billingFrequency: 'YEARLY',
+      paymentTerms: 'NET_30',
+      createdBy: actorId || null,
     };
 
-    const session = await mongoose.startSession();
+    // Execute atomic session transaction if replica set available
+    let session = null;
     try {
-      session.startTransaction();
+      const isReplicaSet = mongoose.connection.topology?.description?.type && mongoose.connection.topology.description.type !== 'Single';
+      if (isReplicaSet) {
+        session = await mongoose.startSession();
+        session.startTransaction();
+      }
+    } catch (sessionErr) {
+      session = null;
+    }
 
-      const newOrder = await platformOrderRepository.create(
+    try {
+      // Create Order
+      const newOrder = await platformOrderRepository.create(orderData, session);
+
+      // Lock & Update Quote
+      const PlatformQuote = (await import('../platformQuote/platformQuote.model.js')).default;
+      await PlatformQuote.findByIdAndUpdate(
+        quote._id,
         {
-          orderNumber,
-          quoteId,
-          organisationId: targetOrgId,
-          orderSnapshot,
-          status: 'ACCEPTED',
-          acceptedAt: new Date(),
-          acceptedBy: acceptedBy || null,
+          orderEligibility: 'ORDER_CREATED',
+          orderConversionLock: true,
+          convertedToOrderAt: new Date(),
+          convertedToOrderBy: actorId || null,
+        },
+        session ? { session } : {}
+      );
+
+      // Append Timeline Event
+      await platformOrderRepository.createTimelineEvent(
+        {
+          orderId: newOrder._id,
+          orderNumber: newOrder.orderNumber,
+          eventType: 'ORDER_CREATED',
+          fromStatus: null,
+          toStatus: 'DRAFT',
+          actorId: actorId || null,
+          actorName,
+          timestamp: new Date(),
+          metadata: { quoteNumber: quote.quoteNumber, totalAmount: newOrder.totalAmount },
         },
         session
       );
 
-      // Update quote status to ACCEPTED
-      await platformQuoteService.updateQuoteStatus(quoteId, 'ACCEPTED', session);
-
-      await session.commitTransaction();
-
-      platformOrderEvents.emit('order.created', newOrder);
-
-      return newOrder;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
-  }
-
-  /**
-   * Transition order status safely within a transaction.
-   * @param {string} orderId
-   * @param {string} targetStatus
-   */
-  async updateOrderStatus(orderId, targetStatus) {
-    const validStatuses = [
-      'DRAFT',
-      'PENDING_ACCEPTANCE',
-      'ACCEPTED',
-      'PAYMENT_PENDING',
-      'PAID',
-      'PROVISIONING',
-      'ACTIVE',
-      'CANCELLED',
-      'EXPIRED',
-    ];
-
-    if (!validStatuses.includes(targetStatus)) {
-      throw new HttpError(
-        400,
-        `Invalid status '${targetStatus}'. Allowed: ${validStatuses.join(', ')}`
-      );
-    }
-
-    const existingOrder = await platformOrderRepository.findById(orderId);
-    if (!existingOrder) {
-      throw new HttpError(404, `Platform order with ID '${orderId}' not found.`);
-    }
-
-    const previousStatus = existingOrder.status;
-
-    const session = await mongoose.startSession();
-    try {
-      session.startTransaction();
-
-      const updatedOrder = await platformOrderRepository.updateStatus(
-        orderId,
-        targetStatus,
-        session
-      );
-
-      await session.commitTransaction();
-
-      platformOrderEvents.emit('platform_order_status_updated', {
-        order: updatedOrder,
-        previousStatus,
-        newStatus: targetStatus,
-      });
-
-      return updatedOrder;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
-  }
-
-  /**
-   * Handle Razorpay Payment Success webhook idempotently.
-   * @param {Object} razorpayPayload
-   */
-  async handlePaymentSuccess(razorpayPayload) {
-    const paymentEntity = razorpayPayload?.payload?.payment?.entity || razorpayPayload?.payment?.entity;
-    if (!paymentEntity) return;
-
-    const orderId = paymentEntity.notes?.orderId;
-    if (!orderId) return;
-
-    // OCC: strictly check status is 'PAYMENT_PENDING'
-    const updatedOrder = await platformOrderRepository.findAndUpdatePaymentPending(
-      orderId,
-      {
-        status: 'PAID',
-        razorpayPaymentId: paymentEntity.id,
-        paymentSettledAt: new Date(),
+      if (session && session.inTransaction()) {
+        await session.commitTransaction();
       }
-    );
+      if (session) session.endSession();
 
-    // If null, it means order doesn't exist or already processed (duplicate webhook)
-    if (!updatedOrder) return;
+      platformOrderEvents.emit('order_created', newOrder);
 
-    // Emit event for automated tenant provisioning
-    platformOrderEvents.emit('PAYMENT_SETTLED', updatedOrder);
+      return {
+        order: newOrder,
+        message: 'Order created successfully from accepted quote.',
+        isDuplicateRequest: false,
+      };
+    } catch (err) {
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      if (session) session.endSession();
+      throw err;
+    }
   }
 
   /**
-   * Retrieve paginated list of platform orders.
-   * @param {Object} queryParams
+   * Confirm Order & Generate Billing Schedule (Mandatory Correction 3).
    */
-  async getAllOrders(queryParams) {
-    return await platformOrderRepository.findAllPaginated(queryParams);
+  async confirmOrder(orderId, actorId = null, actorName = 'System') {
+    const order = await this.getOrderById(orderId);
+    if (order.status !== 'DRAFT' && order.status !== 'PENDING_CUSTOMER_CONFIRMATION') {
+      throw new HttpError(400, `Order cannot be confirmed from status '${order.status}'`);
+    }
+
+    const contractPdfUrl = `/api/v1/platform/orders/${order._id}/contract-pdf`;
+    const contractPdfChecksum = crypto.createHash('sha256').update(order.orderNumber + order.totalAmount).digest('hex');
+
+    const updatePayload = {
+      status: 'CONFIRMED',
+      confirmedAt: new Date(),
+      confirmedBy: actorId || null,
+      contractPdfUrl,
+      contractPdfChecksum,
+    };
+
+    const updatedOrder = await platformOrderRepository.updateById(order._id, updatePayload);
+
+    // Create Billing Schedule Items
+    const schedules = [];
+    const frequency = order.billingFrequency || 'YEARLY';
+    const total = order.totalAmount;
+    const installmentsCount = frequency === 'MONTHLY' ? 12 : 1;
+    const installmentAmount = Math.round((total / installmentsCount) * 100) / 100;
+
+    for (let i = 1; i <= installmentsCount; i++) {
+      const billingDate = new Date(order.contractStartDate);
+      billingDate.setMonth(billingDate.getMonth() + (i - 1));
+
+      const dueDate = new Date(billingDate);
+      dueDate.setDate(dueDate.getDate() + 30); // NET_30
+
+      schedules.push({
+        orderId: order._id,
+        organizationId: order.organizationId || null,
+        installmentNumber: i,
+        billingDate,
+        dueDate,
+        amount: i === installmentsCount ? total - installmentAmount * (installmentsCount - 1) : installmentAmount,
+        currency: order.currency || 'INR',
+        status: 'SCHEDULED',
+      });
+    }
+
+    await platformOrderRepository.createBillingSchedules(schedules);
+
+    // Append Timeline Event
+    await platformOrderRepository.createTimelineEvent({
+      orderId: updatedOrder._id,
+      orderNumber: updatedOrder.orderNumber,
+      eventType: 'ORDER_CONFIRMED',
+      fromStatus: order.status,
+      toStatus: 'CONFIRMED',
+      actorId: actorId || null,
+      actorName,
+      timestamp: new Date(),
+      metadata: { installmentsCount, contractPdfUrl },
+    });
+
+    platformOrderEvents.emit('order_confirmed', updatedOrder);
+    return updatedOrder;
   }
 
   /**
-   * Get platform order by ID.
-   * @param {string} orderId
+   * Create Commercial Order Amendment (Mandatory Correction 1).
    */
-  async getOrderById(orderId) {
-    const order = await platformOrderRepository.findById(orderId);
+  async createAmendment(orderId, amendmentData, actorId = null, actorName = 'System') {
+    const order = await this.getOrderById(orderId);
+
+    const count = (await platformOrderRepository.findAmendmentsByOrderId(order._id)).length + 1;
+    const amendmentNumber = `AMD-${order.orderNumber}-${count}`;
+
+    const newAmendment = await platformOrderRepository.createAmendment({
+      orderId: order._id,
+      amendmentNumber,
+      amendmentType: amendmentData.amendmentType || 'CORRECTION',
+      previousSnapshot: order.pricingSnapshot,
+      newSnapshot: amendmentData.newSnapshot || order.pricingSnapshot,
+      reason: amendmentData.reason || 'Commercial contract adjustment',
+      effectiveDate: amendmentData.effectiveDate || new Date(),
+      approvedBy: actorId || null,
+      approvedAt: new Date(),
+    });
+
+    await platformOrderRepository.createTimelineEvent({
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      eventType: 'ORDER_AMENDED',
+      category: 'SYSTEM',
+      actorId: actorId || null,
+      actorName,
+      timestamp: new Date(),
+      metadata: { amendmentNumber, amendmentType: newAmendment.amendmentType },
+    });
+
+    return newAmendment;
+  }
+
+  /**
+   * Get Order by ID or orderNumber.
+   */
+  async getOrderById(id) {
+    if (!id) throw new HttpError(400, 'Order ID is required');
+    const idStr = String(id._id || id);
+    let order = null;
+    if (idStr.match(/^[0-9a-fA-F]{24}$/)) {
+      order = await platformOrderRepository.findById(idStr);
+    }
     if (!order) {
-      throw new HttpError(404, `Platform order with ID '${orderId}' not found.`);
+      order = await platformOrderRepository.findById(idStr);
+    }
+    if (!order) {
+      throw new HttpError(404, `Platform Order '${idStr}' not found`);
     }
     return order;
   }
 
   /**
-   * Get platform order by order number.
-   * @param {string} orderNumber
+   * Get Order Timeline.
    */
-  async getOrderByNumber(orderNumber) {
-    const order = await platformOrderRepository.findByOrderNumber(orderNumber);
-    if (!order) {
-      throw new HttpError(404, `Platform order number '${orderNumber}' not found.`);
-    }
-    return order;
+  async getOrderTimeline(orderId) {
+    const order = await this.getOrderById(orderId);
+    return await platformOrderRepository.findTimelineByOrderId(order._id);
   }
 
   /**
-   * Update order details within a transaction.
-   * @param {string} id
-   * @param {Object} updateData
+   * Get Order Billing Schedules.
    */
-  async updateOrder(id, updateData) {
-    const existingOrder = await platformOrderRepository.findById(id);
-    if (!existingOrder) {
-      throw new HttpError(404, `Platform order with ID '${id}' not found.`);
-    }
-
-    const session = await mongoose.startSession();
-    try {
-      session.startTransaction();
-
-      const updatedOrder = await platformOrderRepository.updateById(id, updateData, session);
-
-      await session.commitTransaction();
-
-      return updatedOrder;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
+  async getBillingSchedules(orderId) {
+    const order = await this.getOrderById(orderId);
+    return await platformOrderRepository.findBillingSchedulesByOrderId(order._id);
   }
 
   /**
-   * Delete order within a transaction.
-   * @param {string} id
+   * Get Order Amendments.
    */
-  async deleteOrder(id) {
-    const existingOrder = await platformOrderRepository.findById(id);
-    if (!existingOrder) {
-      throw new HttpError(404, `Platform order with ID '${id}' not found.`);
-    }
+  async getAmendments(orderId) {
+    const order = await this.getOrderById(orderId);
+    return await platformOrderRepository.findAmendmentsByOrderId(order._id);
+  }
 
-    const session = await mongoose.startSession();
-    try {
-      session.startTransaction();
-
-      const deletedOrder = await platformOrderRepository.deleteById(id, session);
-
-      await session.commitTransaction();
-
-      platformOrderEvents.emit('platform_order_deleted', deletedOrder);
-
-      return deletedOrder;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
+  /**
+   * Get Paginated Orders.
+   */
+  async getOrders(queryParams) {
+    return await platformOrderRepository.getOrdersPaginated(queryParams);
   }
 }
 

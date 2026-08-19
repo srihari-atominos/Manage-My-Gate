@@ -40,9 +40,9 @@ const GetStarted = React.lazy(() => import('./views/pages/getStarted/GetStarted'
 const FeatureConfigWizard = React.lazy(
   () => import('./features/workspace/views/FeatureConfigWizard'),
 )
-const EnquiryPendingView = React.lazy(
-  () => import('./features/workspace/views/EnquiryPendingView'),
-)
+const PublicCheckoutPage = React.lazy(() => import('./views/pages/pay/PublicCheckoutPage'))
+const SetPasswordPage = React.lazy(() => import('./views/pages/auth/SetPasswordPage'))
+const EnquiryPendingView = React.lazy(() => import('./features/workspace/views/EnquiryPendingView'))
 
 /**
  * Main Application Component
@@ -118,6 +118,9 @@ const App = () => {
               element={<AcceptInvitePage />}
             />
             <Route exact path="/invite" name="Invite Handler" element={<InviteHandler />} />
+            <Route exact path="/pay/:id" name="Payment Checkout" element={<PublicCheckoutPage />} />
+            <Route exact path="/pay" name="Payment Checkout" element={<PublicCheckoutPage />} />
+            <Route exact path="/set-password" name="Set Password Page" element={<SetPasswordPage />} />
             <Route exact path="/404" name="Page 404" element={<Page404 />} />
             <Route exact path="/500" name="Page 500" element={<Page500 />} />
             <Route

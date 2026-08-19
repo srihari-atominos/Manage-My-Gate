@@ -7,6 +7,7 @@ export * from './Card';
 export * from './Chip';
 export * from './ConfirmationDialog';
 export * from './DatePicker';
+export * from './DatePickerModal';
 export * from './Divider';
 export * from './IconButton';
 export * from './ImageCarousel';

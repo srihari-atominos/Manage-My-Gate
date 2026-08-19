@@ -53,7 +53,7 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_CREATED, async (booking) => {
       });
       
       const updatedBooking = await amenityBookingRepository.findById(booking._id, booking.orgId);
-      amenityBookingEventEmitter.emit(AMENITY_BOOKING_CONFIRMED, { booking: updatedBooking, paymentMethod: 'system' });
+      amenityBookingEventEmitter.emit(AMENITY_BOOKING_CONFIRMED, { booking: updatedBooking, paymentMethod: booking.paymentMethod || 'system' });
       
       await sendBookingNotification(booking, 'alert', 'Booking Confirmed', 'Your amenity booking is confirmed!');
     } catch (e) {

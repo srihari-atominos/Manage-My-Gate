@@ -11,8 +11,23 @@ const messageSubSchema = new Schema(
     },
     senderType: {
       type: String,
-      enum: ['AGENT', 'CUSTOMER'],
+      enum: ['AGENT', 'CUSTOMER', 'SUPERADMIN'],
       required: [true, 'Sender type is required'],
+    },
+    channel: {
+      type: String,
+      enum: ['WHATSAPP', 'SMS', 'GMAIL'],
+      default: 'GMAIL',
+    },
+    recipientContact: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    status: {
+      type: String,
+      enum: ['SENT', 'DELIVERED', 'FAILED'],
+      default: 'SENT',
     },
     content: {
       type: String,

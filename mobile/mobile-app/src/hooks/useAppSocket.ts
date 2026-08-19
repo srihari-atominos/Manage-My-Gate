@@ -17,7 +17,9 @@ export const useAppSocket = () => {
       return;
     }
 
-    const socketUrl = process.env.EXPO_PUBLIC_SOCKET_URL || 'http://localhost:5002';
+    const socketUrl =
+      process.env.EXPO_PUBLIC_SOCKET_URL ||
+      (process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api.*$/, '') : 'http://localhost:5002');
     console.log(`Connecting socket to: ${socketUrl}`);
 
     // Create the Socket.io client
@@ -29,7 +31,7 @@ export const useAppSocket = () => {
         token: token,
       },
       query: {
-        userId: user.id,
+        userId: user.id || (user as any)._id,
       },
     });
 
@@ -39,7 +41,10 @@ export const useAppSocket = () => {
       console.log(`Socket connected successfully: ${socket.id}`);
       
       // Join user specific room for personal real-time gate rings/alerts
-      socket.emit('join_room', `user:${user.id}`);
+      const userId = user.id || (user as any)._id;
+      if (userId) {
+        socket.emit('join_room', `user:${userId}`);
+      }
       
       if (user.role) {
         // Join role specific room for group broadcasts (e.g., Security, Resident)

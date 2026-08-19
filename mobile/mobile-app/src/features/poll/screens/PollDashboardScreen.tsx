@@ -121,13 +121,20 @@ export default function PollDashboardScreen() {
 
       <PaginatedList
         data={currentState.data}
-        renderItem={renderPoll}
-        keyExtractor={(item) => item._id}
-        isLoading={currentState.loading && currentState.data.length === 0}
+        renderItem={(item) => renderPoll({ item })}
+        keyExtractor={(item: any) => item._id}
+        pagination={{
+          currentPage: (currentState as any).page || 1,
+          totalPages: (currentState as any).totalPages || 1,
+          totalRecords: (currentState as any).total || currentState.data.length,
+          limit: 10,
+        }}
+        onLoadMore={() => {}}
         onRefresh={() => loadData(activeTab)}
+        loading={currentState.loading && currentState.data.length === 0}
         refreshing={currentState.loading}
-        ListEmptyComponent={<PollEmptyState tab={activeTab} />}
-        contentContainerStyle={{ padding: 16 }}
+        emptyTitle="No Polls Found"
+        emptySubtitle="There are currently no community polls in this category."
       />
     </ScreenShell>
   );

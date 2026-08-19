@@ -33,5 +33,5 @@ const outboxEventSchema = new mongoose.Schema(
 // Indexes for worker polling performance
 outboxEventSchema.index({ status: 1, createdAt: 1 });
 
-export const OutboxEvent = mongoose.model('OutboxEvent', outboxEventSchema);
+export const OutboxEvent = mongoose.models.OutboxEvent || mongoose.model('OutboxEvent', outboxEventSchema);
 export default OutboxEvent;

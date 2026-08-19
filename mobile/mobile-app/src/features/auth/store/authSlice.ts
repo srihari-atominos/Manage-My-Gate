@@ -16,22 +16,31 @@ export interface User {
 export const normalizeUser = (user: any): User | null => {
   if (!user) return null;
   const canonicalId = user.id || user._id || '';
+  
+  // Recursively extract the actual string ID if an object was passed
+  const extractId = (val: any): string => {
+    if (!val) return '';
+    if (typeof val === 'string' && val !== '[object Object]') return val;
+    if (typeof val === 'object') return val._id || val.id || '';
+    return '';
+  };
+
   const canonicalOrgId =
-    user.orgId ||
-    user.organizationId ||
-    user.org?._id ||
-    user.organization?._id ||
-    user.activeOrgId ||
-    user.activeOrganizationId ||
-    (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces[0]?.orgId) ||
-    (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces[0]?._id) ||
+    extractId(user.orgId) ||
+    extractId(user.organizationId) ||
+    extractId(user.org) ||
+    extractId(user.organization) ||
+    extractId(user.activeOrgId) ||
+    extractId(user.activeOrganizationId) ||
+    (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.orgId)) ||
+    (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?._id)) ||
     '';
 
   return {
     ...user,
     id: canonicalId,
     _id: canonicalId || user._id,
-    orgId: user.orgId || canonicalOrgId,
+    orgId: canonicalOrgId,
   };
 };
 

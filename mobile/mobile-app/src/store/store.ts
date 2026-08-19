@@ -5,11 +5,15 @@ import noticeBoardReducer from '../features/noticeBoard/store/noticeBoardSlice';
 import pollReducer from '../features/poll/store/pollSlice';
 import complaintReducer from '../features/complaints/store/complaintSlice';
 import billingReducer from '../features/billing/store/billingSlice';
-import walletReducer from '../features/billing/store/walletSlice';
+import billingWalletReducer from '../features/billing/store/walletSlice';
 import villaReducer from '../features/villa/store/villaSlice';
 import amenityReducer from '../features/amenities/store/amenitySlice';
+import amenityBookingReducer from '../features/amenities/store/amenityBookingSlice';
+import amenityWalletReducer from '../features/amenities/store/walletSlice';
+import securityLogReducer from '../features/amenities/store/securityLogSlice';
 import dashboardReducer from '../features/dashboard/dashboardSlice';
 import notificationReducer from '../features/notification/store/notificationSlice';
+import { injectStore } from '../services/apiClient';
 
 
 export const store = configureStore({
@@ -20,9 +24,12 @@ export const store = configureStore({
     poll: pollReducer,
     complaints: complaintReducer,
     billing: billingReducer,
-    wallet: walletReducer,
+    wallet: billingWalletReducer,
     villa: villaReducer,
     amenities: amenityReducer,
+    amenityBookings: amenityBookingReducer,
+    amenityWallet: amenityWalletReducer,
+    securityLogs: securityLogReducer,
     dashboard: dashboardReducer,
     notification: notificationReducer,
   },
@@ -31,6 +38,8 @@ export const store = configureStore({
       serializableCheck: false,
     }),
 });
+
+injectStore(store);
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

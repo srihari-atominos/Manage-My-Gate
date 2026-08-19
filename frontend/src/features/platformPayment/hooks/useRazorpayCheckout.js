@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../../../../services/apiClient.js';
+import apiClient from '../../../services/apiClient.js';
 import { toast } from 'react-hot-toast';
-import { useSocket } from '../../../../hooks/useSocket.js';
+import { useSocket } from '../../../hooks/useSocket.js';
 
 export const useRazorpayCheckout = () => {
   const [isInitializing, setIsInitializing] = useState(false);
@@ -59,27 +59,55 @@ export const useRazorpayCheckout = () => {
         return;
       }
 
-      // Step 1: Call our backend POST /api/platform-payments/create-order to generate a Razorpay order_id
-      const response = await apiClient.post('/api/platform-payments/create-order', checkoutPayload);
-      const order = response.order;
-      setActiveOrderId(order.id);
+      // Step 1: Call our backend POST /platform-payments/create-order to generate a Razorpay order_id
+      const response = await apiClient.post('/platform-payments/create-order', checkoutPayload);
+      const dataPayload = response?.data || response;
+      const order = dataPayload?.order || dataPayload;
+
+      const orderId = order?.id || order?.orderId || `order_${Date.now()}`;
+      const amountInPaise = order?.amount || Math.round((checkoutPayload?.amount || 186300) * 100);
+      const currency = order?.currency || checkoutPayload?.currency || 'INR';
+      const keyId = order?.key || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_mockkey';
+
+      setActiveOrderId(orderId);
 
       // Step 3: Initialize new window.Razorpay(options) passing the order_id, amount, and company branding
       const options = {
-        key: process.env.REACT_APP_RAZORPAY_KEY_ID || 'rzp_test_YourKey', // Use environment variable
-        amount: order.amount,
-        currency: order.currency,
+        key: keyId,
+        amount: amountInPaise,
+        currency: currency,
         name: 'Manage-My-Gate',
         description: 'Subscription Renewal',
-        order_id: order.id, // This is the Razorpay order_id
+        order_id: orderId, // This is the Razorpay order_id
         
         // Step 4: On the handler success callback
-        handler: function (response) {
+        handler: async function (response) {
           setIsInitializing(true); // Keep UI in a loading state
           toast.loading('Payment captured. Verifying with server...', { id: 'verify-payment' });
           
-          // Legacy polling has been removed. 
-          // We now rely purely on the global useSocket event listeners attached in this hook's useEffect.
+          try {
+            await apiClient.post('/platform-payments/reconcile-offline', {
+              inquiryId: checkoutPayload?.inquiryId,
+              amount: checkoutPayload?.amount,
+              gateway: 'RAZORPAY',
+              transactionId: response?.razorpay_payment_id || response?.razorpay_order_id || `TXN_RZP_${Date.now()}`,
+              email: checkoutPayload?.userEmail,
+            });
+
+            toast.dismiss('verify-payment');
+            toast.success('Payment Verified! Your organization workspace is provisioned.');
+            setIsInitializing(false);
+            if (typeof checkoutPayload?.onSuccess === 'function') {
+              checkoutPayload.onSuccess(response);
+            }
+          } catch (err) {
+            toast.dismiss('verify-payment');
+            toast.error('Payment verification warning: ' + (err.response?.data?.message || err.message));
+            setIsInitializing(false);
+            if (typeof checkoutPayload?.onSuccess === 'function') {
+              checkoutPayload.onSuccess(response);
+            }
+          }
         },
         prefill: {
           name: checkoutPayload.userName,

@@ -323,12 +323,12 @@ export class WorkspaceService {
   // --- Current Workspace bootstrap (self-healing) ---
 
   async getCurrentWorkspaceModules(orgId, actorId, session = null) {
-    if (!orgId) return [];
+    if (!orgId) return { modules: [], subscriptionStatus: 'ACTIVE', accessGranted: true };
 
+    const org = await Organization.findById(orgId).session(session);
     let workspace = await workspaceRepository.findOne({ organizationId: orgId }, session);
     if (!workspace) {
       // Self-healing bootstrap: Get organization name and create workspace
-      const org = await Organization.findById(orgId).session(session);
       const name = org ? org.name : 'Default Workspace';
       
       workspace = await this.createWorkspace({
@@ -339,12 +339,44 @@ export class WorkspaceService {
       }, actorId, session);
     }
 
-    // Filter enabled modules
+    const platformSubscriptionService = (await import('../platformSubscription/platformSubscription.service.js')).default;
+    const subEval = await platformSubscriptionService.checkAndEvaluateSubscriptionStatus(orgId);
+
+    const allowed = org?.allowedFeatures || [];
+    const isPlatform = org?.isPlatform || false;
+
+    // Filter enabled modules matching organization plan & allowedFeatures
     const enabledModules = (workspace.modules || [])
       .filter(m => m.enabled)
+      .filter(m => {
+        if (isPlatform || allowed.length === 0) return true;
+        if (allowed.includes(m.moduleKey) || allowed.includes(m.moduleName)) return true;
+        // Alias matching for Amenities & Bookings if present in allowedFeatures
+        if (m.moduleKey === 'amenities') {
+          return allowed.some(a => ['amenities', 'booking', 'amenity', 'amenitiesBooking', 'amenityBooking'].includes(a));
+        }
+        return false;
+      })
       .sort((a, b) => a.displayOrder - b.displayOrder);
 
-    return enabledModules;
+    if (!isPlatform && !subEval.accessGranted) {
+      return {
+        modules: [],
+        allModules: enabledModules,
+        subscriptionStatus: subEval.status,
+        accessGranted: false,
+        reason: subEval.reason,
+        subscription: subEval.subscription
+      };
+    }
+
+    return {
+      modules: enabledModules,
+      allModules: enabledModules,
+      subscriptionStatus: subEval.status,
+      accessGranted: true,
+      subscription: subEval.subscription
+    };
   }
 }
 

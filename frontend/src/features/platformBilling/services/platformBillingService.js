@@ -62,7 +62,7 @@ export const fetchInvoices = async () => {
 };
 
 export const downloadInvoicePdf = async (invoiceId) => {
-  const response = await axiosInstance.get(`/api/platform-invoices/${invoiceId}/download-pdf?lang=ar&layout=rtl`, {
+  const response = await axiosInstance.get(`/api/platform-invoices/${invoiceId}/download-pdf?lang=en`, {
     responseType: 'blob'
   });
   return response.data || response;
@@ -73,6 +73,11 @@ export const downloadInvoicePdf = async (invoiceId) => {
  */
 export const fetchSubscriptions = async () => {
   const response = await axiosInstance.get('/api/platform-subscriptions');
+  return response.data;
+};
+
+export const renewSubscription = async (id, data) => {
+  const response = await axiosInstance.post(`/api/platform-subscriptions/${id}/renew`, data);
   return response.data;
 };
 

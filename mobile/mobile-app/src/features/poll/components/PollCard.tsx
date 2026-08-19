@@ -30,13 +30,10 @@ export default function PollCard({
     <ListCard
       title={poll.title}
       subtitle={poll.description || `Total Votes: ${totalVotes}`}
-      statusBadge={
-        <StatusBadge
-          label={poll.status}
-          variant={poll.status === 'Active' ? 'success' : poll.status === 'Draft' ? 'neutral' : 'warning'}
-          dot={poll.status === 'Active'}
-        />
-      }
+      status={{
+        label: poll.status,
+        variant: poll.status === 'Active' ? 'success' : poll.status === 'Draft' ? 'neutral' : 'warning',
+      }}
     >
       <RNView className="mt-4">
         {poll.options.map((option, index) => {

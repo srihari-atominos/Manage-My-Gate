@@ -2,46 +2,33 @@ import React, { memo, useState } from 'react';
 import {
   formatDate,
   formatStatusBadge,
-  getInitials,
 } from '../utils/crmFormatters.js';
 
 export const WorkspaceTabs = memo(({
   activeTab = 'Overview',
   onTabChange,
   activeInquiry,
-  tasks = [],
+  timeline = [],
   meetings = [],
   activeThread,
   loading = false,
-  taskLoading = false,
+  statusTransitionLoading = false,
   onScheduleMeeting,
-  onCreateTask,
+  onUpdateMeetingStatus,
   onSendMessage,
+  onTransitionStatus,
 }) => {
-  const [taskTitle, setTaskTitle] = useState('');
   const [meetingTitle, setMeetingTitle] = useState('');
   const [meetingDate, setMeetingDate] = useState('');
   const [chatInput, setChatInput] = useState('');
 
   const tabs = [
     { key: 'Overview', label: 'Overview', icon: 'fa-solid fa-chart-pie' },
-    { key: 'Tasks', label: 'Action Center Tasks', icon: 'fa-solid fa-list-check' },
     { key: 'Meetings', label: 'Meetings & Demos', icon: 'fa-solid fa-video' },
-    { key: 'Communication', label: 'Messages & Threads', icon: 'fa-solid fa-comments' },
+    { key: 'Conversations', label: 'Conversations & Threads', icon: 'fa-solid fa-comments' },
+    { key: 'Activity', label: 'Activity Feed', icon: 'fa-solid fa-clock-rotate-left' },
+    { key: 'Pricing & Quote', label: 'Pricing & Quote', icon: 'fa-solid fa-file-invoice-dollar' },
   ];
-
-  const handleTaskSubmit = (e) => {
-    e.preventDefault();
-    if (!taskTitle.trim()) return;
-    if (onCreateTask) {
-      onCreateTask({
-        title: taskTitle.trim(),
-        relatedInquiryId: activeInquiry?._id || null,
-        status: 'PENDING',
-      });
-      setTaskTitle('');
-    }
-  };
 
   const handleMeetingSubmit = (e) => {
     e.preventDefault();
@@ -50,7 +37,7 @@ export const WorkspaceTabs = memo(({
       onScheduleMeeting({
         title: meetingTitle.trim(),
         scheduledAt: meetingDate,
-        inquiryId: activeInquiry?._id || null,
+        inquiryId: activeInquiry?._id || activeInquiry?.inquiryId,
         status: 'SCHEDULED',
       });
       setMeetingTitle('');
@@ -71,6 +58,46 @@ export const WorkspaceTabs = memo(({
   };
 
   const badgeInfo = formatStatusBadge(activeInquiry?.status);
+  const currentStatus = activeInquiry?.status || 'NEW_INQUIRY';
+  const isQuoteUnlocked = currentStatus === 'DEMO_COMPLETED';
+
+  // Backend-Driven CTA Action config
+  const getCtaButtonConfig = () => {
+    switch (currentStatus) {
+      case 'NEW_INQUIRY':
+        return {
+          label: 'Qualify Inquiry',
+          icon: 'fa-solid fa-user-check',
+          action: () => onTransitionStatus && onTransitionStatus(activeInquiry._id, 'QUALIFIED'),
+          className: 'crm-btn crm-btn--primary',
+        };
+      case 'QUALIFIED':
+        return {
+          label: 'Schedule Demo',
+          icon: 'fa-solid fa-calendar-plus',
+          action: () => onTabChange && onTabChange('Meetings'),
+          className: 'crm-btn crm-btn--primary',
+        };
+      case 'DEMO_SCHEDULED':
+        return {
+          label: 'Complete Demo',
+          icon: 'fa-solid fa-circle-check',
+          action: () => onTransitionStatus && onTransitionStatus(activeInquiry._id, 'DEMO_COMPLETED'),
+          className: 'crm-btn crm-btn--success',
+        };
+      case 'DEMO_COMPLETED':
+        return {
+          label: 'Generate Quote',
+          icon: 'fa-solid fa-file-signature',
+          action: () => onTabChange && onTabChange('Pricing & Quote'),
+          className: 'crm-btn crm-btn--primary',
+        };
+      default:
+        return null;
+    }
+  };
+
+  const ctaConfig = getCtaButtonConfig();
 
   return (
     <div className="crm-workspace-tabs-container">
@@ -99,7 +126,7 @@ export const WorkspaceTabs = memo(({
             <div className="crm-card">
               <div className="crm-card__header">
                 <h5 className="crm-card__title">
-                  <i className="fa-solid fa-circle-info text-primary" />
+                  <i className="fa-solid fa-circle-info text-primary me-2" />
                   Inquiry Details
                 </h5>
                 <span className={`crm-badge ${badgeInfo.className}`}>
@@ -111,11 +138,19 @@ export const WorkspaceTabs = memo(({
                   <div className="crm-detail-list">
                     <div className="crm-detail-list__item">
                       <span className="crm-detail-list__label">Inquiry ID</span>
-                      <span className="crm-detail-list__value text-primary">{activeInquiry.inquiryId}</span>
+                      <span className="crm-detail-list__value text-primary fw-bold">{activeInquiry.inquiryId}</span>
                     </div>
                     <div className="crm-detail-list__item">
                       <span className="crm-detail-list__label">Customer Name</span>
                       <span className="crm-detail-list__value">{activeInquiry.customerName}</span>
+                    </div>
+                    <div className="crm-detail-list__item">
+                      <span className="crm-detail-list__label">Community / Org</span>
+                      <span className="crm-detail-list__value">{activeInquiry.organizationName || activeInquiry.communityName}</span>
+                    </div>
+                    <div className="crm-detail-list__item">
+                      <span className="crm-detail-list__label">Villa / Unit Count</span>
+                      <span className="crm-detail-list__value fw-semibold">{activeInquiry.unitCount || activeInquiry.villaCount} Villas</span>
                     </div>
                     <div className="crm-detail-list__item">
                       <span className="crm-detail-list__label">Contact Email</span>
@@ -126,142 +161,72 @@ export const WorkspaceTabs = memo(({
                       <span className="crm-detail-list__value">{activeInquiry.contactPhone || 'N/A'}</span>
                     </div>
                     <div className="crm-detail-list__item">
-                      <span className="crm-detail-list__label">Assigned Agent</span>
-                      <span className="crm-detail-list__value">
-                        {activeInquiry.assignedAgent?.name || 'Unassigned'}
-                      </span>
-                    </div>
-                    <div className="crm-detail-list__item">
-                      <span className="crm-detail-list__label">Created Date</span>
-                      <span className="crm-detail-list__value">{formatDate(activeInquiry.createdAt)}</span>
+                      <span className="crm-detail-list__label">Next Required Action</span>
+                      <span className="crm-detail-list__value text-warning fw-bold">{activeInquiry.nextAction || 'Qualify Inquiry'}</span>
                     </div>
                   </div>
                 ) : (
                   <div className="p-4 text-center text-muted">
                     <i className="fa-solid fa-folder-open fa-2x mb-2" />
-                    <p className="mb-0">No active inquiry selected. Select or create an inquiry to view details.</p>
+                    <p className="mb-0">No active inquiry selected.</p>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Right Card: Quick Actions */}
+            {/* Right Card: Backend-Driven Action Center */}
             <div className="crm-card">
               <div className="crm-card__header">
                 <h5 className="crm-card__title">
-                  <i className="fa-solid fa-bolt text-warning" />
-                  Quick Actions
+                  <i className="fa-solid fa-bolt text-warning me-2" />
+                  Backend Action Center
                 </h5>
               </div>
               <div className="crm-card__body">
                 <div className="d-flex flex-column gap-3">
-                  <button
-                    type="button"
-                    className="crm-btn crm-btn--primary w-100"
-                    onClick={() => onTabChange && onTabChange('Meetings')}
-                  >
-                    <i className="fa-solid fa-video" />
-                    Schedule Demo Meeting
-                  </button>
-                  <button
-                    type="button"
-                    className="crm-btn crm-btn--secondary w-100"
-                    onClick={() => onTabChange && onTabChange('Tasks')}
-                  >
-                    <i className="fa-solid fa-plus" />
-                    Add Follow-up Task
-                  </button>
-                  <button
-                    type="button"
-                    className="crm-btn crm-btn--secondary w-100"
-                    onClick={() => onTabChange && onTabChange('Communication')}
-                  >
-                    <i className="fa-solid fa-comment-dots" />
-                    Send Customer Message
-                  </button>
+                  {ctaConfig && (
+                    <button
+                      type="button"
+                      className={`${ctaConfig.className} w-100 py-3 fs-6 shadow-sm`}
+                      disabled={statusTransitionLoading}
+                      onClick={ctaConfig.action}
+                    >
+                      {statusTransitionLoading ? (
+                        <>
+                          <i className="fa-solid fa-spinner fa-spin me-2" />
+                          Updating State...
+                        </>
+                      ) : (
+                        <>
+                          <i className={`${ctaConfig.icon} me-2`} />
+                          {ctaConfig.label}
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  <div className="border-top pt-3">
+                    <div className="d-flex justify-content-between text-muted fs-7 mb-2">
+                      <span>Meetings Count:</span>
+                      <span className="fw-bold">{activeInquiry?.meetingCount || meetings.length || 0}</span>
+                    </div>
+                    <div className="d-flex justify-content-between text-muted fs-7">
+                      <span>Timeline Events:</span>
+                      <span className="fw-bold">{activeInquiry?.timelineCount || timeline.length || 0}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* ── 2. Tab: Tasks ───────────────────────────────────────────── */}
-        {activeTab === 'Tasks' && (
-          <div className="crm-card">
-            <div className="crm-card__header">
-              <h5 className="crm-card__title">
-                <i className="fa-solid fa-list-check text-info" />
-                Action Center Tasks
-              </h5>
-            </div>
-            <div className="crm-card__body">
-              {/* Add Task Quick Form */}
-              <form onSubmit={handleTaskSubmit} className="d-flex gap-2 mb-4">
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Type task title (e.g., Prepare demo presentation)..."
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                />
-                <button type="submit" className="crm-btn crm-btn--primary">
-                  <i className="fa-solid fa-plus" />
-                  Add Task
-                </button>
-              </form>
-
-              {/* Tasks List */}
-              {taskLoading ? (
-                <div className="p-4 text-center text-muted">
-                  <i className="fa-solid fa-spinner fa-spin me-2" />
-                  Loading tasks...
-                </div>
-              ) : tasks.length > 0 ? (
-                <div className="table-responsive">
-                  <table className="table custom-table">
-                    <thead>
-                      <tr>
-                        <th>Title</th>
-                        <th>Status</th>
-                        <th>Due Date</th>
-                        <th>Assignee</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tasks.map((task) => {
-                        const statusMeta = formatStatusBadge(task.status);
-                        return (
-                          <tr key={task._id}>
-                            <td className="fw-semibold">{task.title}</td>
-                            <td>
-                              <span className={`crm-badge ${statusMeta.className}`}>
-                                {statusMeta.label}
-                              </span>
-                            </td>
-                            <td>{formatDate(task.dueDate, false)}</td>
-                            <td>{task.assignedTo?.name || 'Unassigned'}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="p-4 text-center text-muted">
-                  <i className="fa-solid fa-tasks fa-2x mb-2" />
-                  <p className="mb-0">No tasks created yet.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── 3. Tab: Meetings ────────────────────────────────────────── */}
+        {/* ── 2. Tab: Meetings ────────────────────────────────────────── */}
         {activeTab === 'Meetings' && (
           <div className="crm-card">
             <div className="crm-card__header">
               <h5 className="crm-card__title">
-                <i className="fa-solid fa-video text-danger" />
+                <i className="fa-solid fa-video text-danger me-2" />
                 Scheduled Meetings & Demos
               </h5>
             </div>
@@ -283,8 +248,8 @@ export const WorkspaceTabs = memo(({
                   onChange={(e) => setMeetingDate(e.target.value)}
                 />
                 <button type="submit" className="crm-btn crm-btn--primary">
-                  <i className="fa-solid fa-calendar-plus" />
-                  Schedule
+                  <i className="fa-solid fa-calendar-plus me-1" />
+                  Schedule Demo
                 </button>
               </form>
 
@@ -298,13 +263,14 @@ export const WorkspaceTabs = memo(({
                         <th>Scheduled Date</th>
                         <th>Google Meet Link</th>
                         <th>Status</th>
+                        <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {meetings.map((meeting) => (
                         <tr key={meeting._id}>
                           <td className="fw-semibold">{meeting.title}</td>
-                          <td>{formatDate(meeting.scheduledAt)}</td>
+                          <td>{formatDate(meeting.scheduledAt || meeting.startTime)}</td>
                           <td>
                             {meeting.googleMeetLink ? (
                               <a
@@ -314,7 +280,7 @@ export const WorkspaceTabs = memo(({
                                 className="text-primary fw-semibold"
                               >
                                 <i className="fa-solid fa-link me-1" />
-                                Join Google Meet
+                                Join Meet
                               </a>
                             ) : (
                               'N/A'
@@ -325,6 +291,18 @@ export const WorkspaceTabs = memo(({
                               {meeting.status}
                             </span>
                           </td>
+                          <td>
+                            {meeting.status !== 'COMPLETED' && (
+                              <button
+                                type="button"
+                                className="crm-btn crm-btn--success btn-sm"
+                                onClick={() => onUpdateMeetingStatus && onUpdateMeetingStatus(meeting._id, 'COMPLETED')}
+                              >
+                                <i className="fa-solid fa-check me-1" />
+                                Complete Demo
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -333,19 +311,19 @@ export const WorkspaceTabs = memo(({
               ) : (
                 <div className="p-4 text-center text-muted">
                   <i className="fa-solid fa-video-slash fa-2x mb-2" />
-                  <p className="mb-0">No meetings scheduled.</p>
+                  <p className="mb-0">No meetings scheduled for this inquiry.</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* ── 4. Tab: Communication / Threads ──────────────────────────── */}
-        {activeTab === 'Communication' && (
+        {/* ── 3. Tab: Conversations ───────────────────────────────────── */}
+        {activeTab === 'Conversations' && (
           <div className="crm-card">
             <div className="crm-card__header">
               <h5 className="crm-card__title">
-                <i className="fa-solid fa-comments text-success" />
+                <i className="fa-solid fa-comments text-success me-2" />
                 Inquiry Thread & Messages
               </h5>
             </div>
@@ -388,16 +366,95 @@ export const WorkspaceTabs = memo(({
                   <input
                     type="text"
                     className="crm-thread-box__input"
-                    placeholder="Type your message to customer..."
+                    placeholder="Type internal note or customer message..."
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                   />
                   <button type="submit" className="crm-btn crm-btn--primary">
-                    <i className="fa-solid fa-paper-plane" />
+                    <i className="fa-solid fa-paper-plane me-1" />
                     Send
                   </button>
                 </form>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 4. Tab: Activity Feed (Immutable Timeline) ───────────────── */}
+        {activeTab === 'Activity' && (
+          <div className="crm-card">
+            <div className="crm-card__header">
+              <h5 className="crm-card__title">
+                <i className="fa-solid fa-clock-rotate-left text-info me-2" />
+                Immutable Inquiry Activity Timeline
+              </h5>
+            </div>
+            <div className="crm-card__body">
+              {timeline && timeline.length > 0 ? (
+                <div className="timeline-feed">
+                  {timeline.map((item) => (
+                    <div key={item._id || item.timestamp} className="d-flex gap-3 mb-3 border-bottom pb-3">
+                      <div className="text-primary fs-4 mt-1">
+                        <i className="fa-solid fa-circle-dot" />
+                      </div>
+                      <div className="flex-grow-1">
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span className="fw-bold text-dark">{item.eventType}</span>
+                          <span className="text-muted fs-8">{formatDate(item.timestamp)}</span>
+                        </div>
+                        <div className="text-muted fs-7 mt-1">
+                          {item.fromStatus ? (
+                            <span>Transitioned from <span className="badge bg-secondary">{item.fromStatus}</span> to <span className="badge bg-primary">{item.toStatus}</span></span>
+                          ) : (
+                            <span>State: <span className="badge bg-primary">{item.toStatus}</span></span>
+                          )}
+                        </div>
+                        <div className="text-muted fs-8 mt-1">
+                          Actor: <span className="fw-semibold">{item.actorName || 'System'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 text-center text-muted">
+                  <i className="fa-solid fa-stream fa-2x mb-2" />
+                  <p className="mb-0">No activity timeline logged yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── 5. Tab: Pricing & Quote ─────────────────────────────────── */}
+        {activeTab === 'Pricing & Quote' && (
+          <div className="crm-card">
+            <div className="crm-card__header">
+              <h5 className="crm-card__title">
+                <i className="fa-solid fa-file-invoice-dollar text-success me-2" />
+                Pricing & Quote Commercial Domain
+              </h5>
+            </div>
+            <div className="crm-card__body">
+              {isQuoteUnlocked ? (
+                <div className="alert alert-success p-4">
+                  <h5 className="alert-heading fw-bold mb-2">
+                    <i className="fa-solid fa-circle-check me-2" />
+                    Demo Completed — Quote Generation Ready
+                  </h5>
+                  <p className="mb-0">
+                    The inquiry has reached <strong>DEMO_COMPLETED</strong>. Quote creation and commercial agreement workflows are unlocked for Phase 2.
+                  </p>
+                </div>
+              ) : (
+                <div className="alert alert-warning p-4 text-center">
+                  <i className="fa-solid fa-lock fa-3x mb-3 text-warning" />
+                  <h5 className="fw-bold">Complete the demo before generating a quote.</h5>
+                  <p className="mb-0 text-muted">
+                    The inquiry status is currently <strong>{currentStatus}</strong>. It must reach <strong>DEMO_COMPLETED</strong> before Quote creation can begin.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

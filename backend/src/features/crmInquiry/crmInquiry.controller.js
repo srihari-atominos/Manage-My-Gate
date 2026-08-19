@@ -6,7 +6,14 @@ export class CrmInquiryController {
    */
   async registerPublicLead(req, res, next) {
     try {
-      const data = await crmInquiryService.registerPublicLead(req.body);
+      const actorId = req.user?._id || req.user?.id || null;
+      const actorName = req.user?.name || req.user?.email || 'Web Public User';
+      const data = await crmInquiryService.createInquiry({
+        ...req.body,
+        originSource: 'WEB_FORM',
+        actorId,
+        actorName,
+      });
       res.success(data, 'Public lead registered successfully', 201);
     } catch (error) {
       next(error);
@@ -18,7 +25,13 @@ export class CrmInquiryController {
    */
   async create(req, res, next) {
     try {
-      const data = await crmInquiryService.createInquiry(req.body);
+      const actorId = req.user?._id || req.user?.id || null;
+      const actorName = req.user?.name || req.user?.email || 'Platform User';
+      const data = await crmInquiryService.createInquiry({
+        ...req.body,
+        actorId,
+        actorName,
+      });
       res.success(data, 'CRM Inquiry created successfully', 201);
     } catch (error) {
       next(error);
@@ -51,7 +64,58 @@ export class CrmInquiryController {
   }
 
   /**
-   * Update a CRM Inquiry.
+   * Transition CRM Inquiry Status (PATCH /status).
+   */
+  async updateStatus(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { status, nextStatus, metadata } = req.body;
+      const targetStatus = nextStatus || status;
+
+      const actorId = req.user?._id || req.user?.id || null;
+      const actorName = req.user?.name || req.user?.email || 'Platform Admin';
+
+      const data = await crmInquiryService.transitionInquiryStatus(
+        id,
+        targetStatus,
+        actorId,
+        actorName,
+        metadata || {}
+      );
+      res.success(data, `Inquiry status updated to ${targetStatus}`);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get immutable Activity Timeline for an inquiry.
+   */
+  async getTimeline(req, res, next) {
+    try {
+      const { id } = req.params;
+      const data = await crmInquiryService.getInquiryTimeline(id);
+      res.success(data, 'Inquiry timeline retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get summary overview metrics for an inquiry.
+   */
+  async getSummary(req, res, next) {
+    try {
+      const { id } = req.params;
+      const data = await crmInquiryService.getInquirySummary(id);
+      res.success(data, 'Inquiry summary retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update non-status CRM Inquiry details.
    */
   async update(req, res, next) {
     try {

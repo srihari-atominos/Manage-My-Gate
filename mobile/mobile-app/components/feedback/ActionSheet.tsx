@@ -40,7 +40,7 @@ export const ActionSheet = ({
       snapPoints={[`${totalHeight}`]}
       className={className}
     >
-      {title && (
+      {Boolean(title) && (
         <Text className="mb-4 text-center text-sm font-medium text-slate-500 dark:text-slate-400">
           {title}
         </Text>

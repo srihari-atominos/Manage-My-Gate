@@ -1,58 +1,74 @@
 import mongoose from 'mongoose';
 
-const platformSubscriptionSchema = new mongoose.Schema(
+const { Schema } = mongoose;
+
+const platformSubscriptionSchema = new Schema(
   {
-    organisationId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Organization',
-      required: [true, 'Organisation ID is required'],
+    subscriptionNumber: {
+      type: String,
+      required: true,
       unique: true,
+      trim: true,
+      index: true,
+    },
+    organizationId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: true,
       index: true,
     },
     orderId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: 'PlatformOrder',
       default: null,
       index: true,
     },
     planName: {
       type: String,
-      required: [true, 'Plan name is required'],
-      trim: true,
+      required: true,
     },
-    status: {
+    tier: {
       type: String,
-      enum: {
-        values: ['TRIAL', 'ACTIVE', 'EXPIRING_SOON', 'EXPIRED', 'RENEWED', 'SUSPENDED'],
-        message: '{VALUE} is not a valid subscription status',
-      },
-      default: 'TRIAL',
-      index: true,
+      default: 'COMMUNITY_PROFESSIONAL',
     },
-    billingCycle: {
+    billingFrequency: {
       type: String,
-      enum: {
-        values: ['MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'YEARLY', 'CUSTOM'],
-        message: '{VALUE} is not a valid billing cycle',
-      },
+      enum: ['MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'YEARLY'],
       default: 'YEARLY',
     },
-    validFrom: {
-      type: Date,
-    },
-    validTill: {
-      type: Date,
-    },
-    trialEndsAt: {
-      type: Date,
-    },
-    billingPeriodStart: {
+    startDate: {
       type: Date,
       default: Date.now,
     },
-    billingPeriodEnd: {
+    endDate: {
+      type: Date,
+      required: true,
+    },
+    renewalDate: {
+      type: Date,
+      required: true,
+    },
+    trialStartDate: {
+      type: Date,
+      default: Date.now,
+    },
+    trialEndDate: {
       type: Date,
       default: null,
+    },
+    isTrial: {
+      type: Boolean,
+      default: false,
+    },
+    status: {
+      type: String,
+      enum: ['TRIAL', 'TRIALING', 'ACTIVE', 'GRACE_PERIOD', 'SUSPENDED', 'CANCELLED', 'EXPIRED'],
+      default: 'TRIALING',
+      index: true,
+    },
+    entitlementProfile: {
+      type: Schema.Types.Mixed,
+      default: {},
     },
   },
   {
@@ -60,9 +76,6 @@ const platformSubscriptionSchema = new mongoose.Schema(
   }
 );
 
-const PlatformSubscription = mongoose.model(
-  'PlatformSubscription',
-  platformSubscriptionSchema
-);
+const PlatformSubscription = mongoose.model('PlatformSubscription', platformSubscriptionSchema);
 
 export default PlatformSubscription;

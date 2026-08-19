@@ -1,50 +1,65 @@
 import mongoose from 'mongoose';
 
-const platformEntitlementSchema = new mongoose.Schema(
+const { Schema } = mongoose;
+
+const featuresSchema = new Schema(
   {
-    organisationId: {
-      type: mongoose.Schema.Types.ObjectId,
+    visitorManagement: { type: Boolean, default: true },
+    amenityBooking: { type: Boolean, default: true },
+    villaBilling: { type: Boolean, default: true },
+    iotIntegration: { type: Boolean, default: false },
+    mobileAccess: { type: Boolean, default: true },
+    crmAccess: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+const quotasSchema = new Schema(
+  {
+    maxVillas: { type: Number, default: 100 },
+    maxUsers: { type: Number, default: 500 },
+    maxGuards: { type: Number, default: 10 },
+    storageGb: { type: Number, default: 50 },
+    apiUsageLimit: { type: Number, default: 10000 },
+  },
+  { _id: false }
+);
+
+const platformEntitlementSchema = new Schema(
+  {
+    organizationId: {
+      type: Schema.Types.ObjectId,
       ref: 'Organization',
-      required: [true, 'Organisation ID is required'],
+      required: true,
       index: true,
     },
-    subscriptionId: {
-      type: mongoose.Schema.Types.ObjectId,
+    sourceSubscriptionId: {
+      type: Schema.Types.ObjectId,
       ref: 'PlatformSubscription',
-      required: [true, 'Subscription ID is required'],
-      index: true,
+      default: null,
     },
-    featureKey: {
-      type: String,
-      enum: {
-        values: [
-          'VISITOR_MANAGEMENT',
-          'BILLING_COLLECTION',
-          'AMENITY_BOOKING',
-          'COMPLIANCE',
-          'NOTICE_BOARD',
-          'GUARD_PATROL',
-        ],
-        message: '{VALUE} is not a valid feature key',
-      },
-      required: [true, 'Feature key is required'],
-      index: true,
-    },
-    status: {
-      type: String,
-      enum: {
-        values: ['ACTIVE', 'INACTIVE', 'EXPIRED', 'SUSPENDED'],
-        message: '{VALUE} is not a valid entitlement status',
-      },
-      default: 'ACTIVE',
-      index: true,
-    },
-    quantity: {
+    profileVersion: {
       type: Number,
       default: 1,
-      min: 0,
     },
-    expiryDate: {
+    isCurrentVersion: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    features: {
+      type: featuresSchema,
+      required: true,
+    },
+    quotas: {
+      type: quotasSchema,
+      required: true,
+    },
+    activatedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    deactivatedAt: {
       type: Date,
       default: null,
     },
@@ -54,12 +69,8 @@ const platformEntitlementSchema = new mongoose.Schema(
   }
 );
 
-// Compound index to ensure uniqueness per organisation and feature key
-platformEntitlementSchema.index({ organisationId: 1, featureKey: 1 }, { unique: true });
+platformEntitlementSchema.index({ organizationId: 1, profileVersion: 1 }, { unique: true });
 
-const PlatformEntitlement = mongoose.model(
-  'PlatformEntitlement',
-  platformEntitlementSchema
-);
+const PlatformEntitlement = mongoose.model('PlatformEntitlement', platformEntitlementSchema);
 
 export default PlatformEntitlement;

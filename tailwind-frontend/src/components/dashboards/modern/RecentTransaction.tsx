@@ -5,7 +5,7 @@ export const RecentTransaction = () => {
     {
       key: 'timeline1',
       time: '09:30 am',
-      desc: 'Payment received from John Doe of $385.90',
+      desc: 'Payment received from John Doe of ₹385.90',
       isSale: false,
       borderColor: 'border-primary',
       isLastItem: false,
@@ -21,7 +21,7 @@ export const RecentTransaction = () => {
     {
       key: 'timeline3',
       time: '12:00 am',
-      desc: 'Payment was made of $64.95 to Michael',
+      desc: 'Payment was made of ₹64.95 to Michael',
       isSale: false,
       borderColor: 'border-success',
       isLastItem: false,

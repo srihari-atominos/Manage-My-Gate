@@ -24,13 +24,17 @@ const tabs = [
 const EnquiriesPage = () => {
   const { 
     leads = [], 
+    quotes = [],
+    orders = [],
+    invoices = [],
     selectedLeadId, 
     selectedLead,
     activeTab, 
     isLoading,
     selectLead,
     changeTab,
-    fetchLeads 
+    fetchLeads,
+    fetchAllData 
   } = usePlatformBilling();
 
   const [filter, setFilter] = useState('ALL');
@@ -42,7 +46,7 @@ const EnquiriesPage = () => {
   const [mockMeetings, setMockMeetings] = useState({});
 
   useEffect(() => {
-    fetchLeads();
+    fetchAllData();
   }, []);
 
   useEffect(() => {
@@ -59,9 +63,35 @@ const EnquiriesPage = () => {
   });
 
   const renderTabContent = () => {
-    const leadKey = selectedLead?._id || selectedLead?.id || 'new-lead';
+    const leadKey = String(selectedLead?._id || selectedLead?.id || '');
+    const hasValidLeadId = leadKey.length === 24;
     
-    // Make fallback data dynamic based on the lead to prove UI reactivity
+    // Check if order/quote has been generated for selected lead
+    const matchingQuote = hasValidLeadId ? quotes.find(q => {
+      const qInq = String(q.inquiryId?._id || q.inquiryId?.id || q.inquiryId || '').trim();
+      const qId = String(q._id || q.id || '').trim();
+      return qInq === leadKey || qId === leadKey;
+    }) : null;
+
+    const matchingOrder = hasValidLeadId ? orders.find(o => {
+      const oInq = String(o.inquiryId?._id || o.inquiryId?.id || o.inquiryId || '').trim();
+      const oQuote = String(o.quoteId?._id || o.quoteId?.id || o.quoteId || '').trim();
+      return (oInq === leadKey || oQuote === leadKey) && (oInq !== '' || oQuote !== '');
+    }) : null;
+
+    const matchingInvoice = hasValidLeadId ? invoices.find(inv => {
+      const invInq = String(inv.inquiryId?._id || inv.inquiryId?.id || inv.inquiryId || '').trim();
+      return invInq === leadKey && invInq !== '';
+    }) : null;
+
+    const isLocalStorageOrderGenerated = hasValidLeadId && localStorage.getItem('order_generated_' + leadKey) === 'true';
+
+    const hasGeneratedOrder = Boolean(matchingOrder || matchingInvoice || (matchingQuote && (matchingQuote.status === 'ACCEPTED' || matchingQuote.status === 'APPROVED' || matchingQuote.orderEligibility === 'ORDER_CREATED')) || isLocalStorageOrderGenerated);
+
+    const effectivePostTrialTotal = calculatedQuoteTotal !== null 
+      ? calculatedQuoteTotal 
+      : (matchingQuote?.totalAmount || matchingOrder?.totalAmount || selectedLead?.postTrialTotal || selectedLead?.amount || 0);
+
     const isDemo = selectedLead?.status === 'DEMO_SCHEDULED';
     const isQual = selectedLead?.status === 'QUALIFIED';
     const mockProvStep = isDemo ? 4 : (isQual ? 2 : 0);
@@ -79,15 +109,32 @@ const EnquiriesPage = () => {
         />
       );
       case 'Conversations': return <ConversationsTab key={leadKey} lead={selectedLead} />;
-      case 'Payment': return <PaymentTab key={leadKey} postTrialTotal={calculatedQuoteTotal !== null ? calculatedQuoteTotal : (selectedLead?.postTrialTotal || (isDemo ? 120500 : 93409))} currentStatus={selectedLead?.status || '15-Day Free Trial'} trialExpiryDate={selectedLead?.trialExpiryDate || '19 Aug 2026'} paymentLink={selectedLead?.paymentLink || `https://pay.managemygate.com/q/${leadKey.substring(0,6)}`} />;
-      case 'Provisioning': return <ProvisioningTab key={leadKey} currentStepIndex={selectedLead?.provisioningStepIndex ?? mockProvStep} />;
+      case 'Payment': return (
+        <PaymentTab 
+          key={leadKey} 
+          lead={selectedLead} 
+          postTrialTotal={effectivePostTrialTotal}
+          hasGeneratedOrder={hasGeneratedOrder}
+          currentStatus={selectedLead?.status || '14-Day Free Trial'} 
+          trialExpiryDate={selectedLead?.trialExpiryDate || '14 Days After Activation'} 
+          paymentLink={`${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3004'}/#/pay/${leadKey}`} 
+        />
+      );
+      case 'Provisioning': return <ProvisioningTab key={leadKey} lead={selectedLead} currentStepIndex={selectedLead?.provisioningStepIndex ?? mockProvStep} />;
       case 'Onboarding': return <OnboardingTab key={leadKey} currentStepIndex={selectedLead?.onboardingStepIndex ?? mockOnboardStep} />;
       default: return <OverviewTab key={leadKey} lead={selectedLead} />;
     }
   };
 
   const getStatusColor = (s) => {
-    return s === 'QUALIFIED' || s === 'DEMO_SCHEDULED' ? 'blue' : s === 'NEW' ? 'gray' : 'green';
+    switch (s) {
+      case 'QUALIFIED':       return 'blue';
+      case 'DEMO_SCHEDULED':  return 'orange';
+      case 'DEMO_COMPLETED':  return 'purple';
+      case 'PROVISIONED':     return 'green';
+      case 'CLOSED_WON':      return 'green';
+      default:                return 'gray';
+    }
   };
 
   return (
@@ -107,20 +154,20 @@ const EnquiriesPage = () => {
           <div className="inquiry-tools">
             <label htmlFor="inqSearch" className="hidden">Filter enquiries</label>
             <input 
-              className="inquiry-search input" 
+              className="inquiry-search"
               id="inqSearch"
               placeholder="Search enquiries..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
             <div className="filters">
-              {['ALL', 'NEW', 'QUALIFIED', 'DEMO_SCHEDULED'].map(f => (
+              {[['ALL','All'], ['NEW_INQUIRY','New'], ['QUALIFIED','Qualified'], ['DEMO_SCHEDULED','Demo'], ['DEMO_COMPLETED','Done']].map(([f, label]) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`filter ${filter === f ? 'active' : ''}`}
+                  className={`filter${filter === f ? ' active' : ''}`}
                 >
-                  {f === 'ALL' ? 'All' : f === 'DEMO_SCHEDULED' ? 'Demo' : f.charAt(0) + f.slice(1).toLowerCase()}
+                  {label}
                 </button>
               ))}
             </div>

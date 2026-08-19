@@ -30,34 +30,31 @@ export const Modal = ({
       onRequestClose={onClose}
       {...props}
     >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View className={cn('flex-1 items-center justify-center bg-black/50 p-4', className)}>
-          <TouchableWithoutFeedback>
-            <View
-              className={cn(
-                'w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg dark:bg-slate-900',
-                contentClassName
-              )}
-            >
-              {title && (
-                <View className="mb-4 flex-row items-center justify-between">
-                  <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                    {title}
-                  </Text>
-                  <IconButton
-                    icon={X}
-                    size="sm"
-                    variant="ghost"
-                    onPress={onClose}
-                    accessibilityLabel="Close modal"
-                  />
-                </View>
-              )}
-              {children}
+      <Pressable className={cn('flex-1 items-center justify-center bg-black/50 p-4', className)} onPress={onClose}>
+        <Pressable
+          className={cn(
+            'w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg dark:bg-slate-900',
+            contentClassName
+          )}
+          onPress={(e) => e.stopPropagation()}
+        >
+          {Boolean(title) && (
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                {title}
+              </Text>
+              <IconButton
+                icon={X}
+                size="sm"
+                variant="ghost"
+                onPress={onClose}
+                accessibilityLabel="Close modal"
+              />
             </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+          )}
+          {children}
+        </Pressable>
+      </Pressable>
     </RNModal>
   );
 };

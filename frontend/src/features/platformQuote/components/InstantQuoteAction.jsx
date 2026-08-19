@@ -5,25 +5,63 @@ import { usePlatformQuote } from '../hooks/usePlatformQuote.js';
 const InstantQuoteAction = ({ quoteId, payload }) => {
   const { loading, orderStatus, generateOrder } = usePlatformQuote();
   
-  // Find if an accepted quote already exists for this inquiryId (quoteId prop)
   const quotes = useSelector(state => {
     const rawQuotes = state.platformBilling?.quotes;
     if (!rawQuotes) return [];
     return Array.isArray(rawQuotes) ? rawQuotes : (rawQuotes.data || rawQuotes.docs || []);
   });
 
-  const existingAcceptedQuote = quotes.find(q => {
-    if (!q || !q.inquiryId) return false;
-    const qInquiryStr = String(q.inquiryId._id || q.inquiryId.id || q.inquiryId);
-    const targetInquiryStr = String(quoteId?._id || quoteId?.id || quoteId);
-    return qInquiryStr === targetInquiryStr && (q.status === 'ACCEPTED' || q.status === 'PROVISIONING');
+  const invoices = useSelector(state => {
+    const rawInvoices = state.platformBilling?.invoices;
+    if (!rawInvoices) return [];
+    return Array.isArray(rawInvoices) ? rawInvoices : (rawInvoices.data || rawInvoices.docs || []);
   });
 
-  const isOrderGenerated = orderStatus === 'PAYMENT_PENDING' || orderStatus === 'PROVISIONING' || orderStatus === 'TRIAL_PENDING' || !!existingAcceptedQuote;
+  const orders = useSelector(state => {
+    const rawOrders = state.platformBilling?.orders;
+    if (!rawOrders) return [];
+    return Array.isArray(rawOrders) ? rawOrders : (rawOrders.data || rawOrders.docs || []);
+  });
 
-  const handleDispatchOrder = () => {
+  const targetInquiryStr = String(quoteId?._id || quoteId?.id || quoteId || '').trim();
+  const hasValidId = targetInquiryStr.length === 24;
+
+  const isLocalStoragePersisted = hasValidId && localStorage.getItem('order_generated_' + targetInquiryStr) === 'true';
+
+  const existingAcceptedQuote = hasValidId ? quotes.find(q => {
+    if (!q) return false;
+    const qInquiryStr = String(q.inquiryId?._id || q.inquiryId?.id || q.inquiryId || '').trim();
+    const qIdStr = String(q._id || q.id || '').trim();
+    const matchesId = (qInquiryStr === targetInquiryStr || qIdStr === targetInquiryStr);
+    const isAccepted = q.status === 'ACCEPTED' || q.status === 'PAID' || q.orderEligibility === 'ORDER_CREATED';
+    return matchesId && isAccepted;
+  }) : null;
+
+  const existingOrder = hasValidId ? orders.find(o => {
+    if (!o) return false;
+    const oInquiryStr = String(o.inquiryId?._id || o.inquiryId?.id || o.inquiryId || '').trim();
+    const oQuoteStr = String(o.quoteId?._id || o.quoteId?.id || o.quoteId || '').trim();
+    return (oInquiryStr === targetInquiryStr || oQuoteStr === targetInquiryStr) && (oInquiryStr !== '' || oQuoteStr !== '');
+  }) : null;
+
+  const existingInvoice = hasValidId ? invoices.find(inv => {
+    if (!inv) return false;
+    const invInquiryStr = String(inv.inquiryId?._id || inv.inquiryId?.id || inv.inquiryId || '').trim();
+    return invInquiryStr === targetInquiryStr && invInquiryStr !== '';
+  }) : null;
+
+  const isOrderGenerated = Boolean(
+    (orderStatus === 'PAYMENT_PENDING' || orderStatus === 'PROVISIONING' || orderStatus === 'TRIAL_PENDING') || 
+    existingAcceptedQuote || 
+    existingOrder || 
+    existingInvoice || 
+    isLocalStoragePersisted
+  );
+
+  const handleDispatchOrder = async () => {
     if (window.confirm("Are you sure you want to generate the order and start the trial? This will create an invoice and a Razorpay payment link.")) {
-      generateOrder(quoteId, payload);
+      localStorage.setItem('order_generated_' + targetInquiryStr, 'true');
+      await generateOrder(quoteId, payload);
     }
   };
 

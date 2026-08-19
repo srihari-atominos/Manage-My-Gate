@@ -167,7 +167,7 @@ const MessagesLink: MessageType[] = [
   {
     avatar: avatar5,
     title: 'John received payment',
-    subtitle: '$230 deducted from account',
+    subtitle: '₹230 deducted from account',
   },
 ];
 

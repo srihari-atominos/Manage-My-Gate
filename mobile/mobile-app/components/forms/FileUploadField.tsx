@@ -35,7 +35,7 @@ export const FileUploadField = ({
 }: FileUploadFieldProps) => {
   return (
     <View className={cn('w-full', className)}>
-      {label && (
+      {Boolean(label) && (
         <Text className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
           {label}
         </Text>

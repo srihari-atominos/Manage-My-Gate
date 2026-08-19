@@ -24,6 +24,8 @@ router.post(
 router.use(isAuthenticated);
 router.use(authorizeRoles('SUPER_ADMIN', 'ADMIN', 'SALES_EXECUTIVE'));
 
+router.post('/enquiries/ensure', enquiryController.ensureInquiry);
+
 router.get(
   '/enquiries',
   enquiryController.getAll

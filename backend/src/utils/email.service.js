@@ -1,19 +1,7 @@
-import nodemailer from 'nodemailer';
 import logger from './logger.utils.js';
+import { getSmtpTransporter } from './email.utils.js';
 
 class EmailService {
-  constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SYSTEM_SMTP_HOST || 'smtp.ethereal.email',
-      port: process.env.SYSTEM_SMTP_PORT || 587,
-      auth: {
-        user: process.env.SYSTEM_SMTP_USER,
-        pass: process.env.SYSTEM_SMTP_PASS,
-      },
-    });
-    this.defaultFrom = '"Atominos Consulting Private Limited" <no-reply@atominosconsulting.com>';
-  }
-
   async sendWelcomeEmail({ to, organizationName, loginUrl }) {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -25,13 +13,19 @@ class EmailService {
         <br/>
         <hr style="border: 0; border-top: 1px solid #eee;" />
         <p style="color: #777; font-size: 14px;">Best regards,</p>
-        <p style="color: #333; font-weight: bold; font-size: 14px;">Atominos Consulting Private Limited</p>
+        <p style="color: #333; font-weight: bold; font-size: 14px;">Manage My Gate Team</p>
       </div>
     `;
 
     try {
-      await this.transporter.sendMail({
-        from: this.defaultFrom,
+      const smtpObj = await getSmtpTransporter();
+      if (!smtpObj) {
+        logger.warn(`Failed to send Welcome email to ${to}: SMTP credentials unavailable`);
+        return;
+      }
+      const { transporter, from } = smtpObj;
+      await transporter.sendMail({
+        from,
         to,
         subject: 'Welcome to Manage-My-Gate',
         html,
@@ -53,22 +47,28 @@ class EmailService {
         <br/>
         <hr style="border: 0; border-top: 1px solid #eee;" />
         <p style="color: #777; font-size: 14px;">Best regards,</p>
-        <p style="color: #333; font-weight: bold; font-size: 14px;">Atominos Consulting Private Limited</p>
+        <p style="color: #333; font-weight: bold; font-size: 14px;">Manage My Gate Team</p>
       </div>
     `;
 
     try {
-      await this.transporter.sendMail({
-        from: this.defaultFrom,
+      const smtpObj = await getSmtpTransporter();
+      if (!smtpObj) {
+        logger.warn(`Failed to send Payment Receipt to ${to}: SMTP credentials unavailable`);
+        return;
+      }
+      const { transporter, from } = smtpObj;
+      await transporter.sendMail({
+        from,
         to,
         subject: `Payment Receipt: ${invoiceId}`,
         html,
-        attachments: [
+        attachments: invoicePath ? [
           {
             filename: `Invoice_${invoiceId}.pdf`,
             path: invoicePath
           }
-        ]
+        ] : []
       });
       logger.info(`Payment receipt sent to ${to} for invoice ${invoiceId}`);
     } catch (error) {
@@ -90,13 +90,19 @@ class EmailService {
         <br/>
         <hr style="border: 0; border-top: 1px solid #eee;" />
         <p style="color: #777; font-size: 14px;">Best regards,</p>
-        <p style="color: #333; font-weight: bold; font-size: 14px;">Atominos Consulting Private Limited</p>
+        <p style="color: #333; font-weight: bold; font-size: 14px;">Manage My Gate Team</p>
       </div>
     `;
 
     try {
-      await this.transporter.sendMail({
-        from: this.defaultFrom,
+      const smtpObj = await getSmtpTransporter();
+      if (!smtpObj) {
+        logger.warn(`Failed to send Expiry Warning to ${to}: SMTP credentials unavailable`);
+        return;
+      }
+      const { transporter, from } = smtpObj;
+      await transporter.sendMail({
+        from,
         to,
         subject: 'Action Required: Subscription Expiring',
         html,

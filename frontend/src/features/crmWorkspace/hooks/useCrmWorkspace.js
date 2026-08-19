@@ -5,6 +5,9 @@ import {
   fetchInquiryById,
   createInquiry,
   updateInquiry,
+  transitionInquiryStatus,
+  fetchInquiryTimeline,
+  fetchInquirySummary,
   assignInquiry,
   checkAvailability,
   fetchTasks,
@@ -34,11 +37,14 @@ export const useCrmWorkspace = () => {
     inquiries,
     tasks,
     meetings,
+    timeline,
+    summary,
     activeThread,
     pagination,
     taskPagination,
     activeTab,
     loading,
+    statusTransitionLoading,
     taskLoading,
     error,
   } = useSelector((state) => state.crmWorkspace || state.crm || {});
@@ -54,6 +60,27 @@ export const useCrmWorkspace = () => {
   const selectActiveInquiry = useCallback(
     (inquiry) => {
       dispatch(setActiveInquiry(inquiry));
+    },
+    [dispatch]
+  );
+
+  const handleStatusTransition = useCallback(
+    (id, nextStatus, metadata = {}) => {
+      return dispatch(transitionInquiryStatus({ id, nextStatus, metadata }));
+    },
+    [dispatch]
+  );
+
+  const fetchTimelineData = useCallback(
+    (id) => {
+      return dispatch(fetchInquiryTimeline(id));
+    },
+    [dispatch]
+  );
+
+  const fetchSummaryData = useCallback(
+    (id) => {
+      return dispatch(fetchInquirySummary(id));
     },
     [dispatch]
   );
@@ -176,17 +203,23 @@ export const useCrmWorkspace = () => {
     inquiries,
     tasks,
     meetings,
+    timeline,
+    summary,
     activeThread,
     pagination,
     taskPagination,
     activeTab,
     loading,
+    statusTransitionLoading,
     taskLoading,
     error,
 
     // Methods
     handleTabChange,
     selectActiveInquiry,
+    handleStatusTransition,
+    fetchTimelineData,
+    fetchSummaryData,
     fetchInquiriesList,
     fetchAssignedToMeInquiries,
     fetchUnassignedInquiries,

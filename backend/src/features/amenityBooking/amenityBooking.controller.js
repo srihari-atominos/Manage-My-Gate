@@ -1,7 +1,5 @@
 import amenityBookingService from './amenityBooking.services.js';
 import HttpError from '../../utils/httpError.utils.js';
-import Amenity from '../amenity/amenity.model.js';
-import AmenityBooking from './amenityBooking.model.js';
 
 export class AmenityBookingController {
   async getQueue(req, res, next) {
@@ -28,8 +26,8 @@ export class AmenityBookingController {
       const orgId = req.tenant.orgId;
       const { startDate, endDate } = req.query;
       
-      const aggregatedBookings = await amenityBookingService.getAggregatedCalendarBookings(orgId, startDate, endDate);
-      res.success(aggregatedBookings, 'Aggregated calendar bookings retrieved successfully');
+      const bookings = await amenityBookingService.findEventsForCalendar(orgId, startDate, endDate);
+      res.success(bookings, 'Admin calendar bookings retrieved successfully');
     } catch (error) {
       next(error);
     }
@@ -56,26 +54,6 @@ export class AmenityBookingController {
       const userId = req.user.id;
       const bookingData = { ...req.body, orgId, userId };
       
-      const amenity = await Amenity.findById(bookingData.amenityId);
-      if (!amenity) throw new HttpError(404, 'Amenity not found');
-
-      const maxLimit = amenity.maxBookingsPerUserPerSlot || 2;
-      
-      const existingBookings = await AmenityBooking.find({
-        amenityId: bookingData.amenityId,
-        userId: userId,
-        bookingDate: bookingData.bookingDate,
-        startTime: bookingData.startTime, // Check specific slot
-        status: { $in: ['pending', 'confirmed', 'active'] }
-      });
-
-      const existingSlotsCount = existingBookings.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
-      const newSlotsCount = parseInt(bookingData.numberOfPersons || 1, 10);
-
-      if (existingSlotsCount + newSlotsCount > maxLimit) {
-        throw new HttpError(400, `Slot limit exceeded. You can only book a maximum of ${maxLimit} spots per slot.`);
-      }
-
       const created = await amenityBookingService.createBooking(bookingData);
       res.success(created, 'Booking placed successfully', 201);
     } catch (error) {

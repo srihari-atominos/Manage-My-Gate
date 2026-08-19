@@ -1,6 +1,15 @@
 import enquiryService from './enquiry.service.js';
 
 class EnquiryController {
+  async ensureInquiry(req, res, next) {
+    try {
+      const result = await enquiryService.ensureInquiry(req.body);
+      res.success(result, 'Enquiry ensured successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async create(req, res, next) {
     try {
       const xRequestId = req.headers['x-request-id'] || req.id;
@@ -14,7 +23,18 @@ class EnquiryController {
   async getAll(req, res, next) {
     try {
       const xRequestId = req.headers['x-request-id'] || req.id;
-      const result = await enquiryService.getAllEnquiries(req.query, xRequestId);
+      const userRole = req.user?.role?.name || req.user?.role || '';
+      const isPlatformAdmin = ['Super Admin', 'Platform Admin', 'SUPER_ADMIN', 'PLATFORM_ADMIN'].includes(userRole);
+      
+      const queryParams = { ...req.query };
+      if (!isPlatformAdmin && (req.user?.orgId || req.user?.organizationId)) {
+        queryParams.organizationId = req.user.orgId || req.user.organizationId;
+      }
+      if (!isPlatformAdmin && req.user?.email) {
+        queryParams.userEmail = req.user.email;
+      }
+
+      const result = await enquiryService.getAllEnquiries(queryParams, xRequestId);
       res.success(result, 'Enquiries retrieved successfully');
     } catch (error) {
       next(error);

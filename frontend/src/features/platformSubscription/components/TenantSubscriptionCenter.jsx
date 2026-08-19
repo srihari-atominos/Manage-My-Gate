@@ -122,7 +122,7 @@ const TenantSubscriptionCenter = () => {
               className="mr-4 w-5 h-5 text-blue-600"
             />
             <span className="text-lg font-medium text-gray-800">Extend Monthly</span>
-            <span className="ml-auto font-bold text-gray-600">SAR {(baseMonthlyRate * 1).toFixed(2)}</span>
+            <span className="ml-auto font-bold text-gray-600">₹{(baseMonthlyRate * 1).toFixed(2)}</span>
           </label>
           
           <label className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${renewalTerm === 'QUARTERLY' ? 'bg-blue-50 border-blue-500 shadow-sm' : 'hover:bg-gray-50'}`}>
@@ -135,7 +135,7 @@ const TenantSubscriptionCenter = () => {
               className="mr-4 w-5 h-5 text-blue-600"
             />
             <span className="text-lg font-medium text-gray-800">Change to Quarterly</span>
-            <span className="ml-auto font-bold text-gray-600">SAR {(baseMonthlyRate * 3).toFixed(2)}</span>
+            <span className="ml-auto font-bold text-gray-600">₹{(baseMonthlyRate * 3).toFixed(2)}</span>
           </label>
 
           <label className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${renewalTerm === 'HALF_YEARLY' ? 'bg-blue-50 border-blue-500 shadow-sm' : 'hover:bg-gray-50'}`}>
@@ -148,7 +148,7 @@ const TenantSubscriptionCenter = () => {
               className="mr-4 w-5 h-5 text-blue-600"
             />
             <span className="text-lg font-medium text-gray-800">Change to Half-Yearly</span>
-            <span className="ml-auto font-bold text-gray-600">SAR {(baseMonthlyRate * 6).toFixed(2)}</span>
+            <span className="ml-auto font-bold text-gray-600">₹{(baseMonthlyRate * 6).toFixed(2)}</span>
           </label>
           
           <label className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${renewalTerm === 'YEARLY' ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500 shadow-sm' : 'hover:bg-gray-50'}`}>
@@ -164,22 +164,22 @@ const TenantSubscriptionCenter = () => {
               <span className="text-lg font-medium text-gray-800 block">Extend 1 Year</span>
               <span className="text-sm font-semibold text-green-600">★ Recommended</span>
             </div>
-            <span className="ml-auto font-bold text-gray-600">SAR {(baseMonthlyRate * 12).toFixed(2)}</span>
+            <span className="ml-auto font-bold text-gray-600">₹{(baseMonthlyRate * 12).toFixed(2)}</span>
           </label>
         </div>
         
         <div className="bg-gray-800 text-white p-6 rounded-lg mb-8 shadow-inner">
           <div className="flex justify-between mb-3 text-gray-300 text-lg">
             <span>Subtotal:</span>
-            <span>SAR {calculatedPrice.toFixed(2)}</span>
+            <span>₹{calculatedPrice.toFixed(2)}</span>
           </div>
           <div className="flex justify-between mb-3 text-gray-300 text-lg">
             <span>Tax ({GST_RATE * 100}% GST):</span>
-            <span>SAR {tax.toFixed(2)}</span>
+            <span>₹{tax.toFixed(2)}</span>
           </div>
           <div className="flex justify-between font-extrabold text-2xl pt-4 border-t border-gray-600 text-green-400">
             <span>Total to Pay:</span>
-            <span>SAR {grandTotal.toFixed(2)}</span>
+            <span>₹{grandTotal.toFixed(2)}</span>
           </div>
         </div>
         
@@ -197,7 +197,7 @@ const TenantSubscriptionCenter = () => {
               Initializing Secure Checkout...
             </>
           ) : (
-            `Pay SAR ${grandTotal.toFixed(2)} via Razorpay`
+            `Pay ₹${grandTotal.toFixed(2)} via Razorpay`
           )}
         </button>
       </div>

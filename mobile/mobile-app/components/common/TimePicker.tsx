@@ -82,7 +82,7 @@ export const TimePicker = ({
 
   return (
     <View className={cn('w-full', className)}>
-      {label && (
+      {Boolean(label) && (
         <Text className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
           {label}
         </Text>
@@ -91,7 +91,7 @@ export const TimePicker = ({
       <Pressable
         className={cn(
           'flex-row items-center rounded-xl border border-slate-200 bg-white px-3 py-3.5 dark:border-slate-800 dark:bg-slate-900',
-          error && 'border-red-500 dark:border-red-500'
+          Boolean(error) && 'border-red-500 dark:border-red-500'
         )}
         onPress={() => setModalVisible(true)}
       >
@@ -108,7 +108,7 @@ export const TimePicker = ({
         </Text>
       </Pressable>
 
-      {error && <Text className="mt-1.5 text-xs text-red-500">{error}</Text>}
+      {Boolean(error) && <Text className="mt-1.5 text-xs text-red-500">{error}</Text>}
 
       {/* Interactive Mobile Time Selection Modal */}
       <Modal

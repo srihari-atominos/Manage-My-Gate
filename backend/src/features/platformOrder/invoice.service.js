@@ -46,7 +46,7 @@ class InvoiceService {
 
         // Line Items
         doc.text('Description', 50, doc.y);
-        doc.text('Amount (SAR)', 400, doc.y, { align: 'right' });
+        doc.text('Amount (INR)', 400, doc.y, { align: 'right' });
         doc.moveTo(50, doc.y + 10).lineTo(500, doc.y + 10).stroke();
         doc.moveDown();
 

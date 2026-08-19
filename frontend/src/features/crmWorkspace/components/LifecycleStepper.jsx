@@ -1,40 +1,33 @@
 import React, { memo } from 'react';
 
 /**
- * LifecycleStepper — Dumb visual component displaying the deal/customer lifecycle.
+ * LifecycleStepper — Dumb visual component displaying the CRM Inquiry lifecycle.
  *
- * Steps:
- * 1. Inquiry (NEW / QUALIFIED)
- * 2. Demo (DEMO_SCHEDULED)
- * 3. Quote (PROPOSAL_SENT)
- * 4. Order (CLOSED_WON)
- * 5. Payment (FULFILLED)
+ * Phase 1 Steps:
+ * 1. New Inquiry (NEW_INQUIRY)
+ * 2. Qualified (QUALIFIED)
+ * 3. Demo Scheduled (DEMO_SCHEDULED)
+ * 4. Demo Completed (DEMO_COMPLETED)
  */
-export const LifecycleStepper = memo(({ status = 'NEW' }) => {
+export const LifecycleStepper = memo(({ status = 'NEW_INQUIRY' }) => {
   const steps = [
-    { key: 'INQUIRY', label: 'Inquiry', icon: 'fa-solid fa-file-invoice', statuses: ['NEW', 'QUALIFIED'] },
-    { key: 'DEMO', label: 'Demo', icon: 'fa-solid fa-calendar-check', statuses: ['DEMO_SCHEDULED'] },
-    { key: 'QUOTE', label: 'Quote', icon: 'fa-solid fa-paper-plane', statuses: ['PROPOSAL_SENT'] },
-    { key: 'ORDER', label: 'Order', icon: 'fa-solid fa-handshake', statuses: ['CLOSED_WON'] },
-    { key: 'PAYMENT', label: 'Payment', icon: 'fa-solid fa-credit-card', statuses: ['FULFILLED'] },
+    { key: 'NEW_INQUIRY', label: 'New Inquiry', icon: 'fa-solid fa-file-invoice', statuses: ['NEW_INQUIRY', 'NEW'] },
+    { key: 'QUALIFIED', label: 'Qualified', icon: 'fa-solid fa-user-check', statuses: ['QUALIFIED'] },
+    { key: 'DEMO_SCHEDULED', label: 'Demo Scheduled', icon: 'fa-solid fa-calendar-check', statuses: ['DEMO_SCHEDULED'] },
+    { key: 'DEMO_COMPLETED', label: 'Demo Completed', icon: 'fa-solid fa-circle-check', statuses: ['DEMO_COMPLETED'] },
   ];
 
-  // Resolve current step index based on inquiry status
   const getActiveStepIndex = (currentStatus) => {
     switch (currentStatus?.toUpperCase()) {
+      case 'NEW_INQUIRY':
       case 'NEW':
-      case 'QUALIFIED':
         return 0;
-      case 'DEMO_SCHEDULED':
+      case 'QUALIFIED':
         return 1;
-      case 'PROPOSAL_SENT':
+      case 'DEMO_SCHEDULED':
         return 2;
-      case 'CLOSED_WON':
+      case 'DEMO_COMPLETED':
         return 3;
-      case 'FULFILLED':
-        return 4;
-      case 'CLOSED_LOST':
-        return -1; // Special indicator
       default:
         return 0;
     }
@@ -49,12 +42,10 @@ export const LifecycleStepper = memo(({ status = 'NEW' }) => {
         {steps.map((step, index) => {
           const isCompleted = activeIndex > index;
           const isActive = activeIndex === index;
-          const isLost = status === 'CLOSED_LOST';
 
           let stateClass = '';
           if (isCompleted) stateClass = 'crm-step--completed';
           if (isActive) stateClass = 'crm-step--active';
-          if (isLost && index === 0) stateClass = 'crm-step--active';
 
           return (
             <div key={step.key} className={`crm-step ${stateClass}`}>

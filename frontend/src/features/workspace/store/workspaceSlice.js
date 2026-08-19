@@ -426,9 +426,13 @@ export const workspaceSlice = createSlice({
       })
       .addCase(loadCurrentModules.fulfilled, (state, action) => {
         state.loading = false
-        const modules = action.payload?.data || []
+        const payloadData = action.payload?.data
+        const modules = Array.isArray(payloadData) ? payloadData : (payloadData?.modules || [])
         state.modules = modules
         state.allowedFeatures = modules.map((m) => m.moduleKey)
+        state.subscriptionStatus = payloadData?.subscriptionStatus || 'ACTIVE'
+        state.accessGranted = payloadData?.accessGranted !== false
+        state.subscriptionReason = payloadData?.reason || null
       })
       .addCase(loadCurrentModules.rejected, (state, action) => {
         state.loading = false

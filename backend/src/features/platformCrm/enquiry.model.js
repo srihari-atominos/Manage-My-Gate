@@ -24,6 +24,18 @@ const enquirySchema = new mongoose.Schema(
     },
     
     // Organization Information
+    organizationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      default: null,
+      index: true,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true,
+    },
     organizationName: {
       type: String,
       required: [true, 'Organization name is required'],

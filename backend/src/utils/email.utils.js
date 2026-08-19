@@ -1,36 +1,80 @@
 import nodemailer from 'nodemailer';
-import integrationHubService from '../features/integrationHub/integrationHub.service.js';
 import logger from './logger.utils.js';
+
+export const getSmtpTransporter = async (orgId = null) => {
+  try {
+    const IntegrationHub = (await import('../features/integrationHub/integrationHub.model.js')).default;
+    const { decrypt } = await import('../features/integrationHub/utils/crypto.util.js');
+
+    let smtpIntegration = null;
+    if (orgId) {
+      smtpIntegration = await IntegrationHub.findOne({ organizationId: orgId, provider: 'smtp' }).exec();
+    }
+    if (!smtpIntegration) {
+      smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp', status: 'connected' }).exec();
+    }
+    if (!smtpIntegration) {
+      smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp' }).exec();
+    }
+
+    let host = process.env.SYSTEM_SMTP_HOST || process.env.SMTP_HOST || 'smtp.gmail.com';
+    let port = parseInt(process.env.SYSTEM_SMTP_PORT || process.env.SMTP_PORT || '587', 10);
+    let authUsername = process.env.SYSTEM_SMTP_USER || process.env.SMTP_USER || process.env.GMAIL_USER;
+    let authPassword = process.env.SYSTEM_SMTP_PASS || process.env.SMTP_PASS || process.env.GMAIL_PASS;
+
+    if (smtpIntegration && smtpIntegration.credentials && smtpIntegration.credentials.length > 0) {
+      const getCred = (key) => {
+        const cred = smtpIntegration.credentials.find((c) => c.key === key);
+        return cred ? decrypt(cred.encryptedValue, cred.iv) : null;
+      };
+      host = getCred('host') || host;
+      port = parseInt(getCred('port') || port, 10);
+      authUsername = getCred('authUsername') || authUsername;
+      authPassword = getCred('authPassword') || authPassword;
+    }
+
+    if (!host || !authUsername || !authPassword) {
+      logger.warn('[getSmtpTransporter] SMTP credentials missing.');
+      return null;
+    }
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user: authUsername, pass: authPassword },
+    });
+
+    return {
+      transporter,
+      from: `"${smtpIntegration?.accountLabel || 'Manage My Gate'}" <${authUsername}>`,
+      authUsername,
+    };
+  } catch (err) {
+    logger.error('[getSmtpTransporter] Error creating transporter:', err);
+    return null;
+  }
+};
 
 export const sendEmail = async (orgId, to, subject, htmlBody) => {
   try {
-    const smtpConnection = await integrationHubService.findSmtpConnection(orgId);
-    if (!smtpConnection) {
-      logger.warn(`SMTP integration not configured for org ${orgId}. Email not sent to ${to}`);
+    const smtpObj = await getSmtpTransporter(orgId);
+    if (!smtpObj) {
+      logger.warn(`SMTP integration not configured or credentials missing. Email not sent to ${to}`);
       return false;
     }
 
-    const credentials = await integrationHubService.getDecryptedCredentialsById(smtpConnection._id);
-
-    const transporter = nodemailer.createTransport({
-      host: credentials.host,
-      port: parseInt(credentials.port, 10),
-      secure: parseInt(credentials.port, 10) === 465,
-      auth: {
-        user: credentials.authUsername,
-        pass: credentials.authPassword,
-      }
-    });
+    const { transporter, from } = smtpObj;
 
     const mailOptions = {
-      from: `"${smtpConnection.name}" <${credentials.authUsername}>`,
+      from,
       to,
       subject,
-      html: htmlBody
+      html: htmlBody,
     };
 
     await transporter.sendMail(mailOptions);
-    logger.info(`Email sent to ${to}`);
+    logger.info(`Email successfully sent to ${to}`);
     return true;
   } catch (error) {
     logger.error(`Error sending email to ${to}:`, error);

@@ -6,14 +6,15 @@ import toast from 'react-hot-toast'
 import config from '../../../config/config.js'
 
 const useAdminBookingSocket = (onRefreshNeeded) => {
-  const { user } = useSelector((state) => state.auth || {})
+  const { user, token } = useSelector((state) => state.auth || {})
 
   useEffect(() => {
-    if (!user) return
+    if (!user || !token) return
 
     const socketUrl = config.socketUrl
 
     const socket = io(socketUrl, {
+      auth: { token },
       transports: ['websocket', 'polling'],
       withCredentials: true,
     })
@@ -65,7 +66,7 @@ const useAdminBookingSocket = (onRefreshNeeded) => {
       socket.off('payment_success', handlePaymentSuccess)
       socket.disconnect()
     }
-  }, [user, onRefreshNeeded])
+  }, [user, token, onRefreshNeeded])
 
   return null
 }

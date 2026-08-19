@@ -42,7 +42,7 @@ export const ListItem = ({
           <Text className="text-base font-semibold text-foreground">
             {title}
           </Text>
-          {subtitle && (
+          {Boolean(subtitle) && (
             <Text className="mt-0.5 text-sm text-muted-foreground">
               {subtitle}
             </Text>

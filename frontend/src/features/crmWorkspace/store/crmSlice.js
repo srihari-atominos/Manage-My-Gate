@@ -51,6 +51,42 @@ export const updateInquiry = createAsyncThunk(
   }
 );
 
+export const transitionInquiryStatus = createAsyncThunk(
+  'crmWorkspace/transitionInquiryStatus',
+  async ({ id, nextStatus, metadata }, { rejectWithValue }) => {
+    try {
+      const response = await crmApi.transitionInquiryStatus(id, nextStatus, metadata);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Status transition failed');
+    }
+  }
+);
+
+export const fetchInquiryTimeline = createAsyncThunk(
+  'crmWorkspace/fetchInquiryTimeline',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await crmApi.getInquiryTimeline(id);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch timeline');
+    }
+  }
+);
+
+export const fetchInquirySummary = createAsyncThunk(
+  'crmWorkspace/fetchInquirySummary',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await crmApi.getInquirySummary(id);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch inquiry summary');
+    }
+  }
+);
+
 export const assignInquiry = createAsyncThunk(
   'crmWorkspace/assignInquiry',
   async ({ inquiryId, userId }, { rejectWithValue }) => {
@@ -166,11 +202,14 @@ const initialState = {
   inquiries: [],
   tasks: [],
   meetings: [],
+  timeline: [],
+  summary: null,
   activeThread: null,
   pagination: { currentPage: 1, totalPages: 1, totalRecords: 0 },
   taskPagination: { currentPage: 1, totalPages: 1, totalRecords: 0 },
   activeTab: 'Overview',
   loading: false,
+  statusTransitionLoading: false,
   taskLoading: false,
   error: null,
 };
@@ -222,6 +261,34 @@ const crmSlice = createSlice({
       .addCase(fetchInquiryById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      // transitionInquiryStatus
+      .addCase(transitionInquiryStatus.pending, (state) => {
+        state.statusTransitionLoading = true;
+        state.error = null;
+      })
+      .addCase(transitionInquiryStatus.fulfilled, (state, action) => {
+        state.statusTransitionLoading = false;
+        state.activeInquiry = action.payload;
+        const index = state.inquiries.findIndex((i) => i._id === action.payload._id || i.inquiryId === action.payload.inquiryId);
+        if (index !== -1) {
+          state.inquiries[index] = action.payload;
+        }
+      })
+      .addCase(transitionInquiryStatus.rejected, (state, action) => {
+        state.statusTransitionLoading = false;
+        state.error = action.payload;
+      })
+
+      // fetchInquiryTimeline
+      .addCase(fetchInquiryTimeline.fulfilled, (state, action) => {
+        state.timeline = action.payload.data || action.payload || [];
+      })
+
+      // fetchInquirySummary
+      .addCase(fetchInquirySummary.fulfilled, (state, action) => {
+        state.summary = action.payload;
       })
 
       // createInquiry

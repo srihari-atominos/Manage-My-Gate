@@ -22,7 +22,8 @@ export const tenantContext = (optionsOrReq, res, next) => {
           throw new HttpError(401, 'Unauthorized. Authentication required.');
         }
 
-        const userIsPlatform = req.user.isPlatform === true;
+        const isPlatformRole = ['Super Admin', 'Platform Admin', 'Platform Super Admin', 'SUPER_ADMIN', 'PLATFORM_ADMIN'].includes(req.user.role);
+        const userIsPlatform = req.user.isPlatform === true || isPlatformRole;
 
         // Logic Branch A (Platform Context):
         if (requirePlatformContext) {
@@ -45,10 +46,22 @@ export const tenantContext = (optionsOrReq, res, next) => {
           throw new HttpError(400, 'Workspace context is required.');
         }
 
-        // If target tenant context orgId does not match user's active token orgId, access is forbidden
+        // If target tenant context orgId does not match user's active token orgId, verify membership
         if (orgIdHeader !== req.user.orgId) {
-          console.error(`[TENANT DEBUG] 403 Forbidden. Header: ${orgIdHeader}, Token: ${req.user.orgId}`);
-          throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
+          if (req.user.role === 'Super Admin' || req.user.role === 'Platform Super Admin' || userIsPlatform) {
+            console.log(`[TENANT DEBUG] Super Admin / Platform user operating across workspace. Header: ${orgIdHeader}, Token: ${req.user.orgId}`);
+          } else {
+            const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
+            const membership = await OrgMembership.findOne({
+              userId: req.user.id,
+              orgId: orgIdHeader,
+            }).lean();
+
+            if (!membership || (membership.status && membership.status !== 'Active')) {
+              console.error(`[TENANT DEBUG] 403 Forbidden. User ${req.user.id} has no valid membership in ${orgIdHeader}. Token orgId: ${req.user.orgId}`);
+              throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
+            }
+          }
         }
 
         // Phase 6 Expiry Lockout
@@ -69,8 +82,9 @@ export const tenantContext = (optionsOrReq, res, next) => {
         }
 
         // Attach validated context to request
+        const activeTenantOrgId = orgIdHeader || req.user.orgId;
         req.tenant = {
-          orgId: req.user.orgId,
+          orgId: activeTenantOrgId,
           role: req.user.role,
           permissions: req.user.permissions,
           isPlatform: userIsPlatform,

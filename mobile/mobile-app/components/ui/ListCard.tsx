@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Pressable, Platform } from 'react-native';
+import { View, Pressable, Platform, Image } from 'react-native';
 import * as LucideIcons from 'lucide-react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
@@ -12,6 +12,8 @@ export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeo
   title: string;
   subtitle?: string;
   leftIcon?: string;               // Lucide icon name
+  leftImage?: string;              // Image URL for left square
+  backgroundImage?: string;        // Full card background image URL
   leftIconBgColor?: string;        // icon container bg hex
   leftIconColor?: string;          // icon color hex
   status?: { label: string; variant: StatusVariant };
@@ -62,6 +64,8 @@ const ListCard = React.forwardRef<View, ListCardProps>(
       title,
       subtitle,
       leftIcon,
+      leftImage,
+      backgroundImage,
       leftIconBgColor = '#dbeafe',
       leftIconColor = '#2563eb',
       status,
@@ -83,13 +87,31 @@ const ListCard = React.forwardRef<View, ListCardProps>(
         ref={ref}
         onPress={onPress}
         onLongPress={onLongPress}
-        className={cn(listCardVariants(), className)}
+        className={cn(listCardVariants(), 'overflow-hidden', className)}
         style={style}
         accessibilityRole={rightContent !== undefined ? undefined : 'button'}
         {...props}
       >
-        {/* Left Icon Container */}
-        {DynamicIcon ? (
+        {/* Background Image & Overlay */}
+        {backgroundImage ? (
+          <>
+            <Image
+              source={{ uri: backgroundImage }}
+              className="absolute inset-0 w-full h-full"
+              resizeMode="cover"
+            />
+            <View className="absolute inset-0 bg-black/60" />
+          </>
+        ) : null}
+
+        {/* Left Icon / Image Container */}
+        {leftImage ? (
+          <Image
+            source={{ uri: leftImage }}
+            className="w-10 h-10 rounded-lg shrink-0 mr-3"
+            resizeMode="cover"
+          />
+        ) : DynamicIcon ? (
           <View
             className="w-10 h-10 rounded-lg items-center justify-center shrink-0 mr-3"
             style={{ backgroundColor: leftIconBgColor }}
@@ -100,16 +122,16 @@ const ListCard = React.forwardRef<View, ListCardProps>(
 
         {/* Middle Details */}
         <View className="flex-1 justify-center">
-          <Text variant="default" className="font-semibold text-foreground" numberOfLines={1}>
+          <Text variant="default" className={cn("font-semibold", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
             {title}
           </Text>
           {subtitle ? (
-            <Text variant="muted" numberOfLines={1} className="text-muted-foreground mt-0.5">
+            <Text variant="muted" numberOfLines={1} className={cn("mt-0.5", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
               {subtitle}
             </Text>
           ) : null}
           {timestamp ? (
-            <Text variant="muted" className="text-xs text-muted-foreground mt-0.5">
+            <Text variant="muted" className={cn("text-xs mt-0.5", backgroundImage ? "text-white/60" : "text-muted-foreground")}>
               {formatRelativeTime(timestamp)}
             </Text>
           ) : null}
@@ -120,7 +142,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
           {rightContent !== undefined ? (
             rightContent
           ) : (
-            <Icon as={ChevronRight} size={18} className="text-muted-foreground" />
+            <Icon as={ChevronRight} size={18} className={backgroundImage ? "text-white/70" : "text-muted-foreground"} />
           )}
           {status ? (
             <StatusBadge label={status.label} variant={status.variant} size="sm" />

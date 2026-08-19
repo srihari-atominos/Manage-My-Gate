@@ -118,10 +118,11 @@ export const useFeatureConfig = () => {
           return
         }
 
+        const userPhone = currentUser?.phone || location.state?.phone || location.state?.userPhone || '';
         const payload = {
-          username: currentUser?.username || currentUser?.email?.split('@')[0] || 'admin',
+          username: currentUser?.name || currentUser?.username || currentUser?.email?.split('@')[0] || 'admin',
           email: currentUser?.email,
-          phone: currentUser?.phone || '0000000000',
+          phone: (userPhone && userPhone !== '0000000000') ? userPhone : (currentUser?.phone || '0000000000'),
           organizationName: orgName,
           totalUnits: totalUnits ? parseInt(totalUnits, 10) : 1,
           selectedFeatures,

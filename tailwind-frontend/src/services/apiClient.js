@@ -28,8 +28,20 @@ apiClient.interceptors.request.use(
     try {
       const { store } = await import('../store/store.js')
       const state = store.getState()
-      if (state.workspace && state.workspace.activeOrganizationId) {
-        config.headers['x-organization-id'] = state.workspace.activeOrganizationId
+      const rawOrgId =
+        state.workspace?.activeOrganizationId ||
+        state.auth?.user?.orgId ||
+        state.auth?.user?.organizationId ||
+        state.auth?.user?.org?._id ||
+        state.auth?.user?.org
+
+      const activeOrgId =
+        typeof rawOrgId === 'object' && rawOrgId !== null
+          ? rawOrgId._id || rawOrgId.id || String(rawOrgId)
+          : rawOrgId
+
+      if (activeOrgId && activeOrgId !== '[object Object]') {
+        config.headers['x-organization-id'] = activeOrgId
       }
     } catch (err) {
       console.error('Failed to inject x-organization-id in request interceptor:', err)
@@ -74,6 +86,18 @@ apiClient.interceptors.response.use(
       window.location.pathname = '/login'
     }
     
+    if (error.response?.status === 400 && error.response?.data?.message === 'Workspace context is required.') {
+      console.warn('Workspace context lost. Forcing auto-logout to recover corrupted local state.');
+      try {
+        const { store } = await import('../store/store.js')
+        const { logout } = await import('../features/auth/store/authSlice.js')
+        store.dispatch(logout())
+      } catch (dispatchErr) {
+        console.error('Failed to trigger automatic logout on 400 Bad Request', dispatchErr)
+      }
+      window.location.pathname = '/login'
+    }
+
     // Extract backend error message if available to prevent raw Axios error strings
     if (error.response && error.response.data && error.response.data.message) {
       error.message = error.response.data.message;

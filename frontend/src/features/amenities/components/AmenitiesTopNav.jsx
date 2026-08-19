@@ -1,5 +1,6 @@
 import React from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { CNav, CNavItem, CNavLink } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import {
@@ -80,6 +81,10 @@ const navItems = [
 const AmenitiesTopNav = () => {
   const location = useLocation()
   const { checkPermission } = useAuth()
+  const allowedFeatures = useSelector((state) => state.workspace?.allowedFeatures || [])
+  const isAmenitiesAllowed = allowedFeatures.length === 0 || allowedFeatures.some(f => ['amenities', 'booking', 'amenity', 'amenitiesBooking'].includes(f))
+
+  if (!isAmenitiesAllowed) return null
 
   const filteredNavItems = navItems.filter((item) => checkPermission(item.requiredPermission))
 

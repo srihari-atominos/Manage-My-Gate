@@ -60,7 +60,7 @@ export const PinCodeInput = ({
 
   return (
     <View className={cn('w-full', className)}>
-      {label && (
+      {Boolean(label) && (
         <Text className="mb-2 text-center text-sm font-medium text-slate-700 dark:text-slate-300">
           {label}
         </Text>

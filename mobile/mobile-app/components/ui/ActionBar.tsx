@@ -16,6 +16,7 @@ export interface ActionBarProps {
   primaryAction?: ActionItem;
   secondaryAction?: Omit<ActionItem, 'loading'>;
   destructiveAction?: Omit<ActionItem, 'loading'>;
+  children?: React.ReactNode;
   className?: string;
 }
 
@@ -25,6 +26,7 @@ export const ActionBar = React.forwardRef<View, ActionBarProps>(
       primaryAction,
       secondaryAction,
       destructiveAction,
+      children,
       className,
       ...props
     },
@@ -46,6 +48,10 @@ export const ActionBar = React.forwardRef<View, ActionBarProps>(
         )}
         {...props}
       >
+        {children ? (
+          children
+        ) : (
+          <>
         {destructiveAction && (
           <Button
             variant="ghost"
@@ -88,6 +94,8 @@ export const ActionBar = React.forwardRef<View, ActionBarProps>(
               {primaryAction.label}
             </Text>
           </Button>
+        )}
+          </>
         )}
       </View>
     );

@@ -19,9 +19,10 @@ export const SYSTEM_FEATURE_CATALOG = [
   },
   {
     categoryKey: 'amenities_facilities',
-    categoryName: 'Amenities & Facilities',
+    categoryName: 'Amenities & Booking',
     actionButton: { label: 'View all', type: 'link', route: '/(resident)/amenities/discover' },
     items: [
+      { id: 'amenities_dashboard', name: 'Amenity Dashboard', permission: 'amenities:dashboard', iconName: 'BarChart3', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', route: '/(resident)/amenities/dashboard' },
       { id: 'amenities_discover', name: 'Discover Amenities', permission: 'amenities:discover', iconName: 'Search', colorBg: 'bg-blue-500/10', colorIcon: '#3b82f6', route: '/(resident)/amenities/discover' },
       { id: 'amenities_my_booking', name: 'My Bookings', permission: 'amenities:my_booking', iconName: 'CalendarCheck', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/amenities/my-bookings' },
       { id: 'amenities_wallet', name: 'Digital Wallet', permission: 'amenities:wallet', iconName: 'Wallet', colorBg: 'bg-cyan-500/10', colorIcon: '#06b6d4', route: '/(resident)/amenities/wallet' },
@@ -30,8 +31,7 @@ export const SYSTEM_FEATURE_CATALOG = [
       { id: 'amenities_ledgers', name: 'Ledgers & Accounts', permission: 'amenities:ledgers', iconName: 'Receipt', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/amenities/ledgers' },
       { id: 'amenities_maintenance', name: 'Maintenance Schedule', permission: 'amenities:maintenance', iconName: 'Wrench', colorBg: 'bg-amber-500/10', colorIcon: '#f59e0b', route: '/(resident)/amenities/maintenance' },
       { id: 'amenities_scanner', name: 'Security Gate Scanner', permission: 'amenities:scanner', iconName: 'QrCode', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', route: '/(resident)/amenities/scanner' },
-      { id: 'amenities_security_logs', name: 'Security Audit Logs', permission: 'amenities:security_logs', iconName: 'ClipboardList', colorBg: 'bg-slate-500/10', colorIcon: '#64748b', route: '/(resident)/amenities/security-logs' },
-      { id: 'amenities_settings', name: 'Amenity Settings', permission: 'amenities:settings', iconName: 'SlidersHorizontal', colorBg: 'bg-rose-500/10', colorIcon: '#f43f5e', route: '/(resident)/amenities/settings' }
+      { id: 'amenities_security_logs', name: 'Security Audit Logs', permission: 'amenities:security_logs', iconName: 'ClipboardList', colorBg: 'bg-slate-500/10', colorIcon: '#64748b', route: '/(resident)/amenities/security-logs' }
     ]
   },
   {

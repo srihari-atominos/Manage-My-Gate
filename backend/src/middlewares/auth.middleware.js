@@ -52,4 +52,32 @@ export const isAuthenticated = async (req, res, next) => {
   }
 };
 
+/**
+ * Optional authentication middleware that attaches req.user if a valid token is present,
+ * but does NOT throw 401 if token is missing or expired (useful for public payment links/checkouts).
+ */
+export const optionalAuth = async (req, res, next) => {
+  try {
+    let token = null;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    } else if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    } else if (req.query && req.query.auth_token) {
+      token = req.query.auth_token;
+    }
+
+    if (token) {
+      const decoded = jwt.verify(token, config.jwt.secret);
+      const user = await userService.getUserById(decoded.id).catch(() => null);
+      if (user && user.status === 'Active') {
+        req.user = decoded;
+      }
+    }
+  } catch (err) {
+    // Ignore invalid/expired token on optional auth routes
+  }
+  next();
+};
+
 export default isAuthenticated;

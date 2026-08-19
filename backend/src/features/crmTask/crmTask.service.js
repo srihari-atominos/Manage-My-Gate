@@ -16,6 +16,20 @@ export class CrmTaskService {
 
     const newTask = await crmTaskRepository.create(payload);
 
+    if (payload.relatedInquiryId) {
+      try {
+        const inquiry = await crmInquiryService.getInquiryById(payload.relatedInquiryId);
+        await crmInquiryService.appendTimelineEvent(inquiry._id, {
+          eventType: 'TASK_ASSIGNED',
+          actorId: payload.assignedToId || null,
+          actorName: 'System',
+          metadata: { taskId: newTask._id, title: newTask.title, priority: newTask.priority, dueDate: newTask.dueDate },
+        });
+      } catch (inquiryErr) {
+        // Do not fail task creation if timeline append fails
+      }
+    }
+
     // Emit domain event
     crmTaskEvents.emit('taskCreated', newTask);
 

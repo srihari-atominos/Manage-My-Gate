@@ -98,6 +98,20 @@ export class AuthService {
       authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
       authEvents.emit('USER_CREATED', { userId: newUser._id, provider: 'local' });
 
+      // Automatically populate CRM Inquiry for the registered user
+      try {
+        const enquiryService = (await import('../platformCrm/enquiry.service.js')).default;
+        await enquiryService.ensureInquiry({
+          userId: newUser._id,
+          contactEmail: newUser.email,
+          customerName: nameToUse || newUser.username || newUser.email.split('@')[0],
+          contactPhone: newUser.phone || '',
+          organizationName: `${nameToUse || newUser.username || 'User'}'s Community`
+        }).catch(() => null);
+      } catch (inqErr) {
+        console.warn('[Register] Non-blocking CRM inquiry auto-creation error:', inqErr.message);
+      }
+
       return {
         message: 'Registration successful. OTP sent for verification.',
         email: newUser.email,
@@ -167,6 +181,8 @@ export class AuthService {
           id: user._id,
           email: user.email,
           username: user.username,
+          phone: user.phone,
+          name: user.name,
           role: null,
           permissions: [],
           orgId: null,
@@ -1439,6 +1455,179 @@ export class AuthService {
 
   async verifyResetPasswordOtp(identifier, code) {
     return await otpService.verifyOTP(identifier, code, 'RESET', null, false);
+  }
+
+  async setupAccountPassword(email, newPassword, deviceInfo = {}, orgNameFromReq = null) {
+    if (!email || !newPassword) {
+      throw new HttpError(400, 'Email and password are required.');
+    }
+    if (newPassword.length < 6) {
+      throw new HttpError(400, 'Password must be at least 6 characters long.');
+    }
+
+    let user = await userService.getUserByEmail(email);
+    const { hashPassword } = await import('../../utils/crypto.utils.js');
+    const passHash = await hashPassword(newPassword);
+
+    if (!user) {
+      user = await userService.createUser({
+        email,
+        username: email.split('@')[0],
+        password: passHash,
+        status: 'Active',
+        emailVerified: true
+      });
+    } else {
+      await userService.updateUser(user._id, {
+        password: passHash,
+        status: 'Active',
+        emailVerified: true
+      });
+    }
+
+    // Auto-link user to their provisioned Organization & Membership
+    try {
+      const Enquiry = (await import('../platformCrm/enquiry.model.js')).default;
+      const PlatformQuote = (await import('../platformQuote/platformQuote.model.js')).default;
+      const Organization = (await import('../organization/organization.model.js')).default;
+      const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+      const Role = (await import('../role/role.model.js')).default;
+
+      const inquiry = await Enquiry.findOne({
+        $or: [{ contactEmail: email }, { email: email }]
+      }).sort({ createdAt: -1 }).catch(() => null);
+
+      const quote = inquiry ? await PlatformQuote.findOne({ inquiryId: inquiry._id }).sort({ createdAt: -1 }).catch(() => null) : null;
+
+      const orgName = orgNameFromReq || inquiry?.organizationName || quote?.communitySnapshot?.organizationName || 'Your Organization';
+      const selectedPlan = quote?.pricingSnapshot?.planName || quote?.pricingSnapshot?.tier || quote?.planName || inquiry?.planName || 'COMMUNITY_STARTER';
+
+      let basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'notices'];
+      const planUpper = String(selectedPlan).toUpperCase();
+      if (planUpper.includes('STARTER')) {
+        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints'];
+      } else if (planUpper.includes('ENTERPRISE')) {
+        basePlanFeatures = ['visitor', 'villas', 'users', 'roles', 'complaints', 'amenities', 'notices', 'integrations', 'billing'];
+      }
+
+      const addOns = quote?.pricingSnapshot?.selectedAddOns || inquiry?.selectedFeatures || [];
+      const customAddonKeys = Array.isArray(addOns) ? addOns.map(a => (typeof a === 'string' ? a : a.code || a.key || a.name)) : [];
+      const finalAllowedFeatures = Array.from(new Set([...basePlanFeatures, ...customAddonKeys]));
+
+      const escapedOrgName = orgName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      let org = await Organization.findOne({
+        $or: [
+          { name: new RegExp('^' + escapedOrgName.trim() + '$', 'i') },
+          { contactEmail: email }
+        ]
+      }).catch(() => null);
+
+      if (!org) {
+        org = await Organization.create({
+          name: orgName,
+          contactEmail: email,
+          contactPhone: inquiry?.contactPhone || 'N/A',
+          organizationType: 'Residential',
+          status: 'Active',
+          subscriptionPlan: selectedPlan,
+          allowedFeatures: finalAllowedFeatures,
+          villaCount: quote?.communitySnapshot?.villaCount || inquiry?.unitCount || 250,
+        }).catch(() => null);
+      } else {
+        org.subscriptionPlan = selectedPlan;
+        org.allowedFeatures = finalAllowedFeatures;
+        await org.save().catch(() => null);
+      }
+
+      if (org) {
+        const Permission = (await import('../permission/permission.model.js')).default;
+        const RolePermission = (await import('../rolePermission/rolePermission.model.js')).default;
+
+        let adminRole = await Role.findOne({ orgId: org._id, name: { $in: ['Community Admin', 'Admin'] } }).catch(() => null);
+        if (!adminRole) {
+          adminRole = await Role.findOne({ isSystem: true, name: { $in: ['Community Admin', 'Admin'] } }).catch(() => null);
+        }
+        if (!adminRole) {
+          adminRole = await Role.create({
+            name: 'Community Admin',
+            description: 'Community Administrator role with management permissions.',
+            orgId: org._id,
+            isSystem: false,
+          }).catch(() => null);
+        }
+
+        if (adminRole) {
+          const allPerms = await Permission.find({}).catch(() => []);
+          const existingRolePerms = await RolePermission.find({ roleId: adminRole._id }).catch(() => []);
+          const existingPermIds = new Set(existingRolePerms.map(rp => rp.permissionId.toString()));
+          
+          const newMappings = [];
+          for (const p of allPerms) {
+            if (!existingPermIds.has(p._id.toString())) {
+              newMappings.push({ roleId: adminRole._id, permissionId: p._id });
+            }
+          }
+          if (newMappings.length > 0) {
+            await RolePermission.insertMany(newMappings).catch(() => null);
+          }
+        }
+
+        let membership = await OrgMembership.findOne({ userId: user._id, orgId: org._id }).catch(() => null);
+        if (!membership) {
+          await OrgMembership.create({
+            userId: user._id,
+            orgId: org._id,
+            roleId: adminRole?._id || null,
+            roleIds: adminRole ? [adminRole._id] : [],
+            status: 'Active'
+          }).catch(() => null);
+        } else {
+          membership.status = 'Active';
+          if (adminRole) {
+            membership.roleId = adminRole._id;
+            membership.roleIds = [adminRole._id];
+          }
+          await membership.save().catch(() => null);
+        }
+
+        user.organizationId = org._id;
+        user.role = adminRole?.name || 'Community Admin';
+        await user.save().catch(() => null);
+      }
+    } catch (orgLinkErr) {
+      console.error('[setupAccountPassword] Non-blocking org linkage error:', orgLinkErr.message);
+    }
+
+    const loginData = await this.login({
+      login: email,
+      password: newPassword,
+      deviceInfo
+    });
+
+    return {
+      message: 'Password set successfully. Account activated.',
+      ...loginData
+    };
+  }
+
+  async checkAccountStatus(email) {
+    if (!email) return { hasPassword: false, isAlreadyConfigured: false };
+
+    const user = await userService.getUserByEmail(email);
+    if (!user) {
+      return { exists: false, hasPassword: false, isAlreadyConfigured: false };
+    }
+
+    const hasPassword = !!(user.password && user.password.length > 0);
+    const isAlreadyConfigured = hasPassword && user.status === 'Active';
+
+    return {
+      exists: true,
+      hasPassword,
+      status: user.status,
+      isAlreadyConfigured,
+      email: user.email,
+    };
   }
 }
 

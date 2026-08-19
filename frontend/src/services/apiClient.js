@@ -40,6 +40,11 @@ const processQueue = (error, token = null) => {
 // Request Interceptor: Inject Token and Correlation ID
 apiClient.interceptors.request.use(
   async (config) => {
+    // Sanitize config.url to avoid duplicate '/api/api/' prefixes
+    if (config.url && config.url.startsWith('/api/')) {
+      config.url = config.url.substring(4)
+    }
+
     // Generate and inject a unique Request Correlation ID
     config.headers['X-Request-ID'] = uuidv4()
 
@@ -53,8 +58,20 @@ apiClient.interceptors.request.use(
           config.headers.Authorization = `Bearer ${token}`
         }
 
-        if (state.workspace && state.workspace.activeOrganizationId) {
-          config.headers['x-organization-id'] = state.workspace.activeOrganizationId
+        const rawOrgId =
+          state.auth?.user?.orgId ||
+          state.auth?.user?.organizationId ||
+          state.workspace?.activeOrganizationId ||
+          state.auth?.user?.org?._id ||
+          state.auth?.user?.org
+
+        const activeOrgId =
+          typeof rawOrgId === 'object' && rawOrgId !== null
+            ? rawOrgId._id || rawOrgId.id || String(rawOrgId)
+            : rawOrgId
+
+        if (activeOrgId && activeOrgId !== '[object Object]') {
+          config.headers['x-organization-id'] = activeOrgId
         }
       }
     } catch (err) {
@@ -157,6 +174,18 @@ apiClient.interceptors.response.use(
     }
 
     // Extract backend error message if available to prevent raw Axios error strings
+    if (error.response?.status === 400 && error.response?.data?.message === 'Workspace context is required.') {
+      console.warn('Workspace context lost. Forcing auto-logout to recover corrupted local state.');
+      if (store) {
+        try {
+          store.dispatch({ type: 'auth/logout' });
+        } catch (dispatchErr) {
+          console.error('Failed to trigger auto-logout on 400 Bad Request', dispatchErr);
+        }
+      }
+      window.location.href = '/#/login';
+    }
+
     if (error.response && error.response.data && error.response.data.message) {
       error.message = error.response.data.message
     }

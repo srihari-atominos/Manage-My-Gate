@@ -3,7 +3,7 @@ import { body } from 'express-validator';
 export const createAmenityRules = [
   body('name').notEmpty().withMessage('Amenity name is required').trim(),
   body('description').optional().isString().trim(),
-  body('type').isIn(['clubhouse', 'pool', 'gym', 'court', 'hall', 'other', 'Event Space', 'Fitness', 'Sports', 'Workspace', 'Wellness']).withMessage('Invalid amenity type'),
+  body('type').isIn(['clubhouse', 'pool', 'gym', 'court', 'hall', 'other', 'Event Space', 'Fitness', 'Sports', 'Workspace', 'Wellness', 'Pool & Spa', 'General']).withMessage('Invalid amenity type'),
   body('images').optional().isArray().withMessage('Images must be an array of strings'),
   body('images.*').optional().isString().withMessage('Image URL must be a string'),
   body('location').optional().isString().trim(),
@@ -31,13 +31,13 @@ export const createAmenityRules = [
     return true;
   }),
   body('bookingRules.advanceBookingDays').isInt({ min: 0 }).withMessage('Advance booking days cannot be negative'),
-  body('status').optional().isIn(['active', 'inactive']).withMessage('Invalid status'),
+  body('status').optional().customSanitizer(val => typeof val === 'string' ? val.toLowerCase() : val).isIn(['active', 'inactive', 'maintenance']).withMessage('Invalid status'),
 ];
 
 export const updateAmenityRules = [
   body('name').optional().notEmpty().withMessage('Amenity name cannot be empty').trim(),
   body('description').optional().isString().trim(),
-  body('type').optional().isIn(['clubhouse', 'pool', 'gym', 'court', 'hall', 'other', 'Event Space', 'Fitness', 'Sports', 'Workspace', 'Wellness']).withMessage('Invalid amenity type'),
+  body('type').optional().isIn(['clubhouse', 'pool', 'gym', 'court', 'hall', 'other', 'Event Space', 'Fitness', 'Sports', 'Workspace', 'Wellness', 'Pool & Spa', 'General']).withMessage('Invalid amenity type'),
   body('images').optional().isArray().withMessage('Images must be an array of strings'),
   body('images.*').optional().isString().withMessage('Image URL must be a string'),
   body('location').optional().isString().trim(),
@@ -65,7 +65,7 @@ export const updateAmenityRules = [
     return true;
   }),
   body('bookingRules.advanceBookingDays').optional().isInt({ min: 0 }).withMessage('Advance booking days cannot be negative'),
-  body('status').optional().isIn(['active', 'inactive']).withMessage('Invalid status'),
+  body('status').optional().customSanitizer(val => typeof val === 'string' ? val.toLowerCase() : val).isIn(['active', 'inactive', 'maintenance']).withMessage('Invalid status'),
 ];
 
 export const createMaintenanceRules = [

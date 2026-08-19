@@ -12,7 +12,7 @@ export const CategoryBarChart = ({ categories, containerHeight = 128 }: Category
   const maxCategoryCount = Math.max(...categoryValues, 1);
 
   return (
-    <View className="flex-row items-end gap-2" style={{ height: containerHeight }}>
+    <View className="flex-row items-end gap-2" style={{ height: containerHeight as any }}>
       {Object.entries(categories).map(([category, count]) => {
         const heightPercent = Math.min(100, Math.max(10, (count / maxCategoryCount) * 100));
         return (

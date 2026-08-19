@@ -1,16 +1,13 @@
-import { EventEmitter } from 'events';
-import logger from '../../utils/logger.utils.js';
+import { platformSubscriptionEvents } from './platformSubscription.service.js';
 
-class PlatformSubscriptionEventEmitter extends EventEmitter {}
-
-const subscriptionEvents = new PlatformSubscriptionEventEmitter();
-
-subscriptionEvents.on('subscriptionCreated', (data) => {
-  logger.info(`[PlatformSubscription Event] Subscription created for Org: ${data.organisationId} (Plan: ${data.planName})`);
+platformSubscriptionEvents.on('subscription.activated', async (payload) => {
+  console.log('⚡ [Event] subscription.activated received:', payload);
+  try {
+    const platformEntitlementService = (await import('../platformEntitlement/platformEntitlement.service.js')).default;
+    await platformEntitlementService.handleSubscriptionActivatedEvent(payload);
+  } catch (err) {
+    console.error('Failed to handle subscription.activated event:', err);
+  }
 });
 
-subscriptionEvents.on('subscriptionStatusUpdated', (data) => {
-  logger.info(`[PlatformSubscription Event] Subscription status for Org: ${data.organisationId} updated to ${data.status}`);
-});
-
-export default subscriptionEvents;
+export default platformSubscriptionEvents;

@@ -37,7 +37,7 @@ export const ExpandableItem = ({
           <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
             {title}
           </Text>
-          {subtitle && (
+          {Boolean(subtitle) && (
             <Text className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {subtitle}
             </Text>

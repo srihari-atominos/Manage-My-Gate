@@ -15,15 +15,17 @@ export const useRoleSocket = () => {
   const dispatch = useDispatch()
   const activeOrgId = useSelector((state) => state.workspace?.activeOrganizationId)
   const activeRoleName = useSelector((state) => state.workspace?.activeRole)
+  const token = useSelector((state) => state.auth?.token)
 
   useEffect(() => {
-    if (!activeOrgId) {
+    if (!activeOrgId || !token) {
       return
     }
 
     const socketUrl = config.socketUrl
 
     const socket = io(socketUrl, {
+      auth: { token },
       withCredentials: true,
       transports: ['websocket', 'polling'],
     })
@@ -45,7 +47,7 @@ export const useRoleSocket = () => {
       socket.off('ROLE_UPDATED')
       socket.disconnect()
     }
-  }, [activeOrgId, activeRoleName, dispatch])
+  }, [activeOrgId, activeRoleName, token, dispatch])
 }
 
 export default useRoleSocket

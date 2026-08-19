@@ -34,37 +34,39 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
   ) => {
     return (
       <View className={cn('w-full', containerClassName)}>
-        {label && (
+        {Boolean(label) && (
           <Text className={cn('mb-1.5 text-sm font-medium text-foreground', labelClassName)}>
             {label}
           </Text>
         )}
         <View
           className={cn(
-            'flex-row items-center rounded-xl border border-border bg-card px-3 py-3',
-            error && 'border-destructive',
+            'flex-row rounded-xl border border-border bg-card px-3 py-2.5',
+            props.multiline ? 'items-start' : 'items-center',
+            Boolean(error) && 'border-destructive',
             className
           )}
         >
-          {LeftIcon && <LeftIcon size={20} className="me-2 text-muted-foreground" />}
+          {LeftIcon && <LeftIcon size={20} className="me-2 text-muted-foreground mt-0.5" />}
           <RNTextInput
             ref={ref}
             className={cn(
-              'flex-1 text-base text-foreground',
+              'flex-1 text-base text-foreground py-0 min-h-[24px]',
               inputClassName
             )}
+            style={[{ outlineStyle: 'none', ...(props.multiline ? { textAlignVertical: 'top' } : {}) } as any, props.style]}
             placeholderTextColor="#94a3b8"
             {...props}
           />
           {RightIcon && (
             <RightIcon
               size={20}
-              className="ms-2 text-muted-foreground"
+              className="ms-2 text-muted-foreground mt-0.5"
               onPress={onRightIconPress}
             />
           )}
         </View>
-        {error && (
+        {Boolean(error) && (
           <Text className={cn('mt-1.5 text-xs text-red-500', errorClassName)}>
             {error}
           </Text>

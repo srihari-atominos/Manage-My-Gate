@@ -8,7 +8,7 @@ export class AmenityService {
     
     const dbFilter = { isDeleted: false };
     if (filters.status) dbFilter.status = filters.status;
-    if (filters.category && filters.category !== 'All') dbFilter.type = filters.category;
+    if (filters.category && filters.category !== 'All') dbFilter.type = { $regex: new RegExp(filters.category, 'i') };
     if (filters.capacity) {
       const cap = parseInt(filters.capacity, 10);
       if (!isNaN(cap)) dbFilter.capacity = { $gte: cap };
@@ -114,6 +114,9 @@ export class AmenityService {
   async createAmenity(orgId, amenityData) {
     if (amenityData.name) amenityData.name = amenityData.name.trim();
     if (amenityData.description) amenityData.description = amenityData.description.trim();
+    if (amenityData.status && typeof amenityData.status === 'string') {
+      amenityData.status = amenityData.status.toLowerCase();
+    }
     
     // Duplicate Name Validation
     if (amenityData.name) {
@@ -131,18 +134,28 @@ export class AmenityService {
     return created;
   }
 
-  async updateAmenity(id, orgId, updateData) {
+  async updateAmenity(id, orgId, updateData, force = false) {
     await this.getAmenityById(id, orgId); // Verify existence
 
     if (updateData.name) updateData.name = updateData.name.trim();
     if (updateData.description) updateData.description = updateData.description.trim();
+    if (updateData.status && typeof updateData.status === 'string') {
+      updateData.status = updateData.status.toLowerCase();
+    }
 
     // Check if status is being set to inactive
     if (updateData.status === 'inactive') {
       const amenityBookingService = (await import('../amenityBooking/amenityBooking.services.js')).default;
       const hasPendingBookings = await amenityBookingService.hasPendingOrApprovedFutureBookings(id, orgId);
       if (hasPendingBookings) {
-        throw new HttpError(400, 'Cannot deactivate amenity: there are pending or approved future bookings.');
+        if (!force) {
+          throw new HttpError(400, 'Cannot deactivate amenity: there are pending or approved future bookings.');
+        } else {
+          const activeBookings = await amenityBookingService.findActiveBookingsByAmenity(id, orgId);
+          for (const booking of activeBookings) {
+            await amenityBookingService.cancelBooking(booking._id, booking.userId, orgId, 'Cancelled: Amenity facility has been temporarily deactivated.', true);
+          }
+        }
       }
     }
 
@@ -151,30 +164,58 @@ export class AmenityService {
     return updated;
   }
 
-  async updateStatus(id, orgId, status) {
+  async updateStatus(id, orgId, status, force = false) {
     await this.getAmenityById(id, orgId); // Verify existence
 
-    if (status === 'inactive') {
+    const normalizedStatus = typeof status === 'string' ? status.toLowerCase() : status;
+
+    if (normalizedStatus === 'inactive') {
       const amenityBookingService = (await import('../amenityBooking/amenityBooking.services.js')).default;
       const hasPendingBookings = await amenityBookingService.hasPendingOrApprovedFutureBookings(id, orgId);
       if (hasPendingBookings) {
-        throw new HttpError(400, 'Cannot deactivate amenity: there are pending or approved future bookings.');
+        if (!force) {
+          throw new HttpError(400, 'Cannot deactivate amenity: there are pending or approved future bookings.');
+        } else {
+          const activeBookings = await amenityBookingService.findActiveBookingsByAmenity(id, orgId);
+          for (const booking of activeBookings) {
+            if (['pending', 'approved', 'confirmed'].includes(booking.status)) {
+              try {
+                await amenityBookingService.cancelBooking(booking._id, booking.userId, orgId, 'Cancelled: Amenity facility has been temporarily deactivated.', true);
+              } catch (cErr) {
+                // Ignore if already completed or processed
+              }
+            }
+          }
+        }
       }
     }
 
-    const updated = await amenityRepository.update(id, orgId, { status });
+    const updated = await amenityRepository.update(id, orgId, { status: normalizedStatus });
     amenityEventEmitter.emit(AMENITY_UPDATED, updated);
     return updated;
   }
 
-  async deleteAmenity(id, orgId) {
+  async deleteAmenity(id, orgId, force = false) {
     await this.getAmenityById(id, orgId); // Verify existence
     
     // Check if there are active bookings
     const amenityBookingService = (await import('../amenityBooking/amenityBooking.services.js')).default;
     const hasPendingBookings = await amenityBookingService.hasPendingOrApprovedFutureBookings(id, orgId);
     if (hasPendingBookings) {
-      throw new HttpError(400, 'Cannot delete amenity: there are pending or approved future bookings.');
+      if (!force) {
+        throw new HttpError(400, 'Cannot delete amenity: there are pending or approved future bookings.');
+      } else {
+        const activeBookings = await amenityBookingService.findActiveBookingsByAmenity(id, orgId);
+        for (const booking of activeBookings) {
+          if (['pending', 'approved', 'confirmed'].includes(booking.status)) {
+            try {
+              await amenityBookingService.cancelBooking(booking._id, booking.userId, orgId, 'Cancelled: Amenity facility has been permanently deleted.', true);
+            } catch (cErr) {
+              // Ignore if already completed
+            }
+          }
+        }
+      }
     }
 
     const deleted = await amenityRepository.softDelete(id, orgId);
@@ -224,7 +265,7 @@ export class AmenityService {
         status: { $in: ['pending', 'approved', 'confirmed', 'checked-in'] }
       }, 0, 1000);
       
-      const bookings = existingBookings.data;
+      const bookings = existingBookings?.data || [];
       const bookedSpots = bookings.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
       const isBooked = bookedSpots >= amenity.capacity;
       
@@ -287,7 +328,7 @@ export class AmenityService {
       status: { $in: ['pending', 'approved', 'confirmed', 'checked-in'] }
     }, 0, 1000);
 
-    const bookings = existingBookings.data;
+    const bookings = existingBookings?.data || [];
     
     // 5. Filter out slots that overlap with maintenance or exceed capacity
     const availableSlots = allSlots.filter(slot => {
@@ -365,7 +406,7 @@ export class AmenityService {
         status: { $in: ['pending', 'approved', 'confirmed', 'checked-in'] }
       }, 0, 1000);
       
-      const bookings = existingBookings.data;
+      const bookings = existingBookings?.data || [];
       const bookedSpots = bookings.reduce((sum, b) => sum + parseInt(b.numberOfPersons || 1, 10), 0);
       const isBooked = bookedSpots >= amenity.capacity;
       
@@ -462,7 +503,7 @@ export class AmenityService {
       bookingDate: dateStr,
       status: { $in: ['pending', 'approved', 'confirmed', 'checked-in'] }
     }, 0, 1000);
-    const bookings = existingBookings.data;
+    const bookings = existingBookings?.data || [];
 
     let multiplier = 1.0;
     if (dayOfWeek === 0 || dayOfWeek === 6) {
@@ -545,7 +586,7 @@ export class AmenityService {
 
   async searchAvailableAmenities(orgId, dateStr, startTime, endTime, filters = {}) {
     const dbFilter = { status: 'active' };
-    if (filters.category && filters.category !== 'All') dbFilter.type = filters.category;
+    if (filters.category && filters.category !== 'All') dbFilter.type = { $regex: new RegExp(filters.category, 'i') };
     if (filters.capacity) {
       const cap = parseInt(filters.capacity, 10);
       if (!isNaN(cap)) dbFilter.capacity = { $gte: cap };
@@ -673,12 +714,24 @@ export class AmenityService {
     const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
     const activeBookings = await amenityBookingRepository.findActiveBookingsByAmenity(amenityId, orgId);
     
+    const overlappingBookings = [];
     for (const booking of activeBookings) {
       const bStart = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
       let bEnd = moment.tz(`${booking.bookingDate}T${booking.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
       if (bEnd < bStart) bEnd = moment(bEnd).add(1, 'days').toDate();
       if (mStart < bEnd && mEnd > bStart) {
-        throw new HttpError(400, `Cannot schedule maintenance. An active booking exists on ${booking.bookingDate} (${booking.startTime} - ${booking.endTime}).`);
+        if (!maintenanceData.autoCancelBookings) {
+          throw new HttpError(400, `Cannot schedule maintenance. An active booking exists on ${booking.bookingDate} (${booking.startTime} - ${booking.endTime}).`);
+        } else {
+          overlappingBookings.push(booking);
+        }
+      }
+    }
+
+    if (maintenanceData.autoCancelBookings && overlappingBookings.length > 0) {
+      const amenityBookingService = (await import('../amenityBooking/amenityBooking.services.js')).default;
+      for (const booking of overlappingBookings) {
+         await amenityBookingService.cancelBooking(booking._id, booking.userId, orgId, `Cancelled due to facility maintenance: ${maintenanceData.title}`, true);
       }
     }
 
@@ -715,12 +768,24 @@ export class AmenityService {
     const amenityBookingRepository = (await import('../amenityBooking/amenityBooking.repository.js')).default;
     const activeBookings = await amenityBookingRepository.findActiveBookingsByAmenity(amenityId, orgId);
     
+    const overlappingBookings = [];
     for (const booking of activeBookings) {
       const bStart = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
       let bEnd = moment.tz(`${booking.bookingDate}T${booking.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
       if (bEnd < bStart) bEnd = moment(bEnd).add(1, 'days').toDate();
       if (mStart < bEnd && mEnd > bStart) {
-        throw new HttpError(400, `Cannot schedule maintenance. An active booking exists on ${booking.bookingDate} (${booking.startTime} - ${booking.endTime}).`);
+        if (!maintenanceData.autoCancelBookings) {
+          throw new HttpError(400, `Cannot schedule maintenance. An active booking exists on ${booking.bookingDate} (${booking.startTime} - ${booking.endTime}).`);
+        } else {
+          overlappingBookings.push(booking);
+        }
+      }
+    }
+
+    if (maintenanceData.autoCancelBookings && overlappingBookings.length > 0) {
+      const amenityBookingService = (await import('../amenityBooking/amenityBooking.services.js')).default;
+      for (const booking of overlappingBookings) {
+         await amenityBookingService.cancelBooking(booking._id, booking.userId, orgId, `Cancelled due to facility maintenance: ${maintenanceData.title}`, true);
       }
     }
 

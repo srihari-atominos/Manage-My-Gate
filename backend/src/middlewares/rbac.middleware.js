@@ -8,26 +8,62 @@ import { mapPermission } from '../utils/permissionMapper.js';
 export const getPermissionsForUser = async (user) => {
   if (!user) return [];
   
-  let roleId = user.roleId;
+  const roleIds = [];
+  if (user.roleId) {
+    roleIds.push(user.roleId.toString());
+  }
+  if (Array.isArray(user.roleIds)) {
+    user.roleIds.forEach((id) => {
+      if (id && !roleIds.includes(id.toString())) {
+        roleIds.push(id.toString());
+      }
+    });
+  }
   
-  // Fallback to query roleId if not present in token
-  if (!roleId && user.role && user.orgId) {
+  // Fallback: Query database OrgMembership if roleIds is empty
+  if (roleIds.length === 0 && user.id) {
+    try {
+      const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
+      const memberships = await OrgMembership.find({ userId: user.id, status: 'Active' }).lean();
+      memberships.forEach((m) => {
+        if (m.roleIds && m.roleIds.length > 0) {
+          m.roleIds.forEach((rid) => {
+            if (rid && !roleIds.includes(rid.toString())) roleIds.push(rid.toString());
+          });
+        } else if (m.roleId) {
+          if (!roleIds.includes(m.roleId.toString())) roleIds.push(m.roleId.toString());
+        }
+      });
+    } catch (err) {
+      console.error('[RBAC MIDDLEWARE] Graceful OrgMembership role lookup failed:', err.message);
+    }
+  }
+
+  // Secondary Fallback: Query roleId by role name if still empty
+  if (roleIds.length === 0 && user.role && user.orgId) {
     try {
       const roleService = (await import('../features/role/role.services.js')).default;
       const role = await roleService.getRoleByName(user.role, user.orgId);
       if (role) {
-        roleId = role._id.toString();
+        roleIds.push(role._id.toString());
       }
     } catch (err) {
       console.error('[RBAC MIDDLEWARE] Graceful fallback role lookup failed:', err.message);
     }
   }
 
-  if (!roleId) return [];
+  if (roleIds.length === 0) return [];
 
   const rolePermissionService = (await import('../features/rolePermission/rolePermission.services.js')).default;
-  const permissionsList = await rolePermissionService.getPermissionsByRoleId(roleId);
-  return permissionsList.map((p) => p.name);
+  const permissionSet = new Set();
+  for (const rid of roleIds) {
+    const permissionsList = await rolePermissionService.getPermissionsByRoleId(rid);
+    permissionsList.forEach((p) => {
+      if (p && p.name) permissionSet.add(p.name);
+    });
+  }
+
+  return Array.from(permissionSet);
 };
 
 /**

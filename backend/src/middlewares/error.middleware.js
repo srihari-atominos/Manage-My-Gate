@@ -64,6 +64,18 @@ export const errorHandler = (err, req, res, next) => {
     }
   }
 
+  // Handle Mongoose Validation Errors
+  else if (err.name === 'ValidationError') {
+    statusCode = 400;
+    message = err.message || 'Validation failed. Please correct the invalid fields.';
+  }
+
+  // Handle Mongoose Cast Errors (invalid ObjectId)
+  else if (err.name === 'CastError') {
+    statusCode = 400;
+    message = `Invalid ID format provided for ${err.path || 'resource'}: ${err.value}`;
+  }
+
   // Log error using Winston logger
   logger.error(`HTTP ${statusCode} - ${message}`, {
     statusCode,

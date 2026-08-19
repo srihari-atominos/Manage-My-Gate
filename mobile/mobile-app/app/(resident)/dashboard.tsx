@@ -4,13 +4,11 @@ import { Stack, useRouter } from 'expo-router';
 import MobileHeader from '@/components/navigation/MobileHeader';
 import HeroBanner from '@/components/dashboard/HeroBanner';
 import QuickActionsGrid from '@/components/dashboard/QuickActionsGrid';
-import QuickActionsAllModal from '@/components/dashboard/QuickActionsAllModal';
 import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const [allQuickActionsOpen, setAllQuickActionsOpen] = React.useState(false);
   const [customiseOpen, setCustomiseOpen] = React.useState(false);
 
   const {
@@ -75,22 +73,11 @@ export default function DashboardScreen() {
             activeFeatureIds={activeQuickActions}
             equippedFeatures={equippedFeatures}
             onOpenCustomise={() => setCustomiseOpen(true)}
-            onOpenViewMore={() => setAllQuickActionsOpen(true)}
+            onOpenViewMore={() => router.push('/(resident)/all-features' as any)}
             onTilePress={handleTilePress}
           />
         </View>
       </ScrollView>
-
-      {/* Full Quick Actions Screen Modal */}
-      <QuickActionsAllModal
-        visible={allQuickActionsOpen}
-        onClose={() => setAllQuickActionsOpen(false)}
-        onOpenCustomise={() => setCustomiseOpen(true)}
-        featureCatalog={featureCatalog}
-        onSelectFeature={(featureId) => {
-          handleTilePress(featureId);
-        }}
-      />
 
       {/* Customise Dashboard Slide-Up Sheet Modal */}
       <CustomiseSheetModal

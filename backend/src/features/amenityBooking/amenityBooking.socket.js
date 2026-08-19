@@ -1,5 +1,10 @@
 import { getIO } from '../../config/socket.js';
-import { amenityBookingEventEmitter, AMENITY_BOOKING_CREATED, AMENITY_BOOKING_CANCELLED } from './amenityBooking.events.js';
+import {
+  amenityBookingEventEmitter,
+  AMENITY_BOOKING_CREATED,
+  AMENITY_BOOKING_CANCELLED,
+  AMENITY_BOOKING_CHECKED_IN,
+} from './amenityBooking.events.js';
 
 /**
  * Socket payload structure:
@@ -92,12 +97,11 @@ export const initAmenityBookingSockets = () => {
     });
 
     socket.on('disconnect', () => {
-      // Clean up any locks held by this socket/user if possible
-      // Requires mapping socket.id to userId, omitted here for brevity
+      // Clean up locks held by socket if necessary
     });
   });
 
-  // 4. Listen to backend internal events to release locks automatically upon booking confirmation
+  // 4. Real-time Backend Event Listeners -> Socket.io Broadcasts
   amenityBookingEventEmitter.on(AMENITY_BOOKING_CREATED, (booking) => {
     try {
       const lockKey = `${booking.amenityId}_${booking.bookingDate}_${booking.startTime}_${booking.endTime}`;
@@ -105,11 +109,39 @@ export const initAmenityBookingSockets = () => {
       
       if (slotLocks.has(lockKey)) {
         slotLocks.delete(lockKey);
-        // We broadcast slot_released, but the frontend will now refetch or receive the confirmed booking
         io.to(roomName).emit('slot_released', { lockKey });
+      }
+
+      // Broadcast to all connected clients & tenant rooms for instant revenue KPI updates
+      io.emit('AMENITY_BOOKING_CREATED', booking);
+      io.emit('PAYMENT_SUCCESS', booking);
+      if (booking?.orgId) {
+        io.to(`org:${booking.orgId}`).emit('AMENITY_BOOKING_CREATED', booking);
       }
     } catch (err) {
       console.error('Error handling booking created event in sockets:', err);
+    }
+  });
+
+  amenityBookingEventEmitter.on(AMENITY_BOOKING_CHECKED_IN, (booking) => {
+    try {
+      io.emit('AMENITY_CHECKIN', booking);
+      if (booking?.orgId) {
+        io.to(`org:${booking.orgId}`).emit('AMENITY_CHECKIN', booking);
+      }
+    } catch (err) {
+      console.error('Error broadcasting checkin event in sockets:', err);
+    }
+  });
+
+  amenityBookingEventEmitter.on(AMENITY_BOOKING_CANCELLED, (booking) => {
+    try {
+      io.emit('AMENITY_BOOKING_CANCELLED', booking);
+      if (booking?.orgId) {
+        io.to(`org:${booking.orgId}`).emit('AMENITY_BOOKING_CANCELLED', booking);
+      }
+    } catch (err) {
+      console.error('Error broadcasting cancellation event in sockets:', err);
     }
   });
 };

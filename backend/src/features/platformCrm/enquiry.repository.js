@@ -19,7 +19,7 @@ class EnquiryRepository {
     return await query.exec();
   }
 
-  async findAllPaginated({ page = 1, limit = 10, search = '', status, assignedTo }) {
+  async findAllPaginated({ page = 1, limit = 10, search = '', status, assignedTo, organizationId, userEmail }) {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.max(1, parseInt(limit, 10) || 10);
     const skip = (pageNum - 1) * limitNum;
@@ -28,6 +28,12 @@ class EnquiryRepository {
 
     if (status) {
       matchStage.status = status;
+    }
+
+    if (organizationId) {
+      matchStage.organizationId = typeof organizationId === 'string' && organizationId.length === 24 ? new mongoose.Types.ObjectId(organizationId) : organizationId;
+    } else if (userEmail) {
+      matchStage.email = userEmail.toLowerCase().trim();
     }
 
     if (assignedTo) {

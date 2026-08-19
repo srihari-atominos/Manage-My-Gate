@@ -160,6 +160,29 @@ export class CrmMeetingService {
 
     const newMeeting = await crmMeetingRepository.create(meetingData);
 
+    // Auto-progress Inquiry state machine if status is QUALIFIED -> DEMO_SCHEDULED
+    try {
+      const inquiry = await crmInquiryService.getInquiryById(inquiryId);
+      await crmInquiryService.appendTimelineEvent(inquiry._id, {
+        eventType: 'MEETING_SCHEDULED',
+        actorId: payload.actorId || null,
+        actorName: payload.actorName || 'System',
+        metadata: { meetingId: newMeeting._id, title: newMeeting.title, startTime: newMeeting.startTime },
+      });
+
+      if (inquiry.status === 'QUALIFIED') {
+        await crmInquiryService.transitionInquiryStatus(
+          inquiry._id,
+          'DEMO_SCHEDULED',
+          payload.actorId || null,
+          payload.actorName || 'System',
+          { meetingId: newMeeting._id, autoTransition: true }
+        );
+      }
+    } catch (inquiryErr) {
+      logger.error(`[CrmMeetingService] Failed to auto-progress inquiry on meeting creation: ${inquiryErr.message}`);
+    }
+
     // Emit domain event meeting_scheduled
     crmMeetingEvents.emit('meeting_scheduled', newMeeting);
 
@@ -210,6 +233,31 @@ export class CrmMeetingService {
     }
 
     const updatedMeeting = await crmMeetingRepository.updateById(id, updatePayload);
+
+    if (updatePayload.status === 'COMPLETED' || updatePayload.status === 'DEMO_COMPLETED') {
+      try {
+        const targetInquiryId = updatedMeeting.inquiryId?._id || updatedMeeting.inquiryId;
+        const inquiry = await crmInquiryService.getInquiryById(targetInquiryId);
+        await crmInquiryService.appendTimelineEvent(inquiry._id, {
+          eventType: 'MEETING_COMPLETED',
+          actorId: updatePayload.actorId || null,
+          actorName: updatePayload.actorName || 'System',
+          metadata: { meetingId: updatedMeeting._id, title: updatedMeeting.title },
+        });
+
+        if (inquiry.status === 'DEMO_SCHEDULED') {
+          await crmInquiryService.transitionInquiryStatus(
+            inquiry._id,
+            'DEMO_COMPLETED',
+            updatePayload.actorId || null,
+            updatePayload.actorName || 'System',
+            { meetingId: updatedMeeting._id, autoTransition: true }
+          );
+        }
+      } catch (inquiryErr) {
+        logger.error(`[CrmMeetingService] Failed to auto-progress inquiry on meeting completion: ${inquiryErr.message}`);
+      }
+    }
 
     if (updatePayload.status === 'CANCELLED') {
       crmMeetingEvents.emit('meeting_cancelled', updatedMeeting);

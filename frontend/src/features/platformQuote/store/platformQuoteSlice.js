@@ -3,11 +3,10 @@ import platformQuoteApi from '../services/platformQuoteApi.js';
 
 export const generateOrderThunk = createAsyncThunk(
   'platformQuote/generateOrder',
-  async ({ quoteId, payload }, { getState, rejectWithValue }) => {
+  async ({ quoteId, payload }, { rejectWithValue }) => {
     try {
-      // Mock network delay
-      await new Promise(r => setTimeout(r, 600));
-      return { success: true, dummy: true };
+      const response = await platformQuoteApi.generateOrder(quoteId, payload);
+      return response.data || response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to dispatch order');
     }

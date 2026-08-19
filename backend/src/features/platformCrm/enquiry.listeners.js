@@ -27,13 +27,14 @@ enquiryEvents.on('enquiry_created', async (enquiry) => {
 
   try {
     // Sync to CRM Inquiry so it shows up in the Enquiries Dashboard
-    await crmInquiryService.registerPublicLead({
+    await crmInquiryService.createInquiry({
       customerName: username,
       organizationName: orgName,
       unitCount: enquiry.totalUnits || 1,
       contactEmail: identifier,
       contactPhone: enquiry.phone || null,
       selectedFeatures: enquiry.selectedFeatures || [],
+      originSource: 'WEB_FORM',
     });
     logger.info(`Successfully synced new enquiry from ${orgName} to CrmInquiry`);
   } catch (crmError) {
@@ -49,7 +50,7 @@ enquiryEvents.on('enquiry_created', async (enquiry) => {
         title: 'New Enquiry Received',
         body: `A new organization "${orgName}" has submitted an enquiry and is pending review.`,
         type: 'INFO',
-        actionUrl: '/tenant/platform-crm/enquiries',
+        actionUrl: '/super-admin/crm',
       });
       logger.info(`In-app notification sent to Super Admin for new enquiry from ${orgName}`);
     }
@@ -58,39 +59,7 @@ enquiryEvents.on('enquiry_created', async (enquiry) => {
   }
 
   try {
-    // 1. Check if Resend is configured
-    const resendIntegration = await IntegrationHub.findOne({ provider: 'resend', status: 'connected' });
-    
-    if (resendIntegration) {
-      const apiKeyCred = resendIntegration.credentials.find((c) => c.key === 'apiKey');
-      if (apiKeyCred) {
-        const apiKey = decrypt(apiKeyCred.encryptedValue, apiKeyCred.iv);
-        
-        const response = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            from: 'ManageMyGate <onboarding@resend.dev>',
-            to: [identifier],
-            subject: subject,
-            html: html,
-          }),
-        });
-
-        if (response.ok) {
-          logger.info(`Enquiry creation email sent to ${identifier} via Resend`);
-          return;
-        } else {
-          const errData = await response.json();
-          logger.error(`Resend email failed: ${errData.message}`);
-        }
-      }
-    }
-
-    // 2. Fallback to SMTP if configured
+    // 1. Prioritize Gmail SMTP if configured
     const smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp', status: 'connected' });
     
     if (smtpIntegration) {
@@ -124,6 +93,38 @@ enquiryEvents.on('enquiry_created', async (enquiry) => {
 
         logger.info(`Enquiry creation email sent to ${identifier} via SMTP`);
         return;
+      }
+    }
+
+    // 2. Fallback to Resend API
+    const resendIntegration = await IntegrationHub.findOne({ provider: 'resend', status: 'connected' });
+    
+    if (resendIntegration) {
+      const apiKeyCred = resendIntegration.credentials.find((c) => c.key === 'apiKey');
+      if (apiKeyCred) {
+        const apiKey = decrypt(apiKeyCred.encryptedValue, apiKeyCred.iv);
+        
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            from: 'ManageMyGate <onboarding@resend.dev>',
+            to: [identifier],
+            subject: subject,
+            html: html,
+          }),
+        });
+
+        if (response.ok) {
+          logger.info(`Enquiry creation email sent to ${identifier} via Resend`);
+          return;
+        } else {
+          const errData = await response.json();
+          logger.error(`Resend email failed: ${errData.message}`);
+        }
       }
     }
 

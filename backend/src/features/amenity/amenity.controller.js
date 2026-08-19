@@ -51,7 +51,8 @@ export class AmenityController {
     try {
       const { id } = req.params;
       const orgId = req.tenant.orgId;
-      const updated = await amenityService.updateAmenity(id, orgId, req.body);
+      const force = req.query.force === 'true' || req.body.force === true;
+      const updated = await amenityService.updateAmenity(id, orgId, req.body, force);
       res.success(updated, 'Amenity updated successfully');
     } catch (error) {
       next(error);
@@ -61,9 +62,10 @@ export class AmenityController {
   async updateStatus(req, res, next) {
     try {
       const { id } = req.params;
-      const { status } = req.body;
+      const { status, force: bodyForce } = req.body;
+      const force = req.query.force === 'true' || bodyForce === true;
       const orgId = req.tenant.orgId;
-      const updated = await amenityService.updateStatus(id, orgId, status);
+      const updated = await amenityService.updateStatus(id, orgId, status, force);
       res.success(updated, 'Amenity status updated successfully');
     } catch (error) {
       next(error);
@@ -74,7 +76,8 @@ export class AmenityController {
     try {
       const { id } = req.params;
       const orgId = req.tenant.orgId;
-      const deleted = await amenityService.deleteAmenity(id, orgId);
+      const force = req.query.force === 'true';
+      const deleted = await amenityService.deleteAmenity(id, orgId, force);
       res.success(deleted, 'Amenity deleted successfully');
     } catch (error) {
       next(error);

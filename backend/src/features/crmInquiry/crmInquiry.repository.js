@@ -140,13 +140,79 @@ export class CrmInquiryRepository {
   }
 
   /**
+   * Create an append-only InquiryTimeline event.
+   * @param {Object} eventData
+   * @param {mongoose.ClientSession} [session]
+   */
+  async createTimelineEvent(eventData, session = null) {
+    const InquiryTimeline = (await import('./inquiryTimeline.model.js')).default;
+    const options = session ? { session } : {};
+    const [event] = await InquiryTimeline.create([eventData], options);
+    return event;
+  }
+
+  /**
+   * Find timeline events for a given inquiryId (sorted newest first).
+   * @param {string} inquiryId - Database ID (_id)
+   */
+  async findTimelineByInquiryId(inquiryId) {
+    const InquiryTimeline = (await import('./inquiryTimeline.model.js')).default;
+    return await InquiryTimeline.find({ inquiryId })
+      .sort({ timestamp: -1 })
+      .populate('actorId', 'name email role')
+      .exec();
+  }
+
+  /**
+   * Update inquiry with atomic optimistic concurrency version lock.
+   * @param {string} id
+   * @param {string} currentStatus
+   * @param {number} currentVersion
+   * @param {Object} updateData
+   * @param {mongoose.ClientSession} [session]
+   */
+  async updateWithVersionLock(id, currentStatus, currentVersion, updateData, session = null) {
+    const options = { returnDocument: 'after', runValidators: true };
+    if (session) options.session = session;
+
+    const filter = {
+      _id: id,
+      status: currentStatus,
+      version: currentVersion,
+    };
+
+    const update = {
+      $set: updateData,
+      $inc: { version: 1 },
+    };
+
+    return await CrmInquiry.findOneAndUpdate(filter, update, options)
+      .populate('assignedAgentId', 'name email role status')
+      .populate('primaryOwnerId', 'name email role status');
+  }
+
+  /**
+   * Search for possible duplicate inquiry matching email and community/org name.
+   * @param {string} contactEmail
+   * @param {string} organizationName
+   */
+  async findPossibleDuplicate(contactEmail, organizationName) {
+    if (!contactEmail || !organizationName) return null;
+    return await CrmInquiry.findOne({
+      contactEmail: contactEmail.toLowerCase().trim(),
+      organizationName: { $regex: new RegExp(`^${organizationName.trim()}$`, 'i') },
+      isArchived: false,
+    }).exec();
+  }
+
+  /**
    * Update inquiry by ID.
    * @param {string} id
    * @param {Object} updateData
    * @param {mongoose.ClientSession} [session]
    */
   async updateById(id, updateData, session = null) {
-    const options = { new: true, runValidators: true };
+    const options = { returnDocument: 'after', runValidators: true };
     if (session) options.session = session;
     return await CrmInquiry.findByIdAndUpdate(id, updateData, options).populate('assignedAgentId', 'name email role status');
   }

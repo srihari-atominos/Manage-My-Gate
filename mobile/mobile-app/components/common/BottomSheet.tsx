@@ -27,7 +27,7 @@ export const BottomSheet = forwardRef<GorhomBottomSheet, BottomSheetProps>(
         handleIndicatorStyle={{ backgroundColor: '#94a3b8' }}
       >
         <BottomSheetView className={cn('flex-1 px-4 pb-8 bg-card rounded-t-3xl', className)}>
-          {title && (
+          {Boolean(title) && (
             <Text className="mb-4 text-xl font-bold text-foreground">
               {title}
             </Text>
