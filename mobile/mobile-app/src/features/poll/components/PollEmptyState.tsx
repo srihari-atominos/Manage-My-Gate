@@ -24,6 +24,7 @@ export default function PollEmptyState({ tab }: PollEmptyStateProps) {
     <EmptyState
       title={title}
       description={description}
+      iconName="BarChart2"
     />
   );
 }

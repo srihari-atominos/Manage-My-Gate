@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, TouchableOpacity, Alert } from 'react-native';
+import { View, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useSelector } from 'react-redux';
 import { useFocusEffect } from 'expo-router';
 
@@ -48,6 +48,7 @@ export default function PollDashboardScreen() {
     submitVote,
     publishPoll,
     closePoll,
+    reopenPoll,
     deletePoll,
   } = usePolls();
 
@@ -59,6 +60,13 @@ export default function PollDashboardScreen() {
       loadClosedPolls();
     }, [loadActivePolls, loadMyPolls, loadClosedPolls])
   );
+
+  // Load polls on tab change
+  useEffect(() => {
+    if (activeTab === 'Active') loadActivePolls();
+    if (activeTab === 'Closed') loadClosedPolls();
+    if (activeTab === 'MyPolls') loadMyPolls();
+  }, [activeTab, loadActivePolls, loadClosedPolls, loadMyPolls]);
 
   const handleRefresh = useCallback(() => {
     if (activeTab === 'Active') loadActivePolls();
@@ -84,31 +92,34 @@ export default function PollDashboardScreen() {
   }, [publishPoll]);
 
   const handleClosePoll = useCallback(async (pollId: string) => {
-    Alert.alert('Confirm Close', 'Are you sure you want to close this poll? Voting will be disabled.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Close Poll', style: 'destructive', onPress: async () => {
-          try {
-            await closePoll(pollId);
-            Alert.alert('Success', 'Poll closed successfully');
-          } catch (err: any) {
-            Alert.alert('Error', err.message || 'Failed to close poll');
-          }
-      }},
-    ]);
-  }, [closePoll]);
+    try {
+      await closePoll(pollId);
+      setActiveTab('Closed');
+      loadClosedPolls(); // Force a fresh fetch from backend
+    } catch (err: any) {
+      if (Platform.OS === 'web') window.alert('Error: ' + (err.message || 'Failed to close poll'));
+      else Alert.alert('Error', err.message || 'Failed to close poll');
+    }
+  }, [closePoll, setActiveTab, loadClosedPolls]);
+
+  const handleReopenPoll = useCallback(async (pollId: string) => {
+    try {
+      await reopenPoll(pollId);
+      setActiveTab('Active');
+      loadActivePolls(); // Force a fresh fetch from backend
+    } catch (err: any) {
+      if (Platform.OS === 'web') window.alert('Error: ' + (err.message || 'Failed to reopen poll'));
+      else Alert.alert('Error', err.message || 'Failed to reopen poll');
+    }
+  }, [reopenPoll, setActiveTab, loadActivePolls]);
 
   const handleDelete = useCallback(async (pollId: string) => {
-    Alert.alert('Confirm Delete', 'Are you sure you want to delete this poll? This action cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
-          try {
-            await deletePoll(pollId);
-            Alert.alert('Success', 'Poll deleted successfully');
-          } catch (err: any) {
-            Alert.alert('Error', err.message || 'Failed to delete poll');
-          }
-      }},
-    ]);
+    try {
+      await deletePoll(pollId);
+    } catch (err: any) {
+      if (Platform.OS === 'web') window.alert('Error: ' + (err.message || 'Failed to delete poll'));
+      else Alert.alert('Error', err.message || 'Failed to delete poll');
+    }
   }, [deletePoll]);
 
   const handleCreateSubmit = async (pollData: any) => {
@@ -146,27 +157,30 @@ export default function PollDashboardScreen() {
       onVote={handleVote}
       onPublish={handlePublish}
       onClosePoll={handleClosePoll}
+      onReopenPoll={handleReopenPoll}
       onDelete={handleDelete}
       onViewVoters={handleViewVoters}
       currentUser={user}
       isAdmin={isAdmin}
     />
-  ), [handleVote, handlePublish, handleClosePoll, handleDelete, handleViewVoters, user, isAdmin]);
+  ), [handleVote, handlePublish, handleClosePoll, handleReopenPoll, handleDelete, handleViewVoters, user, isAdmin]);
 
   return (
     <ScreenShell 
       title="Community Polls" 
       subtitle="Voice your opinion & vote"
       headerRight={
-        <TouchableOpacity
-          onPress={() => setCreateModalOpen(true)}
-          className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full"
-          accessibilityRole="button"
-          accessibilityLabel="Create Poll"
-        >
-          <Plus size={14} color="#ffffff" />
-          <Text className="text-xs font-bold text-primary-foreground">Create Poll</Text>
-        </TouchableOpacity>
+        isAdmin ? (
+          <TouchableOpacity
+            onPress={() => setCreateModalOpen(true)}
+            className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full"
+            accessibilityRole="button"
+            accessibilityLabel="Create Poll"
+          >
+            <Plus size={14} color="#ffffff" />
+            <Text className="text-xs font-bold text-primary-foreground">Create Poll</Text>
+          </TouchableOpacity>
+        ) : undefined
       }
     >
       <View className="flex-1 bg-background">

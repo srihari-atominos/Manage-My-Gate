@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Bell, ArrowRight, Sparkles, Megaphone } from 'lucide-react-native';
+import { ArrowRight, Sparkles, Megaphone } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 400);

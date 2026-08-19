@@ -1,5 +1,4 @@
 import React from 'react';
-import { View, TouchableOpacity } from 'react-redux'; // Wait, need to use react-native
 import { Text, View as RNView, TouchableOpacity as RNTouchableOpacity } from 'react-native';
 import { ListCard, StatusBadge, Button } from '@/components';
 import { Poll } from '../store/pollSlice';

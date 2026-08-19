@@ -1,10 +1,11 @@
-import React from 'react';
-import { View, TouchableOpacity, Pressable } from 'react-native';
+import React, { useState } from 'react';
+import { View, TouchableOpacity, Pressable, Alert, Platform } from 'react-native';
 import { CheckCircle, Globe, XCircle, Trash2, Users } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 export interface PollCardProps {
   poll: any;
@@ -12,6 +13,7 @@ export interface PollCardProps {
   onDelete: (pollId: string) => void;
   onPublish: (pollId: string) => void;
   onClosePoll: (pollId: string) => void;
+  onReopenPoll?: (pollId: string) => void;
   onViewVoters?: (poll: any) => void;
   currentUser: any;
   isAdmin: boolean;
@@ -23,6 +25,7 @@ export function PollCard({
   onDelete,
   onPublish,
   onClosePoll,
+  onReopenPoll,
   onViewVoters,
   currentUser,
   isAdmin,
@@ -35,7 +38,7 @@ export function PollCard({
   const isCreator = userIdStr === creatorIdStr && userIdStr !== '';
 
   const canDelete = isAdmin || isCreator;
-  const canManage = isCreator;
+  const canManage = isAdmin || isCreator;
 
   const totalVotes = poll.options.reduce((sum: number, opt: any) => sum + opt.votesCount, 0);
 
@@ -56,6 +59,25 @@ export function PollCard({
     if (status === 'Active') return 'success';
     if (status === 'Closed') return 'neutral';
     return 'warning';
+  };
+
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
+
+  const getConfirmProps = () => {
+    switch (confirmAction) {
+      case 'publish': return { title: 'Publish Poll', message: 'Are you sure you want to publish this poll?', onConfirm: () => onPublish(poll._id) };
+      case 'close': return { title: 'Close Poll', message: 'Are you sure you want to close this poll?', onConfirm: () => onClosePoll(poll._id) };
+      case 'reopen': return { title: 'Reopen Poll', message: 'Are you sure you want to reopen this poll?', onConfirm: () => onReopenPoll && onReopenPoll(poll._id) };
+      case 'delete': return { title: 'Delete Poll', message: 'Are you sure you want to delete this poll? This action cannot be undone.', onConfirm: () => onDelete(poll._id) };
+      default: return { title: '', message: '', onConfirm: () => {} };
+    }
+  };
+
+  const confirmProps = getConfirmProps();
+
+  const handleConfirm = () => {
+    confirmProps.onConfirm();
+    setConfirmAction(null);
   };
 
   return (
@@ -165,7 +187,7 @@ export function PollCard({
               <Button
                 variant="outline"
                 size="sm"
-                onPress={() => onPublish(poll._id)}
+                onPress={() => setConfirmAction('publish')}
                 className="bg-green-50 border-green-200 h-8 px-2"
               >
                 <Icon as={Globe} size={12} color="#16a34a" />
@@ -177,11 +199,23 @@ export function PollCard({
               <Button
                 variant="outline"
                 size="sm"
-                onPress={() => onClosePoll(poll._id)}
-                className="bg-orange-50 border-orange-200 h-8 px-2"
+                onPress={() => setConfirmAction('close')}
+                className="bg-amber-50 border-amber-200 h-8 px-2"
               >
-                <Icon as={XCircle} size={12} color="#ea580c" />
-                <Text className="text-[10px] text-orange-700 font-bold uppercase ml-1">Close</Text>
+                <Icon as={XCircle} size={12} color="#d97706" />
+                <Text className="text-[10px] text-amber-700 font-bold uppercase ml-1">Close</Text>
+              </Button>
+            )}
+
+            {canManage && poll.status === 'Closed' && onReopenPoll && (
+              <Button
+                variant="outline"
+                size="sm"
+                onPress={() => setConfirmAction('reopen')}
+                className="bg-blue-50 border-blue-200 h-8 px-2"
+              >
+                <Icon as={CheckCircle} size={12} color="#2563eb" />
+                <Text className="text-[10px] text-blue-700 font-bold uppercase ml-1">Reopen</Text>
               </Button>
             )}
 
@@ -189,7 +223,7 @@ export function PollCard({
               <Button
                 variant="outline"
                 size="sm"
-                onPress={() => onDelete(poll._id)}
+                onPress={() => setConfirmAction('delete')}
                 className="bg-red-50 border-red-200 h-8 px-2"
               >
                 <Icon as={Trash2} size={12} color="#dc2626" />
@@ -197,19 +231,32 @@ export function PollCard({
               </Button>
             )}
 
-            <Button
-              variant="outline"
-              size="sm"
-              onPress={() => onViewVoters?.(poll)}
-              className="bg-primary/10 border-primary/20 h-8 px-2"
-            >
-              <Icon as={Users} size={12} className="text-primary" />
-              <Text className="text-[10px] text-primary font-bold uppercase ml-1">Voters</Text>
-            </Button>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onPress={() => onViewVoters?.(poll)}
+                className="bg-primary/10 border-primary/20 h-8 px-2"
+              >
+                <Icon as={Users} size={12} className="text-primary" />
+                <Text className="text-[10px] text-primary font-bold uppercase ml-1">Voters</Text>
+              </Button>
+            )}
           </View>
         </View>
 
       </View>
+      
+      <ConfirmationModal
+        visible={!!confirmAction}
+        title={confirmProps.title}
+        message={confirmProps.message}
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirmAction(null)}
+        confirmLabel="Confirm"
+        cancelLabel="Cancel"
+        variant={confirmAction === 'delete' ? 'danger' : 'primary'}
+      />
     </View>
   );
 }

@@ -5,6 +5,7 @@ import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { ScreenShell, TextInput, Button, ActionBar } from '@/components';
+import { Text } from '@/components/ui/text';
 import { usePolls } from '../hooks/usePolls';
 
 const schema = yup.object().shape({
@@ -44,11 +45,18 @@ export default function CreatePollScreen() {
 
   const onSubmit = async (data: any) => {
     try {
-      await submitNewPoll(data);
+      const payload = {
+        question: data.title,
+        description: data.description,
+        options: data.options,
+        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        visibility: 'Everyone',
+      };
+      await submitNewPoll(payload);
       router.back();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create poll', error);
-      // Let the error boundary or toast handle the error visually
+      Alert.alert('Error', error?.message || 'Failed to create poll. Check if your question is at least 5 characters long.');
     }
   };
 
@@ -100,7 +108,7 @@ export default function CreatePollScreen() {
               size="sm"
               onPress={() => append({ text: '' })}
             >
-              Add Option
+              <Text>Add Option</Text>
             </Button>
           </View>
         </View>
@@ -130,7 +138,7 @@ export default function CreatePollScreen() {
                 className="ml-2 mt-4"
                 onPress={() => remove(index)}
               >
-                X
+                <Text>X</Text>
               </Button>
             )}
           </View>
@@ -142,7 +150,7 @@ export default function CreatePollScreen() {
 
       <ActionBar>
         <Button variant="outline" className="flex-1" onPress={() => router.back()}>
-          Cancel
+          <Text>Cancel</Text>
         </Button>
         <Button
           variant="default"
@@ -150,7 +158,7 @@ export default function CreatePollScreen() {
           onPress={handleSubmit(onSubmit)}
           isLoading={isSubmitting}
         >
-          Create Poll
+          <Text>Create Poll</Text>
         </Button>
       </ActionBar>
     </ScreenShell>

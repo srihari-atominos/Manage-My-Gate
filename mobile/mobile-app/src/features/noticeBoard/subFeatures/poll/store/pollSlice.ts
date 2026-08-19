@@ -137,11 +137,29 @@ const pollSlice = createSlice({
     },
     pollClosedSocket: (state, action: PayloadAction<Poll>) => {
       const poll = action.payload;
+      const initialLength = state.activePolls.data.length;
       state.activePolls.data = state.activePolls.data.filter((p) => p._id !== poll._id);
+      if (state.activePolls.data.length < initialLength) {
+        state.activePolls.total = Math.max(0, state.activePolls.total - 1);
+      }
       const exists = state.closedPolls.data.find((p) => p._id === poll._id);
       if (!exists) {
         state.closedPolls.data.unshift(poll);
         state.closedPolls.total += 1;
+      }
+      updatePollInList(state.myPolls.data, poll);
+    },
+    pollReopenedSocket: (state, action: PayloadAction<Poll>) => {
+      const poll = action.payload;
+      const initialLength = state.closedPolls.data.length;
+      state.closedPolls.data = state.closedPolls.data.filter((p) => p._id !== poll._id);
+      if (state.closedPolls.data.length < initialLength) {
+        state.closedPolls.total = Math.max(0, state.closedPolls.total - 1);
+      }
+      const exists = state.activePolls.data.find((p) => p._id === poll._id);
+      if (!exists) {
+        state.activePolls.data.unshift(poll);
+        state.activePolls.total += 1;
       }
       updatePollInList(state.myPolls.data, poll);
     },
@@ -307,6 +325,7 @@ export const {
   pollUpdatedSocket,
   pollPublishedSocket,
   pollClosedSocket,
+  pollReopenedSocket,
   pollVoteAddedSocket,
   pollVoteRemovedSocket,
   pollDeletedSocket,

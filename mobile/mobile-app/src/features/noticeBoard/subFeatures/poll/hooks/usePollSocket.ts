@@ -8,6 +8,7 @@ import {
   pollUpdatedSocket,
   pollPublishedSocket,
   pollClosedSocket,
+  pollReopenedSocket,
   pollVoteAddedSocket,
   pollVoteRemovedSocket,
   pollDeletedSocket,
@@ -56,6 +57,11 @@ export const usePollSocket = (
       dispatch(pollClosedSocket(poll));
     };
 
+    const handlePollReopened = (poll: Poll) => {
+      console.log('[Socket] Poll reopened via socket', poll);
+      dispatch(pollReopenedSocket(poll));
+    };
+
     const handlePollVoteAdded = (payload: { poll: Poll; residentId: string; optionIndex: number }) => {
       console.log('[Socket] Poll vote added via socket', payload);
       dispatch(
@@ -86,6 +92,7 @@ export const usePollSocket = (
     socket.on('poll_updated', handlePollUpdated);
     socket.on('poll_published', handlePollPublished);
     socket.on('poll_closed', handlePollClosed);
+    socket.on('poll_reopened', handlePollReopened);
     socket.on('poll_vote_added', handlePollVoteAdded);
     socket.on('poll_vote_removed', handlePollVoteRemoved);
     socket.on('poll_deleted', handlePollDeleted);
@@ -96,6 +103,7 @@ export const usePollSocket = (
       socket.off('poll_updated', handlePollUpdated);
       socket.off('poll_published', handlePollPublished);
       socket.off('poll_closed', handlePollClosed);
+      socket.off('poll_reopened', handlePollReopened);
       socket.off('poll_vote_added', handlePollVoteAdded);
       socket.off('poll_vote_removed', handlePollVoteRemoved);
       socket.off('poll_deleted', handlePollDeleted);

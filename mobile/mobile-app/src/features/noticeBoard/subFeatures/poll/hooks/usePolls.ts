@@ -10,6 +10,7 @@ import {
   fetchPollVoters,
   pollDeletedSocket,
   pollClosedSocket,
+  pollReopenedSocket,
   pollPublishedSocket,
 } from '../store/pollSlice';
 import { pollService } from '../services/pollService';
@@ -70,6 +71,14 @@ export const usePolls = () => {
     return result;
   };
 
+  const reopenPoll = async (pollId: string) => {
+    const result = await pollService.reopenPoll(pollId);
+    if (result) {
+      dispatch(pollReopenedSocket(result));
+    }
+    return result;
+  };
+
   const deletePoll = async (pollId: string) => {
     const result = await pollService.deletePoll(pollId);
     dispatch(pollDeletedSocket({ pollId }));
@@ -91,6 +100,7 @@ export const usePolls = () => {
     submitVote,
     publishPoll,
     closePoll,
+    reopenPoll,
     deletePoll,
   };
 };

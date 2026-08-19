@@ -78,6 +78,12 @@ export const pollService = {
     return body?.data || body;
   },
 
+  reopenPoll: async (id: string): Promise<Poll> => {
+    const response = await apiClient.post(`/polls/${id}/reopen`);
+    const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+    return body?.data || body;
+  },
+
   voteOnPoll: async (id: string, optionIndex: number): Promise<Poll> => {
     const response = await apiClient.post(`/polls/${id}/vote`, { optionIndex });
     const body = response && (response as any).success !== undefined ? response : (response as any)?.data;

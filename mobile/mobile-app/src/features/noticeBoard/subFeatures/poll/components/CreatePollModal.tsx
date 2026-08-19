@@ -59,8 +59,8 @@ export function CreatePollModal({ visible, onClose, onSubmit }: CreatePollModalP
   };
 
   const handleSubmit = async () => {
-    if (question.trim().length === 0) {
-      Alert.alert('Validation Error', 'Poll question is required.');
+    if (question.trim().length < 5) {
+      Alert.alert('Validation Error', 'Poll question must be at least 5 characters long.');
       return;
     }
 
@@ -196,10 +196,10 @@ export function CreatePollModal({ visible, onClose, onSubmit }: CreatePollModalP
 
         <View className="flex-row gap-3 pt-4 border-t border-border mt-2 bg-background">
           <Button variant="outline" onPress={onClose} className="flex-1">
-            Cancel
+            <Text>Cancel</Text>
           </Button>
           <Button onPress={handleSubmit} disabled={loading} className="flex-1">
-            {loading ? 'Creating...' : 'Create Poll'}
+            <Text>{loading ? 'Creating...' : 'Create Poll'}</Text>
           </Button>
         </View>
       </View>
