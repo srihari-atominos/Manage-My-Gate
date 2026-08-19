@@ -78,6 +78,22 @@ export const closePoll = async (pollId, orgId, userId, isCommunityAdmin) => {
   return updatedPoll;
 };
 
+export const reopenPoll = async (pollId, orgId, userId, isCommunityAdmin) => {
+  const poll = await getPollById(pollId, orgId);
+  
+  if (poll.status !== 'Closed') {
+    throw new HttpError(400, 'Only Closed polls can be reopened');
+  }
+  
+  if (poll.createdBy.toString() !== userId.toString() && !isCommunityAdmin) {
+    throw new HttpError(403, 'You do not have permission to reopen this poll');
+  }
+
+  const updatedPoll = await pollRepo.updatePoll(pollId, orgId, { status: 'Active', closedAt: null });
+  pollEvents.emit('poll_reopened', updatedPoll);
+  return updatedPoll;
+};
+
 const populateHasVoted = async (data, orgId, userId) => {
   if (!data || !data.polls || data.polls.length === 0 || !userId) return data;
 

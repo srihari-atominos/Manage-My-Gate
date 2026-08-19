@@ -116,6 +116,18 @@ const pollSlice = createSlice({
       }
       updatePollInList(state.myPolls.data, poll)
     },
+    pollReopenedSocket: (state, action) => {
+      const poll = action.payload
+      // Remove from closed, add to active
+      state.closedPolls.data = state.closedPolls.data.filter((p) => p._id !== poll._id)
+      
+      const exists = state.activePolls.data.find((p) => p._id === poll._id)
+      if (!exists) {
+        state.activePolls.data.unshift(poll)
+        state.activePolls.total += 1
+      }
+      updatePollInList(state.myPolls.data, poll)
+    },
     pollVoteAddedSocket: (state, action) => {
       const { poll, residentId, optionIndex, currentUserId } = action.payload
 
@@ -277,6 +289,7 @@ export const {
   pollUpdatedSocket,
   pollPublishedSocket,
   pollClosedSocket,
+  pollReopenedSocket,
   pollVoteAddedSocket,
   pollVoteRemovedSocket,
   pollDeletedSocket,
