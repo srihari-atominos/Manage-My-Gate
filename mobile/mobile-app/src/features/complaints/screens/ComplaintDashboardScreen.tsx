@@ -98,7 +98,9 @@ export function ComplaintDashboardScreen() {
           notices.push({
             id: `cmp-crit-${c._id}`,
             title: `Critical Alert: ${c.title}`,
-            message: `Active emergency issue reported at ${c.location?.flat || c.location?.building || 'Common Area'}.`,
+            message: c.description
+              ? `${c.description} (${c.location?.flat || c.location?.building || 'Common Area'})`
+              : `Active emergency issue reported at ${c.location?.flat || c.location?.building || 'Common Area'}.`,
             date: c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'Immediate',
             variant: 'danger',
           });

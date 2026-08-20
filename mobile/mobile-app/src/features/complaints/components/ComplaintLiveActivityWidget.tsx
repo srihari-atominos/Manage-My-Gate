@@ -1,28 +1,32 @@
 import React, { useState } from 'react';
-import { View, Pressable } from 'react-native';
+import { View, Pressable, Modal, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { Wrench, ShieldAlert, ArrowRight, Clock, CheckCircle2, AlertTriangle, UserCheck } from 'lucide-react-native';
+import { Wrench, ArrowRight, AlertTriangle, X, Calendar, MapPin, Bell } from 'lucide-react-native';
 import { Complaint } from '../types';
 import { ComplaintDetailSheet } from './ComplaintDetailSheet';
 
+export interface MaintenanceNotice {
+  id: string;
+  title: string;
+  message: string;
+  date: string;
+  variant?: 'warning' | 'danger' | 'info';
+}
+
 export interface ComplaintLiveActivityWidgetProps {
   complaints?: Complaint[];
-  maintenanceNotices?: Array<{
-    id: string;
-    title: string;
-    message: string;
-    date: string;
-    variant?: 'warning' | 'danger' | 'info';
-  }>;
+  maintenanceNotices?: MaintenanceNotice[];
 }
 
 export function ComplaintLiveActivityWidget({ complaints = [], maintenanceNotices = [] }: ComplaintLiveActivityWidgetProps) {
   const router = useRouter();
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
+  const [selectedNotice, setSelectedNotice] = useState<MaintenanceNotice | null>(null);
 
-  // Take the 3 most relevant recent tickets or notices
+  // Take the 3 most relevant recent tickets
   const recentComplaints = complaints.slice(0, 3);
 
   const getStatusBadgeVariant = (status: string) => {
@@ -65,13 +69,14 @@ export function ComplaintLiveActivityWidget({ complaints = [], maintenanceNotice
         </Pressable>
       </View>
 
-      {/* Notices Banner Row if any critical notices exist */}
+      {/* Maintenance Notices Banner Cards */}
       {maintenanceNotices.length > 0 ? (
-        <View className="mb-4 gap-2">
-          {maintenanceNotices.slice(0, 2).map((notice) => (
-            <View
+        <View className="mb-4 gap-2.5">
+          {maintenanceNotices.slice(0, 3).map((notice) => (
+            <Pressable
               key={notice.id}
-              className={`p-3 rounded-2xl border flex-row items-start ${
+              onPress={() => setSelectedNotice(notice)}
+              className={`p-3.5 rounded-2xl border flex-row items-start active:opacity-80 ${
                 notice.variant === 'danger'
                   ? 'bg-rose-500/10 border-rose-500/30'
                   : notice.variant === 'warning'
@@ -79,9 +84,9 @@ export function ComplaintLiveActivityWidget({ complaints = [], maintenanceNotice
                   : 'bg-blue-500/10 border-blue-500/30'
               }`}
             >
-              <View className="p-1.5 rounded-xl bg-background me-3 mt-0.5">
+              <View className="p-2 rounded-xl bg-background me-3 mt-0.5 shadow-xs">
                 <AlertTriangle
-                  size={16}
+                  size={18}
                   color={
                     notice.variant === 'danger'
                       ? '#f43f5e'
@@ -92,19 +97,19 @@ export function ComplaintLiveActivityWidget({ complaints = [], maintenanceNotice
                 />
               </View>
               <View className="flex-1">
-                <View className="flex-row items-center justify-between mb-0.5">
-                  <Text className="text-xs font-extrabold text-foreground" numberOfLines={1}>
+                <View className="flex-row items-start justify-between mb-1 gap-2">
+                  <Text className="text-xs font-extrabold text-foreground flex-1 leading-snug">
                     {notice.title}
                   </Text>
-                  <Text className="text-[10px] font-semibold text-muted-foreground me-1">
+                  <Text className="text-[10px] font-bold text-muted-foreground shrink-0 mt-0.5">
                     {notice.date}
                   </Text>
                 </View>
-                <Text className="text-[11px] text-muted-foreground" numberOfLines={2}>
+                <Text className="text-[11px] text-muted-foreground leading-normal">
                   {notice.message}
                 </Text>
               </View>
-            </View>
+            </Pressable>
           ))}
         </View>
       ) : null}
@@ -134,13 +139,13 @@ export function ComplaintLiveActivityWidget({ complaints = [], maintenanceNotice
                     <Wrench size={18} className="text-primary" />
                   </View>
                   <View className="flex-1">
-                    <View className="flex-row items-center mb-0.5">
-                      <Text className="text-xs font-extrabold text-foreground me-2" numberOfLines={1}>
+                    <View className="flex-row items-center mb-0.5 gap-2 flex-wrap">
+                      <Text className="text-xs font-extrabold text-foreground">
                         #{item.complaintNumber || item._id.slice(-6)}
                       </Text>
                       <StatusBadge label={item.status} variant={variant as any} />
                     </View>
-                    <Text className="text-[11px] font-semibold text-muted-foreground" numberOfLines={1}>
+                    <Text className="text-[11px] font-semibold text-muted-foreground">
                       {item.title} • {item.category || 'General'}
                     </Text>
                     <Text className="text-[10px] text-muted-foreground/80 mt-0.5">
@@ -161,7 +166,7 @@ export function ComplaintLiveActivityWidget({ complaints = [], maintenanceNotice
         </View>
       )}
 
-      {/* Detail Sheet Modal */}
+      {/* Complaint Detail Sheet Modal */}
       {selectedComplaint ? (
         <ComplaintDetailSheet
           visible={!!selectedComplaint}
@@ -169,6 +174,86 @@ export function ComplaintLiveActivityWidget({ complaints = [], maintenanceNotice
           onClose={() => setSelectedComplaint(null)}
         />
       ) : null}
+
+      {/* Notice Detail Sheet Modal */}
+      {selectedNotice ? (
+        <Modal
+          visible={!!selectedNotice}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSelectedNotice(null)}
+        >
+          <View className="flex-1 bg-black/60 justify-center p-4">
+            <View className="bg-card border border-border rounded-3xl p-5 shadow-2xl gap-3">
+              <View className="flex-row items-center justify-between pb-3 border-b border-border">
+                <View className="flex-row items-center gap-2 flex-1 me-2">
+                  <View className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <Icon as={Bell} size={20} className="text-amber-500" />
+                  </View>
+                  <Text className="text-sm font-bold text-foreground flex-1">
+                    Maintenance & Activity Notice
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setSelectedNotice(null)}
+                  className="p-2 rounded-full bg-muted"
+                  activeOpacity={0.7}
+                >
+                  <Icon as={X} size={18} className="text-foreground" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView className="max-h-[350px]" showsVerticalScrollIndicator={false}>
+                <View className="gap-3 py-1">
+                  <Text className="text-base font-extrabold text-foreground leading-snug">
+                    {selectedNotice.title}
+                  </Text>
+
+                  <View className="flex-row items-center gap-2">
+                    <StatusBadge
+                      label={
+                        selectedNotice.variant === 'danger'
+                          ? 'Critical Alert'
+                          : selectedNotice.variant === 'warning'
+                          ? 'Scheduled Maintenance'
+                          : 'Community Advisory'
+                      }
+                      variant={
+                        selectedNotice.variant === 'danger'
+                          ? 'danger'
+                          : selectedNotice.variant === 'warning'
+                          ? 'warning'
+                          : 'info'
+                      }
+                    />
+                    <View className="flex-row items-center me-1">
+                      <Icon as={Calendar} size={12} className="text-muted-foreground me-1" />
+                      <Text className="text-xs text-muted-foreground font-medium">
+                        {selectedNotice.date}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View className="bg-muted/40 p-3.5 rounded-2xl border border-border/60">
+                    <Text className="text-xs text-foreground leading-relaxed">
+                      {selectedNotice.message}
+                    </Text>
+                  </View>
+                </View>
+              </ScrollView>
+
+              <TouchableOpacity
+                onPress={() => setSelectedNotice(null)}
+                className="bg-primary py-3 rounded-2xl items-center mt-2 active:opacity-80"
+              >
+                <Text className="text-xs font-bold text-white">Close Notice</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </View>
   );
 }
+
+export default ComplaintLiveActivityWidget;
