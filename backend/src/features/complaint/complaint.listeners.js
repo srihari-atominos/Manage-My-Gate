@@ -1,24 +1,39 @@
 import { complaintEvents } from './complaint.events.js';
 import { complaintSettingsEvents } from '../complaintSettings/complaintSettings.service.js';
 import notificationService from '../notification/notification.service.js';
-import User from '../user/user.model.js'; // Assuming User model is here
+import Role from '../role/role.model.js';
+import OrgMembership from '../orgMembership/orgMembership.model.js';
+import User from '../user/user.model.js';
 import logger from '../../utils/logger.utils.js';
 
 // Helper to notify a role
-async function notifyRole(orgId, role, title, body, actionUrl) {
+async function notifyRole(orgId, roleName, title, body, actionUrl) {
   try {
-    const users = await User.find({ organization: orgId, role });
-    for (const user of users) {
-      await notificationService.createNotification({
-        recipientId: user._id,
-        title,
-        body,
-        actionUrl,
-        type: 'INFO'
-      });
+    const roles = await Role.find({ orgId, name: roleName });
+    if (!roles || roles.length === 0) return;
+
+    const roleIds = roles.map(r => r._id);
+    const memberships = await OrgMembership.find({
+      orgId,
+      $or: [
+        { roleId: { $in: roleIds } },
+        { roleIds: { $in: roleIds } }
+      ]
+    });
+
+    for (const member of memberships) {
+      if (member.userId) {
+        await notificationService.createNotification({
+          recipientId: member.userId,
+          title,
+          body,
+          actionUrl,
+          type: 'INFO'
+        });
+      }
     }
   } catch (error) {
-    logger.error(`Error notifying role ${role}:`, error);
+    logger.error(`Error notifying role ${roleName}:`, error);
   }
 }
 

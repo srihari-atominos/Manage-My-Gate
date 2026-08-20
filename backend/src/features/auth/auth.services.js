@@ -559,6 +559,9 @@ export class AuthService {
       if (orgId) {
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
         await orgMembershipService.updateStatus(userId, orgId, 'Active', session);
+
+        const Technician = (await import('../technician/technician.model.js')).default;
+        await Technician.findOneAndUpdate({ userId, orgId }, { status: 'Active' }).session(session);
       }
 
       // Auto-login session creation (inside transaction for atomic flow validation)
@@ -1377,6 +1380,9 @@ export class AuthService {
       if (orgId) {
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
         await orgMembershipService.updateStatus(userId, orgId, 'Active', session);
+
+        const Technician = (await import('../technician/technician.model.js')).default;
+        await Technician.findOneAndUpdate({ userId, orgId }, { status: 'Active' }).session(session);
       }
 
       // Call userIdentityService.createIdentity to link SSO identity

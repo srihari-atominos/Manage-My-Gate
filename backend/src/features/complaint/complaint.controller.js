@@ -103,7 +103,8 @@ class ComplaintController {
         preferredVisitTime, reassignmentReason 
       } = req.body;
       const adminId = req.user.id || req.user._id;
-      const adminName = req.user.name || `${req.user.firstName} ${req.user.lastName}`;
+      const rawName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim();
+      const adminName = req.user.name || (rawName.length > 0 ? rawName : (req.user.username || req.user.email?.split('@')[0] || 'Admin'));
       const metaData = {
         ipAddress: req.ip,
         browser: req.headers['user-agent'],
@@ -126,7 +127,8 @@ class ComplaintController {
       const { status, remarks, attachments, priority } = req.body;
       const orgId = req.tenant.orgId;
       const userId = req.user.id;
-      const userName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim();
+      const rawName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim();
+      const userName = req.user.name || (rawName.length > 0 ? rawName : (req.user.username || req.user.email?.split('@')[0] || 'User'));
       
       // Determine role from user details (Simplified. In reality, check req.user.roles or membership)
       const userRole = req.user.roleName || 'User'; 

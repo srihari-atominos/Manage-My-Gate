@@ -18,6 +18,10 @@ const legacyMap = {
   'amenities.update': 'amenities:update',
   'amenities.delete': 'amenities:delete',
   'amenities.manage_bookings': 'amenities:manage_bookings',
+  'notices.read': 'notices:read',
+  'notices:read': 'notices:active_board',
+  'notices.active_board': 'notices:active_board',
+  'notices.dashboard': 'notices:dashboard',
 };
 
 /**

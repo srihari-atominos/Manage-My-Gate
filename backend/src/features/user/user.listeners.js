@@ -27,52 +27,24 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken }) => {
   try {
     const inviteLink = generateInviteLink(invitationToken);
 
-    // 1. Check if SMTP integration is connected for this organization
-    const smtpConnection = await integrationHubService.findSmtpConnection(orgId);
-
-    if (!smtpConnection) {
-      logger.warn(
-        `SMTP integration is not configured for organization ${orgId}. Invitation email not sent. Link for manual activation: ${inviteLink}`
-      );
-      return;
-    }
-
-    // 2. Fetch organization's customized user_invitation email template
+    // 1. Fetch organization's customized user_invitation email template
     const template = await messageTemplateService.getTemplateByPurpose(orgId, 'email', 'user_invitation');
 
     const subject = template?.subject || 'You are invited to join the Workspace';
     const bodyTemplate = template?.body || DEFAULT_INVITE_BODY;
 
-    // 3. Compile variables (replace {{invite_link}} with actual URL)
+    // 2. Compile variables (replace {{invite_link}} with actual URL)
     const compiledSubject = subject.replace(/{{invite_link}}/g, inviteLink);
     const compiledBody = bodyTemplate.replace(/{{invite_link}}/g, inviteLink);
 
-    // 4. Decrypt SMTP credentials
-    const credentials = await integrationHubService.getDecryptedCredentialsById(smtpConnection._id);
-
-    // 5. Initialize Mail transporter
-    const transporter = nodemailer.createTransport({
-      host: credentials.host,
-      port: parseInt(credentials.port, 10),
-      secure: parseInt(credentials.port, 10) === 465,
-      auth: {
-        user: credentials.authUsername,
-        pass: credentials.authPassword,
-      },
-    });
-
-    // 6. Send invitation email
-    const mailOptions = {
-      from: credentials.authUsername,
-      to: email,
-      subject: compiledSubject,
-      html: compiledBody,
-      ...(template?.cc && { cc: template.cc }),
-      ...(template?.bcc && { bcc: template.bcc }),
-    };
-
-    await transporter.sendMail(mailOptions);
-    logger.info(`Invitation email successfully sent to ${email} via SMTP.`);
+    // 3. Send email using sendEmail helper
+    const { sendEmail } = await import('../../utils/email.utils.js');
+    const sent = await sendEmail(orgId, email, compiledSubject, compiledBody);
+    if (sent) {
+      logger.info(`Invitation email successfully sent to ${email}.`);
+    } else {
+      logger.warn(`SMTP is not configured or failed to send invitation email to ${email}. Link for manual activation: ${inviteLink}`);
+    }
   } catch (error) {
     logger.error(`Asynchronous invitation email dispatch failed: ${error.message}`);
   }

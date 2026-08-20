@@ -47,6 +47,17 @@ class TechnicianService {
   async updateTechnician(id, orgId, data) {
     const updated = await technicianRepository.update(id, orgId, data);
     if (!updated) throw new HttpError(404, 'Technician not found');
+
+    if (data.status && updated.userId) {
+      if (data.status === 'Active') {
+        const User = (await import('../user/user.model.js')).default;
+        const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+
+        await User.updateOne({ _id: updated.userId, status: 'Pending Verification' }, { $set: { status: 'Active' } });
+        await OrgMembership.updateOne({ userId: updated.userId, orgId }, { $set: { status: 'Active' } });
+      }
+    }
+
     return updated;
   }
 

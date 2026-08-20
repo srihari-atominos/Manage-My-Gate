@@ -18,7 +18,7 @@ router.use(isAuthenticated, tenantContext);
 // Dashboard Analytics (Unified)
 router.get(
   '/dashboard/analytics',
-  authorizePermission('complaints', 'dashboard'),
+  authorizePermission('complaints', ['dashboard', 'view', 'create', 'track_requests', 'assignee', 'complaint_management']),
   complaintController.getDashboardAnalytics
 );
 
@@ -105,44 +105,46 @@ router.delete(
 );
 
 // Assignee Workflow Routes
+const assigneePermissions = ['view', 'assignee', 'create', 'raise_ticket', 'track_requests', 'complaint_management', 'dashboard'];
+
 router.post(
   '/:id/accept',
-  authorizePermission('complaints', ['view', 'assignee']), // Assuming assignees only need view permission at minimum
+  authorizePermission('complaints', assigneePermissions),
   complaintController.acceptAssignment
 );
 router.post(
   '/:id/reject',
-  authorizePermission('complaints', ['view', 'assignee']),
+  authorizePermission('complaints', assigneePermissions),
   complaintController.rejectAssignment
 );
 router.post(
   '/:id/start-work',
-  authorizePermission('complaints', ['view', 'assignee']),
+  authorizePermission('complaints', assigneePermissions),
   complaintController.startWork
 );
 router.post(
   '/:id/pause-work',
-  authorizePermission('complaints', ['view', 'assignee']),
+  authorizePermission('complaints', assigneePermissions),
   complaintController.pauseWork
 );
 router.post(
   '/:id/resume-work',
-  authorizePermission('complaints', ['view', 'assignee']),
+  authorizePermission('complaints', assigneePermissions),
   complaintController.resumeWork
 );
 router.post(
   '/:id/mark-completed',
-  authorizePermission('complaints', ['view', 'assignee']),
+  authorizePermission('complaints', assigneePermissions),
   complaintController.markWorkCompleted
 );
 router.post(
   '/:id/upload-work',
-  authorizePermission('complaints', ['view', 'assignee']),
+  authorizePermission('complaints', assigneePermissions),
   complaintController.uploadWorkAttachments
 );
 router.post(
   '/:id/work-notes',
-  authorizePermission('complaints', ['view', 'assignee']),
+  authorizePermission('complaints', assigneePermissions),
   complaintController.addWorkNotes
 );
 router.post(

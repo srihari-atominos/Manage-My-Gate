@@ -139,7 +139,7 @@ export class UserService {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      await this.getUserById(id, session); // Throws if user doesn't exist
+      const user = await this.getUserById(id, session); // Throws if user doesn't exist
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       await orgMembershipService.deleteMembership(id, orgId, session);
 
@@ -147,11 +147,25 @@ export class UserService {
       const villaService = (await import('../villa/villa.services.js')).default;
       await villaService.removeUserFromAllVillasInOrg(id, orgId, session);
 
-      // Check if user has any OTHER memberships left across the platform
+      // Delete technician records linked to this user or email in this org
+      const Technician = (await import('../technician/technician.model.js')).default;
+      const techOrConditions = [{ userId: id }];
+      if (user.email) techOrConditions.push({ email: user.email });
+      await Technician.deleteMany({ orgId, $or: techOrConditions }).session(session);
+
+      // Check if user has any OTHER community memberships left across the platform
       const remainingMemberships = await orgMembershipService.getUserMemberships(id, session);
-      if (remainingMemberships.length === 0) {
-        // If they don't belong to any other organization, hard-delete their global user record
+      const remainingCommunityMemberships = remainingMemberships.filter(m => {
+        if (!m.orgId) return false;
+        const memberOrgId = m.orgId._id ? m.orgId._id.toString() : m.orgId.toString();
+        return memberOrgId !== orgId.toString() && !m.orgId.isPlatform;
+      });
+
+      if (remainingCommunityMemberships.length === 0) {
+        // If they don't belong to any other community organization, hard-delete their global user record and all memberships
         await userRepository.delete(id, session);
+        await orgMembershipService.deleteMembershipsByUserId(id, session);
+        await Technician.deleteMany({ $or: techOrConditions }).session(session);
         
         // Clean up linked SSO identities
         const userIdentityService = (await import('../userIdentity/userIdentity.services.js')).default;
@@ -161,7 +175,7 @@ export class UserService {
         const sessionService = (await import('../session/session.services.js')).default;
         await sessionService.revokeAllUserSessions(id, null, session);
       } else {
-        const remaining = remainingMemberships[0];
+        const remaining = remainingCommunityMemberships[0];
         const getResidencyTypeFromMemberType = (type) => {
           switch (type) {
             case 'Owner': return 'Resident Owner';
@@ -219,7 +233,7 @@ export class UserService {
           username: username,
           name: name || username,
           status: 'Pending Verification',
-          phone: phone || '',
+          ...(phone ? { phone } : {}),
         };
         user = await userRepository.create(userData, session);
       } else {
@@ -234,9 +248,9 @@ export class UserService {
       // Check if membership already exists
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       const existingMembership = await orgMembershipService.getMembership(user._id, orgId, session);
-      if (existingMembership) {
-        if (existingMembership.status !== 'Pending') {
-          throw new HttpError(400, 'User is already a member of this community.');
+      if (existingMembership && existingMembership.status !== 'Pending') {
+        if (!villaId) {
+          throw new HttpError(400, 'User is already an active member of this community.');
         }
       }
 
@@ -285,9 +299,11 @@ export class UserService {
       }
 
       if (existingMembership) {
-        // Update the existing pending membership with new role, villa, and resident type details
-        existingMembership.roleIds = roleIds;
-        existingMembership.roleId = roleIds[0] || null;
+        // Update the existing membership with new role, villa, and resident type details
+        if (roleIds.length > 0) {
+          existingMembership.roleIds = roleIds;
+          existingMembership.roleId = roleIds[0] || null;
+        }
         existingMembership.villaId = rootVillaId;
         existingMembership.residentType = rootResidentType;
         existingMembership.units = membershipUnits;
@@ -364,6 +380,11 @@ export class UserService {
       });
       await outboxEvent.save({ session });
 
+      // Auto-sync technician record if assigned a staff/vendor role
+      if (roleName) {
+        await this.syncTechnicianForStaffUser(user._id, orgId, [roleName], session);
+      }
+
       await session.commitTransaction();
       
       // Dispatch event for real-time frontend syncing
@@ -375,6 +396,56 @@ export class UserService {
       throw error;
     } finally {
       await session.endSession();
+    }
+  }
+
+  async syncTechnicianForStaffUser(userId, orgId, roleNames = [], session = null) {
+    try {
+      const isStaffRole = roleNames.some(r => {
+        if (!r) return false;
+        const lower = r.toLowerCase();
+        return lower.includes('staff') || lower.includes('vendor') || lower.includes('technician') || lower.includes('maintenance');
+      });
+
+      if (!isStaffRole) return;
+
+      const User = (await import('./user.model.js')).default;
+      const user = await User.findById(userId).session(session || null);
+      if (!user) return;
+
+      const Technician = (await import('../technician/technician.model.js')).default;
+
+      const existingTech = await Technician.findOne({
+        orgId,
+        $or: [
+          { userId: user._id },
+          ...(user.email ? [{ email: user.email }] : [])
+        ]
+      }).session(session || null);
+
+      if (existingTech) {
+        existingTech.userId = user._id;
+        existingTech.name = user.name || user.username || user.email.split('@')[0];
+        existingTech.phone = user.phone || existingTech.phone || 'N/A';
+        existingTech.isDeleted = false;
+        existingTech.status = user.status === 'Active' ? 'Active' : 'Pending';
+        await existingTech.save(session ? { session } : undefined);
+      } else {
+        await Technician.create([{
+          orgId,
+          userId: user._id,
+          name: user.name || user.username || user.email.split('@')[0],
+          email: user.email,
+          phone: user.phone || 'N/A',
+          department: 'Others',
+          type: 'In-House Staff',
+          status: user.status === 'Active' ? 'Active' : 'Pending',
+          whatsappEnabled: true,
+          isDeleted: false
+        }], session ? { session } : undefined);
+      }
+    } catch (err) {
+      console.error('Failed to sync technician for staff user:', err);
     }
   }
 
@@ -415,6 +486,9 @@ export class UserService {
         throw new HttpError(404, 'User organization membership not found.');
       }
       
+      // Auto-sync technician record if updated to a staff/vendor role
+      await this.syncTechnicianForStaffUser(userId, orgId, foundRoleNames, currentSession);
+
       if (localSession) {
         await localSession.commitTransaction();
       }

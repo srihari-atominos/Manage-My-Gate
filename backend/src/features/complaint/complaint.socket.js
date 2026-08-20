@@ -73,7 +73,10 @@ export const initComplaintSockets = () => {
           io.to(`org:${orgId}:role:facilitymanager`).emit('complaint_updated', complaint);
           io.to(`user:${complaint.residentId}`).emit('complaint_updated', complaint);
           if (complaint.assignedTechnicianId) {
-            io.to(`user:${complaint.assignedTechnicianId}`).emit('complaint_updated', complaint);
+            const assigneeId = typeof complaint.assignedTechnicianId === 'object' && complaint.assignedTechnicianId !== null
+              ? (complaint.assignedTechnicianId._id || complaint.assignedTechnicianId.id)
+              : complaint.assignedTechnicianId;
+            if (assigneeId) io.to(`user:${assigneeId}`).emit('complaint_updated', complaint);
           }
         }
       }
@@ -86,7 +89,10 @@ export const initComplaintSockets = () => {
         io.to(`org:${orgId}:role:facilitymanager`).emit('complaint_updated', complaint);
         io.to(`user:${complaint.residentId}`).emit('complaint_updated', complaint);
         if (complaint.assignedTechnicianId) {
-          io.to(`user:${complaint.assignedTechnicianId}`).emit('complaint_updated', complaint);
+          const assigneeId = typeof complaint.assignedTechnicianId === 'object' && complaint.assignedTechnicianId !== null
+            ? (complaint.assignedTechnicianId._id || complaint.assignedTechnicianId.id)
+            : complaint.assignedTechnicianId;
+          if (assigneeId) io.to(`user:${assigneeId}`).emit('complaint_updated', complaint);
         }
       }
     });

@@ -1,16 +1,12 @@
 import React from 'react';
-import FeatureDetailScreen from '@/components/dashboard/FeatureDetailScreen';
+import { Stack } from 'expo-router';
+import ResidentRaiseTicketScreen from '@/src/features/complaints/screens/ResidentRaiseTicketScreen';
 
-export default function RaiseTicketScreen() {
+export default function RaiseTicketRoute() {
   return (
-    <FeatureDetailScreen
-      title="Raise Maintenance Ticket"
-      categoryName="Complaints & Maintenance"
-      sharedSlice="complaintSlice.js"
-      permission="complaints:raise_ticket"
-      iconName="PlusCircle"
-      iconColor="#f43f5e"
-      description="Submit a new plumbing, electrical, carpentry, or common area maintenance issue with photos and urgency level."
-    />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ResidentRaiseTicketScreen />
+    </>
   );
 }

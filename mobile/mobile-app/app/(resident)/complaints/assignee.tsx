@@ -1,16 +1,12 @@
 import React from 'react';
-import FeatureDetailScreen from '@/components/dashboard/FeatureDetailScreen';
+import { Stack } from 'expo-router';
+import StaffAssigneeQueueScreen from '@/src/features/complaints/screens/StaffAssigneeQueueScreen';
 
-export default function AssigneeConsoleScreen() {
+export default function AssigneeQueueRoute() {
   return (
-    <FeatureDetailScreen
-      title="Assignee Work Console"
-      categoryName="Complaints & Maintenance"
-      sharedSlice="complaintSlice.js"
-      permission="complaints:assignee"
-      iconName="UserCheck"
-      iconColor="#10b981"
-      description="Technician work order console displaying assigned repair tasks, location details, and resolution sign-offs."
-    />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <StaffAssigneeQueueScreen />
+    </>
   );
 }
