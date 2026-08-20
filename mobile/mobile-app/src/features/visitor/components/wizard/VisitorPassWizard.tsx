@@ -18,7 +18,7 @@ import { GuestPassReviewStep } from '../guest/GuestPassReviewStep';
 
 import { GroupVisitDetailsStep, GroupVisitDetailsData } from '../group/GroupVisitDetailsStep';
 import { GroupScheduleStep } from '../group/GroupScheduleStep';
-import { GroupGuestItem } from '../group/AddGroupGuestsStep';
+import { AddGroupGuestsStep, GroupGuestItem } from '../group/AddGroupGuestsStep';
 import { GroupPassReviewStep } from '../group/GroupPassReviewStep';
 
 import { CabProviderStep } from '../cab/CabProviderStep';
@@ -48,6 +48,7 @@ const STEP_DEFINITIONS: Record<PassTypeKey, { key: string; title: string }[]> = 
   GROUP: [
     { key: 'event', title: 'Event Details' },
     { key: 'schedule', title: 'Event Schedule' },
+    { key: 'guests', title: 'Add Guests' },
     { key: 'review', title: 'Review Group Pass' },
   ],
   CAB: [
@@ -309,7 +310,8 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
           <>
             {currentStepIndex === 0 && <GroupVisitDetailsStep data={groupDetails} onChange={setGroupDetails} />}
             {currentStepIndex === 1 && <GroupScheduleStep data={groupDetails} onChange={setGroupDetails} />}
-            {currentStepIndex === 2 && (
+            {currentStepIndex === 2 && <AddGroupGuestsStep guests={groupGuests} onAddGuest={(g) => setGroupGuests((prev) => [...prev, g])} />}
+            {currentStepIndex === 3 && (
               <GroupPassReviewStep
                 details={groupDetails}
                 guests={groupGuests}
