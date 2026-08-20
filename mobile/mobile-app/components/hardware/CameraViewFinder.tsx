@@ -8,12 +8,14 @@ import { QRScannerOverlay } from './QRScannerOverlay';
 export interface CameraViewFinderProps {
   onScan: (data: string) => void;
   instruction?: string;
+  title?: string;
   isScanning?: boolean;
 }
 
 export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
   onScan,
   instruction = 'Position Amenity QR Code within Frame',
+  title,
   isScanning = true,
 }) => {
   const [cameraActive, setCameraActive] = useState<boolean>(false);

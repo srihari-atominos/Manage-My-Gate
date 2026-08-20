@@ -30,23 +30,14 @@ export function InvoiceCard({ invoice, onPress, className }: InvoiceCardProps) {
   const statusVariant = getStatusVariant(status);
   const statusLabel = status.replace(/_/g, ' ');
 
-  // Dynamic status-driven icon styling
+  // Dynamic status-driven icon symbol
   let leftIcon = 'Receipt';
-  let leftIconBgColor = '#f1f5f9';
-  let leftIconColor = '#475569';
-
   if (status === 'PAID') {
     leftIcon = 'CheckCircle2';
-    leftIconBgColor = '#dcfce7';
-    leftIconColor = '#166534';
   } else if (status === 'VERIFICATION_PENDING') {
     leftIcon = 'Clock';
-    leftIconBgColor = '#fef3c7';
-    leftIconColor = '#b45309';
   } else if (status === 'UNPAID' || status === 'OVERDUE') {
     leftIcon = 'AlertCircle';
-    leftIconBgColor = '#ffe4e6';
-    leftIconColor = '#9f1239';
   }
 
   return (
@@ -54,8 +45,10 @@ export function InvoiceCard({ invoice, onPress, className }: InvoiceCardProps) {
       title={(invoice as any).assessmentName || invNo}
       subtitle={subtitle}
       leftIcon={leftIcon}
-      leftIconBgColor={leftIconBgColor}
-      leftIconColor={leftIconColor}
+      status={{
+        label: statusLabel,
+        variant: statusVariant,
+      }}
       timestamp={invoice.billingPeriodString || invoice.date}
       onPress={onPress}
       className={className}
@@ -70,3 +63,4 @@ export function InvoiceCard({ invoice, onPress, className }: InvoiceCardProps) {
 }
 
 export default InvoiceCard;
+

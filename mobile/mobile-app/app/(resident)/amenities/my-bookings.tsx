@@ -134,8 +134,6 @@ export default function MyBookingsScreen() {
           subtitle={`${item.date} • ${item.startTime} - ${item.endTime}`}
           leftImage={coverImage}
           leftIcon={!coverImage ? 'CalendarCheck' : undefined}
-          leftIconBgColor="#e0e7ff"
-          leftIconColor="#4f46e5"
           onPress={() => setSelectedPassForQR(item)}
           className="border-0 rounded-none bg-transparent"
           status={{
@@ -180,11 +178,11 @@ export default function MyBookingsScreen() {
               <Text className="text-primary text-xs font-semibold">View Pass QR</Text>
             </Button>
             <Button
-              variant="outline"
+              variant="destructive"
               onPress={() => setCancelTarget(item)}
-              className="py-1 px-3 border-red-500/30 bg-red-500/10 h-8"
+              className="py-1 px-3 h-8"
             >
-              <Text className="text-red-600 dark:text-red-400 text-xs font-semibold">
+              <Text className="text-white text-xs font-semibold">
                 Cancel Booking
               </Text>
             </Button>
@@ -208,7 +206,7 @@ export default function MyBookingsScreen() {
         <View className="mb-3">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
             {filterTabs.map((tab) => (
-              <View key={tab} className="mr-2">
+              <View key={tab} className="me-2">
                 <Chip
                   label={tab}
                   selected={selectedFilter === tab}

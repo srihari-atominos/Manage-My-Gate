@@ -1,18 +1,18 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, ScrollView, RefreshControl, Pressable, TextInput, Alert } from 'react-native';
+import { View, ScrollView, RefreshControl, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/src/store/store';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
+import { TextInput } from '@/components/forms/TextInput';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { Wallet, Plus, ArrowDownLeft, ArrowUpRight, Receipt, CreditCard, Clock, ShieldCheck, ChevronRight } from 'lucide-react-native';
+import { Wallet, Plus, ArrowDownLeft, ArrowUpRight, Receipt, ShieldCheck, ChevronRight } from 'lucide-react-native';
 import { fetchWalletBalance, createWalletRazorpayOrder, verifyWalletPayment, clearWalletError } from '../store/walletSlice';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import { RazorpayCheckoutModal } from '../components/RazorpayCheckoutModal';
@@ -115,7 +115,7 @@ export function WalletScreen() {
       <View className="flex-1 bg-background">
         {/* Error Banner Container */}
         {error ? (
-          <View className="p-4">
+          <View className="mb-2">
             <ErrorBanner
               message={error}
               onDismiss={() => dispatch(clearWalletError())}
@@ -124,25 +124,24 @@ export function WalletScreen() {
         ) : null}
 
         <ScrollView
-          className="flex-1 p-4"
-          contentContainerStyle={{ paddingBottom: 32 }}
+          className="flex-1"
+          contentContainerClassName="gap-4 pb-8"
           refreshControl={
             <RefreshControl
               refreshing={isLoading}
               onRefresh={handleRefresh}
-              tintColor="#6366f1"
             />
           }
         >
           {/* Authoritative Wallet Balance Hero Card */}
-          <View className="bg-card border border-border rounded-2xl p-5 shadow-sm mb-4">
+          <View className="bg-card border border-border rounded-2xl p-5 shadow-sm">
             <View className="flex-row items-center justify-between mb-2">
               <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 Available Wallet Balance
               </Text>
-              <View className="flex-row items-center bg-emerald-500/10 px-2.5 py-1 rounded-full">
-                <Icon as={ShieldCheck} size={12} className="text-emerald-600 dark:text-emerald-400 me-1" />
-                <Text className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Verified Ledger</Text>
+              <View className="flex-row items-center bg-status-success/15 px-2.5 py-1 rounded-full">
+                <Icon as={ShieldCheck} size={12} className="text-status-success me-1" />
+                <Text className="text-xs font-semibold text-status-success">Verified Ledger</Text>
               </View>
             </View>
 
@@ -154,19 +153,19 @@ export function WalletScreen() {
             <Button
               variant="default"
               size="lg"
-              className="w-full flex-row items-center justify-center bg-emerald-600 active:bg-emerald-700"
+              className="w-full flex-row items-center justify-center bg-status-success active:bg-status-success/90"
               onPress={() => setShowTopUpSheet(true)}
               accessibilityRole="button"
               accessibilityLabel="Add Money to Digital Wallet"
             >
-              <Icon as={Plus} size={18} className="text-white me-2" />
-              <Text className="font-bold text-base text-white">Add Money to Wallet</Text>
+              <Icon as={Plus} size={18} className="text-primary-foreground me-2" />
+              <Text className="font-bold text-base text-primary-foreground">Add Money to Wallet</Text>
             </Button>
           </View>
 
           {/* Wallet Statement / Transaction History Section */}
-          <View className="mt-2">
-            <View className="flex-row items-center justify-between mb-3">
+          <View className="gap-3">
+            <View className="flex-row items-center justify-between">
               <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 Transaction Statement ({history.length})
               </Text>
@@ -197,12 +196,12 @@ export function WalletScreen() {
                     >
                       <View className="flex-row items-center flex-1 me-3">
                         <View className={`w-10 h-10 rounded-xl items-center justify-center me-3 ${
-                          isCredit ? 'bg-emerald-500/10' : 'bg-rose-500/10'
+                          isCredit ? 'bg-status-success/15' : 'bg-destructive/15'
                         }`}>
                           <Icon
                             as={isCredit ? ArrowDownLeft : ArrowUpRight}
                             size={20}
-                            className={isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}
+                            className={isCredit ? 'text-status-success' : 'text-destructive'}
                           />
                         </View>
                         <View className="flex-1">
@@ -218,7 +217,7 @@ export function WalletScreen() {
                       <View className="items-end">
                         <Text
                           className={`text-base font-extrabold mb-1 ${
-                            isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'
+                            isCredit ? 'text-status-success' : 'text-foreground'
                           }`}
                           accessibilityLabel={`${isCredit ? 'Credit' : 'Debit'} of ₹${amountNum.toLocaleString('en-IN')}`}
                         >
@@ -250,49 +249,49 @@ export function WalletScreen() {
               {[500, 1000, 2000].map((preset) => {
                 const isSelected = selectedPreset === preset;
                 return (
-                  <Pressable
+                  <Button
                     key={preset}
+                    variant={isSelected ? 'default' : 'outline'}
                     onPress={() => setSelectedPreset(preset)}
-                    className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                      isSelected ? 'bg-primary/10 border-primary' : 'bg-card border-border'
-                    }`}
+                    className="flex-1 h-12 rounded-xl"
                   >
-                    <Text className={`font-extrabold text-sm ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                    <Text className={`font-extrabold text-sm ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
                       + ₹{preset.toLocaleString('en-IN')}
                     </Text>
-                  </Pressable>
+                  </Button>
                 );
               })}
             </View>
 
             {/* Custom Top-Up Preset Option */}
-            <Pressable
-              onPress={() => setSelectedPreset('CUSTOM')}
-              className={`p-3.5 rounded-xl border ${
-                selectedPreset === 'CUSTOM' ? 'bg-primary/5 border-primary' : 'bg-card border-border'
-              }`}
-            >
-              <Text className="font-bold text-xs text-foreground mb-1.5">Enter Custom Top-Up Amount</Text>
+            <View className="gap-2">
+              <Button
+                variant={selectedPreset === 'CUSTOM' ? 'default' : 'outline'}
+                onPress={() => setSelectedPreset('CUSTOM')}
+                className="w-full h-11 rounded-xl"
+              >
+                <Text className={`font-bold text-xs ${selectedPreset === 'CUSTOM' ? 'text-primary-foreground' : 'text-foreground'}`}>
+                  Enter Custom Top-Up Amount
+                </Text>
+              </Button>
+
               {selectedPreset === 'CUSTOM' ? (
-                <View className="flex-row items-center bg-background border border-border rounded-xl px-3 py-1.5">
-                  <Text className="text-foreground font-bold text-base me-2">₹</Text>
-                  <TextInput
-                    value={customAmountStr}
-                    onChangeText={setCustomAmountStr}
-                    placeholder="Enter amount (e.g. 1500)"
-                    placeholderTextColor="#94a3b8"
-                    keyboardType="numeric"
-                    className="flex-1 text-foreground font-bold text-base py-1"
-                  />
-                </View>
+                <TextInput
+                  label="Custom Amount (₹)"
+                  value={customAmountStr}
+                  onChangeText={setCustomAmountStr}
+                  placeholder="Enter amount (e.g. 1500)"
+                  keyboardType="numeric"
+                  inputClassName="font-bold text-base"
+                />
               ) : null}
-            </Pressable>
+            </View>
 
             {/* Expected Balance Preview */}
             <View className="bg-muted/40 border border-border/60 rounded-xl p-3.5 flex-row items-center justify-between">
               <View>
                 <Text className="text-xs text-muted-foreground">Top-Up Amount</Text>
-                <Text className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
+                <Text className="text-base font-extrabold text-status-success">
                   + ₹{topUpAmount.toLocaleString('en-IN')}
                 </Text>
               </View>
@@ -308,17 +307,17 @@ export function WalletScreen() {
             <Button
               variant="default"
               size="lg"
-              className="w-full flex-row items-center justify-center bg-emerald-600 active:bg-emerald-700 mt-2"
+              className="w-full flex-row items-center justify-center bg-status-success active:bg-status-success/90 mt-2"
               disabled={isTopUpInvalid || isProcessingTopUp}
               loading={isProcessingTopUp}
               onPress={handleProceedTopUp}
               accessibilityRole="button"
               accessibilityLabel={`Proceed to Top-Up ₹${topUpAmount.toLocaleString('en-IN')} via Razorpay`}
             >
-              <Text className="font-bold text-base text-white me-1">
+              <Text className="font-bold text-base text-primary-foreground me-1">
                 Proceed to Top-Up • ₹{topUpAmount.toLocaleString('en-IN')}
               </Text>
-              <Icon as={ChevronRight} size={18} className="text-white" />
+              <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
             </Button>
           </View>
         </BottomSheet>
@@ -343,3 +342,4 @@ export function WalletScreen() {
 }
 
 export default WalletScreen;
+

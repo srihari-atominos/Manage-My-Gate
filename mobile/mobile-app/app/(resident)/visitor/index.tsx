@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { KPICard } from '@/components/ui/KPICard';
+import { KPIDashboardStrip } from '@/components/ui/KPIDashboardStrip';
+import { type KPICardProps } from '@/components/ui/KPICard';
+import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
+import { SectionHeader } from '@/components/common/SectionHeader';
+import { EmptyState } from '@/components/feedback/EmptyState';
 import { FAB } from '@/components/ui/FAB';
 import { VisitorPassCard } from '@/src/features/visitor/components/VisitorPassCard';
 import { VisitorInvitationTypeSheet } from '@/src/features/visitor/components/shared/VisitorInvitationTypeSheet';
@@ -12,7 +15,7 @@ import { VisitorLogDetailsModal } from '@/src/features/visitor/components/histor
 import { ExtendedVisitorPass, PassTypeKey } from '@/src/features/visitor/mocks/visitorMocks';
 import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
 import { mapBackendPassToHistoryItem } from '@/src/features/visitor/utils/mapBackendPassToHistoryItem';
-import { UserPlus, History, ShieldAlert } from 'lucide-react-native';
+import { UserPlus, History, ShieldAlert, ShieldCheck } from 'lucide-react-native';
 
 export default function VisitorDashboardScreen() {
   const router = useRouter();
@@ -51,144 +54,123 @@ export default function VisitorDashboardScreen() {
   const activePassesCount = dashboard?.activePassesCount || 0;
   const isLoading = dashboard?.status === 'loading' && !refreshing && mappedRecentPasses.length === 0;
 
+  const visitorKpis: KPICardProps[] = [
+    {
+      title: 'Active Passes',
+      value: String(activePassesCount),
+      iconName: 'ShieldCheck',
+      variant: 'success',
+      trend: { direction: 'up', value: 'Live' },
+    },
+    {
+      title: 'Walk-In Waiting',
+      value: String(pendingWalkInsCount),
+      iconName: 'Clock',
+      variant: 'warning',
+      trend: {
+        direction: pendingWalkInsCount > 0 ? 'down' : 'up',
+        value: pendingWalkInsCount > 0 ? 'Needs action' : 'Clear',
+      },
+    },
+  ];
+
+  const visitorActions: ActionGridItem[] = [
+    {
+      id: 'invite',
+      name: 'New Invite',
+      iconName: 'UserPlus',
+      colorBg: 'bg-primary/10',
+      colorIcon: '#6366f1',
+      onPress: () => setInviteSheetOpen(true),
+    },
+    {
+      id: 'history',
+      name: 'History Logs',
+      iconName: 'History',
+      colorBg: 'bg-slate-500/10',
+      colorIcon: '#64748b',
+      route: '/(resident)/visitor/history',
+    },
+    {
+      id: 'walkins',
+      name: 'Walk-Ins',
+      iconName: 'ShieldAlert',
+      colorBg: 'bg-amber-500/10',
+      colorIcon: '#f59e0b',
+      badge: pendingWalkInsCount > 0 ? pendingWalkInsCount : undefined,
+      badgeColor: 'bg-amber-500',
+      route: '/(resident)/visitor/walk-ins',
+    },
+  ];
+
   return (
     <ScreenShell
       title="Visitors & Passes"
       subtitle="Resident entry approvals, QR passes & gate logs"
+      iconName="ShieldCheck"
+      loading={isLoading}
+      error={dashboard?.status === 'failed' ? (dashboard?.error || 'Failed to load dashboard data.') : null}
+      onRetry={loadData}
       headerRight={
         <TouchableOpacity
-          onPress={() => setInviteSheetOpen(true)}
+          onPress={() => router.push('/(resident)/visitor/history' as any)}
           activeOpacity={0.8}
-          className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full"
+          className="flex-row items-center gap-1.5 bg-muted px-3 py-1.5 rounded-full border border-border"
+          accessibilityRole="button"
+          accessibilityLabel="View Pass History"
         >
-          <UserPlus size={14} color="#fff" />
-          <Text className="text-xs font-bold text-primary-foreground">Invite Visitor</Text>
+          <History size={14} className="text-foreground" />
+          <Text className="text-xs font-semibold text-foreground">History</Text>
         </TouchableOpacity>
       }
     >
-      <View className="flex-1 bg-background">
-        {/* Fixed Top Controls: KPI Statistics, Quick Actions & Recent Passes Header */}
-        <View className="p-4 pb-3 gap-3 bg-background border-b border-border/40 shadow-xs z-10">
-          {/* KPI Statistics */}
-          <View className="flex-row gap-3">
-            <KPICard
-              title="Active Passes"
-              value={String(activePassesCount)}
-              iconName="ShieldCheck"
-              iconColor="#16a34a"
-              trend={{ direction: 'up', value: 'Live' }}
-            />
-            <KPICard
-              title="Walk-In Waiting"
-              value={String(pendingWalkInsCount)}
-              iconName="Clock"
-              iconColor="#ea580c"
-              trend={{
-                direction: pendingWalkInsCount > 0 ? 'down' : 'up',
-                value: pendingWalkInsCount > 0 ? 'Needs action' : 'Clear',
-              }}
-            />
+      <ScrollView
+        className="flex-1 bg-background"
+        contentContainerClassName="p-4 pb-20 gap-4"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+      >
+        {/* Universal KPI Statistics Strip (2-Column Balanced Row) */}
+        <KPIDashboardStrip cards={visitorKpis} />
+
+        {/* Universal 3-Column ActionGrid */}
+        <ActionGrid title="Quick Actions" items={visitorActions} />
+
+        {/* Canonical Section Header */}
+        <SectionHeader
+          title="Recent Activity"
+          actionLabel="View All"
+          onAction={() => router.push('/(resident)/visitor/history' as any)}
+          className="px-0 bg-transparent dark:bg-transparent"
+        />
+
+        {/* Visitor Cards */}
+        {mappedRecentPasses.length === 0 ? (
+          <EmptyState
+            icon={ShieldCheck}
+            title="No Active Visitor Passes"
+            description="Create a new pass to pre-approve visitor entry at the gate."
+            actionLabel="New Invite"
+            onAction={() => setInviteSheetOpen(true)}
+          />
+        ) : (
+          <View className="gap-2.5">
+            {mappedRecentPasses.slice(0, 3).map((pass: ExtendedVisitorPass) => (
+              <VisitorPassCard
+                key={pass._id}
+                pass={pass}
+                onPress={(p) => {
+                  setSelectedPass(p as ExtendedVisitorPass);
+                  setDetailsModalOpen(true);
+                }}
+                onShowQR={(p) => {
+                  setSelectedPass(p as ExtendedVisitorPass);
+                  setDetailsModalOpen(true);
+                }}
+              />
+            ))}
           </View>
-
-          {/* Quick Action Navigation Grid */}
-          <View className="bg-card border border-border rounded-2xl p-3 gap-2">
-            <Text variant="small" className="text-muted-foreground uppercase font-bold text-[10px]">
-              Quick Actions
-            </Text>
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={() => setInviteSheetOpen(true)}
-                activeOpacity={0.8}
-                className="flex-1 bg-primary/10 border border-primary/20 p-2.5 rounded-xl items-center gap-1"
-              >
-                <UserPlus size={18} className="text-primary" />
-                <Text className="text-xs font-bold text-primary text-center">New Invite</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => router.push('/(resident)/visitor/history' as any)}
-                activeOpacity={0.8}
-                className="flex-1 bg-muted border border-border p-2.5 rounded-xl items-center gap-1"
-              >
-                <History size={18} className="text-foreground" />
-                <Text className="text-xs font-bold text-foreground text-center">History Logs</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => router.push('/(resident)/visitor/walk-ins' as any)}
-                activeOpacity={0.8}
-                className="flex-1 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl items-center gap-1"
-              >
-                <ShieldAlert size={18} className="text-amber-600 dark:text-amber-400" />
-                <Text className="text-xs font-bold text-amber-600 dark:text-amber-400 text-center">
-                  Walk-Ins ({pendingWalkInsCount})
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Fixed Section Header */}
-          <View className="flex-row items-center justify-between pt-1">
-            <Text variant="h3" className="font-bold text-foreground">
-              Recent Visitor Passes
-            </Text>
-            <TouchableOpacity onPress={() => router.push('/(resident)/visitor/history' as any)}>
-              <Text className="text-xs font-semibold text-primary">View All</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Scrollable Visitor Cards Container */}
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="p-4 pt-3 gap-2.5 pb-8"
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-        >
-          {/* Error Retry State */}
-          {dashboard?.status === 'failed' && (
-            <View className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl flex-row items-center justify-between">
-              <Text className="text-xs text-destructive flex-1 font-medium me-2">
-                {dashboard.error || 'Failed to load dashboard data.'}
-              </Text>
-              <Button size="sm" variant="outline" onPress={loadData}>
-                <Text className="text-xs font-semibold">Retry</Text>
-              </Button>
-            </View>
-          )}
-
-          {isLoading ? (
-            <View className="py-8 items-center justify-center">
-              <ActivityIndicator size="small" className="text-primary" />
-            </View>
-          ) : mappedRecentPasses.length === 0 ? (
-            <View className="p-6 bg-card border border-border rounded-2xl items-center justify-center gap-2">
-              <Text className="text-sm font-semibold text-muted-foreground text-center">
-                No Active Visitor Passes
-              </Text>
-              <Text className="text-xs text-muted-foreground text-center">
-                Create a new pass to pre-approve visitor entry at the gate.
-              </Text>
-            </View>
-          ) : (
-            <View className="gap-2.5">
-              {mappedRecentPasses.map((pass: ExtendedVisitorPass) => (
-                <VisitorPassCard
-                  key={pass._id}
-                  pass={pass}
-                  onPress={(p) => {
-                    setSelectedPass(p as ExtendedVisitorPass);
-                    setDetailsModalOpen(true);
-                  }}
-                  onShowQR={(p) => {
-                    setSelectedPass(p as ExtendedVisitorPass);
-                    setDetailsModalOpen(true);
-                  }}
-                />
-              ))}
-            </View>
-          )}
-        </ScrollView>
-      </View>
+        )}
+      </ScrollView>
 
       {/* Floating Action Button */}
       <FAB

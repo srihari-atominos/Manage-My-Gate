@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, TextInput, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useState } from 'react';
+import { View, ScrollView } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { TabBar } from '@/components/ui/TabBar';
+import { TextInput } from '@/components/forms/TextInput';
 import { VisitorPassDetailsModal } from '@/src/features/visitor/components/VisitorPassDetailsModal';
 import { GuardInitiateWalkInModal } from '@/src/features/visitor/components/guard/GuardInitiateWalkInModal';
 import { GuardQRScannerModal } from '@/src/features/visitor/components/guard/GuardQRScannerModal';
@@ -13,12 +14,18 @@ import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
 import { selectActiveOrgId, selectAuthUser } from '@/src/features/auth/store/authSelectors';
 import { useSelector } from 'react-redux';
 import visitorService from '@/src/features/visitor/services/visitorService';
-import { QrCode, ScanLine, Search, ShieldCheck, UserCheck, ShieldAlert, LogOut, Users, Clock } from 'lucide-react-native';
+import { QrCode, ScanLine, Search, ShieldAlert, LogOut } from 'lucide-react-native';
+
+const GATE_TABS = [
+  { key: 'CONSOLE', label: 'Console' },
+  { key: 'WALK_INS', label: 'Walk-Ins Queue' },
+  { key: 'INSIDE', label: 'Visitors Inside' },
+];
 
 export default function GateConsoleScreen() {
   const activeOrgId = useSelector(selectActiveOrgId);
   const authUser = useSelector(selectAuthUser);
-  const { activePass, fetchPassDetails, selectPass } = useVisitorPass();
+  const { activePass, fetchPassDetails } = useVisitorPass();
 
   const [passCode, setPassCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -87,51 +94,21 @@ export default function GateConsoleScreen() {
       subtitle="Guard check-in verification, QR scanner & walk-in entry"
     >
       <View className="flex-1 bg-background">
-        {/* Navigation Tabs: Console vs Walk-In Queue vs Inside Visitors */}
-        <View className="flex-row border-b border-border bg-card p-1 mx-4 mt-3 rounded-2xl">
-          <TouchableOpacity
-            onPress={() => setActiveTab('CONSOLE')}
-            className={`flex-1 py-2 rounded-xl items-center flex-row justify-center gap-1 ${
-              activeTab === 'CONSOLE' ? 'bg-primary' : 'bg-transparent'
-            }`}
-          >
-            <ScanLine size={15} color={activeTab === 'CONSOLE' ? '#fff' : '#6b7280'} />
-            <Text className={`text-[11px] font-bold ${activeTab === 'CONSOLE' ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
-              Console
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveTab('WALK_INS')}
-            className={`flex-1 py-2 rounded-xl items-center flex-row justify-center gap-1 ${
-              activeTab === 'WALK_INS' ? 'bg-primary' : 'bg-transparent'
-            }`}
-          >
-            <Clock size={15} color={activeTab === 'WALK_INS' ? '#fff' : '#6b7280'} />
-            <Text className={`text-[11px] font-bold ${activeTab === 'WALK_INS' ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
-              Walk-Ins Queue
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveTab('INSIDE')}
-            className={`flex-1 py-2 rounded-xl items-center flex-row justify-center gap-1 ${
-              activeTab === 'INSIDE' ? 'bg-primary' : 'bg-transparent'
-            }`}
-          >
-            <Users size={15} color={activeTab === 'INSIDE' ? '#fff' : '#6b7280'} />
-            <Text className={`text-[11px] font-bold ${activeTab === 'INSIDE' ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
-              Visitors Inside
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Canonical TabBar: Console vs Walk-In Queue vs Inside Visitors */}
+        <TabBar
+          tabs={GATE_TABS}
+          activeTab={activeTab}
+          onTabChange={(key) => setActiveTab(key as any)}
+          variant="pill"
+          className="mx-4 mt-3 mb-2"
+        />
 
         {activeTab === 'INSIDE' ? (
           <InsideVisitorsView />
         ) : activeTab === 'WALK_INS' ? (
           <GuardWalkInStatusView />
         ) : (
-          <ScrollView className="flex-1" contentContainerClassName="p-4 gap-4 pb-8">
+          <ScrollView className="flex-1" contentContainerClassName="gap-4 pb-8">
             {statusMessage && (
               <View className="p-3 bg-primary/10 border border-primary/20 rounded-xl">
                 <Text className="text-xs font-semibold text-primary">{statusMessage}</Text>
@@ -147,16 +124,22 @@ export default function GateConsoleScreen() {
 
               <View className="flex-row items-center gap-2">
                 <View className="flex-1">
-                  <Input
+                  <TextInput
                     value={passCode}
                     onChangeText={setPassCode}
                     placeholder="Enter 6-digit PIN code..."
                     keyboardType="number-pad"
-                    className="font-mono text-sm"
+                    inputClassName="font-mono text-sm"
                   />
                 </View>
-                <Button size="sm" onPress={() => handleVerifyPass()} disabled={loading} className="h-12 px-4 rounded-xl">
-                  <Search size={16} className="text-white" />
+                <Button
+                  size="sm"
+                  onPress={() => handleVerifyPass()}
+                  disabled={loading}
+                  loading={loading}
+                  className="h-12 px-4 rounded-xl"
+                >
+                  <Search size={16} className="text-primary-foreground" />
                 </Button>
               </View>
 
@@ -175,27 +158,27 @@ export default function GateConsoleScreen() {
               <Text className="text-sm font-bold text-foreground">Guard Gate Actions</Text>
 
               <View className="flex-row gap-3">
-                <TouchableOpacity
+                <Button
+                  variant="outline"
                   onPress={() => setWalkInModalOpen(true)}
-                  activeOpacity={0.8}
-                  className="flex-1 bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-xl items-center gap-1.5"
+                  className="flex-1 h-auto py-3.5 rounded-xl flex-col items-center justify-center gap-1.5 bg-amber-500/10 border-amber-500/20"
                 >
                   <ShieldAlert size={22} className="text-amber-600 dark:text-amber-400" />
                   <Text className="text-xs font-bold text-amber-600 dark:text-amber-400 text-center">
                     Initiate Walk-In
                   </Text>
-                </TouchableOpacity>
+                </Button>
 
-                <TouchableOpacity
+                <Button
+                  variant="outline"
                   onPress={() => setActiveTab('INSIDE')}
-                  activeOpacity={0.8}
-                  className="flex-1 bg-emerald-500/10 border border-emerald-500/20 p-3.5 rounded-xl items-center gap-1.5"
+                  className="flex-1 h-auto py-3.5 rounded-xl flex-col items-center justify-center gap-1.5 bg-status-success/10 border-status-success/20"
                 >
-                  <LogOut size={22} className="text-emerald-600 dark:text-emerald-400" />
-                  <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400 text-center">
+                  <LogOut size={22} className="text-status-success" />
+                  <Text className="text-xs font-bold text-status-success text-center">
                     Gate Check-Out
                   </Text>
-                </TouchableOpacity>
+                </Button>
               </View>
             </View>
           </ScrollView>

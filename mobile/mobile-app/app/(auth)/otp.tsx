@@ -3,7 +3,7 @@ import { Text } from '@/components/ui/text';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { KeyRoundIcon } from 'lucide-react-native';
 import * as React from 'react';
-import { View, ScrollView, ActivityIndicator, TextInput } from 'react-native';
+import { View, ScrollView, TextInput } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -116,12 +116,13 @@ export default function OtpScreen() {
               </View>
             )}
 
-            <Button onPress={handleSubmit(onSubmit)} disabled={loading} className="mt-2 h-12">
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="font-bold text-primary-foreground">Verify & Sign In</Text>
-              )}
+            <Button
+              onPress={handleSubmit(onSubmit)}
+              loading={loading}
+              textClassName="font-bold text-base"
+              className="mt-2 h-12"
+            >
+              Verify & Sign In
             </Button>
 
             {/* Resend Helper */}

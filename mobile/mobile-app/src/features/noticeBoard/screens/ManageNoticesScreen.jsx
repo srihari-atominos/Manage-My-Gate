@@ -6,11 +6,10 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { ListCard } from '@/components/ui/ListCard';
-import { ConfirmationDialog } from '@/components/common/ConfirmationDialog';
 import { Text } from '@/components/ui/text';
 import { KPICard } from '@/components/ui/KPICard';
 import { KPIRow } from '@/components/ui/KPIRow';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { FAB } from '@/components/ui/FAB';
 
 import { useNoticeBoard } from '../hooks/useNoticeBoard';

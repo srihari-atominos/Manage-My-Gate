@@ -7,7 +7,7 @@ import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { ShieldAlert } from 'lucide-react-native';
 import { InvoiceCard } from '../components/InvoiceCard';

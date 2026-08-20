@@ -5,6 +5,8 @@ import { CameraViewFinder } from '@/components/hardware/CameraViewFinder';
 import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
+import { Check, X } from 'lucide-react-native';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ListCard } from '@/components/ui/ListCard';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -43,10 +45,11 @@ export default function AmenitySecurityGateScannerScreen() {
         <CameraViewFinder
           onScan={(data) => handleBarCodeScanned({ type: 'CAMERA', data })}
           isScanning={isScanning}
-          instruction="Position Amenity QR Code within Frame"
+          title="Scan Resident Reservation Pass"
+          instruction="Align the QR code within the frame"
         />
 
-        {/* Manual Token Verification Fallback */}
+        {/* Manual Token Fallback */}
         <View className="bg-card p-4 rounded-2xl border border-border mb-4">
           <Text className="font-bold text-sm text-foreground mb-1">
             Manual Booking Token Lookup
@@ -67,7 +70,7 @@ export default function AmenitySecurityGateScannerScreen() {
               variant="default"
               disabled={!manualToken.trim() || checkingIn}
               onPress={handleManualSubmit}
-              className="bg-primary px-4 self-end h-[48px]"
+              className="bg-primary px-4 self-end"
             >
               <Text className="text-white font-bold text-sm">Verify Pass</Text>
             </Button>
@@ -140,8 +143,6 @@ export default function AmenitySecurityGateScannerScreen() {
                     title={scan.amenityName || 'Amenity Pass'}
                     subtitle={`${scan.residentName || 'Resident'} • Guard: ${scan.guardName || 'System'} • ${scanTimeFormatted}`}
                     leftIcon={isExit ? 'DoorClosed' : 'DoorOpen'}
-                    leftIconBgColor={isExit ? '#e0f2fe' : '#dcfce7'}
-                    leftIconColor={isExit ? '#0284c7' : '#16a34a'}
                     status={{
                       label: scan.scanType || 'ENTRY',
                       variant: isExit ? 'info' : 'success',
@@ -164,7 +165,7 @@ export default function AmenitySecurityGateScannerScreen() {
           {checkInResult?.success ? (
             <>
               <View className="w-16 h-16 rounded-full bg-emerald-500/20 items-center justify-center mb-1">
-                <Text className="text-emerald-600 text-3xl font-extrabold">✓</Text>
+                <Icon as={Check} size={32} className="text-emerald-600 dark:text-emerald-400" />
               </View>
               <StatusBadge label="VERIFIED ACCESS" variant="success" />
               <Text className="text-xl font-bold text-foreground text-center mt-1">
@@ -176,23 +177,23 @@ export default function AmenitySecurityGateScannerScreen() {
               <Text className="text-sm font-semibold text-foreground text-center">
                 Resident: {checkInResult?.booking?.residentName || 'Villa Resident'}
               </Text>
-              <Button variant="default" onPress={resetScanner} className="bg-emerald-600 w-full py-3.5 mt-3">
+              <Button variant="default" onPress={resetScanner} className="bg-primary w-full mt-3">
                 <Text className="text-white font-bold text-base">Confirm Gate Entry</Text>
               </Button>
             </>
           ) : (
             <>
-              <View className="w-16 h-16 rounded-full bg-red-500/20 items-center justify-center mb-1">
-                <Text className="text-red-600 text-3xl font-extrabold">✕</Text>
+              <View className="w-16 h-16 rounded-full bg-destructive/20 items-center justify-center mb-1">
+                <Icon as={X} size={32} className="text-destructive" />
               </View>
               <StatusBadge label="REJECTED ACCESS" variant="danger" />
               <Text className="text-lg font-bold text-foreground text-center mt-1">
                 Pass Verification Failed
               </Text>
-              <Text variant="muted" className="text-xs text-center text-red-500">
+              <Text variant="muted" className="text-xs text-center text-destructive">
                 {checkInResult?.message || 'Invalid, expired or already checked-in pass token.'}
               </Text>
-              <Button variant="default" onPress={resetScanner} className="bg-primary w-full py-3.5 mt-3">
+              <Button variant="default" onPress={resetScanner} className="bg-primary w-full mt-3">
                 <Text className="text-white font-bold text-base">Scan Next Pass</Text>
               </Button>
             </>

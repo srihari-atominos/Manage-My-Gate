@@ -1,13 +1,12 @@
 import React from 'react';
-import { View } from 'react-native';
-import { ListCard } from '@/components/ui/ListCard';
+import { StandardRecordCard } from '@/components/common/StandardRecordCard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
+import { StatusVariant } from '@/components/ui/StatusBadge';
 import { VisitorPass } from '../store/visitorPassSlice';
-import { QrCode, Phone, Car } from 'lucide-react-native';
+import { QrCode } from 'lucide-react-native';
 
-interface VisitorPassCardProps {
+export interface VisitorPassCardProps {
   pass: VisitorPass;
   onPress: (pass: VisitorPass) => void;
   onShowQR: (pass: VisitorPass) => void;
@@ -46,12 +45,10 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
   const subtitle = subtitleParts.join(' • ');
 
   return (
-    <ListCard
+    <StandardRecordCard
       title={pass.visitorName || 'Guest Visitor'}
       subtitle={subtitle}
       leftIcon="QrCode"
-      leftIconBgColor="rgba(37, 99, 235, 0.1)"
-      leftIconColor="#2563eb"
       status={{
         label: pass.status,
         variant: mapPassStatusVariant(pass.status),
@@ -66,6 +63,8 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
             onShowQR(pass);
           }}
           className="flex-row items-center gap-1.5 h-8 px-2.5 rounded-lg border-border"
+          accessibilityRole="button"
+          accessibilityLabel="Show QR Pass Code"
         >
           <QrCode size={14} className="text-foreground" />
           <Text className="text-xs font-semibold text-foreground">Pass Code</Text>

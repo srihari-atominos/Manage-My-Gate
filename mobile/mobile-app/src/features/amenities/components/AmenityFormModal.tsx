@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
+import { Chip } from '@/components/common/Chip';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
@@ -253,15 +254,17 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
                     <Icon as={UploadCloud} size={14} className="text-white" />
                     <Text className="text-white text-xs font-bold">Change Image</Text>
                   </View>
-                  <Pressable
+                  <Button
+                    variant="destructive"
+                    size="icon"
                     onPress={(e) => {
                       e.stopPropagation();
                       setValue('imageUrl', '', { shouldDirty: true });
                     }}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-red-600/80 active:bg-red-700"
+                    className="absolute top-2 end-2 h-7 w-7 rounded-full"
                   >
                     <Icon as={X} size={14} className="text-white" />
-                  </Pressable>
+                  </Button>
                 </View>
               ) : (
                 <View className="items-center justify-center">
@@ -526,23 +529,12 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
                 {DAYS_NAMES.map((dayName, idx) => {
                   const isActive = openDays.includes(idx);
                   return (
-                    <Pressable
+                    <Chip
                       key={dayName}
+                      label={dayName}
+                      selected={isActive}
                       onPress={() => toggleDay(idx)}
-                      className={`px-3 py-1.5 rounded-full border text-xs ${
-                        isActive
-                          ? 'bg-primary border-primary'
-                          : 'bg-card border-border active:bg-muted'
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-bold ${
-                          isActive ? 'text-primary-foreground' : 'text-muted-foreground'
-                        }`}
-                      >
-                        {dayName}
-                      </Text>
-                    </Pressable>
+                    />
                   );
                 })}
               </View>
@@ -613,12 +605,14 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
                           )}
                         />
                       </View>
-                      <Pressable
+                      <Button
+                        variant="destructive"
+                        size="icon"
                         onPress={() => remove(idx)}
-                        className="p-2 rounded-lg bg-red-500/10 active:bg-red-500/20 mt-4"
+                        className="h-10 w-10 mt-4 rounded-xl"
                       >
-                        <Icon as={Trash2} size={16} className="text-red-500" />
-                      </Pressable>
+                        <Icon as={Trash2} size={16} className="text-white" />
+                      </Button>
                     </View>
                   ))
                 )}

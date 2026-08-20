@@ -1,16 +1,37 @@
 import React from 'react';
-import { View } from 'react-native';
 import { AlertTriangle, Info } from 'lucide-react-native';
-import { Text } from '../ui/text';
+import { StandardRecordCard } from '@/components/common/StandardRecordCard';
+import { StatusVariant } from '@/components/ui/StatusBadge';
 
-interface ActivityLogItemProps {
+export interface ActivityLogItemProps {
   title: string;
   category: string;
   priority: string;
   status: string;
   createdAt: string | Date;
   isLastItem?: boolean;
+  variant?: 'card' | 'row';
+  onPress?: () => void;
+  className?: string;
 }
+
+const mapNoticeStatusVariant = (status: string, priority: string): StatusVariant => {
+  const p = (priority || '').toUpperCase();
+  const s = (status || '').toUpperCase();
+  if (p === 'CRITICAL' || p === 'HIGH' || p === 'URGENT' || s === 'URGENT') {
+    return 'danger';
+  }
+  if (s === 'ACTIVE' || s === 'PUBLISHED' || s === 'LIVE') {
+    return 'success';
+  }
+  if (s === 'DRAFT' || s === 'PENDING') {
+    return 'warning';
+  }
+  if (s === 'EXPIRED' || s === 'ARCHIVED') {
+    return 'neutral';
+  }
+  return 'info';
+};
 
 export const ActivityLogItem = ({
   title,
@@ -19,37 +40,36 @@ export const ActivityLogItem = ({
   status,
   createdAt,
   isLastItem = false,
+  variant = 'card',
+  onPress,
+  className,
 }: ActivityLogItemProps) => {
   const isEmergency = category === 'Emergency' || priority === 'High' || priority === 'Critical';
+  const statusVariant = mapNoticeStatusVariant(status, priority);
 
   return (
-    <View
-      className={`flex-row items-start gap-3 py-3 ${
-        !isLastItem ? 'border-b border-border/40' : ''
-      }`}
-    >
-      <View
-        className={`size-8 rounded-full items-center justify-center border ${
-          isEmergency
-            ? 'bg-destructive/10 border-destructive/20'
-            : 'bg-primary/10 border-primary/20'
-        }`}
-      >
-        {isEmergency ? (
-          <AlertTriangle size={14} className="text-destructive" />
-        ) : (
-          <Info size={14} className="text-primary" />
-        )}
-      </View>
-      <View className="flex-1">
-        <Text className="text-sm font-bold text-foreground mb-0.5">{title}</Text>
-        <Text className="text-xs font-semibold text-muted-foreground">
-          {category} • {priority} Priority • {status}
-        </Text>
-      </View>
-      <Text className="text-[10px] font-medium text-muted-foreground/60 shrink-0 ml-2">
-        {new Date(createdAt).toLocaleDateString()}
-      </Text>
-    </View>
+    <StandardRecordCard
+      title={title}
+      subtitle={`${category} • ${priority} Priority`}
+      leftIcon={isEmergency ? AlertTriangle : Info}
+      leftIconBgColor={
+        isEmergency
+          ? 'bg-destructive/10 border border-destructive/20'
+          : 'bg-primary/10 border border-primary/20'
+      }
+      leftIconColor={isEmergency ? '#ef4444' : '#6366f1'}
+      status={{
+        label: status || 'ACTIVE',
+        variant: statusVariant,
+      }}
+      timestamp={createdAt}
+      variant={variant}
+      isLastItem={isLastItem}
+      onPress={onPress}
+      className={className}
+    />
   );
 };
+
+export default ActivityLogItem;
+

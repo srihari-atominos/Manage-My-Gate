@@ -3,7 +3,7 @@ import { View, TouchableOpacity } from 'react-native';
 import { Heart, Pin, Globe, Archive, Edit, Trash2 } from 'lucide-react-native';
 import { ListCard } from '@/components/ui/ListCard';
 import { getStatusVariant } from '@/components/ui/StatusBadge';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/common/IconButton';
 
 /**

@@ -1,25 +1,44 @@
 import * as React from 'react';
-import { View, Pressable, Platform, Image } from 'react-native';
+import { View, Pressable, Platform, Image, type PressableProps } from 'react-native';
 import * as LucideIcons from 'lucide-react-native';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight, type LucideIcon } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
 import { cn } from '@/lib/utils';
 
-export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeof Pressable>, 'title'> {
-  title: string;
-  subtitle?: string;
-  leftIcon?: string;               // Lucide icon name
-  leftImage?: string;              // Image URL for left square
-  backgroundImage?: string;        // Full card background image URL
-  leftIconBgColor?: string;        // icon container bg hex
-  leftIconColor?: string;          // icon color hex
-  status?: { label: string; variant: StatusVariant };
-  secondaryBadge?: { label: string; variant: StatusVariant };
-  timestamp?: string | Date;       // shows relative time (e.g., '2h ago')
-  rightContent?: React.ReactNode;  // custom right slot (amount, chevron)
+export interface ListCardDateSquare {
+  top: string;    // e.g. "24" or "WED"
+  bottom: string; // e.g. "AUG" or "10:30 AM"
+}
+
+export interface ListCardProps extends Omit<PressableProps, 'title' | 'description'> {
+  title: string | React.ReactNode;
+  subtitle?: string | React.ReactNode;
+  description?: string | React.ReactNode;
+
+  // Left Slot: Icon, Image, Avatar, Date Square, or Custom Node
+  leftIcon?: string | LucideIcon;       // Lucide icon name string or LucideIcon component
+  leftImage?: string;                   // Image URL for left square
+  leftAvatar?: string;                  // Image URL for circular avatar
+  leftAvatarFallback?: string;          // 2-letter initials for circular avatar fallback
+  leftDateSquare?: ListCardDateSquare;  // Date badge with top/bottom text
+  leftContent?: React.ReactNode;        // Custom left slot
+  backgroundImage?: string;             // Full card background image URL
+  leftIconBgColor?: string;             // icon container bg hex or Tailwind class
+  leftIconColor?: string;               // icon color hex or theme token
+
+  // Right Slot: StatusBadge, SecondaryBadge, Timestamp, Chevron, or Custom Action
+  status?: { label: string; variant?: StatusVariant };
+  secondaryBadge?: { label: string; variant?: StatusVariant };
+  timestamp?: string | Date;            // shows relative time or formatted date
+  showChevron?: boolean;                // explicitly show or hide chevron
+  rightContent?: React.ReactNode;       // custom right slot (amount, cta button)
+
+  // Layout & Interaction
+  variant?: 'card' | 'row';             // 'card' (default with border & radius) or 'row' (border-b list row)
+  isLastItem?: boolean;                 // for 'row' variant to suppress bottom border
   onPress?: () => void;
   onLongPress?: () => void;
   className?: string;
@@ -28,7 +47,7 @@ export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeo
 export function formatRelativeTime(date: string | Date): string {
   if (!date) return '';
   const past = new Date(date);
-  if (isNaN(past.getTime())) return '';
+  if (isNaN(past.getTime())) return String(date);
 
   const now = new Date();
   const diffMs = now.getTime() - past.getTime();
@@ -47,14 +66,21 @@ export function formatRelativeTime(date: string | Date): string {
 
 const listCardVariants = cva(
   cn(
-    'bg-card rounded-lg border border-border mb-2 p-3 flex-row items-center active:bg-accent/50 active:opacity-90',
+    'p-3 flex-row items-center active:bg-accent/50 active:opacity-90',
     Platform.select({
       web: 'transition-colors cursor-pointer select-none',
     })
   ),
   {
-    variants: {},
-    defaultVariants: {},
+    variants: {
+      variant: {
+        card: 'bg-card rounded-xl border border-border mb-2.5 shadow-xs',
+        row: 'bg-card px-4 py-3',
+      },
+    },
+    defaultVariants: {
+      variant: 'card',
+    },
   }
 );
 
@@ -63,33 +89,60 @@ const ListCard = React.forwardRef<View, ListCardProps>(
     {
       title,
       subtitle,
+      description,
       leftIcon,
       leftImage,
+      leftAvatar,
+      leftAvatarFallback,
+      leftDateSquare,
+      leftContent,
       backgroundImage,
-      leftIconBgColor = '#dbeafe',
-      leftIconColor = '#2563eb',
+      leftIconBgColor,
+      leftIconColor,
       status,
       secondaryBadge,
       timestamp,
+      showChevron,
       rightContent,
+      variant = 'card',
+      isLastItem = false,
       onPress,
       onLongPress,
+      disabled = false,
       className,
       style,
       ...props
     },
     ref
   ) => {
-    const DynamicIcon = leftIcon ? (LucideIcons as Record<string, any>)[leftIcon] : undefined;
+    // Resolve Lucide Icon if string or LucideIcon component
+    const DynamicIcon: LucideIcon | undefined = React.useMemo(() => {
+      if (!leftIcon) return undefined;
+      if (typeof leftIcon === 'string') {
+        return (LucideIcons as Record<string, any>)[leftIcon] || undefined;
+      }
+      return leftIcon;
+    }, [leftIcon]);
+
+    const isCard = variant === 'card';
+    const isInteractive = Boolean(onPress || onLongPress);
+    const isCustomBgClass = leftIconBgColor && leftIconBgColor.startsWith('bg-');
 
     return (
       <Pressable
         ref={ref}
         onPress={onPress}
         onLongPress={onLongPress}
-        className={cn(listCardVariants(), 'overflow-hidden', className)}
+        disabled={disabled || !isInteractive}
+        className={cn(
+          listCardVariants({ variant }),
+          !isCard && !isLastItem && 'border-b border-border/40',
+          disabled && 'opacity-50',
+          'overflow-hidden',
+          className
+        )}
         style={style}
-        accessibilityRole={rightContent !== undefined ? undefined : 'button'}
+        accessibilityRole={rightContent !== undefined ? undefined : (isInteractive ? 'button' : undefined)}
         {...props}
       >
         {/* Background Image & Overlay */}
@@ -104,51 +157,140 @@ const ListCard = React.forwardRef<View, ListCardProps>(
           </>
         ) : null}
 
-        {/* Left Icon / Image Container */}
-        {leftImage ? (
+        {/* 1. Left Slot: Custom Node | Image | Avatar | Initials Fallback | Date Square | Icon */}
+        {leftContent ? (
+          <View className="me-3 shrink-0">{leftContent}</View>
+        ) : leftImage ? (
           <Image
             source={{ uri: leftImage }}
-            className="w-10 h-10 rounded-lg shrink-0 mr-3"
+            className="w-10 h-10 rounded-lg shrink-0 me-3"
             resizeMode="cover"
           />
+        ) : leftAvatar ? (
+          <View className="w-10 h-10 rounded-full bg-muted border border-border overflow-hidden me-3 items-center justify-center shrink-0">
+            <Image
+              source={{ uri: leftAvatar }}
+              className="w-full h-full"
+              accessibilityLabel="Record Avatar"
+            />
+          </View>
+        ) : leftAvatarFallback ? (
+          <View className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 me-3 items-center justify-center shrink-0">
+            <Text className="text-xs font-bold text-primary">{leftAvatarFallback}</Text>
+          </View>
+        ) : leftDateSquare ? (
+          <View className="w-11 h-11 rounded-xl bg-muted border border-border me-3 items-center justify-center p-1 shrink-0">
+            <Text className="text-xs font-extrabold text-foreground leading-none">
+              {leftDateSquare.top}
+            </Text>
+            <Text className="text-[9px] font-bold text-muted-foreground uppercase mt-0.5 tracking-tighter">
+              {leftDateSquare.bottom}
+            </Text>
+          </View>
         ) : DynamicIcon ? (
           <View
-            className="w-10 h-10 rounded-lg items-center justify-center shrink-0 mr-3"
-            style={{ backgroundColor: leftIconBgColor }}
+            className={cn(
+              "w-10 h-10 rounded-xl items-center justify-center shrink-0 me-3",
+              isCustomBgClass ? leftIconBgColor : !leftIconBgColor && "bg-primary/10 border border-primary/20"
+            )}
+            style={leftIconBgColor && !isCustomBgClass ? { backgroundColor: leftIconBgColor } : undefined}
           >
-            <Icon as={DynamicIcon} size={20} color={leftIconColor} />
+            <Icon
+              as={DynamicIcon}
+              size={18}
+              color={leftIconColor}
+              className={!leftIconColor ? "text-primary" : undefined}
+            />
           </View>
         ) : null}
 
-        {/* Middle Details */}
-        <View className="flex-1 justify-center">
-          <Text variant="default" className={cn("font-semibold", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text variant="muted" numberOfLines={1} className={cn("mt-0.5", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
-              {subtitle}
+        {/* 2. Middle Details: Title, Subtitle, Description, Timestamp */}
+        <View className="flex-1 justify-center min-w-0">
+          {typeof title === 'string' ? (
+            <Text
+              variant="default"
+              className={cn("font-semibold text-sm", backgroundImage ? "text-white" : "text-foreground")}
+              numberOfLines={1}
+            >
+              {title}
             </Text>
+          ) : (
+            title
+          )}
+
+          {subtitle ? (
+            typeof subtitle === 'string' ? (
+              <Text
+                variant="muted"
+                numberOfLines={1}
+                className={cn("mt-0.5 text-xs font-medium", backgroundImage ? "text-white/80" : "text-muted-foreground")}
+              >
+                {subtitle}
+              </Text>
+            ) : (
+              subtitle
+            )
           ) : null}
-          {timestamp ? (
-            <Text variant="muted" className={cn("text-xs mt-0.5", backgroundImage ? "text-white/60" : "text-muted-foreground")}>
+
+          {description ? (
+            typeof description === 'string' ? (
+              <Text
+                variant="muted"
+                numberOfLines={2}
+                className={cn("mt-0.5 text-[11px] text-muted-foreground/80", backgroundImage && "text-white/70")}
+              >
+                {description}
+              </Text>
+            ) : (
+              description
+            )
+          ) : null}
+
+          {timestamp && !isCard ? (
+            <Text
+              variant="muted"
+              className={cn("text-[10px] mt-0.5", backgroundImage ? "text-white/60" : "text-muted-foreground/70")}
+            >
               {formatRelativeTime(timestamp)}
             </Text>
           ) : null}
         </View>
 
-        {/* Right Action / Badges */}
-        <View className="items-end justify-center gap-1 ml-2 shrink-0">
+        {/* 3. Right Action / Badges / Relative Timestamp / Chevron */}
+        <View className="items-end justify-center gap-1 ms-2 shrink-0">
+          {timestamp && isCard ? (
+            <Text
+              variant="muted"
+              className={cn("text-[10px] font-medium", backgroundImage ? "text-white/60" : "text-muted-foreground/70")}
+            >
+              {formatRelativeTime(timestamp)}
+            </Text>
+          ) : null}
+
           {rightContent !== undefined ? (
             rightContent
-          ) : (
-            <Icon as={ChevronRight} size={18} className={backgroundImage ? "text-white/70" : "text-muted-foreground"} />
+          ) : showChevron !== false && (
+            <Icon
+              as={ChevronRight}
+              size={18}
+              className={backgroundImage ? "text-white/70" : "text-muted-foreground/60"}
+            />
           )}
+
           {status ? (
-            <StatusBadge label={status.label} variant={status.variant} size="sm" />
+            <StatusBadge
+              label={status.label}
+              variant={status.variant || 'neutral'}
+              size="sm"
+            />
           ) : null}
+
           {secondaryBadge ? (
-            <StatusBadge label={secondaryBadge.label} variant={secondaryBadge.variant} size="sm" />
+            <StatusBadge
+              label={secondaryBadge.label}
+              variant={secondaryBadge.variant || 'neutral'}
+              size="sm"
+            />
           ) : null}
         </View>
       </Pressable>
@@ -159,3 +301,4 @@ const ListCard = React.forwardRef<View, ListCardProps>(
 ListCard.displayName = 'ListCard';
 
 export { ListCard, listCardVariants };
+export default ListCard;

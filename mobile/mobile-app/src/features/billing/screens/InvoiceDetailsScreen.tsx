@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-
 import { View, ScrollView, RefreshControl } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { ProgressBar } from '@/components/common/ProgressBar';
-import { Receipt, Calendar, Home, CreditCard, ShieldAlert, ArrowLeft, ChevronRight, Clock, AlertCircle } from 'lucide-react-native';
+import { Receipt, Calendar, Clock, ChevronRight, ShieldAlert } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import { InvoiceStatus, Invoice } from '../types';
@@ -123,7 +122,6 @@ export function InvoiceDetailsScreen() {
   const isPaid = status === 'PAID';
   const isPendingVerification = status === 'VERIFICATION_PENDING';
   const isCancelled = status === 'CANCELLED';
-  const isOverdue = status === 'OVERDUE';
   const isPartial = status === 'PARTIALLY_PAID' || (paidAmount > 0 && remainingDue > 0);
 
   // Payment progress percentage
@@ -139,7 +137,7 @@ export function InvoiceDetailsScreen() {
       <View className="flex-1 bg-background">
         {/* Error Banner Container */}
         {error ? (
-          <View className="p-4">
+          <View className="mb-2">
             <ErrorBanner
               message={error}
               onDismiss={() => resetBillingError()}
@@ -148,18 +146,17 @@ export function InvoiceDetailsScreen() {
         ) : null}
 
         <ScrollView
-          className="flex-1 p-4"
-          contentContainerStyle={{ paddingBottom: (!isPaid && !isCancelled && !isPendingVerification) ? 100 : 32 }}
+          className="flex-1"
+          contentContainerClassName="gap-4 pb-28"
           refreshControl={
             <RefreshControl
               refreshing={loadingStates.fetchDues}
               onRefresh={handleRefresh}
-              tintColor="#6366f1"
             />
           }
         >
           {/* Hero Invoice Summary Card */}
-          <View className="bg-card border border-border rounded-2xl p-5 shadow-sm mb-4">
+          <View className="bg-card border border-border rounded-2xl p-5 shadow-sm">
             <View className="flex-row items-center justify-between mb-3">
               <View className="flex-row items-center">
                 <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center me-3">
@@ -204,13 +201,13 @@ export function InvoiceDetailsScreen() {
 
           {/* Verification Pending Info Notice */}
           {isPendingVerification ? (
-            <View className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-4 flex-row items-start">
-              <Icon as={Clock} size={20} className="text-blue-600 dark:text-blue-400 me-3 mt-0.5" />
+            <View className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex-row items-start">
+              <Icon as={Clock} size={20} className="text-primary me-3 mt-0.5" />
               <View className="flex-1">
-                <Text className="text-sm font-bold text-blue-900 dark:text-blue-200">
+                <Text className="text-sm font-bold text-foreground">
                   Payment Verification Pending
                 </Text>
-                <Text className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                <Text className="text-xs text-muted-foreground mt-1">
                   Your offline cheque / NEFT reference has been submitted. The admin team is currently verifying the payment clearance.
                 </Text>
               </View>
@@ -218,7 +215,7 @@ export function InvoiceDetailsScreen() {
           ) : null}
 
           {/* Itemized Financial Breakdown Section */}
-          <DetailSection title="Financial Charge Breakdown" className="mb-4">
+          <DetailSection title="Financial Charge Breakdown">
             <DetailRow label="Current Month Maintenance Charge" value={`₹${currentCharge.toLocaleString('en-IN')}`} />
             {previousOutstanding > 0 ? (
               <DetailRow label="Previous Outstanding Arrears" value={`₹${previousOutstanding.toLocaleString('en-IN')}`} />
@@ -234,7 +231,7 @@ export function InvoiceDetailsScreen() {
           </DetailSection>
 
           {/* Invoice Information & Metadata Section */}
-          <DetailSection title="Invoice Information" className="mb-6">
+          <DetailSection title="Invoice Information">
             <DetailRow label="Invoice Number" value={invNo} copyable />
             <DetailRow label="Resident Account" value={residentStr} />
             <DetailRow label="Unit / Villa" value={unitStr} />
@@ -283,4 +280,5 @@ export function InvoiceDetailsScreen() {
 }
 
 export default InvoiceDetailsScreen;
+
 

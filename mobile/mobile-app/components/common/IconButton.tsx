@@ -1,74 +1,37 @@
 import React from 'react';
-import { Pressable, PressableProps, View } from 'react-native';
 import { LucideIcon } from 'lucide-react-native';
+import { Button, type ButtonProps } from '@/components/ui/button';
 import { cn } from '../../lib/utils';
 
-export interface IconButtonProps extends PressableProps {
+export interface IconButtonProps extends Omit<ButtonProps, 'children' | 'size'> {
   icon: LucideIcon;
   size?: 'sm' | 'md' | 'lg';
-  variant?: 'default' | 'primary' | 'secondary' | 'ghost' | 'destructive';
-  disabled?: boolean;
-  className?: string;
   iconClassName?: string;
 }
 
 export const IconButton = ({
   icon: Icon,
   size = 'md',
-  variant = 'default',
+  variant = 'outline',
   disabled = false,
   className,
   iconClassName,
   ...props
 }: IconButtonProps) => {
-  const sizeClasses = {
-    sm: 'h-8 w-8',
-    md: 'h-10 w-10',
-    lg: 'h-12 w-12',
-  };
-
-  const iconSizes = {
-    sm: 16,
-    md: 20,
-    lg: 24,
-  };
-
-  const variantClasses = {
-    default: 'bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800',
-    primary: 'bg-primary',
-    secondary: 'bg-slate-100 dark:bg-slate-800',
-    ghost: 'bg-transparent',
-    destructive: 'bg-red-500',
-  };
-
-  const iconColors = {
-    default: 'text-slate-700 dark:text-slate-300',
-    primary: 'text-white',
-    secondary: 'text-slate-900 dark:text-slate-100',
-    ghost: 'text-slate-700 dark:text-slate-300',
-    destructive: 'text-white',
-  };
+  const iconSize = size === 'sm' ? 16 : size === 'lg' ? 22 : 18;
+  const buttonSizeClass = size === 'sm' ? 'h-8 w-8' : size === 'lg' ? 'h-12 w-12' : 'h-10 w-10';
 
   return (
-    <Pressable
-      className={cn(
-        'items-center justify-center rounded-full',
-        sizeClasses[size],
-        variantClasses[variant],
-        disabled && 'opacity-50',
-        className
-      )}
+    <Button
+      variant={(variant as any) === 'primary' ? 'default' : (variant as any) === 'default' ? 'outline' : variant}
+      size="icon"
       disabled={disabled}
+      className={cn('rounded-full', buttonSizeClass, className)}
       {...props}
     >
-      {({ pressed }) => (
-        <View className={cn(pressed && 'opacity-70')}>
-          <Icon
-            size={iconSizes[size]}
-            className={cn(iconColors[variant], iconClassName)}
-          />
-        </View>
-      )}
-    </Pressable>
+      <Icon size={iconSize} className={iconClassName} />
+    </Button>
   );
 };
+
+export default IconButton;

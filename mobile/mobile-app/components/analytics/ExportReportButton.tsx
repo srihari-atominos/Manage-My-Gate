@@ -1,6 +1,6 @@
 import React from 'react';
 import { Download } from 'lucide-react-native';
-import { Button } from '../common/Button';
+import { Button } from '../ui/button';
 
 export interface ExportReportButtonProps {
   onExport: () => void;

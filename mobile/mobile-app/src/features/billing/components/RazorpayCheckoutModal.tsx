@@ -1,9 +1,10 @@
 import React, { useRef, useCallback, useMemo } from 'react';
-import { View, Modal, ActivityIndicator, Pressable, Platform } from 'react-native';
+import { View, Modal, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { X, ShieldCheck, AlertCircle } from 'lucide-react-native';
+import { Button } from '@/components/ui/button';
+import { X, ShieldCheck } from 'lucide-react-native';
 
 export interface RazorpayCheckoutOptions {
   razorpayKeyId: string;
@@ -79,8 +80,8 @@ export function RazorpayCheckoutModal({
             body {
               margin: 0;
               padding: 0;
-              background-color: #0f172a;
-              color: #f8fafc;
+              background-color: hsl(222.2, 84%, 4.9%);
+              color: hsl(210, 40%, 98%);
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
               display: flex;
               flex-direction: column;
@@ -89,8 +90,8 @@ export function RazorpayCheckoutModal({
               height: 100vh;
             }
             .spinner {
-              border: 3px solid rgba(255,255,255,0.1);
-              border-top: 3px solid #6366f1;
+              border: 3px solid hsla(217.2, 91.2%, 59.8%, 0.2);
+              border-top: 3px solid hsl(217.2, 91.2%, 59.8%);
               border-radius: 50%;
               width: 36px;
               height: 36px;
@@ -104,7 +105,7 @@ export function RazorpayCheckoutModal({
             .text {
               font-size: 14px;
               font-weight: 600;
-              color: #94a3b8;
+              color: hsl(215, 20.2%, 65.1%);
             }
           </style>
           <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
@@ -149,7 +150,7 @@ export function RazorpayCheckoutModal({
                   }
                 },
                 theme: {
-                  color: '#6366f1'
+                  color: '#2563eb'
                 }
               };
 
@@ -242,40 +243,41 @@ export function RazorpayCheckoutModal({
         }
       }}
     >
-      <View className="flex-1 bg-slate-900">
+      <View className="flex-1 bg-background">
         {/* Modal Header */}
-        <View className="flex-row items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900 pt-12">
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border bg-card pt-12">
           <View className="flex-row items-center">
-            <View className="w-8 h-8 rounded-lg bg-indigo-500/20 items-center justify-center me-2.5">
-              <Icon as={ShieldCheck} size={18} className="text-indigo-400" />
+            <View className="w-8 h-8 rounded-lg bg-primary/10 items-center justify-center me-2.5">
+              <Icon as={ShieldCheck} size={18} className="text-primary" />
             </View>
             <View>
-              <Text className="font-bold text-sm text-white">Razorpay Secure Checkout</Text>
-              <Text className="text-xs text-slate-400">Order #{options.orderId.slice(-8)}</Text>
+              <Text className="font-bold text-sm text-foreground">Razorpay Secure Checkout</Text>
+              <Text className="text-xs text-muted-foreground">Order #{options.orderId.slice(-8)}</Text>
             </View>
           </View>
 
-          <Pressable
+          <Button
+            variant="ghost"
+            size="icon"
             onPress={() => {
               if (!isHandledRef.current) {
                 isHandledRef.current = true;
                 onDismiss('User closed checkout modal');
               }
             }}
-            className="w-8 h-8 rounded-full bg-slate-800 items-center justify-center active:bg-slate-700"
             accessibilityRole="button"
             accessibilityLabel="Close Razorpay Modal"
           >
-            <Icon as={X} size={18} className="text-slate-300" />
-          </Pressable>
+            <Icon as={X} size={18} className="text-muted-foreground" />
+          </Button>
         </View>
 
         {/* WebView Gateway Container */}
-        <View className="flex-1 bg-slate-950">
+        <View className="flex-1 bg-background">
           {Platform.OS === 'web' ? (
             <iframe
               srcDoc={htmlContent}
-              style={{ width: '100%', height: '100%', border: 'none', backgroundColor: '#020617' }}
+              style={{ width: '100%', height: '100%', border: 'none' }}
               title="Razorpay Gateway Web"
             />
           ) : (
@@ -289,9 +291,9 @@ export function RazorpayCheckoutModal({
               mixedContentMode="always"
               startInLoadingState={true}
               renderLoading={() => (
-                <View className="absolute inset-0 bg-slate-900 items-center justify-center">
-                  <ActivityIndicator size="large" color="#6366f1" />
-                  <Text className="text-xs text-slate-400 mt-3 font-semibold">
+                <View className="absolute inset-0 bg-background items-center justify-center">
+                  <View className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <Text className="text-xs text-muted-foreground mt-3 font-semibold">
                     Loading Payment Gateway…
                   </Text>
                 </View>
@@ -315,3 +317,4 @@ export function RazorpayCheckoutModal({
 }
 
 export default RazorpayCheckoutModal;
+

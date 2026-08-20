@@ -7,7 +7,6 @@ import { PaginatedList } from '@/components/ui/PaginatedList';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Badge } from '@/components/common/Badge';
 
 import { useNoticeBoard } from '../hooks/useNoticeBoard';
 import { useNoticeSocket } from '../hooks/useNoticeSocket';

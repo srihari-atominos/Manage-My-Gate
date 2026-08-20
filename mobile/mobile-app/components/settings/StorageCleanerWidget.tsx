@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { HardDrive, Trash2 } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
-import { Button } from '../common/Button';
+import { Button } from '../ui/button';
 
 export interface StorageCleanerWidgetProps {
   usedSpace: string;

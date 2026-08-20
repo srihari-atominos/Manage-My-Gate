@@ -7,7 +7,7 @@ import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';

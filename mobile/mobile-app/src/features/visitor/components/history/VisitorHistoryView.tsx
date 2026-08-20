@@ -3,8 +3,7 @@ import { View } from 'react-native';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { TabBar } from '@/components/ui/TabBar';
-import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
+import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { VisitorPassCard } from '../VisitorPassCard';
 import { VisitorLogDetailsModal } from './VisitorLogDetailsModal';
 import { ExtendedVisitorPass } from '../../mocks/visitorMocks';
@@ -111,16 +110,13 @@ export const VisitorHistoryView: React.FC = () => {
         variant="bordered"
       />
 
-      {/* Error Retry Banner */}
+      {/* Canonical Error Retry Banner */}
       {status === 'failed' && (
-        <View className="p-3 mx-4 my-2 bg-destructive/10 border border-destructive/20 rounded-xl flex-row items-center justify-between">
-          <Text className="text-xs text-destructive flex-1 font-medium me-2">
-            {error || 'Failed to load visitor history.'}
-          </Text>
-          <Button size="sm" variant="outline" onPress={() => loadData(1, false)}>
-            <Text className="text-xs font-semibold">Retry</Text>
-          </Button>
-        </View>
+        <ErrorBanner
+          message={error || 'Failed to load visitor history.'}
+          onRetry={() => loadData(1, false)}
+          className="mx-4 my-2"
+        />
       )}
 
       {/* Paginated List of History Passes */}
@@ -139,7 +135,7 @@ export const VisitorHistoryView: React.FC = () => {
         emptyIcon="History"
         emptyTitle="No History Passes Found"
         emptySubtitle={`No ${activeTab.toLowerCase()} visitor passes found.`}
-        contentContainerClassName="p-4 gap-3"
+        contentContainerClassName="gap-3"
         renderItem={(pass) => (
           <VisitorPassCard
             key={pass._id}

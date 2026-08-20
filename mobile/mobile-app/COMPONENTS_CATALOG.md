@@ -2,7 +2,7 @@
 
 > **AUTHORITATIVE CATALOG FOR DEVELOPERS & AI AGENTS**  
 > **Target Folder**: `mobile/mobile-app/components/`  
-> **Total Cataloged Components**: 117 Components across 12 Categories  
+> **Total Cataloged Components**: 116 Components across 12 Categories  
 > **Mandate**: ALL developers and AI agents (Antigravity, Cursor, Windsurf, Copilot, etc.) MUST strictly reuse these components when building mobile views and screens. Inline re-creation of UI primitives is strictly forbidden.
 
 ---
@@ -14,7 +14,7 @@
 | **`components/ui/`** | 23 | Atomic UI primitives, list cards, status badges, screen shells | `@/components/ui` or `@/components` |
 | **`components/common/`** | 25 | Generic reusable components (Buttons, Avatars, Modals, Pickers) | `@/components/common` or `@/components` |
 | **`components/forms/`** | 10 | Form input fields, selects, sliders, toggles, OTP inputs | `@/components/forms` or `@/components` |
-| **`components/feedback/`** | 8 | Action sheets, alert dialogs, empty states, loader skeletons | `@/components/feedback` or `@/components` |
+| **`components/feedback/`** | 7 | Action sheets, empty states, error banners, loader skeletons | `@/components/feedback` or `@/components` |
 | **`components/layout/`** | 8 | Safe area wrappers, keyboard avoiding shells, grid rows, spacers | `@/components/layout` or `@/components` |
 | **`components/navigation/`** | 6 | Headers, context switchers (Org, Villa, Role, Profile modals) | `@/components/navigation` or `@/components` |
 | **`components/hardware/`** | 5 | Device hardware integration UI (QR Scanner, NFC, Printer, Torch) | `@/components/hardware` or `@/components` |
@@ -30,8 +30,10 @@
 
 1. **Barrel Exports**: Every component folder contains an `index.ts` barrel export file. You can import components individually, by category (`@/components/ui`), or centrally from the root (`@/components`).
 2. **RTL & Logical Spacing**: ALL components enforce NativeWind logical spacing utility classes (`me-`, `ms-`, `pe-`, `ps-`, `text-start`) instead of directional physical classes (`mr-`, `ml-`, `pr-`, `pl-`) to ensure seamless Arabic/English RTL/LTR support.
-3. **NativeWind Theme Tokens**: Components use theme design tokens (`bg-card`, `bg-muted`, `bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`) rather than hardcoded slate colors (`bg-slate-50`, `text-slate-900`) for complete Light and Dark Mode compatibility.
-4. **Strict Reuse Mandate**: Components must build upon existing primitives (`SkeletonLoader` wraps `Skeleton`, `ConfirmationDialog` reuses `Button` and `Modal`). Inline duplicated primitives are prohibited.
+3. **NativeWind Theme Tokens**: Components use theme design tokens (`bg-card`, `bg-muted`, `bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-destructive`, `status.*`) rather than hardcoded slate colors (`bg-slate-50`, `text-slate-900`) for complete Light and Dark Mode compatibility.
+4. **Strict Reuse Mandate**: Components must build upon existing primitives (`SkeletonLoader` wraps `Skeleton`, `ConfirmationModal` reuses `Button`). Inline duplicated primitives are prohibited.
+5. **Dashboard Recent Activity 3-Item Limit**: Dashboard screens MUST only render a 3-item snippet (`.slice(0, 3)`) in their Recent Activity / Feed section. Never render full datasets on dashboard screens.
+6. **Scroll Containment & FAB Clearance**: Outer `<ScrollView>` containers on screens with a `<FAB>` MUST include bottom inset padding (minimum `pb-28` or `paddingBottom: 110`) in `contentContainerClassName`/`contentContainerStyle` to prevent items from scrolling beyond the viewport or getting obscured by the floating action button.
 
 ---
 
@@ -39,7 +41,7 @@
 
 | Component Name | File | Primary Purpose & Key Props |
 | :--- | :--- | :--- |
-| **`ScreenShell`** | `ScreenShell.tsx` | Standard outer screen wrapper. Includes back button, title, subtitle, loading state, error banner, and headerRight slots. |
+| **`ScreenShell`** | `ScreenShell.tsx` | Standard outer screen wrapper. Includes back button, title, subtitle, loading state, error banner, retry trigger, and headerRight slots. |
 | **`StatusBadge`** | `StatusBadge.tsx` | Status pill component. Accepts `variant` (`success`, `warning`, `danger`, `info`, `neutral`, `critical`) and optional pulsing `dot`. |
 | **`ListCard`** | `ListCard.tsx` | Card container for items in list screens. Supports title, subtitle, icon, status badge, action buttons, and touch handlers. |
 | **`PaginatedList`** | `PaginatedList.tsx` | High-performance list renderer with built-in pull-to-refresh, pagination, and empty state support. |
@@ -50,7 +52,7 @@
 | **`ActionBar`** | `ActionBar.tsx` | Sticky or floating bottom bar for primary CTA buttons (e.g. Approve/Reject, Save/Cancel). |
 | **`AttachmentPicker`**| `AttachmentPicker.tsx` | File/image attachment selector supporting gallery, camera, and document picker. |
 | **`BottomSheet`** | `BottomSheet.tsx` | Native bottom sheet modal container for contextual popups and action menus. |
-| **`ConfirmationModal`**| `ConfirmationModal.tsx` | Modal dialog for critical confirmation flows (e.g. Revoke, Delete, Cancel). |
+| **`ConfirmationModal`**| `ConfirmationModal.tsx` | Modal dialog for critical confirmation flows. Accepts `visible`, `title`, `message`, `confirmLabel`, `cancelLabel`, `variant` (`danger`, `warning`, `info`), `onConfirm`, `onCancel`, and `loading`. |
 | **`DateRangePicker`** | `DateRangePicker.tsx` | Calendar selector for selecting start and end date ranges. |
 | **`FAB`** | `FAB.tsx` | Floating Action Button for primary screen actions. |
 | **`FeatureIcon`** | `FeatureIcon.tsx` | Icon container wrapper with background colors matching feature domains. |
@@ -58,7 +60,7 @@
 | **`Skeleton`** | `Skeleton.tsx` | Skeleton loading placeholder matching list items, cards, and text rows. |
 | **`TabBar`** | `TabBar.tsx` | Segmented horizontal tab selection bar. |
 | **`TimelineItem`** | `TimelineItem.tsx` | Vertical audit trail or process timeline item component. |
-| **`button`** | `button.tsx` | Primitive button variant wrapper supporting CVA variants. |
+| **`button`** | `button.tsx` | Primitive button variant wrapper supporting CVA variants (`default`, `secondary`, `destructive`, `outline`, `ghost`, `link`, `loading`). |
 | **`icon`** | `icon.tsx` | Primitive Lucide icon wrapper with size and color styling properties. |
 | **`input`** | `input.tsx` | Primitive input field wrapper. |
 | **`text`** | `text.tsx` | Primitive typography wrapper handling theme color and text variants. |
@@ -70,16 +72,16 @@
 | Component Name | File | Primary Purpose & Key Props |
 | :--- | :--- | :--- |
 | **`Button`** | `Button.tsx` | Standard interactive button with primary, secondary, outline, and destructive variants. |
-| **`Badge`** | `Badge.tsx` | General purpose tag/badge indicator. |
+| **`Badge`** | `Badge.tsx` | *(Deprecated)* General purpose tag/badge indicator that delegates to canonical `StatusBadge`. |
 | **`Avatar`** | `Avatar.tsx` | User profile avatar with initials fallback and online status indicator. |
-| **`Card`** | `Card.tsx` | Elevated container box with header, body, and footer slots. |
+| **`Card`** | `Card.tsx` | Elevated container box with `CardHeader`, `CardContent`, and `CardFooter` sub-components using theme tokens (`bg-card`, `border-border`). |
 | **`Chip`** | `Chip.tsx` | Interactive filter chip or tag pill with dismiss/check actions. |
 | **`ConfirmationDialog`**| `ConfirmationDialog.tsx` | Reusable popup modal for quick confirm/cancel prompts. |
 | **`DatePicker`** | `DatePicker.tsx` | Single date selection input modal. |
 | **`TimePicker`** | `TimePicker.tsx` | Time picker input modal (12h/24h formats). |
 | **`Calendar`** | `Calendar.tsx` | Month view calendar for selecting dates. |
 | **`Divider`** | `Divider.tsx` | Visual separator line (horizontal or vertical). |
-| **`IconButton`** | `IconButton.tsx` | Circular or square button containing an icon only. |
+| **`IconButton`** | `IconButton.tsx` | Circular or square icon button delegating to canonical `<Button size="icon">`. |
 | **`ImageCarousel`** | `ImageCarousel.tsx` | Swipeable image gallery carousel with pagination dots. |
 | **`ImagePreview`** | `ImagePreview.tsx` | Full-screen image preview overlay with zoom support. |
 | **`ListItem`** | `ListItem.tsx` | Standard list row with left icon, title, subtitle, and right accessory/chevron. |
@@ -101,7 +103,7 @@
 
 | Component Name | File | Primary Purpose & Key Props |
 | :--- | :--- | :--- |
-| **`TextInput`** | `TextInput.tsx` | Labelled text input field with error messaging, icon support, and focus rings. |
+| **`TextInput`** | `TextInput.tsx` | Labelled text input field. Supports `label`, `error`, `helperText`, `required`, `loading`, `leftIcon`, `rightIcon`, `onRightIconPress`, and active focus ring highlighting. |
 | **`PasswordInput`** | `PasswordInput.tsx` | Secure text field with visibility toggle eye icon. |
 | **`DropdownSelect`**| `DropdownSelect.tsx` | Single/multi select picker modal with search filtering. |
 | **`FileUploadField`**| `FileUploadField.tsx` | File uploader box with progress bar and thumbnail preview. |
@@ -119,11 +121,10 @@
 
 | Component Name | File | Primary Purpose & Key Props |
 | :--- | :--- | :--- |
-| **`EmptyState`** | `EmptyState.tsx` | Illustrated placeholder when data lists or searches return 0 records. |
-| **`ErrorBanner`** | `ErrorBanner.tsx` | Warning/Error alert notification banner. |
+| **`EmptyState`** | `EmptyState.tsx` | Illustrated placeholder when data lists or searches return 0 records. Supports optional `icon` (defaults to `Inbox`), `title`, `description`, `actionLabel`, and `onAction`. |
+| **`ErrorBanner`** | `ErrorBanner.tsx` | Warning/Error alert notification banner with `title`, `message`, `onRetry`, `retryLabel`, and `onDismiss` slots. |
 | **`SuccessToast`** | `SuccessToast.tsx` | Toast alert notification for completed actions. |
 | **`ActionSheet`** | `ActionSheet.tsx` | Bottom action list picker sheet. |
-| **`AlertDialog`** | `AlertDialog.tsx` | Critical modal dialog box. |
 | **`OfflineBanner`** | `OfflineBanner.tsx` | Network connectivity offline notification bar. |
 | **`ProgressLoader`** | `ProgressLoader.tsx` | Spinner loader with message text. |
 | **`SkeletonLoader`** | `SkeletonLoader.tsx` | Skeleton placeholder loader built on top of Skeleton UI primitive. |

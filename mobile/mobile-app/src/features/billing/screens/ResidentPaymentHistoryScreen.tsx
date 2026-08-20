@@ -1,23 +1,24 @@
 import React, { useEffect, useCallback, useState, useMemo } from 'react';
-import { View, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { View, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
+import { TabBar } from '@/components/ui/TabBar';
 import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { Receipt, FileText, ChevronRight, CheckCircle2, Clock } from 'lucide-react-native';
+import { Receipt } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 
 const FILTER_PILLS = [
-  { id: 'ALL', label: 'All History' },
-  { id: 'PAID', label: 'Paid' },
-  { id: 'PARTIALLY_PAID', label: 'Partial' },
-  { id: 'VERIFICATION_PENDING', label: 'Pending Clearance' },
-  { id: 'UNPAID', label: 'Unpaid' },
+  { key: 'ALL', label: 'All History' },
+  { key: 'PAID', label: 'Paid' },
+  { key: 'PARTIALLY_PAID', label: 'Partial' },
+  { key: 'VERIFICATION_PENDING', label: 'Pending Clearance' },
+  { key: 'UNPAID', label: 'Unpaid' },
 ];
 
 export function ResidentPaymentHistoryScreen() {
@@ -74,7 +75,7 @@ export function ResidentPaymentHistoryScreen() {
       <View className="flex-1 bg-background">
         {/* Error Banner Container */}
         {error ? (
-          <View className="p-4">
+          <View className="mb-2">
             <ErrorBanner
               message={error}
               onDismiss={() => {
@@ -84,43 +85,23 @@ export function ResidentPaymentHistoryScreen() {
           </View>
         ) : null}
 
-        {/* Filter Pills Header */}
-        <View className="px-4 py-2">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {FILTER_PILLS.map((pill) => {
-              const isActive = statusFilter === pill.id;
-              return (
-                <Pressable
-                  key={pill.id}
-                  onPress={() => setStatusFilter(pill.id)}
-                  className={`px-3.5 py-1.5 rounded-full border ${
-                    isActive ? 'bg-primary border-primary' : 'bg-muted border-border'
-                  }`}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Filter by ${pill.label}`}
-                >
-                  <Text
-                    className={`text-xs font-bold ${
-                      isActive ? 'text-primary-foreground' : 'text-muted-foreground'
-                    }`}
-                  >
-                    {pill.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
+        {/* Canonical TabBar: Filter Pills */}
+        <TabBar
+          tabs={FILTER_PILLS}
+          activeTab={statusFilter}
+          onTabChange={setStatusFilter}
+          variant="pill"
+          className="mx-4 my-2"
+        />
 
         {/* Invoice Payment History Card List */}
         <ScrollView
-          className="flex-1 px-4 pt-2"
-          contentContainerStyle={{ paddingBottom: 40 }}
+          className="flex-1"
+          contentContainerClassName="gap-3 pb-8"
           refreshControl={
             <RefreshControl
               refreshing={loadingStates.fetchDues}
               onRefresh={handleRefresh}
-              tintColor="#6366f1"
             />
           }
         >
@@ -151,12 +132,13 @@ export function ResidentPaymentHistoryScreen() {
                 const isPaid = status === 'PAID';
 
                 return (
-                  <Pressable
+                  <TouchableOpacity
                     key={invoiceId}
                     onPress={() => handleViewInvoiceDetails(invoiceId)}
+                    activeOpacity={0.8}
                     accessibilityRole="button"
                     accessibilityLabel={`View Invoice ${invNo} Details`}
-                    className="bg-card border border-border rounded-xl p-4 shadow-sm active:bg-muted/40"
+                    className="bg-card border border-border rounded-xl p-4 shadow-sm"
                   >
                     {/* Top Row: Invoice Number & Status Pill */}
                     <View className="flex-row items-start justify-between mb-3">
@@ -188,7 +170,7 @@ export function ResidentPaymentHistoryScreen() {
 
                       <View className="items-center">
                         <Text className="text-xs text-muted-foreground">Amount Paid</Text>
-                        <Text className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                        <Text className="text-sm font-bold text-status-success">
                           ₹{paidAmount.toLocaleString('en-IN')}
                         </Text>
                       </View>
@@ -227,7 +209,7 @@ export function ResidentPaymentHistoryScreen() {
                         </Button>
                       </View>
                     </View>
-                  </Pressable>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -239,3 +221,4 @@ export function ResidentPaymentHistoryScreen() {
 }
 
 export default ResidentPaymentHistoryScreen;
+

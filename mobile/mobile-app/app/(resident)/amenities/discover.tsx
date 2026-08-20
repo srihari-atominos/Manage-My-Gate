@@ -47,7 +47,7 @@ export default function DiscoverAmenitiesScreen() {
       <View className="mb-3">
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
           {categories.map((cat) => (
-            <View key={cat} className="mr-2">
+            <View key={cat} className="me-2">
               <Chip
                 label={cat}
                 selected={selectedCategory === cat}
@@ -103,10 +103,10 @@ export default function DiscoverAmenitiesScreen() {
               {/* Image Banner */}
               <View className="h-36 w-full rounded-xl overflow-hidden relative">
                 <Image source={{ uri: imageUrl }} className="w-full h-full" resizeMode="cover" />
-                <View className="absolute top-2 left-2 bg-black/60 px-2.5 py-1 rounded-full">
+                <View className="absolute top-2 start-2 bg-black/60 px-2.5 py-1 rounded-full">
                   <Text className="text-white text-[10px] font-bold uppercase tracking-wider">{category}</Text>
                 </View>
-                <View className="absolute top-2 right-2 bg-primary px-2.5 py-1 rounded-full">
+                <View className="absolute top-2 end-2 bg-primary px-2.5 py-1 rounded-full">
                   <Text className="text-white text-xs font-extrabold">
                     {baseRate ? `$${baseRate}/${pricingType === 'daily' ? 'day' : 'slot'}` : 'Free'}
                   </Text>
@@ -115,7 +115,7 @@ export default function DiscoverAmenitiesScreen() {
 
               {/* Title & Details */}
               <View className="flex-row items-center justify-between">
-                <View className="flex-1 mr-2">
+                <View className="flex-1 me-2">
                   <Text className="font-bold text-base text-foreground">{item.name}</Text>
                   <Text className="text-xs text-muted-foreground mt-0.5">
                     {item.location || 'Zone'} • Cap: {item.capacity || 20} • {openTime}-{closeTime}
@@ -140,8 +140,6 @@ export default function DiscoverAmenitiesScreen() {
               title={item.name}
               subtitle={`${category} • ${item.location || 'Zone'} • Cap: ${item.capacity || 20} • ${openTime}-${closeTime}`}
               leftIcon={item.iconName || 'Building2'}
-              leftIconBgColor="#dbeafe"
-              leftIconColor="#2563eb"
               status={{
                 label: isMaintenance ? 'Maintenance' : isInactive ? 'Inactive' : 'Available',
                 variant: isMaintenance ? 'warning' : isInactive ? 'neutral' : 'success',

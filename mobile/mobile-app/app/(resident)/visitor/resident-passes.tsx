@@ -91,14 +91,15 @@ export default function ResidentPassesScreen() {
       title="Resident Visitor Passes"
       subtitle="Manage guest entry & QR invitations"
       headerRight={
-        <TouchableOpacity
+        <Button
+          size="sm"
+          variant="default"
           onPress={() => setInviteSheetOpen(true)}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full"
+          className="flex-row items-center gap-1.5 rounded-full"
         >
-          <UserPlus size={14} color="#fff" />
+          <UserPlus size={14} className="text-primary-foreground" />
           <Text className="text-xs font-bold text-primary-foreground">New Pass</Text>
-        </TouchableOpacity>
+        </Button>
       }
     >
       <View className="flex-1 bg-background">

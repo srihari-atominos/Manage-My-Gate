@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
 import {
   X,
   Search,
@@ -52,14 +53,15 @@ export default function AllFeaturesScreen() {
 
         <Text className="text-base font-extrabold text-foreground">Quick Actions</Text>
 
-        <TouchableOpacity
+        <Button
+          variant="outline"
+          size="sm"
           onPress={() => setCustomiseOpen(true)}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1 bg-primary/10 border border-primary/30 px-3 py-1.5 rounded-full"
+          className="flex-row items-center gap-1 bg-primary/10 border border-primary/30 px-3 py-1.5 rounded-full h-auto min-h-0 shadow-none"
         >
           <SlidersHorizontal size={13} color="#03A9F4" />
           <Text className="text-xs font-bold text-primary">Customise</Text>
-        </TouchableOpacity>
+        </Button>
       </View>
 
       <ScrollView className="flex-1 px-4 pt-3">
@@ -125,16 +127,17 @@ export default function AllFeaturesScreen() {
                       {category.categoryName}
                     </Text>
 
-                    <TouchableOpacity
-                      activeOpacity={0.7}
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onPress={() => handleTileClick(primaryRouteId)}
-                      className="flex-row items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20"
+                      className="flex-row items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20 h-auto min-h-0 shadow-none"
                     >
                       <Text className="text-xs font-bold text-primary">
                         View all
                       </Text>
                       <ChevronRight size={13} color="#03A9F4" />
-                    </TouchableOpacity>
+                    </Button>
                   </View>
 
                   {/* 4-Column Action Grid */}

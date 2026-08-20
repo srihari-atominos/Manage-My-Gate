@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { ShieldAlert, CheckCircle2 } from 'lucide-react-native';
-import { Button } from '../common/Button';
+import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 
 export interface PermissionRequestCardProps {

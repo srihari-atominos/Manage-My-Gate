@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Modal, TouchableOpacity, TextInput, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
 import { AdminVillaFilterSheet } from '../admin/AdminVillaFilterSheet';
-import { ShieldAlert, X, Building2, User, Phone, Car, IdCard } from 'lucide-react-native';
+import { ShieldAlert, X, Building2 } from 'lucide-react-native';
 
 interface GuardInitiateWalkInModalProps {
   visible: boolean;
@@ -107,7 +108,7 @@ export const GuardInitiateWalkInModal: React.FC<GuardInitiateWalkInModalProps> =
                 onPress={() => setVillaSheetOpen(true)}
                 className="bg-card border border-border rounded-xl p-3 flex-row items-center justify-between"
               >
-                <View className="flex-row items-center gap-2 flex-1 mr-2">
+                <View className="flex-row items-center gap-2 flex-1 me-2">
                   <Building2 size={16} className="text-primary" />
                   <View className="flex-1">
                     <Text className={`text-sm font-semibold ${villaId ? 'text-foreground' : 'text-muted-foreground'}`}>
@@ -125,50 +126,41 @@ export const GuardInitiateWalkInModal: React.FC<GuardInitiateWalkInModalProps> =
             </View>
 
             {/* Visitor Name */}
-            <View>
-              <Text className="text-xs font-semibold text-muted-foreground mb-1">Visitor Full Name *</Text>
-              <TextInput
-                value={visitorName}
-                onChangeText={setVisitorName}
-                placeholder="e.g. Rahul Sharma"
-                className="bg-card border border-border rounded-xl p-3 text-sm text-foreground"
-              />
-            </View>
+            <TextInput
+              label="Visitor Full Name"
+              required
+              value={visitorName}
+              onChangeText={setVisitorName}
+              placeholder="e.g. Rahul Sharma"
+            />
 
             {/* Visitor Phone */}
-            <View>
-              <Text className="text-xs font-semibold text-muted-foreground mb-1">Phone Number *</Text>
-              <TextInput
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="e.g. +91 9876543210"
-                keyboardType="phone-pad"
-                className="bg-card border border-border rounded-xl p-3 text-sm text-foreground"
-              />
-            </View>
+            <TextInput
+              label="Phone Number"
+              required
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="e.g. +91 9876543210"
+              keyboardType="phone-pad"
+            />
 
             {/* Vehicle Number */}
-            <View>
-              <Text className="text-xs font-semibold text-muted-foreground mb-1">Vehicle Plate Number (Optional)</Text>
-              <TextInput
-                value={vehicleNumber}
-                onChangeText={setVehicleNumber}
-                placeholder="e.g. KA 01 AB 1234"
-                autoCapitalize="characters"
-                className="bg-card border border-border rounded-xl p-3 text-sm text-foreground font-mono"
-              />
-            </View>
+            <TextInput
+              label="Vehicle Plate Number (Optional)"
+              value={vehicleNumber}
+              onChangeText={setVehicleNumber}
+              placeholder="e.g. KA 01 AB 1234"
+              autoCapitalize="characters"
+              inputClassName="font-mono"
+            />
 
             {/* ID Proof Number */}
-            <View>
-              <Text className="text-xs font-semibold text-muted-foreground mb-1">Govt ID / Aadhaar Number (Optional)</Text>
-              <TextInput
-                value={idProofNumber}
-                onChangeText={setIdProofNumber}
-                placeholder="e.g. XXXX XXXX 1234"
-                className="bg-card border border-border rounded-xl p-3 text-sm text-foreground"
-              />
-            </View>
+            <TextInput
+              label="Govt ID / Aadhaar Number (Optional)"
+              value={idProofNumber}
+              onChangeText={setIdProofNumber}
+              placeholder="e.g. XXXX XXXX 1234"
+            />
           </ScrollView>
 
           {/* Action Buttons */}
@@ -176,12 +168,14 @@ export const GuardInitiateWalkInModal: React.FC<GuardInitiateWalkInModalProps> =
             <Button variant="outline" className="flex-1" onPress={onClose} disabled={loading}>
               <Text className="text-xs font-semibold">Cancel</Text>
             </Button>
-            <Button variant="default" className="flex-1 bg-amber-600" onPress={handleSubmit} disabled={loading}>
-              {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text className="text-xs font-semibold text-white">Send Resident Request</Text>
-              )}
+            <Button
+              variant="default"
+              className="flex-1"
+              onPress={handleSubmit}
+              disabled={loading}
+              loading={loading}
+            >
+              <Text className="text-xs font-semibold text-primary-foreground">Send Resident Request</Text>
             </Button>
           </View>
         </View>

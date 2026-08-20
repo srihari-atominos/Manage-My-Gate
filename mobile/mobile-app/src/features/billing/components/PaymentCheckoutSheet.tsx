@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Pressable, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
+import { TextInput } from '@/components/forms/TextInput';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { Wallet, CreditCard, AlertCircle, CheckCircle2, ShieldAlert, ChevronRight, RefreshCw } from 'lucide-react-native';
+import { Wallet, CreditCard, AlertCircle, ChevronRight, Check } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useMobilePayment, PaymentMethod } from '../hooks/useMobilePayment';
 import { Invoice } from '../types';
@@ -168,7 +169,7 @@ export function PaymentCheckoutSheet({
   return (
     <>
       <BottomSheet visible={visible} onClose={onClose} title={`Payment Checkout • #${invNo}`}>
-        <ScrollView className="py-2" contentContainerStyle={{ paddingBottom: 60 }}>
+        <ScrollView className="py-2" contentContainerClassName="pb-12">
 
           {/* Payment Disabled Alert */}
           {isPaymentDisabled ? (
@@ -190,25 +191,26 @@ export function PaymentCheckoutSheet({
           ) : null}
 
           {/* Section 1: Payment Amount Selection */}
-          <View className="mb-5">
-            <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+          <View className="mb-5 gap-2.5">
+            <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               1. Select Payment Amount
             </Text>
 
             {/* Full Amount Option */}
-            <Pressable
+            <TouchableOpacity
               onPress={() => setPaymentMode('FULL')}
-              className={`p-4 rounded-xl border mb-2.5 flex-row items-center justify-between ${
+              activeOpacity={0.8}
+              className={`p-4 rounded-xl border flex-row items-center justify-between ${
                 paymentMode === 'FULL'
-                  ? 'bg-primary/5 border-primary'
+                  ? 'bg-primary/10 border-primary'
                   : 'bg-card border-border'
               }`}
             >
-              <View className="flex-row items-center">
-                <View className={`w-5 h-5 rounded-full border items-center justify-center me-3 ${
+              <View className="flex-row items-center gap-3">
+                <View className={`w-5 h-5 rounded-full border items-center justify-center ${
                   paymentMode === 'FULL' ? 'border-primary bg-primary' : 'border-muted-foreground'
                 }`}>
-                  {paymentMode === 'FULL' ? <View className="w-2 h-2 rounded-full bg-white" /> : null}
+                  {paymentMode === 'FULL' ? <Check size={12} className="text-primary-foreground" /> : null}
                 </View>
                 <View>
                   <Text className="font-bold text-sm text-foreground">Pay Full Remaining Amount</Text>
@@ -219,51 +221,44 @@ export function PaymentCheckoutSheet({
               <Text className="text-base font-extrabold text-foreground">
                 ₹{remainingDue.toLocaleString('en-IN')}
               </Text>
-            </Pressable>
+            </TouchableOpacity>
 
             {/* Custom Partial Amount Option */}
-            <Pressable
+            <TouchableOpacity
               onPress={() => setPaymentMode('CUSTOM')}
+              activeOpacity={0.8}
               className={`p-4 rounded-xl border ${
                 paymentMode === 'CUSTOM'
-                  ? 'bg-primary/5 border-primary'
+                  ? 'bg-primary/10 border-primary'
                   : 'bg-card border-border'
               }`}
             >
-              <View className="flex-row items-center mb-2">
-                <View className={`w-5 h-5 rounded-full border items-center justify-center me-3 ${
+              <View className="flex-row items-center gap-3 mb-2">
+                <View className={`w-5 h-5 rounded-full border items-center justify-center ${
                   paymentMode === 'CUSTOM' ? 'border-primary bg-primary' : 'border-muted-foreground'
                 }`}>
-                  {paymentMode === 'CUSTOM' ? <View className="w-2 h-2 rounded-full bg-white" /> : null}
+                  {paymentMode === 'CUSTOM' ? <Check size={12} className="text-primary-foreground" /> : null}
                 </View>
                 <Text className="font-bold text-sm text-foreground">Pay Custom Partial Amount</Text>
               </View>
 
               {paymentMode === 'CUSTOM' ? (
                 <View className="mt-2 ps-8">
-                  <View className="flex-row items-center bg-background border border-border rounded-xl px-3 py-2">
-                    <Text className="text-foreground font-bold text-lg me-2">₹</Text>
-                    <TextInput
-                      value={customAmountStr}
-                      onChangeText={setCustomAmountStr}
-                      placeholder={`Enter amount (Max ₹${remainingDue})`}
-                      placeholderTextColor="#94a3b8"
-                      keyboardType="numeric"
-                      className="flex-1 text-foreground font-bold text-base py-1"
-                    />
-                  </View>
-
-                  {isAmountTooHigh ? (
-                    <Text className="text-xs text-destructive mt-1.5 font-medium">
-                      Amount cannot exceed remaining due of ₹{remainingDue.toLocaleString('en-IN')}
-                    </Text>
-                  ) : null}
+                  <TextInput
+                    label="Custom Settlement Amount (₹)"
+                    value={customAmountStr}
+                    onChangeText={setCustomAmountStr}
+                    placeholder={`Enter amount (Max ₹${remainingDue})`}
+                    keyboardType="numeric"
+                    inputClassName="font-bold text-base"
+                    error={isAmountTooHigh ? `Amount cannot exceed remaining due of ₹${remainingDue.toLocaleString('en-IN')}` : undefined}
+                  />
                 </View>
               ) : null}
-            </Pressable>
+            </TouchableOpacity>
 
             {/* Amount Breakdown Preview */}
-            <View className="mt-3 bg-muted/40 border border-border/60 rounded-xl p-3.5 flex-row items-center justify-between">
+            <View className="bg-muted/40 border border-border/60 rounded-xl p-3.5 flex-row items-center justify-between">
               <View>
                 <Text className="text-xs text-muted-foreground">Amount Being Paid Now</Text>
                 <Text className="text-base font-extrabold text-primary">₹{amountToPay.toLocaleString('en-IN')}</Text>
@@ -276,21 +271,22 @@ export function PaymentCheckoutSheet({
           </View>
 
           {/* Section 2: Payment Method Selection */}
-          <View className="mb-5">
-            <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+          <View className="mb-5 gap-2.5">
+            <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               2. Select Payment Method
             </Text>
 
             {/* Digital Wallet Option */}
-            <Pressable
+            <TouchableOpacity
               onPress={() => setSelectedMethod('WALLET')}
-              className={`p-4 rounded-xl border mb-2.5 flex-row items-center justify-between ${
-                selectedMethod === 'WALLET' ? 'bg-emerald-500/5 border-emerald-500' : 'bg-card border-border'
+              activeOpacity={0.8}
+              className={`p-4 rounded-xl border flex-row items-center justify-between ${
+                selectedMethod === 'WALLET' ? 'bg-status-success/10 border-status-success' : 'bg-card border-border'
               }`}
             >
-              <View className="flex-row items-center flex-1 me-2">
-                <View className="w-10 h-10 rounded-xl bg-emerald-500/10 items-center justify-center me-3">
-                  <Icon as={Wallet} size={20} className="text-emerald-600 dark:text-emerald-400" />
+              <View className="flex-row items-center flex-1 me-2 gap-3">
+                <View className="w-10 h-10 rounded-xl bg-status-success/15 items-center justify-center">
+                  <Icon as={Wallet} size={20} className="text-status-success" />
                 </View>
                 <View className="flex-1">
                   <Text className="font-bold text-sm text-foreground">Digital Wallet</Text>
@@ -301,27 +297,28 @@ export function PaymentCheckoutSheet({
               </View>
 
               {isWalletInsufficient ? (
-                <View className="bg-rose-500/10 px-2.5 py-1 rounded-md">
-                  <Text className="text-xs font-bold text-rose-600 dark:text-rose-400">Insufficient</Text>
+                <View className="bg-destructive/10 px-2.5 py-1 rounded-md">
+                  <Text className="text-xs font-bold text-destructive">Insufficient</Text>
                 </View>
               ) : (
                 <View className={`w-5 h-5 rounded-full border items-center justify-center ${
-                  selectedMethod === 'WALLET' ? 'border-emerald-500 bg-emerald-500' : 'border-muted-foreground'
+                  selectedMethod === 'WALLET' ? 'border-status-success bg-status-success' : 'border-muted-foreground'
                 }`}>
-                  {selectedMethod === 'WALLET' ? <View className="w-2 h-2 rounded-full bg-white" /> : null}
+                  {selectedMethod === 'WALLET' ? <Check size={12} className="text-primary-foreground" /> : null}
                 </View>
               )}
-            </Pressable>
+            </TouchableOpacity>
 
             {/* Razorpay Online Option */}
-            <Pressable
+            <TouchableOpacity
               onPress={() => setSelectedMethod('RAZORPAY')}
-              className={`p-4 rounded-xl border mb-2.5 flex-row items-center justify-between ${
-                selectedMethod === 'RAZORPAY' ? 'bg-primary/5 border-primary' : 'bg-card border-border'
+              activeOpacity={0.8}
+              className={`p-4 rounded-xl border flex-row items-center justify-between ${
+                selectedMethod === 'RAZORPAY' ? 'bg-primary/10 border-primary' : 'bg-card border-border'
               }`}
             >
-              <View className="flex-row items-center">
-                <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center me-3">
+              <View className="flex-row items-center gap-3">
+                <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
                   <Icon as={CreditCard} size={20} className="text-primary" />
                 </View>
                 <View>
@@ -333,9 +330,9 @@ export function PaymentCheckoutSheet({
               <View className={`w-5 h-5 rounded-full border items-center justify-center ${
                 selectedMethod === 'RAZORPAY' ? 'border-primary bg-primary' : 'border-muted-foreground'
               }`}>
-                {selectedMethod === 'RAZORPAY' ? <View className="w-2 h-2 rounded-full bg-white" /> : null}
+                {selectedMethod === 'RAZORPAY' ? <Check size={12} className="text-primary-foreground" /> : null}
               </View>
-            </Pressable>
+            </TouchableOpacity>
           </View>
 
           {/* Primary Action Button */}
@@ -407,3 +404,4 @@ export function PaymentCheckoutSheet({
 }
 
 export default PaymentCheckoutSheet;
+

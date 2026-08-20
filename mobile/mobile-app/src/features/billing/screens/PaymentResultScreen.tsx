@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
@@ -121,17 +121,17 @@ export function PaymentResultScreen() {
       iconName="Receipt"
       loading={loadingStates.fetchDues && !invoice}
     >
-      <View className="flex-1 bg-background p-4 justify-between">
-        <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 24 }}>
+      <View className="flex-1 bg-background justify-between">
+        <ScrollView className="flex-1" contentContainerClassName="gap-4 pb-8">
 
           {/* Hero Result Banner */}
-          <View className="bg-card border border-border rounded-2xl p-6 items-center shadow-sm mb-4">
+          <View className="bg-card border border-border rounded-2xl p-6 items-center shadow-sm">
             {/* Header Icon */}
             <View className={`w-16 h-16 rounded-full items-center justify-center mb-3 ${
-              isPaid ? 'bg-emerald-500/10' :
-              isPartial ? 'bg-amber-500/10' :
-              isPending ? 'bg-blue-500/10' :
-              isFailed ? 'bg-rose-500/10' : 'bg-slate-500/10'
+              isPaid ? 'bg-status-success/15' :
+              isPartial ? 'bg-status-warning/15' :
+              isPending ? 'bg-primary/10' :
+              isFailed ? 'bg-destructive/15' : 'bg-muted'
             }`}>
               <Icon
                 as={
@@ -143,10 +143,10 @@ export function PaymentResultScreen() {
                 }
                 size={36}
                 className={
-                  isPaid ? 'text-emerald-600 dark:text-emerald-400' :
-                  isPartial ? 'text-amber-600 dark:text-amber-400' :
-                  isPending ? 'text-blue-600 dark:text-blue-400' :
-                  isFailed ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-400'
+                  isPaid ? 'text-status-success' :
+                  isPartial ? 'text-status-warning' :
+                  isPending ? 'text-primary' :
+                  isFailed ? 'text-destructive' : 'text-muted-foreground'
                 }
               />
             </View>
@@ -181,7 +181,7 @@ export function PaymentResultScreen() {
           </View>
 
           {/* Payment Summary Section */}
-          <DetailSection title="Transaction Details" className="mb-4">
+          <DetailSection title="Transaction Details">
             <DetailRow label="Invoice Number" value={invNo} copyable />
             <DetailRow label="Unit & Period" value={`${unitStr} (${periodStr})`} />
             <DetailRow label="Settled Amount" value={`₹${(isPaid ? totalDue : paidAmount).toLocaleString('en-IN')}`} />
@@ -201,7 +201,7 @@ export function PaymentResultScreen() {
         </ScrollView>
 
         {/* Action CTAs */}
-        <View className="gap-2.5 pt-2 border-t border-border bg-background">
+        <View className="gap-2.5 p-4 pt-2 border-t border-border bg-background">
           {(isPaid || isPartial) ? (
             <Button
               variant="default"

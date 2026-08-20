@@ -1,11 +1,15 @@
 import React from 'react';
 import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, CheckCircle2, Clock, ShieldCheck, Zap } from 'lucide-react-native';
+import { ScreenShell } from '@/components/ui/ScreenShell';
+import { CheckCircle2, Clock, Zap } from 'lucide-react-native';
 import FeatureIcon from '@/components/ui/FeatureIcon';
 
-interface FeatureDetailScreenProps {
+/**
+ * @deprecated Use `<ScreenShell>` directly with `domainName`, `sharedSlice`, and `permission` props.
+ * This component is maintained only for legacy backward compatibility.
+ */
+export interface FeatureDetailScreenProps {
   title: string;
   categoryName: string;
   sharedSlice: string;
@@ -31,32 +35,18 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
   actionButton,
   noticeBadge = 'Active Sub-Feature',
 }) => {
-  const router = useRouter();
-
   return (
-    <View className="flex-1 bg-background">
-      {/* Top Header Bar */}
-      <View className="bg-card border-b border-border px-4 py-3.5 flex-row items-center justify-between shadow-xs">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-          className="flex-row items-center gap-1.5 p-1 bg-muted/50 rounded-full px-2.5 py-1 border border-border"
-        >
-          <ArrowLeft size={16} className="text-muted-foreground" />
-          <Text className="text-xs font-bold text-foreground">Back</Text>
-        </TouchableOpacity>
-
-        <Text numberOfLines={1} className="text-sm font-extrabold text-foreground max-w-[200px]">
-          {title}
-        </Text>
-
-        <View className="size-8 rounded-full bg-primary/10 items-center justify-center border border-primary/20">
-          <FeatureIcon iconName={iconName} color={iconColor} size={16} />
-        </View>
-      </View>
-
-      <ScrollView className="flex-1 px-4 pt-4">
-        <View className="gap-4 pb-12 max-w-md mx-auto w-full">
+    <ScreenShell
+      title={title}
+      iconName={iconName}
+      domainName={categoryName}
+      sharedSlice={sharedSlice}
+      domainBadge={noticeBadge}
+      permission={permission}
+      syncStatus="live"
+    >
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerClassName="pb-12">
+        <View className="gap-4 max-w-md mx-auto w-full">
           {/* Main Feature Header Card */}
           <View className="bg-card border border-border rounded-2xl p-4 shadow-xs">
             <View className="flex-row items-start gap-3">
@@ -92,21 +82,6 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
             </View>
           </View>
 
-          {/* RBAC Permission Banner */}
-          {permission ? (
-            <View className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-3 flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2">
-                <ShieldCheck size={16} color="#6366f1" />
-                <Text className="text-xs font-bold text-indigo-900 dark:text-indigo-200">
-                  Required Permission: <Text className="font-mono text-indigo-600">{permission}</Text>
-                </Text>
-              </View>
-              <View className="bg-indigo-600 px-2 py-0.5 rounded-full">
-                <Text className="text-[9px] font-bold text-white">Granted</Text>
-              </View>
-            </View>
-          ) : null}
-
           {/* Real-time Status Metric Overview Cards */}
           <View className="flex-row gap-3">
             <View className="flex-1 bg-card border border-border rounded-2xl p-3 shadow-xs">
@@ -133,7 +108,7 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
             <Text className="text-xs font-extrabold text-foreground uppercase tracking-wider">
               Sub-Feature Console
             </Text>
-            
+
             <View className="bg-muted/40 border border-dashed border-border rounded-xl p-6 items-center justify-center gap-3">
               <View className="size-10 rounded-full bg-primary/10 items-center justify-center">
                 <FeatureIcon iconName={iconName} color={iconColor} size={20} />
@@ -160,7 +135,7 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
           </View>
         </View>
       </ScrollView>
-    </View>
+    </ScreenShell>
   );
 };
 
