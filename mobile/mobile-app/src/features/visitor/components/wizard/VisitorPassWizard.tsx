@@ -193,7 +193,7 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
       }
     }
     
-    // BUG-003 Fix: Validate Service Date Range (Step 2)
+    // BUG-005 Fix: Validate Service Date Range (Step 2)
     if (selectedPassType === 'SERVICE' && currentStepIndex === 2) {
       if (serviceDateRange.startDate && serviceDateRange.endDate && serviceDateRange.startDate > serviceDateRange.endDate) {
         setSubmitError('Pass start date cannot be after end date.');
