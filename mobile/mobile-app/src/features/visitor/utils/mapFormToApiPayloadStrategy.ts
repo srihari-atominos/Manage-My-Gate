@@ -50,9 +50,10 @@ export const mapFormToApiPayloadStrategy = (
     case 'CAB': {
       const payload = mapCabFormToApiPayload(
         formData.cabProvider,
-        formData.customCabProvider,
         formData.cabVehicle,
-        formData.cabSchedule
+        formData.cabSchedule,
+        baseContext,
+        formData.customCabProvider
       );
       return {
         ...payload,
@@ -64,9 +65,10 @@ export const mapFormToApiPayloadStrategy = (
     case 'DELIVERY': {
       const payload = mapDeliveryFormToApiPayload(
         formData.deliveryPartner,
-        formData.customDeliveryPartner,
         formData.deliveryDetails,
-        formData.deliveryValidity
+        formData.deliveryValidity,
+        baseContext,
+        formData.customDeliveryPartner
       );
       return {
         ...payload,

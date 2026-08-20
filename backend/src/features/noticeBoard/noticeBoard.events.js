@@ -6,7 +6,7 @@ import {
   dispatchNoticePinnedToggled,
 } from './noticeBoard.socket.js';
 import logger from '../../utils/logger.utils.js';
-import User from '../user/user.model.js';
+import OrgMembership from '../orgMembership/orgMembership.model.js';
 import notificationService from '../notification/notification.service.js';
 
 // Core native event emitter for the notice board feature domain
@@ -16,7 +16,9 @@ export const noticeEvents = new EventEmitter();
 const notifyUsers = async (notice) => {
   if (notice.status !== 'Published') return;
   try {
-    const activeUsers = await User.find({ status: 'Active', organization: notice.orgId });
+    const activeMemberships = await OrgMembership.find({ status: 'Active', orgId: notice.orgId }).populate('userId');
+    const activeUsers = activeMemberships.map(m => m.userId).filter(u => u && u.status === 'Active');
+    
     logger.info(`Found ${activeUsers.length} active users in organization ${notice.orgId} to notify about notice ${notice._id}`);
     
     let successCount = 0;

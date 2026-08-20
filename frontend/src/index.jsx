@@ -31,7 +31,16 @@ const msalConfig = {
 }
 
 // MSAL instance initialization
-const msalInstance = new PublicClientApplication(msalConfig)
+let msalInstance = null;
+try {
+  if (config.microsoftClientId) {
+    msalInstance = new PublicClientApplication(msalConfig);
+  } else {
+    console.warn('MSAL configuration missing client ID. SSO will be disabled.');
+  }
+} catch (error) {
+  console.error('Failed to instantiate MSAL PublicClientApplication:', error);
+}
 
 // Retrieve the saved user object from localStorage and hydrate workspace context
 try {
@@ -68,23 +77,31 @@ console.log('===================================')
 const renderApp = () => (
   <ErrorBoundary>
     <Provider store={store}>
-      <GoogleOAuthProvider clientId={googleClientId}>
-        <MsalProvider instance={msalInstance}>
+      <GoogleOAuthProvider clientId={googleClientId || 'dummy-client-id'}>
+        {msalInstance ? (
+          <MsalProvider instance={msalInstance}>
+            <App />
+          </MsalProvider>
+        ) : (
           <App />
-        </MsalProvider>
+        )}
       </GoogleOAuthProvider>
     </Provider>
   </ErrorBoundary>
 )
 
 // Initialize MSAL and then render the app
-msalInstance
-  .initialize()
-  .then(() => {
-    createRoot(document.getElementById('root')).render(renderApp())
-  })
-  .catch((err) => {
-    console.error('MSAL Initialization failed:', err)
-    // Render anyway so the rest of the app works, even if Microsoft SSO fails
-    createRoot(document.getElementById('root')).render(renderApp())
-  })
+if (msalInstance) {
+  msalInstance
+    .initialize()
+    .then(() => {
+      createRoot(document.getElementById('root')).render(renderApp())
+    })
+    .catch((err) => {
+      console.error('MSAL Initialization failed:', err)
+      // Render anyway so the rest of the app works, even if Microsoft SSO fails
+      createRoot(document.getElementById('root')).render(renderApp())
+    })
+} else {
+  createRoot(document.getElementById('root')).render(renderApp())
+}

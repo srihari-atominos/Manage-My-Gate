@@ -52,10 +52,12 @@ export const createPassRules = [
     .trim(),
 
   body('groupGuests.*.phone')
-    .optional()
+    .optional({ checkFalsy: true })
     .isString()
     .withMessage('Guest phone must be a string')
-    .trim(),
+    .trim()
+    .isLength({ min: 10, max: 10 })
+    .withMessage('Guest phone must be exactly 10 digits'),
 
   body('visitorDetails.name')
     .optional()
@@ -64,10 +66,12 @@ export const createPassRules = [
     .trim(),
 
   body('visitorDetails.phone')
-    .optional()
+    .optional({ checkFalsy: true })
     .isString()
     .withMessage('Visitor phone must be a string')
-    .trim(),
+    .trim()
+    .isLength({ min: 10, max: 10 })
+    .withMessage('Visitor phone must be exactly 10 digits'),
 
   body('visitorDetails.idProofType')
     .optional()

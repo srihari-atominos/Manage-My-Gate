@@ -11,7 +11,11 @@ import { User, Phone, Car, Tag } from 'lucide-react-native';
 
 const passSchema = yup.object({
   visitorName: yup.string().required('Visitor Name is required').min(2, 'Name is too short'),
-  phone: yup.string().defined().default(''),
+  phone: yup.string().test('is-10-digits', 'Contact number must be exactly 10 digits', (val) => {
+    if (!val || !val.trim()) return true;
+    const digits = val.replace(/\D/g, '');
+    return digits.length === 10;
+  }).defined().default(''),
   passType: yup.string().required('Pass type is required').default('GUEST'),
   purpose: yup.string().defined().default(''),
 });
@@ -118,8 +122,9 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
                 label="Visitor Phone Number (Optional)"
-                placeholder="+919876543210"
+                placeholder="9876543210"
                 keyboardType="phone-pad"
+                maxLength={10}
                 leftIcon={<Phone size={18} className="text-muted-foreground" />}
                 onBlur={onBlur}
                 onChangeText={onChange}

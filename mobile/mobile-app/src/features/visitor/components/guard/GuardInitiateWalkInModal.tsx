@@ -47,6 +47,11 @@ export const GuardInitiateWalkInModal: React.FC<GuardInitiateWalkInModalProps> =
       setError('Please enter visitor phone number');
       return;
     }
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length !== 10) {
+      setError('Contact number must be exactly 10 digits');
+      return;
+    }
     if (!villaId && !residentId) {
       setError('Please select target villa and resident host');
       return;
@@ -141,8 +146,9 @@ export const GuardInitiateWalkInModal: React.FC<GuardInitiateWalkInModalProps> =
               <TextInput
                 value={phone}
                 onChangeText={setPhone}
-                placeholder="e.g. +91 9876543210"
+                placeholder="e.g. 9876543210"
                 keyboardType="phone-pad"
+                maxLength={10}
                 className="bg-card border border-border rounded-xl p-3 text-sm text-foreground"
               />
             </View>
