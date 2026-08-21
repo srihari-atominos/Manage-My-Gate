@@ -17,9 +17,9 @@ export default function PollDetailScreen() {
 
   // Find poll from local state first to show it instantly
   const poll = 
-    activePolls.data.find((p: any) => p._id === id) ||
-    closedPolls.data.find((p: any) => p._id === id) ||
-    myPolls.data.find((p: any) => p._id === id);
+    activePolls.data.find(p => p._id === id) ||
+    closedPolls.data.find(p => p._id === id) ||
+    myPolls.data.find(p => p._id === id);
 
   useEffect(() => {
     const fetchVoters = async () => {
@@ -48,7 +48,7 @@ export default function PollDetailScreen() {
   }
 
   const isClosed = poll.status === 'Closed';
-  const totalVotes = poll.options.reduce((sum: number, opt: any) => sum + opt.votesCount, 0);
+  const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votesCount, 0);
 
   const handleVote = async (optionIndex: number) => {
     try {
@@ -65,16 +65,19 @@ export default function PollDetailScreen() {
       iconName="BarChart2"
     >
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <ListCard
-          title={poll.title}
-          subtitle={poll.description || `Total Votes: ${totalVotes}`}
-          status={{
-            label: poll.status,
-            variant: poll.status === 'Active' ? 'success' : poll.status === 'Draft' ? 'neutral' : 'warning',
-          }}
-        >
+        <View className="bg-card rounded-lg border border-border p-4 mb-3">
+          <View className="flex-row justify-between items-start mb-2">
+            <View className="flex-1 mr-2">
+              <Typography variant="h4" className="text-foreground font-bold">{poll.title}</Typography>
+              <Typography variant="body2" className="text-muted-foreground">{poll.description || `Total Votes: ${totalVotes}`}</Typography>
+            </View>
+            <StatusBadge
+              label={poll.status}
+              variant={poll.status === 'Active' ? 'success' : poll.status === 'Draft' ? 'neutral' : 'warning'}
+            />
+          </View>
           <View className="mt-4">
-            {poll.options.map((option: any, index: number) => {
+            {poll.options.map((option, index) => {
               const percentage = totalVotes > 0 ? Math.round((option.votesCount / totalVotes) * 100) : 0;
               const optionVoters = voters[index] || [];
               
@@ -91,7 +94,7 @@ export default function PollDetailScreen() {
                   />
                   
                   {/* Voters List for this option */}
-                  {loading && <ProgressLoader message="Loading voters..." />}
+                  {loading && <ProgressLoader />}
                   
                   {!loading && !error && optionVoters.length > 0 && (
                     <View className="bg-muted/30 p-3 rounded-md mt-1 ml-4 border-l-2 border-muted">
@@ -120,7 +123,7 @@ export default function PollDetailScreen() {
               );
             })}
           </View>
-        </ListCard>
+        </View>
         
         {error && <ErrorBanner message={error} className="mt-4" />}
       </ScrollView>

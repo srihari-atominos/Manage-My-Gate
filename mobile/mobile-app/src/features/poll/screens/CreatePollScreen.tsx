@@ -148,19 +148,10 @@ export default function CreatePollScreen() {
         )}
       </ScrollView>
 
-      <ActionBar>
-        <Button variant="outline" className="flex-1" onPress={() => router.back()}>
-          <Text>Cancel</Text>
-        </Button>
-        <Button
-          variant="default"
-          className="flex-1 ml-2"
-          onPress={handleSubmit(onSubmit)}
-          disabled={isSubmitting}
-        >
-          <Text>Create Poll</Text>
-        </Button>
-      </ActionBar>
+      <ActionBar
+        primaryAction={{ label: 'Create Poll', onPress: handleSubmit(onSubmit), loading: isSubmitting }}
+        secondaryAction={{ label: 'Cancel', onPress: () => router.back() }}
+      />
     </ScreenShell>
   );
 }

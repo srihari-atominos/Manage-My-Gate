@@ -81,7 +81,7 @@ export default function PollDashboardScreen() {
     }
   };
 
-  const renderPoll = ({ item }: { item: Poll }) => {
+  const renderPoll = (item: Poll) => {
     const isCreator = item.createdBy?._id === user?.id || item.createdBy === user?.id;
 
     return (
@@ -121,20 +121,31 @@ export default function PollDashboardScreen() {
 
       <PaginatedList
         data={currentState.data}
-        renderItem={(item) => renderPoll({ item })}
-        keyExtractor={(item: any) => item._id}
-        pagination={{
-          currentPage: (currentState as any).page || 1,
-          totalPages: (currentState as any).totalPages || 1,
-          totalRecords: (currentState as any).total || currentState.data.length,
-          limit: 10,
-        }}
-        onLoadMore={() => {}}
-        onRefresh={() => loadData(activeTab)}
+        renderItem={renderPoll}
+        keyExtractor={(item) => item._id}
         loading={currentState.loading && currentState.data.length === 0}
+        onRefresh={() => loadData(activeTab)}
+        onLoadMore={() => {
+          const currentPage = Math.ceil(currentState.data.length / 20) || 1;
+          const totalPages = Math.ceil(currentState.total / 20) || 1;
+          if (currentPage < totalPages) {
+            const params = { page: currentPage + 1, limit: 20 };
+            if (activeTab === 'active') loadActivePolls(params);
+            if (activeTab === 'closed') loadClosedPolls(params);
+            if (activeTab === 'my') loadMyPolls(params);
+          }
+        }}
         refreshing={currentState.loading}
-        emptyTitle="No Polls Found"
-        emptySubtitle="There are currently no community polls in this category."
+        emptyIcon="BarChart2"
+        emptyTitle={`No ${activeTab === 'my' ? 'Polls Created' : activeTab === 'closed' ? 'Closed Polls' : 'Active Polls'}`}
+        emptySubtitle={activeTab === 'active' ? 'There are no active polls requiring your vote right now.' : activeTab === 'closed' ? 'There are no past polls to review.' : 'You haven\'t created any polls yet.'}
+        contentContainerClassName="p-4"
+        pagination={{
+          currentPage: Math.ceil(currentState.data.length / 20) || 1,
+          totalPages: Math.ceil(currentState.total / 20) || 1,
+          totalRecords: currentState.total,
+          limit: 20,
+        }}
       />
     </ScreenShell>
   );

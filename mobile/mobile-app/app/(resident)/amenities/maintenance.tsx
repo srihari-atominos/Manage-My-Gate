@@ -51,7 +51,6 @@ export default function AmenityMaintenanceScheduleScreen() {
         <ListCard
           title={`${item.amenityName || 'Facility'} • ${item.title}`}
           subtitle={`Schedule: ${formattedDates} • Staff: ${item.assignedStaff || 'Unassigned'}`}
-          backgroundImage={imageUrl}
           leftIcon="Wrench"
           leftIconBgColor={imageUrl ? 'rgba(255,255,255,0.2)' : '#fef3c7'}
           leftIconColor={imageUrl ? '#ffffff' : '#d97706'}
