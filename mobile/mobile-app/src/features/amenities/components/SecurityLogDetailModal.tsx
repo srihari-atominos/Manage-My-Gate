@@ -97,8 +97,8 @@ export function SecurityLogDetailModal({ visible, onClose, onDelete, log }: Secu
           <Button 
             variant="destructive" 
             onPress={() => {
-              if (log._id || log.id) {
-                onDelete(log._id || log.id as string);
+              if (log._id) {
+                onDelete(log._id);
                 onClose();
               }
             }} 

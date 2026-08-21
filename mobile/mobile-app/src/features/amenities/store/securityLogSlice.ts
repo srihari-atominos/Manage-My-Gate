@@ -128,7 +128,7 @@ const securityLogSlice = createSlice({
       }
     },
     deleteLogRealTime: (state, action: PayloadAction<string>) => {
-      state.logs = state.logs.filter((log) => (log._id || log.id) !== action.payload);
+      state.logs = state.logs.filter((log) => log._id !== action.payload);
     },
     clearFilters: (state) => {
       state.filters = {
@@ -175,7 +175,7 @@ const securityLogSlice = createSlice({
       })
       .addCase(deleteSecurityLogThunk.fulfilled, (state, action) => {
         const idToRemove = action.payload;
-        state.logs = state.logs.filter((log) => (log._id || log.id) !== idToRemove);
+        state.logs = state.logs.filter((log) => log._id !== idToRemove);
         state.pagination.total -= 1;
       });
   },
