@@ -4,13 +4,42 @@ import CIcon from '@coreui/icons-react'
 import { cilCalendar, cilPeople, cilTrash, cilShareAlt, cilCheckCircle } from '@coreui/icons'
 import { useAuth } from '../../auth/hooks/useAuth'
 import dayjs from 'dayjs'
+import toast from 'react-hot-toast'
 import PollVotersModal from './PollVotersModal'
+import PollConfirmDialog from './PollConfirmDialog'
 
-const PollCard = ({ poll, onVote, onDelete, onPublish, onClosePoll }) => {
+const PollCard = ({ poll, onVote, onDelete, onPublish, onClosePoll, onReopenPoll }) => {
   const { currentUser: user, checkPermission } = useAuth()
   const [isVoting, setIsVoting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [confirmAction, setConfirmAction] = useState(null) // 'publish', 'close', 'reopen', 'delete'
+  const [actionLoading, setActionLoading] = useState(false)
   const [showVoters, setShowVoters] = useState(false)
+
+  const handleConfirmAction = async () => {
+    setActionLoading(true)
+    try {
+      if (confirmAction === 'publish') {
+        await onPublish(poll._id)
+        toast.success('Poll published successfully')
+      } else if (confirmAction === 'close') {
+        await onClosePoll(poll._id)
+        toast.success('Poll closed successfully')
+      } else if (confirmAction === 'reopen') {
+        await onReopenPoll(poll._id)
+        toast.success('Poll reopened successfully')
+      } else if (confirmAction === 'delete') {
+        await onDelete(poll._id)
+        toast.success('Poll deleted successfully')
+      }
+    } catch (err) {
+      toast.error(err?.message || `Failed to ${confirmAction} poll`)
+    } finally {
+      setActionLoading(false)
+      setConfirmAction(null)
+    }
+  }
 
   const hasVoted = poll.hasVoted || false
   const votedOptionIndex = poll.votedOptionIndex
@@ -21,7 +50,7 @@ const PollCard = ({ poll, onVote, onDelete, onPublish, onClosePoll }) => {
   const isCreator = userIdStr === creatorIdStr && userIdStr !== ''
 
   const canDelete = isAdmin || isCreator
-  const canManage = isCreator
+  const canManage = isAdmin || isCreator
 
   const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votesCount, 0)
 
@@ -190,23 +219,18 @@ const PollCard = ({ poll, onVote, onDelete, onPublish, onClosePoll }) => {
           </div>
 
           {/* Action buttons — matches NoticeCard button sizing */}
-          <div className="d-flex align-items-center gap-1 ms-auto flex-wrap">
             {canManage && poll.status === 'Draft' && (
               <CButton
                 color="success"
                 variant="outline"
                 size="sm"
                 className="fw-semibold px-2"
-                onClick={() => {
-                  if (window.confirm('Are you sure you want to publish this poll?')) {
-                    onPublish(poll._id)
-                  }
-                }}
+                onClick={() => setConfirmAction('publish')}
+                disabled={actionLoading}
                 aria-label="Publish poll"
                 style={{ fontSize: '11.5px', padding: '2px 8px' }}
               >
-                <CIcon icon={cilShareAlt} size="sm" className="me-1 align-middle" />
-                Publish
+                {actionLoading && confirmAction === 'publish' ? <CSpinner size="sm" /> : <><CIcon icon={cilShareAlt} size="sm" className="me-1 align-middle" /> Publish</>}
               </CButton>
             )}
 
@@ -216,16 +240,27 @@ const PollCard = ({ poll, onVote, onDelete, onPublish, onClosePoll }) => {
                 variant="outline"
                 size="sm"
                 className="fw-semibold px-2"
-                onClick={() => {
-                  if (window.confirm('Are you sure you want to close this poll?')) {
-                    onClosePoll(poll._id)
-                  }
-                }}
+                onClick={() => setConfirmAction('close')}
+                disabled={actionLoading}
                 aria-label="Close poll"
                 style={{ fontSize: '11.5px', padding: '2px 8px' }}
               >
-                <CIcon icon={cilCheckCircle} size="sm" className="me-1 align-middle" />
-                Close
+                {actionLoading && confirmAction === 'close' ? <CSpinner size="sm" /> : <><CIcon icon={cilCheckCircle} size="sm" className="me-1 align-middle" /> Close</>}
+              </CButton>
+            )}
+
+            {canManage && poll.status === 'Closed' && onReopenPoll && (
+              <CButton
+                color="info"
+                variant="outline"
+                size="sm"
+                className="fw-semibold px-2"
+                onClick={() => setConfirmAction('reopen')}
+                disabled={actionLoading}
+                aria-label="Reopen poll"
+                style={{ fontSize: '11.5px', padding: '2px 8px' }}
+              >
+                {actionLoading && confirmAction === 'reopen' ? <CSpinner size="sm" /> : <><CIcon icon={cilCheckCircle} size="sm" className="me-1 align-middle" /> Reopen</>}
               </CButton>
             )}
 
@@ -235,12 +270,12 @@ const PollCard = ({ poll, onVote, onDelete, onPublish, onClosePoll }) => {
                 variant="outline"
                 size="sm"
                 className="fw-semibold px-2"
-                onClick={handleDelete}
-                disabled={isDeleting}
+                onClick={() => setConfirmAction('delete')}
+                disabled={actionLoading}
                 aria-label="Delete poll"
                 style={{ fontSize: '11.5px', padding: '2px 8px' }}
               >
-                {isDeleting ? (
+                {actionLoading && confirmAction === 'delete' ? (
                   <CSpinner size="sm" />
                 ) : (
                   <>
@@ -250,23 +285,32 @@ const PollCard = ({ poll, onVote, onDelete, onPublish, onClosePoll }) => {
               </CButton>
             )}
 
-            <CButton
-              color="primary"
-              variant="outline"
-              size="sm"
-              className="fw-semibold px-2 btn-read-more"
-              onClick={() => setShowVoters(true)}
-              aria-label="View Voters"
-              style={{ fontSize: '11.5px', padding: '2px 8px' }}
-            >
-              <CIcon icon={cilPeople} size="sm" className="me-1 align-middle" />
-              Voters
-            </CButton>
+            {isAdmin && (
+              <CButton
+                color="secondary"
+                variant="outline"
+                size="sm"
+                className="fw-semibold px-2 btn-read-more"
+                onClick={() => setShowVoters(true)}
+                aria-label="View Voters"
+                style={{ fontSize: '11.5px', padding: '2px 8px' }}
+              >
+                <CIcon icon={cilPeople} size="sm" className="me-1 align-middle" />
+                Voters
+              </CButton>
+            )}
           </div>
         </div>
       </CCardBody>
 
       <PollVotersModal visible={showVoters} onClose={() => setShowVoters(false)} poll={poll} />
+      <PollConfirmDialog 
+        visible={!!confirmAction} 
+        actionType={confirmAction || ''}
+        loading={actionLoading}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={handleConfirmAction}
+      />
     </CCard>
   )
 }

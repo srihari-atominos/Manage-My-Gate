@@ -174,7 +174,7 @@ export default function AdminAmenityMasterScreen() {
         confirmLabel="Deactivate & Cancel Bookings"
         cancelLabel="Keep Active"
         onConfirm={handleConfirmDeactivate}
-        onCancel={() => setDeactivateTarget(null)}
+        onCancel={() => setDeleteTarget(null)}
       />
 
       {/* Delete Confirmation Modal */}

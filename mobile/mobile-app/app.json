@@ -17,7 +17,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.naveenpvn.managemygate"
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +38,19 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "20145594-5bc2-4f26-be5b-75a575444e78"
+      }
+    },
+    "owner": "naveenpvn",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/20145594-5bc2-4f26-be5b-75a575444e78"
     }
   }
 }

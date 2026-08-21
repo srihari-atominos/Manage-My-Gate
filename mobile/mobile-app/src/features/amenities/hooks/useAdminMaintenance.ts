@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store/store';
 import {
@@ -8,6 +9,7 @@ import {
   updateMaintenanceTaskThunk,
   deleteMaintenanceTaskThunk,
   updateAmenityStatusThunk,
+  createAmenityThunk,
   Amenity,
   MaintenanceTask,
 } from '../store/amenitySlice';
@@ -72,14 +74,42 @@ export function useAdminMaintenance() {
         })
       );
     } else {
+      let finalAmenityId = amenityId;
+      if (amenityId === 'OTHER' && formData.customAmenityName) {
+        // Create the custom amenity first
+        const createResult: any = await dispatch(
+          createAmenityThunk({
+            name: formData.customAmenityName,
+            category: 'General',
+            type: 'General',
+            capacity: 10,
+            maxBookingsPerUserPerSlot: 10,
+            bookingRules: {
+              slotDurationMinutes: 60,
+              openTime: '00:00',
+              closeTime: '23:59',
+              advanceBookingDays: 30,
+            },
+            status: 'active',
+          })
+        );
+        if (createResult.payload?._id || createResult.payload?.data?._id) {
+          finalAmenityId = createResult.payload._id || createResult.payload.data._id;
+        } else {
+          setScheduling(false);
+          Alert.alert('Error', 'Failed to create custom amenity');
+          return;
+        }
+      }
+
       await dispatch(
         scheduleMaintenanceThunk({
-          id: amenityId,
+          id: finalAmenityId,
           payload,
         })
       );
       await dispatch(
-        updateAmenityStatusThunk({ id: amenityId, status: 'MAINTENANCE' })
+        updateAmenityStatusThunk({ id: finalAmenityId, status: 'MAINTENANCE' })
       );
     }
 

@@ -25,6 +25,7 @@ export default function AmenitySecurityLogsScreen() {
     handleFilterChange,
     handlePageChange,
     handleClearFilters,
+    handleDeleteLog,
   } = useSecurityLogs();
 
   const [selectedLog, setSelectedLog] = useState<SecurityLog | null>(null);
@@ -164,6 +165,7 @@ export default function AmenitySecurityLogsScreen() {
       <SecurityLogDetailModal
         visible={!!selectedLog}
         onClose={() => setSelectedLog(null)}
+        onDelete={handleDeleteLog}
         log={selectedLog}
       />
     </ScreenShell>

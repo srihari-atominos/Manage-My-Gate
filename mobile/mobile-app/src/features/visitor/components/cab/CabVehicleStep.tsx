@@ -85,8 +85,9 @@ export const CabVehicleStep: React.FC<CabVehicleStepProps> = ({
         {/* Driver Phone Number */}
         <Input
           label="Driver Contact Phone (Optional)"
-          placeholder="+91 98765 43210"
+          placeholder="9876543210"
           keyboardType="phone-pad"
+          maxLength={10}
           value={data.driverPhone || ''}
           onChangeText={(val) => onChange({ ...data, driverPhone: val })}
         />

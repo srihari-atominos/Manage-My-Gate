@@ -241,14 +241,7 @@ apiClient.interceptors.response.use(
     }
 
     if (error.response?.status === 400 && error.response?.data?.message === 'Workspace context is required.') {
-      console.warn('Workspace context lost. Forcing auto-logout to recover corrupted local state.');
-      if (store) {
-        try {
-          store.dispatch({ type: 'auth/logout' });
-        } catch (dispatchErr) {
-          console.error('Failed to trigger mobile auto-logout on 400 Bad Request', dispatchErr);
-        }
-      }
+      console.warn('[ApiClient] Workspace context missing on request. Preserving session.');
     }
 
     if (error.response?.data?.message) {

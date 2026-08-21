@@ -20,8 +20,8 @@ describe('VisitorPassCard UI Component', () => {
     jest.clearAllMocks();
   });
 
-  it('renders visitor pass card with visitor name and details correctly', () => {
-    const { getByText } = render(
+  it('renders visitor pass card with visitor name and details correctly', async () => {
+    const { getByText } = await render(
       <VisitorPassCard
         pass={mockPass}
         onPress={mockOnPress}
@@ -37,8 +37,8 @@ describe('VisitorPassCard UI Component', () => {
     expect(getByText('Pass Code')).toBeTruthy();
   });
 
-  it('triggers onPress callback when card is pressed', () => {
-    const { getByText } = render(
+  it('triggers onPress callback when card is pressed', async () => {
+    const { getByText } = await render(
       <VisitorPassCard
         pass={mockPass}
         onPress={mockOnPress}
@@ -50,8 +50,8 @@ describe('VisitorPassCard UI Component', () => {
     expect(mockOnPress).toHaveBeenCalledWith(mockPass);
   });
 
-  it('triggers onShowQR callback when Pass Code button is pressed', () => {
-    const { getByText } = render(
+  it('triggers onShowQR callback when Pass Code button is pressed', async () => {
+    const { getByText } = await render(
       <VisitorPassCard
         pass={mockPass}
         onPress={mockOnPress}

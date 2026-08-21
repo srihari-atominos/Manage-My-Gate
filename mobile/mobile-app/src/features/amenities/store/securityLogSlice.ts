@@ -5,6 +5,7 @@ import {
   SecurityLog,
   SecurityDashboardStats,
   SecurityLogFilterParams,
+  deleteSecurityLog,
 } from '../services/securityLogApi';
 
 export interface SecurityLogState {
@@ -83,6 +84,20 @@ export const fetchDashboardStatsThunk = createAsyncThunk(
   }
 );
 
+export const deleteSecurityLogThunk = createAsyncThunk(
+  'securityLog/deleteLog',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await deleteSecurityLog(id);
+      return id;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to delete security log'
+      );
+    }
+  }
+);
+
 const securityLogSlice = createSlice({
   name: 'securityLog',
   initialState,
@@ -111,6 +126,9 @@ const securityLogSlice = createSlice({
           state.dashboard[key] += 1;
         }
       }
+    },
+    deleteLogRealTime: (state, action: PayloadAction<string>) => {
+      state.logs = state.logs.filter((log) => log._id !== action.payload);
     },
     clearFilters: (state) => {
       state.filters = {
@@ -154,9 +172,14 @@ const securityLogSlice = createSlice({
         if (action.payload) {
           state.dashboard = { ...state.dashboard, ...action.payload };
         }
+      })
+      .addCase(deleteSecurityLogThunk.fulfilled, (state, action) => {
+        const idToRemove = action.payload;
+        state.logs = state.logs.filter((log) => log._id !== idToRemove);
+        state.pagination.total -= 1;
       });
   },
 });
 
-export const { setFilters, setPage, addLogRealTime, clearFilters } = securityLogSlice.actions;
+export const { setFilters, setPage, addLogRealTime, deleteLogRealTime, clearFilters } = securityLogSlice.actions;
 export default securityLogSlice.reducer;

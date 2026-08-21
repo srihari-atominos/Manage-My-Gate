@@ -18,7 +18,7 @@ import { GuestPassReviewStep } from '../guest/GuestPassReviewStep';
 
 import { GroupVisitDetailsStep, GroupVisitDetailsData } from '../group/GroupVisitDetailsStep';
 import { GroupScheduleStep } from '../group/GroupScheduleStep';
-import { GroupGuestItem } from '../group/AddGroupGuestsStep';
+import { AddGroupGuestsStep, GroupGuestItem } from '../group/AddGroupGuestsStep';
 import { GroupPassReviewStep } from '../group/GroupPassReviewStep';
 
 import { CabProviderStep } from '../cab/CabProviderStep';
@@ -48,6 +48,7 @@ const STEP_DEFINITIONS: Record<PassTypeKey, { key: string; title: string }[]> = 
   GROUP: [
     { key: 'event', title: 'Event Details' },
     { key: 'schedule', title: 'Event Schedule' },
+    { key: 'guests', title: 'Add Guests' },
     { key: 'review', title: 'Review Group Pass' },
   ],
   CAB: [
@@ -152,17 +153,53 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
 
   const handleNext = () => {
     setSubmitError(null);
-    if (selectedPassType === 'GUEST' && currentStepIndex === 0 && !guestDetails.visitorName.trim()) {
-      setSubmitError('Please enter visitor name');
-      return;
+
+    const validatePhone = (phone?: string) => {
+      if (!phone || !phone.trim()) return true;
+      const digits = phone.replace(/\D/g, '');
+      return digits.length === 10;
+    };
+
+    if (selectedPassType === 'GUEST' && currentStepIndex === 0) {
+      if (!guestDetails.visitorName.trim()) {
+        setSubmitError('Please enter visitor name');
+        return;
+      }
+      if (!validatePhone(guestDetails.phone)) {
+        setSubmitError('Contact number must be exactly 10 digits');
+        return;
+      }
     }
+    
     if (selectedPassType === 'GROUP' && currentStepIndex === 0 && !groupDetails.eventTitle.trim()) {
       setSubmitError('Please enter event title');
       return;
     }
-    if (selectedPassType === 'SERVICE' && currentStepIndex === 0 && !staffDetails.staffName.trim()) {
-      setSubmitError('Please enter staff name');
-      return;
+    
+    if (selectedPassType === 'CAB' && currentStepIndex === 1) {
+      if (!validatePhone(cabVehicle.driverPhone)) {
+        setSubmitError('Driver contact number must be exactly 10 digits');
+        return;
+      }
+    }
+
+    if (selectedPassType === 'SERVICE' && currentStepIndex === 0) {
+      if (!staffDetails.staffName.trim()) {
+        setSubmitError('Please enter staff name');
+        return;
+      }
+      if (!validatePhone(staffDetails.phone)) {
+        setSubmitError('Staff contact number must be exactly 10 digits');
+        return;
+      }
+    }
+    
+    // BUG-005 Fix: Validate Service Date Range (Step 2)
+    if (selectedPassType === 'SERVICE' && currentStepIndex === 2) {
+      if (serviceDateRange.startDate && serviceDateRange.endDate && serviceDateRange.startDate > serviceDateRange.endDate) {
+        setSubmitError('Pass start date cannot be after end date.');
+        return;
+      }
     }
 
     if (isLastStep) {
@@ -195,6 +232,12 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
 
       const payload = mapFormToApiPayloadStrategy(selectedPassType, formData, roleContext);
       const res = await onSubmitPass(payload);
+      
+      // Check if it's a Redux rejection
+      if (res?.meta?.requestStatus === 'rejected') {
+        throw new Error(res.payload || 'Backend validation failed');
+      }
+      
       const createdPass = res?.payload?.data || res?.payload || res;
 
       const code = createdPass?.code || 'PASS-' + Math.floor(100000 + Math.random() * 900000);
@@ -203,8 +246,10 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
         code,
         visitorName: createdPass?.visitorDetails?.name || guestDetails.visitorName || 'Visitor',
         passType: selectedPassType,
-        validFrom: new Date().toISOString(),
-        validUntil: new Date(Date.now() + 86400000).toISOString(),
+        provider: createdPass?.vehicleDetails?.vendor || createdPass?.deliveryDetails?.partner,
+        vehicleNo: createdPass?.vehicleDetails?.number,
+        validFrom: createdPass?.validity?.startDate || new Date().toISOString(),
+        validUntil: createdPass?.validity?.endDate || new Date(Date.now() + 86400000).toISOString(),
       });
     } catch (err: any) {
       setSubmitError(err?.message || 'Failed to create pass. Please try again.');
@@ -265,7 +310,8 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
           <>
             {currentStepIndex === 0 && <GroupVisitDetailsStep data={groupDetails} onChange={setGroupDetails} />}
             {currentStepIndex === 1 && <GroupScheduleStep data={groupDetails} onChange={setGroupDetails} />}
-            {currentStepIndex === 2 && (
+            {currentStepIndex === 2 && <AddGroupGuestsStep guests={groupGuests} onAddGuest={(g) => setGroupGuests((prev) => [...prev, g])} />}
+            {currentStepIndex === 3 && (
               <GroupPassReviewStep
                 details={groupDetails}
                 guests={groupGuests}
@@ -291,6 +337,7 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
                 provider={cabProvider}
                 vehicle={cabVehicle}
                 schedule={cabSchedule}
+                customProviderName={customCabProvider}
               />
             )}
           </>

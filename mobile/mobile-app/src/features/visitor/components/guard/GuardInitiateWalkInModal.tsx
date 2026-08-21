@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, ScrollView } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,11 @@ export const GuardInitiateWalkInModal: React.FC<GuardInitiateWalkInModalProps> =
     }
     if (!phone.trim()) {
       setError('Please enter visitor phone number');
+      return;
+    }
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length !== 10) {
+      setError('Contact number must be exactly 10 digits');
       return;
     }
     if (!villaId && !residentId) {
@@ -134,8 +139,9 @@ export const GuardInitiateWalkInModal: React.FC<GuardInitiateWalkInModalProps> =
             required
             value={phone}
             onChangeText={setPhone}
-            placeholder="e.g. +91 9876543210"
+            placeholder="e.g. 9876543210"
             keyboardType="phone-pad"
+            maxLength={10}
           />
 
           {/* Vehicle Number */}

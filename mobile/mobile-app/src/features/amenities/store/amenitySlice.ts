@@ -79,6 +79,7 @@ export interface MaintenanceTask {
   endTime?: string;
   assignedStaff?: string;
   status?: string;
+  autoCancelBookings?: boolean;
   createdAt?: string;
 }
 
@@ -280,6 +281,17 @@ const amenitySlice = createSlice({
     clearAmenityError: (state) => {
       state.error = null;
     },
+    upsertAmenity: (state, action: PayloadAction<Amenity>) => {
+      const index = state.amenities.findIndex((a) => a._id === action.payload._id);
+      if (index !== -1) {
+        state.amenities[index] = action.payload;
+      } else {
+        state.amenities.unshift(action.payload);
+      }
+    },
+    removeAmenity: (state, action: PayloadAction<string>) => {
+      state.amenities = state.amenities.filter((a) => a._id !== action.payload);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -372,6 +384,8 @@ export const {
   setSearchQuery,
   clearSelectedAmenity,
   clearAmenityError,
+  upsertAmenity,
+  removeAmenity,
 } = amenitySlice.actions;
 
 export default amenitySlice.reducer;

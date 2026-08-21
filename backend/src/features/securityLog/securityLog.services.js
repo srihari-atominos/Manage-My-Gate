@@ -63,6 +63,25 @@ class SecurityLogService {
   async getDashboardStats(orgId) {
     return await securityLogRepository.getDashboardStats(orgId);
   }
+
+  async deleteLog(logId, orgId) {
+    const deletedLog = await securityLogRepository.deleteLog(logId, orgId);
+    
+    if (deletedLog) {
+      try {
+        const io = getIO();
+        if (io && orgId) {
+          const room = `org:${orgId.toString()}`;
+          const { SECURITY_LOG_DELETED } = await import('./securityLog.events.js');
+          io.to(room).emit(SECURITY_LOG_DELETED, { id: logId });
+        }
+      } catch (socketErr) {
+        // Socket error
+      }
+    }
+    
+    return deletedLog;
+  }
 }
 
 export default new SecurityLogService();

@@ -298,6 +298,27 @@ const amenityBookingSlice = createSlice({
       state.isOCCError = false;
       state.occErrorMessage = null;
     },
+    upsertBooking: (state, action: PayloadAction<AmenityBooking>) => {
+      // Update or add in adminBookings
+      const adminIndex = state.adminBookings.findIndex((b) => b._id === action.payload._id);
+      if (adminIndex !== -1) {
+        state.adminBookings[adminIndex] = action.payload;
+      } else {
+        state.adminBookings.unshift(action.payload);
+      }
+      
+      // Update or add in myBookings
+      const myIndex = state.myBookings.findIndex((b) => b._id === action.payload._id);
+      if (myIndex !== -1) {
+        state.myBookings[myIndex] = action.payload;
+      } else {
+        state.myBookings.unshift(action.payload);
+      }
+    },
+    removeBooking: (state, action: PayloadAction<string>) => {
+      state.adminBookings = state.adminBookings.filter((b) => b._id !== action.payload);
+      state.myBookings = state.myBookings.filter((b) => b._id !== action.payload);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -495,6 +516,8 @@ export const {
   setActivePass,
   clearCheckInResult,
   clearBookingStatus,
+  upsertBooking,
+  removeBooking,
 } = amenityBookingSlice.actions;
 
 export default amenityBookingSlice.reducer;

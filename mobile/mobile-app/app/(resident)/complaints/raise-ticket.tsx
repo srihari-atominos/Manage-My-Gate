@@ -1,6 +1,12 @@
 import React from 'react';
-import { RaiseTicketForm } from '@/src/features/complaints/components';
+import { Stack } from 'expo-router';
+import ResidentRaiseTicketScreen from '@/src/features/complaints/screens/ResidentRaiseTicketScreen';
 
-export default function RaiseTicketScreen() {
-  return <RaiseTicketForm />;
+export default function RaiseTicketRoute() {
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ResidentRaiseTicketScreen />
+    </>
+  );
 }

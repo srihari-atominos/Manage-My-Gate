@@ -497,17 +497,30 @@ class ComplaintService {
 
   async acceptAssignment(id, orgId, userId, userName, userRole, metaData = {}) {
     const complaint = await this.getComplaintById(id, orgId);
+    if (!complaint) throw new HttpError(404, 'Complaint not found');
+
+    // Prevent duplicate timeline entries if assignment has already been accepted or is in progress
+    if (['Accepted', 'In Progress', 'On Hold', 'Paused', 'Resolved', 'Closed', 'Completed'].includes(complaint.status)) {
+      return complaint;
+    }
     
     if (complaint.isBroadcast) {
       if (complaint.assignedTechnicianId) {
         throw new HttpError(400, 'This complaint has already been accepted by another technician.');
       }
       const uidStr = userId ? userId.toString() : '';
-      if (!complaint.broadcastTechnicianIds.some(id => id && id.toString() === uidStr)) {
+      const isAdminOrStaff = ['Admin', 'Facility Manager', 'Staff', 'Technician'].includes(userRole);
+      if (!isAdminOrStaff && !complaint.broadcastTechnicianIds.some(id => id && id.toString() === uidStr)) {
         throw new HttpError(403, 'You were not offered this assignment.');
       }
     } else {
-      if (String(complaint.assignedTechnicianId) !== String(userId)) {
+      const isUnassigned = !complaint.assignedTechnicianId;
+      const isAdminOrStaff = ['Admin', 'Facility Manager', 'Staff', 'Technician', 'Employee'].includes(userRole);
+      const assignedTechIdStr = typeof complaint.assignedTechnicianId === 'object' && complaint.assignedTechnicianId !== null
+        ? String(complaint.assignedTechnicianId._id || complaint.assignedTechnicianId.id || '')
+        : String(complaint.assignedTechnicianId || '');
+
+      if (!isUnassigned && assignedTechIdStr !== String(userId) && !isAdminOrStaff) {
         throw new HttpError(403, 'You are not assigned to this complaint');
       }
     }
@@ -530,13 +543,13 @@ class ComplaintService {
       }
     } else {
       const updateFields = {
-        status: 'Assigned',
+        status: 'Accepted',
         assignedTechnicianId: userId,
         assignedTechnicianName: userName,
         isBroadcast: false,
         broadcastTechnicianIds: [],
         $push: { 
-          statusHistory: { status: 'Assigned', timestamp: new Date() },
+          statusHistory: { status: 'Accepted', timestamp: new Date() },
           timeline: timelineEvent 
         }
       };
@@ -566,7 +579,11 @@ class ComplaintService {
   async rejectAssignment(id, orgId, userId, userName, userRole, reason, metaData = {}) {
     const complaint = await this.getComplaintById(id, orgId);
     
-    const isDirectAssignee = complaint.assignedTechnicianId && String(complaint.assignedTechnicianId) === String(userId);
+    const assignedTechIdStr = typeof complaint.assignedTechnicianId === 'object' && complaint.assignedTechnicianId !== null
+      ? String(complaint.assignedTechnicianId._id || complaint.assignedTechnicianId.id || '')
+      : String(complaint.assignedTechnicianId || '');
+
+    const isDirectAssignee = complaint.assignedTechnicianId && assignedTechIdStr === String(userId);
     const isBroadcastAssignee = complaint.isBroadcast && complaint.broadcastTechnicianIds && complaint.broadcastTechnicianIds.some(tid => String(tid) === String(userId));
 
     if (!isDirectAssignee && !isBroadcastAssignee) {

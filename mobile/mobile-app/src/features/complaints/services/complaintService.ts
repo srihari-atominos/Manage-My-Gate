@@ -1,4 +1,5 @@
 import apiClient from '../../../services/apiClient';
+import { AssignTechnicianPayload } from '../types';
 
 const BASE_URL = '/complaints';
 
@@ -23,12 +24,12 @@ export const complaintService = {
     });
   },
 
-  updateStatus: async (id: string, data: any) => {
-    return await apiClient.put(`${BASE_URL}/${id}/status`, data);
+  assignTechnician: async (id: string, data: AssignTechnicianPayload | { technicianId?: string; vendor?: string; notes?: string; isBroadcast?: boolean }) => {
+    return await apiClient.put(`${BASE_URL}/${id}/assign`, data);
   },
 
-  assignTechnician: async (id: string, data: { technicianId?: string; vendor?: string; notes?: string; isBroadcast?: boolean }) => {
-    return await apiClient.put(`${BASE_URL}/${id}/assign`, data);
+  updateStatus: async (id: string, data: any) => {
+    return await apiClient.put(`${BASE_URL}/${id}/status`, data);
   },
 
   addComment: async (id: string, data: any) => {
@@ -39,16 +40,12 @@ export const complaintService = {
     return await apiClient.post(`${BASE_URL}/${id}/feedback`, data);
   },
 
-  delete: async (id: string) => {
-    return await apiClient.delete(`${BASE_URL}/${id}`);
-  },
-
   acceptAssignment: async (id: string) => {
     return await apiClient.post(`${BASE_URL}/${id}/accept`);
   },
 
   rejectAssignment: async (id: string, reason?: string) => {
-    return await apiClient.post(`${BASE_URL}/${id}/reject`, { reason });
+    return await apiClient.post(`${BASE_URL}/${id}/reject`, { reason: reason || '' });
   },
 
   startWork: async (id: string) => {
@@ -56,7 +53,7 @@ export const complaintService = {
   },
 
   pauseWork: async (id: string, reason?: string) => {
-    return await apiClient.post(`${BASE_URL}/${id}/pause-work`, { reason });
+    return await apiClient.post(`${BASE_URL}/${id}/pause-work`, { reason: reason || '' });
   },
 
   resumeWork: async (id: string) => {
@@ -64,23 +61,34 @@ export const complaintService = {
   },
 
   markWorkCompleted: async (id: string, payload?: any) => {
-    return await apiClient.post(`${BASE_URL}/${id}/mark-completed`, payload);
+    return await apiClient.post(`${BASE_URL}/${id}/mark-completed`, payload || {});
   },
 
-  uploadWorkAttachments: async (id: string, formData: any) => {
-    return await apiClient.post(`${BASE_URL}/${id}/upload-work`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+  uploadWorkAttachments: async (id: string, data: any) => {
+    if (data instanceof FormData) {
+      return await apiClient.post(`${BASE_URL}/${id}/upload-work`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    return await apiClient.post(`${BASE_URL}/${id}/upload-work`, Array.isArray(data) ? { attachments: data } : data);
   },
 
   addWorkNotes: async (id: string, notes: string) => {
     return await apiClient.post(`${BASE_URL}/${id}/work-notes`, { notes });
   },
 
-  confirmCompletion: async (id: string, payload: any) => {
-    return await apiClient.post(`${BASE_URL}/${id}/confirm`, payload);
+  confirmCompletion: async (id: string, payload?: any) => {
+    return await apiClient.post(`${BASE_URL}/${id}/confirm`, payload || {});
+  },
+
+  getDashboardAnalytics: async (params?: any) => {
+    return await apiClient.get(`${BASE_URL}/dashboard/analytics`, { params });
+  },
+
+  delete: async (id: string) => {
+    return await apiClient.delete(`${BASE_URL}/${id}`);
   },
 
   getTechnicians: async (params?: any) => {

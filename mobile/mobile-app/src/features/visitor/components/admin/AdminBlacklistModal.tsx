@@ -33,6 +33,14 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
       setError('Please specify reason for blacklisting');
       return;
     }
+    
+    if (phone && phone.trim()) {
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length !== 10) {
+        setError('Contact number must be exactly 10 digits');
+        return;
+      }
+    }
 
     setError(null);
     try {
@@ -82,8 +90,9 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
               label="Phone Number"
               value={phone}
               onChangeText={setPhone}
-              placeholder="e.g. +91 9876543210"
+              placeholder="e.g. 9876543210"
               keyboardType="phone-pad"
+              maxLength={10}
             />
 
             <TextInput

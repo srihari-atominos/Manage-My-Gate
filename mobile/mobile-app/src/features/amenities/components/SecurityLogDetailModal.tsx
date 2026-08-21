@@ -10,10 +10,11 @@ import { SecurityLog } from '../services/securityLogApi';
 export interface SecurityLogDetailModalProps {
   visible: boolean;
   onClose: () => void;
+  onDelete?: (id: string) => void;
   log: SecurityLog | null;
 }
 
-export function SecurityLogDetailModal({ visible, onClose, log }: SecurityLogDetailModalProps) {
+export function SecurityLogDetailModal({ visible, onClose, onDelete, log }: SecurityLogDetailModalProps) {
   if (!visible || !log) return null;
 
   const isDenied = log.status === 'Denied' || log.scanType === 'Denied';
@@ -88,9 +89,24 @@ export function SecurityLogDetailModal({ visible, onClose, log }: SecurityLogDet
           <DetailRow label="Timestamp" value={scanTimeFormatted} iconName="Clock" isLast={true} />
         </View>
 
-        <Button variant="outline" onPress={onClose} className="w-full">
+        <Button variant="outline" onPress={onClose} className="w-full mb-3">
           <Text className="font-semibold text-sm">Close Audit Log</Text>
         </Button>
+
+        {onDelete && (
+          <Button 
+            variant="destructive" 
+            onPress={() => {
+              if (log._id) {
+                onDelete(log._id);
+                onClose();
+              }
+            }} 
+            className="w-full"
+          >
+            <Text className="font-semibold text-sm text-white">Delete Log</Text>
+          </Button>
+        )}
       </View>
     </BottomSheet>
   );

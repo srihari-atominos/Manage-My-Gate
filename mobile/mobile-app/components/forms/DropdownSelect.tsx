@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Modal, FlatList, ScrollView, Platform } from 'react-native';
+import { View, Text, Pressable, Modal, FlatList, ScrollView } from 'react-native';
 import { ChevronDown, Check } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 
@@ -17,6 +17,7 @@ export interface DropdownSelectProps {
   error?: string;
   className?: string;
   inline?: boolean;
+  accordion?: boolean;
 }
 
 export const DropdownSelect = ({
@@ -28,6 +29,7 @@ export const DropdownSelect = ({
   error,
   className,
   inline = false,
+  accordion = false,
 }: DropdownSelectProps) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -35,7 +37,7 @@ export const DropdownSelect = ({
   const selectedOption = options.find((opt) => opt.value === value);
 
   const handlePress = () => {
-    if (inline) {
+    if (inline || accordion) {
       setIsOpen(!isOpen);
     } else {
       setModalVisible(true);
@@ -44,8 +46,8 @@ export const DropdownSelect = ({
 
   return (
     <View 
-      className={cn('w-full relative', className)}
-      style={inline && isOpen ? { zIndex: 1000 } : undefined}
+      className={cn('w-full', !accordion && 'relative', className)}
+      style={(inline || accordion) && isOpen && !accordion ? { zIndex: 1000 } : undefined}
     >
       {Boolean(label) && (
         <Text className="mb-1.5 text-sm font-medium text-foreground">
@@ -77,14 +79,17 @@ export const DropdownSelect = ({
         </Text>
       )}
 
-      {/* Inline Dropdown List overlay */}
-      {inline && isOpen && (
+      {/* Inline/Accordion Dropdown List overlay */}
+      {(inline || accordion) && isOpen && (
         <View 
-          className="absolute left-0 right-0 z-[1000] bg-card border border-border rounded-xl shadow-lg mt-1 overflow-hidden"
+          className={cn(
+            'bg-card border border-border rounded-xl shadow-lg mt-1 overflow-hidden',
+            accordion ? 'relative' : 'absolute left-0 right-0 z-[1000]'
+          )}
           style={{ 
-            top: '100%', 
-            maxHeight: 200, 
-            elevation: 5,
+            top: accordion ? undefined : '100%', 
+            maxHeight: accordion ? 300 : 200, 
+            elevation: accordion ? 0 : 5,
           }}
         >
           <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
@@ -176,3 +181,5 @@ export const DropdownSelect = ({
     </View>
   );
 };
+
+export default DropdownSelect;

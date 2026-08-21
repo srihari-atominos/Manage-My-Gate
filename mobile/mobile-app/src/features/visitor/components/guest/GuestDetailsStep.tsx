@@ -53,8 +53,9 @@ export const GuestDetailsStep: React.FC<GuestDetailsStepProps> = ({
         {/* Phone Number */}
         <Input
           label="Phone Number (Optional)"
-          placeholder="+91 98765 43210"
+          placeholder="9876543210"
           keyboardType="phone-pad"
+          maxLength={10}
           leftIcon={<Phone size={18} className="text-muted-foreground" />}
           value={data.phone}
           onChangeText={(val) => updateField('phone', val)}

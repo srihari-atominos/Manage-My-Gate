@@ -1,24 +1,6 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import complaintService from '../services/complaintService';
-
-export interface ComplaintComment {
-  _id: string;
-  comment: string;
-  senderName: string;
-  createdAt: string;
-}
-
-export interface Complaint {
-  _id: string;
-  title: string;
-  description: string;
-  category: string;
-  status: 'Open' | 'Assigned' | 'In Progress' | 'Resolved' | 'Closed';
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
-  comments: ComplaintComment[];
-  attachments?: string[];
-  createdAt: string;
-}
+import { Complaint, ComplaintDashboardData, AssignTechnicianPayload } from '../types';
 
 interface ComplaintState {
   list: Complaint[];
@@ -29,6 +11,7 @@ interface ComplaintState {
     limit: number;
   };
   currentComplaint: Complaint | null;
+  dashboardAnalytics: ComplaintDashboardData | null;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
 }
@@ -42,8 +25,18 @@ const initialState: ComplaintState = {
     limit: 10,
   },
   currentComplaint: null,
+  dashboardAnalytics: null,
   status: 'idle',
   error: null,
+};
+
+// Helper for extracting API response data cleanly
+const extractData = (response: any) => {
+  if (!response) return null;
+  if (response.success !== undefined) {
+    return response.data !== undefined ? response.data : response;
+  }
+  return response.data || response;
 };
 
 // Thunks
@@ -52,8 +45,7 @@ export const fetchComplaints = createAsyncThunk(
   async (params: any, { rejectWithValue }) => {
     try {
       const response = await complaintService.getAll(params);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return (body?.data || body) as any;
+      return extractData(response);
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch complaints');
     }
@@ -65,8 +57,7 @@ export const fetchComplaintDetails = createAsyncThunk(
   async (id: string, { rejectWithValue }) => {
     try {
       const response = await complaintService.getById(id);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return (body?.data || body) as any;
+      return extractData(response);
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch complaint details');
     }
@@ -78,10 +69,105 @@ export const createComplaint = createAsyncThunk(
   async (data: any, { rejectWithValue }) => {
     try {
       const response = await complaintService.create(data);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return (body?.data || body) as any;
+      return extractData(response);
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to create complaint');
+    }
+  }
+);
+
+export const assignTechnician = createAsyncThunk(
+  'complaints/assignTechnician',
+  async ({ id, data }: { id: string; data: AssignTechnicianPayload }, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.assignTechnician(id, data);
+      return extractData(response);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to assign technician');
+    }
+  }
+);
+
+export const acceptAssignment = createAsyncThunk(
+  'complaints/acceptAssignment',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.acceptAssignment(id);
+      return extractData(response);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to accept assignment');
+    }
+  }
+);
+
+export const rejectAssignment = createAsyncThunk(
+  'complaints/rejectAssignment',
+  async ({ id, reason }: { id: string; reason: string }, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.rejectAssignment(id, reason);
+      return extractData(response);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to reject assignment');
+    }
+  }
+);
+
+export const startWork = createAsyncThunk(
+  'complaints/startWork',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.startWork(id);
+      return extractData(response);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to start work');
+    }
+  }
+);
+
+export const pauseWork = createAsyncThunk(
+  'complaints/pauseWork',
+  async ({ id, reason }: { id: string; reason: string }, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.pauseWork(id, reason);
+      return extractData(response);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to pause work');
+    }
+  }
+);
+
+export const resumeWork = createAsyncThunk(
+  'complaints/resumeWork',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.resumeWork(id);
+      return extractData(response);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to resume work');
+    }
+  }
+);
+
+export const markWorkCompleted = createAsyncThunk(
+  'complaints/markWorkCompleted',
+  async ({ id, data }: { id: string; data: { notes?: string; attachments?: string[] } }, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.markWorkCompleted(id, data);
+      return extractData(response);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to mark work as completed');
+    }
+  }
+);
+
+export const confirmCompletion = createAsyncThunk(
+  'complaints/confirmCompletion',
+  async ({ id, payload }: { id: string; payload?: any }, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.confirmCompletion(id, payload);
+      return extractData(response);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to confirm completion');
     }
   }
 );
@@ -91,8 +177,7 @@ export const addComplaintComment = createAsyncThunk(
   async ({ id, data }: { id: string; data: any }, { rejectWithValue }) => {
     try {
       const response = await complaintService.addComment(id, data);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return (body?.data || body) as any;
+      return extractData(response);
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to add comment');
     }
@@ -104,13 +189,50 @@ export const addFeedback = createAsyncThunk(
   async ({ id, data }: { id: string; data: any }, { rejectWithValue }) => {
     try {
       const response = await complaintService.addFeedback(id, data);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return (body?.data || body) as any;
+      return extractData(response);
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to submit feedback');
     }
   }
 );
+
+export const updateComplaintStatus = createAsyncThunk(
+  'complaints/updateStatus',
+  async ({ id, data }: { id: string; data: any }, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.updateStatus(id, data);
+      return extractData(response);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update complaint status');
+    }
+  }
+);
+
+export const fetchDashboardAnalytics = createAsyncThunk(
+  'complaints/fetchDashboardAnalytics',
+  async (params: any, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.getDashboardAnalytics(params);
+      return extractData(response);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch dashboard analytics');
+    }
+  }
+);
+
+// Helper function to update complaint in state list & current complaint
+const updateItemInState = (state: ComplaintState, item: any) => {
+  if (!item || !item._id) return;
+  const index = state.list.findIndex((c) => c._id === item._id);
+  if (index !== -1) {
+    state.list[index] = { ...state.list[index], ...item };
+  } else {
+    state.list.unshift(item);
+  }
+  if (state.currentComplaint && state.currentComplaint._id === item._id) {
+    state.currentComplaint = { ...state.currentComplaint, ...item };
+  }
+};
 
 export const complaintSlice = createSlice({
   name: 'complaints',
@@ -118,6 +240,9 @@ export const complaintSlice = createSlice({
   reducers: {
     clearComplaintErrors: (state) => {
       state.error = null;
+    },
+    updateComplaintInList: (state, action) => {
+      updateItemInState(state, action.payload);
     },
   },
   extraReducers: (builder) => {
@@ -129,8 +254,8 @@ export const complaintSlice = createSlice({
       })
       .addCase(fetchComplaints.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.list = action.payload.complaints || action.payload || [];
-        state.pagination = action.payload.pagination || state.pagination;
+        state.list = action.payload?.complaints || action.payload || [];
+        state.pagination = action.payload?.pagination || state.pagination;
       })
       .addCase(fetchComplaints.rejected, (state, action) => {
         state.status = 'failed';
@@ -153,33 +278,68 @@ export const complaintSlice = createSlice({
 
       // createComplaint
       .addCase(createComplaint.fulfilled, (state, action) => {
-        state.list.unshift(action.payload);
-        state.pagination.totalRecords += 1;
+        if (action.payload) {
+          state.list.unshift(action.payload);
+          state.pagination.totalRecords += 1;
+        }
+      })
+
+      // Update & Action Thunks
+      .addCase(assignTechnician.fulfilled, (state, action) => {
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
+      })
+      .addCase(acceptAssignment.fulfilled, (state, action) => {
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
+      })
+      .addCase(rejectAssignment.fulfilled, (state, action) => {
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
+      })
+      .addCase(startWork.fulfilled, (state, action) => {
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
+      })
+      .addCase(pauseWork.fulfilled, (state, action) => {
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
+      })
+      .addCase(resumeWork.fulfilled, (state, action) => {
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
+      })
+      .addCase(markWorkCompleted.fulfilled, (state, action) => {
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
+      })
+      .addCase(confirmCompletion.fulfilled, (state, action) => {
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
+      })
+      .addCase(updateComplaintStatus.fulfilled, (state, action) => {
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
       })
 
       // addComplaintComment
       .addCase(addComplaintComment.fulfilled, (state, action) => {
-        const index = state.list.findIndex((c) => c._id === action.payload._id);
-        if (index !== -1) {
-          state.list[index] = action.payload;
-        }
-        if (state.currentComplaint && state.currentComplaint._id === action.payload._id) {
-          state.currentComplaint = action.payload;
-        }
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
       })
 
       // addFeedback
       .addCase(addFeedback.fulfilled, (state, action) => {
-        const index = state.list.findIndex((c) => c._id === action.payload._id);
-        if (index !== -1) {
-          state.list[index] = action.payload;
-        }
-        if (state.currentComplaint && state.currentComplaint._id === action.payload._id) {
-          state.currentComplaint = action.payload;
-        }
+        const item = action.payload?.complaint || action.payload;
+        updateItemInState(state, item);
+      })
+
+      // fetchDashboardAnalytics
+      .addCase(fetchDashboardAnalytics.fulfilled, (state, action) => {
+        state.dashboardAnalytics = action.payload;
       });
   },
 });
 
-export const { clearComplaintErrors } = complaintSlice.actions;
+export const { clearComplaintErrors, updateComplaintInList } = complaintSlice.actions;
 export default complaintSlice.reducer;

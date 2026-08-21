@@ -41,6 +41,7 @@ const PollDashboardView = () => {
     submitVote,
     publishPoll,
     closePoll,
+    reopenPoll,
     deletePoll,
   } = usePolls()
 
@@ -190,6 +191,7 @@ const PollDashboardView = () => {
                   onDelete={deletePoll}
                   onPublish={publishPoll}
                   onClosePoll={closePoll}
+                  onReopenPoll={reopenPoll}
                 />
               </CCol>
             ))}

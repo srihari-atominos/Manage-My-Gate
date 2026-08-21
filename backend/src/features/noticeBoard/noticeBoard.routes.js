@@ -45,7 +45,7 @@ router.post(
 router.get(
   '/',
   tenantContext,
-  authorizePermission('notices', ['active_board', 'manage_notices']),
+  authorizePermission('notices', ['active_board', 'manage_notices', 'read', 'dashboard']),
   noticeController.getAll,
 )
 
@@ -58,7 +58,7 @@ router.get(
 router.get(
   '/stats',
   tenantContext,
-  authorizePermission('notices', 'dashboard'),
+  authorizePermission('notices', ['dashboard', 'active_board', 'manage_notices', 'read']),
   noticeController.getStats,
 )
 
@@ -71,7 +71,7 @@ router.get(
 router.get(
   '/:id',
   tenantContext,
-  authorizePermission('notices', ['active_board', 'manage_notices']),
+  authorizePermission('notices', ['active_board', 'manage_notices', 'read', 'dashboard']),
   validate(noticeParamRules),
   noticeController.getById,
 )
@@ -129,7 +129,7 @@ router.patch(
 router.patch(
   '/:id/read',
   tenantContext,
-  authorizePermission('notices', ['active_board', 'manage_notices']),
+  authorizePermission('notices', ['active_board', 'manage_notices', 'read', 'dashboard']),
   validate(noticeParamRules),
   noticeController.markAsRead,
 )
@@ -143,7 +143,7 @@ router.patch(
 router.patch(
   '/:id/bookmark',
   tenantContext,
-  authorizePermission('notices', ['active_board', 'manage_notices']),
+  authorizePermission('notices', ['active_board', 'manage_notices', 'read', 'dashboard']),
   validate(noticeParamRules),
   noticeController.bookmark,
 )

@@ -41,24 +41,25 @@ export const tenantContext = (optionsOrReq, res, next) => {
         }
 
         // Logic Branch B (Tenant Context):
-        const orgIdHeader = req.headers['x-organization-id'];
+        const orgIdHeader = req.headers['x-organization-id'] || req.user?.orgId;
         if (!orgIdHeader) {
           throw new HttpError(400, 'Workspace context is required.');
         }
 
         // If target tenant context orgId does not match user's active token orgId, verify membership
-        if (orgIdHeader !== req.user.orgId) {
+        if (req.user?.orgId && orgIdHeader !== req.user.orgId) {
           if (req.user.role === 'Super Admin' || req.user.role === 'Platform Super Admin' || userIsPlatform) {
             console.log(`[TENANT DEBUG] Super Admin / Platform user operating across workspace. Header: ${orgIdHeader}, Token: ${req.user.orgId}`);
           } else {
             const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
+            const userId = req.user.id || req.user._id;
             const membership = await OrgMembership.findOne({
-              userId: req.user.id,
+              userId,
               orgId: orgIdHeader,
             }).lean();
 
             if (!membership || (membership.status && membership.status !== 'Active')) {
-              console.error(`[TENANT DEBUG] 403 Forbidden. User ${req.user.id} has no valid membership in ${orgIdHeader}. Token orgId: ${req.user.orgId}`);
+              console.error(`[TENANT DEBUG] 403 Forbidden. User ${userId} has no valid membership in ${orgIdHeader}. Token orgId: ${req.user.orgId}`);
               throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
             }
           }

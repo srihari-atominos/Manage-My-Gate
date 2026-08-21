@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getLogs, getDashboardStats, manualVerification } from './securityLog.controller.js';
+import { getLogs, getDashboardStats, manualVerification, deleteLog } from './securityLog.controller.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import { authorizePermission } from '../../middlewares/rbac.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
@@ -17,5 +17,8 @@ router.post('/manual', authorizePermission('amenities', 'scanner'), manualVerifi
 
 // List security logs with filters
 router.get('/', authorizePermission('amenities', 'security_logs'), getLogs);
+
+// Delete security log
+router.delete('/:id', authorizePermission('amenities', 'security_logs'), deleteLog);
 
 export default router;

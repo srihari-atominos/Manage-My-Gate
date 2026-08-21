@@ -1,16 +1,12 @@
 import React from 'react';
-import FeatureDetailScreen from '@/components/dashboard/FeatureDetailScreen';
+import { Stack } from 'expo-router';
+import ResidentMyTicketsScreen from '@/src/features/complaints/screens/ResidentMyTicketsScreen';
 
-export default function MyTicketsScreen() {
+export default function MyTicketsRoute() {
   return (
-    <FeatureDetailScreen
-      title="Track My Tickets"
-      categoryName="Complaints & Maintenance"
-      sharedSlice="complaintSlice.js"
-      permission="complaints:track_requests"
-      iconName="ListOrdered"
-      iconColor="#03A9F4"
-      description="Track live status of your reported tickets, communicate with assigned technicians, and rate completed resolutions."
-    />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ResidentMyTicketsScreen />
+    </>
   );
 }
