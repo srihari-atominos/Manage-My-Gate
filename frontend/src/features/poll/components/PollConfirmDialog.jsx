@@ -53,7 +53,7 @@ export const PollConfirmDialog = ({ visible, onClose, onConfirm, loading, action
   return (
     <CModal visible={visible} onClose={onClose} alignment="center">
       <CModalHeader className="border-0 pb-0">
-        <CModalTitle className={\h5 fw-bold text-\\}>
+        <CModalTitle className="h5 fw-bold text-body">
           {content.title}
         </CModalTitle>
       </CModalHeader>

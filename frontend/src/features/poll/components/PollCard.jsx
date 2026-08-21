@@ -219,6 +219,7 @@ const PollCard = ({ poll, onVote, onDelete, onPublish, onClosePoll, onReopenPoll
           </div>
 
           {/* Action buttons — matches NoticeCard button sizing */}
+          <div className="d-flex align-items-center gap-1 flex-wrap">
             {canManage && poll.status === 'Draft' && (
               <CButton
                 color="success"
