@@ -4,7 +4,7 @@ import { Text } from '@/components/ui/text';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { TextInput } from '@/components/forms/TextInput';
 import { StatusVariant } from '@/components/ui/StatusBadge';
-import { StandardRecordCard } from '@/components/common/StandardRecordCard';
+import { ListCard } from '@/components/ui/ListCard';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { Search } from 'lucide-react-native';
 
@@ -113,7 +113,7 @@ export function FullActivityLogsModal({
               };
 
               return (
-                <StandardRecordCard
+                <ListCard
                   key={id}
                   title={`${residentName} (${unitInfo})`}
                   subtitle={`${amenityName} • ${timeStr}`}

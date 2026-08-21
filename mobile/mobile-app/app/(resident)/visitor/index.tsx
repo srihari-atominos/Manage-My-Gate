@@ -8,6 +8,7 @@ import { type KPICardProps } from '@/components/ui/KPICard';
 import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { EmptyState } from '@/components/feedback/EmptyState';
+import { Button } from '@/components/ui/button';
 import { FAB } from '@/components/ui/FAB';
 import { VisitorPassCard } from '@/src/features/visitor/components/VisitorPassCard';
 import { VisitorInvitationTypeSheet } from '@/src/features/visitor/components/shared/VisitorInvitationTypeSheet';
@@ -112,21 +113,22 @@ export default function VisitorDashboardScreen() {
       error={dashboard?.status === 'failed' ? (dashboard?.error || 'Failed to load dashboard data.') : null}
       onRetry={loadData}
       headerRight={
-        <TouchableOpacity
+        <Button
+          variant="outline"
+          size="sm"
           onPress={() => router.push('/(resident)/visitor/history' as any)}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1.5 bg-muted px-3 py-1.5 rounded-full border border-border"
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
           accessibilityRole="button"
           accessibilityLabel="View Pass History"
         >
           <History size={14} className="text-foreground" />
           <Text className="text-xs font-semibold text-foreground">History</Text>
-        </TouchableOpacity>
+        </Button>
       }
     >
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerClassName="p-4 pb-20 gap-4"
+        contentContainerClassName="p-4 pb-28 gap-4"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         {/* Universal KPI Statistics Strip (2-Column Balanced Row) */}

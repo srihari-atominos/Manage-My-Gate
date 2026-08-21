@@ -4,3 +4,4 @@ export * from './ErrorBanner';
 export * from './OfflineBanner';
 export * from './ProgressLoader';
 export * from './SuccessToast';
+export * from './SkeletonLoader';

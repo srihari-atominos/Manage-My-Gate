@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import { View, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { AdminVillaFilterSheet } from '../admin/AdminVillaFilterSheet';
-import { ShieldAlert, X, Building2 } from 'lucide-react-native';
+import { ShieldAlert, Building2 } from 'lucide-react-native';
 
-interface GuardInitiateWalkInModalProps {
+export interface GuardInitiateWalkInModalProps {
   visible: boolean;
   loading?: boolean;
   onClose: () => void;
@@ -80,106 +81,98 @@ export const GuardInitiateWalkInModal: React.FC<GuardInitiateWalkInModalProps> =
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View className="flex-1 bg-black/60 justify-end">
-        <View className="bg-background rounded-t-3xl p-4 pt-3 max-h-[85%] border-t border-border gap-3">
-          {/* Header */}
-          <View className="flex-row items-center justify-between border-b border-border pb-3">
-            <View className="flex-row items-center gap-2">
-              <ShieldAlert size={20} className="text-amber-600 dark:text-amber-400" />
-              <Text className="text-base font-bold text-foreground">Initiate Gate Walk-In</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} className="p-1 rounded-full bg-muted">
-              <X size={16} className="text-muted-foreground" />
-            </TouchableOpacity>
-          </View>
-
+    <>
+      <BottomSheet
+        visible={visible}
+        onClose={onClose}
+        title="Initiate Gate Walk-In"
+      >
+        <View className="gap-3.5 pb-4">
           {error && (
-            <View className="p-2.5 bg-destructive/10 border border-destructive/20 rounded-xl">
-              <Text className="text-xs text-destructive font-medium">{error}</Text>
+            <View className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl flex-row items-center gap-2">
+              <ShieldAlert size={16} className="text-destructive shrink-0" />
+              <Text className="text-xs font-semibold text-destructive flex-1">{error}</Text>
             </View>
           )}
 
-          <ScrollView className="flex-1" contentContainerClassName="gap-3 pb-4">
-            {/* Target Villa & Resident Selection */}
-            <View>
-              <Text className="text-xs font-semibold text-muted-foreground mb-1">Target Resident Host & Villa *</Text>
-              <TouchableOpacity
-                onPress={() => setVillaSheetOpen(true)}
-                className="bg-card border border-border rounded-xl p-3 flex-row items-center justify-between"
-              >
-                <View className="flex-row items-center gap-2 flex-1 me-2">
-                  <Building2 size={16} className="text-primary" />
-                  <View className="flex-1">
-                    <Text className={`text-sm font-semibold ${villaId ? 'text-foreground' : 'text-muted-foreground'}`}>
-                      {residentName ? residentName : villaName}
+          {/* Target Villa & Resident Selection */}
+          <View>
+            <Text className="text-xs font-semibold text-muted-foreground mb-1">Target Resident Host & Villa *</Text>
+            <TouchableOpacity
+              onPress={() => setVillaSheetOpen(true)}
+              className="bg-card border border-border rounded-xl p-3 flex-row items-center justify-between"
+            >
+              <View className="flex-row items-center gap-2 flex-1 me-2">
+                <Building2 size={16} className="text-primary" />
+                <View className="flex-1">
+                  <Text className={`text-sm font-semibold ${villaId ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {residentName ? residentName : villaName}
+                  </Text>
+                  {residentName && (
+                    <Text className="text-[11px] text-primary font-medium">
+                      Host User selected for gate push notification
                     </Text>
-                    {residentName && (
-                      <Text className="text-[11px] text-primary font-medium">
-                        Host User selected for gate push notification
-                      </Text>
-                    )}
-                  </View>
+                  )}
                 </View>
-                <Text className="text-xs font-bold text-primary">Choose Host</Text>
-              </TouchableOpacity>
-            </View>
+              </View>
+              <Text className="text-xs font-bold text-primary">Choose Host</Text>
+            </TouchableOpacity>
+          </View>
 
-            {/* Visitor Name */}
-            <TextInput
-              label="Visitor Full Name"
-              required
-              value={visitorName}
-              onChangeText={setVisitorName}
-              placeholder="e.g. Rahul Sharma"
-            />
+          {/* Visitor Name */}
+          <TextInput
+            label="Visitor Full Name"
+            required
+            value={visitorName}
+            onChangeText={setVisitorName}
+            placeholder="e.g. Rahul Sharma"
+          />
 
-            {/* Visitor Phone */}
-            <TextInput
-              label="Phone Number"
-              required
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="e.g. +91 9876543210"
-              keyboardType="phone-pad"
-            />
+          {/* Visitor Phone */}
+          <TextInput
+            label="Phone Number"
+            required
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="e.g. +91 9876543210"
+            keyboardType="phone-pad"
+          />
 
-            {/* Vehicle Number */}
-            <TextInput
-              label="Vehicle Plate Number (Optional)"
-              value={vehicleNumber}
-              onChangeText={setVehicleNumber}
-              placeholder="e.g. KA 01 AB 1234"
-              autoCapitalize="characters"
-              inputClassName="font-mono"
-            />
+          {/* Vehicle Number */}
+          <TextInput
+            label="Vehicle Plate Number (Optional)"
+            value={vehicleNumber}
+            onChangeText={setVehicleNumber}
+            placeholder="e.g. KA 01 AB 1234"
+            autoCapitalize="characters"
+            inputClassName="font-mono text-sm"
+          />
 
-            {/* ID Proof Number */}
-            <TextInput
-              label="Govt ID / Aadhaar Number (Optional)"
-              value={idProofNumber}
-              onChangeText={setIdProofNumber}
-              placeholder="e.g. XXXX XXXX 1234"
-            />
-          </ScrollView>
+          {/* ID Proof Number */}
+          <TextInput
+            label="Govt ID / Aadhaar Number (Optional)"
+            value={idProofNumber}
+            onChangeText={setIdProofNumber}
+            placeholder="e.g. XXXX XXXX 1234"
+          />
 
           {/* Action Buttons */}
           <View className="flex-row gap-2 pt-2 border-t border-border">
-            <Button variant="outline" className="flex-1" onPress={onClose} disabled={loading}>
-              <Text className="text-xs font-semibold">Cancel</Text>
+            <Button variant="outline" className="flex-1 h-11 rounded-xl" onPress={onClose} disabled={loading}>
+              <Text className="text-xs font-semibold text-foreground">Cancel</Text>
             </Button>
             <Button
               variant="default"
-              className="flex-1"
+              className="flex-1 h-11 rounded-xl"
               onPress={handleSubmit}
               disabled={loading}
               loading={loading}
             >
-              <Text className="text-xs font-semibold text-primary-foreground">Send Resident Request</Text>
+              <Text className="text-xs font-bold text-primary-foreground">Send Resident Request</Text>
             </Button>
           </View>
         </View>
-      </View>
+      </BottomSheet>
 
       <AdminVillaFilterSheet
         visible={villaSheetOpen}
@@ -193,7 +186,7 @@ export const GuardInitiateWalkInModal: React.FC<GuardInitiateWalkInModalProps> =
           setResidentName(rName);
         }}
       />
-    </Modal>
+    </>
   );
 };
 

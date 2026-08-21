@@ -4,7 +4,11 @@ import { VisitorHistoryView } from '@/src/features/visitor/components/history/Vi
 
 export default function VisitorHistoryScreen() {
   return (
-    <ScreenShell title="Visitor Pass History" subtitle="Active, upcoming, completed & rejected entry logs">
+    <ScreenShell
+      title="Visitor Pass History"
+      subtitle="Active, upcoming, completed & rejected entry logs"
+      iconName="History"
+    >
       <VisitorHistoryView />
     </ScreenShell>
   );

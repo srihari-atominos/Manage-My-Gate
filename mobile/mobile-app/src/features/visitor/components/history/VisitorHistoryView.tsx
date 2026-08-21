@@ -88,8 +88,8 @@ export const VisitorHistoryView: React.FC = () => {
 
   const isLoadingInitial = status === 'loading' && !refreshing && !loadingMore && passes.length === 0;
 
-  return (
-    <View className="flex-1 bg-background">
+  const renderHeader = () => (
+    <View className="gap-3 mb-3">
       {/* Status Tab Bar */}
       <TabBar
         tabs={tabs}
@@ -99,7 +99,7 @@ export const VisitorHistoryView: React.FC = () => {
           setActiveTab(tabKey);
         }}
         variant="pill"
-        className="my-2"
+        className="my-1"
       />
 
       {/* Search Bar */}
@@ -108,6 +108,7 @@ export const VisitorHistoryView: React.FC = () => {
         onSearchChange={setSearch}
         searchPlaceholder="Search loaded history by name, phone, or code..."
         variant="bordered"
+        className="px-0 py-0 border-0"
       />
 
       {/* Canonical Error Retry Banner */}
@@ -115,10 +116,14 @@ export const VisitorHistoryView: React.FC = () => {
         <ErrorBanner
           message={error || 'Failed to load visitor history.'}
           onRetry={() => loadData(1, false)}
-          className="mx-4 my-2"
+          className="my-1"
         />
       )}
+    </View>
+  );
 
+  return (
+    <View className="flex-1 bg-background">
       {/* Paginated List of History Passes */}
       <PaginatedList<ExtendedVisitorPass>
         data={filteredPasses}
@@ -132,10 +137,11 @@ export const VisitorHistoryView: React.FC = () => {
         onRefresh={handleRefresh}
         refreshing={refreshing}
         loading={isLoadingInitial}
+        ListHeaderComponent={renderHeader()}
         emptyIcon="History"
         emptyTitle="No History Passes Found"
         emptySubtitle={`No ${activeTab.toLowerCase()} visitor passes found.`}
-        contentContainerClassName="gap-3"
+        contentContainerClassName="px-4 pt-3 pb-28"
         renderItem={(pass) => (
           <VisitorPassCard
             key={pass._id}

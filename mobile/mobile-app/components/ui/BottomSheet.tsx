@@ -78,3 +78,4 @@ export {
   bottomSheetHeaderVariants,
   bottomSheetTitleVariants,
 };
+export default BottomSheet;

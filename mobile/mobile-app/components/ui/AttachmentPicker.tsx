@@ -18,6 +18,8 @@ export interface Attachment {
   file?: any;
 }
 
+export type AttachmentFile = Attachment;
+
 export interface AttachmentPickerProps {
   attachments: Attachment[];
   onAdd: (files: Attachment[]) => void;

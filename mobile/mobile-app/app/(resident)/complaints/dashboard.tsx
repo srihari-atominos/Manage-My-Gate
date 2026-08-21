@@ -7,9 +7,10 @@ import { KPIDashboardStrip } from '@/components/ui/KPIDashboardStrip';
 import { type KPICardProps } from '@/components/ui/KPICard';
 import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 import { FAB } from '@/components/ui/FAB';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/common/Card';
 import { SectionHeader } from '@/components/common/SectionHeader';
-import { StandardRecordCard } from '@/components/common/StandardRecordCard';
+import { ListCard } from '@/components/ui/ListCard';
 import { StatusVariant } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import {
@@ -130,21 +131,22 @@ export default function ComplaintsDashboardScreen() {
       onRetry={loadData}
       loading={status === 'loading' && (!complaints || complaints.length === 0)}
       headerRight={
-        <TouchableOpacity
+        <Button
+          variant="outline"
+          size="sm"
           onPress={() => router.push('/(resident)/complaints/my-tickets' as any)}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1.5 bg-muted px-3 py-1.5 rounded-full border border-border"
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
           accessibilityRole="button"
           accessibilityLabel="View My Tickets"
         >
           <LifeBuoy size={14} className="text-foreground" />
           <Text className="text-xs font-semibold text-foreground">My Tickets</Text>
-        </TouchableOpacity>
+        </Button>
       }
     >
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerClassName="p-4 pb-20 gap-4"
+        contentContainerClassName="p-4 pb-28 gap-4"
         refreshControl={
           <RefreshControl
             refreshing={status === 'loading' && Boolean(complaints)}
@@ -187,7 +189,7 @@ export default function ComplaintsDashboardScreen() {
                 subtitleParts.push(`Priority: ${ticket.priority || 'Normal'}`);
 
                 return (
-                  <StandardRecordCard
+                  <ListCard
                     key={ticket._id || ticket.ticketNumber || ticket.id}
                     title={ticket.title || ticket.subject || 'Maintenance Request'}
                     subtitle={subtitleParts.join(' • ')}

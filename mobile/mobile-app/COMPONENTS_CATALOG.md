@@ -297,10 +297,73 @@ The Visitor Management module (`src/features/visitor/components/`) serves as the
 | **`VisitorPassCard`** | `src/features/visitor/components/VisitorPassCard.tsx` | `<ListCard>`, `<StatusBadge>`, `<Button>` |
 | **`VisitorPassDetailsModal`** | `src/features/visitor/components/VisitorPassDetailsModal.tsx` | `<BottomSheet>`, `<DetailSection>`, `<DetailRow>`, `<StatusBadge>` |
 | **`CreateVisitorPassSheet`** | `src/features/visitor/components/CreateVisitorPassSheet.tsx` | `<BottomSheet>`, `<TextInput>`, `<DropdownSelect>`, `<DatePicker>` |
-| **`WalkInApprovalCard`** | `src/features/visitor/components/walkin/WalkInApprovalCard.tsx` | `<Card>`, `<StatusBadge>`, `<Button>` |
+| **`WalkInApprovalCard`** | `src/features/visitor/components/walkin/WalkInApprovalCard.tsx` | `<Icon>`, `<StatusBadge>`, `<Button>`, `<Text>` |
+| **`WalkInVisitorDetailsModal`** | `src/features/visitor/components/walkin/WalkInVisitorDetailsModal.tsx` | `<BottomSheet>`, `<DetailSection>`, `<DetailRow>`, `<ConfirmationModal>`, `<StatusBadge>`, `<Button>` |
 | **`GuardQRScannerModal`** | `src/features/visitor/components/guard/GuardQRScannerModal.tsx` | `<Modal>`, `<QRScannerOverlay>`, `<TextInput>`, `<Button>` |
 | **`VisitorHistoryView`** | `src/features/visitor/components/history/VisitorHistoryView.tsx` | `<PaginatedList>`, `<SearchFilterBar>`, `<EmptyState>` |
 | **`VisitorAnalyticsCard`** | `src/features/visitor/components/admin/VisitorAnalyticsCard.tsx` | `<KPICard>`, `<KPIRow>` |
 | **`AdminBlacklistModal`** | `src/features/visitor/components/admin/AdminBlacklistModal.tsx` | `<Modal>`, `<TextInput>`, `<Button>` |
+| **`BlacklistEntryCard`** | `src/features/visitor/components/admin/BlacklistEntryCard.tsx` | `<ListCard>`, `<StatusBadge>`, `<Button>`, `<Text>` |
 | **`VisitorPassWizard`** | `src/features/visitor/components/wizard/VisitorPassWizard.tsx` | `VisitorPassStepIndicator`, `VisitorPassFlowHeader`, `VisitorPassFlowFooter` |
+
+---
+
+## Reference Domain Architecture: Financial Suite, Billing & Ledgers
+
+The Financial & Billing module (`src/features/billing/components/` & `src/features/amenities/components/`) standardizes financial statements, wallets, and ledgers:
+
+| Financial Domain Component | Physical Path | Primary Catalog Primitives Reused |
+| :--- | :--- | :--- |
+| **`InvoiceCard`** | `src/features/billing/components/InvoiceCard.tsx` | `<ListCard>`, `<StatusBadge>`, `<Text>` |
+| **`AmenityLedgerCard`** | `src/features/amenities/components/AmenityLedgerCard.tsx` | `<ListCard>`, `<StatusBadge>`, `<Text>` |
+| **`WalletTransactionCard`** | `src/features/billing/components/WalletTransactionCard.tsx` | `<Icon>`, `<StatusBadge>`, `<Text>`, `<Pressable>` |
+| **`ResidentDueCard`** | `src/features/billing/components/ResidentDueCard.tsx` | `<Icon>`, `<StatusBadge>`, `<Button>`, `<Text>` |
+| **`PaymentReceiptCard`** | `src/features/billing/components/PaymentReceiptCard.tsx` | `<Icon>`, `<StatusBadge>`, `<Button>`, `<Text>`, `<TouchableOpacity>` |
+| **`PaymentResultHeroCard`** | `src/features/billing/components/PaymentResultHeroCard.tsx` | `<Icon>`, `<StatusBadge>`, `<Text>` |
+| **`InvoiceActionsBottomSheet`** | `src/features/billing/components/InvoiceActionsBottomSheet.tsx` | `<BottomSheet>`, `<DetailRow>`, `<Button>`, `<StatusBadge>` |
+| **`OfflineSettleSheet`** | `src/features/billing/components/OfflineSettleSheet.tsx` | `<BottomSheet>`, `<TextInput>`, `<Button>` |
+| **`PaymentCheckoutSheet`** | `src/features/billing/components/PaymentCheckoutSheet.tsx` | `<BottomSheet>`, `<Button>`, `<StatusBadge>` |
+| **`BookingDetailModal`** | `src/features/amenities/components/BookingDetailModal.tsx` | `<BottomSheet>`, `<DetailRow>`, `<Button>`, `<StatusBadge>` |
+| **`AmenityBookingCard`** | `src/features/amenities/components/AmenityBookingCard.tsx` | `<ListCard>`, `<StatusBadge>`, `<Button>`, `<Text>` |
+| **`WalletTopUpModal`** | `src/features/amenities/components/WalletTopUpModal.tsx` | `<BottomSheet>`, `<TextInput>`, `<Button>`, `<Pressable>` |
+| **`AssessmentRuleCard`** | `src/features/billing/components/AssessmentRuleCard.tsx` | `<StatusBadge>`, `<Button>`, `<Icon>`, `<Text>` |
+
+
+---
+
+## Reference Domain Architecture: Incident Intake & Maintenance Helpdesk
+
+The Complaints & Maintenance module (`src/features/complaints/components/`) standardizes intake and issue tracking:
+
+| Complaints Domain Component | Physical Path | Primary Catalog Primitives Reused |
+| :--- | :--- | :--- |
+| **`RaiseTicketForm`** | `src/features/complaints/components/RaiseTicketForm.tsx` | `<ScreenShell>`, `<TextInput>`, `<DropdownSelect>`, `<AttachmentPicker>`, `<ActionBar>`, `<ConfirmationModal>`, `<ErrorBanner>` |
+| **`TechnicianWorkOrderCard`** | `src/features/complaints/components/TechnicianWorkOrderCard.tsx` | `<StatusBadge>`, `<Button>`, `<Text>` |
+| **`ProofOfWorkModal`** | `src/features/complaints/components/ProofOfWorkModal.tsx` | `<BottomSheet>`, `<TextInput>`, `<AttachmentPicker>`, `<Button>` |
+| **`ComplaintTriageCard`** | `src/features/complaints/components/ComplaintTriageCard.tsx` | `<StatusBadge>`, `<Button>`, `<Text>` |
+| **`TicketStatusUpdateModal`** | `src/features/complaints/components/TicketStatusUpdateModal.tsx` | `<BottomSheet>`, `<TextInput>`, `<Button>` |
+| **`TicketEscalationModal`** | `src/features/complaints/components/TicketEscalationModal.tsx` | `<BottomSheet>`, `<TextInput>`, `<Button>` |
+| **`TicketDispatchCard`** | `src/features/complaints/components/TicketDispatchCard.tsx` | `<StatusBadge>`, `<Button>`, `<Text>` |
+| **`AssignTechnicianSheet`** | `src/features/complaints/components/AssignTechnicianSheet.tsx` | `<BottomSheet>`, `<StatusBadge>`, `<TextInput>`, `<Button>` |
+| **`AmenityMasterCard`** | `src/features/amenities/components/AmenityMasterCard.tsx` | `<ListCard>`, `<StatusBadge>`, `<Button>`, `<Text>` |
+| **`AmenityCatalogCard`** | `src/features/amenities/components/AmenityCatalogCard.tsx` | `<ListCard>`, `<StatusBadge>`, `<Button>`, `<Text>` |
+
+---
+
+## Reference Domain Architecture: Detail Inspectors & Interactive Viewers (Archetype D)
+
+The Detail Inspectors and Interactive Viewers standardize deep-dive inspection views, PDF statement generators, and interactive voting ballots:
+
+| Domain Component / Screen | Physical Path | Primary Catalog Primitives Reused |
+| :--- | :--- | :--- |
+| **`InvoiceDetailsScreen`** | `src/features/billing/screens/InvoiceDetailsScreen.tsx` | `<ScreenShell>`, `<DetailSection>`, `<DetailRow>`, `<StatusBadge>`, `<ProgressBar>`, `<Button>`, `<PaymentCheckoutSheet>`, `<EmptyState>`, `<ErrorBanner>`, `<SkeletonLoader>` |
+| **`PollDetailScreen`** | `src/features/poll/screens/PollDetailScreen.tsx` | `<ScreenShell>`, `<DetailSection>`, `<DetailRow>`, `<StatusBadge>`, `<PollOptionRow>`, `<EmptyState>`, `<ErrorBanner>`, `<SkeletonLoader>` |
+| **`PollOptionRow`** | `src/features/poll/components/PollOptionRow.tsx` | `<Pressable>`, `<Text>`, `<Icon>`, `<ProgressBar>` |
+| **`PublicVisitorPassScreen`** | `src/features/visitor/screens/PublicVisitorPassScreen.tsx` | `<ScreenShell>`, `<VisitorQRCode>`, `<DetailSection>`, `<DetailRow>`, `<StatusBadge>`, `<TextInput>`, `<Button>`, `<EmptyState>`, `<ErrorBanner>`, `<SkeletonLoader>` |
+| **`VisitorQRCode`** | `src/features/visitor/components/shared/VisitorQRCode.tsx` | `<Svg>`, `<Rect>`, `<Text>` |
+
+
+
+
+
 

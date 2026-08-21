@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { FAB } from '@/components/ui/FAB';
 import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
@@ -14,7 +14,7 @@ import { VisitorPassCard } from '@/src/features/visitor/components/VisitorPassCa
 import { VisitorPassDetailsModal } from '@/src/features/visitor/components/VisitorPassDetailsModal';
 import { VisitorInvitationTypeSheet } from '@/src/features/visitor/components/shared/VisitorInvitationTypeSheet';
 import { PassTypeKey } from '@/src/features/visitor/mocks/visitorMocks';
-import { Plus, UserPlus, ShieldAlert } from 'lucide-react-native';
+import { ShieldAlert } from 'lucide-react-native';
 
 export default function ResidentPassesScreen() {
   const router = useRouter();
@@ -25,7 +25,6 @@ export default function ResidentPassesScreen() {
     pagination,
     status,
     actionStatus,
-    error,
     fetchPasses,
     loadPendingWalkIns,
     revokePass,
@@ -57,9 +56,10 @@ export default function ResidentPassesScreen() {
   }, [pagination, fetchPasses]);
 
   // Filtered passes list
-  const filteredPasses = React.useMemo(() => {
+  const filteredPasses = useMemo(() => {
     return passes.filter((pass: VisitorPass) => {
-      const matchesSearch = search.trim() === '' ||
+      const matchesSearch =
+        search.trim() === '' ||
         (pass.visitorName && pass.visitorName.toLowerCase().includes(search.toLowerCase())) ||
         (pass.phone && pass.phone.includes(search)) ||
         (pass.code && pass.code.toLowerCase().includes(search.toLowerCase()));
@@ -86,126 +86,122 @@ export default function ResidentPassesScreen() {
 
   const pendingWalkInCount = walkIns?.pendingList?.length || 0;
 
+  const renderHeader = () => (
+    <View className="gap-3 mb-3">
+      {/* Pending Walk-In Approval Alert Banner */}
+      {pendingWalkInCount > 0 ? (
+        <TouchableOpacity
+          onPress={() => router.push('/(resident)/visitor/walk-ins' as any)}
+          activeOpacity={0.8}
+          className="bg-status-warning/15 border border-status-warning/30 p-3 rounded-2xl flex-row items-center justify-between"
+          accessibilityRole="button"
+          accessibilityLabel="Review pending walk-in approvals"
+        >
+          <View className="flex-row items-center gap-2 flex-1 me-2">
+            <Icon as={ShieldAlert} size={18} className="text-status-warning shrink-0" />
+            <Text className="text-xs font-bold text-status-warning flex-1">
+              {pendingWalkInCount} Walk-In Approval{pendingWalkInCount > 1 ? 's' : ''} Waiting at Gate
+            </Text>
+          </View>
+          <Text className="text-xs font-extrabold text-status-warning underline">
+            Review →
+          </Text>
+        </TouchableOpacity>
+      ) : null}
+
+      {/* Search & Filter Bar */}
+      <SearchFilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by visitor name or code..."
+        sortOptions={[
+          { label: 'All', value: 'ALL' },
+          { label: 'Active', value: 'ACTIVE' },
+          { label: 'Pending', value: 'PENDING' },
+          { label: 'Revoked', value: 'REVOKED' },
+          { label: 'Expired', value: 'EXPIRED' },
+        ]}
+        currentSort={activeStatusFilter}
+        onSortChange={setActiveStatusFilter}
+        variant="default"
+        className="px-0 py-0 border-0"
+      />
+    </View>
+  );
+
   return (
     <ScreenShell
       title="Resident Visitor Passes"
       subtitle="Manage guest entry & QR invitations"
-      headerRight={
-        <Button
-          size="sm"
-          variant="default"
-          onPress={() => setInviteSheetOpen(true)}
-          className="flex-row items-center gap-1.5 rounded-full"
-        >
-          <UserPlus size={14} className="text-primary-foreground" />
-          <Text className="text-xs font-bold text-primary-foreground">New Pass</Text>
-        </Button>
-      }
+      iconName="UserCheck"
     >
-      <View className="flex-1 bg-background">
-        {/* Pending Walk-In Approval Alert Banner */}
-        {pendingWalkInCount > 0 ? (
-          <TouchableOpacity
-            onPress={() => router.push('/(resident)/visitor/walk-ins' as any)}
-            activeOpacity={0.8}
-            className="bg-amber-500/15 border border-amber-500/30 p-3 mx-4 mt-3 rounded-2xl flex-row items-center justify-between"
-          >
-            <View className="flex-row items-center gap-2 flex-1">
-              <ShieldAlert size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
-              <Text className="text-xs font-bold text-amber-600 dark:text-amber-400 flex-1">
-                {pendingWalkInCount} Walk-In Approval{pendingWalkInCount > 1 ? 's' : ''} Waiting at Gate
-              </Text>
-            </View>
-            <Text className="text-xs font-extrabold text-amber-600 dark:text-amber-400 underline">
-              Review →
-            </Text>
-          </TouchableOpacity>
-        ) : null}
+      {/* Paginated List of Passes with ListHeaderComponent */}
+      <PaginatedList<VisitorPass>
+        data={filteredPasses}
+        pagination={pagination}
+        loading={status === 'loading'}
+        onRefresh={handleRefresh}
+        onLoadMore={handleLoadMore}
+        ListHeaderComponent={renderHeader()}
+        emptyIcon="QrCode"
+        emptyTitle="No Visitor Passes Found"
+        emptySubtitle="Create a visitor pass to pre-approve guests and send QR invites."
+        contentContainerClassName="px-4 pt-3 pb-28"
+        renderItem={(pass) => (
+          <VisitorPassCard
+            key={pass._id}
+            pass={pass}
+            onPress={(p) => {
+              selectPass(p);
+              setDetailsModalOpen(true);
+            }}
+            onShowQR={(p) => {
+              selectPass(p);
+              setDetailsModalOpen(true);
+            }}
+          />
+        )}
+      />
 
-        {/* Search & Filter Bar */}
-        <SearchFilterBar
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search by visitor name or code..."
-          sortOptions={[
-            { label: 'All', value: 'ALL' },
-            { label: 'Active', value: 'ACTIVE' },
-            { label: 'Pending', value: 'PENDING' },
-            { label: 'Revoked', value: 'REVOKED' },
-            { label: 'Expired', value: 'EXPIRED' },
-          ]}
-          currentSort={activeStatusFilter}
-          onSortChange={setActiveStatusFilter}
-          variant="bordered"
-        />
+      {/* Floating Action Button for Resident View */}
+      <FAB
+        iconName="Plus"
+        label="Invite Visitor"
+        onPress={() => setInviteSheetOpen(true)}
+      />
 
-        {/* Paginated List of Passes */}
-        <PaginatedList<VisitorPass>
-          data={filteredPasses}
-          pagination={pagination}
-          loading={status === 'loading'}
-          onRefresh={handleRefresh}
-          onLoadMore={handleLoadMore}
-          emptyIcon="QrCode"
-          emptyTitle="No Visitor Passes Found"
-          emptySubtitle="Create a visitor pass to pre-approve guests and send QR invites."
-          contentContainerClassName="p-4"
-          renderItem={(pass) => (
-            <VisitorPassCard
-              key={pass._id}
-              pass={pass}
-              onPress={(p) => {
-                selectPass(p);
-                setDetailsModalOpen(true);
-              }}
-              onShowQR={(p) => {
-                selectPass(p);
-                setDetailsModalOpen(true);
-              }}
-            />
-          )}
-        />
+      {/* Invitation Type Selector Bottom Sheet */}
+      <VisitorInvitationTypeSheet
+        visible={inviteSheetOpen}
+        onClose={() => setInviteSheetOpen(false)}
+        onSelectType={handleSelectType}
+      />
 
-        {/* Floating Action Button */}
-        <FAB
-          iconName="Plus"
-          label="Invite Visitor"
-          onPress={() => setInviteSheetOpen(true)}
-        />
+      {/* Pass Details Modal */}
+      <VisitorPassDetailsModal
+        visible={detailsModalOpen}
+        pass={activePass}
+        onClose={() => setDetailsModalOpen(false)}
+        onRevokePress={(passToRevoke) => {
+          setSelectedPassToRevoke(passToRevoke);
+          setRevokeConfirmOpen(true);
+        }}
+      />
 
-        {/* Invitation Type Selector Bottom Sheet */}
-        <VisitorInvitationTypeSheet
-          visible={inviteSheetOpen}
-          onClose={() => setInviteSheetOpen(false)}
-          onSelectType={handleSelectType}
-        />
-
-        {/* Pass Details Modal */}
-        <VisitorPassDetailsModal
-          visible={detailsModalOpen}
-          pass={activePass}
-          onClose={() => setDetailsModalOpen(false)}
-          onRevokePress={(passToRevoke) => {
-            setSelectedPassToRevoke(passToRevoke);
-            setRevokeConfirmOpen(true);
-          }}
-        />
-
-        {/* Revoke Confirmation Dialog */}
-        <ConfirmationModal
-          visible={revokeConfirmOpen}
-          title="Revoke Visitor Pass?"
-          message={`Are you sure you want to revoke entry pass for ${selectedPassToRevoke?.visitorName || 'this visitor'}?`}
-          variant="danger"
-          confirmLabel="Revoke Pass"
-          onConfirm={handleConfirmRevoke}
-          onCancel={() => {
-            setRevokeConfirmOpen(false);
-            setSelectedPassToRevoke(null);
-          }}
-          loading={actionStatus === 'loading'}
-        />
-      </View>
+      {/* Revoke Confirmation Dialog */}
+      <ConfirmationModal
+        visible={revokeConfirmOpen}
+        title="Revoke Visitor Pass?"
+        message={`Are you sure you want to revoke entry pass for ${selectedPassToRevoke?.visitorName || 'this visitor'}?`}
+        variant="danger"
+        confirmLabel="Revoke Pass"
+        onConfirm={handleConfirmRevoke}
+        onCancel={() => {
+          setRevokeConfirmOpen(false);
+          setSelectedPassToRevoke(null);
+        }}
+        loading={actionStatus === 'loading'}
+      />
     </ScreenShell>
   );
 }

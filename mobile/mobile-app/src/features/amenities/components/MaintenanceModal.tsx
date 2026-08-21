@@ -250,8 +250,9 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
             disabled={loading}
             onPress={handleSubmit(handleFormSubmit)}
             className="mt-2 bg-primary py-3.5"
+            accessibilityLabel={initialData ? 'Save Maintenance Changes' : 'Schedule Maintenance Window'}
           >
-            <Text className="text-white font-bold text-base">
+            <Text className="text-primary-foreground font-bold text-base">
               {loading ? 'Saving...' : initialData ? 'Save Changes' : 'Schedule Maintenance Window'}
             </Text>
           </Button>

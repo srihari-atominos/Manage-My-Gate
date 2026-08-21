@@ -1,7 +1,10 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Skeleton } from '@/components';
+import { Skeleton } from '@/components/ui/Skeleton';
 
+/**
+ * NoticeBoardLoadingSkeleton Component
+ */
 export const NoticeBoardLoadingSkeleton = () => {
   return (
     <View className="px-4 py-2 gap-4">

@@ -166,3 +166,4 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
 Button.displayName = 'Button';
 
 export { Button, buttonTextVariants, buttonVariants };
+export default Button;

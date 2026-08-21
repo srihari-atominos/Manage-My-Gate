@@ -1,8 +1,8 @@
 import React from 'react';
 import { BarChart2 } from 'lucide-react-native';
-import { EmptyState } from '@/components';
+import { EmptyState } from '@/components/feedback/EmptyState';
 
-interface PollEmptyStateProps {
+export interface PollEmptyStateProps {
   tab: 'active' | 'closed' | 'my';
 }
 

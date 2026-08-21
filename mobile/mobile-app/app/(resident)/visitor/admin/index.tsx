@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
@@ -15,7 +15,7 @@ import { VisitorPassCard } from '@/src/features/visitor/components/VisitorPassCa
 import { VisitorLogDetailsModal } from '@/src/features/visitor/components/history/VisitorLogDetailsModal';
 import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
 import { mapBackendPassToHistoryItem } from '@/src/features/visitor/utils/mapBackendPassToHistoryItem';
-import { UserPlus, ShieldAlert, History, Filter, BarChart2, ShieldX, ShieldCheck } from 'lucide-react-native';
+import { History, ShieldCheck } from 'lucide-react-native';
 
 export default function AdminVisitorDashboardScreen() {
   const router = useRouter();
@@ -131,21 +131,22 @@ export default function AdminVisitorDashboardScreen() {
       error={error}
       onRetry={loadData}
       headerRight={
-        <TouchableOpacity
+        <Button
+          variant="outline"
+          size="sm"
           onPress={() => router.push('/(resident)/visitor/admin-logs' as any)}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1.5 bg-muted px-3 py-1.5 rounded-full border border-border"
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
           accessibilityRole="button"
           accessibilityLabel="View Audit Logs"
         >
           <History size={14} className="text-foreground" />
           <Text className="text-xs font-semibold text-foreground">Audit Logs</Text>
-        </TouchableOpacity>
+        </Button>
       }
     >
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerClassName="p-4 gap-4 pb-20"
+        contentContainerClassName="p-4 gap-4 pb-28"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         {/* Analytics Card */}

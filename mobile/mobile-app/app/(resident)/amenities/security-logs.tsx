@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
-import { View, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { ListCard } from '@/components/ui/ListCard';
-import { KPICard } from '@/components/ui/KPICard';
-import { TextInput } from '@/components/forms/TextInput';
+import { KPIRow } from '@/components/ui/KPIRow';
+import { KPICardProps } from '@/components/ui/KPICard';
+import { TabBar } from '@/components/ui/TabBar';
+import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
+import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { useSecurityLogs } from '../../../src/features/amenities/hooks/useSecurityLogs';
-import { SecurityLogDetailModal } from '../../../src/features/amenities/components/SecurityLogDetailModal';
-import { SecurityLog } from '../../../src/features/amenities/services/securityLogApi';
+import { AmenitySecurityLogCard } from '@/src/features/amenities/components/AmenitySecurityLogCard';
+import { SecurityLogDetailModal } from '@/src/features/amenities/components/SecurityLogDetailModal';
+import { SecurityLog } from '@/src/features/amenities/services/securityLogApi';
+import { useSecurityLogs } from '@/src/features/amenities/hooks/useSecurityLogs';
 
 export default function AmenitySecurityLogsScreen() {
   const {
@@ -27,57 +29,94 @@ export default function AmenitySecurityLogsScreen() {
 
   const [selectedLog, setSelectedLog] = useState<SecurityLog | null>(null);
 
-  const scanTypeOptions = [
-    { label: 'All Types', value: '' },
-    { label: 'Entry', value: 'Entry' },
-    { label: 'Exit', value: 'Exit' },
-    { label: 'Denied', value: 'Denied' },
-    { label: 'Manual', value: 'Manual Verification' },
-  ];
+  const scanTypeTabs = useMemo(
+    () => [
+      { key: '', label: 'All Types' },
+      { key: 'Entry', label: 'Entry' },
+      { key: 'Exit', label: 'Exit' },
+      { key: 'Denied', label: 'Denied' },
+      { key: 'Manual Verification', label: 'Manual' },
+    ],
+    []
+  );
 
   const activeVisitors = Math.max(0, (dashboard?.entries || 0) - (dashboard?.exits || 0));
 
-  const renderSecurityLogItem = (item: SecurityLog) => {
-    const isDenied = item.status === 'Denied' || item.scanType === 'Denied';
-    const isExit = item.scanType === 'Exit';
+  const kpiCards: KPICardProps[] = useMemo(
+    () => [
+      {
+        title: "Today's Entries",
+        value: dashboard?.entries || 0,
+        iconName: 'DoorOpen',
+        variant: 'success',
+      },
+      {
+        title: "Today's Exits",
+        value: dashboard?.exits || 0,
+        iconName: 'DoorClosed',
+        variant: 'info',
+      },
+      {
+        title: 'Denied Access',
+        value: dashboard?.denied || 0,
+        iconName: 'ShieldAlert',
+        variant: 'destructive',
+      },
+      {
+        title: 'Active in Facility',
+        value: activeVisitors,
+        iconName: 'Users',
+        variant: 'default',
+      },
+    ],
+    [dashboard?.entries, dashboard?.exits, dashboard?.denied, activeVisitors]
+  );
 
-    const statusLabel = isDenied
-      ? 'DENIED'
-      : isExit
-      ? 'EXIT'
-      : item.scanType === 'Manual Verification'
-      ? 'MANUAL'
-      : 'ENTRY';
+  const renderHeader = () => (
+    <View className="mb-3 gap-3">
+      {/* 2x2 Telemetry Header KPI Grid */}
+      <KPIRow layout="grid" cards={kpiCards} loading={loading && logs.length === 0} className="px-0" />
 
-    const statusVariant = isDenied
-      ? 'danger'
-      : isExit
-      ? 'info'
-      : item.scanType === 'Manual Verification'
-      ? 'warning'
-      : 'success';
-
-    const scanTimeFormatted = item.scanTime
-      ? new Date(item.scanTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      : '-';
-
-    return (
-      <View className="mb-2">
-        <ListCard
-          title={item.amenityName || 'Amenity Gate Access'}
-          subtitle={`Resident: ${item.residentName || 'Resident'} • Guard: ${item.guardName || 'System'} • ${scanTimeFormatted}`}
-          leftIcon={isDenied ? 'ShieldAlert' : isExit ? 'DoorClosed' : 'DoorOpen'}
-          leftIconBgColor={isDenied ? '#fee2e2' : isExit ? '#e0f2fe' : '#dcfce7'}
-          leftIconColor={isDenied ? '#dc2626' : isExit ? '#0284c7' : '#16a34a'}
-          onPress={() => setSelectedLog(item)}
-          status={{
-            label: statusLabel,
-            variant: statusVariant,
-          }}
+      {/* Filter Tabs & Search Hub */}
+      <View className="gap-2.5">
+        <TabBar
+          tabs={scanTypeTabs}
+          activeTab={filters.scanType || ''}
+          onTabChange={(tabKey) => handleFilterChange('scanType', tabKey)}
+          variant="pill"
+          className="my-1"
         />
+
+        <SearchFilterBar
+          searchValue={filters.search || ''}
+          onSearchChange={(text) => handleFilterChange('search', text)}
+          searchPlaceholder="Search resident, amenity, guard..."
+          variant="bordered"
+          className="px-0 py-0 border-0"
+        />
+
+        {Boolean(filters.search || filters.scanType) && (
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={handleClearFilters}
+            className="self-end py-1 h-8"
+          >
+            Clear Filters
+          </Button>
+        )}
       </View>
-    );
-  };
+
+      {/* Error Retry Banner */}
+      {error && (
+        <ErrorBanner
+          message={error}
+          onRetry={loadData}
+          className="my-1"
+        />
+      )}
+    </View>
+  );
 
   return (
     <ScreenShell
@@ -88,118 +127,40 @@ export default function AmenitySecurityLogsScreen() {
       error={error}
       onRetry={loadData}
     >
-      <View className="flex-1 px-3 pt-2">
-        {/* Responsive 2x2 Grid KPI Cards (Aligned & Compact) */}
-        <View className="flex-row flex-wrap justify-between gap-y-2.5 mb-3">
-          <View style={{ width: '48.5%' }}>
-            <KPICard
-              title="Today's Entries"
-              value={dashboard?.entries || 0}
-              iconName="DoorOpen"
-              iconColor="#10b981"
-              className="w-full"
-            />
-          </View>
-          <View style={{ width: '48.5%' }}>
-            <KPICard
-              title="Today's Exits"
-              value={dashboard?.exits || 0}
-              iconName="DoorClosed"
-              iconColor="#0284c7"
-              className="w-full"
-            />
-          </View>
-          <View style={{ width: '48.5%' }}>
-            <KPICard
-              title="Denied Access"
-              value={dashboard?.denied || 0}
-              iconName="ShieldAlert"
-              iconColor="#ef4444"
-              className="w-full"
-            />
-          </View>
-          <View style={{ width: '48.5%' }}>
-            <KPICard
-              title="Active Visitors"
-              value={activeVisitors}
-              iconName="Users"
-              iconColor="#8b5cf6"
-              className="w-full"
-            />
-          </View>
-        </View>
-
-        {/* Compact Search & Filter Bar */}
-        <View className="bg-card p-3 rounded-xl border border-border/80 mb-3 gap-2.5 shadow-sm">
-          <TextInput
-            value={filters.search}
-            onChangeText={(text) => handleFilterChange('search', text)}
-            placeholder="Search resident, amenity, guard..."
-          />
-
-          {/* Scan Type Filter Pills */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-            {scanTypeOptions.map((opt) => {
-              const isSelected = filters.scanType === opt.value;
-              return (
-                <TouchableOpacity
-                  key={opt.label}
-                  onPress={() => handleFilterChange('scanType', opt.value)}
-                  className={`px-3 py-1 rounded-full border me-2 ${
-                    isSelected
-                      ? 'bg-primary border-primary'
-                      : 'bg-muted/30 border-border'
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-semibold ${
-                      isSelected ? 'text-white' : 'text-foreground'
-                    }`}
-                  >
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {Boolean(filters.search || filters.scanType) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onPress={handleClearFilters}
-              className="self-end py-1 h-8"
-            >
-              <Text className="text-xs font-medium">Clear Filters</Text>
-            </Button>
-          )}
-        </View>
-
-        {/* Paginated Audit Log List */}
-        <PaginatedList
+      <View className="flex-1 bg-background">
+        {/* Virtualized Paginated Log List */}
+        <PaginatedList<SecurityLog>
           data={logs}
-          renderItem={renderSecurityLogItem}
+          renderItem={(item) => (
+            <AmenitySecurityLogCard
+              key={item._id}
+              log={item}
+              onPress={setSelectedLog}
+            />
+          )}
           pagination={{
-            currentPage: pagination.page,
-            totalPages: pagination.totalPages,
-            totalRecords: pagination.total,
-            limit: pagination.limit,
+            currentPage: (pagination as any).currentPage || pagination.page || 1,
+            totalPages: pagination.totalPages || 1,
+            totalRecords: (pagination as any).totalRecords || pagination.total || logs.length,
+            limit: pagination.limit || 20,
           }}
           onLoadMore={() => {
-            if (pagination.page < pagination.totalPages) {
-              handlePageChange(pagination.page + 1);
+            const current = (pagination as any).currentPage || pagination.page || 1;
+            if (current < pagination.totalPages) {
+              handlePageChange(current + 1);
             }
           }}
           onRefresh={loadData}
           loading={loading}
+          ListHeaderComponent={renderHeader()}
           emptyIcon="ClipboardList"
-          emptyTitle="No Security Logs Found"
-          emptySubtitle="No gate scanner audit events match your current filter parameters."
-          contentContainerClassName="pb-6"
+          emptyTitle="No Audit Logs Found"
+          emptySubtitle="Security scanner logs matching your search and filter will appear here."
+          contentContainerClassName="px-4 pt-2 pb-28"
         />
       </View>
 
-      {/* Log Detail Drawer Modal */}
+      {/* Security Log Details Inspection Modal */}
       <SecurityLogDetailModal
         visible={!!selectedLog}
         onClose={() => setSelectedLog(null)}

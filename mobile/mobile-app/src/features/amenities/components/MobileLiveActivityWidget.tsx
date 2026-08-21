@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
-import { RootState } from '../../../store/store';
+import { RootState } from '@/src/store/store';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { SectionHeader } from '@/components/common/SectionHeader';
-import { StandardRecordCard } from '@/components/common/StandardRecordCard';
+import { ListCard } from '@/components/ui/ListCard';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { QrCode, ArrowRight, ShieldCheck } from 'lucide-react-native';
 import { useSecurityLogs } from '../hooks/useSecurityLogs';
@@ -181,7 +181,7 @@ export function MobileLiveActivityWidget() {
         <View className="bg-card p-4 rounded-2xl border border-border/70 shadow-xs">
           <View className="gap-2.5 mb-2">
             {activeLogs.map((item: any) => (
-              <StandardRecordCard
+              <ListCard
                 key={item.id}
                 title={`${item.residentName} (${item.unitInfo})`}
                 subtitle={`${item.amenityName} • ${item.timeStr}`}

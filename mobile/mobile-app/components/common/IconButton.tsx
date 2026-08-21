@@ -29,7 +29,9 @@ export const IconButton = ({
       className={cn('rounded-full', buttonSizeClass, className)}
       {...props}
     >
-      <Icon size={iconSize} className={iconClassName} />
+      {Icon && (typeof Icon === 'function' || (typeof Icon === 'object' && Icon !== null)) ? (
+        <Icon size={iconSize} className={iconClassName} />
+      ) : null}
     </Button>
   );
 };

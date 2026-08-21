@@ -14,6 +14,7 @@ import { useBillingSocket } from '../hooks/useBillingSocket';
 import { UnitDueBreakdown, InvoiceStatus, Invoice } from '../types';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { OfflineSettleSheet } from '../components/OfflineSettleSheet';
+import { ResidentDueCard } from '../components/ResidentDueCard';
 
 export function ResidentMyDuesScreen() {
   const router = useRouter();
@@ -217,91 +218,14 @@ export function ResidentMyDuesScreen() {
               />
             ) : (
               <View className="gap-3">
-                {duesList.map((item) => {
-                  const invoiceId = item.invoiceId || (item as any)._id;
-                  const invNo = item.invoiceNumber || invoiceId || '—';
-                  const unitStr = item.unitNumber ? `Villa ${item.unitNumber}` : 'Villa Unit';
-                  const periodStr = item.billingPeriodString || 'Current Month';
-                  const dueAmount = item.totalDue || 0;
-                  const formattedDue = `₹${dueAmount.toLocaleString('en-IN')}`;
-
-                  const statusVariant = getStatusVariant(item.status);
-                  const statusLabel = item.status ? item.status.replace(/_/g, ' ') : 'UNPAID';
-                  const isPendingVerification = item.status === ('VERIFICATION_PENDING' as InvoiceStatus);
-
-                  const mappedInvoice: Invoice = {
-                    _id: invoiceId,
-                    invoiceNumber: invNo,
-                    unitNumber: item.unitNumber,
-                    billingPeriodString: periodStr,
-                    totalDue: dueAmount,
-                    status: item.status,
-                  } as Invoice;
-
-                  return (
-                    <TouchableOpacity
-                      key={invoiceId}
-                      onPress={() => handleViewInvoiceDetails(invoiceId)}
-                      activeOpacity={0.8}
-                      accessibilityRole="button"
-                      accessibilityLabel={`View Invoice ${invNo} for ${unitStr}`}
-                      className="bg-card border border-border rounded-xl p-4 shadow-sm"
-                    >
-                      <View className="flex-row items-start justify-between mb-3">
-                        <View className="flex-row items-center flex-1 me-2">
-                          <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center me-3">
-                            <Icon as={Receipt} size={20} className="text-primary" />
-                          </View>
-                          <View className="flex-1">
-                            <Text className="text-foreground font-bold text-base truncate">
-                              {invNo}
-                            </Text>
-                            <Text className="text-muted-foreground text-xs font-medium">
-                              {unitStr} • {periodStr}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <StatusBadge label={statusLabel} variant={statusVariant} dot />
-                      </View>
-
-                      <View className="border-t border-border/50 pt-3 flex-row items-center justify-between">
-                        <View>
-                          <Text className="text-xs text-muted-foreground">Remaining Liability</Text>
-                          <Text className="text-lg font-extrabold text-foreground">
-                            {formattedDue}
-                          </Text>
-                        </View>
-
-                        <View className="flex-row items-center gap-2">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onPress={() => handleViewInvoiceDetails(invoiceId)}
-                          >
-                            Details
-                          </Button>
-
-                          {!isPendingVerification ? (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onPress={() => setCheckoutInvoice(mappedInvoice)}
-                            >
-                              Pay Now
-                            </Button>
-                          ) : (
-                            <View className="bg-primary/10 px-2.5 py-1 rounded-lg">
-                              <Text className="text-primary text-xs font-semibold">
-                                Pending
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
+                {duesList.map((item) => (
+                  <ResidentDueCard
+                    key={item.invoiceId || (item as any)._id}
+                    item={item}
+                    onViewDetails={handleViewInvoiceDetails}
+                    onPayNow={(inv) => setCheckoutInvoice(inv)}
+                  />
+                ))}
               </View>
             )}
           </View>

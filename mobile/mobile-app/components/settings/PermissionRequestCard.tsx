@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { ShieldAlert, CheckCircle2 } from 'lucide-react-native';
-import { Button } from '../ui/button';
-import { cn } from '../../lib/utils';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export interface PermissionRequestCardProps {
   title: string;
@@ -19,37 +20,53 @@ export const PermissionRequestCard = ({
   onRequest,
   className,
 }: PermissionRequestCardProps) => {
+  const isGranted = status === 'granted';
+
   return (
-    <View className={cn('rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900', className)}>
+    <View
+      className={cn(
+        'rounded-xl border border-border bg-card p-4 shadow-xs',
+        className
+      )}
+    >
       <View className="flex-row items-start justify-between mb-4">
-        <View className="flex-row flex-1 mr-4">
-          <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-            {status === 'granted' ? (
-              <CheckCircle2 size={20} className="text-emerald-500" />
+        <View className="flex-row flex-1 me-3">
+          <View
+            className={cn(
+              'me-3 h-10 w-10 items-center justify-center rounded-full border',
+              isGranted
+                ? 'bg-status-success/15 border-status-success/30'
+                : 'bg-status-warning/15 border-status-warning/30'
+            )}
+          >
+            {isGranted ? (
+              <CheckCircle2 size={20} className="text-status-success" />
             ) : (
-              <ShieldAlert size={20} className="text-amber-500" />
+              <ShieldAlert size={20} className="text-status-warning" />
             )}
           </View>
           <View className="flex-1">
-            <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            <Text className="text-base font-semibold text-foreground">
               {title}
             </Text>
-            <Text className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <Text className="mt-0.5 text-xs text-muted-foreground">
               {description}
             </Text>
           </View>
         </View>
       </View>
-      
-      {status !== 'granted' && (
-        <Button 
-          variant={status === 'denied' ? 'outline' : 'default'} 
+
+      {!isGranted && (
+        <Button
+          variant={status === 'denied' ? 'outline' : 'default'}
+          size="sm"
           onPress={onRequest}
           className="w-full"
         >
-          {status === 'denied' ? 'Open Settings' : 'Allow Permission'}
+          {status === 'denied' ? 'Open System Settings' : 'Grant Permission'}
         </Button>
       )}
     </View>
   );
 };
+

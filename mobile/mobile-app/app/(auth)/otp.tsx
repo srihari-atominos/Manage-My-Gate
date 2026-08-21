@@ -103,7 +103,7 @@ export default function OtpScreen() {
               />
 
               {errors.code && (
-                <Text className="text-rose-500 text-xs font-semibold mt-1">
+                <Text className="text-destructive text-xs font-semibold mt-1">
                   {errors.code.message}
                 </Text>
               )}
@@ -111,8 +111,8 @@ export default function OtpScreen() {
 
             {/* Error Banner */}
             {error && (
-              <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3">
-                <Text className="text-rose-500 text-xs text-center font-medium">{error}</Text>
+              <View className="bg-destructive/10 border border-destructive/20 rounded-xl p-3">
+                <Text className="text-destructive text-xs text-center font-medium">{error}</Text>
               </View>
             )}
 

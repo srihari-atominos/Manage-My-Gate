@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View } from 'react-native';
 import { HardDrive, Trash2 } from 'lucide-react-native';
-import { cn } from '../../lib/utils';
-import { Button } from '../ui/button';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export interface StorageCleanerWidgetProps {
   usedSpace: string;
@@ -18,31 +19,38 @@ export const StorageCleanerWidget = ({
   className,
 }: StorageCleanerWidgetProps) => {
   return (
-    <View className={cn('rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900', className)}>
+    <View
+      className={cn(
+        'rounded-xl border border-border bg-card p-4 shadow-xs',
+        className
+      )}
+    >
       <View className="mb-4 flex-row items-center justify-between">
         <View className="flex-row items-center">
-          <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30">
-            <HardDrive size={20} className="text-blue-500" />
+          <View className="me-3 h-10 w-10 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
+            <HardDrive size={20} className="text-primary" />
           </View>
           <View>
-            <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
-              Storage Usage
+            <Text className="text-base font-semibold text-foreground">
+              Storage & Cache
             </Text>
-            <Text className="text-sm text-slate-500 dark:text-slate-400">
-              {usedSpace} of {totalSpace} used
+            <Text className="text-xs text-muted-foreground mt-0.5">
+              {usedSpace} of {totalSpace} utilized
             </Text>
           </View>
         </View>
       </View>
-      
-      <Button 
-        variant="outline" 
+
+      <Button
+        variant="outline"
+        size="sm"
         className="w-full"
         onPress={onClearCache}
         leftIcon={Trash2}
       >
-        Clear App Cache
+        Clear Application Cache
       </Button>
     </View>
   );
 };
+

@@ -8,10 +8,9 @@ import { KPICardProps } from '@/components/ui/KPICard';
 import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/ui/button';
-import { FAB } from '@/components/ui/FAB';
 import { ProgressBar } from '@/components/common/ProgressBar';
 import { SectionHeader } from '@/components/common/SectionHeader';
-import { StandardRecordCard } from '@/components/common/StandardRecordCard';
+import { ListCard } from '@/components/ui/ListCard';
 import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
@@ -165,21 +164,22 @@ export function AdminBillingDashboardScreen() {
       permissionGranted={hasDashboardPermission}
       loading={loadingStates.fetchKPIs && !kpis}
       headerRight={
-        <TouchableOpacity
+        <Button
+          variant="outline"
+          size="sm"
           onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1.5 bg-muted px-3 py-1.5 rounded-full border border-border"
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
           accessibilityRole="button"
           accessibilityLabel="View Ledger"
         >
           <Receipt size={14} className="text-foreground" />
           <Text className="text-xs font-semibold text-foreground">Ledger</Text>
-        </TouchableOpacity>
+        </Button>
       }
     >
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerClassName="p-4 pb-20 gap-4"
+        contentContainerClassName="p-4 pb-28 gap-4"
         refreshControl={
           <RefreshControl
             refreshing={loadingStates.fetchKPIs}
@@ -273,7 +273,7 @@ export function AdminBillingDashboardScreen() {
                 const invNum = tx.invoiceNumber ? `Inv #${tx.invoiceNumber}` : 'Invoice';
 
                 return (
-                  <StandardRecordCard
+                  <ListCard
                     key={tx._id || tx.invoiceNumber}
                     title={`${unit} • ${resident}`}
                     subtitle={`${invNum} • ${formattedAmount}`}
@@ -291,13 +291,6 @@ export function AdminBillingDashboardScreen() {
           )}
         </View>
       </ScrollView>
-
-      {/* Primary Action: Create New Assessment FAB */}
-      <FAB
-        iconName="Plus"
-        label="New Assessment"
-        onPress={() => router.push('/(resident)/admin/billing/assessments' as any)}
-      />
     </ScreenShell>
   );
 }

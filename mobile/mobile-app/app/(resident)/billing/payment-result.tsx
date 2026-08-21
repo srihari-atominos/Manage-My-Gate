@@ -1,6 +1,6 @@
 import React from 'react';
 import { Stack } from 'expo-router';
-import PaymentResultScreen from '@/src/features/billing/screens/PaymentResultScreen';
+import { PaymentResultScreen } from '@/src/features/billing';
 
 export default function PaymentResultRoute() {
   return (

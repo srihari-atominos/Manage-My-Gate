@@ -1,7 +1,7 @@
 import React from 'react';
 import { type PressableProps } from 'react-native';
 import { type LucideIcon } from 'lucide-react-native';
-import { StandardRecordCard } from './StandardRecordCard';
+import { ListCard } from '@/components/ui/ListCard';
 
 export interface ListItemProps extends PressableProps {
   title: string;
@@ -24,7 +24,7 @@ export const ListItem = ({
   ...props
 }: ListItemProps) => {
   return (
-    <StandardRecordCard
+    <ListCard
       title={title}
       subtitle={subtitle}
       leftIcon={leftIcon}

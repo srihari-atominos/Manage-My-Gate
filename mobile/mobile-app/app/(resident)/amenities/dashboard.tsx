@@ -1,15 +1,16 @@
 import React from 'react';
-import { View, ScrollView, TouchableOpacity } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { KPIDashboardStrip } from '@/components/ui/KPIDashboardStrip';
 import { type KPICardProps } from '@/components/ui/KPICard';
+import { Button } from '@/components/ui/button';
 import { FAB } from '@/components/ui/FAB';
 import { CalendarCheck } from 'lucide-react-native';
-import { useAmenityDashboard } from '../../../src/features/amenities/hooks/useAmenityDashboard';
-import { MobileQuickNavHub } from '../../../src/features/amenities/components/MobileQuickNavHub';
-import { MobileLiveActivityWidget } from '../../../src/features/amenities/components/MobileLiveActivityWidget';
+import { useAmenityDashboard } from '@/src/features/amenities/hooks/useAmenityDashboard';
+import { MobileQuickNavHub } from '@/src/features/amenities/components/MobileQuickNavHub';
+import { MobileLiveActivityWidget } from '@/src/features/amenities/components/MobileLiveActivityWidget';
 
 const parseRevenue = (val: any, fallback: number): number => {
   if (val === undefined || val === null) return fallback;
@@ -80,19 +81,20 @@ export default function AmenityExecutiveDashboardScreen() {
       error={error}
       onRetry={loadData}
       headerRight={
-        <TouchableOpacity
+        <Button
+          variant="outline"
+          size="sm"
           onPress={() => router.push('/(resident)/amenities/my-bookings' as any)}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1.5 bg-muted px-3 py-1.5 rounded-full border border-border"
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
           accessibilityRole="button"
           accessibilityLabel="View My Bookings"
         >
           <CalendarCheck size={14} className="text-foreground" />
           <Text className="text-xs font-semibold text-foreground">My Bookings</Text>
-        </TouchableOpacity>
+        </Button>
       }
     >
-      <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 pb-20 gap-4">
+      <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 pb-28 gap-4">
         {/* Universal Top KPI Metrics Strip (Horizontal Carousel for 3 items) */}
         <KPIDashboardStrip cards={kpiCards} loading={loading && !dashboardStats} />
 

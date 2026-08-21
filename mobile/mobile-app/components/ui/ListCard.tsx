@@ -13,7 +13,7 @@ export interface ListCardDateSquare {
   bottom: string; // e.g. "AUG" or "10:30 AM"
 }
 
-export interface ListCardProps extends Omit<PressableProps, 'title' | 'description'> {
+export interface ListCardProps extends Omit<PressableProps, 'title' | 'description' | 'children'> {
   title: string | React.ReactNode;
   subtitle?: string | React.ReactNode;
   description?: string | React.ReactNode;
@@ -39,9 +39,8 @@ export interface ListCardProps extends Omit<PressableProps, 'title' | 'descripti
   // Layout & Interaction
   variant?: 'card' | 'row';             // 'card' (default with border & radius) or 'row' (border-b list row)
   isLastItem?: boolean;                 // for 'row' variant to suppress bottom border
-  onPress?: () => void;
-  onLongPress?: () => void;
   className?: string;
+  children?: React.ReactNode | ((state: any) => React.ReactNode); // Child content rendered below the main row
 }
 
 export function formatRelativeTime(date: string | Date): string {
@@ -66,7 +65,7 @@ export function formatRelativeTime(date: string | Date): string {
 
 const listCardVariants = cva(
   cn(
-    'p-3 flex-row items-center active:bg-accent/50 active:opacity-90',
+    'p-3 flex-col active:bg-accent/50 active:opacity-90',
     Platform.select({
       web: 'transition-colors cursor-pointer select-none',
     })
@@ -111,6 +110,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
       disabled = false,
       className,
       style,
+      children,
       ...props
     },
     ref
@@ -127,46 +127,25 @@ const ListCard = React.forwardRef<View, ListCardProps>(
     const isCard = variant === 'card';
     const isInteractive = Boolean(onPress || onLongPress);
     const isCustomBgClass = leftIconBgColor && leftIconBgColor.startsWith('bg-');
+    const hasChildren = Boolean(children);
+    const hasCustomRightContent = rightContent !== undefined;
 
-    return (
-      <Pressable
-        ref={ref}
-        onPress={onPress}
-        onLongPress={onLongPress}
-        disabled={disabled || !isInteractive}
-        className={cn(
-          listCardVariants({ variant }),
-          !isCard && !isLastItem && 'border-b border-border/40',
-          disabled && 'opacity-50',
-          'overflow-hidden',
-          className
-        )}
-        style={style}
-        accessibilityRole={rightContent !== undefined ? undefined : (isInteractive ? 'button' : undefined)}
-        {...props}
-      >
-        {/* Background Image & Overlay */}
-        {backgroundImage ? (
-          <>
-            <Image
-              source={{ uri: backgroundImage }}
-              className="absolute inset-0 w-full h-full"
-              resizeMode="cover"
-            />
-            <View className="absolute inset-0 bg-black/60" />
-          </>
-        ) : null}
-
-        {/* 1. Left Slot: Custom Node | Image | Avatar | Initials Fallback | Date Square | Icon */}
-        {leftContent ? (
-          <View className="me-3 shrink-0">{leftContent}</View>
-        ) : leftImage ? (
+    // Helper to render the Left Slot
+    const renderLeftSlot = () => {
+      if (leftContent) {
+        return <View className="me-3 shrink-0">{leftContent}</View>;
+      }
+      if (leftImage) {
+        return (
           <Image
             source={{ uri: leftImage }}
             className="w-10 h-10 rounded-lg shrink-0 me-3"
             resizeMode="cover"
           />
-        ) : leftAvatar ? (
+        );
+      }
+      if (leftAvatar) {
+        return (
           <View className="w-10 h-10 rounded-full bg-muted border border-border overflow-hidden me-3 items-center justify-center shrink-0">
             <Image
               source={{ uri: leftAvatar }}
@@ -174,11 +153,17 @@ const ListCard = React.forwardRef<View, ListCardProps>(
               accessibilityLabel="Record Avatar"
             />
           </View>
-        ) : leftAvatarFallback ? (
+        );
+      }
+      if (leftAvatarFallback) {
+        return (
           <View className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 me-3 items-center justify-center shrink-0">
             <Text className="text-xs font-bold text-primary">{leftAvatarFallback}</Text>
           </View>
-        ) : leftDateSquare ? (
+        );
+      }
+      if (leftDateSquare) {
+        return (
           <View className="w-11 h-11 rounded-xl bg-muted border border-border me-3 items-center justify-center p-1 shrink-0">
             <Text className="text-xs font-extrabold text-foreground leading-none">
               {leftDateSquare.top}
@@ -187,7 +172,10 @@ const ListCard = React.forwardRef<View, ListCardProps>(
               {leftDateSquare.bottom}
             </Text>
           </View>
-        ) : DynamicIcon ? (
+        );
+      }
+      if (DynamicIcon) {
+        return (
           <View
             className={cn(
               "w-10 h-10 rounded-xl items-center justify-center shrink-0 me-3",
@@ -202,9 +190,14 @@ const ListCard = React.forwardRef<View, ListCardProps>(
               className={!leftIconColor ? "text-primary" : undefined}
             />
           </View>
-        ) : null}
+        );
+      }
+      return null;
+    };
 
-        {/* 2. Middle Details: Title, Subtitle, Description, Timestamp */}
+    // Helper to render Middle Details
+    const renderMiddleDetails = () => {
+      return (
         <View className="flex-1 justify-center min-w-0">
           {typeof title === 'string' ? (
             <Text
@@ -255,8 +248,12 @@ const ListCard = React.forwardRef<View, ListCardProps>(
             </Text>
           ) : null}
         </View>
+      );
+    };
 
-        {/* 3. Right Action / Badges / Relative Timestamp / Chevron */}
+    // Helper to render Right Slot
+    const renderRightSlot = () => {
+      return (
         <View className="items-end justify-center gap-1 ms-2 shrink-0">
           {timestamp && isCard ? (
             <Text
@@ -267,7 +264,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
             </Text>
           ) : null}
 
-          {rightContent !== undefined ? (
+          {hasCustomRightContent ? (
             rightContent
           ) : showChevron !== false && (
             <Icon
@@ -293,7 +290,147 @@ const ListCard = React.forwardRef<View, ListCardProps>(
             />
           ) : null}
         </View>
-      </Pressable>
+      );
+    };
+
+    // Background Image Element
+    const renderBackground = () => {
+      if (!backgroundImage) return null;
+      return (
+        <>
+          <Image
+            source={{ uri: backgroundImage }}
+            className="absolute inset-0 w-full h-full"
+            resizeMode="cover"
+          />
+          <View className="absolute inset-0 bg-black/60" />
+        </>
+      );
+    };
+
+    const resolvedStyle = typeof style === 'function' ? (style as any)({ pressed: false }) : style;
+
+    // Case 1: Complex Card (has children or custom interactive right content)
+    // Prevents HTML DOM invalid nesting (<button> inside <button>) on web.
+    if (hasChildren || (hasCustomRightContent && isInteractive)) {
+      return (
+        <View
+          ref={ref}
+          className={cn(
+            listCardVariants({ variant }),
+            !isCard && !isLastItem && 'border-b border-border/40',
+            disabled && 'opacity-50',
+            'overflow-hidden',
+            className
+          )}
+          style={resolvedStyle}
+          {...props}
+        >
+          {renderBackground()}
+
+          {/* Main Top Row */}
+          {isInteractive ? (
+            <View className="flex-row items-center w-full">
+              {hasCustomRightContent ? (
+                <>
+                  <Pressable
+                    onPress={onPress}
+                    onLongPress={onLongPress}
+                    disabled={disabled}
+                    accessibilityRole="button"
+                    className="flex-1 flex-row items-center active:opacity-75 cursor-pointer"
+                  >
+                    {renderLeftSlot()}
+                    {renderMiddleDetails()}
+                  </Pressable>
+                  {renderRightSlot()}
+                </>
+              ) : (
+                <Pressable
+                  onPress={onPress}
+                  onLongPress={onLongPress}
+                  disabled={disabled}
+                  accessibilityRole="button"
+                  className="flex-row items-center w-full active:opacity-75 cursor-pointer"
+                >
+                  {renderLeftSlot()}
+                  {renderMiddleDetails()}
+                  {renderRightSlot()}
+                </Pressable>
+              )}
+            </View>
+          ) : (
+            <View className="flex-row items-center w-full">
+              {renderLeftSlot()}
+              {renderMiddleDetails()}
+              {renderRightSlot()}
+            </View>
+          )}
+
+          {/* Children / Bottom Actions Slot */}
+          {hasChildren && (
+            <View className="w-full mt-2.5">
+              {typeof children === 'function' ? (children as any)({ pressed: false }) : children}
+            </View>
+          )}
+        </View>
+      );
+    }
+
+    // Case 2: Simple Card without Children / Custom Right Actions
+    if (isInteractive) {
+      return (
+        <Pressable
+          ref={ref}
+          onPress={onPress}
+          onLongPress={onLongPress}
+          disabled={disabled}
+          accessibilityRole="button"
+          className={cn(
+            listCardVariants({ variant }),
+            'active:bg-accent/50 active:opacity-90',
+            Platform.select({ web: 'cursor-pointer' }),
+            !isCard && !isLastItem && 'border-b border-border/40',
+            disabled && 'opacity-50',
+            'overflow-hidden',
+            className
+          )}
+          style={style}
+          {...props}
+        >
+          {renderBackground()}
+
+          <View className="flex-row items-center w-full">
+            {renderLeftSlot()}
+            {renderMiddleDetails()}
+            {renderRightSlot()}
+          </View>
+        </Pressable>
+      );
+    }
+
+    // Case 3: Simple Static View
+    return (
+      <View
+        ref={ref}
+        className={cn(
+          listCardVariants({ variant }),
+          !isCard && !isLastItem && 'border-b border-border/40',
+          disabled && 'opacity-50',
+          'overflow-hidden',
+          className
+        )}
+        style={resolvedStyle}
+        {...props}
+      >
+        {renderBackground()}
+
+        <View className="flex-row items-center w-full">
+          {renderLeftSlot()}
+          {renderMiddleDetails()}
+          {renderRightSlot()}
+        </View>
+      </View>
     );
   }
 );

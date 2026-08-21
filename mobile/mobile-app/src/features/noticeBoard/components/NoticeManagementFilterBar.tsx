@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Platform } from 'react-native';
-import { TextInput } from '@/components/forms/TextInput';
+import { SearchBar } from '@/components/forms/SearchBar';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { Search } from 'lucide-react-native';
 
-const CATEGORIES = {
+export const CATEGORIES = {
   GENERAL: 'General',
   MAINTENANCE: 'Maintenance',
   EVENTS: 'Events',
@@ -14,14 +13,14 @@ const CATEGORIES = {
   MEETINGS: 'Meetings',
 };
 
-const PRIORITIES = {
+export const PRIORITIES = {
   LOW: 'Low',
   MEDIUM: 'Medium',
   HIGH: 'High',
   URGENT: 'Urgent',
 };
 
-const STATUSES = {
+export const STATUSES = {
   DRAFT: 'Draft',
   PUBLISHED: 'Published',
   EXPIRED: 'Expired',
@@ -30,14 +29,41 @@ const STATUSES = {
 };
 
 export const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest First', sortBy: 'createdAt', sortOrder: 'desc' },
-  { value: 'oldest', label: 'Oldest First', sortBy: 'createdAt', sortOrder: 'asc' },
-  { value: 'priority', label: 'Highest Priority', sortBy: 'priority', sortOrder: 'desc' },
-  { value: 'title_asc', label: 'Title (A-Z)', sortBy: 'title', sortOrder: 'asc' },
-  { value: 'title_desc', label: 'Title (Z-A)', sortBy: 'title', sortOrder: 'desc' },
+  { value: 'newest', label: 'Newest First', sortBy: 'createdAt', sortOrder: 'desc' as const },
+  { value: 'oldest', label: 'Oldest First', sortBy: 'createdAt', sortOrder: 'asc' as const },
+  { value: 'priority', label: 'Highest Priority', sortBy: 'priority', sortOrder: 'desc' as const },
+  { value: 'title_asc', label: 'Title (A-Z)', sortBy: 'title', sortOrder: 'asc' as const },
+  { value: 'title_desc', label: 'Title (Z-A)', sortBy: 'title', sortOrder: 'desc' as const },
 ];
 
-export const NoticeBoardFilters = ({
+export interface NoticeFiltersState {
+  category?: string;
+  priority?: string;
+  status?: string;
+  isBookmarked?: boolean | string;
+  readStatus?: string;
+  [key: string]: any;
+}
+
+export interface NoticeSortState {
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
+}
+
+export interface NoticeManagementFilterBarProps {
+  search: string;
+  filters: NoticeFiltersState;
+  sort: NoticeSortState;
+  onSearchChange: (text: string) => void;
+  onFiltersChange: (filters: Partial<NoticeFiltersState>) => void;
+  onSortChange?: (sort: NoticeSortState) => void;
+  onReset: () => void;
+  hideStatusFilter?: boolean;
+  showNoticeTypeFilter?: boolean;
+  className?: string;
+}
+
+export const NoticeManagementFilterBar: React.FC<NoticeManagementFilterBarProps> = ({
   search,
   filters,
   sort,
@@ -47,6 +73,7 @@ export const NoticeBoardFilters = ({
   onReset,
   hideStatusFilter = false,
   showNoticeTypeFilter = false,
+  className = '',
 }) => {
   const [searchTerm, setSearchTerm] = useState(search);
 
@@ -58,7 +85,7 @@ export const NoticeBoardFilters = ({
     onSearchChange(searchTerm);
   };
 
-  const handleSortSelect = (value) => {
+  const handleSortSelect = (value: string) => {
     const selected = SORT_OPTIONS.find((opt) => opt.value === value);
     if (selected) {
       if (onSortChange) {
@@ -69,7 +96,9 @@ export const NoticeBoardFilters = ({
     }
   };
 
-  const activeSortOption = SORT_OPTIONS.find((opt) => opt.sortBy === sort.sortBy && opt.sortOrder === sort.sortOrder)?.value || 'newest';
+  const activeSortOption =
+    SORT_OPTIONS.find((opt) => opt.sortBy === sort.sortBy && opt.sortOrder === sort.sortOrder)?.value ||
+    'newest';
 
   const getNoticeType = () => {
     if (filters.isBookmarked === 'true' || filters.isBookmarked === true) return 'Bookmarks';
@@ -77,7 +106,7 @@ export const NoticeBoardFilters = ({
     return 'All';
   };
 
-  const handleNoticeTypeChange = (val) => {
+  const handleNoticeTypeChange = (val: string) => {
     if (val === 'Bookmarks') {
       onFiltersChange({ isBookmarked: 'true', readStatus: '' });
     } else if (val === 'Unread') {
@@ -90,31 +119,30 @@ export const NoticeBoardFilters = ({
   const isWeb = Platform.OS === 'web';
 
   return (
-    <View className="mb-3">
-      <View className="flex-row items-center mb-3">
-        <View className="flex-1 me-2">
-          <TextInput
+    <View className={`gap-2.5 ${className}`}>
+      <View className="flex-row items-center gap-2">
+        <View className="flex-1">
+          <SearchBar
             value={searchTerm}
             onChangeText={(text) => {
               setSearchTerm(text);
               if (text === '') onSearchChange('');
             }}
-            placeholder="Search Notices"
-            leftIcon={Search}
-            onSubmitEditing={handleSearchSubmit}
+            placeholder="Search Notices..."
+            onClear={() => onSearchChange('')}
           />
         </View>
-        <Button variant="outline" size="sm" onPress={onReset}>
-          <Text>Reset</Text>
+        <Button variant="outline" size="sm" onPress={onReset} className="h-11 px-3.5 rounded-xl">
+          <Text className="text-xs font-semibold text-foreground">Reset</Text>
         </Button>
       </View>
 
       <View className="flex-row flex-wrap gap-2">
-        <View className="flex-1 min-w-[130px]" style={{ zIndex: 40 }}>
+        <View className="flex-1 min-w-[130px]">
           <DropdownSelect
             options={[
               { label: 'All Categories', value: '' },
-              ...Object.values(CATEGORIES).map(cat => ({ label: cat, value: cat }))
+              ...Object.values(CATEGORIES).map((cat) => ({ label: cat, value: cat })),
             ]}
             value={filters.category || ''}
             onValueChange={(val) => onFiltersChange({ category: val })}
@@ -122,12 +150,12 @@ export const NoticeBoardFilters = ({
             inline={isWeb}
           />
         </View>
-        
-        <View className="flex-1 min-w-[130px]" style={{ zIndex: 30 }}>
+
+        <View className="flex-1 min-w-[130px]">
           <DropdownSelect
             options={[
               { label: 'All Priorities', value: '' },
-              ...Object.values(PRIORITIES).map(pri => ({ label: pri, value: pri }))
+              ...Object.values(PRIORITIES).map((pri) => ({ label: pri, value: pri })),
             ]}
             value={filters.priority || ''}
             onValueChange={(val) => onFiltersChange({ priority: val })}
@@ -136,7 +164,7 @@ export const NoticeBoardFilters = ({
           />
         </View>
 
-        <View className="flex-1 min-w-[130px]" style={{ zIndex: 20 }}>
+        <View className="flex-1 min-w-[130px]">
           <DropdownSelect
             options={SORT_OPTIONS}
             value={activeSortOption}
@@ -147,12 +175,12 @@ export const NoticeBoardFilters = ({
         </View>
 
         {showNoticeTypeFilter && (
-          <View className="flex-1 min-w-[130px]" style={{ zIndex: 10 }}>
+          <View className="flex-1 min-w-[130px]">
             <DropdownSelect
               options={[
                 { label: 'All Notices', value: 'All' },
                 { label: 'Unread', value: 'Unread' },
-                { label: 'Bookmarks', value: 'Bookmarks' }
+                { label: 'Bookmarks', value: 'Bookmarks' },
               ]}
               value={getNoticeType()}
               onValueChange={handleNoticeTypeChange}
@@ -163,11 +191,11 @@ export const NoticeBoardFilters = ({
         )}
 
         {!hideStatusFilter && (
-          <View className="flex-1 min-w-[130px]" style={{ zIndex: 10 }}>
+          <View className="flex-1 min-w-[130px]">
             <DropdownSelect
               options={[
                 { label: 'All Statuses', value: '' },
-                ...Object.values(STATUSES).map(st => ({ label: st, value: st }))
+                ...Object.values(STATUSES).map((st) => ({ label: st, value: st })),
               ]}
               value={filters.status || ''}
               onValueChange={(val) => onFiltersChange({ status: val })}
@@ -181,4 +209,4 @@ export const NoticeBoardFilters = ({
   );
 };
 
-export default NoticeBoardFilters;
+export default NoticeManagementFilterBar;

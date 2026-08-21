@@ -16,14 +16,12 @@ export const MemoizedNoticeCard = React.memo(({ notice, onPress, onBookmarkToggl
   }, [onBookmarkToggle]);
 
   return (
-    <View className="mb-3 px-4">
-      <NoticeCard
-        notice={notice}
-        onPress={handlePress}
-        onBookmarkToggle={handleBookmark}
-        isAdmin={false}
-      />
-    </View>
+    <NoticeCard
+      notice={notice}
+      onPress={handlePress}
+      onBookmarkToggle={handleBookmark}
+      isAdmin={false}
+    />
   );
 });
 

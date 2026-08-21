@@ -10,9 +10,10 @@ import { type KPICardProps } from '@/components/ui/KPICard';
 import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { EmptyState } from '@/components/feedback/EmptyState';
+import { Button } from '@/components/ui/button';
 import { FAB } from '@/components/ui/FAB';
 
-import { ActivityLogItem } from '@/components/data';
+import { ActivityLogItem } from '@/components/data/ActivityLogItem';
 import { useNoticeBoard } from '@/src/features/noticeBoard/hooks/useNoticeBoard';
 import { useNoticeSocket } from '@/src/features/noticeBoard/hooks/useNoticeSocket';
 
@@ -110,24 +111,25 @@ export default function NoticeDashboardScreen() {
       onRetry={handleRefresh}
       loading={dashboardLoading && !dashboardStats}
       headerRight={
-        <TouchableOpacity
+        <Button
+          variant="outline"
+          size="sm"
           onPress={() => {
             setFilters({});
             router.push('/(resident)/notices/manage' as any);
           }}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1.5 bg-muted px-3 py-1.5 rounded-full border border-border"
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
           accessibilityRole="button"
           accessibilityLabel="Manage Notices"
         >
           <ListChecks size={14} className="text-foreground" />
           <Text className="text-xs font-semibold text-foreground">Manage</Text>
-        </TouchableOpacity>
+        </Button>
       }
     >
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerClassName="p-4 pb-20 gap-4"
+        contentContainerClassName="p-4 pb-28 gap-4"
         refreshControl={
           <RefreshControl refreshing={dashboardLoading && !!dashboardStats} onRefresh={handleRefresh} />
         }

@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { Zap, ZapOff } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
 import { cn } from '../../lib/utils';
 
 export interface FlashlightToggleProps {
@@ -17,30 +19,33 @@ export const FlashlightToggle = ({
   return (
     <Pressable
       onPress={onToggle}
+      accessibilityRole="button"
+      accessibilityLabel={isOn ? 'Turn flashlight off' : 'Turn flashlight on'}
+      accessibilityState={{ checked: isOn }}
       className={cn(
-        'flex-row items-center justify-center rounded-xl p-3 border',
-        isOn 
-          ? 'border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30' 
-          : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
+        'flex-row items-center justify-center rounded-xl p-3 border active:opacity-80',
+        isOn
+          ? 'border-primary/60 bg-primary/20'
+          : 'border-border bg-card/90 backdrop-blur-md',
         className
       )}
     >
-      <View 
+      <View
         className={cn(
-          'mr-2 h-8 w-8 items-center justify-center rounded-full',
-          isOn ? 'bg-amber-100 dark:bg-amber-900/50' : 'bg-slate-100 dark:bg-slate-800'
+          'me-2.5 h-8 w-8 items-center justify-center rounded-full',
+          isOn ? 'bg-primary/30' : 'bg-muted'
         )}
       >
         {isOn ? (
-          <Zap size={16} className="text-amber-500 fill-amber-500" />
+          <Icon as={Zap} size={16} className="text-primary" />
         ) : (
-          <ZapOff size={16} className="text-slate-400" />
+          <Icon as={ZapOff} size={16} className="text-muted-foreground" />
         )}
       </View>
-      <Text 
+      <Text
         className={cn(
-          'text-sm font-semibold',
-          isOn ? 'text-amber-700 dark:text-amber-500' : 'text-slate-700 dark:text-slate-300'
+          'text-xs font-bold tracking-wide',
+          isOn ? 'text-primary' : 'text-foreground'
         )}
       >
         {isOn ? 'Flashlight On' : 'Flashlight Off'}
@@ -48,3 +53,5 @@ export const FlashlightToggle = ({
     </Pressable>
   );
 };
+
+export default FlashlightToggle;

@@ -4,6 +4,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
+import { DatePicker } from '@/components/common/DatePicker';
+import { formatDateString } from '@/components/common/DatePickerModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Amenity } from '../store/amenitySlice';
@@ -37,20 +39,26 @@ export const ManualBookingModal: React.FC<ManualBookingModalProps> = ({
     value: a._id,
   }));
 
+  const todayStr = formatDateString(new Date());
+
   const {
     control,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<ManualBookingFormData>({
     defaultValues: {
       amenityId: amenities[0]?._id || '',
       villaNumber: '',
-      date: new Date().toISOString().split('T')[0],
+      date: todayStr,
       startTime: '09:00',
       endTime: '10:00',
       notes: 'Admin Manual Override Reservation',
     },
   });
+
+  const selectedDateVal = watch('date');
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Manual Resident Reservation">
@@ -86,19 +94,12 @@ export const ManualBookingModal: React.FC<ManualBookingModalProps> = ({
             )}
           />
 
-          <Controller
-            control={control}
-            name="date"
-            rules={{ required: 'Booking Date is required' }}
-            render={({ field: { onChange, value } }) => (
-              <TextInput
-                label="Reservation Date"
-                placeholder="YYYY-MM-DD"
-                value={value}
-                onChangeText={onChange}
-                error={errors.date?.message}
-              />
-            )}
+          {/* Integrated DatePicker Component */}
+          <DatePicker
+            label="Reservation Date"
+            value={selectedDateVal ? new Date(`${selectedDateVal}T00:00:00`) : new Date()}
+            onChange={(d) => setValue('date', formatDateString(d), { shouldDirty: true })}
+            error={errors.date?.message}
           />
 
           <View className="flex-row gap-3">
@@ -156,8 +157,9 @@ export const ManualBookingModal: React.FC<ManualBookingModalProps> = ({
             disabled={loading}
             onPress={handleSubmit(onSubmit)}
             className="mt-3 bg-primary py-3.5"
+            accessibilityLabel="Create Admin Reservation"
           >
-            <Text className="text-white font-bold text-base">
+            <Text className="text-primary-foreground font-bold text-base">
               {loading ? 'Creating Reservation...' : 'Create Admin Reservation'}
             </Text>
           </Button>

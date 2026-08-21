@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, TouchableOpacity } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { View } from 'react-native';
+import { ListCard } from '@/components/ui/ListCard';
 import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
 import { WalkInApprovalItem } from '../../mocks/visitorMocks';
-import { ShieldAlert, Clock, Check, X, Car, User } from 'lucide-react-native';
+import { ShieldAlert, Check, X } from 'lucide-react-native';
 
 export interface WalkInApprovalCardProps {
   item: WalkInApprovalItem;
@@ -20,85 +21,44 @@ export const WalkInApprovalCard: React.FC<WalkInApprovalCardProps> = ({
   onPressDetails,
 }) => {
   return (
-    <View className="bg-card border border-amber-300 dark:border-amber-700/60 rounded-2xl p-4 gap-3 shadow-sm">
-      {/* Clickable Header Banner & Visitor Info */}
-      <TouchableOpacity
-        onPress={() => onPressDetails(item)}
-        activeOpacity={0.8}
-        className="gap-3"
-      >
-        {/* Header Banner */}
-        <View className="flex-row items-center justify-between border-b border-border pb-3">
-          <View className="flex-row items-center gap-2">
-            <View className="w-8 h-8 rounded-full bg-amber-500/20 items-center justify-center">
-              <ShieldAlert size={18} className="text-amber-600 dark:text-amber-400" />
-            </View>
-            <View>
-              <Text className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-                Gate Walk-In Request
-              </Text>
-              <Text variant="muted" className="text-[11px]">
-                {item.gateName}
-              </Text>
-            </View>
-          </View>
-
-          <View className="flex-row items-center gap-1 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
-            <Clock size={12} className="text-amber-600 dark:text-amber-400" />
-            <Text className="text-xs font-extrabold text-amber-600 dark:text-amber-400">
-              Waiting {item.waitingDurationMinutes}m
-            </Text>
-          </View>
-        </View>
-
-        {/* Visitor Info */}
-        <View className="flex-row items-center gap-3">
-          <View className="w-12 h-12 rounded-2xl bg-primary/10 items-center justify-center border border-border">
-            <User size={22} className="text-primary" />
-          </View>
-
-          <View className="flex-1 gap-0.5">
-            <Text className="text-base font-extrabold text-foreground">
-              {item.visitorName}
-            </Text>
-            <Text variant="muted" className="text-xs">
-              {item.phone} • {item.purpose}
-            </Text>
-            {item.vehicleNo ? (
-              <View className="flex-row items-center gap-1 mt-0.5">
-                <Car size={12} className="text-muted-foreground" />
-                <Text className="text-xs font-mono font-bold text-foreground">
-                  {item.vehicleNo}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-
-          <StatusBadge label={item.passType} variant="info" />
-        </View>
-      </TouchableOpacity>
-
-      {/* Quick Action Buttons */}
-      <View className="flex-row items-center gap-2.5 pt-1">
+    <ListCard
+      title={item.visitorName}
+      subtitle={`${item.phone} • ${item.purpose}${item.vehicleNo ? ` • ${item.vehicleNo}` : ''}`}
+      description={`Gate: ${item.gateName}`}
+      leftIcon={ShieldAlert}
+      leftIconBgColor="bg-status-warning/15"
+      leftIconColor="text-status-warning"
+      status={{ label: item.passType, variant: 'info' }}
+      secondaryBadge={{ label: `Waiting ${item.waitingDurationMinutes}m`, variant: 'warning' }}
+      showChevron={false}
+      onPress={() => onPressDetails(item)}
+      className="mb-3"
+    >
+      {/* Quick Action Decision Buttons using Semantic Variants */}
+      <View className="flex-row items-center gap-2.5 pt-2 border-t border-border mt-2">
         <Button
           variant="destructive"
           onPress={() => onReject(item)}
           className="flex-1 h-10 rounded-xl flex-row items-center justify-center gap-1.5"
+          accessibilityRole="button"
+          accessibilityLabel={`Deny entry for ${item.visitorName}`}
         >
-          <X size={16} className="text-destructive-foreground" />
+          <Icon as={X} size={16} className="text-destructive-foreground me-1.5" />
           <Text className="text-xs font-bold text-destructive-foreground">Deny Entry</Text>
         </Button>
 
         <Button
           variant="default"
           onPress={() => onApprove(item)}
-          className="flex-1 h-10 rounded-xl bg-status-success active:bg-status-success/90 flex-row items-center justify-center gap-1.5"
+          className="flex-1 h-10 rounded-xl flex-row items-center justify-center gap-1.5"
+          accessibilityRole="button"
+          accessibilityLabel={`Approve entry for ${item.visitorName}`}
         >
-          <Check size={16} className="text-white" />
-          <Text className="text-xs font-bold text-white">Approve Entry</Text>
+          <Icon as={Check} size={16} className="text-primary-foreground me-1.5" />
+          <Text className="text-xs font-bold text-primary-foreground">Approve Entry</Text>
         </Button>
       </View>
-    </View>
+    </ListCard>
   );
 };
 

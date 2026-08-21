@@ -22,10 +22,12 @@ export const EmptyState = ({
   onAction,
   className,
 }: EmptyStateProps) => {
+  const IconComponent = typeof Icon === 'function' || (typeof Icon === 'object' && Icon !== null) ? Icon : Inbox;
+
   return (
     <View className={cn('items-center justify-center py-10 px-4', className)}>
       <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-muted border border-border/50">
-        <Icon size={38} className="text-muted-foreground" />
+        <IconComponent size={38} className="text-muted-foreground" />
       </View>
       <Text variant="large" className="mb-2 text-center font-bold text-foreground">
         {title}

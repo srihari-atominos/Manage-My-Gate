@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, Text, Switch } from 'react-native';
-import { cn } from '../../lib/utils';
+import { View, Switch } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
+import { useColorScheme } from 'nativewind';
 
 export interface ToggleSwitchProps {
   label: string;
@@ -19,14 +21,27 @@ export const ToggleSwitch = ({
   disabled = false,
   className,
 }: ToggleSwitchProps) => {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   return (
     <View className={cn('flex-row items-center justify-between py-2', className)}>
-      <View className="flex-1 pr-4">
-        <Text className={cn('text-base font-medium text-slate-900 dark:text-slate-100', disabled && 'opacity-50')}>
+      <View className="flex-1 pe-4">
+        <Text
+          className={cn(
+            'text-sm font-semibold text-foreground',
+            disabled && 'opacity-50'
+          )}
+        >
           {label}
         </Text>
         {description && (
-          <Text className={cn('mt-0.5 text-sm text-slate-500 dark:text-slate-400', disabled && 'opacity-50')}>
+          <Text
+            className={cn(
+              'mt-0.5 text-xs text-muted-foreground',
+              disabled && 'opacity-50'
+            )}
+          >
             {description}
           </Text>
         )}
@@ -35,9 +50,12 @@ export const ToggleSwitch = ({
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ false: '#cbd5e1', true: '#4f46e5' }} // slate-300, indigo-600 (primary)
-        thumbColor="#ffffff"
+        trackColor={{ false: isDark ? '#262626' : '#e5e5e5', true: '#03A9F4' }}
+        thumbColor={value ? '#ffffff' : isDark ? '#a3a3a3' : '#f4f4f5'}
       />
     </View>
   );
 };
+
+export default ToggleSwitch;
+

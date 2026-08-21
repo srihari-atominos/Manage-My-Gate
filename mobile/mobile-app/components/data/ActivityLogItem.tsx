@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle, Info } from 'lucide-react-native';
-import { StandardRecordCard } from '@/components/common/StandardRecordCard';
+import { ListCard } from '@/components/ui/ListCard';
 import { StatusVariant } from '@/components/ui/StatusBadge';
 
 export interface ActivityLogItemProps {
@@ -48,7 +48,7 @@ export const ActivityLogItem = ({
   const statusVariant = mapNoticeStatusVariant(status, priority);
 
   return (
-    <StandardRecordCard
+    <ListCard
       title={title}
       subtitle={`${category} • ${priority} Priority`}
       leftIcon={isEmergency ? AlertTriangle : Info}

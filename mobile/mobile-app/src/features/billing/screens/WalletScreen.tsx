@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/src/store/store';
 import { ScreenShell } from '@/components/ui/ScreenShell';
+import { PaginatedList } from '@/components/ui/PaginatedList';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import { Wallet, Plus, ArrowDownLeft, ArrowUpRight, Receipt, ShieldCheck, Chevro
 import { fetchWalletBalance, createWalletRazorpayOrder, verifyWalletPayment, clearWalletError } from '../store/walletSlice';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import { RazorpayCheckoutModal } from '../components/RazorpayCheckoutModal';
+import { WalletTransactionCard } from '../components/WalletTransactionCard';
 
 export function WalletScreen() {
   const router = useRouter();
@@ -123,115 +125,71 @@ export function WalletScreen() {
           </View>
         ) : null}
 
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="gap-4 pb-8"
-          refreshControl={
-            <RefreshControl
-              refreshing={isLoading}
-              onRefresh={handleRefresh}
-            />
-          }
-        >
-          {/* Authoritative Wallet Balance Hero Card */}
-          <View className="bg-card border border-border rounded-2xl p-5 shadow-sm">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Available Wallet Balance
-              </Text>
-              <View className="flex-row items-center bg-status-success/15 px-2.5 py-1 rounded-full">
-                <Icon as={ShieldCheck} size={12} className="text-status-success me-1" />
-                <Text className="text-xs font-semibold text-status-success">Verified Ledger</Text>
-              </View>
-            </View>
-
-            <Text className="text-3xl font-extrabold text-foreground tracking-tight mb-4">
-              ₹{balance.toLocaleString('en-IN')}
-            </Text>
-
-            {/* Instant Top-Up CTA */}
-            <Button
-              variant="default"
-              size="lg"
-              className="w-full flex-row items-center justify-center bg-status-success active:bg-status-success/90"
-              onPress={() => setShowTopUpSheet(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Add Money to Digital Wallet"
-            >
-              <Icon as={Plus} size={18} className="text-primary-foreground me-2" />
-              <Text className="font-bold text-base text-primary-foreground">Add Money to Wallet</Text>
-            </Button>
-          </View>
-
-          {/* Wallet Statement / Transaction History Section */}
-          <View className="gap-3">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Transaction Statement ({history.length})
-              </Text>
-            </View>
-
-            {history.length === 0 ? (
-              <EmptyState
-                icon={Receipt}
-                title="No Wallet Transactions Yet"
-                description="All your maintenance top-ups, wallet settlements, and refund credits will appear here."
+        <View className="flex-1 px-4 pt-2">
+          <PaginatedList<any>
+            data={history}
+            renderItem={(tx: any) => (
+              <WalletTransactionCard
+                key={tx._id || tx.id || tx.transactionId}
+                transaction={tx}
+                className="mb-2.5"
               />
-            ) : (
-              <View className="gap-3">
-                {history.map((tx: any, index: number) => {
-                  const txId = tx._id || tx.id || `tx-${index}`;
-                  const isCredit = tx.type === 'Credit' || tx.type === 'TOP_UP' || tx.type === 'REFUND';
-                  const titleStr = tx.description || (isCredit ? 'Wallet Top-Up' : 'Maintenance Settlement');
-                  const dateStr = tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('en-IN') : 'Recent';
-                  const amountNum = tx.amount || 0;
-                  const formattedTxAmount = `${isCredit ? '+' : '-'} ₹${amountNum.toLocaleString('en-IN')}`;
-                  const txStatus = tx.status || 'COMPLETED';
-                  const statusVariant = getStatusVariant(txStatus);
-
-                  return (
-                    <View
-                      key={txId}
-                      className="bg-card border border-border rounded-xl p-4 shadow-sm flex-row items-center justify-between"
-                    >
-                      <View className="flex-row items-center flex-1 me-3">
-                        <View className={`w-10 h-10 rounded-xl items-center justify-center me-3 ${
-                          isCredit ? 'bg-status-success/15' : 'bg-destructive/15'
-                        }`}>
-                          <Icon
-                            as={isCredit ? ArrowDownLeft : ArrowUpRight}
-                            size={20}
-                            className={isCredit ? 'text-status-success' : 'text-destructive'}
-                          />
-                        </View>
-                        <View className="flex-1">
-                          <Text className="text-foreground font-bold text-sm truncate">
-                            {titleStr}
-                          </Text>
-                          <Text className="text-muted-foreground text-xs">
-                            {dateStr} • {tx.paymentMethod || 'Wallet'}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View className="items-end">
-                        <Text
-                          className={`text-base font-extrabold mb-1 ${
-                            isCredit ? 'text-status-success' : 'text-foreground'
-                          }`}
-                          accessibilityLabel={`${isCredit ? 'Credit' : 'Debit'} of ₹${amountNum.toLocaleString('en-IN')}`}
-                        >
-                          {formattedTxAmount}
-                        </Text>
-                        <StatusBadge label={txStatus.replace(/_/g, ' ')} variant={statusVariant} />
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
             )}
-          </View>
-        </ScrollView>
+            pagination={{
+              currentPage: 1,
+              totalPages: 1,
+              totalRecords: history.length,
+              limit: 50,
+            }}
+            onLoadMore={() => {}}
+            onRefresh={handleRefresh}
+            loading={isLoading}
+            ListHeaderComponent={
+              <View className="mb-3">
+                {/* Authoritative Wallet Balance Hero Card */}
+                <View className="bg-card border border-border rounded-2xl p-5 shadow-sm mb-4">
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Available Wallet Balance
+                    </Text>
+                    <View className="flex-row items-center bg-status-success/15 px-2.5 py-1 rounded-full">
+                      <Icon as={ShieldCheck} size={12} className="text-status-success me-1" />
+                      <Text className="text-xs font-semibold text-status-success">Verified Ledger</Text>
+                    </View>
+                  </View>
+
+                  <Text className="text-3xl font-extrabold text-foreground tracking-tight mb-4">
+                    ₹{balance.toLocaleString('en-IN')}
+                  </Text>
+
+                  {/* Instant Top-Up CTA */}
+                  <Button
+                    variant="default"
+                    size="lg"
+                    className="w-full flex-row items-center justify-center bg-status-success active:bg-status-success/90"
+                    onPress={() => setShowTopUpSheet(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Add Money to Digital Wallet"
+                  >
+                    <Icon as={Plus} size={18} className="text-primary-foreground me-2" />
+                    <Text className="font-bold text-base text-primary-foreground">Add Money to Wallet</Text>
+                  </Button>
+                </View>
+
+                {/* Transaction Statement Section Header */}
+                <View className="flex-row items-center justify-between px-0.5">
+                  <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Transaction Statement ({history.length})
+                  </Text>
+                </View>
+              </View>
+            }
+            emptyIcon="Receipt"
+            emptyTitle="No Wallet Transactions Yet"
+            emptySubtitle="All your maintenance top-ups, wallet settlements, and refund credits will appear here."
+            contentContainerClassName="px-4 pt-3 pb-28"
+          />
+        </View>
 
         {/* Instant Top-Up Bottom Sheet */}
         <BottomSheet

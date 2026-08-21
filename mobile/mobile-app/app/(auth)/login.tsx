@@ -108,7 +108,7 @@ export default function LoginScreen() {
           {/* Brand Header */}
           <View className="items-center mb-2">
             <View className="bg-primary/10 p-4 rounded-3xl mb-3">
-              <ShieldCheck className="size-10 text-primary" color="#03A9F4" size={36} />
+              <ShieldCheck className="size-10 text-primary" size={36} />
             </View>
             <Text className="text-2xl font-extrabold text-foreground tracking-tight text-center">
               Manage-My-Gate
