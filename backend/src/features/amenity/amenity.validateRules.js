@@ -77,10 +77,10 @@ export const createMaintenanceRules = [
   body('startTime').optional({ checkFalsy: true }).matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid start time format (HH:MM)'),
   body('endTime').optional({ checkFalsy: true }).matches(/^([01]\d|2[0-3]):?([0-5]\d)$/).withMessage('Invalid end time format (HH:MM)'),
   body('endDate').custom((value, { req }) => {
-    if (new Date(value) < new Date(req.body.startDate)) {
+    if (req.body.startDate && value < req.body.startDate) {
       throw new Error('End date must be after or equal to start date');
     }
-    if (value === req.body.startDate && req.body.startTime && req.body.endTime) {
+    if (req.body.startDate && value === req.body.startDate && req.body.startTime && req.body.endTime) {
       if (req.body.endTime <= req.body.startTime) {
         throw new Error('End time must be after start time on the same day');
       }
