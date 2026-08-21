@@ -1,9 +1,9 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import { fetchAmenitiesThunk, clearAmenityError } from '../store/amenitySlice';
-import { fetchMyBookingsThunk, clearBookingStatus } from '../store/amenityBookingSlice';
+import { fetchMyBookingsThunk } from '../store/amenityBookingSlice';
 import { useCallback } from 'react';
-import { FetchAmenitiesParams } from '../services/amenityApi';
+import { FetchAmenitiesParams } from '../services/amenityService';
 
 export const useAmenity = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -22,7 +22,6 @@ export const useAmenity = () => {
 
   const clearStatus = useCallback(() => {
     dispatch(clearAmenityError());
-    dispatch(clearBookingStatus());
   }, [dispatch]);
 
   return {

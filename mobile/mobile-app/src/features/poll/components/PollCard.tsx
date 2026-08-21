@@ -27,15 +27,19 @@ export default function PollCard({
   const totalVotes = poll.options.reduce((sum, opt) => sum + opt.votesCount, 0);
 
   return (
-    <ListCard
-      title={poll.title}
-      subtitle={poll.description || `Total Votes: ${totalVotes}`}
-      status={{
-        label: poll.status,
-        variant: poll.status === 'Active' ? 'success' : poll.status === 'Draft' ? 'neutral' : 'warning',
-      }}
-    >
-      <RNView className="mt-4">
+    <RNView className="bg-card rounded-lg border border-border p-4 mb-3">
+      <RNView className="flex-row justify-between items-start mb-2">
+        <RNView className="flex-1 mr-2">
+          <Text className="text-foreground text-base font-bold">{poll.title}</Text>
+          <Text className="text-muted-foreground text-sm">{poll.description || `Total Votes: ${totalVotes}`}</Text>
+        </RNView>
+        <StatusBadge
+          label={poll.status}
+          variant={poll.status === 'Active' ? 'success' : poll.status === 'Draft' ? 'neutral' : 'warning'}
+        />
+      </RNView>
+
+      <RNView className="mt-2">
         {poll.options.map((option, index) => {
           const percentage = totalVotes > 0 ? Math.round((option.votesCount / totalVotes) * 100) : 0;
           return (
@@ -75,6 +79,6 @@ export default function PollCard({
           </Button>
         )}
       </RNView>
-    </ListCard>
+    </RNView>
   );
 }

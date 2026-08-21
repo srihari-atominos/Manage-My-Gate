@@ -1,10 +1,10 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, DimensionValue } from 'react-native';
 import { Text } from '../ui/text';
 
 interface CategoryBarChartProps {
   categories: Record<string, number>;
-  containerHeight?: number | string;
+  containerHeight?: DimensionValue;
 }
 
 export const CategoryBarChart = ({ categories, containerHeight = 128 }: CategoryBarChartProps) => {
