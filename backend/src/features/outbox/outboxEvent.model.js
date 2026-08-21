@@ -2,6 +2,22 @@ import mongoose from 'mongoose';
 
 const outboxEventSchema = new mongoose.Schema(
   {
+    eventId: {
+      type: String,
+      default: () => new mongoose.Types.ObjectId().toString(),
+    },
+    aggregateId: {
+      type: String,
+      default: 'SYSTEM',
+    },
+    correlationId: {
+      type: String,
+      default: 'SYSTEM',
+    },
+    aggregateType: {
+      type: String,
+      default: 'SYSTEM',
+    },
     eventType: {
       type: String,
       required: [true, 'Event type is required'],
@@ -13,7 +29,7 @@ const outboxEventSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'],
+      enum: ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'PROCESSED'],
       default: 'PENDING',
     },
     retries: {

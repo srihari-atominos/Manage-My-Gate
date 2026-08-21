@@ -11,6 +11,7 @@ export const pollApi = {
   deletePoll: (id) => apiClient.delete(`/polls/${id}`),
   publishPoll: (id) => apiClient.post(`/polls/${id}/publish`),
   closePoll: (id) => apiClient.post(`/polls/${id}/close`),
+  reopenPoll: (id) => apiClient.post(`/polls/${id}/reopen`),
   voteOnPoll: (id, optionIndex) => apiClient.post(`/polls/${id}/vote`, { optionIndex }),
   getPollResults: (id) => apiClient.get(`/polls/${id}/results`),
   getPollVoters: (id) => apiClient.get(`/polls/${id}/voters`),

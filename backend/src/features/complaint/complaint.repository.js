@@ -138,14 +138,14 @@ class ComplaintRepository {
       { _id: id, orgId, status: 'Waiting For Acceptance' },
       { 
         $set: { 
-          status: 'Assigned',
+          status: 'Accepted',
           assignedTechnicianId: userId,
           assignedTechnicianName: userName,
           isBroadcast: false,
           broadcastTechnicianIds: []
         },
         $push: { 
-          statusHistory: { status: 'Assigned', timestamp: new Date() },
+          statusHistory: { status: 'Accepted', timestamp: new Date() },
           timeline: timelineEvent 
         }
       },
@@ -197,13 +197,22 @@ class ComplaintRepository {
                 slaBreached: {
                   $sum: {
                     $cond: [
-                      { $and: [{ $lt: ['$slaDueDate', new Date()] }, { $nin: ['$status', ['Closed', 'Resolved', 'Cancelled']] }] },
+                      { $and: [{ $lt: ['$slaDueDate', new Date()] }, { $not: [{ $in: ['$status', ['Closed', 'Resolved', 'Cancelled']] }] }] },
                       1,
                       0
                     ]
                   }
                 },
                 today: { $sum: { $cond: [{ $gte: ['$createdAt', new Date(new Date().setHours(0,0,0,0))] }, 1, 0] } },
+                todayResolved: {
+                  $sum: {
+                    $cond: [
+                      { $and: [{ $in: ['$status', ['Resolved', 'Closed']] }, { $gte: ['$resolvedAt', new Date(new Date().setHours(0,0,0,0))] }] },
+                      1,
+                      0
+                    ]
+                  }
+                },
                 totalResolutionTime: {
                   $sum: {
                     $cond: [
@@ -232,7 +241,7 @@ class ComplaintRepository {
             { $group: { 
                 _id: '$category', 
                 count: { $sum: 1 },
-                open: { $sum: { $cond: [{ $nin: ['$status', ['Resolved', 'Closed', 'Cancelled']] }, 1, 0] } },
+                open: { $sum: { $cond: [{ $not: [{ $in: ['$status', ['Resolved', 'Closed', 'Cancelled']] }] }, 1, 0] } },
                 resolved: { $sum: { $cond: [{ $in: ['$status', ['Resolved', 'Closed']] }, 1, 0] } }
             }}
           ],
@@ -268,7 +277,7 @@ class ComplaintRepository {
                     ]
                   }
                 },
-                pending: { $sum: { $cond: [{ $nin: ['$status', ['Resolved', 'Closed', 'Cancelled']] }, 1, 0] } },
+                pending: { $sum: { $cond: [{ $not: [{ $in: ['$status', ['Resolved', 'Closed', 'Cancelled']] }] }, 1, 0] } },
                 totalTime: {
                   $sum: {
                     $cond: [
@@ -339,6 +348,7 @@ class ComplaintRepository {
         reopened: stats.reopened,
         slaBreached: stats.slaBreached,
         today: stats.today,
+        todayResolved: stats.todayResolved || 0,
         thisWeek: stats.thisWeek,
         thisMonth: stats.thisMonth,
         averageResolutionHours: stats.resolvedCountForAvg > 0 ? (stats.totalResolutionTime / stats.resolvedCountForAvg) : 0,

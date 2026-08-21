@@ -34,7 +34,8 @@ const AmenityGrid = memo(
             <div
               key={item._id}
               className="card card-hover amenity-item-card"
-              style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+              style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
+              onClick={() => onViewDetails(item)}
             >
               <div
                 style={{
@@ -53,7 +54,10 @@ const AmenityGrid = memo(
                     gap: '8px',
                   }}
                 >
-                  <h4 style={{ margin: 0, lineHeight: 1.3 }} className="fs-5">
+                  <h4 
+                    style={{ margin: 0, lineHeight: 1.3 }} 
+                    className="fs-5 text-primary text-decoration-underline-hover"
+                  >
                     {item.name}
                   </h4>
                   <span
@@ -107,7 +111,10 @@ const AmenityGrid = memo(
                   <button
                     className="small btn btn-outline"
                     style={{ flex: 1, padding: '10px 16px' }}
-                    onClick={() => onEdit(item)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(item);
+                    }}
                     disabled={!canUpdate}
                   >
                     <i className="small fa-solid fa-pen-to-square"></i> Edit
@@ -115,7 +122,10 @@ const AmenityGrid = memo(
                   <button
                     className="small btn btn-outline"
                     style={{ flex: 1, padding: '10px 16px' }}
-                    onClick={() => onToggleStatus(item)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleStatus(item);
+                    }}
                     disabled={!(canDelete ?? canManage)}
                   >
                     <i

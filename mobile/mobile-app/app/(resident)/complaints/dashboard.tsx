@@ -1,16 +1,12 @@
 import React from 'react';
-import FeatureDetailScreen from '@/components/dashboard/FeatureDetailScreen';
+import { Stack } from 'expo-router';
+import ComplaintDashboardScreen from '@/src/features/complaints/screens/ComplaintDashboardScreen';
 
-export default function ComplaintsDashboardScreen() {
+export default function DashboardRoute() {
   return (
-    <FeatureDetailScreen
-      title="Complaints Dashboard"
-      categoryName="Complaints & Maintenance"
-      sharedSlice="complaintSlice.js"
-      permission="complaints:dashboard"
-      iconName="BarChart3"
-      iconColor="#a855f7"
-      description="Executive metrics, ticket resolution SLA performance, category breakdown, and maintenance satisfaction analytics."
-    />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ComplaintDashboardScreen />
+    </>
   );
 }

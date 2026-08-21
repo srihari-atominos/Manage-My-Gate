@@ -56,6 +56,6 @@ const outboxEventSchema = new Schema(
   }
 );
 
-const OutboxEvent = mongoose.models.OutboxEvent || mongoose.model('OutboxEvent', outboxEventSchema);
+const OutboxEvent = mongoose.models.PlatformPaymentOutboxEvent || mongoose.model('PlatformPaymentOutboxEvent', outboxEventSchema);
 
 export default OutboxEvent;

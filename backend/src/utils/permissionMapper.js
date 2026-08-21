@@ -18,7 +18,6 @@ const legacyMap = {
   'amenities.update': 'amenities:update',
   'amenities.delete': 'amenities:delete',
   'amenities.manage_bookings': 'amenities:manage_bookings',
-
   // Notices Backward Compatibility (Legacy to New RBAC)
   'notices.read': 'notices:active_board',
   'notices:read': 'notices:active_board',
@@ -28,6 +27,8 @@ const legacyMap = {
   'notices:update': 'notices:manage_notices',
   'notices.delete': 'notices:manage_notices',
   'notices:delete': 'notices:manage_notices',
+  'notices.active_board': 'notices:active_board',
+  'notices.dashboard': 'notices:dashboard',
 };
 
 /**

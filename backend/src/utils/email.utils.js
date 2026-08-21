@@ -8,7 +8,7 @@ export const getSmtpTransporter = async (orgId = null) => {
 
     let smtpIntegration = null;
     if (orgId) {
-      smtpIntegration = await IntegrationHub.findOne({ organizationId: orgId, provider: 'smtp' }).exec();
+      smtpIntegration = await IntegrationHub.findOne({ $or: [{ orgId }, { organizationId: orgId }], provider: 'smtp' }).exec();
     }
     if (!smtpIntegration) {
       smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp', status: 'connected' }).exec();

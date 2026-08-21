@@ -21,6 +21,7 @@ export interface MaintenanceModalProps {
 
 export interface MaintenanceFormData {
   amenityId: string;
+  customAmenityName?: string;
   title: string;
   startDate: string;
   endDate: string;
@@ -41,10 +42,13 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
 }) => {
   const [datePickerTarget, setDatePickerTarget] = useState<'start' | 'end' | null>(null);
 
-  const amenityOptions = amenities.map((a) => ({
-    label: `${a.name} (${a.category || a.type || 'General'})`,
-    value: a._id,
-  }));
+  const amenityOptions = [
+    ...amenities.map((a) => ({
+      label: `${a.name} (${a.category || a.type || 'General'})`,
+      value: a._id,
+    })),
+    { label: 'Others (Type Custom Name)', value: 'OTHER' }
+  ];
 
   const todayStr = formatDateString(new Date());
   const tomorrowStr = formatDateString(new Date(Date.now() + 86400000));
@@ -55,18 +59,20 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
     reset,
     setValue,
     watch,
+    setError,
     formState: { errors },
   } = useForm<MaintenanceFormData>({
     defaultValues: {
-      amenityId: amenities[0]?._id || '',
+      amenityId: amenities.length > 0 ? (amenities[0]?._id || '') : 'OTHER',
+      customAmenityName: '',
       title: 'Routine Cleaning & Servicing',
       startDate: todayStr,
       endDate: tomorrowStr,
-      startTime: '08:00',
-      endTime: '18:00',
+      startTime: '',
+      endTime: '',
       description: '',
-      assignedStaff: 'Facilities Team',
-      autoCancelBookings: true,
+      assignedStaff: '',
+      autoCancelBookings: false,
     },
   });
 
@@ -77,19 +83,21 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
     if (visible) {
       if (initialData) {
         reset({
-          amenityId: initialData.amenityId || amenities[0]?._id || '',
+          amenityId: initialData.amenityId || (amenities.length > 0 ? (amenities[0]?._id || '') : 'OTHER'),
+          customAmenityName: '',
           title: initialData.title || 'Routine Servicing',
           startDate: initialData.startDate || todayStr,
           endDate: initialData.endDate || tomorrowStr,
-          startTime: initialData.startTime || '08:00',
-          endTime: initialData.endTime || '18:00',
+          startTime: initialData.startTime || '',
+          endTime: initialData.endTime || '',
           description: initialData.description || '',
-          assignedStaff: initialData.assignedStaff || 'Facilities Team',
-          autoCancelBookings: true,
+          assignedStaff: initialData.assignedStaff || '',
+          autoCancelBookings: initialData.autoCancelBookings || false,
         });
       } else {
         reset({
-          amenityId: amenities[0]?._id || '',
+          amenityId: amenities.length > 0 ? (amenities[0]?._id || '') : 'OTHER',
+          customAmenityName: '',
           title: 'Routine Cleaning & Servicing',
           startDate: todayStr,
           endDate: tomorrowStr,
@@ -104,6 +112,10 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   }, [visible, initialData, amenities, reset, todayStr, tomorrowStr]);
 
   const handleFormSubmit = (data: MaintenanceFormData) => {
+    if (data.amenityId === 'OTHER' && !data.customAmenityName?.trim()) {
+      setError('customAmenityName', { type: 'manual', message: 'Please enter a custom amenity name' });
+      return;
+    }
     onSubmit(data.amenityId, data);
   };
 
@@ -137,9 +149,27 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 value={value}
                 onValueChange={onChange}
                 error={errors.amenityId?.message}
+                accordion={true}
               />
             )}
           />
+
+          {watch('amenityId') === 'OTHER' && (
+            <Controller
+              control={control}
+              name="customAmenityName"
+              rules={{ required: 'Custom amenity name is required' }}
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  label="Custom Amenity Name *"
+                  placeholder="Type new amenity name..."
+                  value={value}
+                  onChangeText={onChange}
+                  error={errors.customAmenityName?.message}
+                />
+              )}
+            />
+          )}
 
           {/* Maintenance Task Title */}
           <Controller

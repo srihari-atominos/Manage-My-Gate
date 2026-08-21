@@ -102,37 +102,39 @@ export default function AdminAmenityMasterScreen() {
 
     return (
       <View key={item._id} className="mb-2">
-        <Pressable onPress={() => setSelectedAmenityDetail(item)}>
+        <>
           {imageUrl ? (
-            <View className="bg-card rounded-2xl border border-border overflow-hidden mb-1 p-3">
-              <View className="h-32 w-full rounded-xl overflow-hidden mb-2.5">
-                <Image source={{ uri: imageUrl }} className="w-full h-full" resizeMode="cover" />
-              </View>
-              <View className="flex-row items-center justify-between">
-                <View className="flex-1 mr-2">
-                  <Text className="font-bold text-base text-foreground">{item.name}</Text>
-                  <Text className="text-xs text-muted-foreground mt-0.5">
-                    {category} • {item.location || 'Zone'} • Cap: {item.capacity || 20} • {openTime}-{closeTime}
-                  </Text>
+            <Pressable onPress={() => setSelectedAmenityDetail(item)}>
+              <View className="bg-card rounded-2xl border border-border overflow-hidden mb-1 p-3">
+                <View className="h-32 w-full rounded-xl overflow-hidden mb-2.5">
+                  <Image source={{ uri: imageUrl }} className="w-full h-full" resizeMode="cover" />
                 </View>
-                <View className="items-end gap-1">
-                  <Text className="text-xs font-bold text-primary">
-                    {baseRate ? `$${baseRate}/${pricingType === 'daily' ? 'day' : 'slot'}` : 'Free'}
-                  </Text>
-                  <Text
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      isMaintenance
-                        ? 'bg-amber-500/10 text-amber-600'
-                        : isInactive
-                        ? 'bg-muted text-muted-foreground'
-                        : 'bg-emerald-500/10 text-emerald-600'
-                    }`}
-                  >
-                    {isMaintenance ? 'Maintenance' : isInactive ? 'Inactive' : 'Active'}
-                  </Text>
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1 mr-2">
+                    <Text className="font-bold text-base text-foreground">{item.name}</Text>
+                    <Text className="text-xs text-muted-foreground mt-0.5">
+                      {category} • {item.location || 'Zone'} • Cap: {item.capacity || 20} • {openTime}-{closeTime}
+                    </Text>
+                  </View>
+                  <View className="items-end gap-1">
+                    <Text className="text-xs font-bold text-primary">
+                      {baseRate ? `$${baseRate}/${pricingType === 'daily' ? 'day' : 'slot'}` : 'Free'}
+                    </Text>
+                    <Text
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        isMaintenance
+                          ? 'bg-amber-500/10 text-amber-600'
+                          : isInactive
+                          ? 'bg-muted text-muted-foreground'
+                          : 'bg-emerald-500/10 text-emerald-600'
+                      }`}
+                    >
+                      {isMaintenance ? 'Maintenance' : isInactive ? 'Inactive' : 'Active'}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            </Pressable>
           ) : (
             <ListCard
               title={item.name}
@@ -149,9 +151,10 @@ export default function AdminAmenityMasterScreen() {
                   ? { label: `$${baseRate}/${pricingType === 'daily' ? 'day' : 'slot'}`, variant: 'info' }
                   : { label: 'Free', variant: 'neutral' }
               }
+              onPress={() => setSelectedAmenityDetail(item)}
             />
           )}
-        </Pressable>
+        </>
         <View className="flex-row justify-end gap-2 px-1 -mt-0.5 mb-2">
           <Button
             variant="outline"

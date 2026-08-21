@@ -11,7 +11,7 @@ export const createPoll = async (req, res, next) => {
   try {
     const orgId = req.tenant.orgId;
     const userId = req.user.id || req.user._id;
-    const pollData = { ...req.body, orgId, createdBy: userId, status: 'Active', visibility: req.body.visibility || 'Everyone' };
+    const pollData = { ...req.body, orgId, createdBy: userId, status: 'Draft', visibility: req.body.visibility || 'Everyone' };
     
     const newPoll = await pollService.createPoll(pollData);
     return res.success(newPoll, 'Poll created successfully', 201);
@@ -118,6 +118,21 @@ export const closePoll = async (req, res, next) => {
   }
 };
 
+export const reopenPoll = async (req, res, next) => {
+  try {
+    const orgId = req.tenant.orgId;
+    const userId = req.user.id || req.user._id;
+    const pollId = req.params.id;
+    
+    const isCommunityAdmin = await checkIsCommunityAdmin(req.user);
+
+    const updatedPoll = await pollService.reopenPoll(pollId, orgId, userId, isCommunityAdmin);
+    return res.success(updatedPoll, 'Poll reopened successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getActivePolls = async (req, res, next) => {
   try {
     const orgId = req.tenant.orgId;
@@ -209,6 +224,11 @@ export const getPollVoters = async (req, res, next) => {
     const orgId = req.tenant.orgId;
     const pollId = req.params.id;
     
+    const isCommunityAdmin = await checkIsCommunityAdmin(req.user);
+    if (!isCommunityAdmin) {
+      return res.status(403).json({ success: false, message: 'You do not have permission to view poll voters' });
+    }
+
     const voters = await pollService.getPollVoters(pollId, orgId);
     return res.success(voters, 'Poll voters fetched successfully');
   } catch (error) {

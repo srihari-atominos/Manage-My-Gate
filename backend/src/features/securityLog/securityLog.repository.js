@@ -110,6 +110,12 @@ class SecurityLogRepository {
     // In our system, a booking status of checked-in indicates active. Let's rely on booking table or simple diff.
     return result;
   }
+  async deleteLog(logId, orgId) {
+    return await SecurityLog.findOneAndDelete({ 
+      _id: new mongoose.Types.ObjectId(logId), 
+      orgId: new mongoose.Types.ObjectId(orgId) 
+    });
+  }
 }
 
 export default new SecurityLogRepository();

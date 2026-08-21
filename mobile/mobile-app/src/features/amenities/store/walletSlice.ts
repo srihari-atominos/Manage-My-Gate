@@ -78,7 +78,7 @@ const walletSlice = createSlice({
         if (payload) {
           state.balance = payload.balance ?? payload.currentBalance ?? state.balance;
           state.currency = payload.currency || 'INR';
-          state.transactions = payload.transactions || payload.ledger || [];
+          state.transactions = payload.transactions || payload.transactionHistory || payload.ledger || [];
         }
       })
       .addCase(fetchWalletThunk.rejected, (state, action) => {

@@ -1,16 +1,12 @@
 import React from 'react';
-import FeatureDetailScreen from '@/components/dashboard/FeatureDetailScreen';
+import { Stack } from 'expo-router';
+import StaffVendorDirectoryScreen from '@/src/features/complaints/screens/StaffVendorDirectoryScreen';
 
-export default function StaffAndVendorsScreen() {
+export default function StaffDirectoryRoute() {
   return (
-    <FeatureDetailScreen
-      title="Staff & Vendor Roster"
-      categoryName="Complaints & Maintenance"
-      sharedSlice="complaintSlice.js"
-      permission="complaints:staff"
-      iconName="Users2"
-      iconColor="#14b8a6"
-      description="Roster of internal electricians, plumbers, HVAC technicians, and external third-party maintenance vendor contacts."
-    />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <StaffVendorDirectoryScreen />
+    </>
   );
 }
