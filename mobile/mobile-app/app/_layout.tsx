@@ -1,8 +1,6 @@
 // @ts-ignore
 import '@/global.css';
 
-import { NAV_THEME } from '@/lib/theme';
-import { ThemeProvider } from '@react-navigation/native';
 import { PortalHost } from '@rn-primitives/portal';
 import { Stack, useSegments, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -64,11 +62,9 @@ export default function RootLayout() {
       <Provider store={store}>
         <BottomSheetModalProvider>
           <AppInitializer>
-            <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
-              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-              <Stack screenOptions={{ headerShown: false }} />
-              <PortalHost />
-            </ThemeProvider>
+            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+            <Stack screenOptions={{ headerShown: false }} />
+            <PortalHost />
           </AppInitializer>
         </BottomSheetModalProvider>
       </Provider>
