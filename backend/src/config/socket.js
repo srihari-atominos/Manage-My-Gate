@@ -5,6 +5,8 @@ import { initUserSocket } from '../features/user/user.socket.js';
 import { setupPaymentSocketListeners } from '../features/payment/payment.socket.js';
 import { setupWalletSocketListeners } from '../features/wallet/wallet.socket.js';
 import { initComplaintSockets } from '../features/complaint/complaint.socket.js';
+import { initAmenitySockets } from '../features/amenity/amenity.socket.js';
+import { initAmenityBookingSockets } from '../features/amenityBooking/amenityBooking.socket.js';
 
 let io = null;
 
@@ -79,6 +81,8 @@ export const initSocket = async (httpServer) => {
   initRoleSocket();
   initUserSocket();
   initComplaintSockets();
+  initAmenitySockets();
+  initAmenityBookingSockets();
   setupPaymentSocketListeners().catch((err) => logger.error('Failed to init payment socket listeners', err));
   setupWalletSocketListeners().catch((err) => logger.error('Failed to init wallet socket listeners', err));
 

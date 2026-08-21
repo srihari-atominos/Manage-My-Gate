@@ -72,3 +72,20 @@ export const manualVerification = async (req, res, next) => {
     next(error);
   }
 };
+
+export const deleteLog = async (req, res, next) => {
+  try {
+    const { orgId } = req.user;
+    const { id } = req.params;
+
+    const deletedLog = await securityLogService.deleteLog(id, orgId);
+
+    if (!deletedLog) {
+      throw new HttpError(404, 'Security log not found or already deleted');
+    }
+
+    res.json({ success: true, message: 'Security log deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};

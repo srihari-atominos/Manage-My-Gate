@@ -151,6 +151,7 @@ export default function DiscoverAmenitiesScreen() {
                   ? { label: `$${baseRate}/${pricingType === 'daily' ? 'day' : 'slot'}`, variant: 'info' }
                   : { label: 'Free', variant: 'neutral' }
               }
+              onPress={() => setSelectedAmenityPreview(item)}
             />
           )}
         </Pressable>

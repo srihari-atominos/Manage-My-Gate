@@ -59,6 +59,7 @@ export default function AmenityMaintenanceScheduleScreen() {
             label: statusRaw.replace('_', ' ').toUpperCase(),
             variant: statusVariantMap[statusRaw] || 'neutral',
           }}
+          onPress={() => handleOpenEditModal(item)}
         />
         <View className="flex-row justify-end gap-2 px-1 -mt-1 mb-2">
           <Button

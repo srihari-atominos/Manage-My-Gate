@@ -32,6 +32,7 @@ router.delete('/:id', validate(pollValidation.validateIdRule()), pollController.
 // Actions
 router.post('/:id/publish', validate(pollValidation.validateIdRule()), pollController.publishPoll);
 router.post('/:id/close', validate(pollValidation.validateIdRule()), pollController.closePoll);
+router.post('/:id/reopen', validate(pollValidation.validateIdRule()), pollController.reopenPoll);
 router.post('/:id/vote', validate(pollValidation.voteRules()), pollController.voteOnPoll);
 
 // Results
