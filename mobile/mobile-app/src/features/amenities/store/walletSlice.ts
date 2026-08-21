@@ -16,7 +16,9 @@ export interface WalletState {
   balance: number;
   currency: string;
   transactions: WalletTransaction[];
+  transactionHistory?: WalletTransaction[];
   loading: boolean;
+  isLoading?: boolean;
   toppingUp: boolean;
   error: string | null;
   successMsg: string | null;

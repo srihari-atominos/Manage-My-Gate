@@ -23,8 +23,8 @@ export function WalletScreen() {
 
   const walletState = useSelector((state: RootState) => state.wallet);
   const balance = walletState?.balance || 0;
-  const history: any[] = walletState?.transactionHistory || [];
-  const isLoading = walletState?.isLoading || false;
+  const history: any[] = walletState?.transactionHistory || walletState?.transactions || [];
+  const isLoading = walletState?.isLoading || walletState?.loading || false;
   const error = walletState?.error || null;
 
   // Real-time socket listener

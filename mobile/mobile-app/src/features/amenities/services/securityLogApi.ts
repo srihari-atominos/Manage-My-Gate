@@ -12,6 +12,7 @@ export interface SecurityLogFilterParams {
 
 export interface SecurityLog {
   _id: string;
+  id?: string;
   residentId?: string;
   residentName?: string;
   residentPhoto?: string;
