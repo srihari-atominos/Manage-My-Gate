@@ -36,21 +36,32 @@ export const config = {
 
   cors: {
     allowedOrigins: (() => {
+      const defaultOrigins = [
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:3004',
+        'http://localhost:5173',
+        'http://localhost:8000',
+        'http://localhost:8080',
+        'http://localhost:8081',
+        'http://localhost:8082',
+        'http://localhost:19006',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001',
+        'http://127.0.0.1:3004',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:8081',
+        'http://[::1]:3000',
+        'http://[::1]:3001',
+        'http://[::1]:5173',
+        'http://[::1]:8081'
+      ];
       let rawOrigins = process.env.ALLOWED_ORIGINS
         ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim().replace(/\/+$/, ''))
-        : [
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'http://localhost:5173',
-            'http://localhost:8000',
-            'http://localhost:8080',
-            'http://127.0.0.1:3000',
-            'http://127.0.0.1:3001',
-            'http://127.0.0.1:5173',
-            'http://[::1]:3000',
-            'http://[::1]:3001',
-            'http://[::1]:5173'
-          ];
+        : defaultOrigins;
+
+      rawOrigins = [...rawOrigins, ...defaultOrigins];
+
       if (process.env.CLIENT_URL) {
         rawOrigins.push(process.env.CLIENT_URL.trim().replace(/\/+$/, ''));
       }

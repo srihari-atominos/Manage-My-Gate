@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { View, ScrollView, RefreshControl, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSelector } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { SearchBar } from '@/components/forms/SearchBar';
@@ -25,6 +26,7 @@ export function ComplaintDashboardScreen() {
   const router = useRouter();
   const { complaints, dashboardAnalytics, isLoading, error, fetchComplaints, fetchDashboardAnalytics, createComplaint, clearErrors } = useComplaints();
   const { amenities, fetchAmenities } = useAmenity();
+  const maintenanceList = useSelector((state: any) => state.amenities?.maintenanceList || []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
@@ -43,73 +45,64 @@ export function ComplaintDashboardScreen() {
     loadData();
   }, [loadData]);
 
-  // Comprehensive Maintenance Notices Engine
+  // Comprehensive Amenity & Facility Maintenance Notices Engine (Excludes complaint tickets)
   const maintenanceNotices = useMemo(() => {
     const notices: Array<{ id: string; title: string; message: string; date: string; variant?: 'warning' | 'danger' | 'info' }> = [];
 
+    // 1. Amenity Maintenance Tasks (Linked from Amenities & Booking Module)
+    if (maintenanceList && Array.isArray(maintenanceList) && maintenanceList.length > 0) {
+      maintenanceList.forEach((task: any) => {
+        const rawStatus = String(task.status || 'scheduled').toLowerCase();
+        if (rawStatus !== 'completed' && rawStatus !== 'cancelled') {
+          const dateStr = task.startDate
+            ? `${task.startDate}${task.startTime ? ` • ${task.startTime} - ${task.endTime || ''}` : ''}`
+            : 'Scheduled';
+
+          notices.push({
+            id: `maint-task-${task._id || Math.random()}`,
+            title: task.title ? `${task.amenityName || 'Facility'} • ${task.title}` : `Scheduled ${task.amenityName || 'Facility'} Maintenance`,
+            message: task.description || `Facility upkeep window scheduled for ${task.amenityName || 'community facility'}.`,
+            date: dateStr,
+            variant: rawStatus === 'in_progress' ? 'warning' : 'info',
+          });
+        }
+      });
+    }
+
+    // 2. Active Amenity Maintenance Statuses & Temporary Outages
+    if (amenities && Array.isArray(amenities) && amenities.length > 0) {
+      amenities.forEach((amenity: any) => {
+        const statusRaw = String(amenity.status || amenity.currentStatus || '').toLowerCase();
+        if (statusRaw === 'maintenance') {
+          const alreadyExists = notices.some((n) => n.title.includes(amenity.name));
+          if (!alreadyExists) {
+            notices.push({
+              id: `amn-maint-${amenity._id}`,
+              title: `${amenity.name} Under Maintenance`,
+              message: `The ${amenity.name} is currently undergoing scheduled upkeep and temporary blackout.`,
+              date: 'Active',
+              variant: 'warning',
+            });
+          }
+        }
+      });
+    }
+
+    // 3. Backend System Facility Notices
     if (dashboardAnalytics?.notices && Array.isArray(dashboardAnalytics.notices)) {
       dashboardAnalytics.notices.forEach((n: any) => {
         notices.push({
           id: `backend-${n.id || Math.random()}`,
-          title: n.title || 'Scheduled Maintenance',
-          message: n.message || n.description || 'System maintenance notice.',
+          title: n.title || 'Facility Maintenance Notice',
+          message: n.message || n.description || 'Scheduled facility maintenance notice.',
           date: n.timestamp ? new Date(n.timestamp).toLocaleDateString() : 'Active Notice',
-          variant: 'warning',
+          variant: 'info',
         });
       });
     }
 
-    if (amenities && amenities.length > 0) {
-      amenities.forEach((amenity: any) => {
-        if (amenity.status === 'maintenance' || amenity.maintenanceSchedules?.length > 0) {
-          const activeSchedules =
-            amenity.maintenanceSchedules?.filter(
-              (s: any) => s.status !== 'completed' && s.status !== 'cancelled'
-            ) || [];
-
-          if (amenity.status === 'maintenance' && activeSchedules.length === 0) {
-            notices.push({
-              id: `amn-${amenity._id}`,
-              title: `${amenity.name} Temporarily Closed`,
-              message: `The ${amenity.name} is currently undergoing maintenance.`,
-              date: amenity.updatedAt ? new Date(amenity.updatedAt).toLocaleDateString() : 'Active',
-              variant: 'warning',
-            });
-          }
-
-          activeSchedules.forEach((schedule: any) => {
-            notices.push({
-              id: `amn-sch-${schedule._id}`,
-              title: schedule.title || `${amenity.name} Maintenance`,
-              message:
-                schedule.description ||
-                `Scheduled maintenance window for ${amenity.name}.`,
-              date: schedule.startDate ? new Date(schedule.startDate).toLocaleDateString() : 'Scheduled',
-              variant: 'info',
-            });
-          });
-        }
-      });
-    }
-
-    if (complaints && complaints.length > 0) {
-      complaints.forEach((c: any) => {
-        if ((c.priority === 'Critical' || c.status === 'Escalated') && !['Closed', 'Completed', 'Resolved', 'Cancelled'].includes(c.status)) {
-          notices.push({
-            id: `cmp-crit-${c._id}`,
-            title: `Critical Alert: ${c.title}`,
-            message: c.description
-              ? `${c.description} (${c.location?.flat || c.location?.building || 'Common Area'})`
-              : `Active emergency issue reported at ${c.location?.flat || c.location?.building || 'Common Area'}.`,
-            date: c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'Immediate',
-            variant: 'danger',
-          });
-        }
-      });
-    }
-
     return notices;
-  }, [dashboardAnalytics, amenities, complaints]);
+  }, [maintenanceList, amenities, dashboardAnalytics]);
 
   const handleFeedbackSubmit = async () => {
     if (!generalFeedback.trim()) {
@@ -174,7 +167,7 @@ export function ComplaintDashboardScreen() {
           contentContainerStyle={{ paddingBottom: 40 }}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadData} tintColor="#6366f1" />}
         >
-          {/* Master Search Bar (matching Amenities Executive Dashboard pattern) */}
+          {/* Master Search Bar */}
           <View className="mb-5">
             <SearchBar
               value={searchQuery}
@@ -183,115 +176,90 @@ export function ComplaintDashboardScreen() {
             />
           </View>
 
-          {/* Top KPI Row (3 Cards matching Amenities Dashboard layout) */}
-          <View className="flex-row gap-3 mb-7">
-            {/* KPI 1: Total Reported */}
-            <View className="flex-1 bg-card p-3.5 rounded-2xl border border-border/60 shadow-xs justify-between">
-              <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide" numberOfLines={1}>Reported</Text>
-                <View className="w-5.5 h-5.5 rounded-full bg-blue-500/15 items-center justify-center">
-                  <FileText size={12} color="#3b82f6" />
-                </View>
+          {/* 3 Executive KPI Cards */}
+          <View className="flex-row gap-3 mb-6">
+            <View className="flex-1 bg-card p-3 rounded-2xl border border-border shadow-xs">
+              <View className="flex-row items-center justify-between mb-1">
+                <Text className="text-[10px] font-bold text-muted-foreground uppercase">REPORTED</Text>
+                <FileText size={14} className="text-blue-500" />
               </View>
-              <Text className="text-base font-bold text-foreground my-0.5" numberOfLines={1}>
-                {totalReported}
-              </Text>
-              <Text className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold" numberOfLines={1}>
-                Total Tickets
-              </Text>
+              <Text className="text-xl font-black text-foreground mb-0.5">{totalReported}</Text>
+              <Text className="text-[10px] font-bold text-blue-600 dark:text-blue-400">Total Tickets</Text>
             </View>
 
-            {/* KPI 2: Today Complaints */}
-            <View className="flex-1 bg-card p-3.5 rounded-2xl border border-border/60 shadow-xs justify-between">
-              <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide" numberOfLines={1}>Today New</Text>
-                <View className="w-5.5 h-5.5 rounded-full bg-amber-500/15 items-center justify-center">
-                  <Calendar size={12} color="#f59e0b" />
-                </View>
+            <View className="flex-1 bg-card p-3 rounded-2xl border border-border shadow-xs">
+              <View className="flex-row items-center justify-between mb-1">
+                <Text className="text-[10px] font-bold text-muted-foreground uppercase" numberOfLines={1}>TODAY NEW</Text>
+                <Calendar size={14} className="text-amber-500" />
               </View>
-              <Text className="text-base font-bold text-foreground my-0.5" numberOfLines={1}>
-                {kpis.today || 0}
-              </Text>
-              <Text className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold" numberOfLines={1}>
-                Submissions
-              </Text>
+              <Text className="text-xl font-black text-foreground mb-0.5">{kpis.today || 0}</Text>
+              <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400" numberOfLines={1}>Submissions</Text>
             </View>
 
-            {/* KPI 3: Total Resolved */}
-            <View className="flex-1 bg-card p-3.5 rounded-2xl border border-border/60 shadow-xs justify-between">
-              <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide" numberOfLines={1}>Resolved</Text>
-                <View className="w-5.5 h-5.5 rounded-full bg-emerald-500/15 items-center justify-center">
-                  <CheckCircle2 size={12} color="#10b981" />
-                </View>
+            <View className="flex-1 bg-card p-3 rounded-2xl border border-border shadow-xs">
+              <View className="flex-row items-center justify-between mb-1">
+                <Text className="text-[10px] font-bold text-muted-foreground uppercase">RESOLVED</Text>
+                <CheckCircle2 size={14} className="text-emerald-500" />
               </View>
-              <Text className="text-base font-bold text-foreground my-0.5" numberOfLines={1}>
-                {totalResolved}
-              </Text>
-              <Text className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold" numberOfLines={1}>
-                Completed
-              </Text>
+              <Text className="text-xl font-black text-foreground mb-0.5">{totalResolved}</Text>
+              <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Completed</Text>
             </View>
           </View>
 
-          {/* Sub-Navigation Quick Hub (Matching MobileQuickNavHub) */}
+          {/* Sub-Navigation Feature Shortcuts Hub */}
           <ComplaintQuickNavHub
             searchQuery={searchQuery}
-            badgeCounts={{
-              myTickets: complaints.length,
-              openTickets: kpis.open,
-              unassigned: kpis.open,
-              activeMaintenance: maintenanceNotices.length,
-            }}
             onFeedbackPress={() => setShowFeedbackSheet(true)}
           />
 
-          {/* Live Activity & Notices Feed (Matching MobileLiveActivityWidget) */}
+          {/* Real-Time Maintenance & Ticket Feed Widget */}
           <ComplaintLiveActivityWidget
             complaints={complaints}
             maintenanceNotices={maintenanceNotices}
           />
         </ScrollView>
-      </View>
 
-      {/* Resident Feedback Bottom Sheet Modal */}
-      <BottomSheet
-        visible={showFeedbackSheet}
-        onClose={() => setShowFeedbackSheet(false)}
-        title="Provide Feedback & Suggestions"
-      >
-        <View className="p-4">
-          <Text className="text-xs text-muted-foreground mb-4">
-            Share your experience, feature requests, or general community suggestions directly with society management.
-          </Text>
+        {/* General Feedback & Suggestion Sheet */}
+        <BottomSheet
+          visible={showFeedbackSheet}
+          onClose={() => setShowFeedbackSheet(false)}
+          title="Community Feedback & Suggestions"
+        >
+          <View className="px-4 py-2 gap-4">
+            <View className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-2xl flex-row items-center">
+              <View className="p-2 bg-rose-500/20 rounded-xl me-3">
+                <MessageSquare size={20} color="#f43f5e" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-xs font-bold text-foreground">Share Your Thoughts</Text>
+                <Text className="text-[11px] text-muted-foreground">
+                  Send feedback or suggestions directly to facility management.
+                </Text>
+              </View>
+            </View>
 
-          <TextInput
-            label="Feedback & Suggestion Remarks *"
-            placeholder="Type your feedback message here..."
-            value={generalFeedback}
-            onChangeText={setGeneralFeedback}
-            multiline
-            numberOfLines={4}
-            className="mb-4"
-          />
+            <TextInput
+              label="Your Message / Feedback *"
+              placeholder="Tell us what we can improve or suggest a new feature..."
+              multiline
+              numberOfLines={4}
+              value={generalFeedback}
+              onChangeText={setGeneralFeedback}
+            />
 
-          <View className="flex-row justify-end gap-3 mt-2">
             <Button
-              variant="outline"
-              onPress={() => setShowFeedbackSheet(false)}
-              disabled={isSubmittingFeedback}
-            >
-              Cancel
-            </Button>
-            <Button
+              variant="default"
               onPress={handleFeedbackSubmit}
-              loading={isSubmittingFeedback}
+              disabled={isSubmittingFeedback}
+              className="bg-primary py-3.5 rounded-2xl items-center mb-6"
             >
-              Submit Feedback
+              <Text className="text-sm font-bold text-white">
+                {isSubmittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+              </Text>
             </Button>
           </View>
-        </View>
-      </BottomSheet>
+        </BottomSheet>
+      </View>
     </ScreenShell>
   );
 }

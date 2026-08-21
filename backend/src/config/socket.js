@@ -22,9 +22,10 @@ export const initSocket = async (httpServer) => {
     return io;
   }
 
-  // Parse ALLOWED_ORIGINS or CLIENT_URL for CORS. Defaults to frontend default port.
-  const envOrigins = process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL || 'http://localhost:5173,http://localhost:3000';
-  const allowedOrigins = envOrigins.split(',').map((url) => url.trim());
+  // Parse ALLOWED_ORIGINS or CLIENT_URL for CORS. Defaults to frontend/mobile default ports.
+  const envOrigins = process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL || '';
+  const defaultOrigins = ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:3004', 'http://localhost:8081', 'http://localhost:8082', 'http://127.0.0.1:8081'];
+  const allowedOrigins = [...new Set([...envOrigins.split(',').map((url) => url.trim()).filter(Boolean), ...defaultOrigins])];
 
   logger.info(`Initializing Socket.io with allowed origins: ${allowedOrigins.join(', ')}`);
 
