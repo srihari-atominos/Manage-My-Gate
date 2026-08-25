@@ -84,15 +84,13 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
         .get('/technicians')
         .then((res: any) => {
           const list = res?.data || res || [];
-          if (Array.isArray(list) && list.length > 0) {
+          if (Array.isArray(list)) {
             setStaffList(list);
-          } else {
-            setStaffList(DEFAULT_STAFF_LIST);
           }
         })
         .catch((err) => {
-          console.log('[AssignSheet] Technician fetch fallback:', err);
-          setStaffList(DEFAULT_STAFF_LIST);
+          console.log('[AssignSheet] Technician fetch failed:', err);
+          setStaffList([]);
         })
         .finally(() => {
           setIsLoadingStaff(false);
@@ -141,8 +139,8 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
           setError('Please enter the External Vendor Name.');
           return;
         }
-        if (!vendorPhone.trim()) {
-          setError('Please enter the Vendor Phone Number.');
+        if (!vendorPhone.trim() || vendorPhone.replace(/\D/g, '').length !== 10) {
+          setError('Please enter a valid 10-digit Vendor Phone Number.');
           return;
         }
         techName = vendorName.trim();
@@ -231,44 +229,54 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
             <Text className="text-xs font-bold text-muted-foreground uppercase">
               Select Staff Member ({targetItem.category || 'Maintenance'})
             </Text>
-            {staffList.map((staff) => {
-              const isSelected = selectedStaffId === staff._id;
-              const isBusy = (staff.activeJobsCount || 0) > 0;
+            {staffList.length === 0 ? (
+              <View className="bg-orange-50 border border-orange-200 p-4 rounded-xl items-center my-2">
+                <Icon as={ShieldAlert} size={24} color="#f97316" className="mb-2" />
+                <Text className="text-sm font-bold text-orange-700 text-center">No In-House Staff Found</Text>
+                <Text className="text-xs text-orange-600 text-center mt-1">
+                  You don't have any registered technicians. Please use the "External Vendor" tab or add staff first.
+                </Text>
+              </View>
+            ) : (
+              staffList.map((staff) => {
+                const isSelected = selectedStaffId === staff._id;
+                const isBusy = (staff.activeJobsCount || 0) > 0;
 
-              return (
-                <TouchableOpacity
-                  key={staff._id}
-                  activeOpacity={0.8}
-                  onPress={() => setSelectedStaffId(staff._id)}
-                  className={`p-3 rounded-xl border flex-row items-center justify-between ${
-                    isSelected
-                      ? 'bg-primary/10 border-primary'
-                      : 'bg-card border-border'
-                  }`}
-                >
-                  <View className="flex-row items-center flex-1 me-2">
-                    <View className={`w-9 h-9 rounded-full items-center justify-center me-2.5 ${
-                      isSelected ? 'bg-primary' : 'bg-muted'
-                    }`}>
-                      <Icon as={UserCheck} size={18} className={isSelected ? 'text-primary-foreground' : 'text-muted-foreground'} />
+                return (
+                  <TouchableOpacity
+                    key={staff._id}
+                    activeOpacity={0.8}
+                    onPress={() => setSelectedStaffId(staff._id)}
+                    className={`p-3 rounded-xl border flex-row items-center justify-between ${
+                      isSelected
+                        ? 'bg-primary/10 border-primary'
+                        : 'bg-card border-border'
+                    }`}
+                  >
+                    <View className="flex-row items-center flex-1 me-2">
+                      <View className={`w-9 h-9 rounded-full items-center justify-center me-2.5 ${
+                        isSelected ? 'bg-primary' : 'bg-muted'
+                      }`}>
+                        <Icon as={UserCheck} size={18} className={isSelected ? 'text-primary-foreground' : 'text-muted-foreground'} />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-xs font-bold text-foreground">{staff.name}</Text>
+                        <Text className="text-[11px] text-muted-foreground">
+                          {staff.specialization || staff.specialty || staff.department || 'Maintenance Staff'} • {staff.phone || 'No phone'}
+                        </Text>
+                      </View>
                     </View>
-                    <View className="flex-1">
-                      <Text className="text-xs font-bold text-foreground">{staff.name}</Text>
-                      <Text className="text-[11px] text-muted-foreground">
-                        {staff.specialization || staff.specialty || staff.department || 'Maintenance Staff'} • {staff.phone || 'No phone'}
-                      </Text>
-                    </View>
-                  </View>
 
-                  <View className="items-end">
-                    <StatusBadge
-                      label={isBusy ? `Busy (${staff.activeJobsCount})` : 'Available'}
-                      variant={isBusy ? 'warning' : 'success'}
-                    />
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+                    <View className="items-end">
+                      <StatusBadge
+                        label={isBusy ? `Busy (${staff.activeJobsCount})` : 'Available'}
+                        variant={isBusy ? 'warning' : 'success'}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </View>
         )}
 

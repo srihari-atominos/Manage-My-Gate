@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
-import { View, ScrollView, RefreshControl, Alert } from 'react-native';
+import { View, ScrollView, RefreshControl, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -22,6 +22,14 @@ import { useAmenity } from '@/src/features/amenities/hooks/useAmenity';
 import { ComplaintQuickNavHub } from '../components/ComplaintQuickNavHub';
 import { ComplaintLiveActivityWidget } from '../components/ComplaintLiveActivityWidget';
 
+const showAlert = (title: string, message: string) => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.alert(`${title}: ${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+};
+
 export function ComplaintDashboardScreen() {
   const router = useRouter();
   const { complaints, dashboardAnalytics, isLoading, error, fetchComplaints, fetchDashboardAnalytics, createComplaint, clearErrors } = useComplaints();
@@ -31,6 +39,7 @@ export function ComplaintDashboardScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
   const [generalFeedback, setGeneralFeedback] = useState('');
+  const [feedbackError, setFeedbackError] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   const loadData = useCallback(() => {
@@ -106,9 +115,10 @@ export function ComplaintDashboardScreen() {
 
   const handleFeedbackSubmit = async () => {
     if (!generalFeedback.trim()) {
-      Alert.alert('Required Field', 'Please enter your feedback remarks before submitting.');
+      setFeedbackError('Please enter your feedback remarks before submitting.');
       return;
     }
+    setFeedbackError('');
     try {
       setIsSubmittingFeedback(true);
       await createComplaint({
@@ -119,13 +129,13 @@ export function ComplaintDashboardScreen() {
         department: 'Management',
         isEmergency: false,
       });
-      Alert.alert('Feedback Submitted', 'Thank you! Your feedback has been sent to community management.');
+      showAlert('Feedback Submitted', 'Thank you! Your feedback has been sent to community management.');
       setGeneralFeedback('');
       setShowFeedbackSheet(false);
       loadData();
     } catch (err: any) {
       console.error('Failed to submit feedback:', err);
-      Alert.alert('Error', err?.message || 'Failed to submit feedback.');
+      showAlert('Error', err?.message || 'Failed to submit feedback.');
     } finally {
       setIsSubmittingFeedback(false);
     }
@@ -216,6 +226,7 @@ export function ComplaintDashboardScreen() {
           <ComplaintLiveActivityWidget
             complaints={complaints}
             maintenanceNotices={maintenanceNotices}
+            searchQuery={searchQuery}
           />
         </ScrollView>
 
@@ -244,7 +255,11 @@ export function ComplaintDashboardScreen() {
               multiline
               numberOfLines={4}
               value={generalFeedback}
-              onChangeText={setGeneralFeedback}
+              onChangeText={(text) => {
+                setGeneralFeedback(text);
+                if (feedbackError) setFeedbackError('');
+              }}
+              error={feedbackError}
             />
 
             <Button
@@ -253,9 +268,7 @@ export function ComplaintDashboardScreen() {
               disabled={isSubmittingFeedback}
               className="bg-primary py-3.5 rounded-2xl items-center mb-6"
             >
-              <Text className="text-sm font-bold text-white">
-                {isSubmittingFeedback ? 'Submitting...' : 'Submit Feedback'}
-              </Text>
+              {isSubmittingFeedback ? 'Submitting...' : 'Submit Feedback'}
             </Button>
           </View>
         </BottomSheet>

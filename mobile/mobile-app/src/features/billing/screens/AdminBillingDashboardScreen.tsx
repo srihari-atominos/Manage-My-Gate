@@ -16,6 +16,7 @@ import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { EmptyState } from '@/components/feedback/EmptyState';
+import { InvoiceCard } from '../components/InvoiceCard';
 import {
   Receipt,
   Clock,
@@ -264,29 +265,13 @@ export function AdminBillingDashboardScreen() {
             />
           ) : (
             <View className="gap-2.5">
-              {recentTransactions.map((tx: any) => {
-                const statusMeta = mapInvoiceStatus(tx.status);
-                const unit = tx.unitNumber || tx.unitId?.unitNumber || 'Unit';
-                const resident = tx.targetUser || tx.residentName || tx.targetUserName || 'Resident';
-                const amount = tx.totalDue ?? tx.amount ?? tx.totalAmount ?? 0;
-                const formattedAmount = typeof amount === 'number' ? `₹${amount.toLocaleString('en-IN')}` : String(amount);
-                const invNum = tx.invoiceNumber ? `Inv #${tx.invoiceNumber}` : 'Invoice';
-
-                return (
-                  <ListCard
-                    key={tx._id || tx.invoiceNumber}
-                    title={`${unit} • ${resident}`}
-                    subtitle={`${invNum} • ${formattedAmount}`}
-                    leftIcon={FileText}
-                    status={{
-                      label: statusMeta.label,
-                      variant: statusMeta.variant,
-                    }}
-                    timestamp={tx.createdAt || tx.date || tx.dueDate}
-                    onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
-                  />
-                );
-              })}
+              {recentTransactions.map((tx: any) => (
+                <InvoiceCard
+                  key={tx._id || tx.invoiceNumber}
+                  invoice={tx}
+                  onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
+                />
+              ))}
             </View>
           )}
         </View>

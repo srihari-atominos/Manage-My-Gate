@@ -3,6 +3,7 @@ import { useAmenitySocket } from '../../../src/features/amenities/hooks/useAmeni
 
 export default function AmenitiesLayout() {
   useAmenitySocket(); // Initialize real-time updates for amenities
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="discover" />

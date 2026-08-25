@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Modal, FlatList, ScrollView } from 'react-native';
+import { View, Text, Pressable, Modal, FlatList, ScrollView, Platform } from 'react-native';
 import { ChevronDown, Check } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 
@@ -81,11 +81,25 @@ export const DropdownSelect = ({
 
       {/* Inline/Accordion Dropdown List overlay */}
       {(inline || accordion) && isOpen && (
-        <View 
-          className={cn(
-            'bg-card border border-border rounded-xl shadow-lg mt-1 overflow-hidden',
-            accordion ? 'relative' : 'absolute left-0 right-0 z-[1000]'
+        <>
+          {Platform.OS === 'web' && (
+            <Pressable
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 999,
+              } as any}
+              onPress={() => setIsOpen(false)}
+            />
           )}
+          <View 
+            className={cn(
+              'bg-card border border-border rounded-xl shadow-lg mt-1 overflow-hidden',
+              accordion ? 'relative' : 'absolute left-0 right-0 z-[1000]'
+            )}
           style={{ 
             top: accordion ? undefined : '100%', 
             maxHeight: accordion ? 300 : 200, 
@@ -123,6 +137,7 @@ export const DropdownSelect = ({
             })}
           </ScrollView>
         </View>
+        </>
       )}
 
       {/* Full Sheet Modal Dropdown for standard (non-inline) usage */}

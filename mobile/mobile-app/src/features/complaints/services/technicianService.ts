@@ -33,7 +33,9 @@ export const technicianService = {
   },
 
   update: async (id: string, data: Partial<TechnicianData>) => {
-    return await apiClient.put(`${BASE_URL}/${id}`, data);
+    const payload = { ...data };
+    delete payload._id;
+    return await apiClient.put(`${BASE_URL}/${id}`, payload);
   },
 
   delete: async (id: string) => {

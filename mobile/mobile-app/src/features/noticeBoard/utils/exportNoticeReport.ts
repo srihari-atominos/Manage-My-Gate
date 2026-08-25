@@ -58,7 +58,7 @@ export const exportNoticeReport = async (dashboardStats: any): Promise<void> => 
     const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
     // Define temporary local file path
-    const fileUri = ((FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || '') + 'notice_board_report.xlsx';
+    const fileUri = (FileSystem as any).documentDirectory + 'notice_board_report.xlsx';
 
     // Write file to filesystem
     await FileSystem.writeAsStringAsync(fileUri, wbout, {

@@ -152,7 +152,7 @@ export default function AdminAmenityMasterScreen() {
       <AmenityFormModal
         visible={isFormModalOpen}
         onClose={handleCloseFormModal}
-        onSubmit={handleFormSubmit}
+        onSubmit={handleFormSubmit as any}
         amenity={editingAmenity}
         loading={saving}
       />

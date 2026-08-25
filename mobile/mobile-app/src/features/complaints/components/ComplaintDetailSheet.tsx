@@ -12,6 +12,7 @@ import { CheckCircle, Image as ImageIcon, X, MapPin, Clock, ShieldAlert, Sparkle
 import { AssignTechnicianSheet } from './AssignTechnicianSheet';
 import { useComplaints } from '../hooks/useComplaints';
 import { Complaint } from '../types';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 interface ComplaintDetailSheetProps {
   visible: boolean;
@@ -21,6 +22,7 @@ interface ComplaintDetailSheetProps {
   onConfirmCompletion?: (id: string, feedback?: any) => Promise<any>;
   onCancelTicket?: (id: string) => Promise<any>;
   onReopenTicket?: (id: string, remarks: string) => Promise<any>;
+  onDeleteTicket?: (id: string) => Promise<any>;
   onAssignPress?: (complaint: Complaint) => void;
   onUpdateStatus?: (id: string, data: { status?: string; priority?: string; remarks?: string }) => Promise<any>;
   onAcceptAssignment?: (id: string) => Promise<any>;
@@ -41,6 +43,7 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
   onConfirmCompletion,
   onCancelTicket,
   onReopenTicket,
+  onDeleteTicket,
   onAssignPress,
   onUpdateStatus,
   onAcceptAssignment,
@@ -64,9 +67,14 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
   const [feedbackRemarks, setFeedbackRemarks] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
-  const [reopenRemarks, setReopenRemarks] = useState('');
+  // Reopen/Delete State
   const [showReopenInput, setShowReopenInput] = useState(false);
+  const [reopenRemarks, setReopenRemarks] = useState('');
   const [isSubmittingReopen, setIsSubmittingReopen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
+
+  // Status Update State
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
 
   const [showAssignSheet, setShowAssignSheet] = useState(false);
@@ -136,6 +144,23 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
       console.error('Failed to reopen ticket:', err);
     } finally {
       setIsSubmittingReopen(false);
+    }
+  };
+
+  const handleDeleteTicketAction = async () => {
+    if (!onDeleteTicket) return;
+    try {
+      setIsSubmittingDelete(true);
+      await onDeleteTicket(complaint._id);
+      setShowDeleteConfirm(false);
+      // Wait a bit before closing the sheet so the list has time to update
+      setTimeout(() => {
+        onClose();
+      }, 300);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmittingDelete(false);
     }
   };
 
@@ -753,17 +778,30 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
                 </Button>
               ) : null}
 
-              {isClosed ? (
+              {['Closed', 'Completed', 'Resolved', 'Cancelled'].includes(complaint.status) ? (
                 <View className="gap-2">
                   {!showReopenInput ? (
-                    <Button
-                      variant="outline"
-                      size="default"
-                      onPress={() => setShowReopenInput(true)}
-                      className="border-amber-500/40 text-amber-600"
-                    >
-                      Reopen Ticket Issue
-                    </Button>
+                    <View className="flex-row items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="default"
+                        onPress={() => setShowReopenInput(true)}
+                        className="flex-1 border-amber-500/40 text-amber-600"
+                      >
+                        Reopen Ticket Issue
+                      </Button>
+                      
+                      {onDeleteTicket && (
+                        <Button
+                          variant="outline"
+                          size="default"
+                          onPress={() => setShowDeleteConfirm(true)}
+                          className="flex-1 border-red-500/40 text-red-600"
+                        >
+                          Delete Ticket
+                        </Button>
+                      )}
+                    </View>
                   ) : (
                     <View className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 gap-2">
                       <Text className="text-xs font-bold text-amber-900 dark:text-amber-200 text-start">
@@ -802,6 +840,19 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
           )}
         </ScrollView>
       </BottomSheet>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <ConfirmationModal
+        visible={showDeleteConfirm}
+        onCancel={() => !isSubmittingDelete && setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteTicketAction}
+        loading={isSubmittingDelete}
+        title="Delete Ticket?"
+        message="Are you sure you want to delete this ticket? This action cannot be undone."
+        confirmLabel="Yes, Delete Ticket"
+        cancelLabel="Cancel"
+        variant="danger"
+      />
 
       {/* Internal Manager Assign Technician Fallback Drawer */}
       <AssignTechnicianSheet

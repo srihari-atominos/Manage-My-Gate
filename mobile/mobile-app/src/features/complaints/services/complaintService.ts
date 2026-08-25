@@ -5,11 +5,15 @@ const BASE_URL = '/complaints';
 
 export const complaintService = {
   getAll: async (params?: any) => {
-    return await apiClient.get(BASE_URL, { params });
+    return await apiClient.get(BASE_URL, { 
+      params: { ...params, _t: new Date().getTime() } 
+    });
   },
 
   getById: async (id: string) => {
-    return await apiClient.get(`${BASE_URL}/${id}`);
+    return await apiClient.get(`${BASE_URL}/${id}`, {
+      params: { _t: new Date().getTime() }
+    });
   },
 
   create: async (data: any) => {

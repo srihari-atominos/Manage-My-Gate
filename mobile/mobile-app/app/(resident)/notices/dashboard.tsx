@@ -98,7 +98,7 @@ export default function NoticeDashboardScreen() {
       iconName: 'PenTool',
       colorBg: 'bg-indigo-500/10',
       colorIcon: '#6366f1',
-      route: '/(resident)/notices/polls',
+      route: '/(resident)/polls',
     },
   ];
 

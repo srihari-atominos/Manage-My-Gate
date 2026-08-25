@@ -33,6 +33,7 @@ export interface ListCardProps extends Omit<PressableProps, 'title' | 'descripti
   status?: { label: string; variant?: StatusVariant };
   secondaryBadge?: { label: string; variant?: StatusVariant };
   timestamp?: string | Date;            // shows relative time or formatted date
+  disableRelativeTime?: boolean;        // if true, shows exact timestamp instead of relative time
   showChevron?: boolean;                // explicitly show or hide chevron
   rightContent?: React.ReactNode;       // custom right slot (amount, cta button)
 
@@ -102,6 +103,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
       secondaryBadge,
       timestamp,
       showChevron,
+      disableRelativeTime,
       rightContent,
       variant = 'card',
       isLastItem = false,
@@ -224,7 +226,6 @@ const ListCard = React.forwardRef<View, ListCardProps>(
               subtitle
             )
           ) : null}
-
           {description ? (
             typeof description === 'string' ? (
               <Text
@@ -244,7 +245,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
               variant="muted"
               className={cn("text-[10px] mt-0.5", backgroundImage ? "text-white/60" : "text-muted-foreground/70")}
             >
-              {formatRelativeTime(timestamp)}
+              {disableRelativeTime ? (typeof timestamp === 'string' ? timestamp : timestamp.toLocaleDateString()) : formatRelativeTime(timestamp)}
             </Text>
           ) : null}
         </View>
@@ -260,7 +261,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
               variant="muted"
               className={cn("text-[10px] font-medium", backgroundImage ? "text-white/60" : "text-muted-foreground/70")}
             >
-              {formatRelativeTime(timestamp)}
+              {disableRelativeTime ? (typeof timestamp === 'string' ? timestamp : timestamp.toLocaleDateString()) : formatRelativeTime(timestamp)}
             </Text>
           ) : null}
 

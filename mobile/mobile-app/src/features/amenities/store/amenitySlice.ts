@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import amenityApi, { FetchAmenitiesParams } from '../services/amenityApi';
+import amenityApi, { FetchAmenitiesParams } from '../services/amenityService';
 
 export interface AmenitySlot {
   _id?: string;

@@ -5,7 +5,8 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 import { TabBar } from '@/components/ui/TabBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { KPICard } from '@/components/ui/KPICard';
-import { FAB } from '@/components/ui/FAB';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import { usePolls } from '../hooks/usePolls';
 import { usePollSocket } from '../hooks/usePollSocket';
 import { PollCard } from '../components/PollCard';
@@ -107,6 +108,19 @@ export default function PollDashboardScreen() {
 
   const renderHeader = () => (
     <View className="gap-3 mb-3">
+      {/* Create Poll Action */}
+      <View className="flex-row justify-between items-center mb-1">
+        <Text className="text-sm font-bold text-muted-foreground px-1">Overview</Text>
+        <Button 
+          variant="default"
+          size="sm"
+          onPress={() => router.push('/(resident)/polls/create')}
+          className="rounded-full px-5 h-9"
+        >
+          <Text className="text-xs font-bold text-primary-foreground">Create Poll</Text>
+        </Button>
+      </View>
+
       {/* KPI Summary Row */}
       <View className="flex-row gap-3">
         <KPICard
@@ -167,12 +181,6 @@ export default function PollDashboardScreen() {
           contentContainerClassName="px-4 pt-3 pb-28"
         />
 
-        {/* Resident Action Trigger: FAB */}
-        <FAB
-          iconName="Plus"
-          label="New Poll"
-          onPress={() => router.push('/(resident)/polls/create')}
-        />
       </View>
     </ScreenShell>
   );
