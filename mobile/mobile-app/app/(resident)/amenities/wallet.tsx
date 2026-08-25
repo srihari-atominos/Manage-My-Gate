@@ -9,7 +9,8 @@ import { Plus, ShieldCheck } from 'lucide-react-native';
 import { useResidentWallet } from '../../../src/features/amenities/hooks/useResidentWallet';
 import { WalletTopUpModal } from '../../../src/features/amenities/components/WalletTopUpModal';
 import { WalletTransaction } from '../../../src/features/amenities/store/walletSlice';
-import { WalletTransactionCard } from '../../../src/features/billing/components/WalletTransactionCard';
+import { WalletHeroCard } from '../../../src/features/billing/components/WalletHeroCard';
+import { FinancialTransactionCard } from '../../../src/features/billing/components/FinancialTransactionCard';
 
 export default function ResidentWalletScreen() {
   const {
@@ -28,34 +29,11 @@ export default function ResidentWalletScreen() {
   const renderHeader = () => (
     <View className="mb-3">
       {/* Harmonized Wallet Balance Hero Card */}
-      <View className="bg-card border border-border rounded-2xl p-5 shadow-sm mb-4">
-        <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-            Available Wallet Balance
-          </Text>
-          <View className="flex-row items-center bg-status-success/15 px-2.5 py-1 rounded-full">
-            <Icon as={ShieldCheck} size={12} className="text-status-success me-1" />
-            <Text className="text-xs font-semibold text-status-success">Instant Bookings Ready</Text>
-          </View>
-        </View>
-
-        <Text className="text-3xl font-extrabold text-foreground tracking-tight mb-4">
-          ₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </Text>
-
-        {/* Instant Top-Up CTA */}
-        <Button
-          variant="default"
-          size="lg"
-          className="w-full flex-row items-center justify-center bg-status-success active:bg-status-success/90"
-          onPress={handleOpenTopUp}
-          accessibilityRole="button"
-          accessibilityLabel="Add Funds to Amenity Wallet"
-        >
-          <Icon as={Plus} size={18} className="text-primary-foreground me-2" />
-          <Text className="font-bold text-base text-primary-foreground">Add Funds to Wallet</Text>
-        </Button>
-      </View>
+      <WalletHeroCard
+        balance={balance}
+        onTopUpPress={handleOpenTopUp}
+        topUpLabel="Add Funds to Wallet"
+      />
 
       {/* Transaction History Section Header */}
       <View className="flex-row items-center justify-between px-0.5">
@@ -65,6 +43,7 @@ export default function ResidentWalletScreen() {
       </View>
     </View>
   );
+
 
   return (
     <ScreenShell
@@ -79,7 +58,7 @@ export default function ResidentWalletScreen() {
         <PaginatedList<WalletTransaction>
           data={transactions}
           renderItem={(item: WalletTransaction) => (
-            <WalletTransactionCard
+            <FinancialTransactionCard
               key={item._id || (item as any).id || (item as any).transactionId}
               transaction={item}
               className="mb-2.5"
