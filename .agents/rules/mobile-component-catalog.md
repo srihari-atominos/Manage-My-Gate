@@ -68,3 +68,10 @@ NEVER hardcode hex codes or physical margin classes (`mr-`, `ml-`, `pr-`, `pl-`)
 1. **RTL Support:** Always use NativeWind logical spacing utility classes (`ms-`, `me-`, `ps-`, `pe-`, `text-start`, `items-start`) to support Arabic localization.
 2. **Dark Mode Compatibility:** Ensure components use dark mode theme tokens (`bg-card`, `bg-muted`, `text-foreground`, `border-border`).
 3. **Accessibility:** Ensure buttons and touchables set proper `accessibilityRole="button"` and `accessibilityLabel`.
+
+---
+
+## V. Dashboard Layout & Recent Activity Constraints
+1. **Strict 3-Item Limit for Dashboard Activity Previews:** Top-level executive and resident dashboard screens MUST ONLY render a preview of at most 3 items (`.slice(0, 3)`) in their "Recent Activity" or queue snippet section. Never render full datasets, unbounded arrays, or more than 3 items directly on a dashboard screen. Full datasets belong in the dedicated sub-screen linked via `<SectionHeader actionLabel="View All">`.
+2. **Scroll Containment & FAB Bottom Inset:** Every screen with a Floating Action Button (`<FAB>`) MUST configure its `<ScrollView>` with adequate bottom content padding (minimum `pb-28` in `contentContainerClassName` or `paddingBottom: 110` in `contentContainerStyle`) to prevent list items from scrolling beyond the visible container or getting clipped underneath the bottom FAB.
+

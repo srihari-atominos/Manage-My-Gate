@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text } from 'react-native';
-import { cn } from '../../lib/utils';
+import { View } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 
 export interface HeatmapData {
   day: string;
@@ -14,57 +15,61 @@ export interface ActivityHeatmapProps {
   className?: string;
 }
 
-export const ActivityHeatmap = ({
-  data,
+export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
+  data = [],
   title,
   className,
-}: ActivityHeatmapProps) => {
+}) => {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const hours = [0, 4, 8, 12, 16, 20]; // Simplified axis
+  const hours = [0, 4, 8, 12, 16, 20]; // Simplified axis markers
 
-  const getColor = (intensity: number) => {
-    if (intensity === 0) return 'bg-slate-100 dark:bg-slate-800';
-    if (intensity < 0.25) return 'bg-indigo-200 dark:bg-indigo-900/40';
-    if (intensity < 0.5) return 'bg-indigo-300 dark:bg-indigo-800/60';
-    if (intensity < 0.75) return 'bg-indigo-500 dark:bg-indigo-600';
-    return 'bg-indigo-700 dark:bg-indigo-400';
+  const getColorClass = (intensity: number) => {
+    if (intensity === 0) return 'bg-muted/30';
+    if (intensity < 0.25) return 'bg-primary/20';
+    if (intensity < 0.5) return 'bg-primary/40';
+    if (intensity < 0.75) return 'bg-primary/70';
+    return 'bg-primary';
   };
 
   return (
-    <View className={cn('rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900', className)}>
-      <Text className="mb-4 text-sm font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">
+    <View className={cn('rounded-2xl border border-border bg-card p-4 shadow-xs', className)}>
+      <Text className="mb-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
         {title}
       </Text>
-      
+
       <View className="flex-row">
-        {/* Y Axis */}
-        <View className="mr-2 justify-between py-1">
-          {days.map(day => (
-            <Text key={day} className="text-[10px] text-slate-400 font-mono h-4 leading-4">{day}</Text>
+        {/* Y Axis (Days) */}
+        <View className="me-2 justify-between py-0.5">
+          {days.map((day) => (
+            <Text key={day} className="text-[10px] text-muted-foreground font-semibold h-4 leading-4 text-start">
+              {day}
+            </Text>
           ))}
         </View>
-        
-        {/* Grid */}
+
+        {/* Heatmap Grid */}
         <View className="flex-1">
           {days.map((day, dIdx) => (
-            <View key={day} className="flex-row mb-1 h-4 gap-1">
+            <View key={day} className="flex-row mb-1.5 h-4 gap-1">
               {Array.from({ length: 24 }).map((_, hIdx) => {
-                const cellData = data.find(d => d.day === day && d.hour === hIdx);
+                const cellData = data.find((d) => d.day === day && d.hour === hIdx);
                 const intensity = cellData ? cellData.intensity : 0;
                 return (
-                  <View 
+                  <View
                     key={`${dIdx}-${hIdx}`}
-                    className={cn('flex-1 rounded-sm', getColor(intensity))}
+                    className={cn('flex-1 rounded-xs', getColorClass(intensity))}
                   />
                 );
               })}
             </View>
           ))}
-          
-          {/* X Axis labels */}
+
+          {/* X Axis (Hour Labels) */}
           <View className="flex-row justify-between mt-1">
-            {hours.map(hour => (
-              <Text key={hour} className="text-[10px] text-slate-400 font-mono">{hour}</Text>
+            {hours.map((hour) => (
+              <Text key={hour} className="text-[10px] text-muted-foreground font-medium">
+                {hour === 0 ? '12AM' : hour === 12 ? '12PM' : `${hour > 12 ? hour - 12 : hour}${hour >= 12 ? 'PM' : 'AM'}`}
+              </Text>
             ))}
           </View>
         </View>
@@ -72,3 +77,5 @@ export const ActivityHeatmap = ({
     </View>
   );
 };
+
+export default ActivityHeatmap;

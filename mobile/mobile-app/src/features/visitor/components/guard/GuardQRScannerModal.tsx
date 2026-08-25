@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { View, Modal, TouchableOpacity, TextInput } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { View } from 'react-native';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
-import { QrCode, ScanLine, X, CheckCircle2 } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { QRScannerOverlay } from '@/components/hardware/QRScannerOverlay';
+import { QrCode, Search } from 'lucide-react-native';
 
-interface GuardQRScannerModalProps {
+export interface GuardQRScannerModalProps {
   visible: boolean;
   onClose: () => void;
   onScanCode: (code: string) => void;
@@ -18,56 +21,68 @@ export const GuardQRScannerModal: React.FC<GuardQRScannerModalProps> = ({
   const [manualCode, setManualCode] = useState('');
 
   const handleSimulatedScan = () => {
-    if (manualCode.trim()) {
-      onScanCode(manualCode.trim());
+    const trimmed = manualCode.trim();
+    if (trimmed) {
+      onScanCode(trimmed);
       setManualCode('');
       onClose();
     }
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <View className="flex-1 bg-black/80 justify-center p-4 items-center">
-        <View className="bg-background w-full rounded-2xl p-4 gap-4 max-w-md border border-border shadow-xl">
-          {/* Header */}
-          <View className="flex-row items-center justify-between border-b border-border pb-2">
-            <View className="flex-row items-center gap-2">
-              <ScanLine size={20} className="text-primary" />
-              <Text className="text-base font-bold text-foreground">Guard Gate QR Scanner</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} className="p-1 rounded-full bg-muted">
-              <X size={16} className="text-muted-foreground" />
-            </TouchableOpacity>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title="Guard Gate QR Scanner"
+    >
+      <View className="gap-4 pb-2">
+        {/* Scanner View Frame */}
+        <View className="h-64 w-full rounded-2xl overflow-hidden relative bg-black border border-border items-center justify-center">
+          <QRScannerOverlay instruction="Align visitor QR pass code inside viewfinder" />
+        </View>
+
+        {/* Manual Code Lookup Form */}
+        <View className="bg-card border border-border rounded-2xl p-3.5 gap-2.5">
+          <View className="flex-row items-center gap-2">
+            <QrCode size={16} className="text-primary" />
+            <Text className="text-xs font-bold text-foreground">Manual Pass Verification</Text>
           </View>
 
-          {/* Scanner View Frame */}
-          <View className="h-56 bg-black rounded-xl items-center justify-center border-2 border-dashed border-primary/50 relative overflow-hidden">
-            <ScanLine size={48} className="text-primary animate-pulse opacity-75" />
-            <Text className="text-xs text-white/80 font-semibold mt-2 text-center px-4">
-              Point camera at visitor QR pass code
-            </Text>
-
-            {/* Simulated Scan Overlay */}
-            <View className="absolute bottom-2 left-2 right-2 flex-row gap-2 bg-black/80 p-2 rounded-lg border border-border">
+          <View className="flex-row items-end gap-2">
+            <View className="flex-1">
               <TextInput
                 value={manualCode}
                 onChangeText={setManualCode}
-                placeholder="Or type pass PIN code..."
-                placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                className="flex-1 text-xs text-white px-2 font-mono"
+                placeholder="Enter 6-digit PIN code..."
+                keyboardType="number-pad"
+                inputClassName="font-mono text-sm tracking-widest"
+                onSubmitEditing={handleSimulatedScan}
               />
-              <Button size="sm" onPress={handleSimulatedScan} className="px-3">
-                <Text className="text-xs font-bold text-white">Scan</Text>
-              </Button>
             </View>
+            <Button
+              variant="default"
+              size="sm"
+              onPress={handleSimulatedScan}
+              disabled={!manualCode.trim()}
+              className="h-11 px-4 rounded-xl flex-row items-center gap-1.5"
+              accessibilityLabel="Verify Pass Code"
+            >
+              <Search size={15} className="text-primary-foreground" />
+              <Text className="text-xs font-bold text-primary-foreground">Verify</Text>
+            </Button>
           </View>
-
-          <Button variant="outline" onPress={onClose}>
-            <Text className="text-xs font-semibold">Close Scanner</Text>
-          </Button>
         </View>
+
+        <Button
+          variant="outline"
+          onPress={onClose}
+          className="h-11 rounded-xl"
+          accessibilityLabel="Close QR Scanner"
+        >
+          <Text className="text-xs font-semibold text-foreground">Close Scanner</Text>
+        </Button>
       </View>
-    </Modal>
+    </BottomSheet>
   );
 };
 

@@ -15,9 +15,9 @@ export const Card = ({
   ...props
 }: CardProps) => {
   const variantClasses = {
-    default: 'bg-white border border-slate-100 dark:bg-slate-900 dark:border-slate-800',
-    elevated: 'bg-white shadow-sm shadow-slate-200/50 dark:bg-slate-900 dark:shadow-none',
-    outline: 'bg-transparent border border-slate-200 dark:border-slate-800',
+    default: 'bg-card border border-border',
+    elevated: 'bg-card shadow-sm shadow-black/5 dark:shadow-none border border-border/50',
+    outline: 'bg-transparent border border-border',
   };
 
   return (
@@ -34,7 +34,7 @@ export interface CardHeaderProps extends ViewProps {
   className?: string;
 }
 export const CardHeader = ({ className, ...props }: CardHeaderProps) => (
-  <View className={cn('p-4 flex-col space-y-1.5', className)} {...props} />
+  <View className={cn('p-4 flex-col gap-y-1.5', className)} {...props} />
 );
 
 export interface CardContentProps extends ViewProps {

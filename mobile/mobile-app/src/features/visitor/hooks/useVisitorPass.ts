@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import { useVisitorSocket } from './useVisitorSocket';
 import { selectActiveOrgId } from '../../auth/store/authSelectors';
+import visitorService from '../services/visitorService';
 import {
   getPasses,
   getPassDetails,
@@ -108,6 +109,32 @@ export const useVisitorPass = () => {
     [dispatch]
   );
 
+  const submitWalkIn = useCallback(
+    async (payload: any) => {
+      const orgId = payload?.orgId || activeOrgId;
+      return await visitorService.initiateWalkIn({ ...payload, orgId });
+    },
+    [activeOrgId]
+  );
+
+  const fetchActiveVisitors = useCallback(
+    async (orgIdParam?: string) => {
+      const orgId = orgIdParam || activeOrgId;
+      if (!orgId) return [];
+      const res = await visitorService.getActiveVisitors(orgId);
+      const body = res && (res as any).success !== undefined ? res : (res as any)?.data;
+      return Array.isArray(body?.data || body) ? body?.data || body : [];
+    },
+    [activeOrgId]
+  );
+
+  const checkoutVisitor = useCallback(
+    async (logId: string) => {
+      return await visitorService.checkoutVisitor(logId);
+    },
+    []
+  );
+
   return {
     // State properties
     passes,
@@ -129,6 +156,9 @@ export const useVisitorPass = () => {
     revokePass,
     resetPassStatus,
     selectPass,
+    submitWalkIn,
+    fetchActiveVisitors,
+    checkoutVisitor,
   };
 };
 

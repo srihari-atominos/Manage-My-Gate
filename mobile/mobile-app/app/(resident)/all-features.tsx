@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { ScreenShell } from '@/components/ui/ScreenShell';
 import {
   X,
   Search,
   ChevronRight,
   SlidersHorizontal,
-  ChevronLeft,
 } from 'lucide-react-native';
 import ActionTile from '@/components/dashboard/ActionTile';
 import FeatureIcon from '@/components/ui/FeatureIcon';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { Stack, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
 
 export default function AllFeaturesScreen() {
@@ -41,27 +41,23 @@ export default function AllFeaturesScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
-      <Stack.Screen options={{ headerShown: false }} />
-      
-      {/* Header Bar */}
-      <View className="bg-card border-b border-border px-4 py-3.5 flex-row items-center justify-between shadow-xs">
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} className="p-1 -ml-1">
-          <ChevronLeft size={24} color="#444" />
-        </TouchableOpacity>
-
-        <Text className="text-base font-extrabold text-foreground">Quick Actions</Text>
-
-        <TouchableOpacity
+    <ScreenShell
+      title="All Features"
+      subtitle="Explore community quick actions and services"
+      iconName="LayoutGrid"
+      showBackButton={true}
+      headerRight={
+        <Button
+          variant="outline"
+          size="sm"
           onPress={() => setCustomiseOpen(true)}
-          activeOpacity={0.8}
           className="flex-row items-center gap-1 bg-primary/10 border border-primary/30 px-3 py-1.5 rounded-full"
         >
-          <SlidersHorizontal size={13} color="#03A9F4" />
+          <SlidersHorizontal size={13} className="text-primary" />
           <Text className="text-xs font-bold text-primary">Customise</Text>
-        </TouchableOpacity>
-      </View>
-
+        </Button>
+      }
+    >
       <ScrollView className="flex-1 px-4 pt-3">
         <View className="gap-5 pb-12 max-w-md mx-auto w-full">
           {/* Search All Features Bar */}
@@ -125,16 +121,17 @@ export default function AllFeaturesScreen() {
                       {category.categoryName}
                     </Text>
 
-                    <TouchableOpacity
-                      activeOpacity={0.7}
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onPress={() => handleTileClick(primaryRouteId)}
                       className="flex-row items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20"
                     >
                       <Text className="text-xs font-bold text-primary">
                         View all
                       </Text>
-                      <ChevronRight size={13} color="#03A9F4" />
-                    </TouchableOpacity>
+                      <ChevronRight size={13} className="text-primary" />
+                    </Button>
                   </View>
 
                   {/* 4-Column Action Grid */}
@@ -162,6 +159,6 @@ export default function AllFeaturesScreen() {
         activeFeatureIds={activeQuickActions}
         onSave={handleSaveCustomisation}
       />
-    </SafeAreaView>
+    </ScreenShell>
   );
 }

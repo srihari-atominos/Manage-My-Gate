@@ -1,23 +1,33 @@
 import React from 'react';
-import FeatureDetailScreen from '@/components/dashboard/FeatureDetailScreen';
 import { useRouter } from 'expo-router';
+import { useSelector } from 'react-redux';
+import { ScreenShell } from '@/components/ui/ScreenShell';
+import { VisitorPassWizard } from '@/src/features/visitor/components/wizard/VisitorPassWizard';
+import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
+import { selectActiveOrgId, selectAuthUser } from '@/src/features/auth/store/authSelectors';
 
 export default function CabPassScreen() {
   const router = useRouter();
+  const authUser = useSelector(selectAuthUser);
+  const activeOrgId = useSelector(selectActiveOrgId);
+  const { createNewPass } = useVisitorPass();
+
+  const roleContext = {
+    role: 'RESIDENT' as const,
+    orgId: activeOrgId,
+    createdById: authUser?.id || authUser?._id,
+  };
 
   return (
-    <FeatureDetailScreen
-      title="Cab & Auto Pre-Approval"
-      categoryName="Visitor & Gate Security"
-      sharedSlice="visitorSlice.js"
-      permission="visitor:resident"
-      iconName="Car"
-      iconColor="#f59e0b"
-      description="Pre-approve incoming Uber, Ola, or taxi vehicles for automatic gate barrier opening."
-      actionButton={{
-        label: 'Create Cab Pass',
-        onPress: () => router.push({ pathname: '/(resident)/visitor/invite' as any, params: { type: 'CAB' } }),
-      }}
-    />
+    <ScreenShell title="Cab & Taxi Pass" subtitle="Vehicle pre-clearance & gate pass">
+      <VisitorPassWizard
+        initialType="CAB"
+        roleContext={roleContext}
+        onSubmitPass={async (payload) => {
+          return await createNewPass(payload);
+        }}
+        onClose={() => router.back()}
+      />
+    </ScreenShell>
   );
 }

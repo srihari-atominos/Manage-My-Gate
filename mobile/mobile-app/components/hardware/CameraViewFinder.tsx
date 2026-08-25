@@ -1,27 +1,36 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Platform, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { View, Platform } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { Camera, CameraOff, RefreshCw } from 'lucide-react-native';
 import { QRScannerOverlay } from './QRScannerOverlay';
+import { cn } from '../../lib/utils';
 
 export interface CameraViewFinderProps {
-  onScan: (data: string) => void;
+  onScan?: (data: string) => void;
   instruction?: string;
+  title?: string;
   isScanning?: boolean;
+  className?: string;
+  fullscreen?: boolean;
 }
 
 export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
   onScan,
-  instruction = 'Position Amenity QR Code within Frame',
+  instruction = 'Position QR Code within Frame',
+  title,
   isScanning = true,
+  className,
+  fullscreen = false,
 }) => {
   const [cameraActive, setCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<any>(null);
   const streamRef = useRef<any>(null);
 
-  const startWebCamera = async () => {
+  const startWebCamera = useCallback(async () => {
     setCameraError(null);
     try {
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.mediaDevices) {
@@ -36,14 +45,15 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
         }
         setCameraActive(true);
       } else {
+        // Native camera fallback or simulation indicator
         setCameraActive(true);
       }
     } catch (err: any) {
       console.warn('Camera access error:', err);
-      setCameraError(err.message || 'Camera permission denied or camera unavailable.');
+      setCameraError(err.message || 'Camera access permission was denied or camera is unavailable.');
       setCameraActive(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (isScanning) {
@@ -58,11 +68,17 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
         }
       }
     };
-  }, [isScanning]);
+  }, [isScanning, startWebCamera]);
 
   return (
-    <View className="h-64 w-full rounded-2xl overflow-hidden bg-black relative mb-4 border border-border justify-center items-center">
-      {/* Web Live Video Stream */}
+    <View
+      className={cn(
+        'w-full bg-black relative justify-center items-center overflow-hidden border border-border',
+        fullscreen ? 'flex-1 inset-0 absolute h-full rounded-none border-0' : 'h-64 rounded-2xl mb-4',
+        className
+      )}
+    >
+      {/* Live Video Stream Viewport */}
       {Platform.OS === 'web' ? (
         <View className="absolute inset-0 w-full h-full">
           <video
@@ -80,30 +96,41 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
         </View>
       ) : null}
 
-      {/* Fallback Camera Placeholder / Error State */}
-      {(!cameraActive || cameraError) && (
-        <View className="p-4 items-center justify-center gap-2 text-center">
-          <View className="w-12 h-12 rounded-full bg-white/10 items-center justify-center mb-1">
-            <CameraOff size={24} color="#ffffff" />
+      {/* Camera Permission Denied / Offline Banner State */}
+      {Boolean(cameraError) && (
+        <View className="z-30 p-6 w-full max-w-sm items-center justify-center gap-3">
+          <ErrorBanner
+            title="Camera Permission Required"
+            message={cameraError || 'Camera stream is unavailable.'}
+            onRetry={startWebCamera}
+            retryLabel="Enable Camera"
+            className="w-full"
+          />
+        </View>
+      )}
+
+      {/* Fallback Camera Placeholder if not active and no error */}
+      {!cameraActive && !cameraError && (
+        <View className="p-6 items-center justify-center gap-3">
+          <View className="w-14 h-14 rounded-full bg-muted/40 border border-border/30 items-center justify-center mb-1">
+            <Icon as={CameraOff} size={26} className="text-muted-foreground" />
           </View>
-          <Text className="text-white text-xs font-semibold text-center px-4">
-            {cameraError || 'Camera Stream Offline'}
+          <Text className="text-foreground text-xs font-semibold text-center px-4">
+            Camera stream inactive
           </Text>
           <Button
             size="sm"
             variant="outline"
             onPress={startWebCamera}
-            className="mt-1 bg-white/10 border-white/20"
+            className="mt-1 border-border bg-card/80"
           >
-            <View className="flex-row items-center gap-1.5 px-2">
-              <RefreshCw size={14} color="#ffffff" />
-              <Text className="text-white text-xs font-bold">Enable Camera</Text>
-            </View>
+            <Icon as={RefreshCw} size={14} className="me-1.5 text-foreground" />
+            <Text className="text-foreground text-xs font-bold">Start Camera</Text>
           </Button>
         </View>
       )}
 
-      {/* Scanner Overlay Visual Corner Frame */}
+      {/* Optical Scanner Reticle Overlay */}
       {cameraActive && (
         <QRScannerOverlay instruction={instruction} />
       )}

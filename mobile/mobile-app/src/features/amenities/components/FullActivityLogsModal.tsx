@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, ScrollView, Pressable } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { TextInput } from '@/components/forms/TextInput';
-import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
-import { QrCode, Search, ShieldCheck } from 'lucide-react-native';
+import { StatusVariant } from '@/components/ui/StatusBadge';
+import { ListCard } from '@/components/ui/ListCard';
+import { EmptyState } from '@/components/feedback/EmptyState';
+import { Search } from 'lucide-react-native';
 
 export interface FullActivityLogsModalProps {
   visible: boolean;
@@ -53,7 +55,7 @@ export function FullActivityLogsModal({
         </View>
 
         {/* Scrollable Log Feed */}
-        <ScrollView className="flex-1 gap-2.5" contentContainerClassName="pb-6">
+        <ScrollView className="flex-1" contentContainerClassName="pb-6 gap-2">
           {filteredLogs.length > 0 ? (
             filteredLogs.map((log: any, idx: number) => {
               const id = log.id || log._id || `full-log-${idx}`;
@@ -111,43 +113,30 @@ export function FullActivityLogsModal({
               };
 
               return (
-                <Pressable
+                <ListCard
                   key={id}
+                  title={`${residentName} (${unitInfo})`}
+                  subtitle={`${amenityName} • ${timeStr}`}
+                  leftIcon="QrCode"
+                  status={{
+                    label: statusLabel,
+                    variant,
+                  }}
                   onPress={() => {
                     onClose();
                     onSelectLog(formattedRawLog);
                   }}
-                  className="p-3.5 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/50 active:bg-muted/60 mb-2"
-                >
-                  <View className="flex-row items-center justify-between gap-2 mb-2">
-                    <View className="flex-row items-center gap-2.5 flex-1 me-2">
-                      <View className="w-7.5 h-7.5 rounded-full bg-primary/10 items-center justify-center shrink-0">
-                        <QrCode size={15} color="#0084FF" />
-                      </View>
-                      <Text className="text-xs font-bold text-foreground flex-1" numberOfLines={1}>
-                        {residentName} <Text className="font-normal text-muted-foreground">({unitInfo})</Text>
-                      </Text>
-                    </View>
-                    <StatusBadge label={statusLabel} variant={variant} size="sm" />
-                  </View>
-
-                  <View className="flex-row items-center justify-between gap-2 ps-10">
-                    <Text className="text-[11px] font-semibold text-muted-foreground flex-1" numberOfLines={1}>
-                      {amenityName}
-                    </Text>
-                    <Text className="text-[11px] font-semibold text-primary/80 shrink-0">
-                      {timeStr}
-                    </Text>
-                  </View>
-                </Pressable>
+                  variant="card"
+                  className="mb-0 bg-muted/30 dark:bg-muted/20 border-border/50"
+                />
               );
             })
           ) : (
-            <View className="p-6 items-center justify-center">
-              <Text className="text-xs font-medium text-muted-foreground text-center">
-                No activity logs match "{search}"
-              </Text>
-            </View>
+            <EmptyState
+              icon={Search}
+              title="No Activity Logs Found"
+              description={`No activity records match "${search}"`}
+            />
           )}
         </ScrollView>
       </View>

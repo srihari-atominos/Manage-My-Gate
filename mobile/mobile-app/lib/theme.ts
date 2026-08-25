@@ -1,5 +1,17 @@
-import { DarkTheme, DefaultTheme, type Theme } from '@react-navigation/native';
- 
+export interface ThemeColors {
+  primary: string;
+  background: string;
+  card: string;
+  text: string;
+  border: string;
+  notification: string;
+}
+
+export interface NavTheme {
+  dark: boolean;
+  colors: ThemeColors;
+}
+
 export const THEME = {
   light: {
     background: 'hsl(0 0% 100%)',
@@ -55,9 +67,9 @@ export const THEME = {
   },
 };
  
-export const NAV_THEME: Record<'light' | 'dark', Theme> = {
+export const NAV_THEME: Record<'light' | 'dark', NavTheme> = {
   light: {
-    ...DefaultTheme,
+    dark: false,
     colors: {
       background: THEME.light.background,
       border: THEME.light.border,
@@ -68,7 +80,7 @@ export const NAV_THEME: Record<'light' | 'dark', Theme> = {
     },
   },
   dark: {
-    ...DarkTheme,
+    dark: true,
     colors: {
       background: THEME.dark.background,
       border: THEME.dark.border,

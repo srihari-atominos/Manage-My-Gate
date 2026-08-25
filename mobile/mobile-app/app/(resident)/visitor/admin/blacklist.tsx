@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { Text } from '@/components/ui/text';
+import { PaginatedList } from '@/components/ui/PaginatedList';
+import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { Button } from '@/components/ui/button';
-import { ListCard } from '@/components/ui/ListCard';
+import { Text } from '@/components/ui/text';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { BlacklistEntryCard, BlacklistEntry } from '@/src/features/visitor/components/admin/BlacklistEntryCard';
 import { AdminBlacklistModal } from '@/src/features/visitor/components/admin/AdminBlacklistModal';
 import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
-import { ShieldX, Plus, Trash2 } from 'lucide-react-native';
+import { Plus } from 'lucide-react-native';
 
 export default function AdminBlacklistScreen() {
   const {
@@ -19,7 +21,7 @@ export default function AdminBlacklistScreen() {
     removeFromBlacklist,
   } = useAdminVisitor();
 
-  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRemoveId, setSelectedRemoveId] = useState<string | null>(null);
 
@@ -27,11 +29,20 @@ export default function AdminBlacklistScreen() {
     loadBlacklist();
   }, [loadBlacklist]);
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadBlacklist();
-    setRefreshing(false);
+  const handleRefresh = useCallback(() => {
+    loadBlacklist();
   }, [loadBlacklist]);
+
+  const filteredBlacklist = useMemo(() => {
+    if (!search.trim()) return blacklist;
+    const q = search.toLowerCase();
+    return blacklist.filter((item: any) =>
+      (item.visitorName && item.visitorName.toLowerCase().includes(q)) ||
+      (item.phone && item.phone.includes(q)) ||
+      (item.reason && item.reason.toLowerCase().includes(q)) ||
+      (item.idProofNumber && item.idProofNumber.toLowerCase().includes(q))
+    );
+  }, [blacklist, search]);
 
   const handleConfirmRemove = async () => {
     if (selectedRemoveId) {
@@ -40,58 +51,64 @@ export default function AdminBlacklistScreen() {
     }
   };
 
+  const renderEntry = (item: BlacklistEntry) => (
+    <BlacklistEntryCard
+      key={item._id}
+      entry={item}
+      onRemovePress={setSelectedRemoveId}
+    />
+  );
+
+  const renderHeader = () => (
+    <View className="mb-3">
+      <SearchFilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search barred visitor name, phone, reason..."
+        variant="default"
+        className="px-0 py-0 border-0"
+      />
+    </View>
+  );
+
   return (
     <ScreenShell
       title="Community Visitor Blacklist"
       subtitle="Restricted visitors & security breach registry"
       headerRight={
-        <TouchableOpacity
+        <Button
+          variant="destructive"
+          size="sm"
           onPress={() => setModalOpen(true)}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1 bg-destructive px-3 py-1.5 rounded-full"
+          className="flex-row items-center gap-1 rounded-full"
         >
-          <Plus size={14} color="#fff" />
-          <Text className="text-xs font-bold text-white">Add Entry</Text>
-        </TouchableOpacity>
+          <Plus size={14} className="text-destructive-foreground" />
+          <Text className="text-xs font-bold text-destructive-foreground">Add Entry</Text>
+        </Button>
       }
     >
-      <ScrollView
-        className="flex-1 bg-background"
-        contentContainerClassName="p-4 gap-3 pb-8"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-      >
-        {blacklist.length === 0 ? (
-          <View className="p-8 bg-card border border-border rounded-2xl items-center justify-center gap-2">
-            <ShieldX size={36} className="text-muted-foreground opacity-50" />
-            <Text className="text-sm font-semibold text-foreground text-center">No Blacklisted Visitors</Text>
-            <Text className="text-xs text-muted-foreground text-center">
-              Add individuals to prevent gate entry across the community.
-            </Text>
-          </View>
-        ) : (
-          blacklist.map((item: any) => (
-            <ListCard
-              key={item._id}
-              title={item.visitorName}
-              subtitle={`Reason: ${item.reason}${item.phone ? ` • Ph: ${item.phone}` : ''}`}
-              leftIcon="ShieldAlert"
-              leftIconBgColor="rgba(239, 68, 68, 0.1)"
-              leftIconColor="#ef4444"
-              status={{ label: 'RESTRICTED', variant: 'danger' }}
-              rightContent={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onPress={() => setSelectedRemoveId(item._id)}
-                  className="h-8 w-8 p-0 items-center justify-center rounded-lg border-destructive/30"
-                >
-                  <Trash2 size={14} className="text-destructive" />
-                </Button>
-              }
-            />
-          ))
-        )}
-      </ScrollView>
+      <View className="flex-1 bg-background">
+        {/* High-Performance Paginated List */}
+        <PaginatedList<BlacklistEntry>
+          data={(filteredBlacklist || []) as BlacklistEntry[]}
+          renderItem={renderEntry}
+          keyExtractor={(item) => item._id}
+          pagination={{
+            currentPage: 1,
+            totalPages: 1,
+            totalRecords: filteredBlacklist.length,
+            limit: 50,
+          }}
+          onLoadMore={() => {}}
+          loading={status === 'loading'}
+          onRefresh={handleRefresh}
+          ListHeaderComponent={renderHeader()}
+          emptyIcon="ShieldAlert"
+          emptyTitle="No Blacklisted Visitors"
+          emptySubtitle="Add individuals to prevent gate entry across the community."
+          contentContainerClassName="px-4 pt-3 pb-28"
+        />
+      </View>
 
       <AdminBlacklistModal
         visible={modalOpen}

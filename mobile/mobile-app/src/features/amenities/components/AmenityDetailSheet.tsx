@@ -54,7 +54,7 @@ export function AmenityDetailSheet({
         ) : null}
 
         <View className="flex-row items-center justify-between mb-3 bg-card p-3 rounded-xl border border-border">
-          <View className="flex-1 mr-2">
+          <View className="flex-1 me-2">
             <Text className="text-base font-bold text-foreground">{amenity.name}</Text>
             <Text variant="muted" className="text-xs text-muted-foreground">
               {category} • {amenity.location || 'Community Zone'}
@@ -110,7 +110,7 @@ export function AmenityDetailSheet({
                 return (
                   <View
                     key={dayName}
-                    className={`px-2 py-0.5 rounded-md text-[10px] ${
+                    className={`px-2 py-0.5 rounded-md ${
                       isOpen ? 'bg-primary/10 border border-primary/30' : 'bg-muted/40 border border-border/40'
                     }`}
                   >
@@ -143,7 +143,7 @@ export function AmenityDetailSheet({
                 </Text>
               )
             ) : (
-              <Text className="text-xs text-red-500 font-medium">Cancellation Disabled (No Refunds)</Text>
+              <Text className="text-xs text-destructive font-medium">Cancellation Disabled (No Refunds)</Text>
             )}
           </View>
 
@@ -166,13 +166,13 @@ export function AmenityDetailSheet({
                 onClose();
                 onEditClick(amenity);
               }}
-              className="flex-1 bg-primary/10 border-primary/20"
+              className="flex-1 bg-primary/10 border-primary/20 h-11 rounded-xl"
             >
               <Text className="text-primary font-bold text-sm">Edit Specifications</Text>
             </Button>
           ) : null}
-          <Button variant="default" onPress={onClose} className="flex-1 bg-primary">
-            <Text className="text-white font-bold text-sm">Close</Text>
+          <Button variant="default" onPress={onClose} className="flex-1 h-11 rounded-xl">
+            <Text className="text-primary-foreground font-bold text-sm">Close</Text>
           </Button>
         </View>
       </ScrollView>

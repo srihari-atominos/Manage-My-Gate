@@ -9,6 +9,9 @@ type IconProps = LucideProps & {
 } & React.RefAttributes<LucideIcon>;
 
 function IconImpl({ as: IconComponent, ...props }: IconProps) {
+  if (!IconComponent || (typeof IconComponent !== 'function' && typeof IconComponent !== 'object')) {
+    return null;
+  }
   return <IconComponent {...props} />;
 }
 
@@ -43,6 +46,9 @@ cssInterop(IconImpl, {
  * @param {...LucideProps} ...props - Additional Lucide icon props passed to the "as" icon.
  */
 function Icon({ as: IconComponent, className, size = 14, ...props }: IconProps) {
+  if (!IconComponent || (typeof IconComponent !== 'function' && typeof IconComponent !== 'object')) {
+    return null;
+  }
   const textClass = React.useContext(TextClassContext);
   return (
     <IconImpl

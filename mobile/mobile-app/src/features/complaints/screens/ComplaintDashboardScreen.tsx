@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/text';
 import { SearchBar } from '@/components/forms/SearchBar';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { TextInput } from '@/components/forms/TextInput';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import {
   Wrench,

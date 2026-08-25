@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Platform } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Calendar as CalendarIcon } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 import { DatePickerModal } from './DatePickerModal';
@@ -27,23 +27,25 @@ export const DatePicker = ({
   return (
     <View className={cn('w-full', className)}>
       {Boolean(label) && (
-        <Text className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+        <Text className="mb-1.5 text-sm font-medium text-foreground">
           {label}
         </Text>
       )}
 
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label || placeholder}
         className={cn(
-          'flex-row items-center rounded-xl border border-slate-200 bg-white px-3 py-3.5 dark:border-slate-800 dark:bg-slate-900',
-          Boolean(error) && 'border-red-500 dark:border-red-500'
+          'flex-row items-center rounded-xl border border-border bg-card px-3 py-3.5 shadow-xs active:bg-muted/60',
+          Boolean(error) && 'border-destructive'
         )}
         onPress={() => setModalVisible(true)}
       >
-        <CalendarIcon size={20} className="me-2 text-slate-400" />
+        <CalendarIcon size={20} className="me-2 text-muted-foreground" />
         <Text
           className={cn(
-            'flex-1 text-base',
-            isValidDate ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-400'
+            'flex-1 text-sm',
+            isValidDate ? 'font-semibold text-foreground' : 'text-muted-foreground'
           )}
         >
           {isValidDate
@@ -52,7 +54,7 @@ export const DatePicker = ({
         </Text>
       </Pressable>
 
-      {Boolean(error) && <Text className="mt-1.5 text-xs text-red-500">{error}</Text>}
+      {Boolean(error) && <Text className="mt-1.5 text-xs text-destructive">{error}</Text>}
 
       <DatePickerModal
         visible={modalVisible}

@@ -4,7 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Stack, router } from 'expo-router';
 import { ShieldCheck, Mail, Lock, Phone } from 'lucide-react-native';
 import * as React from 'react';
-import { View, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View } from 'react-native';
+import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
+import { SegmentedControl } from '@/components/common/SegmentedControl';
+import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -100,12 +103,12 @@ export default function LoginScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Sign In' }} />
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="bg-background p-6">
+      <KeyboardAvoidingShell className="bg-background" contentContainerClassName="p-6">
         <View className="gap-6 flex-1 justify-center max-w-sm mx-auto w-full py-8">
           {/* Brand Header */}
           <View className="items-center mb-2">
             <View className="bg-primary/10 p-4 rounded-3xl mb-3">
-              <ShieldCheck className="size-10 text-primary" color="#03A9F4" size={36} />
+              <ShieldCheck className="size-10 text-primary" size={36} />
             </View>
             <Text className="text-2xl font-extrabold text-foreground tracking-tight text-center">
               Manage-My-Gate
@@ -116,39 +119,14 @@ export default function LoginScreen() {
           </View>
 
           {/* Tab Switcher */}
-          <View className="bg-muted/60 p-1 rounded-xl flex-row border border-border">
-            <TouchableOpacity
-              onPress={() => setAuthMode('basic')}
-              activeOpacity={0.8}
-              className={`flex-1 py-2.5 rounded-lg items-center ${
-                authMode === 'basic' ? 'bg-card shadow-sm' : ''
-              }`}
-            >
-              <Text
-                className={`text-xs font-bold ${
-                  authMode === 'basic' ? 'text-primary font-extrabold' : 'text-muted-foreground'
-                }`}
-              >
-                Password Login
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setAuthMode('phone')}
-              activeOpacity={0.8}
-              className={`flex-1 py-2.5 rounded-lg items-center ${
-                authMode === 'phone' ? 'bg-card shadow-sm' : ''
-              }`}
-            >
-              <Text
-                className={`text-xs font-bold ${
-                  authMode === 'phone' ? 'text-primary font-extrabold' : 'text-muted-foreground'
-                }`}
-              >
-                Phone OTP
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <SegmentedControl
+            segments={[
+              { key: 'basic', label: 'Password Login' },
+              { key: 'phone', label: 'Phone OTP' },
+            ]}
+            activeSegment={authMode}
+            onChange={(key) => setAuthMode(key as 'basic' | 'phone')}
+          />
 
           {/* Form Container */}
           <View className="bg-card border border-border rounded-2xl p-5 gap-4 shadow-sm">
@@ -162,7 +140,7 @@ export default function LoginScreen() {
                     <Input
                       label="Email or Username"
                       placeholder="admin@example.com"
-                      leftIcon={<Mail size={18} color="#888" />}
+                      leftIcon={<Mail size={18} className="text-muted-foreground" />}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -182,7 +160,7 @@ export default function LoginScreen() {
                       label="Password"
                       placeholder="••••••••"
                       isPassword
-                      leftIcon={<Lock size={18} color="#888" />}
+                      leftIcon={<Lock size={18} className="text-muted-foreground" />}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -194,22 +172,15 @@ export default function LoginScreen() {
                 />
 
                 {/* Global Error Banner */}
-                {error ? (
-                  <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3">
-                    <Text className="text-rose-500 text-xs text-center font-medium">{error}</Text>
-                  </View>
-                ) : null}
+                {error ? <ErrorBanner message={error} /> : null}
 
                 <Button
                   onPress={basicForm.handleSubmit(onBasicSubmit)}
-                  disabled={loading}
+                  loading={loading}
+                  textClassName="font-bold text-base"
                   className="mt-2 h-12 bg-primary rounded-xl"
                 >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text className="font-bold text-primary-foreground text-base">Sign In</Text>
-                  )}
+                  Sign In
                 </Button>
               </View>
             ) : (
@@ -222,7 +193,7 @@ export default function LoginScreen() {
                     <Input
                       label="Mobile Number"
                       placeholder="+919988776655"
-                      leftIcon={<Phone size={18} color="#888" />}
+                      leftIcon={<Phone size={18} className="text-muted-foreground" />}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -234,28 +205,21 @@ export default function LoginScreen() {
                 />
 
                 {/* Global Error Banner */}
-                {error ? (
-                  <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3">
-                    <Text className="text-rose-500 text-xs text-center font-medium">{error}</Text>
-                  </View>
-                ) : null}
+                {error ? <ErrorBanner message={error} /> : null}
 
                 <Button
                   onPress={phoneForm.handleSubmit(onPhoneSubmit)}
-                  disabled={loading}
+                  loading={loading}
+                  textClassName="font-bold text-base"
                   className="mt-2 h-12 bg-primary rounded-xl"
                 >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text className="font-bold text-primary-foreground text-base">Get OTP Code</Text>
-                  )}
+                  Get OTP Code
                 </Button>
               </View>
             )}
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAvoidingShell>
     </>
   );
 }

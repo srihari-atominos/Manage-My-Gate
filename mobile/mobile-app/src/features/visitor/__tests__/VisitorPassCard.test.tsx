@@ -28,7 +28,7 @@ describe('VisitorPassCard UI Component', () => {
         onShowQR={mockOnShowQR}
         villaBadge="42B"
       />
-    );
+    ) as any;
 
     expect(getByText('Alice Swiggy')).toBeTruthy();
     expect(getByText(/Villa: 42B/)).toBeTruthy();
@@ -44,7 +44,7 @@ describe('VisitorPassCard UI Component', () => {
         onPress={mockOnPress}
         onShowQR={mockOnShowQR}
       />
-    );
+    ) as any;
 
     fireEvent.press(getByText('Alice Swiggy'));
     expect(mockOnPress).toHaveBeenCalledWith(mockPass);
@@ -57,7 +57,7 @@ describe('VisitorPassCard UI Component', () => {
         onPress={mockOnPress}
         onShowQR={mockOnShowQR}
       />
-    );
+    ) as any;
 
     fireEvent.press(getByText('Pass Code'));
     expect(mockOnShowQR).toHaveBeenCalledWith(mockPass);

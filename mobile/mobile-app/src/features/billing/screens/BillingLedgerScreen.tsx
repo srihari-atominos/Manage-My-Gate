@@ -7,7 +7,8 @@ import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
+import { KPICard } from '@/components/ui/KPICard';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { ShieldAlert } from 'lucide-react-native';
 import { InvoiceCard } from '../components/InvoiceCard';
@@ -29,6 +30,7 @@ const FILTER_PILLS = [
 export function BillingLedgerScreen() {
   const router = useRouter();
   const {
+    kpis,
     invoicesList,
     pagination,
     loadingStates,
@@ -120,51 +122,7 @@ export function BillingLedgerScreen() {
     >
       <View className="flex-1 bg-background">
 
-        {/* Error Banner */}
-        {error ? (
-          <View className="px-4 pt-2">
-            <ErrorBanner message={error} onDismiss={resetBillingError} />
-          </View>
-        ) : null}
-
-        {/* Search Header */}
-        <SearchFilterBar
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search resident, unit, or invoice number..."
-        />
-
-        {/* Filter Pills Row */}
-        <View className="px-4 py-2">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {FILTER_PILLS.map((pill) => {
-              const isActive = statusFilter === pill.id;
-              return (
-                <Pressable
-                  key={pill.id}
-                  onPress={() => setStatusFilter(pill.id)}
-                  className={`px-3.5 py-1.5 rounded-full border ${
-                    isActive
-                      ? 'bg-primary border-primary'
-                      : 'bg-muted border-border'
-                  }`}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Filter by ${pill.label}`}
-                >
-                  <Text
-                    className={`text-xs font-bold ${
-                      isActive ? 'text-primary-foreground' : 'text-muted-foreground'
-                    }`}
-                  >
-                    {pill.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Paginated Invoice Cards List */}
+        {/* Paginated Invoice Cards List with All Controls in ListHeaderComponent */}
         <PaginatedList<Invoice>
           data={invoicesList}
           renderItem={(inv) => (
@@ -178,10 +136,90 @@ export function BillingLedgerScreen() {
           onLoadMore={handleLoadMore}
           onRefresh={handleRefresh}
           loading={loadingStates.fetchGrid}
+          ListHeaderComponent={
+            <View className="gap-2.5 mb-3">
+              {/* Error Banner */}
+              {error ? (
+                <ErrorBanner message={error} onDismiss={resetBillingError} />
+              ) : null}
+
+              {/* Financial KPI Summary Cards */}
+              <View className="flex-row gap-2.5">
+                <KPICard
+                  title="Total Invoiced"
+                  value={
+                    kpis?.grossDemand
+                      ? `₹${kpis.grossDemand.toLocaleString('en-IN')}`
+                      : String(pagination.totalRecords || invoicesList.length)
+                  }
+                  iconName="Receipt"
+                  iconColor="#3b82f6"
+                  className="flex-1"
+                />
+                <KPICard
+                  title="Total Collected"
+                  value={
+                    kpis?.totalCollected
+                      ? `₹${kpis.totalCollected.toLocaleString('en-IN')}`
+                      : `${invoicesList.filter((i: any) => i.status === 'PAID').length} Paid`
+                  }
+                  iconName="TrendingUp"
+                  iconColor="#10b981"
+                  className="flex-1"
+                />
+                <KPICard
+                  title="Pending Arrears"
+                  value={
+                    kpis?.totalUnpaidArrears
+                      ? `₹${kpis.totalUnpaidArrears.toLocaleString('en-IN')}`
+                      : `${invoicesList.filter((i: any) => ['UNPAID', 'OVERDUE', 'VERIFICATION_PENDING'].includes(i.status)).length} Due`
+                  }
+                  iconName="Clock"
+                  iconColor="#f59e0b"
+                  className="flex-1"
+                />
+              </View>
+
+              {/* Search Header */}
+              <SearchFilterBar
+                searchValue={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Search resident, unit, or invoice number..."
+              />
+
+              {/* Filter Pills Row */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {FILTER_PILLS.map((pill) => {
+                  const isActive = statusFilter === pill.id;
+                  return (
+                    <Pressable
+                      key={pill.id}
+                      onPress={() => setStatusFilter(pill.id)}
+                      className={`px-3.5 py-1.5 rounded-full border ${
+                        isActive
+                          ? 'bg-primary border-primary'
+                          : 'bg-muted border-border'
+                      }`}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Filter by ${pill.label}`}
+                    >
+                      <Text
+                        className={`text-xs font-bold ${
+                          isActive ? 'text-primary-foreground' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {pill.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          }
           emptyIcon="Receipt"
           emptyTitle="No Invoices Found"
           emptySubtitle={emptySubtitle}
-          contentContainerClassName="px-4 py-2"
+          contentContainerClassName="px-4 pt-3 pb-28"
         />
 
         {/* Quick Actions / Review Details BottomSheet */}

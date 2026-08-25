@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text } from 'react-native';
-import { LucideIcon } from 'lucide-react-native';
+import { View } from 'react-native';
+import { LucideIcon, Inbox } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
 import { cn } from '../../lib/utils';
-import { Button } from '../ui/button';
 
 export interface EmptyStateProps {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   title: string;
   description?: string;
   actionLabel?: string;
@@ -14,31 +15,35 @@ export interface EmptyStateProps {
 }
 
 export const EmptyState = ({
-  icon: Icon,
+  icon: Icon = Inbox,
   title,
   description,
   actionLabel,
   onAction,
   className,
 }: EmptyStateProps) => {
+  const IconComponent = typeof Icon === 'function' || (typeof Icon === 'object' && Icon !== null) ? Icon : Inbox;
+
   return (
     <View className={cn('items-center justify-center py-10 px-4', className)}>
-      <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-        <Icon size={40} className="text-slate-400 dark:text-slate-500" />
+      <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-muted border border-border/50">
+        <IconComponent size={38} className="text-muted-foreground" />
       </View>
-      <Text className="mb-2 text-center text-xl font-bold text-slate-900 dark:text-white">
+      <Text variant="large" className="mb-2 text-center font-bold text-foreground">
         {title}
       </Text>
-      {description && (
-        <Text className="mb-6 text-center text-base text-slate-500 dark:text-slate-400">
+      {description ? (
+        <Text variant="muted" className="mb-6 text-center text-sm text-muted-foreground max-w-xs">
           {description}
         </Text>
-      )}
-      {actionLabel && onAction && (
-        <Button onPress={onAction} className="px-6">
-          <Text className="font-semibold text-white">{actionLabel}</Text>
+      ) : null}
+      {actionLabel && onAction ? (
+        <Button variant="default" onPress={onAction} className="px-6">
+          <Text className="font-semibold text-primary-foreground">{actionLabel}</Text>
         </Button>
-      )}
+      ) : null}
     </View>
   );
 };
+
+export default EmptyState;

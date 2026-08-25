@@ -2,6 +2,7 @@ module.exports = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
+    '^expo-modules-core(.*)$': '<rootDir>/jest.expo-modules-mock.js',
     '^test-renderer$': 'react-test-renderer',
     '^immer$': '<rootDir>/node_modules/immer/dist/cjs/index.js',
     '^react-native/setup-env$': '<rootDir>/jest.react-native-setup.js',

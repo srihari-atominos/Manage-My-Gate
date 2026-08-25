@@ -1,19 +1,21 @@
 import React, { useEffect, useCallback } from 'react';
-import { View, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { View, ScrollView, RefreshControl, Pressable, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { KPIRow } from '@/components/ui/KPIRow';
+import { KPIDashboardStrip } from '@/components/ui/KPIDashboardStrip';
 import { KPICardProps } from '@/components/ui/KPICard';
+import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 import { Card } from '@/components/common/Card';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/common/ProgressBar';
 import { SectionHeader } from '@/components/common/SectionHeader';
-import { ListItem } from '@/components/common/ListItem';
-import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
+import { ListCard } from '@/components/ui/ListCard';
+import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
+import { EmptyState } from '@/components/feedback/EmptyState';
 import {
   Receipt,
   Clock,
@@ -25,6 +27,20 @@ import {
 } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
+
+const mapInvoiceStatus = (status?: string): { label: string; variant: StatusVariant } => {
+  const s = String(status || 'PENDING').toUpperCase();
+  if (s === 'PAID' || s === 'CLEARED' || s === 'SUCCESS') {
+    return { label: 'PAID', variant: 'success' };
+  }
+  if (s === 'OVERDUE' || s === 'FAILED' || s === 'REJECTED') {
+    return { label: 'OVERDUE', variant: 'danger' };
+  }
+  if (s === 'IN_TRANSIT' || s === 'PENDING' || s === 'UNPAID') {
+    return { label: s === 'IN_TRANSIT' ? 'IN-TRANSIT' : 'PENDING', variant: 'warning' };
+  }
+  return { label: s || 'DRAFT', variant: 'neutral' };
+};
 
 export function AdminBillingDashboardScreen() {
   const router = useRouter();
@@ -60,34 +76,6 @@ export function AdminBillingDashboardScreen() {
     }
   }, [hasDashboardPermission, fetchDashboardData]);
 
-  // Permission Denied View
-  if (!hasDashboardPermission) {
-    return (
-      <ScreenShell title="Financial Overview" subtitle="Access Restricted" iconName="BarChart3">
-        <View className="flex-1 bg-background p-6 items-center justify-center">
-          <View className="w-16 h-16 rounded-full bg-destructive/10 items-center justify-center mb-4">
-            <Icon as={ShieldAlert} size={32} className="text-destructive" />
-          </View>
-          <Text className="text-xl font-bold text-foreground text-center mb-2">Access Denied</Text>
-          <Text className="text-sm text-muted-foreground text-center mb-6 px-4">
-            You do not have the required administrative permission (
-            <Text className="font-mono text-xs font-bold">billing:dashboard</Text>) to view community
-            financial KPIs.
-          </Text>
-          <Button
-            variant="default"
-            size="lg"
-            onPress={() => router.push('/(resident)/billing/my-dues' as any)}
-            accessibilityRole="button"
-            accessibilityLabel="Return to My Dues"
-          >
-            Return to My Dues
-          </Button>
-        </View>
-      </ScreenShell>
-    );
-  }
-
   // Authoritative metrics from backend
   const grossDemand = kpis?.grossDemand || 0;
   const grossDemandCount = kpis?.grossDemandCount || 0;
@@ -104,30 +92,64 @@ export function AdminBillingDashboardScreen() {
       title: 'Gross Billed',
       value: `₹${grossDemand.toLocaleString('en-IN')}`,
       iconName: 'IndianRupee',
-      iconColor: '#6366f1',
-      bgColor: '#6366f11f',
-      subtitle: `${grossDemandCount} total invoices`,
+      variant: 'default',
+      subtitle: `${grossDemandCount} invoices`,
     },
     {
       title: 'Total Collected',
       value: `₹${totalCollected.toLocaleString('en-IN')}`,
       iconName: 'CheckCircle2',
-      iconColor: '#10b981',
-      bgColor: '#10b9811f',
+      variant: 'success',
+      trend: { direction: 'up', value: `${collectionRate}%` },
     },
     {
       title: 'Unpaid Arrears',
       value: `₹${totalUnpaidArrears.toLocaleString('en-IN')}`,
       iconName: 'XCircle',
-      iconColor: '#ef4444',
-      bgColor: '#ef44441f',
+      variant: 'destructive',
+      subtitle: 'Overdue balance',
     },
     {
-      title: 'Pending Clearance',
+      title: 'Pending Clear',
       value: `₹${inTransitGateway.toLocaleString('en-IN')}`,
       iconName: 'Clock',
-      iconColor: '#f59e0b',
-      bgColor: '#f59e0b1f',
+      variant: 'warning',
+      subtitle: 'In-transit payments',
+    },
+  ];
+
+  const billingNavActions: ActionGridItem[] = [
+    {
+      id: 'dashboard',
+      name: 'Billing Dashboard',
+      iconName: 'Target',
+      colorBg: 'bg-primary/10',
+      colorIcon: '#6366f1',
+      route: '/(resident)/admin/billing',
+    },
+    {
+      id: 'ledger',
+      name: 'Billing Ledger',
+      iconName: 'Receipt',
+      colorBg: 'bg-primary/10',
+      colorIcon: '#6366f1',
+      route: '/(resident)/admin/billing/ledger',
+    },
+    {
+      id: 'assessments',
+      name: 'Assessments',
+      iconName: 'Landmark',
+      colorBg: 'bg-emerald-500/10',
+      colorIcon: '#10b981',
+      route: '/(resident)/admin/billing/assessments',
+    },
+    {
+      id: 'dues',
+      name: 'Resident Dues',
+      iconName: 'Layers',
+      colorBg: 'bg-indigo-500/10',
+      colorIcon: '#6366f1',
+      route: '/(resident)/billing/my-dues',
     },
   ];
 
@@ -138,11 +160,26 @@ export function AdminBillingDashboardScreen() {
       title="Billing Overview"
       subtitle="Community Collection & Dues Snapshot"
       iconName="BarChart3"
+      permission="billing:dashboard"
+      permissionGranted={hasDashboardPermission}
       loading={loadingStates.fetchKPIs && !kpis}
+      headerRight={
+        <Button
+          variant="outline"
+          size="sm"
+          onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          accessibilityRole="button"
+          accessibilityLabel="View Ledger"
+        >
+          <Receipt size={14} className="text-foreground" />
+          <Text className="text-xs font-semibold text-foreground">Ledger</Text>
+        </Button>
+      }
     >
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerStyle={{ paddingVertical: 16 }}
+        contentContainerClassName="p-4 pb-28 gap-4"
         refreshControl={
           <RefreshControl
             refreshing={loadingStates.fetchKPIs}
@@ -153,169 +190,103 @@ export function AdminBillingDashboardScreen() {
       >
         {/* Error Banner */}
         {error ? (
-          <View className="px-4 mb-4">
-            <ErrorBanner message={error} onDismiss={resetBillingError} />
-          </View>
+          <ErrorBanner message={error} onDismiss={resetBillingError} />
         ) : null}
 
         {/* 1. Collection Target Progress Widget */}
-        <View className="px-4 mb-6">
-          <Card className="bg-card border border-border rounded-2xl p-4">
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-center">
-                <Icon as={Target} size={18} className="text-primary me-2" />
-                <Text className="text-sm font-bold text-foreground">Current Month Collection Progress</Text>
-              </View>
-              <Text className="text-sm font-extrabold text-primary">{collectionRate}%</Text>
+        <Card className="bg-card border border-border rounded-2xl p-4">
+          <View className="flex-row items-center justify-between mb-2">
+            <View className="flex-row items-center">
+              <Icon as={Target} size={18} className="text-primary me-2" />
+              <Text className="text-sm font-bold text-foreground">Current Month Collection Progress</Text>
             </View>
-            <ProgressBar progress={collectionRate / 100} className="h-2 rounded-full mb-3" />
-            <View className="flex-row justify-between items-center">
-              <Text className="text-xs text-muted-foreground">
-                Collected: <Text className="font-semibold text-foreground">₹{totalCollected.toLocaleString('en-IN')}</Text>
-              </Text>
-              <Text className="text-xs text-muted-foreground">
-                Billed: <Text className="font-semibold text-foreground">₹{grossDemand.toLocaleString('en-IN')}</Text>
-              </Text>
-            </View>
-          </Card>
-        </View>
+            <Text className="text-sm font-extrabold text-primary">{collectionRate}%</Text>
+          </View>
+          <ProgressBar progress={collectionRate / 100} className="h-2 rounded-full mb-3" />
+          <View className="flex-row justify-between items-center">
+            <Text className="text-xs text-muted-foreground">
+              Collected: <Text className="font-semibold text-foreground">₹{totalCollected.toLocaleString('en-IN')}</Text>
+            </Text>
+            <Text className="text-xs text-muted-foreground">
+              Billed: <Text className="font-semibold text-foreground">₹{grossDemand.toLocaleString('en-IN')}</Text>
+            </Text>
+          </View>
+        </Card>
 
-        {/* 2. Collection KPI Metrics Carousel */}
-        <View className="mb-6">
-          <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-4 mb-3">
-            Collection Performance Summary
-          </Text>
-          <KPIRow cards={kpiCards} loading={loadingStates.fetchKPIs} />
-        </View>
+        {/* 2. Collection KPI Metrics Universal 2x2 Grid */}
+        <KPIDashboardStrip cards={kpiCards} loading={loadingStates.fetchKPIs} />
 
         {/* 3. Attention Required Box */}
-        <View className="px-4 mb-6">
-          <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-            Attention Required
-          </Text>
-          <View className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex-row items-start justify-between">
-            <View className="flex-row items-start flex-1 me-3">
-              <Icon as={Clock} size={22} className="text-amber-600 dark:text-amber-400 me-3 mt-0.5" />
-              <View className="flex-1">
-                <Text className="font-extrabold text-sm text-amber-900 dark:text-amber-200">
-                  Pending Offline Payment Verification
-                </Text>
-                <Text className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                  {pendingOffline > 0
-                    ? `₹${pendingOffline.toLocaleString('en-IN')} in cheque/NEFT submissions awaiting admin clearance.`
-                    : 'Review pending cheque & NEFT submissions from residents.'}
-                </Text>
-              </View>
+        <View className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex-row items-start justify-between">
+          <View className="flex-row items-start flex-1 me-3">
+            <Icon as={Clock} size={22} className="text-amber-600 dark:text-amber-400 me-3 mt-0.5" />
+            <View className="flex-1">
+              <Text className="font-extrabold text-sm text-amber-900 dark:text-amber-200">
+                Pending Offline Payment Verification
+              </Text>
+              <Text className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                {pendingOffline > 0
+                  ? `₹${pendingOffline.toLocaleString('en-IN')} in cheque/NEFT submissions awaiting admin clearance.`
+                  : 'Review pending cheque & NEFT submissions from residents.'}
+              </Text>
             </View>
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-amber-500/20 border-amber-500/40"
-              onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Review pending offline payments"
-            >
-              Review
-            </Button>
           </View>
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-amber-500/20 border-amber-500/40"
+            onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Review pending offline payments"
+          >
+            Review
+          </Button>
         </View>
 
-        {/* 4. Quick Navigation Hub (4 Sub-View Action Tiles in 2x2 Grid) */}
-        <View className="px-4 mb-6">
-          <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-            Quick Navigation
-          </Text>
-          <View className="flex-row flex-wrap gap-3">
-            {/* Tile 1: Billing Dashboard (Active) */}
-            <Pressable
-              className="w-[48%] bg-primary/10 border border-primary/30 rounded-xl p-3 justify-between active:opacity-80"
-              onPress={() => router.push('/(resident)/admin/billing' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Navigate to Billing Dashboard"
-            >
-              <View className="w-9 h-9 rounded-lg bg-primary/20 items-center justify-center mb-2">
-                <Icon as={Target} size={18} className="text-primary" />
-              </View>
-              <Text className="text-primary font-extrabold text-xs mb-0.5">Billing Dashboard</Text>
-              <Text className="text-primary/70 text-[10px]" numberOfLines={2}>
-                Collection KPIs & overview
-              </Text>
-            </Pressable>
-
-            {/* Tile 2: Billing Ledger */}
-            <Pressable
-              className="w-[48%] bg-card border border-border rounded-xl p-3 justify-between active:opacity-80"
-              onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Navigate to Billing Ledger"
-            >
-              <View className="w-9 h-9 rounded-lg bg-primary/10 items-center justify-center mb-2">
-                <Icon as={Receipt} size={18} className="text-primary" />
-              </View>
-              <Text className="text-foreground font-bold text-xs mb-0.5">Billing Ledger</Text>
-              <Text className="text-muted-foreground text-[10px]" numberOfLines={2}>
-                Search invoices & settle offline
-              </Text>
-            </Pressable>
-
-            {/* Tile 3: Assessment Manager */}
-            <Pressable
-              className="w-[48%] bg-card border border-border rounded-xl p-3 justify-between active:opacity-80"
-              onPress={() => router.push('/(resident)/admin/billing/assessments' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Navigate to Assessment Manager"
-            >
-              <View className="w-9 h-9 rounded-lg bg-emerald-500/10 items-center justify-center mb-2">
-                <Icon as={Landmark} size={18} className="text-emerald-600 dark:text-emerald-400" />
-              </View>
-              <Text className="text-foreground font-bold text-xs mb-0.5">Assessment Manager</Text>
-              <Text className="text-muted-foreground text-[10px]" numberOfLines={2}>
-                Formulas & WhatsApp links
-              </Text>
-            </Pressable>
-
-            {/* Tile 4: Action Center */}
-            <Pressable
-              className="w-[48%] bg-card border border-border rounded-xl p-3 justify-between active:opacity-80"
-              onPress={() => router.push('/(resident)/billing/my-dues' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Navigate to Action Center"
-            >
-              <View className="w-9 h-9 rounded-lg bg-indigo-500/10 items-center justify-center mb-2">
-                <Icon as={Layers} size={18} className="text-indigo-600 dark:text-indigo-400" />
-              </View>
-              <Text className="text-foreground font-bold text-xs mb-0.5">Action Center</Text>
-              <Text className="text-muted-foreground text-[10px]" numberOfLines={2}>
-                Resident dues & portfolio list
-              </Text>
-            </Pressable>
-          </View>
-        </View>
+        {/* 4. Sub-Navigation Quick Action Grid (Universal 3-Column Wrap) */}
+        <ActionGrid title="Quick Actions" items={billingNavActions} className="mb-0" />
 
         {/* 5. Recent Activity Feed Snippet */}
-        <View className="px-4 mb-6">
+        <View className="gap-2">
           <SectionHeader
-            title="Recent Collections"
+            title="Recent Activity"
             actionLabel="View All"
             onAction={() => router.push('/(resident)/admin/billing/ledger' as any)}
+            className="px-0 bg-transparent dark:bg-transparent"
           />
           {recentTransactions.length === 0 ? (
-            <Card className="bg-card border border-border rounded-xl p-4 items-center justify-center">
-              <Text className="text-xs text-muted-foreground text-center">
-                No recent collection transactions found.
-              </Text>
-            </Card>
+            <EmptyState
+              icon={Receipt}
+              title="No Recent Transactions"
+              description="No recent collection transactions found."
+              actionLabel="View Ledger"
+              onAction={() => router.push('/(resident)/admin/billing/ledger' as any)}
+            />
           ) : (
-            <View className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border">
-              {recentTransactions.map((tx: any) => (
-                <ListItem
-                  key={tx._id || tx.invoiceNumber}
-                  title={`${tx.unitNumber || 'Unit'} • ${tx.targetUser || 'Resident'}`}
-                  subtitle={`Inv #${tx.invoiceNumber || '—'} • ${tx.date || ''}`}
-                  leftIcon={FileText}
-                  onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
-                />
-              ))}
+            <View className="gap-2.5">
+              {recentTransactions.map((tx: any) => {
+                const statusMeta = mapInvoiceStatus(tx.status);
+                const unit = tx.unitNumber || tx.unitId?.unitNumber || 'Unit';
+                const resident = tx.targetUser || tx.residentName || tx.targetUserName || 'Resident';
+                const amount = tx.totalDue ?? tx.amount ?? tx.totalAmount ?? 0;
+                const formattedAmount = typeof amount === 'number' ? `₹${amount.toLocaleString('en-IN')}` : String(amount);
+                const invNum = tx.invoiceNumber ? `Inv #${tx.invoiceNumber}` : 'Invoice';
+
+                return (
+                  <ListCard
+                    key={tx._id || tx.invoiceNumber}
+                    title={`${unit} • ${resident}`}
+                    subtitle={`${invNum} • ${formattedAmount}`}
+                    leftIcon={FileText}
+                    status={{
+                      label: statusMeta.label,
+                      variant: statusMeta.variant,
+                    }}
+                    timestamp={tx.createdAt || tx.date || tx.dueDate}
+                    onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
+                  />
+                );
+              })}
             </View>
           )}
         </View>

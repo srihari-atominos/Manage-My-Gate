@@ -9,7 +9,7 @@ import { VisitorPass } from '../store/visitorPassSlice';
 import { VisitorQRCode } from './shared/VisitorQRCode';
 import { QrCode, ShieldAlert, Copy, Check, Share2 } from 'lucide-react-native';
 
-interface VisitorPassDetailsModalProps {
+export interface VisitorPassDetailsModalProps {
   visible: boolean;
   pass: VisitorPass | null;
   onClose: () => void;
@@ -70,7 +70,7 @@ export const VisitorPassDetailsModal: React.FC<VisitorPassDetailsModalProps> = (
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Visitor Pass Details">
-      <View className="gap-4 p-2">
+      <View className="gap-4 p-2 pb-6">
         {/* Pass Code Badge */}
         <View className="bg-primary/10 border border-primary/20 rounded-2xl p-4 items-center justify-center gap-2">
           <Text variant="muted" className="text-xs uppercase font-bold text-muted-foreground">
@@ -85,7 +85,7 @@ export const VisitorPassDetailsModal: React.FC<VisitorPassDetailsModalProps> = (
             className="flex-row items-center gap-1.5 bg-card px-3 py-1.5 rounded-full border border-border mt-1"
           >
             {copied ? (
-              <Check size={14} className="text-emerald-600" />
+              <Check size={14} className="text-status-success" />
             ) : (
               <Copy size={14} className="text-muted-foreground" />
             )}
@@ -100,9 +100,9 @@ export const VisitorPassDetailsModal: React.FC<VisitorPassDetailsModalProps> = (
           <Button
             variant="default"
             onPress={handleSharePass}
-            className="flex-1 h-11 rounded-xl bg-primary flex-row items-center justify-center gap-2"
+            className="flex-1 h-11 rounded-xl flex-row items-center justify-center gap-2"
           >
-            <Share2 size={16} color="#fff" />
+            <Share2 size={16} className="text-primary-foreground" />
             <Text className="font-bold text-primary-foreground text-xs">
               Share Pass & Code
             </Text>
@@ -163,10 +163,10 @@ export const VisitorPassDetailsModal: React.FC<VisitorPassDetailsModalProps> = (
               onClose();
               onRevokePress?.(pass);
             }}
-            className="mt-2 h-12 rounded-xl flex-row items-center gap-2"
+            className="mt-2 h-12 rounded-xl flex-row items-center justify-center gap-2"
           >
-            <ShieldAlert size={18} color="#fff" />
-            <Text className="font-bold text-white text-sm">Revoke Visitor Pass</Text>
+            <ShieldAlert size={18} className="text-destructive-foreground" />
+            <Text className="font-bold text-destructive-foreground text-sm">Revoke Visitor Pass</Text>
           </Button>
         ) : null}
       </View>

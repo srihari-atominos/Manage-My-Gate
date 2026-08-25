@@ -1,12 +1,26 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
+import { ListCard } from '@/components/ui/ListCard';
+import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { ShieldAlert, Clock, User, Phone, Car, CheckCircle2, XCircle, RefreshCw, Building2 } from 'lucide-react-native';
+import { Button } from '@/components/ui/button';
+import { Clock, Phone, Car, RefreshCw, Building } from 'lucide-react-native';
 import { useVisitorPass } from '../../hooks/useVisitorPass';
 import { useVisitorSocket } from '../../hooks/useVisitorSocket';
 import { WalkInApprovalItem } from '../../mocks/visitorMocks';
+
+const mapWalkInBadge = (status: 'PENDING' | 'APPROVED' | 'REJECTED'): { label: string; variant: StatusVariant } => {
+  switch (status) {
+    case 'APPROVED':
+      return { label: 'APPROVED', variant: 'success' };
+    case 'REJECTED':
+      return { label: 'DENIED BY HOST', variant: 'danger' };
+    case 'PENDING':
+    default:
+      return { label: 'PENDING APPROVAL', variant: 'warning' };
+  }
+};
 
 export const GuardWalkInStatusView: React.FC = () => {
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
@@ -29,65 +43,54 @@ export const GuardWalkInStatusView: React.FC = () => {
 
   const items: WalkInApprovalItem[] = walkIns?.pendingList || [];
 
-  const filteredItems = React.useMemo(() => {
+  const filteredItems = useMemo(() => {
     if (filter === 'ALL') return items;
     return items.filter((item) => item.status === filter);
   }, [items, filter]);
 
-  const getStatusBadge = (status: 'PENDING' | 'APPROVED' | 'REJECTED') => {
-    switch (status) {
-      case 'APPROVED':
-        return (
-          <View className="flex-row items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
-            <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
-            <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">APPROVED</Text>
-          </View>
-        );
-      case 'REJECTED':
-        return (
-          <View className="flex-row items-center gap-1 bg-destructive/10 border border-destructive/20 px-2.5 py-1 rounded-full">
-            <XCircle size={13} className="text-destructive" />
-            <Text className="text-xs font-bold text-destructive">DENIED BY HOST</Text>
-          </View>
-        );
-      case 'PENDING':
-      default:
-        return (
-          <View className="flex-row items-center gap-1 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
-            <Clock size={13} className="text-amber-600 dark:text-amber-400" />
-            <Text className="text-xs font-bold text-amber-600 dark:text-amber-400">PENDING APPROVAL</Text>
-          </View>
-        );
-    }
-  };
-
-  return (
-    <View className="flex-1 bg-background">
+  const renderHeader = () => (
+    <View className="mb-3 px-1">
       {/* Top Filter Chips & Sync Status Header */}
-      <View className="px-4 py-3 border-b border-border bg-card/50 flex-row items-center justify-between gap-2">
+      <View className="bg-card/80 border border-border p-2 rounded-2xl flex-row items-center justify-between gap-2 shadow-xs">
         <View className="flex-row gap-1.5 flex-1">
           {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map((f) => (
             <TouchableOpacity
               key={f}
               onPress={() => setFilter(f)}
+              accessibilityRole="button"
+              accessibilityLabel={`Filter by ${f}`}
               className={`px-3 py-1.5 rounded-full border ${
                 filter === f
                   ? 'bg-primary border-primary'
                   : 'bg-card border-border'
               }`}
             >
-              <Text className={`text-xs font-bold ${filter === f ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
+              <Text
+                className={`text-xs font-bold ${
+                  filter === f ? 'text-primary-foreground' : 'text-muted-foreground'
+                }`}
+              >
                 {f}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <TouchableOpacity onPress={handleRefresh} className="p-2 bg-muted rounded-full">
+        <Button
+          variant="ghost"
+          size="sm"
+          onPress={handleRefresh}
+          className="h-8 w-8 p-0 rounded-full bg-muted items-center justify-center"
+          accessibilityLabel="Refresh Queue"
+        >
           <RefreshCw size={14} className="text-muted-foreground" />
-        </TouchableOpacity>
+        </Button>
       </View>
+    </View>
+  );
 
+  return (
+    <View className="flex-1 bg-background">
       {/* Paginated Requests List */}
       <PaginatedList<WalkInApprovalItem>
         data={filteredItems}
@@ -101,59 +104,65 @@ export const GuardWalkInStatusView: React.FC = () => {
         onRefresh={handleRefresh}
         refreshing={refreshing}
         loading={walkIns?.status === 'loading' && !refreshing && items.length === 0}
+        ListHeaderComponent={renderHeader()}
         emptyIcon="ShieldAlert"
         emptyTitle="No Walk-In Requests Found"
         emptySubtitle="Walk-in entry requests initiated at the gate will appear here with live status updates."
-        contentContainerClassName="p-4 gap-3"
-        renderItem={(item) => (
-          <View key={item.id} className="bg-card border border-border rounded-2xl p-4 gap-3">
-            {/* Header: Visitor Name & Status Badge */}
-            <View className="flex-row items-start justify-between border-b border-border/40 pb-2.5">
-              <View className="flex-1 pr-2">
-                <Text className="text-base font-bold text-foreground">{item.visitorName}</Text>
-                <View className="flex-row items-center gap-1.5 mt-0.5">
-                  <Phone size={12} className="text-muted-foreground" />
-                  <Text className="text-xs text-muted-foreground">{item.phone}</Text>
+        contentContainerClassName="px-4 pt-3 pb-28"
+        renderItem={(item) => {
+          const badge = mapWalkInBadge(item.status);
+          const subtitle = item.phone ? `Ph: ${item.phone}` : 'Unplanned Gate Visitor';
+
+          return (
+            <ListCard
+              key={item.id}
+              title={item.visitorName}
+              subtitle={subtitle}
+              leftIcon="ShieldAlert"
+              leftIconBgColor="bg-status-warning/15"
+              status={{
+                label: badge.label,
+                variant: badge.variant,
+              }}
+              showChevron={false}
+              className="mb-3"
+            >
+              {/* Target Host Details & Gate */}
+              <View className="bg-muted/40 p-2.5 rounded-xl gap-1 mt-1">
+                <View className="flex-row items-center gap-2">
+                  <Building size={14} className="text-primary" />
+                  <Text className="text-xs font-semibold text-foreground flex-1">
+                    {item.purpose || 'Target Resident Host'}
+                  </Text>
                 </View>
+                {Boolean(item.gateName) && (
+                  <Text className="text-[11px] text-muted-foreground ms-5">
+                    Gate: {item.gateName}
+                  </Text>
+                )}
               </View>
-              {getStatusBadge(item.status)}
-            </View>
 
-            {/* Target Host Details */}
-            <View className="bg-muted/40 p-2.5 rounded-xl gap-1">
-              <View className="flex-row items-center gap-2">
-                <Building2 size={14} className="text-primary" />
-                <Text className="text-xs font-semibold text-foreground flex-1">
-                  {item.purpose || 'Target Resident Host'}
-                </Text>
-              </View>
-              {item.gateName && (
-                <Text className="text-[11px] text-muted-foreground ms-5">
-                  Gate: {item.gateName}
-                </Text>
-              )}
-            </View>
+              {/* Additional Metadata Footer */}
+              <View className="flex-row items-center justify-between text-xs text-muted-foreground pt-2">
+                {item.vehicleNo ? (
+                  <View className="flex-row items-center gap-1">
+                    <Car size={13} className="text-muted-foreground" />
+                    <Text className="text-xs font-mono font-medium text-foreground">{item.vehicleNo}</Text>
+                  </View>
+                ) : (
+                  <View />
+                )}
 
-            {/* Additional Metadata */}
-            <View className="flex-row items-center justify-between text-xs text-muted-foreground pt-1">
-              {item.vehicleNo ? (
                 <View className="flex-row items-center gap-1">
-                  <Car size={13} className="text-muted-foreground" />
-                  <Text className="text-xs font-mono font-medium text-foreground">{item.vehicleNo}</Text>
+                  <Clock size={12} className="text-muted-foreground" />
+                  <Text className="text-xs text-muted-foreground">
+                    {item.waitingDurationMinutes ? `Waiting ${item.waitingDurationMinutes} mins` : 'Just now'}
+                  </Text>
                 </View>
-              ) : (
-                <View />
-              )}
-
-              <View className="flex-row items-center gap-1">
-                <Clock size={12} className="text-muted-foreground" />
-                <Text className="text-xs text-muted-foreground">
-                  {item.waitingDurationMinutes ? `Waiting ${item.waitingDurationMinutes} mins` : 'Just now'}
-                </Text>
               </View>
-            </View>
-          </View>
-        )}
+            </ListCard>
+          );
+        }}
       />
     </View>
   );

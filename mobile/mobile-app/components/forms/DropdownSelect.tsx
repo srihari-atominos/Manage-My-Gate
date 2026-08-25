@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Modal, FlatList, ScrollView, Platform } from 'react-native';
+import { View, Text, Pressable, Modal, FlatList, ScrollView } from 'react-native';
 import { ChevronDown, Check } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 
@@ -50,31 +50,31 @@ export const DropdownSelect = ({
       style={(inline || accordion) && isOpen && !accordion ? { zIndex: 1000 } : undefined}
     >
       {Boolean(label) && (
-        <Text className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+        <Text className="mb-1.5 text-sm font-medium text-foreground">
           {label}
         </Text>
       )}
       
       <Pressable
         className={cn(
-          'flex-row items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-3.5 dark:border-slate-800 dark:bg-slate-900',
-          Boolean(error) && 'border-red-500 dark:border-red-500'
+          'flex-row items-center justify-between rounded-xl border border-border bg-card px-3 py-3.5',
+          Boolean(error) && 'border-destructive'
         )}
         onPress={handlePress}
       >
         <Text
           className={cn(
             'text-base',
-            selectedOption ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400'
+            selectedOption ? 'text-foreground font-medium' : 'text-muted-foreground'
           )}
         >
           {selectedOption ? selectedOption.label : placeholder}
         </Text>
-        <ChevronDown size={20} className="text-slate-400" />
+        <ChevronDown size={20} className="text-muted-foreground" />
       </Pressable>
 
       {Boolean(error) && (
-        <Text className="mt-1.5 text-xs text-red-500">
+        <Text className="mt-1.5 text-xs text-destructive">
           {error}
         </Text>
       )}
@@ -83,7 +83,7 @@ export const DropdownSelect = ({
       {(inline || accordion) && isOpen && (
         <View 
           className={cn(
-            'bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-xl shadow-lg mt-1 overflow-hidden',
+            'bg-card border border-border rounded-xl shadow-lg mt-1 overflow-hidden',
             accordion ? 'relative' : 'absolute left-0 right-0 z-[1000]'
           )}
           style={{ 
@@ -99,7 +99,7 @@ export const DropdownSelect = ({
                 <Pressable
                   key={item.value}
                   className={cn(
-                    'flex-row items-center justify-between px-4 py-3 border-b border-slate-50 dark:border-slate-800 last:border-b-0',
+                    'flex-row items-center justify-between px-4 py-3 border-b border-border/40 last:border-b-0',
                     isSelected && 'bg-primary/10'
                   )}
                   onPress={() => {
@@ -112,7 +112,7 @@ export const DropdownSelect = ({
                       'text-sm',
                       isSelected
                         ? 'font-bold text-primary'
-                        : 'text-slate-700 dark:text-slate-200'
+                        : 'text-foreground'
                     )}
                   >
                     {item.label}
@@ -132,13 +132,13 @@ export const DropdownSelect = ({
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View className="flex-1 justify-end bg-black/40">
+        <View className="flex-1 justify-end bg-black/50">
           <Pressable 
             className="absolute top-0 bottom-0 left-0 right-0" 
             onPress={() => setModalVisible(false)} 
           />
-          <View className="max-h-[70%] rounded-t-3xl bg-white p-4 dark:bg-slate-900 shadow-lg">
-            <Text className="mb-4 text-center text-lg font-bold text-slate-900 dark:text-white">
+          <View className="max-h-[70%] rounded-t-3xl bg-card p-4 border-t border-border shadow-lg">
+            <Text className="mb-4 text-center text-lg font-bold text-foreground">
               {label || 'Select'}
             </Text>
             
@@ -163,7 +163,7 @@ export const DropdownSelect = ({
                         'text-base',
                         isSelected
                           ? 'font-bold text-primary'
-                          : 'text-slate-700 dark:text-slate-200'
+                          : 'text-foreground'
                       )}
                     >
                       {item.label}
@@ -181,3 +181,5 @@ export const DropdownSelect = ({
     </View>
   );
 };
+
+export default DropdownSelect;

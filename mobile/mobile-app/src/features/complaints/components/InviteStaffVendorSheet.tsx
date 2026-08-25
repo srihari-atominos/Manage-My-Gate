@@ -5,7 +5,7 @@ import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { UserPlus, UserCheck, Phone, Mail, Building2, Send } from 'lucide-react-native';
 import { TechnicianData } from '../services/technicianService';
 

@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Pressable } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, ScrollView } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { ToggleSwitch } from '@/components/forms/ToggleSwitch';
+import { DatePicker } from '@/components/common/DatePicker';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { DatePickerModal, formatDateString } from '@/components/common/DatePickerModal';
+import { formatDateString } from '@/components/common/DatePickerModal';
 import { Amenity, MaintenanceTask } from '../store/amenitySlice';
 
 export interface MaintenanceModalProps {
@@ -40,14 +41,12 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
   initialData = null,
   loading = false,
 }) => {
-  const [datePickerTarget, setDatePickerTarget] = useState<'start' | 'end' | null>(null);
-
   const amenityOptions = [
     ...amenities.map((a) => ({
       label: `${a.name} (${a.category || a.type || 'General'})`,
       value: a._id,
     })),
-    { label: 'Others (Type Custom Name)', value: 'OTHER' }
+    { label: 'Others (Type Custom Name)', value: 'OTHER' },
   ];
 
   const todayStr = formatDateString(new Date());
@@ -119,16 +118,6 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
     onSubmit(data.amenityId, data);
   };
 
-  const handleDatePicked = (d: Date) => {
-    const formatted = formatDateString(d);
-    if (datePickerTarget === 'start') {
-      setValue('startDate', formatted, { shouldDirty: true });
-    } else if (datePickerTarget === 'end') {
-      setValue('endDate', formatted, { shouldDirty: true });
-    }
-    setDatePickerTarget(null);
-  };
-
   return (
     <BottomSheet
       visible={visible}
@@ -187,31 +176,23 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
             )}
           />
 
-          {/* Dates Selection via DatePickerModal */}
+          {/* Dates Selection via DatePicker */}
           <View className="flex-row gap-3">
             <View className="flex-1">
-              <Pressable onPress={() => setDatePickerTarget('start')}>
-                <TextInput
-                  label="Start Date *"
-                  placeholder="YYYY-MM-DD"
-                  value={startDateVal}
-                  editable={false}
-                  pointerEvents="none"
-                  error={errors.startDate?.message}
-                />
-              </Pressable>
+              <DatePicker
+                label="Start Date *"
+                value={startDateVal ? new Date(`${startDateVal}T00:00:00`) : new Date()}
+                onChange={(d) => setValue('startDate', formatDateString(d), { shouldDirty: true })}
+                error={errors.startDate?.message}
+              />
             </View>
             <View className="flex-1">
-              <Pressable onPress={() => setDatePickerTarget('end')}>
-                <TextInput
-                  label="End Date *"
-                  placeholder="YYYY-MM-DD"
-                  value={endDateVal}
-                  editable={false}
-                  pointerEvents="none"
-                  error={errors.endDate?.message}
-                />
-              </Pressable>
+              <DatePicker
+                label="End Date *"
+                value={endDateVal ? new Date(`${endDateVal}T00:00:00`) : new Date()}
+                onChange={(d) => setValue('endDate', formatDateString(d), { shouldDirty: true })}
+                error={errors.endDate?.message}
+              />
             </View>
           </View>
 
@@ -298,22 +279,15 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
             variant="default"
             disabled={loading}
             onPress={handleSubmit(handleFormSubmit)}
-            className="mt-2 bg-amber-600 py-3.5"
+            className="mt-2 bg-primary py-3.5"
+            accessibilityLabel={initialData ? 'Save Maintenance Changes' : 'Schedule Maintenance Window'}
           >
-            <Text className="text-white font-bold text-base">
+            <Text className="text-primary-foreground font-bold text-base">
               {loading ? 'Saving...' : initialData ? 'Save Changes' : 'Schedule Maintenance Window'}
             </Text>
           </Button>
         </View>
       </ScrollView>
-
-      {/* Date Picker Modal */}
-      <DatePickerModal
-        visible={!!datePickerTarget}
-        selectedDate={new Date()}
-        onClose={() => setDatePickerTarget(null)}
-        onSelectDate={handleDatePicked}
-      />
     </BottomSheet>
   );
 };

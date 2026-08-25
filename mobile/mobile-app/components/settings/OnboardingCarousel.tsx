@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, useWindowDimensions } from 'react-native';
-import { Button } from '../common/Button';
+import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 import { ImagePreview } from '../common/ImagePreview';
 

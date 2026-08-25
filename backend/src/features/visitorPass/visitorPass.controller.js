@@ -81,6 +81,37 @@ export class VisitorPassController {
       next(error);
     }
   }
+
+  /**
+   * Retrieve a VisitorPass publicly by token, code, or pass ID.
+   */
+  async getPublicPass(req, res, next) {
+    try {
+      const token = req.params.token || req.params.code || req.params.id;
+      let data = null;
+
+      try {
+        const passId = await visitorPassTokenService.getPassIdByCode(token);
+        if (passId) {
+          data = await visitorPassService.getPassById(passId);
+        }
+      } catch (err) {}
+
+      if (!data) {
+        try {
+          data = await visitorPassService.getPassById(token);
+        } catch (err) {}
+      }
+
+      if (!data) {
+        return res.status(404).json({ success: false, message: 'Visitor pass not found or expired' });
+      }
+
+      res.success(data, 'Public visitor pass retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new VisitorPassController();

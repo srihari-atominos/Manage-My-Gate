@@ -140,6 +140,16 @@ export class InvoiceController {
     }
   }
 
+  async getInvoiceById(req, res, next) {
+    try {
+      const { id } = req.params;
+      const data = await invoiceService.getInvoiceById(id);
+      res.success(data, 'Invoice retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // --- Phase 1.5 Enterprise Route Stubs ---
   
   async downloadInvoicePdf(req, res, next) {

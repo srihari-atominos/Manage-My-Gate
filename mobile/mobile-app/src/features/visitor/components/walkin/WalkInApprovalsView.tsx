@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View } from 'react-native';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
 import { PaginatedList } from '@/components/ui/PaginatedList';
+import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { WalkInApprovalCard } from './WalkInApprovalCard';
 import { WalkInVisitorDetailsModal } from './WalkInVisitorDetailsModal';
 import { WalkInApprovalItem } from '../../mocks/visitorMocks';
@@ -46,19 +44,7 @@ export const WalkInApprovalsView: React.FC = () => {
   const isLoading = walkIns?.status === 'loading' && !refreshing && (walkIns?.pendingList?.length || 0) === 0;
 
   return (
-    <View className="flex-1 bg-background">
-      {/* Error Retry Banner */}
-      {walkIns?.status === 'failed' && (
-        <View className="p-3 mx-4 my-2 bg-destructive/10 border border-destructive/20 rounded-xl flex-row items-center justify-between">
-          <Text className="text-xs text-destructive flex-1 font-medium me-2">
-            {walkIns.error || 'Failed to load pending walk-in requests.'}
-          </Text>
-          <Button size="sm" variant="outline" onPress={loadData}>
-            <Text className="text-xs font-semibold">Retry</Text>
-          </Button>
-        </View>
-      )}
-
+    <>
       <PaginatedList<WalkInApprovalItem>
         data={walkIns?.pendingList || []}
         pagination={{
@@ -74,7 +60,16 @@ export const WalkInApprovalsView: React.FC = () => {
         emptyIcon="ShieldCheck"
         emptyTitle="No Pending Walk-In Requests"
         emptySubtitle="All visitor gate requests have been reviewed."
-        contentContainerClassName="p-4 gap-3"
+        contentContainerClassName="px-4 pt-3 pb-28 gap-3.5"
+        ListHeaderComponent={
+          walkIns?.status === 'failed' ? (
+            <ErrorBanner
+              message={walkIns.error || 'Failed to load pending walk-in requests.'}
+              onRetry={loadData}
+              className="mb-3"
+            />
+          ) : null
+        }
         renderItem={(item) => (
           <WalkInApprovalCard
             key={item.id}
@@ -99,7 +94,7 @@ export const WalkInApprovalsView: React.FC = () => {
         onApprove={(id) => handleApprove(id)}
         onReject={(id) => handleReject(id)}
       />
-    </View>
+    </>
   );
 };
 

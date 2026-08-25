@@ -1,33 +1,30 @@
-import React, { useState, useMemo } from 'react';
-import { View, ScrollView, Pressable } from 'react-native';
+import React, { useMemo } from 'react';
+import { View } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { DatePicker } from '@/components/common/DatePicker';
-import { DatePickerModal, formatDateString } from '@/components/common/DatePickerModal';
+import { PaginatedList } from '@/components/ui/PaginatedList';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { SegmentedControl, SegmentItem } from '@/components/common/SegmentedControl';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { ListCard } from '@/components/ui/ListCard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react-native';
+import { type StatusVariant } from '@/components/ui/StatusBadge';
+import { Plus } from 'lucide-react-native';
 
 import { useAdminCalendar } from '../../../src/features/amenities/hooks/useAdminCalendar';
-import { useAuth } from '../../../src/features/auth/hooks/useAuth';
+import { ScheduleDateNavigator } from '../../../src/features/amenities/components/ScheduleDateNavigator';
 import { ManualBookingModal } from '../../../src/features/amenities/components/ManualBookingModal';
 import { AdminCancelReasonModal } from '../../../src/features/amenities/components/AdminCancelReasonModal';
 import { BookingDetailModal } from '../../../src/features/amenities/components/BookingDetailModal';
 import { AmenityBooking } from '../../../src/features/amenities/store/amenityBookingSlice';
 
 export default function AdminAmenityCalendarScreen() {
-  const [isDatePickerModalOpen, setIsDatePickerModalOpen] = useState(false);
   const {
     adminBookings,
     filteredBookings,
     amenities,
     viewMode,
     setViewMode,
-    currentDate,
     selectedDate,
     handleDateChange,
     navigateDate,
@@ -76,8 +73,6 @@ export default function AdminAmenityCalendarScreen() {
     { label: 'Cancelled', value: 'CANCELLED' },
   ];
 
-  const { user } = useAuth();
-
   const renderBookingItem = (item: AmenityBooking) => {
     const name =
       typeof item.amenityId === 'object' && item.amenityId
@@ -98,162 +93,146 @@ export default function AdminAmenityCalendarScreen() {
 
     const isCancelled = (item.status as string) === 'CANCELLED' || (item.status as string) === 'REJECTED';
     const statusLabel = isCancelled ? 'CANCELLED' : item.status === 'COMPLETED' ? 'COMPLETED' : 'CONFIRMED';
-    const statusVariant = isCancelled ? 'danger' : item.status === 'COMPLETED' ? 'neutral' : 'success';
+    const statusVariant: StatusVariant = isCancelled ? 'danger' : item.status === 'COMPLETED' ? 'neutral' : 'success';
 
     return (
-      <View key={item._id} className="mb-2">
-        <ListCard
-          title={name}
-          subtitle={`${item.date || selectedDate} • ${item.startTime} - ${item.endTime} • ${residentName} (${villaNum})`}
-          leftIcon="Clock"
-          leftIconBgColor="#e0f2fe"
-          leftIconColor="#0284c7"
-          status={{
-            label: statusLabel,
-            variant: statusVariant,
-          }}
-          secondaryBadge={
-            item.paymentMethod ? { label: item.paymentMethod, variant: 'neutral' } : { label: 'ONLINE', variant: 'neutral' }
-          }
-          onPress={() => setSelectedBookingDetail(item)}
-        />
-      </View>
+      <ListCard
+        key={item._id}
+        title={`${name} • ${item.startTime} - ${item.endTime}`}
+        subtitle={`Resident: ${residentName} (${villaNum})`}
+        leftIcon="Calendar"
+        status={{ label: statusLabel, variant: statusVariant }}
+        timestamp={item.date || item.bookingDate}
+        onPress={() => setSelectedBookingDetail(item)}
+        className="mb-2.5"
+      >
+        <View className="flex-row items-center justify-between pt-2 border-t border-border/40 mt-1">
+          <Text className="text-xs text-muted-foreground">
+            Ref: #{item.bookingId || item._id.slice(-6).toUpperCase()}
+          </Text>
+          {!isCancelled && item.status !== 'COMPLETED' && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onPress={() => setCancelTarget(item)}
+              className="py-1 px-3 h-7"
+              accessibilityLabel={`Cancel booking for ${residentName}`}
+            >
+              <Text className="text-destructive-foreground text-xs font-semibold">Cancel Slot</Text>
+            </Button>
+          )}
+        </View>
+      </ListCard>
     );
   };
 
+  const renderHeader = () => (
+    <View className="mb-3 gap-3">
+      {/* View Mode Segmented Control */}
+      <SegmentedControl
+        segments={viewSegments}
+        activeSegment={viewMode}
+        onChange={(key: string) => setViewMode(key as any)}
+      />
+
+      {/* Date Navigation & Picker Bar */}
+      <ScheduleDateNavigator
+        selectedDate={selectedDate}
+        onDateChange={handleDateChange}
+        onPrevDate={() => navigateDate(-1)}
+        onNextDate={() => navigateDate(1)}
+        onToday={setToday}
+        title="Choose Occupancy Date"
+      />
+
+      {/* Search & Filter Controls Card */}
+      <View className="bg-card p-3.5 rounded-2xl border border-border gap-3 shadow-xs">
+        <SearchFilterBar
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search resident, villa #, pass code..."
+          variant="default"
+          className="px-0 py-0 border-0"
+        />
+        <View className="flex-row gap-3">
+          <View className="flex-1">
+            <DropdownSelect
+              label="Facility"
+              options={amenityOptions}
+              value={selectedAmenityId}
+              onValueChange={setSelectedAmenityId}
+            />
+          </View>
+          <View className="flex-1">
+            <DropdownSelect
+              label="Status"
+              options={statusOptions}
+              value={statusFilter}
+              onValueChange={setStatusFilter}
+            />
+          </View>
+        </View>
+      </View>
+
+      {/* Summary Counter */}
+      <View className="flex-row items-center justify-between px-1">
+        <Text variant="large" className="font-bold text-foreground">
+          Reservations ({filteredBookings.length})
+        </Text>
+        {filteredBookings.length !== adminBookings.length && (
+          <Text variant="muted" className="text-xs text-muted-foreground">
+            Filtered from {adminBookings.length}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+
   return (
     <ScreenShell
-      title="Admin Occupancy Calendar"
-      subtitle="Overview of community reservation schedules & slot bookings"
-      iconName="CalendarDays"
+      title="Facility Schedule & Occupancy"
+      subtitle="Track occupancy, block reserved slots & review bookings"
+      iconName="Calendar"
       loading={loading && adminBookings.length === 0}
       error={error}
       onRetry={loadData}
+      headerRight={
+        <Button
+          variant="default"
+          size="sm"
+          onPress={handleOpenManualModal}
+          className="flex-row items-center gap-1 rounded-full"
+          accessibilityLabel="Reserve manual slot"
+        >
+          <Plus size={14} className="text-primary-foreground" />
+          <Text className="text-primary-foreground font-bold text-xs">Book Slot</Text>
+        </Button>
+      }
     >
-      <ScrollView className="flex-1 px-4 pt-2" contentContainerClassName="pb-8">
-        {/* Header CTA & Title */}
-        <View className="flex-row items-center justify-between mb-3">
-          <Text variant="large" className="font-bold text-foreground">
-            Occupancy Overview
-          </Text>
-          <Button variant="default" onPress={handleOpenManualModal} className="bg-primary px-3 py-2.5">
-            <Text className="text-white font-bold text-xs">+ Manual Reserve</Text>
-          </Button>
-        </View>
-
-        {/* View Mode Segmented Switcher */}
-        <View className="mb-3">
-          <SegmentedControl
-            segments={viewSegments}
-            activeSegment={viewMode}
-            onChange={(key) => setViewMode(key as any)}
-          />
-        </View>
-
-        {/* Date Navigation Bar */}
-        <View className="bg-card p-3 rounded-2xl border border-border mb-3 flex-row items-center justify-between">
-          <View className="flex-row items-center gap-1.5">
-            <Pressable
-              onPress={() => navigateDate(-1)}
-              className="p-2 rounded-lg bg-muted active:bg-muted/80"
-              accessibilityRole="button"
-              accessibilityLabel="Previous date period"
-            >
-              <Icon as={ChevronLeft} size={18} className="text-foreground" />
-            </Pressable>
-
-            <Pressable
-              onPress={setToday}
-              className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 active:bg-primary/20"
-              accessibilityRole="button"
-              accessibilityLabel="Jump to today"
-            >
-              <Text className="text-xs font-bold text-primary">Today</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => navigateDate(1)}
-              className="p-2 rounded-lg bg-muted active:bg-muted/80"
-              accessibilityRole="button"
-              accessibilityLabel="Next date period"
-            >
-              <Icon as={ChevronRight} size={18} className="text-foreground" />
-            </Pressable>
-          </View>
-
-          <Pressable
-            onPress={() => setIsDatePickerModalOpen(true)}
-            className="flex-row items-center gap-2 px-2.5 py-1.5 rounded-lg bg-primary/10 border border-primary/20 active:bg-primary/20"
-            accessibilityRole="button"
-            accessibilityLabel="Open Calendar Date Picker"
-          >
-            <Icon as={CalendarIcon} size={16} className="text-primary" />
-            <Text className="text-sm font-bold text-primary">
-              {viewMode === 'day'
-                ? selectedDate
-                : viewMode === 'week'
-                ? `Week of ${selectedDate}`
-                : `${currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}`}
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* Search & Filter Controls */}
-        <View className="mb-4 gap-3">
-          <SearchFilterBar
-            searchValue={searchQuery}
-            onSearchChange={setSearchQuery}
-            searchPlaceholder="Search resident, villa #, pass code..."
-            variant="default"
-            className="px-0 py-0"
-          />
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <DropdownSelect
-                label=""
-                placeholder="All Facilities"
-                options={amenityOptions}
-                value={selectedAmenityId}
-                onValueChange={setSelectedAmenityId}
-              />
-            </View>
-            <View className="flex-1">
-              <DropdownSelect
-                label=""
-                placeholder="All Statuses"
-                options={statusOptions}
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Reservations Summary Counter */}
-        <View className="flex-row items-center justify-between mb-3">
-          <Text variant="large" className="font-bold text-foreground">
-            Reservations ({filteredBookings.length})
-          </Text>
-          {filteredBookings.length !== adminBookings.length && (
-            <Text variant="muted" className="text-xs text-muted-foreground">
-              Filtered from {adminBookings.length}
-            </Text>
-          )}
-        </View>
-
-        {/* Reservations List */}
-        {filteredBookings.length === 0 ? (
-          <View className="bg-muted/20 p-6 rounded-2xl border border-border/40 items-center justify-center">
-            <Text variant="muted" className="text-sm text-center">
-              {searchQuery || statusFilter !== 'All' || selectedAmenityId !== 'All'
-                ? 'No reservations match your active search filters.'
-                : `No reservations scheduled for ${selectedDate}.`}
-            </Text>
-          </View>
-        ) : (
-          filteredBookings.map(renderBookingItem)
-        )}
-      </ScrollView>
+      <View className="flex-1 bg-background">
+        <PaginatedList<AmenityBooking>
+          data={filteredBookings}
+          renderItem={renderBookingItem}
+          pagination={{
+            currentPage: 1,
+            totalPages: 1,
+            totalRecords: filteredBookings.length,
+            limit: 50,
+          }}
+          onLoadMore={() => {}}
+          onRefresh={loadData}
+          loading={loading}
+          ListHeaderComponent={renderHeader()}
+          emptyIcon="Calendar"
+          emptyTitle="No Reservations Scheduled"
+          emptySubtitle={
+            searchQuery || statusFilter !== 'All' || selectedAmenityId !== 'All'
+              ? 'No reservations match your active search filters.'
+              : `No reservations scheduled for ${selectedDate}.`
+          }
+          contentContainerClassName="p-4 gap-3.5 pb-28"
+        />
+      </View>
 
       {/* Manual Admin Reservation Modal */}
       <ManualBookingModal
@@ -280,15 +259,7 @@ export default function AdminAmenityCalendarScreen() {
         booking={cancelTarget}
         loading={submittingCancel}
       />
-
-      {/* Date Picker Modal */}
-      <DatePickerModal
-        visible={isDatePickerModalOpen}
-        onClose={() => setIsDatePickerModalOpen(false)}
-        selectedDate={new Date(`${selectedDate}T00:00:00`)}
-        onSelectDate={(d) => handleDateChange(formatDateString(d))}
-        title="Choose Occupancy Date"
-      />
     </ScreenShell>
   );
 }
+

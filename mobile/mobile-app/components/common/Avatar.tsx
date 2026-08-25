@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, Image, ImageSourcePropType, ViewProps } from 'react-native';
-import { cn } from '../../lib/utils';
+import { View, Image, ImageSourcePropType, ViewProps } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 import { User } from 'lucide-react-native';
 
 export interface AvatarProps extends ViewProps {
@@ -45,7 +46,7 @@ export const Avatar = ({
   return (
     <View
       className={cn(
-        'items-center justify-center overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800',
+        'items-center justify-center overflow-hidden rounded-full bg-muted border border-border',
         sizeClasses[size],
         className
       )}
@@ -60,7 +61,7 @@ export const Avatar = ({
       ) : fallback ? (
         <Text
           className={cn(
-            'font-bold uppercase text-slate-600 dark:text-slate-300',
+            'font-bold uppercase text-foreground',
             textSizes[size],
             fallbackClassName
           )}
@@ -68,8 +69,11 @@ export const Avatar = ({
           {fallback.substring(0, 2)}
         </Text>
       ) : (
-        <User size={iconSizes[size]} className="text-slate-500" />
+        <User size={iconSizes[size]} className="text-muted-foreground" />
       )}
     </View>
   );
 };
+
+export default Avatar;
+

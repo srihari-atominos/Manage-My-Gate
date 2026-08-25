@@ -58,6 +58,12 @@ router.patch(
   invoiceController.settleOffline
 );
 
+router.get(
+  '/:id',
+  authorizePermission('billing', ['action_center', 'dashboard', 'assessment_manager']),
+  invoiceController.getInvoiceById
+);
+
 router.patch(
   '/:id/approve',
   tenantContext,

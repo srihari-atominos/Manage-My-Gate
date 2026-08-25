@@ -3,7 +3,7 @@ import { View, ScrollView, Image, TouchableOpacity, Modal, Alert, Linking } from
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';

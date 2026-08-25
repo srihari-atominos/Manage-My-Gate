@@ -6,6 +6,10 @@ import isAuthenticated from '../../middlewares/auth.middleware.js';
 
 const router = Router();
 
+// Publicly accessible pass routes for external visitors / guests
+router.get('/public/:token', visitorPassController.getPublicPass);
+router.get('/public/code/:code', visitorPassController.getPublicPass);
+
 router.use(isAuthenticated);
 
 router.post('/', validate(createPassRules), visitorPassController.create);

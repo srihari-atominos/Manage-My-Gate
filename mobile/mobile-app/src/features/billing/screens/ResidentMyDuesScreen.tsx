@@ -1,19 +1,20 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import { View, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { View, ScrollView, RefreshControl, Pressable, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { Wallet, CreditCard, Receipt, ChevronRight, CheckCircle2, ShieldAlert, Clock, Landmark, Zap } from 'lucide-react-native';
+import { Wallet, CreditCard, Receipt, ChevronRight, CheckCircle2, ShieldAlert, Clock, Zap } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import { UnitDueBreakdown, InvoiceStatus, Invoice } from '../types';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { OfflineSettleSheet } from '../components/OfflineSettleSheet';
+import { ResidentDueCard } from '../components/ResidentDueCard';
 
 export function ResidentMyDuesScreen() {
   const router = useRouter();
@@ -104,7 +105,7 @@ export function ResidentMyDuesScreen() {
       <View className="flex-1 bg-background">
         {/* Error Banner Container */}
         {error ? (
-          <View className="p-4">
+          <View className="mb-2">
             <ErrorBanner
               message={error}
               onDismiss={() => {
@@ -116,98 +117,94 @@ export function ResidentMyDuesScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingBottom: totalPortfolioDue > 0 ? 110 : 32 }}
+          contentContainerClassName="gap-4 pb-28"
           refreshControl={
             <RefreshControl
               refreshing={loadingStates.fetchDues}
               onRefresh={handleRefresh}
-              tintColor="#6366f1"
             />
           }
         >
           {/* Portfolio Liability Hero Banner */}
-          <View className="p-4 pb-2">
-            <View className="bg-card border border-border rounded-2xl p-5 shadow-sm">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Total Outstanding Dues
-                </Text>
-                <View className="flex-row items-center bg-primary/10 px-2.5 py-1 rounded-full">
-                  <Icon as={CreditCard} size={12} className="text-primary me-1" />
-                  <Text className="text-xs font-semibold text-primary">Active Portfolio</Text>
-                </View>
-              </View>
-
-              <Text className="text-3xl font-extrabold text-foreground tracking-tight mb-4">
-                ₹{totalPortfolioDue.toLocaleString('en-IN')}
+          <View className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Total Outstanding Dues
               </Text>
+              <View className="flex-row items-center bg-primary/10 px-2.5 py-1 rounded-full">
+                <Icon as={CreditCard} size={12} className="text-primary me-1" />
+                <Text className="text-xs font-semibold text-primary">Active Portfolio</Text>
+              </View>
+            </View>
 
-              {/* Digital Wallet Pill Widget */}
-              <View className="flex-row items-center justify-between bg-muted/50 border border-border/60 rounded-xl p-3">
-                <View className="flex-row items-center">
-                  <View className="w-8 h-8 rounded-lg bg-emerald-500/10 items-center justify-center me-2.5">
-                    <Icon as={Wallet} size={18} className="text-emerald-600 dark:text-emerald-400" />
-                  </View>
-                  <View>
-                    <Text className="text-xs text-muted-foreground font-medium">Digital Wallet</Text>
-                    <Text className="text-sm font-bold text-foreground">
-                      ₹{walletBalance.toLocaleString('en-IN')}
-                    </Text>
-                  </View>
+            <Text className="text-3xl font-extrabold text-foreground tracking-tight mb-4">
+              ₹{totalPortfolioDue.toLocaleString('en-IN')}
+            </Text>
+
+            {/* Digital Wallet Pill Widget */}
+            <View className="flex-row items-center justify-between bg-muted/50 border border-border/60 rounded-xl p-3">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-lg bg-status-success/15 items-center justify-center me-2.5">
+                  <Icon as={Wallet} size={18} className="text-status-success" />
                 </View>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onPress={handleOpenWalletScreen}
-                  accessibilityLabel="Manage Digital Wallet"
-                  accessibilityRole="button"
-                >
-                  View Wallet
-                </Button>
+                <View>
+                  <Text className="text-xs text-muted-foreground font-medium">Digital Wallet</Text>
+                  <Text className="text-sm font-bold text-foreground">
+                    ₹{walletBalance.toLocaleString('en-IN')}
+                  </Text>
+                </View>
               </View>
 
-              {/* Payment & Invoice History Button */}
-              <Pressable
-                onPress={handleOpenPaymentHistory}
-                className="mt-3 flex-row items-center justify-between bg-muted/40 border border-border/50 rounded-xl p-3 active:bg-muted/70"
+              <Button
+                variant="outline"
+                size="sm"
+                onPress={handleOpenWalletScreen}
+                accessibilityLabel="Manage Digital Wallet"
                 accessibilityRole="button"
-                accessibilityLabel="View Payment and Invoice History"
               >
-                <View className="flex-row items-center">
-                  <View className="w-8 h-8 rounded-lg bg-primary/10 items-center justify-center me-2.5">
-                    <Icon as={Receipt} size={18} className="text-primary" />
-                  </View>
-                  <View>
-                    <Text className="text-xs font-bold text-foreground">Payment & Invoice History</Text>
-                    <Text className="text-xs text-muted-foreground">View past receipts & settled fees</Text>
-                  </View>
-                </View>
-                <Icon as={ChevronRight} size={16} className="text-muted-foreground" />
-              </Pressable>
+                View Wallet
+              </Button>
             </View>
+
+            {/* Payment & Invoice History Button */}
+            <TouchableOpacity
+              onPress={handleOpenPaymentHistory}
+              activeOpacity={0.8}
+              className="mt-3 flex-row items-center justify-between bg-muted/40 border border-border/50 rounded-xl p-3"
+              accessibilityRole="button"
+              accessibilityLabel="View Payment and Invoice History"
+            >
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-lg bg-primary/10 items-center justify-center me-2.5">
+                  <Icon as={Receipt} size={18} className="text-primary" />
+                </View>
+                <View>
+                  <Text className="text-xs font-bold text-foreground">Payment & Invoice History</Text>
+                  <Text className="text-xs text-muted-foreground">View past receipts & settled fees</Text>
+                </View>
+              </View>
+              <Icon as={ChevronRight} size={16} className="text-muted-foreground" />
+            </TouchableOpacity>
           </View>
 
           {/* Pending Verification Clearing Banner */}
           {isClearing ? (
-            <View className="px-4 py-2">
-              <View className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex-row items-center">
-                <Icon as={Clock} size={20} className="text-blue-600 dark:text-blue-400 me-3" />
-                <View className="flex-1">
-                  <Text className="text-xs font-bold text-blue-900 dark:text-blue-200">
-                    Payment Clearance In Progress
-                  </Text>
-                  <Text className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
-                    Payment of ₹{clearingAmount.toLocaleString('en-IN')} is clearing via Reference {clearingRef}. Awaiting admin verification.
-                  </Text>
-                </View>
+            <View className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex-row items-center">
+              <Icon as={Clock} size={20} className="text-primary me-3" />
+              <View className="flex-1">
+                <Text className="text-xs font-bold text-foreground">
+                  Payment Clearance In Progress
+                </Text>
+                <Text className="text-xs text-muted-foreground mt-0.5">
+                  Payment of ₹{clearingAmount.toLocaleString('en-IN')} is clearing via Reference {clearingRef}. Awaiting admin verification.
+                </Text>
               </View>
             </View>
           ) : null}
 
           {/* Active Maintenance Dues Section */}
-          <View className="px-4 pt-2">
-            <View className="flex-row items-center justify-between mb-3">
+          <View className="gap-3">
+            <View className="flex-row items-center justify-between">
               <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 Maintenance Invoices ({duesList.length})
               </Text>
@@ -221,98 +218,22 @@ export function ResidentMyDuesScreen() {
               />
             ) : (
               <View className="gap-3">
-                {duesList.map((item) => {
-                  const invoiceId = item.invoiceId || (item as any)._id;
-                  const invNo = item.invoiceNumber || invoiceId || '—';
-                  const unitStr = item.unitNumber ? `Villa ${item.unitNumber}` : 'Villa Unit';
-                  const periodStr = item.billingPeriodString || 'Current Month';
-                  const dueAmount = item.totalDue || 0;
-                  const formattedDue = `₹${dueAmount.toLocaleString('en-IN')}`;
-
-                  const statusVariant = getStatusVariant(item.status);
-                  const statusLabel = item.status ? item.status.replace(/_/g, ' ') : 'UNPAID';
-                  const isPendingVerification = item.status === ('VERIFICATION_PENDING' as InvoiceStatus);
-
-                  const mappedInvoice: Invoice = {
-                    _id: invoiceId,
-                    invoiceNumber: invNo,
-                    unitNumber: item.unitNumber,
-                    billingPeriodString: periodStr,
-                    totalDue: dueAmount,
-                    status: item.status,
-                  } as Invoice;
-
-                  return (
-                    <Pressable
-                      key={invoiceId}
-                      onPress={() => handleViewInvoiceDetails(invoiceId)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`View Invoice ${invNo} for ${unitStr}`}
-                      className="bg-card border border-border rounded-xl p-4 shadow-sm active:bg-muted/40"
-                    >
-                      <View className="flex-row items-start justify-between mb-3">
-                        <View className="flex-row items-center flex-1 me-2">
-                          <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center me-3">
-                            <Icon as={Receipt} size={20} className="text-primary" />
-                          </View>
-                          <View className="flex-1">
-                            <Text className="text-foreground font-bold text-base truncate">
-                              {invNo}
-                            </Text>
-                            <Text className="text-muted-foreground text-xs font-medium">
-                              {unitStr} • {periodStr}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <StatusBadge label={statusLabel} variant={statusVariant} dot />
-                      </View>
-
-                      <View className="border-t border-border/50 pt-3 flex-row items-center justify-between">
-                        <View>
-                          <Text className="text-xs text-muted-foreground">Remaining Liability</Text>
-                          <Text className="text-lg font-extrabold text-foreground">
-                            {formattedDue}
-                          </Text>
-                        </View>
-
-                        <View className="flex-row items-center gap-2">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onPress={() => handleViewInvoiceDetails(invoiceId)}
-                          >
-                            Details
-                          </Button>
-
-                          {!isPendingVerification ? (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onPress={() => setCheckoutInvoice(mappedInvoice)}
-                            >
-                              Pay Now
-                            </Button>
-                          ) : (
-                            <View className="bg-blue-500/10 px-2.5 py-1 rounded-lg">
-                              <Text className="text-blue-600 dark:text-blue-400 text-xs font-semibold">
-                                Pending
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    </Pressable>
-                  );
-                })}
+                {duesList.map((item) => (
+                  <ResidentDueCard
+                    key={item.invoiceId || (item as any)._id}
+                    item={item}
+                    onViewDetails={handleViewInvoiceDetails}
+                    onPayNow={(inv) => setCheckoutInvoice(inv)}
+                  />
+                ))}
               </View>
             )}
           </View>
 
           {/* Tenant Compliance Arrears Section */}
           {activeDues?.secondaryCompliance && activeDues.secondaryCompliance.length > 0 ? (
-            <View className="px-4 pt-4">
-              <View className="flex-row items-center justify-between mb-2">
+            <View className="gap-2">
+              <View className="flex-row items-center justify-between">
                 <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   Tenant Arrears ({activeDues.secondaryCompliance.length})
                 </Text>
@@ -410,4 +331,5 @@ export function ResidentMyDuesScreen() {
 }
 
 export default ResidentMyDuesScreen;
+
 

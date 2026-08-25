@@ -1,13 +1,13 @@
 import React from 'react';
-import { View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { Input } from '@/components/ui/input';
+import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { User, Phone, Car, Tag } from 'lucide-react-native';
+import { User, Phone, Tag } from 'lucide-react-native';
 
 const passSchema = yup.object({
   visitorName: yup.string().required('Visitor Name is required').min(2, 'Name is too short'),
@@ -60,7 +60,7 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Create Visitor Pass">
-      <ScrollView className="max-h-[500px] p-2">
+      <ScrollView className="max-h-[500px]">
         <View className="gap-4">
           {/* Pass Type Selector Chips */}
           <View className="gap-1.5">
@@ -103,10 +103,10 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
             control={control}
             name="visitorName"
             render={({ field: { onChange, onBlur, value } }) => (
-              <Input
+              <TextInput
                 label="Visitor Full Name"
                 placeholder="e.g. Rahul Sharma"
-                leftIcon={<User size={18} className="text-muted-foreground" />}
+                leftIcon={User}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -120,12 +120,12 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
             control={control}
             name="phone"
             render={({ field: { onChange, onBlur, value } }) => (
-              <Input
+              <TextInput
                 label="Visitor Phone Number (Optional)"
-                placeholder="9876543210"
+                placeholder="e.g. 9876543210"
                 keyboardType="phone-pad"
                 maxLength={10}
-                leftIcon={<Phone size={18} className="text-muted-foreground" />}
+                leftIcon={Phone}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -139,10 +139,10 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
             control={control}
             name="purpose"
             render={({ field: { onChange, onBlur, value } }) => (
-              <Input
+              <TextInput
                 label="Note / Vehicle Info (Optional)"
                 placeholder="e.g. Amazon Delivery / KA-01-AB-1234"
-                leftIcon={<Tag size={18} className="text-muted-foreground" />}
+                leftIcon={Tag}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -154,16 +154,12 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
           {/* Submit Action */}
           <Button
             onPress={handleSubmit(handleFormSubmit)}
-            disabled={loading}
-            className="mt-2 h-12 rounded-xl bg-primary"
+            loading={loading}
+            className="mt-2 h-12 rounded-xl"
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className="font-bold text-primary-foreground text-base">
-                Generate Visitor Pass
-              </Text>
-            )}
+            <Text className="font-bold text-primary-foreground text-base">
+              Generate Visitor Pass
+            </Text>
           </Button>
         </View>
       </ScrollView>
