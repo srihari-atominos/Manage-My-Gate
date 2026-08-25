@@ -232,8 +232,7 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
       onClose={onClose}
       title={amenity ? 'Edit Master Amenity' : 'Create Amenity Master'}
     >
-      <ScrollView className="max-h-[80vh] pt-1" showsVerticalScrollIndicator={false}>
-        <View className="gap-3.5 pb-8 px-0.5">
+      <View className="gap-3.5 pb-2 px-0.5">
           {/* Amenity Cover Image - Drag & Drop / Browse Drop Zone */}
           <View className="bg-card p-3 rounded-2xl border border-border gap-2">
             <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -648,7 +647,6 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
             </Text>
           </Button>
         </View>
-      </ScrollView>
     </BottomSheet>
   );
 };

@@ -174,7 +174,7 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
       onClose={onClose}
       title={`Assign Ticket ${ticketNumber ? `#${ticketNumber}` : ''}`}
     >
-      <ScrollView className="px-1 py-1 max-h-[75vh]" showsVerticalScrollIndicator={false}>
+      <View className="px-1 py-1 pb-2">
         {error && (
           <View className="mb-3 p-3 bg-destructive/10 border border-destructive/20 rounded-xl flex-row items-center gap-2">
             <Icon as={ShieldAlert} size={16} className="text-destructive shrink-0" />
@@ -402,7 +402,7 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
             </Text>
           </Button>
         </View>
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 };

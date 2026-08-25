@@ -169,7 +169,7 @@ export function PaymentCheckoutSheet({
   return (
     <>
       <BottomSheet visible={visible} onClose={onClose} title={`Payment Checkout • #${invNo}`}>
-        <ScrollView className="py-2" contentContainerClassName="pb-12">
+        <View className="py-2 pb-2">
 
           {/* Payment Disabled Alert */}
           {isPaymentDisabled ? (
@@ -352,7 +352,7 @@ export function PaymentCheckoutSheet({
             <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
           </Button>
 
-        </ScrollView>
+        </View>
       </BottomSheet>
 
       {/* Wallet Deduction Confirmation Modal */}

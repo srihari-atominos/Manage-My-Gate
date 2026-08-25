@@ -225,7 +225,7 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
   return (
     <>
       <BottomSheet visible={visible} onClose={onClose} title={`Ticket #${complaint.complaintNumber}`}>
-        <ScrollView className="px-4 py-2" contentContainerStyle={{ paddingBottom: 60 }}>
+        <View className="py-2 pb-8">
           {/* CONSOLIDATED UNIFIED TICKET CARD */}
           <View className="bg-card border border-border rounded-2xl p-4 mb-3 shadow-xs gap-3.5">
             {/* Priority & Status Header */}
@@ -838,7 +838,7 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
               ) : null}
             </View>
           )}
-        </ScrollView>
+        </View>
       </BottomSheet>
 
       {/* DELETE CONFIRMATION MODAL */}

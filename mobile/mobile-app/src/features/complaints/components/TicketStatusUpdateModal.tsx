@@ -71,7 +71,7 @@ export const TicketStatusUpdateModal: React.FC<TicketStatusUpdateModalProps> = (
           </View>
         )}
 
-        <ScrollView className="max-h-[55vh]" contentContainerClassName="gap-3 pb-2" showsVerticalScrollIndicator={false}>
+        <View className="gap-3 pb-2">
           <Text className="text-xs font-semibold text-muted-foreground">Select New Status</Text>
 
           {/* Status Selection Cards */}
@@ -110,7 +110,7 @@ export const TicketStatusUpdateModal: React.FC<TicketStatusUpdateModalProps> = (
             placeholder="e.g. Parts approved by storekeeper, work resumed..."
             inputClassName="h-20 py-2 text-start"
           />
-        </ScrollView>
+        </View>
 
         {/* Action Buttons */}
         <View className="flex-row gap-2 pt-2 border-t border-border">

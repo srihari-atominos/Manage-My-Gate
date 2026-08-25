@@ -60,109 +60,107 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Create Visitor Pass">
-      <ScrollView className="max-h-[500px]">
-        <View className="gap-4">
-          {/* Pass Type Selector Chips */}
-          <View className="gap-1.5">
-            <Text className="text-foreground font-semibold text-sm">Pass Type</Text>
-            <Controller
-              control={control}
-              name="passType"
-              render={({ field: { onChange, value } }) => (
-                <View className="flex-row gap-2 flex-wrap">
-                  {PASS_TYPES.map((type) => {
-                    const isSelected = value === type.id;
-                    return (
-                      <TouchableOpacity
-                        key={type.id}
-                        onPress={() => onChange(type.id)}
-                        activeOpacity={0.8}
-                        className={`px-3 py-2 rounded-xl border ${
-                          isSelected
-                            ? 'bg-primary border-primary'
-                            : 'bg-card border-border'
+      <View className="gap-4 pb-2">
+        {/* Pass Type Selector Chips */}
+        <View className="gap-1.5">
+          <Text className="text-foreground font-bold text-sm">Pass Type</Text>
+          <Controller
+            control={control}
+            name="passType"
+            render={({ field: { onChange, value } }) => (
+              <View className="flex-row gap-2 flex-wrap">
+                {PASS_TYPES.map((type) => {
+                  const isSelected = value === type.id;
+                  return (
+                    <TouchableOpacity
+                      key={type.id}
+                      onPress={() => onChange(type.id)}
+                      activeOpacity={0.8}
+                      className={`px-3 py-2 rounded-xl border ${
+                        isSelected
+                          ? 'bg-primary border-primary'
+                          : 'bg-card border-border'
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-bold ${
+                          isSelected ? 'text-primary-foreground' : 'text-foreground'
                         }`}
                       >
-                        <Text
-                          className={`text-xs font-bold ${
-                            isSelected ? 'text-primary-foreground' : 'text-foreground'
-                          }`}
-                        >
-                          {type.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-            />
-          </View>
-
-          {/* Visitor Name Field */}
-          <Controller
-            control={control}
-            name="visitorName"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Visitor Full Name"
-                placeholder="e.g. Rahul Sharma"
-                leftIcon={User}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                error={errors.visitorName?.message}
-              />
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             )}
           />
-
-          {/* Phone Field */}
-          <Controller
-            control={control}
-            name="phone"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Visitor Phone Number (Optional)"
-                placeholder="e.g. 9876543210"
-                keyboardType="phone-pad"
-                maxLength={10}
-                leftIcon={Phone}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                error={errors.phone?.message}
-              />
-            )}
-          />
-
-          {/* Purpose / Vehicle Note */}
-          <Controller
-            control={control}
-            name="purpose"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Note / Vehicle Info (Optional)"
-                placeholder="e.g. Amazon Delivery / KA-01-AB-1234"
-                leftIcon={Tag}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                error={errors.purpose?.message}
-              />
-            )}
-          />
-
-          {/* Submit Action */}
-          <Button
-            onPress={handleSubmit(handleFormSubmit)}
-            loading={loading}
-            className="mt-2 h-12 rounded-xl"
-          >
-            <Text className="font-bold text-primary-foreground text-base">
-              Generate Visitor Pass
-            </Text>
-          </Button>
         </View>
-      </ScrollView>
+
+        {/* Visitor Name Field */}
+        <Controller
+          control={control}
+          name="visitorName"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              label="Visitor Full Name"
+              placeholder="e.g. Rahul Sharma"
+              leftIcon={User}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              value={value}
+              error={errors.visitorName?.message}
+            />
+          )}
+        />
+
+        {/* Phone Field */}
+        <Controller
+          control={control}
+          name="phone"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              label="Visitor Phone Number (Optional)"
+              placeholder="e.g. 9876543210"
+              keyboardType="phone-pad"
+              maxLength={10}
+              leftIcon={Phone}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              value={value}
+              error={errors.phone?.message}
+            />
+          )}
+        />
+
+        {/* Purpose / Vehicle Note */}
+        <Controller
+          control={control}
+          name="purpose"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              label="Note / Vehicle Info (Optional)"
+              placeholder="e.g. Amazon Delivery / KA-01-AB-1234"
+              leftIcon={Tag}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              value={value}
+              error={errors.purpose?.message}
+            />
+          )}
+        />
+
+        {/* Submit Action */}
+        <Button
+          onPress={handleSubmit(handleFormSubmit)}
+          loading={loading}
+          className="mt-2 h-12 rounded-xl"
+        >
+          <Text className="font-bold text-primary-foreground text-base">
+            Generate Visitor Pass
+          </Text>
+        </Button>
+      </View>
     </BottomSheet>
   );
 };

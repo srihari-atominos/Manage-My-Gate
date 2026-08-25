@@ -120,6 +120,12 @@ export const useAdminCalendar = () => {
     // Group overlapping events for day/week view
     const groups = {}
     validEvents.forEach((e) => {
+      if (e.type === 'maintenance') {
+        const maintKey = e.id || `maint_${e.amenityId}_${e.date}_${e.start}`;
+        groups[maintKey] = { ...e };
+        return;
+      }
+
       const key = `${e.amenityId}-${e.date}-${e.start}-${e.end}`
       const persons = e.metadata?.numberOfPersons || 1
 

@@ -51,7 +51,7 @@ export const ProofOfWorkModal: React.FC<ProofOfWorkModalProps> = ({
       onClose={onClose}
       title={ticketNumber ? `Proof of Work (${ticketNumber})` : 'Submit Proof of Work'}
     >
-      <View className="gap-3.5 pb-4">
+      <View className="gap-3.5 pb-2">
         {error && (
           <View className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl flex-row items-center gap-2">
             <ShieldAlert size={16} className="text-destructive shrink-0" />
@@ -59,10 +59,9 @@ export const ProofOfWorkModal: React.FC<ProofOfWorkModalProps> = ({
           </View>
         )}
 
-        <ScrollView className="max-h-[60vh]" contentContainerClassName="gap-3.5 pb-2" showsVerticalScrollIndicator={false}>
-          {/* Work Resolution Notes */}
-          <TextInput
-            label="Work Performed & Resolution Summary *"
+        {/* Work Resolution Notes */}
+        <TextInput
+          label="Work Performed & Resolution Summary *"
             required
             multiline
             numberOfLines={4}
@@ -93,7 +92,6 @@ export const ProofOfWorkModal: React.FC<ProofOfWorkModalProps> = ({
               accept="images"
             />
           </View>
-        </ScrollView>
 
         {/* Action Buttons */}
         <View className="flex-row gap-2 pt-2 border-t border-border">

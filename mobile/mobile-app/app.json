@@ -1,8 +1,9 @@
 {
   "expo": {
-    "name": "mobile-app",
+    "name": "ManageMyGate",
     "slug": "mobile-app",
     "version": "1.0.0",
+    "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile-app",
@@ -13,8 +14,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.naveenpvn.managemygate",
+      "buildNumber": "1.0.0",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "ManageMyGate requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints.",
+        "NSPhotoLibraryUsageDescription": "ManageMyGate requires photo library access to upload images for amenity bookings and complaint tickets.",
+        "LSApplicationQueriesSchemes": [
+          "tel",
+          "whatsapp"
+        ]
       }
     },
     "android": {
@@ -38,6 +46,19 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ManageMyGate requires photo library access to upload images for amenity bookings and complaint tickets.",
+          "cameraPermission": "ManageMyGate requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "ManageMyGate requires camera access to scan visitor QR passes and verify amenity tickets."
+        }
       ]
     ],
     "experiments": {
@@ -49,12 +70,6 @@
         "projectId": "20145594-5bc2-4f26-be5b-75a575444e78"
       }
     },
-    "owner": "naveenpvn",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/20145594-5bc2-4f26-be5b-75a575444e78"
-    }
+    "owner": "naveenpvn"
   }
 }

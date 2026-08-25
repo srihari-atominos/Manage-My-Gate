@@ -13,10 +13,13 @@ const generateUUID = (): string => {
 import { Platform } from 'react-native';
 
 const getDefaultBaseUrl = () => {
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5002/api';
+  if (__DEV__) {
+    if (Platform.OS === 'android') {
+      return 'http://10.0.2.2:5002/api';
+    }
+    return 'http://localhost:5002/api';
   }
-  return 'http://localhost:5002/api';
+  return 'https://managemygate.e3esg.com/api/v1';
 };
 
 const apiClient = axios.create({

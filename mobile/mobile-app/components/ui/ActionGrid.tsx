@@ -114,8 +114,9 @@ export function ActionGrid({
 
                 {/* Label Title */}
                 <Text
-                  className="text-[11px] font-bold text-foreground text-center"
+                  className="text-[11px] font-semibold text-foreground text-center leading-[1.18] px-0.5"
                   numberOfLines={2}
+                  ellipsizeMode="tail"
                 >
                   {item.name}
                 </Text>

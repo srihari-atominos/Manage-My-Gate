@@ -62,7 +62,7 @@ export const exportNoticeReport = async (dashboardStats: any): Promise<void> => 
 
     // Write file to filesystem
     await FileSystem.writeAsStringAsync(fileUri, wbout, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64' as any,
     });
 
     // Check if sharing is available

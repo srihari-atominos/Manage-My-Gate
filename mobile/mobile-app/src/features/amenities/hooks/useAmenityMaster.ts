@@ -67,8 +67,9 @@ export const useAmenityMaster = () => {
         await dispatch(createAmenityThunk(data)).unwrap();
       }
       handleCloseFormModal();
-    } catch (err) {
-      console.error('Failed to save amenity', err);
+      loadData();
+    } catch (err: any) {
+      console.error('Failed to save amenity:', err);
     } finally {
       setSaving(false);
     }

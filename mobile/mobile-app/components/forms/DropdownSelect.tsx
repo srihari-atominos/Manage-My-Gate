@@ -50,7 +50,7 @@ export const DropdownSelect = ({
       style={(inline || accordion) && isOpen && !accordion ? { zIndex: 1000 } : undefined}
     >
       {Boolean(label) && (
-        <Text className="mb-1.5 text-sm font-medium text-foreground">
+        <Text className="mb-1.5 text-sm font-bold text-foreground">
           {label}
         </Text>
       )}

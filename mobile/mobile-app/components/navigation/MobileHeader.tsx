@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, StatusBar, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import { Bell, Home, Building2, ChevronDown } from 'lucide-react-native';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
@@ -25,6 +26,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   unreadNotificationCount,
   onNotificationPress,
 }) => {
+  const insets = useSafeAreaInsets();
+  const topInsetPadding =
+    Platform.OS === 'android'
+      ? Math.max(insets.top, StatusBar.currentHeight || 28, 28)
+      : Platform.OS === 'ios'
+      ? Math.max(insets.top, 20)
+      : Math.max(insets.top, 10);
+
   const { user } = useAuth();
   
   // Real-time notification count from Redux store if available
@@ -122,49 +131,50 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
   return (
     <>
-      <View className="bg-card border-b border-border px-4 py-2.5 flex-row items-center justify-between shadow-xs">
-        {/* Left Section: Compact Context Pill (Constrained to ~64% width max) */}
+      <View
+        style={{ paddingTop: topInsetPadding }}
+        className="bg-card border-b border-border px-4 pb-3 flex-row items-center justify-between shadow-xs z-20"
+      >
+        {/* Left Section: Compact Context Pill (Constrained to ~65% width max, height-aligned with right icons) */}
         <TouchableOpacity
           onPress={handleContextPress}
           activeOpacity={canSwitchContext ? 0.8 : 1}
           disabled={!canSwitchContext}
-          className="flex-row items-center gap-1.5 max-w-[64%] bg-muted/40 border border-border px-2.5 py-1.5 rounded-full"
+          className="flex-row items-center gap-2 max-w-[65%] h-10 bg-muted/40 border border-border px-3 rounded-full shadow-xs"
         >
-          <View className={`p-1 rounded-full ${hasUnit ? 'bg-primary/15' : 'bg-indigo-500/15'}`}>
+          <View className={`w-7 h-7 rounded-full items-center justify-center ${hasUnit ? 'bg-primary/15' : 'bg-indigo-500/15'}`}>
             {hasUnit ? (
-              <Home size={12} color="#03A9F4" />
+              <Home size={16} color="#03A9F4" />
             ) : (
-              <Building2 size={12} color="#6366f1" />
+              <Building2 size={16} color="#6366f1" />
             )}
           </View>
 
           <Text
             numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
             ellipsizeMode="tail"
-            className="text-xs font-bold text-foreground flex-1"
+            className="text-xs font-extrabold text-foreground flex-1"
           >
             {headerTextString}
           </Text>
 
           {canSwitchContext ? (
-            <ChevronDown size={12} color="#03A9F4" className="flex-shrink-0" />
+            <ChevronDown size={14} color="#03A9F4" className="flex-shrink-0" />
           ) : null}
         </TouchableOpacity>
 
-        {/* Right Section: Notification Bell & Profile Avatar (Far Right) */}
-        <View className="flex-row items-center gap-3">
+        {/* Right Section: Notification Bell & Profile Avatar (Far Right, Height-Aligned) */}
+        <View className="flex-row items-center gap-2.5">
           {/* Notification Bell Icon Button */}
           <TouchableOpacity
             onPress={handleBellPress}
             activeOpacity={0.7}
-            className="size-9 rounded-full bg-muted/60 border border-border items-center justify-center relative"
+            className="w-10 h-10 rounded-full bg-muted/50 border border-border items-center justify-center relative shadow-xs"
           >
-            <Bell size={16} color="#555" />
+            <Bell size={18} color="#555" />
             {liveUnreadCount > 0 ? (
-              <View className="absolute -top-0.5 -right-0.5 bg-rose-500 rounded-full min-w-3.5 h-3.5 px-1 items-center justify-center border border-card">
-                <Text className="text-[8px] font-bold text-white">
+              <View className="absolute -top-1 -right-1 bg-rose-500 rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card z-10">
+                <Text className="text-[8px] font-black text-white leading-none">
                   {liveUnreadCount > 99 ? '99+' : liveUnreadCount}
                 </Text>
               </View>
@@ -175,9 +185,9 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <TouchableOpacity
             onPress={() => setProfileModalVisible(true)}
             activeOpacity={0.8}
-            className="size-9 rounded-full bg-primary/15 items-center justify-center border border-primary/40 shadow-xs"
+            className="w-10 h-10 rounded-full bg-primary/15 items-center justify-center border border-primary/40 shadow-xs"
           >
-            <Text className="text-primary font-extrabold text-xs">{avatarLetter}</Text>
+            <Text className="text-primary font-bold text-sm">{avatarLetter}</Text>
           </TouchableOpacity>
         </View>
       </View>

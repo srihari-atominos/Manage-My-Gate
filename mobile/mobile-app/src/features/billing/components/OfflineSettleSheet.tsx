@@ -114,7 +114,7 @@ export function OfflineSettleSheet({
   return (
     <>
       <BottomSheet visible={visible} onClose={onClose} title={`Record Offline Payment • #${invNo}`}>
-        <ScrollView className="py-2" contentContainerClassName="pb-12">
+        <View className="py-2 pb-2">
 
           {/* Verification Pending Notice */}
           <View className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-4 flex-row items-start">
@@ -227,8 +227,7 @@ export function OfflineSettleSheet({
             </Text>
             <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
           </Button>
-
-        </ScrollView>
+        </View>
       </BottomSheet>
 
       {/* Confirmation Modal */}

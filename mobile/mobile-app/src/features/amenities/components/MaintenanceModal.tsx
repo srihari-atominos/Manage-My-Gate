@@ -124,9 +124,8 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
       onClose={onClose}
       title={initialData ? 'Edit Maintenance Task' : 'Schedule Maintenance Task'}
     >
-      <ScrollView className="max-h-[80vh] pt-1" showsVerticalScrollIndicator={false}>
-        <View className="gap-3.5 pb-8 px-0.5">
-          {/* Target Amenity Selection */}
+      <View className="gap-3.5 pb-2 px-0.5 pt-1 shrink-0">
+        {/* Target Amenity Selection */}
           <Controller
             control={control}
             name="amenityId"
@@ -138,7 +137,6 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 value={value}
                 onValueChange={onChange}
                 error={errors.amenityId?.message}
-                accordion={true}
               />
             )}
           />
@@ -251,6 +249,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
                 label="Maintenance Details & Notes"
                 multiline
                 numberOfLines={2}
+                style={{ minHeight: 64 }}
                 value={value}
                 onChangeText={onChange}
                 placeholder="Specify work details, equipment needed..."
@@ -259,35 +258,32 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
           />
 
           {/* Auto-Cancel Toggle */}
-          <View className="flex-row items-center justify-between p-3.5 bg-muted/20 border border-border rounded-2xl mt-1">
-            <View className="flex-1 me-3">
-              <Text className="font-semibold text-sm text-foreground">Auto-Cancel Active Bookings</Text>
-              <Text variant="muted" className="text-xs text-muted-foreground mt-0.5">
-                Automatically cancel and refund resident reservations during this window.
-              </Text>
-            </View>
-            <Controller
-              control={control}
-              name="autoCancelBookings"
-              render={({ field: { onChange, value } }) => (
-                <ToggleSwitch label="" value={value} onValueChange={onChange} />
-              )}
-            />
-          </View>
+          <Controller
+            control={control}
+            name="autoCancelBookings"
+            render={({ field: { onChange, value } }) => (
+              <ToggleSwitch
+                label="Auto-Cancel Active Bookings"
+                description="Automatically cancel and refund resident reservations during this window."
+                value={value}
+                onValueChange={onChange}
+                className="p-3 bg-card border border-border rounded-2xl mt-1"
+              />
+            )}
+          />
 
           <Button
             variant="default"
             disabled={loading}
             onPress={handleSubmit(handleFormSubmit)}
-            className="mt-2 bg-primary py-3.5"
+            className="mt-3 mb-2 bg-primary h-12 rounded-xl justify-center items-center"
             accessibilityLabel={initialData ? 'Save Maintenance Changes' : 'Schedule Maintenance Window'}
           >
-            <Text className="text-primary-foreground font-bold text-base">
+            <Text className="text-primary-foreground font-bold text-base text-center">
               {loading ? 'Saving...' : initialData ? 'Save Changes' : 'Schedule Maintenance Window'}
             </Text>
           </Button>
         </View>
-      </ScrollView>
     </BottomSheet>
   );
 };

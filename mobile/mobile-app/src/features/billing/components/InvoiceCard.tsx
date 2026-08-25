@@ -46,8 +46,8 @@ export function InvoiceCard({ invoice, onPress, className = '' }: InvoiceCardPro
     if (!isNaN(d.getTime())) {
       displayDate = d.toLocaleDateString();
     }
-  } else if (displayDate instanceof Date) {
-    displayDate = displayDate.toLocaleDateString();
+  } else if ((displayDate as unknown) instanceof Date) {
+    displayDate = ((displayDate as unknown) as Date).toLocaleDateString();
   }
 
   return (

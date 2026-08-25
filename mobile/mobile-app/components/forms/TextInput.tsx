@@ -68,7 +68,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
       <View className={cn('w-full', containerClassName)}>
         {Boolean(label) && (
           <View className="mb-1.5 flex-row items-center">
-            <Text className={cn('text-sm font-medium text-foreground', labelClassName)}>
+            <Text className={cn('text-sm font-bold text-foreground', labelClassName)}>
               {label}
             </Text>
             {required && <Text className="ms-1 text-sm font-semibold text-destructive">*</Text>}
@@ -92,7 +92,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
               inputClassName
             )}
             style={[
-              { outlineStyle: 'none', ...(props.multiline ? { textAlignVertical: 'top' } : {}) } as any,
+              { outlineStyle: 'none', color: isDark ? '#f5f5f5' : '#171717', ...(props.multiline ? { textAlignVertical: 'top' } : {}) } as any,
               props.style,
             ]}
             placeholderTextColor={placeholderColor}

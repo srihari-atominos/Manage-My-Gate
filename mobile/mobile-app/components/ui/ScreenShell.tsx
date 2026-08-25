@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Pressable, TouchableOpacity } from 'react-native';
+import { View, Pressable, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as LucideIcons from 'lucide-react-native';
@@ -17,6 +17,7 @@ export interface ScreenShellProps {
   subtitle?: string;
   iconName?: string;             // Lucide icon name for header
   showBackButton?: boolean;      // default true
+  onBackPress?: () => void;      // optional custom back button handler
   headerRight?: React.ReactNode; // slot for action buttons (secondary tools, filter, etc.)
   children?: React.ReactNode;
   loading?: boolean;             // shows skeleton overlay
@@ -39,6 +40,7 @@ export function ScreenShell({
   subtitle,
   iconName,
   showBackButton = true,
+  onBackPress,
   headerRight,
   children,
   loading = false,
@@ -80,7 +82,12 @@ export function ScreenShell({
 
   const DynamicIcon = iconName ? (LucideIcons as Record<string, any>)[iconName] : undefined;
   const hasChildren = React.Children.toArray(children).filter(Boolean).length > 0;
-  const topInsetPadding = Math.max(insets.top, 12);
+  const topInsetPadding =
+    Platform.OS === 'android'
+      ? Math.max(insets.top, 28)
+      : Platform.OS === 'ios'
+      ? Math.max(insets.top, 20)
+      : Math.max(insets.top, 10);
 
   // Handle RBAC Permission Denied State
   if (permission && permissionGranted === false) {
@@ -94,7 +101,9 @@ export function ScreenShell({
             {showBackButton && (
               <Pressable
                 onPress={() => {
-                  if (router.canGoBack()) {
+                  if (onBackPress) {
+                    onBackPress();
+                  } else if (router.canGoBack()) {
                     router.back();
                   } else {
                     router.replace('/(resident)/all-features' as any);
@@ -154,18 +163,20 @@ export function ScreenShell({
         style={{ paddingTop: topInsetPadding }}
         className="bg-background border-b border-border px-4 pb-3"
       >
-        <View className="flex-row items-center justify-between gap-2 min-h-[44px]">
-          <View className="flex-row items-center flex-1 me-2">
+        <View className="flex-row items-center justify-between gap-1.5 min-h-[44px]">
+          <View className="flex-row items-center flex-1 min-w-0 me-1">
             {showBackButton && (
               <Pressable
                 onPress={() => {
-                  if (router.canGoBack()) {
+                  if (onBackPress) {
+                    onBackPress();
+                  } else if (router.canGoBack()) {
                     router.back();
                   } else {
                     router.replace('/(resident)/all-features' as any);
                   }
                 }}
-                className="me-2.5 p-1.5 rounded-full active:bg-muted/60 dark:active:bg-muted/40 -ms-1.5 shrink-0"
+                className="me-2 p-1.5 rounded-full active:bg-muted/60 dark:active:bg-muted/40 -ms-1 shrink-0"
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel="Go back"
@@ -175,7 +186,7 @@ export function ScreenShell({
             )}
 
             {DynamicIcon ? (
-              <View className="me-2.5 size-8 rounded-lg bg-primary/10 items-center justify-center border border-primary/20 shrink-0">
+              <View className="me-2 size-8 rounded-lg bg-primary/10 items-center justify-center border border-primary/20 shrink-0">
                 <Icon as={DynamicIcon} size={18} className="text-primary" />
               </View>
             ) : null}
@@ -183,14 +194,19 @@ export function ScreenShell({
             {/* Double Tap Gesture Header Area */}
             <Pressable
               onPress={handleHeaderPress}
-              className="flex-1 justify-center active:opacity-80"
+              className="flex-1 justify-center min-w-0 active:opacity-80 me-1"
               accessibilityHint="Double tap header title to switch active Role or Villa Unit"
             >
-              <Text variant="large" numberOfLines={1} className="text-foreground font-bold">
+              <Text
+                variant="large"
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                className="text-foreground font-bold text-sm sm:text-base"
+              >
                 {title}
               </Text>
               {subtitle ? (
-                <Text variant="muted" numberOfLines={1} className="text-xs text-muted-foreground mt-0.5">
+                <Text variant="muted" numberOfLines={1} ellipsizeMode="tail" className="text-[11px] text-muted-foreground mt-0.5">
                   {subtitle}
                 </Text>
               ) : null}
