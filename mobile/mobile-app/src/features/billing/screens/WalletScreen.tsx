@@ -17,7 +17,8 @@ import { Wallet, Plus, ArrowDownLeft, ArrowUpRight, Receipt, ShieldCheck, Chevro
 import { fetchWalletBalance, createWalletRazorpayOrder, verifyWalletPayment, clearWalletError } from '../store/walletSlice';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import { RazorpayCheckoutModal } from '../components/RazorpayCheckoutModal';
-import { WalletTransactionCard } from '../components/WalletTransactionCard';
+import { WalletHeroCard } from '../components/WalletHeroCard';
+import { FinancialTransactionCard } from '../components/FinancialTransactionCard';
 
 export function WalletScreen() {
   const router = useRouter();
@@ -129,7 +130,7 @@ export function WalletScreen() {
           <PaginatedList<any>
             data={history}
             renderItem={(tx: any) => (
-              <WalletTransactionCard
+              <FinancialTransactionCard
                 key={tx._id || tx.id || tx.transactionId}
                 transaction={tx}
                 className="mb-2.5"
@@ -147,36 +148,13 @@ export function WalletScreen() {
             ListHeaderComponent={
               <View className="mb-3">
                 {/* Authoritative Wallet Balance Hero Card */}
-                <View className="bg-card border border-border rounded-2xl p-5 shadow-sm mb-4">
-                  <View className="flex-row items-center justify-between mb-2">
-                    <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Available Wallet Balance
-                    </Text>
-                    <View className="flex-row items-center bg-status-success/15 px-2.5 py-1 rounded-full">
-                      <Icon as={ShieldCheck} size={12} className="text-status-success me-1" />
-                      <Text className="text-xs font-semibold text-status-success">Verified Ledger</Text>
-                    </View>
-                  </View>
-
-                  <Text className="text-3xl font-extrabold text-foreground tracking-tight mb-4">
-                    ₹{balance.toLocaleString('en-IN')}
-                  </Text>
-
-                  {/* Instant Top-Up CTA */}
-                  <Button
-                    variant="default"
-                    size="lg"
-                    className="w-full flex-row items-center justify-center bg-status-success active:bg-status-success/90"
-                    onPress={() => setShowTopUpSheet(true)}
-                    accessibilityRole="button"
-                    accessibilityLabel="Add Money to Digital Wallet"
-                  >
-                    <Icon as={Plus} size={18} className="text-primary-foreground me-2" />
-                    <Text className="font-bold text-base text-primary-foreground">Add Money to Wallet</Text>
-                  </Button>
-                </View>
+                <WalletHeroCard
+                  balance={balance}
+                  onTopUpPress={() => setShowTopUpSheet(true)}
+                />
 
                 {/* Transaction Statement Section Header */}
+
                 <View className="flex-row items-center justify-between px-0.5">
                   <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                     Transaction Statement ({history.length})

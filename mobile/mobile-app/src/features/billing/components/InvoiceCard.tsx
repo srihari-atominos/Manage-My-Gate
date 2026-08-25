@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { ListCard } from '@/components/ui/ListCard';
-import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
+import { getStatusVariant } from '@/components/ui/StatusBadge';
 import { Invoice } from '../types';
 
 export interface InvoiceCardProps {
@@ -11,7 +11,7 @@ export interface InvoiceCardProps {
   className?: string;
 }
 
-export function InvoiceCard({ invoice, onPress, className }: InvoiceCardProps) {
+export function InvoiceCard({ invoice, onPress, className = '' }: InvoiceCardProps) {
   const invNo = invoice.invoiceNumber || invoice._id || '—';
   const unitStr = invoice.unitNumber ? `Villa ${invoice.unitNumber}` : '—';
   const residentStr = invoice.targetUser || 'Resident';
@@ -53,14 +53,14 @@ export function InvoiceCard({ invoice, onPress, className }: InvoiceCardProps) {
       onPress={onPress}
       className={className}
       rightContent={
-        <View className="items-end justify-center ms-2 gap-1 shrink-0">
-          <Text className="text-foreground font-bold text-base">{formattedAmount}</Text>
-          <StatusBadge label={statusLabel} variant={statusVariant} size="sm" />
-        </View>
+        <Text className="text-foreground font-bold text-base ms-2">
+          {formattedAmount}
+        </Text>
       }
     />
   );
 }
 
 export default InvoiceCard;
+
 
