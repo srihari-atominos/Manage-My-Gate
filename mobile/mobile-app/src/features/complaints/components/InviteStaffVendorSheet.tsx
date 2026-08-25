@@ -55,8 +55,8 @@ export const InviteStaffVendorSheet: React.FC<InviteStaffVendorSheetProps> = ({
       Alert.alert('Required Field', 'Please enter staff/vendor name.');
       return;
     }
-    if (!phone.trim()) {
-      Alert.alert('Required Field', 'Please enter contact phone number.');
+    if (!phone.trim() || phone.replace(/\D/g, '').length !== 10) {
+      Alert.alert('Validation Error', 'Please enter a valid 10-digit contact phone number.');
       return;
     }
     if (!email.trim()) {
@@ -109,8 +109,9 @@ export const InviteStaffVendorSheet: React.FC<InviteStaffVendorSheetProps> = ({
 
         <TextInput
           label="Phone Number *"
-          placeholder="e.g. +91 98765 43210"
+          placeholder="e.g. 9876543210"
           keyboardType="phone-pad"
+          maxLength={10}
           value={phone}
           onChangeText={setPhone}
         />

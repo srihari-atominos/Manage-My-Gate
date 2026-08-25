@@ -19,15 +19,38 @@ export interface MaintenanceNotice {
 export interface ComplaintLiveActivityWidgetProps {
   complaints?: Complaint[];
   maintenanceNotices?: MaintenanceNotice[];
+  searchQuery?: string;
 }
 
-export function ComplaintLiveActivityWidget({ complaints = [], maintenanceNotices = [] }: ComplaintLiveActivityWidgetProps) {
+export function ComplaintLiveActivityWidget({ complaints = [], maintenanceNotices = [], searchQuery = '' }: ComplaintLiveActivityWidgetProps) {
   const router = useRouter();
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [selectedNotice, setSelectedNotice] = useState<MaintenanceNotice | null>(null);
 
+  const q = searchQuery.toLowerCase().trim();
+
+  // Filter complaints by searchQuery if present
+  const filteredComplaints = complaints.filter((item) => {
+    if (!q) return true;
+    return (
+      (item.title && item.title.toLowerCase().includes(q)) ||
+      (item.category && item.category.toLowerCase().includes(q)) ||
+      (item.complaintNumber && item.complaintNumber.toLowerCase().includes(q)) ||
+      (item.status && item.status.toLowerCase().includes(q))
+    );
+  });
+
+  // Filter maintenance notices by searchQuery if present
+  const filteredNotices = maintenanceNotices.filter((notice) => {
+    if (!q) return true;
+    return (
+      (notice.title && notice.title.toLowerCase().includes(q)) ||
+      (notice.message && notice.message.toLowerCase().includes(q))
+    );
+  });
+
   // Take the 3 most relevant recent tickets
-  const recentComplaints = complaints.slice(0, 3);
+  const recentComplaints = filteredComplaints.slice(0, 3);
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -70,9 +93,9 @@ export function ComplaintLiveActivityWidget({ complaints = [], maintenanceNotice
       </View>
 
       {/* Maintenance Notices Banner Cards */}
-      {maintenanceNotices.length > 0 ? (
+      {filteredNotices.length > 0 ? (
         <View className="mb-4 gap-2.5">
-          {maintenanceNotices.slice(0, 3).map((notice) => (
+          {filteredNotices.slice(0, 3).map((notice) => (
             <Pressable
               key={notice.id}
               onPress={() => setSelectedNotice(notice)}

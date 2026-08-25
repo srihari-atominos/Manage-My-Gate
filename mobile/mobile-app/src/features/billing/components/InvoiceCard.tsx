@@ -40,6 +40,16 @@ export function InvoiceCard({ invoice, onPress, className = '' }: InvoiceCardPro
     leftIcon = 'AlertCircle';
   }
 
+  let displayDate = invoice.billingPeriodString || invoice.date || '';
+  if (displayDate && typeof displayDate === 'string' && !invoice.billingPeriodString) {
+    const d = new Date(displayDate);
+    if (!isNaN(d.getTime())) {
+      displayDate = d.toLocaleDateString();
+    }
+  } else if (displayDate instanceof Date) {
+    displayDate = displayDate.toLocaleDateString();
+  }
+
   return (
     <ListCard
       title={(invoice as any).assessmentName || invNo}
@@ -49,7 +59,8 @@ export function InvoiceCard({ invoice, onPress, className = '' }: InvoiceCardPro
         label: statusLabel,
         variant: statusVariant,
       }}
-      timestamp={invoice.billingPeriodString || invoice.date}
+      timestamp={displayDate}
+      disableRelativeTime={true}
       onPress={onPress}
       className={className}
       rightContent={
