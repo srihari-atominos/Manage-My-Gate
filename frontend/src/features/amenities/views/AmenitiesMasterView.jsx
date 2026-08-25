@@ -73,6 +73,26 @@ const AmenitiesMasterView = () => {
     setStatusModalVisible(true)
   }
 
+  const handleDeleteClick = (amenity) => {
+    setSelectedAmenity(amenity)
+    setDeleteModalVisible(true)
+  }
+
+  const confirmDelete = async () => {
+    if (selectedAmenity) {
+      setIsDeleting(true)
+      try {
+        await deleteAmenity(selectedAmenity._id)
+        setDeleteModalVisible(false)
+        toast.success(`${selectedAmenity.name} deleted successfully`)
+      } catch (err) {
+        toast.error(err.message || 'Failed to delete amenity')
+      } finally {
+        setIsDeleting(false)
+      }
+    }
+  }
+
   const confirmStatusChange = async () => {
     if (selectedAmenity) {
       setIsDeleting(true)
@@ -169,6 +189,7 @@ const AmenitiesMasterView = () => {
               canUpdate={canUpdate}
               canDelete={canDelete}
               onEdit={handleEditClick}
+              onDelete={handleDeleteClick}
               onToggleStatus={handleToggleStatusClick}
               onViewDetails={handleViewDetails}
             />
@@ -201,6 +222,22 @@ const AmenitiesMasterView = () => {
           message={
             selectedAmenity
               ? `Are you sure you want to ${selectedAmenity.status === 'active' ? 'deactivate' : 'activate'} ${selectedAmenity.name}? ${selectedAmenity.status === 'active' ? 'It will no longer be available for booking.' : 'It will become available for booking.'}`
+              : ''
+          }
+        />
+
+        <DeleteConfirmationModal
+          visible={deleteModalVisible}
+          onClose={() => setDeleteModalVisible(false)}
+          onConfirm={confirmDelete}
+          isDeleting={isDeleting}
+          title="Confirm Delete"
+          confirmText="Delete"
+          loadingText="Deleting..."
+          confirmColor="var(--danger)"
+          message={
+            selectedAmenity
+              ? `Are you sure you want to completely delete ${selectedAmenity.name}? This action cannot be undone.`
               : ''
           }
         />
