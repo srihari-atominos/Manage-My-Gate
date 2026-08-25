@@ -30,8 +30,17 @@ const maintenanceSchema = new mongoose.Schema({
 const bookingRulesSchema = new mongoose.Schema({
   slotDurationMinutes: {
     type: Number,
-    required: true,
-    default: 60
+    default: 60,
+    validate: {
+      validator: function(value) {
+        // Only require slotDurationMinutes if pricingType is not daily
+        if (this.parent() && this.parent().pricing && this.parent().pricing.pricingType === 'daily') {
+          return true; // OK if null/undefined for daily
+        }
+        return value != null && value >= 15;
+      },
+      message: 'Slot duration must be at least 15 mins for slot-based amenities'
+    }
   },
   bufferTimeMinutes: {
     type: Number,
@@ -49,7 +58,6 @@ const bookingRulesSchema = new mongoose.Schema({
   },
   maxBookingsPerUserPerSlot: {
     type: Number,
-    required: true,
     default: 1
   },
   advanceBookingDays: {

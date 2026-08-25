@@ -64,7 +64,7 @@ const AmenitiesMasterView = () => {
       }
       setFormModalVisible(false)
     } catch (err) {
-      toast.error(err.message || 'Failed to save amenity')
+      toast.error(typeof err === 'string' ? err : err.message || 'Failed to save amenity')
     }
   }
 
@@ -86,7 +86,7 @@ const AmenitiesMasterView = () => {
         setDeleteModalVisible(false)
         toast.success(`${selectedAmenity.name} deleted successfully`)
       } catch (err) {
-        toast.error(err.message || 'Failed to delete amenity')
+        toast.error(typeof err === 'string' ? err : err.message || 'Failed to delete amenity')
       } finally {
         setIsDeleting(false)
       }
@@ -104,7 +104,7 @@ const AmenitiesMasterView = () => {
           `${selectedAmenity.name} ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`,
         )
       } catch (err) {
-        toast.error(err.message || 'Failed to update amenity status')
+        toast.error(typeof err === 'string' ? err : err.message || 'Failed to update amenity status')
       } finally {
         setIsDeleting(false)
       }
