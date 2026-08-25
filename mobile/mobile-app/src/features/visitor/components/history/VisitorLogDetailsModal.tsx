@@ -84,6 +84,7 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
         setRevokeError((resultAction as any).payload || 'Failed to revoke visitor pass');
       } else {
         setRevokeConfirmOpen(false);
+        onClose();
       }
     } catch (err: any) {
       setRevokeError(err.message || 'Failed to revoke visitor pass');

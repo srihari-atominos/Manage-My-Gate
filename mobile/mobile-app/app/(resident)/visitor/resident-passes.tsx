@@ -38,22 +38,27 @@ export default function ResidentPassesScreen() {
   const [revokeConfirmOpen, setRevokeConfirmOpen] = useState(false);
   const [selectedPassToRevoke, setSelectedPassToRevoke] = useState<VisitorPass | null>(null);
 
+  const fetchFilteredPasses = useCallback((page: number = 1, append: boolean = false) => {
+    const statuses = activeStatusFilter === 'ALL' ? 'PENDING,ACTIVE,REVOKED,EXPIRED' : activeStatusFilter;
+    fetchPasses({ page, append, statuses });
+  }, [fetchPasses, activeStatusFilter]);
+
   // Initial fetch on screen load
   useEffect(() => {
-    fetchPasses({ page: 1 });
+    fetchFilteredPasses(1, false);
     loadPendingWalkIns();
-  }, [fetchPasses, loadPendingWalkIns]);
+  }, [fetchFilteredPasses, loadPendingWalkIns]);
 
   const handleRefresh = useCallback(() => {
-    fetchPasses({ page: 1 });
+    fetchFilteredPasses(1, false);
     loadPendingWalkIns();
-  }, [fetchPasses, loadPendingWalkIns]);
+  }, [fetchFilteredPasses, loadPendingWalkIns]);
 
   const handleLoadMore = useCallback(() => {
     if (pagination.currentPage < pagination.totalPages) {
-      fetchPasses({ page: pagination.currentPage + 1, append: true });
+      fetchFilteredPasses(pagination.currentPage + 1, true);
     }
-  }, [pagination, fetchPasses]);
+  }, [pagination, fetchFilteredPasses]);
 
   // Filtered passes list
   const filteredPasses = useMemo(() => {
@@ -80,7 +85,7 @@ export default function ResidentPassesScreen() {
       await revokePass(selectedPassToRevoke._id);
       setSelectedPassToRevoke(null);
       setRevokeConfirmOpen(false);
-      fetchPasses();
+      fetchFilteredPasses(1, false);
     }
   };
 
