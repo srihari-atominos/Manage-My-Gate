@@ -203,32 +203,70 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        let refreshToken = store?.getState?.()?.auth?.refreshToken || null;
+        if (!refreshToken) {
+          refreshToken = await storage.getItem('refreshToken');
+        }
+
+        if (!refreshToken) {
+          // Stale session without refresh token: clear storage and auto-logout cleanly
+          await storage.removeItem('token');
+          await storage.removeItem('refreshToken');
+          await storage.removeItem('user');
+
+          if (store) {
+            try {
+              store.dispatch({ type: 'auth/logout' });
+            } catch (dispatchErr) {}
+          }
+          return Promise.reject(new Error('Session expired. Please log in again.'));
+        }
+
         const res = await axios.post(
           `${apiClient.defaults.baseURL}/auth/refresh-token`,
-          {},
+          { refreshToken },
           { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
         );
 
         if (res.status === 200 || res.status === 201) {
-          const newToken = res.data.token;
+          const resData = res.data?.data || res.data;
+          const newToken = resData?.token || res.data?.token;
+          const newRefreshToken = resData?.refreshToken || res.data?.refreshToken || refreshToken;
 
-          if (store) {
-            try {
-              // Dispatch plain action object to avoid dynamic import of authSlice
-              store.dispatch({ type: 'auth/updateTokenAndUser', payload: { token: newToken } });
-            } catch (dispatchErr) {
-              console.error('Failed to update refreshed token in store:', dispatchErr);
+          if (newToken) {
+            await storage.setItem('token', newToken);
+            if (newRefreshToken) {
+              await storage.setItem('refreshToken', newRefreshToken);
             }
+
+            if (store) {
+              try {
+                store.dispatch({
+                  type: 'auth/updateTokenAndUser',
+                  payload: { token: newToken, refreshToken: newRefreshToken },
+                });
+              } catch (dispatchErr) {
+                console.error('Failed to update refreshed token in store:', dispatchErr);
+              }
+            }
+
+            apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newToken;
+            originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
+
+            processQueue(null, newToken);
+            return apiClient(originalRequest);
           }
-
-          apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + newToken;
-          originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
-
-          processQueue(null, newToken);
-          return apiClient(originalRequest);
         }
-      } catch (refreshError) {
+        throw new Error('Session expired. Please log in again.');
+      } catch (refreshError: any) {
         processQueue(refreshError, null);
+
+        // Wipe local storage items so stale credentials don't persist
+        try {
+          await storage.removeItem('token');
+          await storage.removeItem('refreshToken');
+          await storage.removeItem('user');
+        } catch (e) {}
 
         if (store) {
           try {
@@ -237,7 +275,7 @@ apiClient.interceptors.response.use(
             console.error('Failed to trigger mobile auto-logout on refresh failure', dispatchErr);
           }
         }
-        return Promise.reject(refreshError);
+        return Promise.reject(new Error('Session expired. Please log in again.'));
       } finally {
         isRefreshing = false;
       }

@@ -222,8 +222,74 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
   };
 
   const handleFormSubmit = (data: AmenityFormData) => {
-    data.type = data.category;
-    onSubmit(data);
+    const formatTimeStr = (t?: string, defaultVal = '08:00') => {
+      if (!t) return defaultVal;
+      const trimmed = t.trim();
+      if (!trimmed) return defaultVal;
+      if (/^\d:[0-5]\d$/.test(trimmed)) {
+        return `0${trimmed}`;
+      }
+      return trimmed;
+    };
+
+    const capacityNum = Math.max(1, parseInt(String(data.capacity || 50), 10) || 50);
+    const baseRateNum = Math.max(0, parseFloat(String(data.bookingFee || 0)) || 0);
+    const depositNum = Math.max(0, parseFloat(String(data.securityDeposit || 0)) || 0);
+    const slotDurationNum = Math.max(15, parseInt(String(data.slotDurationMinutes || 60), 10) || 60);
+    const bufferTimeNum = Math.max(0, parseInt(String(data.bufferTimeMinutes || 0), 10) || 0);
+    const advanceDaysNum = Math.max(0, parseInt(String(data.advanceBookingDays || 7), 10) || 7);
+    const maxBookingsNum = Math.max(1, parseInt(String(data.maxBookingsPerUserPerSlot || 2), 10) || 2);
+
+    const formattedRules = (data.cancellationRefundRules || []).map((r) => ({
+      cancelBeforeHours: Math.max(0, parseInt(String(r.cancelBeforeHours || 0), 10) || 0),
+      refundPercentage: Math.max(0, Math.min(100, parseFloat(String(r.refundPercentage || 0)) || 0)),
+    }));
+
+    const imagesArray = data.imageUrl ? [data.imageUrl] : [];
+
+    const openTimeFormatted = formatTimeStr(data.openTime, '08:00');
+    const closeTimeFormatted = formatTimeStr(data.closeTime, '21:00');
+
+    const formattedPayload: any = {
+      name: data.name?.trim(),
+      category: data.category || 'Event Space',
+      type: data.category || 'Event Space',
+      location: data.location?.trim() || 'Community Facilities',
+      capacity: capacityNum,
+      status: (data.status || 'active').toLowerCase(),
+      description: data.description?.trim() || '',
+      images: imagesArray,
+      imageUrl: data.imageUrl || '',
+      openDays: Array.isArray(data.openDays) && data.openDays.length > 0 ? data.openDays : [0, 1, 2, 3, 4, 5, 6],
+      maxBookingsPerUserPerSlot: maxBookingsNum,
+      ratePerHour: baseRateNum,
+      pricing: {
+        pricingType: data.pricingType || 'hourly',
+        baseRate: baseRateNum,
+        securityDeposit: depositNum,
+        securityDepositDescription: data.securityDepositDescription?.trim() || '',
+      },
+      bookingRules: {
+        openTime: openTimeFormatted,
+        closeTime: closeTimeFormatted,
+        slotDurationMinutes: slotDurationNum,
+        bufferTimeMinutes: bufferTimeNum,
+        advanceBookingDays: advanceDaysNum,
+        isCancellationEnabled: !!data.isCancellationEnabled,
+        cancellationRefundRules: formattedRules,
+        openDays: Array.isArray(data.openDays) && data.openDays.length > 0 ? data.openDays : [0, 1, 2, 3, 4, 5, 6],
+      },
+      openTime: openTimeFormatted,
+      closeTime: closeTimeFormatted,
+      bookingFee: baseRateNum,
+      slotDurationMinutes: slotDurationNum,
+      bufferTimeMinutes: bufferTimeNum,
+      advanceBookingDays: advanceDaysNum,
+      isCancellationEnabled: !!data.isCancellationEnabled,
+      cancellationRefundRules: formattedRules,
+    };
+
+    onSubmit(formattedPayload);
   };
 
   return (

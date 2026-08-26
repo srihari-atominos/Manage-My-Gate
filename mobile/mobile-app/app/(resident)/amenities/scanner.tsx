@@ -89,6 +89,7 @@ export default function AmenitySecurityGateScannerScreen() {
       {/* 1. Fullscreen Live Camera Viewport Base Layer */}
       <CameraViewFinder
         isScanning={isScanning}
+        enableTorch={isFlashlightOn}
         instruction="Align Amenity Reservation QR inside frame"
         onScan={(data) => handleBarCodeScanned({ type: 'CAMERA', data })}
         fullscreen={true}

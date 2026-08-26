@@ -14,6 +14,7 @@ export interface CameraViewFinderProps {
   instruction?: string;
   title?: string;
   isScanning?: boolean;
+  enableTorch?: boolean;
   className?: string;
   fullscreen?: boolean;
 }
@@ -23,6 +24,7 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
   instruction = 'Position QR Code within Frame',
   title,
   isScanning = true,
+  enableTorch = false,
   className,
   fullscreen = false,
 }) => {
@@ -134,6 +136,7 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
           <CameraView
             style={{ width: '100%', height: '100%' }}
             facing="back"
+            enableTorch={enableTorch}
             barcodeScannerSettings={{
               barcodeTypes: ['qr'],
             }}

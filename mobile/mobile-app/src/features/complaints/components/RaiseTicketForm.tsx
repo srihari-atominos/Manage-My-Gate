@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -17,6 +17,7 @@ import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 import { useComplaints } from '../hooks/useComplaints';
+import complaintService from '../services/complaintService';
 
 const CATEGORY_OPTIONS = [
   { label: 'Plumbing (Leaks, Pipes, Taps)', value: 'Plumbing' },
@@ -100,13 +101,40 @@ export function RaiseTicketForm() {
     setIsSubmitting(true);
 
     try {
+      let photoUrls: string[] = [];
+      if (attachments.length > 0) {
+        const formData = new FormData();
+        for (let i = 0; i < attachments.length; i++) {
+          const item = attachments[i];
+          if (item.uri) {
+            if (Platform.OS === 'web' && item.file) {
+              formData.append('attachments', item.file);
+            } else {
+              formData.append('attachments', {
+                uri: item.uri,
+                name: item.name || `photo_${Date.now()}_${i}.jpg`,
+                type: item.type || 'image/jpeg',
+              } as any);
+            }
+          }
+        }
+        try {
+          const uploadRes: any = await complaintService.uploadAttachments(formData);
+          const resData = uploadRes?.data || uploadRes || [];
+          photoUrls = Array.isArray(resData) ? resData : [];
+        } catch (uploadErr) {
+          console.warn('[RaiseTicketForm] Attachment upload fallback to raw URIs:', uploadErr);
+          photoUrls = attachments.map((a) => a.uri).filter(Boolean) as string[];
+        }
+      }
+
       const payload: any = {
         title: data.title.trim(),
         category: data.category,
         priority: data.priority,
         description: data.description.trim(),
         location: data.location?.trim() ? { unit: data.location.trim() } : undefined,
-        attachments: attachments.map((a) => a.uri),
+        attachments: photoUrls,
       };
 
       const result = await createComplaint(payload);

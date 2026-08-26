@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux'
 import { useComplaints } from '../hooks/useComplaints'
 import toast from 'react-hot-toast'
 import AssignComplaint from './AssignComplaint'
+import { getImageUrl } from '../../../utils/imageUrl'
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -603,7 +604,7 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                             >
                               {isImage ? (
                                 <img
-                                  src={fileUrl}
+                                  src={getImageUrl(fileUrl)}
                                   alt={`Attachment ${i + 1}`}
                                   style={{
                                     width: '100%',
@@ -1176,7 +1177,7 @@ const ComplaintDetails = ({ complaintId, onClose, onProvideFeedback }) => {
                                   onClick={() => setEnlargedImage(url)}
                                 >
                                   <img
-                                    src={url}
+                                    src={getImageUrl(url)}
                                     alt={`Work Photo ${i + 1}`}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                   />

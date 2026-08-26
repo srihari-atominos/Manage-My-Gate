@@ -43,16 +43,7 @@ function isImageFile(type?: string, name?: string): boolean {
   return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'svg'].includes(ext || '');
 }
 
-function getAbsoluteUrl(uri?: string) {
-  if (!uri) return '';
-  if (uri.startsWith('/')) {
-    const apiBaseURL = apiClient.defaults.baseURL || '';
-    // Strip /api, /api/v1, /api/v2, etc., from the end of the base URL
-    const host = apiBaseURL.replace(/\/api(\/v\d+)?\/?$/, '');
-    return `${host}${uri}`;
-  }
-  return uri;
-}
+import { getImageUrl as getAbsoluteUrl } from '@/src/utils/imageUrl';
 
 export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
   (

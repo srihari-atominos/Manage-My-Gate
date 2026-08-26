@@ -22,17 +22,29 @@ export function MobileLiveActivityWidget() {
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
   const [isFullLogsOpen, setIsFullLogsOpen] = useState(false);
 
-  // Combine real-time security logs, master admin bookings, and personal resident bookings
-  const rawList = [
+  // Combine real-time security logs, master admin bookings, and personal resident bookings with deduplication
+  const seenIds = new Set<string>();
+  const uniqueRawList: any[] = [];
+
+  for (const item of [
     ...(logs || []),
     ...(adminBookings || []),
     ...(myBookings || []),
     ...(dashboardStats?.recentScans || dashboardStats?.recentActivities || []),
-  ];
+  ]) {
+    if (!item) continue;
+    const itemId = String(item.id || item._id || item.bookingId || '');
+    if (itemId) {
+      if (seenIds.has(itemId)) continue;
+      seenIds.add(itemId);
+    }
+    uniqueRawList.push(item);
+  }
 
   const fallbackList = [
     {
       id: '1',
+      key: 'fallback-1',
       residentName: 'Rahul Sharma',
       unitInfo: 'Villa 102',
       amenityName: 'Swimming Pool',
@@ -54,6 +66,7 @@ export function MobileLiveActivityWidget() {
     },
     {
       id: '2',
+      key: 'fallback-2',
       residentName: 'Ananya Roy',
       unitInfo: 'Flat 404-B',
       amenityName: 'Tennis Court #1',
@@ -75,6 +88,7 @@ export function MobileLiveActivityWidget() {
     },
     {
       id: '3',
+      key: 'fallback-3',
       residentName: 'Vikram Seth',
       unitInfo: 'Villa 45',
       amenityName: 'Gym Fitness Center',
@@ -96,9 +110,10 @@ export function MobileLiveActivityWidget() {
     },
   ];
 
-  const activeLogs = rawList.length > 0
-    ? rawList.slice(0, 3).map((log: any, idx: number) => {
+  const activeLogs = uniqueRawList.length > 0
+    ? uniqueRawList.slice(0, 3).map((log: any, idx: number) => {
         const id = log.id || log._id || log.bookingId || `log-${idx}`;
+        const key = `${id}-${idx}`;
         const residentName = log.residentName || log.userName || log.user?.name || log.userId?.name || 'Resident';
         const unitInfo = log.unitInfo || log.unit || log.user?.unit || log.user?.villaNumber || log.villaNumber || log.flatNumber || 'Unit';
         const amenityName = log.amenityName || log.amenity?.name || log.amenityId?.name || 'Facility';
@@ -148,6 +163,7 @@ export function MobileLiveActivityWidget() {
 
         return {
           id,
+          key,
           residentName,
           unitInfo,
           amenityName,
@@ -159,7 +175,7 @@ export function MobileLiveActivityWidget() {
       })
     : fallbackList;
 
-  const logsForModal = rawList.length > 0 ? rawList : fallbackList;
+  const logsForModal = uniqueRawList.length > 0 ? uniqueRawList : fallbackList;
 
   return (
     <View className="mb-6">
@@ -180,9 +196,9 @@ export function MobileLiveActivityWidget() {
       ) : (
         <View className="bg-card p-4 rounded-2xl border border-border/70 shadow-xs">
           <View className="gap-2.5 mb-2">
-            {activeLogs.map((item: any) => (
+            {activeLogs.map((item: any, idx: number) => (
               <ListCard
-                key={item.id}
+                key={item.key || `${item.id}-${idx}`}
                 title={`${item.residentName} (${item.unitInfo})`}
                 subtitle={`${item.amenityName} • ${item.timeStr}`}
                 leftIcon="QrCode"

@@ -12,6 +12,9 @@ import amenityBookingReducer from '../features/amenities/store/amenityBookingSli
 import walletReducer from '../features/amenities/store/walletSlice';
 import dashboardReducer from '../features/dashboard/dashboardSlice';
 import notificationReducer from '../features/notification/store/notificationSlice';
+import roleBuilderReducer from '../features/roleBuilder/store/roleSlice';
+import userManagementReducer from '../features/userManagement/store/userSlice';
+import integrationHubReducer from '../features/integrationHub/store/integrationHubSlice';
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +31,9 @@ export const store = configureStore({
     wallet: walletReducer,
     dashboard: dashboardReducer,
     notification: notificationReducer,
+    roleBuilder: roleBuilderReducer,
+    userManagement: userManagementReducer,
+    integrationHub: integrationHubReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

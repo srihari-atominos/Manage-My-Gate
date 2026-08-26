@@ -48,6 +48,7 @@ interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   loading: boolean;
   error: string | null;
   successMsg: string | null;
@@ -59,6 +60,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   user: null,
   token: null,
+  refreshToken: null,
   loading: false,
   error: null,
   successMsg: null,
@@ -70,9 +72,10 @@ export const bootstrapAuth = createAsyncThunk(
   'auth/bootstrapAuth',
   async (_, { dispatch }) => {
     const token = await storage.getItem('token');
+    const refreshToken = await storage.getItem('refreshToken');
     const userStr = await storage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
-    return { token, user };
+    return { token, refreshToken, user };
   }
 );
 
@@ -85,9 +88,11 @@ export const loginUser = createAsyncThunk(
       const innerData = body?.data || body;
 
       const token = innerData?.token;
+      const refreshToken = innerData?.refreshToken;
       const user = innerData?.user;
 
       if (token) await storage.setItem('token', token);
+      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
       if (user) await storage.setItem('user', JSON.stringify(user));
 
       return innerData as any;
@@ -123,9 +128,11 @@ export const verifyOtpLogin = createAsyncThunk(
       const innerData = body?.data || body;
 
       const token = innerData?.token;
+      const refreshToken = innerData?.refreshToken;
       const user = innerData?.user;
 
       if (token) await storage.setItem('token', token);
+      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
       if (user) await storage.setItem('user', JSON.stringify(user));
 
       return innerData as any;
@@ -146,9 +153,11 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
     const innerData = body?.data || body;
 
     const token = innerData?.token;
+    const refreshToken = innerData?.refreshToken;
     const user = innerData?.user;
 
     if (token) await storage.setItem('token', token);
+    if (refreshToken) await storage.setItem('refreshToken', refreshToken);
     if (user) await storage.setItem('user', JSON.stringify(user));
 
     const { fetchQuickActionsThunk } = require('../../dashboard/dashboardSlice');
@@ -169,6 +178,7 @@ export const performLogout = createAsyncThunk(
       console.warn('Logout API call failed, removing local session anyway.');
     }
     await storage.removeItem('token');
+    await storage.removeItem('refreshToken');
     await storage.removeItem('user');
     dispatch(logout());
     return true;
@@ -183,6 +193,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.user = null;
       state.token = null;
+      state.refreshToken = null;
       state.error = null;
       state.successMsg = null;
       state.otpSent = false;
@@ -193,11 +204,15 @@ const authSlice = createSlice({
       state.loading = false;
       state.otpSent = false;
     },
-    updateTokenAndUser: (state, action: PayloadAction<{ token?: string; user?: User }>) => {
-      const { token, user } = action.payload;
+    updateTokenAndUser: (state, action: PayloadAction<{ token?: string; refreshToken?: string; user?: User }>) => {
+      const { token, refreshToken, user } = action.payload;
       if (token) {
         state.token = token;
         storage.setItem('token', token);
+      }
+      if (refreshToken) {
+        state.refreshToken = refreshToken;
+        storage.setItem('refreshToken', refreshToken);
       }
       if (user) {
         const normalized = normalizeUser(user);
@@ -213,6 +228,7 @@ const authSlice = createSlice({
       // Bootstrap
       .addCase(bootstrapAuth.fulfilled, (state, action) => {
         state.token = action.payload.token;
+        state.refreshToken = action.payload.refreshToken;
         state.user = normalizeUser(action.payload.user);
         state.isAuthenticated = !!(action.payload.token && state.user?.id);
         state.isInitialized = true;
@@ -226,6 +242,7 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
         state.token = action.payload?.token || action.payload?.data?.token || null;
+        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
         const rawUser = action.payload?.user || action.payload?.data?.user || null;
         state.user = normalizeUser(rawUser);
         state.isAuthenticated = !!(state.token && state.user?.id);
@@ -260,6 +277,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.otpSent = false;
         state.token = action.payload?.token || action.payload?.data?.token || null;
+        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
         const rawUser = action.payload?.user || action.payload?.data?.user || null;
         state.user = normalizeUser(rawUser);
         state.isAuthenticated = !!(state.token && state.user?.id);
@@ -278,6 +296,9 @@ const authSlice = createSlice({
         state.loading = false;
         if (action.payload?.token) {
           state.token = action.payload.token;
+        }
+        if (action.payload?.refreshToken) {
+          state.refreshToken = action.payload.refreshToken;
         }
         if (action.payload?.user) {
           state.user = normalizeUser(action.payload.user);

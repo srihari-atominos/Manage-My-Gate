@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Platform } from 'react-native';
 import { useSelector } from 'react-redux';
 import { selectAuthUser } from '@/src/features/auth/store/authSelectors';
 import complaintService from '../services/complaintService';
@@ -163,7 +164,39 @@ export function useTechnicianWorkbench() {
 
   const completeJob = useCallback(async (id: string, data: { notes: string; partsUsed?: string; attachments?: any[] }) => {
     try {
-      await complaintService.markWorkCompleted(id, data);
+      let photoUrls: string[] = [];
+      if (data.attachments && data.attachments.length > 0) {
+        const formData = new FormData();
+        for (let i = 0; i < data.attachments.length; i++) {
+          const item = data.attachments[i];
+          const uri = typeof item === 'string' ? item : item?.uri;
+          if (uri) {
+            if (Platform.OS === 'web' && item.file) {
+              formData.append('attachments', item.file);
+            } else {
+              formData.append('attachments', {
+                uri,
+                name: item.name || `work_proof_${Date.now()}_${i}.jpg`,
+                type: item.type || 'image/jpeg',
+              } as any);
+            }
+          }
+        }
+        try {
+          const uploadRes: any = await complaintService.uploadAttachments(formData);
+          const resData = uploadRes?.data || uploadRes || [];
+          photoUrls = Array.isArray(resData) ? resData : [];
+        } catch (uploadErr) {
+          console.warn('[completeJob] Attachment upload fallback:', uploadErr);
+          photoUrls = data.attachments.map((a: any) => typeof a === 'string' ? a : a?.uri).filter(Boolean);
+        }
+      }
+
+      await complaintService.markWorkCompleted(id, {
+        notes: data.notes,
+        partsUsed: data.partsUsed,
+        attachments: photoUrls,
+      });
       if (data.notes) {
         await complaintService.addWorkNotes(id, data.notes);
       }

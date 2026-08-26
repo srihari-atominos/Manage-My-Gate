@@ -5,6 +5,7 @@ import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { CameraViewFinder } from '@/components/hardware/CameraViewFinder';
+import { FlashlightToggle } from '@/components/hardware/FlashlightToggle';
 import { QrCode, Search } from 'lucide-react-native';
 
 export interface GuardQRScannerModalProps {
@@ -19,6 +20,7 @@ export const GuardQRScannerModal: React.FC<GuardQRScannerModalProps> = ({
   onScanCode,
 }) => {
   const [manualCode, setManualCode] = useState('');
+  const [isFlashlightOn, setIsFlashlightOn] = useState(false);
 
   const handleSimulatedScan = () => {
     const trimmed = manualCode.trim();
@@ -39,12 +41,18 @@ export const GuardQRScannerModal: React.FC<GuardQRScannerModalProps> = ({
         {/* Live Hardware Camera Viewfinder */}
         <CameraViewFinder
           isScanning={visible}
+          enableTorch={isFlashlightOn}
           instruction="Align visitor QR pass code inside viewfinder"
           onScan={(data) => {
             onScanCode(data);
             onClose();
           }}
           className="h-64 mb-0"
+        />
+
+        <FlashlightToggle
+          isOn={isFlashlightOn}
+          onToggle={() => setIsFlashlightOn((prev) => !prev)}
         />
 
         {/* Manual Code Lookup Form */}

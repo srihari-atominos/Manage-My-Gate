@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Modal, TouchableOpacity, Pressable, ScrollView } from 'react-native';
+import { View, Modal, TouchableOpacity, Pressable, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import { X } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
@@ -23,10 +24,7 @@ const bottomSheetTitleVariants = cva(
 
 const bottomSheetContentVariants = cva('px-4 pb-6');
 
-import { Platform, KeyboardAvoidingView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-function BottomSheet({
+export function BottomSheet({
   visible,
   onClose,
   title,
@@ -95,7 +93,6 @@ function BottomSheet({
 }
 
 export {
-  BottomSheet,
   bottomSheetHeaderVariants,
   bottomSheetTitleVariants,
 };

@@ -114,7 +114,7 @@ export function FullActivityLogsModal({
 
               return (
                 <ListCard
-                  key={id}
+                  key={`${id}-${idx}`}
                   title={`${residentName} (${unitInfo})`}
                   subtitle={`${amenityName} • ${timeStr}`}
                   leftIcon="QrCode"

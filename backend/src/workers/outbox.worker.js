@@ -69,7 +69,7 @@ async function handleUserInvited(payload) {
   // 3. Send email using sendEmail helper (handles org SMTP & fallback automatically)
   const sent = await sendEmail(orgId, email, compiledSubject, compiledBody);
   if (!sent) {
-    throw new Error(`Failed to send invitation email to ${email}`);
+    logger.warn(`[handleUserInvited] SMTP not configured or credentials missing for email delivery to ${email}. Activation Link: ${inviteLink}`);
   }
 }
 

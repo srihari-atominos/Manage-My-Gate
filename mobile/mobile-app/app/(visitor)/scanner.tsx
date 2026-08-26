@@ -52,6 +52,7 @@ export default function GateSecurityScannerScreen() {
       {/* 1. Fullscreen Live Camera Viewport Base Layer */}
       <CameraViewFinder
         isScanning={isScanning}
+        enableTorch={isFlashlightOn}
         instruction="Align Visitor QR Pass inside frame"
         onScan={(data) => handleBarCodeScanned({ type: 'CAMERA', data })}
         fullscreen={true}

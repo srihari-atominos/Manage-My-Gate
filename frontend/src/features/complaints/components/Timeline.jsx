@@ -1,4 +1,5 @@
 import React from 'react'
+import { getImageUrl } from '../../../utils/imageUrl'
 
 const Timeline = ({ events }) => {
   if (!events || events.length === 0) {
@@ -22,7 +23,7 @@ const Timeline = ({ events }) => {
                 {evt.attachments.map((url, i) => (
                   <a
                     key={i}
-                    href={url}
+                    href={getImageUrl(url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ color: 'var(--primary)' }}

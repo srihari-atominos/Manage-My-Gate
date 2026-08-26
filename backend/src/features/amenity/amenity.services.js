@@ -553,12 +553,9 @@ export class AmenityService {
           if (bEnd < bStart) bEnd = moment(bEnd).add(1, 'days').toDate();
           if (slotStart < bEnd && slotEnd > bStart) {
             overlappingBookings += (b.numberOfPersons || 1);
-            if (userId && b.user && b.user._id && b.user._id.toString() === userId.toString()) {
-              bookedByMe = true;
-              myBookingsCount += (b.numberOfPersons || 1);
-              bookingId = b.bookingId || b._id;
-              bookingStatus = b.status;
-            } else if (userId && b.userId && b.userId.toString() === userId.toString()) {
+            const bUserObj = b.userId || b.user;
+            const bUserStr = bUserObj ? (bUserObj._id ? bUserObj._id.toString() : bUserObj.toString()) : '';
+            if (userId && bUserStr && bUserStr === userId.toString()) {
               bookedByMe = true;
               myBookingsCount += (b.numberOfPersons || 1);
               bookingId = b.bookingId || b._id;
