@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Text } from '@/components/ui/text';
 import { Calendar as CalendarIcon } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 import { DatePickerModal } from './DatePickerModal';
@@ -27,7 +28,7 @@ export const DatePicker = ({
   return (
     <View className={cn('w-full', className)}>
       {Boolean(label) && (
-        <Text className="mb-1.5 text-sm font-medium text-foreground">
+        <Text className="mb-1.5 text-sm font-bold text-foreground">
           {label}
         </Text>
       )}
@@ -44,7 +45,7 @@ export const DatePicker = ({
         <CalendarIcon size={20} className="me-2 text-muted-foreground" />
         <Text
           className={cn(
-            'flex-1 text-sm',
+            'flex-1 text-base',
             isValidDate ? 'font-semibold text-foreground' : 'text-muted-foreground'
           )}
         >

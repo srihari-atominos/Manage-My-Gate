@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
+import { FAB } from '@/components/ui/FAB';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { SegmentedControl, SegmentItem } from '@/components/common/SegmentedControl';
@@ -9,7 +11,7 @@ import { ListCard } from '@/components/ui/ListCard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { type StatusVariant } from '@/components/ui/StatusBadge';
-import { Plus } from 'lucide-react-native';
+import { Plus, Wrench } from 'lucide-react-native';
 
 import { useAdminCalendar } from '../../../src/features/amenities/hooks/useAdminCalendar';
 import { ScheduleDateNavigator } from '../../../src/features/amenities/components/ScheduleDateNavigator';
@@ -19,6 +21,7 @@ import { BookingDetailModal } from '../../../src/features/amenities/components/B
 import { AmenityBooking } from '../../../src/features/amenities/store/amenityBookingSlice';
 
 export default function AdminAmenityCalendarScreen() {
+  const router = useRouter();
   const {
     adminBookings,
     filteredBookings,
@@ -191,22 +194,34 @@ export default function AdminAmenityCalendarScreen() {
   return (
     <ScreenShell
       title="Facility Schedule & Occupancy"
-      subtitle="Track occupancy, block reserved slots & review bookings"
+      subtitle="Track occupancy & block reserved slots"
       iconName="Calendar"
       loading={loading && adminBookings.length === 0}
       error={error}
       onRetry={loadData}
       headerRight={
-        <Button
-          variant="default"
-          size="sm"
-          onPress={handleOpenManualModal}
-          className="flex-row items-center gap-1 rounded-full"
-          accessibilityLabel="Reserve manual slot"
-        >
-          <Plus size={14} className="text-primary-foreground" />
-          <Text className="text-primary-foreground font-bold text-xs">Book Slot</Text>
-        </Button>
+        <View className="flex-row items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={() => router.push('/(resident)/amenities/maintenance' as any)}
+            className="flex-row items-center gap-1 rounded-full px-2 py-1 h-7 bg-amber-500/10 border-amber-500/30"
+            accessibilityLabel="Maintenance Schedule"
+          >
+            <Wrench size={12} className="text-amber-600 dark:text-amber-400" />
+            <Text className="text-amber-600 dark:text-amber-400 font-bold text-[11px]">Maintenance</Text>
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onPress={handleOpenManualModal}
+            className="flex-row items-center gap-1 rounded-full px-2 py-1 h-7"
+            accessibilityLabel="Reserve manual slot"
+          >
+            <Plus size={13} className="text-primary-foreground" />
+            <Text className="text-primary-foreground font-bold text-[11px]">Reserve</Text>
+          </Button>
+        </View>
       }
     >
       <View className="flex-1 bg-background">
@@ -224,13 +239,16 @@ export default function AdminAmenityCalendarScreen() {
           loading={loading}
           ListHeaderComponent={renderHeader()}
           emptyIcon="Calendar"
-          emptyTitle="No Reservations Scheduled"
-          emptySubtitle={
-            searchQuery || statusFilter !== 'All' || selectedAmenityId !== 'All'
-              ? 'No reservations match your active search filters.'
-              : `No reservations scheduled for ${selectedDate}.`
-          }
-          contentContainerClassName="p-4 gap-3.5 pb-28"
+          emptyTitle="No Reservations Found"
+          emptySubtitle="No active or pending bookings match your selected date bounds or filter."
+          contentContainerClassName="p-4 pt-3 pb-28 gap-3"
+        />
+
+        {/* Primary Action: New Booking FAB */}
+        <FAB
+          iconName="Plus"
+          label="New Booking"
+          onPress={handleOpenManualModal}
         />
       </View>
 

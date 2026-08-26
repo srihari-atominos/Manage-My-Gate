@@ -118,8 +118,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                         <View className="flex-row items-center gap-2">
                           <Text
                             numberOfLines={1}
-                            adjustsFontSizeToFit
-                            minimumFontScale={0.8}
+                            ellipsizeMode="tail"
                             className={`text-sm font-bold flex-1 ${
                               isSelected ? 'text-indigo-600 font-extrabold' : 'text-foreground'
                             }`}

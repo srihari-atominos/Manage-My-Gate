@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { KPIRow } from '@/components/ui/KPIRow';
 import { PaginatedList } from '@/components/ui/PaginatedList';
@@ -8,16 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
+import { FAB } from '@/components/ui/FAB';
+
 import { AmenityMasterCard } from '@/src/features/amenities/components/AmenityMasterCard';
 import { useAmenityMaster } from '@/src/features/amenities/hooks/useAmenityMaster';
 import { AmenityFormModal } from '@/src/features/amenities/components/AmenityFormModal';
 import { AmenityDetailSheet } from '@/src/features/amenities/components/AmenityDetailSheet';
 import { Amenity } from '@/src/features/amenities/store/amenitySlice';
-import { Plus } from 'lucide-react-native';
+import { Plus, Wrench } from 'lucide-react-native';
 
 const CATEGORY_CHIPS = ['All', 'Sports', 'Fitness', 'Event Space', 'Clubhouse', 'Wellness', 'Workspace'];
 
 export default function AdminAmenityMasterScreen() {
+  const router = useRouter();
   const {
     amenities,
     filteredAmenities,
@@ -83,6 +87,7 @@ export default function AdminAmenityMasterScreen() {
             subtitle: 'Temporary Closed',
             iconName: 'Wrench',
             variant: kpis.maintenance > 0 ? 'warning' : 'default',
+            onPress: () => router.push('/(resident)/amenities/maintenance' as any),
           },
         ]}
       />
@@ -110,16 +115,28 @@ export default function AdminAmenityMasterScreen() {
       error={error}
       onRetry={loadData}
       headerRight={
-        <Button
-          variant="default"
-          size="sm"
-          onPress={handleOpenCreateModal}
-          className="flex-row items-center gap-1.5 rounded-full"
-          accessibilityLabel="Add New Amenity Facility"
-        >
-          <Plus size={14} className="text-primary-foreground" />
-          <Text className="text-primary-foreground font-bold text-xs">Add Facility</Text>
-        </Button>
+        <View className="flex-row items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={() => router.push('/(resident)/amenities/maintenance' as any)}
+            className="flex-row items-center gap-1 rounded-full px-2.5 h-8 bg-amber-500/10 border-amber-500/30"
+            accessibilityLabel="Maintenance Schedule"
+          >
+            <Wrench size={13} className="text-amber-600 dark:text-amber-400" />
+            <Text className="text-amber-600 dark:text-amber-400 font-bold text-xs">Maintenance</Text>
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onPress={handleOpenCreateModal}
+            className="flex-row items-center gap-1 rounded-full px-2.5 h-8"
+            accessibilityLabel="Add New Amenity Facility"
+          >
+            <Plus size={14} className="text-primary-foreground" />
+            <Text className="text-primary-foreground font-bold text-xs">Add</Text>
+          </Button>
+        </View>
       }
     >
       <View className="flex-1 bg-background">
@@ -146,6 +163,13 @@ export default function AdminAmenityMasterScreen() {
           emptySubtitle="No facility records match your active category filter or search query."
           contentContainerClassName="px-4 pt-3 pb-28"
         />
+
+        {/* Primary Creation Action: Add Facility FAB */}
+        <FAB
+          iconName="Plus"
+          label="Add Facility"
+          onPress={handleOpenCreateModal}
+        />
       </View>
 
       {/* Amenity Create / Edit Form Modal */}
@@ -163,6 +187,7 @@ export default function AdminAmenityMasterScreen() {
         onClose={() => setSelectedAmenityDetail(null)}
         amenity={selectedAmenityDetail}
         onEditClick={handleOpenEditModal}
+        onScheduleMaintenanceClick={() => router.push('/(resident)/amenities/maintenance' as any)}
       />
 
       {/* Deactivate Confirmation Modal */}

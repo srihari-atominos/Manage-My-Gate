@@ -34,7 +34,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   badgeClassName,
   disabled = false,
   className,
-  containerClassName = 'w-1/4 p-1',
+  containerClassName = 'w-[25%] p-0.5',
 }) => {
   const badgeStyles = ACTION_TILE_BADGE_STYLES[badgeVariant] || ACTION_TILE_BADGE_STYLES.default;
 
@@ -46,7 +46,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         accessibilityRole="button"
         accessibilityLabel={label}
         className={cn(
-          'h-auto min-h-[84px] w-full flex-col items-center justify-center p-2.5 gap-y-1.5 rounded-2xl relative border border-border bg-card shadow-xs active:bg-accent active:opacity-80',
+          'min-h-[88px] w-full flex-col items-center justify-center p-2 gap-y-1 rounded-2xl relative border border-border bg-card shadow-xs active:bg-accent active:opacity-80',
           disabled && 'opacity-50',
           className
         )}
@@ -65,16 +65,14 @@ export const ActionTile: React.FC<ActionTileProps> = ({
           </View>
         ) : null}
 
-        <View className="size-9 rounded-xl bg-muted/60 items-center justify-center shrink-0 pointer-events-none">
+        <View className="size-8.5 rounded-xl bg-muted/60 items-center justify-center shrink-0 pointer-events-none mb-0.5">
           {icon}
         </View>
 
         <Text
           numberOfLines={2}
-          adjustsFontSizeToFit
-          minimumFontScale={0.75}
           ellipsizeMode="tail"
-          className="text-[11px] font-semibold text-foreground text-center leading-tight ps-0.5 pe-0.5"
+          className="text-[10.5px] font-medium text-foreground text-center leading-[1.18] px-0.5"
         >
           {label}
         </Text>

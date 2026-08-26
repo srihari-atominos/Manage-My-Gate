@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useComplaints } from '../hooks/useComplaints'
 import apiClient from '../../../services/apiClient.js'
 import { toast } from 'react-hot-toast'
+import { getImageUrl } from '../../../utils/imageUrl'
 
 const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
   const { assignComplaint, assignLoading, complaints, addComment } = useComplaints()
@@ -758,7 +759,7 @@ const AssignComplaint = ({ complaint, onAssigned, onCancel }) => {
                         >
                           {isImage ? (
                             <img
-                              src={fileUrl}
+                              src={getImageUrl(fileUrl)}
                               alt={`Attachment ${index + 1}`}
                               style={{
                                 width: '100%',

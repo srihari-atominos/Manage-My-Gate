@@ -333,11 +333,30 @@ export class AmenityBookingRepository {
 
   async getMonthlyIndicators(orgId, year, month) {
     const monthStr = `${year}-${String(month).padStart(2, '0')}`;
-    return await AmenityBooking.distinct('bookingDate', {
+    const bookingDates = await AmenityBooking.distinct('bookingDate', {
       orgId: new mongoose.Types.ObjectId(orgId),
       bookingDate: { $regex: `^${monthStr}` },
       status: { $in: ['pending', 'approved', 'confirmed', 'checked-in'] }
     });
+
+    const Amenity = mongoose.model('Amenity');
+    const amenities = await Amenity.find(
+      { orgId: new mongoose.Types.ObjectId(orgId), isDeleted: false },
+      'maintenanceSchedules'
+    );
+
+    const datesSet = new Set(bookingDates || []);
+    (amenities || []).forEach(amenity => {
+      if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
+        amenity.maintenanceSchedules.forEach(m => {
+          if (m.startDate && m.startDate.startsWith(monthStr)) {
+            datesSet.add(m.startDate);
+          }
+        });
+      }
+    });
+
+    return Array.from(datesSet);
   }
 
   async getOccupancyStats(orgId) {

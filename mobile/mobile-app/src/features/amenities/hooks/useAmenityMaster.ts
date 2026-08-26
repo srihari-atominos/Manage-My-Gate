@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import { 
@@ -67,8 +68,11 @@ export const useAmenityMaster = () => {
         await dispatch(createAmenityThunk(data)).unwrap();
       }
       handleCloseFormModal();
-    } catch (err) {
-      console.error('Failed to save amenity', err);
+      loadData();
+    } catch (err: any) {
+      console.error('Failed to save amenity:', err);
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to save amenity record';
+      Alert.alert('Save Failed', msg);
     } finally {
       setSaving(false);
     }

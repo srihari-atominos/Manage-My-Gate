@@ -520,9 +520,33 @@ export class AmenityBookingService {
 
       // 3. Process Refund logic if payment was success
       let newPaymentStatus = booking.paymentStatus;
-      if (booking.paymentStatus === 'success' && booking.paymentId) {
-        const paymentService = (await import('../payment/payment.service.js')).default;
-        if (refundAmount > 0) {
+      if (booking.paymentStatus === 'success') {
+        const isWallet = booking.paymentMethod && booking.paymentMethod.toUpperCase() === 'WALLET';
+        const targetUserId = booking.userId?._id || booking.userId;
+
+        if (isWallet && refundAmount > 0) {
+          try {
+            const walletRepository = (await import('../wallet/wallet.repository.js')).default;
+            await walletRepository.updateBalance(targetUserId, orgId, refundAmount);
+            await walletRepository.createTransaction({
+              orgId,
+              userId: targetUserId,
+              type: 'Credit',
+              amount: refundAmount,
+              paymentMethod: 'WALLET',
+              paymentStatus: 'success',
+              referenceType: 'AmenityBooking',
+              referenceId: booking._id,
+              description: `Refund for Cancelled Amenity Booking (${refundPercentage}% refund)`
+            });
+            const { walletEventEmitter, WALLET_UPDATED } = await import('../wallet/wallet.events.js');
+            walletEventEmitter.emit(WALLET_UPDATED, { userId: targetUserId, orgId });
+            newPaymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
+          } catch (walletErr) {
+            console.error(`[CANCEL BOOKING] Wallet refund failed for booking ${bookingId}:`, walletErr.message);
+          }
+        } else if (booking.paymentId && refundAmount > 0) {
+          const paymentService = (await import('../payment/payment.service.js')).default;
           try {
             const isValidObjectId = mongoose.Types.ObjectId.isValid(booking.paymentId);
             if (!isValidObjectId) {
@@ -532,7 +556,6 @@ export class AmenityBookingService {
             newPaymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
           } catch (refundError) {
              console.error(`[CANCEL BOOKING] Refund failed for booking ${bookingId}:`, refundError.message);
-             // If refund fails (e.g. corrupted data from old mock tests), we still allow the cancellation to proceed
              newPaymentStatus = 'failed';
           }
         }
@@ -614,7 +637,25 @@ export class AmenityBookingService {
       let requiresRazorpayCall = false;
 
       if (booking.paymentStatus === 'captured' || booking.paymentStatus === 'success') {
-        if (refundAmountPaise > 0 && booking.razorpayTransactionId) {
+        const isWallet = booking.paymentMethod && booking.paymentMethod.toUpperCase() === 'WALLET';
+        if (isWallet && refundAmountRupees > 0) {
+          const walletRepository = (await import('../wallet/wallet.repository.js')).default;
+          await walletRepository.updateBalance(userId, booking.orgId, refundAmountRupees);
+          await walletRepository.createTransaction({
+            orgId: booking.orgId,
+            userId,
+            type: 'Credit',
+            amount: refundAmountRupees,
+            paymentMethod: 'WALLET',
+            paymentStatus: 'success',
+            referenceType: 'AmenityBooking',
+            referenceId: booking._id,
+            description: `Refund for Cancelled Amenity Booking (${refundPercentage}% refund)`
+          });
+          const { walletEventEmitter, WALLET_UPDATED } = await import('../wallet/wallet.events.js');
+          walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId: booking.orgId });
+          newPaymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
+        } else if (refundAmountPaise > 0 && booking.razorpayTransactionId) {
           requiresRazorpayCall = true;
           newPaymentStatus = 'refund_pending'; // Mark as pending while we hit the network
         } else if (refundAmountPaise === 0) {

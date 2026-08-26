@@ -59,9 +59,10 @@ export default function AmenityExecutiveDashboardScreen() {
     {
       title: 'Maintenance',
       value: `${activeMaintenance} Active`,
-      subtitle: '2 Ongoing',
+      subtitle: 'Upkeep & Tasks',
       iconName: 'Wrench',
       variant: 'warning',
+      onPress: () => router.push('/(resident)/amenities/maintenance' as any),
     },
     {
       title: 'Facilities',
@@ -69,6 +70,7 @@ export default function AmenityExecutiveDashboardScreen() {
       subtitle: 'Open for booking',
       iconName: 'Building2',
       variant: 'info',
+      onPress: () => router.push('/(resident)/amenities/admin-master' as any),
     },
   ];
 

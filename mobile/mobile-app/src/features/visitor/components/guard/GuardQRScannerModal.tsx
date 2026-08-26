@@ -4,7 +4,8 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { QRScannerOverlay } from '@/components/hardware/QRScannerOverlay';
+import { CameraViewFinder } from '@/components/hardware/CameraViewFinder';
+import { FlashlightToggle } from '@/components/hardware/FlashlightToggle';
 import { QrCode, Search } from 'lucide-react-native';
 
 export interface GuardQRScannerModalProps {
@@ -19,6 +20,7 @@ export const GuardQRScannerModal: React.FC<GuardQRScannerModalProps> = ({
   onScanCode,
 }) => {
   const [manualCode, setManualCode] = useState('');
+  const [isFlashlightOn, setIsFlashlightOn] = useState(false);
 
   const handleSimulatedScan = () => {
     const trimmed = manualCode.trim();
@@ -36,10 +38,22 @@ export const GuardQRScannerModal: React.FC<GuardQRScannerModalProps> = ({
       title="Guard Gate QR Scanner"
     >
       <View className="gap-4 pb-2">
-        {/* Scanner View Frame */}
-        <View className="h-64 w-full rounded-2xl overflow-hidden relative bg-black border border-border items-center justify-center">
-          <QRScannerOverlay instruction="Align visitor QR pass code inside viewfinder" />
-        </View>
+        {/* Live Hardware Camera Viewfinder */}
+        <CameraViewFinder
+          isScanning={visible}
+          enableTorch={isFlashlightOn}
+          instruction="Align visitor QR pass code inside viewfinder"
+          onScan={(data) => {
+            onScanCode(data);
+            onClose();
+          }}
+          className="h-64 mb-0"
+        />
+
+        <FlashlightToggle
+          isOn={isFlashlightOn}
+          onToggle={() => setIsFlashlightOn((prev) => !prev)}
+        />
 
         {/* Manual Code Lookup Form */}
         <View className="bg-card border border-border rounded-2xl p-3.5 gap-2.5">

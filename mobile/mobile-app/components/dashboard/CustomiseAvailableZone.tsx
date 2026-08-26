@@ -78,8 +78,7 @@ export const CustomiseAvailableZone: React.FC<CustomiseAvailableZoneProps> = ({
                     <Text
                       className="text-[11px] font-bold text-foreground text-center leading-tight w-full"
                       numberOfLines={2}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.75}
+                      ellipsizeMode="tail"
                     >
                       {feature.name}
                     </Text>
@@ -87,8 +86,7 @@ export const CustomiseAvailableZone: React.FC<CustomiseAvailableZoneProps> = ({
                     <Text
                       className="text-[9px] text-muted-foreground text-center mt-0.5 w-full"
                       numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.8}
+                      ellipsizeMode="tail"
                     >
                       {feature.subtitle}
                     </Text>

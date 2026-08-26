@@ -12,6 +12,7 @@ export interface AmenityDetailSheetProps {
   onClose: () => void;
   amenity: Amenity | null;
   onEditClick?: (amenity: Amenity) => void;
+  onScheduleMaintenanceClick?: (amenity: Amenity) => void;
 }
 
 const DAYS_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -21,6 +22,7 @@ export function AmenityDetailSheet({
   onClose,
   amenity,
   onEditClick,
+  onScheduleMaintenanceClick,
 }: AmenityDetailSheetProps) {
   if (!visible || !amenity) return null;
 
@@ -45,7 +47,7 @@ export function AmenityDetailSheet({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Facility Master Specifications">
-      <ScrollView className="max-h-[80vh] py-1" showsVerticalScrollIndicator={false}>
+      <View className="py-1">
         {/* Amenity Cover Image Banner */}
         {imageUrl ? (
           <View className="h-44 w-full rounded-2xl overflow-hidden mb-3 border border-border">
@@ -158,7 +160,7 @@ export function AmenityDetailSheet({
         </View>
 
         {/* Action CTAs */}
-        <View className="flex-row gap-3 mt-1 mb-2">
+        <View className="flex-row gap-2 mt-1 mb-2">
           {onEditClick ? (
             <Button
               variant="outline"
@@ -168,14 +170,26 @@ export function AmenityDetailSheet({
               }}
               className="flex-1 bg-primary/10 border-primary/20 h-11 rounded-xl"
             >
-              <Text className="text-primary font-bold text-sm">Edit Specifications</Text>
+              <Text className="text-primary font-bold text-xs">Edit Specs</Text>
+            </Button>
+          ) : null}
+          {onScheduleMaintenanceClick ? (
+            <Button
+              variant="outline"
+              onPress={() => {
+                onClose();
+                onScheduleMaintenanceClick(amenity);
+              }}
+              className="flex-1 bg-amber-500/10 border-amber-500/30 h-11 rounded-xl"
+            >
+              <Text className="text-amber-600 dark:text-amber-400 font-bold text-xs">Schedule Upkeep</Text>
             </Button>
           ) : null}
           <Button variant="default" onPress={onClose} className="flex-1 h-11 rounded-xl">
-            <Text className="text-primary-foreground font-bold text-sm">Close</Text>
+            <Text className="text-primary-foreground font-bold text-xs">Close</Text>
           </Button>
         </View>
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 }

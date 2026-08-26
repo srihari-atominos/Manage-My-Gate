@@ -301,7 +301,8 @@ const PollCard = ({ poll, onVote, onDelete, onPublish, onClosePoll, onReopenPoll
               </CButton>
             )}
           </div>
-        </CCardBody>
+        </div>
+      </CCardBody>
 
       <PollVotersModal visible={showVoters} onClose={() => setShowVoters(false)} poll={poll} />
       <PollConfirmDialog 

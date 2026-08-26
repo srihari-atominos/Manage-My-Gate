@@ -419,14 +419,19 @@ export class UserService {
         orgId,
         $or: [
           { userId: user._id },
-          ...(user.email ? [{ email: user.email }] : [])
+          ...(user.email ? [{ email: user.email }] : []),
+          ...(user.phone && user.phone !== 'N/A' ? [{ phone: user.phone }] : [])
         ]
       }).session(session || null);
 
       if (existingTech) {
         existingTech.userId = user._id;
-        existingTech.name = user.name || user.username || user.email.split('@')[0];
-        existingTech.phone = user.phone || existingTech.phone || 'N/A';
+        if (user.name && user.name !== user.username) {
+          existingTech.name = user.name;
+        }
+        if (user.phone && user.phone !== 'N/A') {
+          existingTech.phone = user.phone;
+        }
         existingTech.isDeleted = false;
         existingTech.status = user.status === 'Active' ? 'Active' : 'Pending';
         await existingTech.save(session ? { session } : undefined);

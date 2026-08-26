@@ -23,7 +23,7 @@ import {
   CProgress,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilLockLocked, cilUser, cilPhone, cilEnvelopeOpen, cilBuilding } from '@coreui/icons'
+import { cilLockLocked, cilUser, cilPhone, cilEnvelopeOpen } from '@coreui/icons'
 
 /**
  * RegisterForm Component
@@ -72,11 +72,9 @@ export const RegisterForm = () => {
     defaultValues: {
       name: ssoName,
       email: ssoEmail,
-      organizationName: '',
       phone: '',
       password: '',
       confirmPassword: '',
-      totalUnits: '',
     },
     mode: 'onChange',
   })
@@ -184,10 +182,8 @@ export const RegisterForm = () => {
         username: derivedUsername,
         email: data.email.trim().toLowerCase(),
         phone: data.phone?.trim() ? `+${data.phone.trim()}` : undefined,
-        organizationName: data.organizationName?.trim() || undefined,
-        totalUnits: data.totalUnits ? parseInt(data.totalUnits, 10) : undefined,
+        password: data.password,
         isGoogleSso,
-        ...(data.password ? { password: data.password } : {})
       }).then((action) => {
         if (action.meta.requestStatus === 'fulfilled') {
           setValue('otp', '')
@@ -202,7 +198,7 @@ export const RegisterForm = () => {
     verifyRegistration(otpEmail, data.otp).then((res) => {
       if (res.success) {
         setTimeout(() => {
-          navigate('/workspace-setup?intent=create', { state: { totalUnits: getValues('totalUnits') } })
+          navigate('/workspace-setup?intent=create')
         }, 1500)
       }
     })
@@ -265,7 +261,10 @@ export const RegisterForm = () => {
 
         {/* Form Registration OR OTP Verification */}
         {isOtpMode ? (
-          <CForm key="otp-form" onSubmit={handleSubmit(onVerifyOtp)}>
+          <CForm key="otp-verification-form" onSubmit={handleSubmit(onVerifyOtp)} autoComplete="off">
+            {/* Fake fields to prevent browser autofill on OTP screen */}
+            <input type="text" name="fake_email_autofill" style={{ opacity: 0, position: 'absolute', zIndex: -1, width: 0, height: 0 }} tabIndex="-1" aria-hidden="true" autoComplete="off" />
+
             <CAlert color="info" className="mb-3">
               We sent a verification code to <strong>{otpEmail}</strong>. Please enter it below to
               activate your account.
@@ -276,14 +275,18 @@ export const RegisterForm = () => {
                   <CIcon icon={cilLockLocked} style={styles.icon} />
                 </CInputGroupText>
                 <CFormInput
-                  key="otp-input"
+                  key="otp-numeric-code-input"
                   style={styles.input}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder={t('auth.register.otpPlaceholder', {
                     defaultValue: 'Enter 6-digit code',
                   })}
                   disabled={loading}
                   autoComplete="one-time-code"
                   maxLength={6}
+                  autoFocus
                   {...register('otp', {
                     required: t('auth.register.otpRequired', { defaultValue: 'OTP is required.' }),
                     pattern: {
@@ -319,14 +322,17 @@ export const RegisterForm = () => {
               <CButton
                 color="link"
                 className="px-0 text-muted text-decoration-none"
-                onClick={() => setIsOtpMode(false)}
+                onClick={() => {
+                  setIsOtpMode(false)
+                  setValue('otp', '')
+                }}
               >
                 {t('auth.register.backToRegister', { defaultValue: 'Back to Registration' })}
               </CButton>
             </div>
           </CForm>
         ) : (
-          <CForm key="register-form" onSubmit={handleSubmit(onSubmit)}>
+          <CForm onSubmit={handleSubmit(onSubmit)}>
             {/* Full Name */}
             {!isLoginMode && (
               <div className="mb-3">
@@ -335,7 +341,6 @@ export const RegisterForm = () => {
                     <CIcon icon={cilUser} style={styles.icon} />
                   </CInputGroupText>
                   <CFormInput
-                    key="name-input"
                     style={styles.input}
                     placeholder={t('auth.register.fullNamePlaceholder', {
                       defaultValue: 'Full Name',
@@ -362,7 +367,6 @@ export const RegisterForm = () => {
                   <CIcon icon={cilEnvelopeOpen} style={styles.icon} />
                 </CInputGroupText>
                 <CFormInput
-                  key="email-input"
                   style={
                     isGoogleSso
                       ? { ...styles.input, backgroundColor: '#f9fafb', color: '#6b7280' }
@@ -452,9 +456,8 @@ export const RegisterForm = () => {
               </div>
             )}
 
-            {/* Password (Only for Login) */}
-            {isLoginMode && (
-              <div className="mb-3">
+            {/* Password */}
+            <div className="mb-3">
               <CInputGroup>
                 <CInputGroupText style={styles.inputIconText}>
                   <CIcon icon={cilLockLocked} style={styles.icon} />
@@ -504,36 +507,44 @@ export const RegisterForm = () => {
                 </div>
               )}
             </div>
-            )}
 
-            {/* Total Units */}
+            {/* Confirm Password */}
             {!isLoginMode && (
-              <div className="mb-3">
+              <div className="mb-4">
                 <CInputGroup>
                   <CInputGroupText style={styles.inputIconText}>
-                    <CIcon icon={cilBuilding} style={styles.icon} />
+                    <CIcon icon={cilLockLocked} style={styles.icon} />
                   </CInputGroupText>
                   <CFormInput
                     style={styles.input}
-                    type="number"
-                    placeholder="Total Units (e.g., 50)"
+                    type="password"
+                    placeholder={t('auth.register.confirmPasswordPlaceholder', {
+                      defaultValue: 'Repeat password',
+                    })}
+                    autoComplete="new-password"
                     disabled={loading}
-                    {...register('totalUnits', {
-                      required: t('auth.register.unitsRequired', { defaultValue: 'Total Units is required.' }),
-                      min: {
-                        value: 1,
-                        message: 'Must be at least 1 unit'
-                      }
+                    {...register('confirmPassword', {
+                      required:
+                        !isLoginMode &&
+                        t('auth.register.confirmPasswordRequired', {
+                          defaultValue: 'Please repeat your password.',
+                        }),
+                      validate: (value, formValues) =>
+                        isLoginMode ||
+                        value === formValues.password ||
+                        t('auth.register.passwordsMustMatch', {
+                          defaultValue: 'Passwords do not match.',
+                        }),
                     })}
                   />
                 </CInputGroup>
-                {errors.totalUnits && (
-                   <div className="text-danger small mt-1 ms-1">{errors.totalUnits.message}</div>
+                {errors.confirmPassword && (
+                  <div className="text-danger small mt-1 ms-1">
+                    {errors.confirmPassword.message}
+                  </div>
                 )}
               </div>
             )}
-
-
 
             <CRow>
               <CCol xs={12} className="d-grid mb-3">

@@ -21,9 +21,11 @@ import {
   clearComplaintErrors as clearComplaintErrorsAction,
 } from '../store/complaintSlice';
 import { AssignTechnicianPayload } from '../types';
+import { useComplaintSocket } from './useComplaintSocket';
 
 export const useComplaints = () => {
   const dispatch = useDispatch<AppDispatch>();
+  useComplaintSocket();
 
   const { list, pagination, currentComplaint, dashboardAnalytics, status, error } = useSelector(
     (state: RootState) => (state as any).complaints || {}

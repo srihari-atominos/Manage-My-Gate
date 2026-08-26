@@ -62,8 +62,7 @@ export const ManualBookingModal: React.FC<ManualBookingModalProps> = ({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Manual Resident Reservation">
-      <ScrollView className="max-h-[500px] pt-2" showsVerticalScrollIndicator={false}>
-        <View className="gap-3 pb-6">
+      <View className="gap-3 pb-2 pt-2">
           <Controller
             control={control}
             name="amenityId"
@@ -164,7 +163,6 @@ export const ManualBookingModal: React.FC<ManualBookingModalProps> = ({
             </Text>
           </Button>
         </View>
-      </ScrollView>
     </BottomSheet>
   );
 };

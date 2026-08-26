@@ -243,15 +243,17 @@ export class AmenityService {
 
     // 2. Maintenance Check
     if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
+      const dayStart = targetDate.toDate();
+      const dayEnd = moment(targetDate).add(1, 'days').toDate();
       for (const maint of amenity.maintenanceSchedules) {
-        const start = moment.tz(`${maint.startDate}T${maint.startTime || '00:00'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
-        let end = moment.tz(`${maint.endDate}T${maint.endTime || '23:59'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
-        if (end < start) end = moment(end).add(1, 'days').toDate();
+        const mStart = moment.tz(`${maint.startDate}T${maint.startTime || '00:00'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        let mEnd = moment.tz(`${maint.endDate}T${maint.endTime || '23:59'}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).toDate();
+        if (mEnd < mStart) mEnd = moment(mEnd).add(1, 'days').toDate();
         
-        // If the entire day is blocked by maintenance
-        if (start <= targetDate.toDate() && end >= moment(targetDate).add(1, 'days').toDate()) {
-           // Basic check. A more precise check happens per slot later
-           // return [];
+        if (mStart < dayEnd && mEnd > dayStart) {
+          if (amenity.pricing?.pricingType === 'daily') {
+            return []; // Full day blocked by maintenance
+          }
         }
       }
     }
@@ -551,12 +553,9 @@ export class AmenityService {
           if (bEnd < bStart) bEnd = moment(bEnd).add(1, 'days').toDate();
           if (slotStart < bEnd && slotEnd > bStart) {
             overlappingBookings += (b.numberOfPersons || 1);
-            if (userId && b.user && b.user._id && b.user._id.toString() === userId.toString()) {
-              bookedByMe = true;
-              myBookingsCount += (b.numberOfPersons || 1);
-              bookingId = b.bookingId || b._id;
-              bookingStatus = b.status;
-            } else if (userId && b.userId && b.userId.toString() === userId.toString()) {
+            const bUserObj = b.userId || b.user;
+            const bUserStr = bUserObj ? (bUserObj._id ? bUserObj._id.toString() : bUserObj.toString()) : '';
+            if (userId && bUserStr && bUserStr === userId.toString()) {
               bookedByMe = true;
               myBookingsCount += (b.numberOfPersons || 1);
               bookingId = b.bookingId || b._id;

@@ -7,8 +7,8 @@ class TechnicianService {
     let userId = null;
     
     // Automatically create a user account
-    const emailToUse = data.email || `${data.phone.replace(/\D/g, '')}@staff.local`;
-    const roleName = data.type === 'External Vendor' ? 'Staff/Vendor' : 'Staff/Vendor'; // Can be customized later
+    const emailToUse = data.email ? data.email.trim().toLowerCase() : `${data.phone.replace(/\D/g, '')}@staff.local`;
+    const roleName = data.type === 'External Vendor' ? 'Staff/Vendor' : 'Staff/Vendor';
     try {
       const roleService = (await import('../role/role.services.js')).default;
       let role = await roleService.getRoleByName(roleName, orgId);
@@ -16,18 +16,36 @@ class TechnicianService {
          await roleService.createRole({ name: roleName, description: 'Auto-created role for Staff and Vendors', orgId, permissions: [] });
       }
 
-      const result = await userService.inviteUser(emailToUse, orgId, null, 'None', roleName);
+      const result = await userService.inviteUser(emailToUse, orgId, null, 'None', roleName, data.phone, data.name);
       if (result && result.user) {
          userId = result.user._id;
          data.status = 'Pending';
       }
     } catch (err) {
       console.error('Error auto-inviting technician user:', err);
-      // We'll proceed even if invite fails, maybe they already exist
       const existingUser = await userService.getUserByEmail(emailToUse);
       if (existingUser) {
          userId = existingUser._id;
       }
+    }
+
+    // Check if syncTechnicianForStaffUser or existing entry already exists for this user/email
+    const existingTech = await technicianRepository.findAll(orgId, {
+      $or: [
+        ...(userId ? [{ userId }] : []),
+        ...(emailToUse ? [{ email: emailToUse }] : []),
+        ...(data.phone && data.phone !== 'N/A' ? [{ phone: data.phone }] : [])
+      ]
+    });
+
+    if (existingTech && existingTech.length > 0) {
+      const targetTech = existingTech[0];
+      const updated = await technicianRepository.update(targetTech._id, orgId, {
+        ...data,
+        userId: userId || targetTech.userId,
+        isDeleted: false,
+      });
+      return updated;
     }
 
     const technician = await technicianRepository.create({ orgId, userId, ...data });

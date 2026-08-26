@@ -3,18 +3,16 @@ import { useLocation } from 'react-router-dom'
 import useFeatureConfig from './useFeatureConfig.js'
 
 /**
- * Controller hook for the FeatureConfigWizard view.
- * Encapsulates store selectors and URL parameters.
+ * Custom hook acting as the controller for FeatureConfigWizard view.
  */
 export const useFeatureConfigWizard = () => {
   const activeOrganizationId = useSelector((state) => state.workspace.activeOrganizationId)
   const location = useLocation()
-  const searchParams = new URLSearchParams(location.search)
-  const isCreateIntent = searchParams.get('intent') === 'create'
+  const isCreateIntent = location.search.includes('intent=create')
 
   const { selectedFeatures, loading, error, toggleFeature, submitFeatures } = useFeatureConfig()
 
-  const showWorkspaceSetup = (!activeOrganizationId || isCreateIntent) && searchParams.get('step') !== 'features'
+  const showWorkspaceSetup = !activeOrganizationId || isCreateIntent
 
   return {
     showWorkspaceSetup,

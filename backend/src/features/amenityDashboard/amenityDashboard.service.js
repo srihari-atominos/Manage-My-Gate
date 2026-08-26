@@ -135,6 +135,47 @@ class AmenityDashboardService {
       });
     });
 
+    // Maintenance Schedules
+    (amenities || []).forEach(amenity => {
+      if (amenity.maintenanceSchedules && amenity.maintenanceSchedules.length > 0) {
+        amenity.maintenanceSchedules.forEach(maint => {
+          const mStart = maint.startDate;
+          const mEnd = maint.endDate || maint.startDate;
+          
+          if (startDate && mEnd < startDate) return;
+          if (endDate && mStart > endDate) return;
+
+          const startT = maint.startTime || '00:00';
+          const endT = maint.endTime || '23:59';
+          const startDateTime = new Date(`${mStart}T${startT}`);
+          const endDateTime = new Date(`${mEnd}T${endT}`);
+          const durationMins = (endDateTime - startDateTime) / (1000 * 60);
+
+          events.push({
+            id: `maint_${maint._id}`,
+            bookingId: maint._id,
+            type: 'maintenance',
+            title: `${amenity.name}: ${maint.title}`,
+            subtitle: maint.assignedStaff ? `Assigned to ${maint.assignedStaff}` : 'Facility Maintenance',
+            date: mStart,
+            startDate: mStart,
+            endDate: mEnd,
+            start: startT,
+            end: endT,
+            duration: durationMins > 0 ? durationMins : 1440,
+            
+            amenityId: amenity._id,
+            amenityName: amenity.name,
+            amenityImage: amenity.images?.[0] || null,
+            
+            status: maint.status || 'scheduled',
+            assignedStaff: maint.assignedStaff || 'Unassigned',
+            notes: maint.notes || maint.description || ''
+          });
+        });
+      }
+    });
+
     return events;
   }
 

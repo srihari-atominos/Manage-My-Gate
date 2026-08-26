@@ -52,8 +52,7 @@ export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
             <Text
               className="text-[10px] font-bold text-foreground text-center px-0.5 leading-tight"
               numberOfLines={2}
-              adjustsFontSizeToFit
-              minimumFontScale={0.75}
+              ellipsizeMode="tail"
             >
               {item.name}
             </Text>

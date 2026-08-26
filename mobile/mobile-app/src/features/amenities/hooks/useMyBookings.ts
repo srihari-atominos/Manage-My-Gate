@@ -6,6 +6,7 @@ import {
   cancelBookingThunk,
   AmenityBooking,
 } from '../store/amenityBookingSlice';
+import { fetchWalletThunk } from '../store/walletSlice';
 
 export const FILTER_TABS = ['All', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] as const;
 export type BookingFilterTab = typeof FILTER_TABS[number];
@@ -36,7 +37,8 @@ export function useMyBookings() {
 
   const handleRefresh = useCallback(() => {
     loadBookings(1);
-  }, [loadBookings]);
+    dispatch(fetchWalletThunk());
+  }, [loadBookings, dispatch]);
 
   const handleLoadMore = useCallback(() => {
     if (pagination && pagination.currentPage < pagination.totalPages) {
@@ -49,6 +51,7 @@ export function useMyBookings() {
     setIsCancelling(true);
     try {
       await dispatch(cancelBookingThunk({ bookingId: cancelTarget._id, reason }));
+      dispatch(fetchWalletThunk());
       setCancelTarget(null);
       loadBookings(1);
     } finally {

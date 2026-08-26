@@ -174,7 +174,13 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          <ScrollView
+            className="flex-1"
+            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled={true}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 40 }}
+          >
             {/* Active Selection Zone (The Deck) */}
             <CustomiseDeckZone
               activeItems={activeItems}

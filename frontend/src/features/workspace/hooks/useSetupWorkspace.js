@@ -80,7 +80,7 @@ export const useSetupWorkspace = () => {
   const onSubmit = (data) => {
     const payload = {
       name: data.name.trim(),
-      organizationType: 'Residential', // Default to Residential since UI field is removed
+      organizationType: 'Residential',
       timezone: data.timezone,
       contactEmail: data.contactEmail?.trim(),
       contactPhone: data.contactPhone?.trim(),
@@ -99,12 +99,10 @@ export const useSetupWorkspace = () => {
         }
       })
     } else {
-      // Instead of creating workspace immediately, navigate to feature selection step
-      navigate('/workspace-setup?step=features', { 
-        state: { 
-          ...location.state, 
-          orgName: payload.name 
-        } 
+      dispatch(createWorkspace(payload)).then((action) => {
+        if (createWorkspace.fulfilled.match(action)) {
+          navigate('/workspace-setup')
+        }
       })
     }
   }

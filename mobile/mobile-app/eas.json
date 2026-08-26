@@ -22,7 +22,11 @@
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://managemygate.e3esg.com/api/v1",
+        "EXPO_PUBLIC_SOCKET_URL": "https://managemygate.e3esg.com"
+      }
     }
   },
   "submit": {

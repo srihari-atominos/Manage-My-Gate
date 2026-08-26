@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Platform } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -13,6 +14,7 @@ export interface CameraViewFinderProps {
   instruction?: string;
   title?: string;
   isScanning?: boolean;
+  enableTorch?: boolean;
   className?: string;
   fullscreen?: boolean;
 }
@@ -22,13 +24,16 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
   instruction = 'Position QR Code within Frame',
   title,
   isScanning = true,
+  enableTorch = false,
   className,
   fullscreen = false,
 }) => {
   const [cameraActive, setCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const videoRef = useRef<any>(null);
   const streamRef = useRef<any>(null);
+  const scannedRef = useRef<boolean>(false);
 
   const startWebCamera = useCallback(async () => {
     setCameraError(null);
@@ -44,19 +49,36 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
           videoRef.current.play().catch(console.error);
         }
         setCameraActive(true);
-      } else {
-        // Native camera fallback or simulation indicator
-        setCameraActive(true);
       }
     } catch (err: any) {
-      console.warn('Camera access error:', err);
+      console.warn('Web Camera access error:', err);
       setCameraError(err.message || 'Camera access permission was denied or camera is unavailable.');
       setCameraActive(false);
     }
   }, []);
 
+  // Request permissions on native mount if not granted
   useEffect(() => {
-    if (isScanning) {
+    if (Platform.OS !== 'web' && isScanning) {
+      if (!permission?.granted) {
+        requestPermission().then((res) => {
+          if (res?.granted) {
+            setCameraActive(true);
+            setCameraError(null);
+          } else {
+            setCameraActive(false);
+            setCameraError('Camera access permission is required to scan QR passes.');
+          }
+        });
+      } else {
+        setCameraActive(true);
+        setCameraError(null);
+      }
+    }
+  }, [isScanning, permission?.granted, requestPermission]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && isScanning) {
       startWebCamera();
     }
     return () => {
@@ -70,6 +92,36 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
     };
   }, [isScanning, startWebCamera]);
 
+  const handleNativeBarcodeScanned = (scanningResult: { data: string }) => {
+    if (onScan && isScanning && !scannedRef.current) {
+      scannedRef.current = true;
+      onScan(scanningResult.data);
+      // Reset scan flag after 2 seconds to prevent rapid firing
+      setTimeout(() => {
+        scannedRef.current = false;
+      }, 2000);
+    }
+  };
+
+  const handlePermissionRequest = async () => {
+    if (Platform.OS === 'web') {
+      startWebCamera();
+    } else {
+      const res = await requestPermission();
+      if (res?.granted) {
+        setCameraActive(true);
+        setCameraError(null);
+      } else {
+        setCameraActive(false);
+        setCameraError('Camera access permission was denied. Please allow camera access in device settings.');
+      }
+    }
+  };
+
+  const isNativeCameraActive = Platform.OS !== 'web' && permission?.granted && isScanning;
+  const isWebCameraActive = Platform.OS === 'web' && cameraActive && isScanning;
+  const isActive = isNativeCameraActive || isWebCameraActive;
+
   return (
     <View
       className={cn(
@@ -78,7 +130,22 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
         className
       )}
     >
-      {/* Live Video Stream Viewport */}
+      {/* Native Camera Viewport (iOS & Android) */}
+      {Platform.OS !== 'web' && permission?.granted && isScanning ? (
+        <View className="absolute inset-0 w-full h-full">
+          <CameraView
+            style={{ width: '100%', height: '100%' }}
+            facing="back"
+            enableTorch={enableTorch}
+            barcodeScannerSettings={{
+              barcodeTypes: ['qr'],
+            }}
+            onBarcodeScanned={handleNativeBarcodeScanned}
+          />
+        </View>
+      ) : null}
+
+      {/* Web Live Video Stream Viewport */}
       {Platform.OS === 'web' ? (
         <View className="absolute inset-0 w-full h-full">
           <video
@@ -102,7 +169,7 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
           <ErrorBanner
             title="Camera Permission Required"
             message={cameraError || 'Camera stream is unavailable.'}
-            onRetry={startWebCamera}
+            onRetry={handlePermissionRequest}
             retryLabel="Enable Camera"
             className="w-full"
           />
@@ -110,8 +177,8 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
       )}
 
       {/* Fallback Camera Placeholder if not active and no error */}
-      {!cameraActive && !cameraError && (
-        <View className="p-6 items-center justify-center gap-3">
+      {!isActive && !cameraError && (
+        <View className="p-6 items-center justify-center gap-3 z-20">
           <View className="w-14 h-14 rounded-full bg-muted/40 border border-border/30 items-center justify-center mb-1">
             <Icon as={CameraOff} size={26} className="text-muted-foreground" />
           </View>
@@ -121,7 +188,7 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
           <Button
             size="sm"
             variant="outline"
-            onPress={startWebCamera}
+            onPress={handlePermissionRequest}
             className="mt-1 border-border bg-card/80"
           >
             <Icon as={RefreshCw} size={14} className="me-1.5 text-foreground" />
@@ -131,7 +198,7 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
       )}
 
       {/* Optical Scanner Reticle Overlay */}
-      {cameraActive && (
+      {isActive && (
         <QRScannerOverlay instruction={instruction} />
       )}
     </View>

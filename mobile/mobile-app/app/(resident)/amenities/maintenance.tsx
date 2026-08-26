@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Plus } from 'lucide-react-native';
+import { FAB } from '@/components/ui/FAB';
 
 import { useAdminMaintenance } from '../../../src/features/amenities/hooks/useAdminMaintenance';
 import { MaintenanceTaskCard } from '../../../src/features/amenities/components/MaintenanceTaskCard';
@@ -48,9 +49,8 @@ export default function AmenityMaintenanceScheduleScreen() {
 
   return (
     <ScreenShell
-      title="Maintenance & Upkeep Tasks"
-      subtitle="Track upkeep tasks, blackout schedules & staff assignments"
-      iconName="Wrench"
+      title="Maintenance Tasks"
+      subtitle="Track facility upkeep & tasks"
       loading={loading && maintenanceList.length === 0}
       error={error}
       onRetry={loadData}
@@ -59,11 +59,11 @@ export default function AmenityMaintenanceScheduleScreen() {
           variant="default"
           size="sm"
           onPress={handleOpenCreateModal}
-          className="flex-row items-center gap-1.5 rounded-full"
-          accessibilityLabel="Schedule Maintenance Task"
+          className="flex-row items-center gap-1 rounded-full px-2.5 h-8"
+          accessibilityLabel="Schedule Task"
         >
           <Plus size={14} className="text-primary-foreground" />
-          <Text className="text-primary-foreground font-bold text-xs">Schedule Task</Text>
+          <Text className="text-primary-foreground font-bold text-xs">Schedule</Text>
         </Button>
       }
     >
@@ -85,6 +85,13 @@ export default function AmenityMaintenanceScheduleScreen() {
           emptyTitle="No Maintenance Scheduled"
           emptySubtitle="All community facilities are operational with no scheduled upkeep tasks."
           contentContainerClassName="p-4 gap-3.5 pb-28"
+        />
+
+        {/* Primary Creation Action: Schedule Task FAB */}
+        <FAB
+          iconName="Plus"
+          label="Schedule Task"
+          onPress={handleOpenCreateModal}
         />
       </View>
 

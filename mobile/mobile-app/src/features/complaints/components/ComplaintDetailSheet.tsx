@@ -13,6 +13,7 @@ import { AssignTechnicianSheet } from './AssignTechnicianSheet';
 import { useComplaints } from '../hooks/useComplaints';
 import { Complaint } from '../types';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { getImageUrl } from '@/src/utils/imageUrl';
 
 interface ComplaintDetailSheetProps {
   visible: boolean;
@@ -225,7 +226,7 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
   return (
     <>
       <BottomSheet visible={visible} onClose={onClose} title={`Ticket #${complaint.complaintNumber}`}>
-        <ScrollView className="px-4 py-2" contentContainerStyle={{ paddingBottom: 60 }}>
+        <View className="py-2 pb-8">
           {/* CONSOLIDATED UNIFIED TICKET CARD */}
           <View className="bg-card border border-border rounded-2xl p-4 mb-3 shadow-xs gap-3.5">
             {/* Priority & Status Header */}
@@ -348,7 +349,7 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
                       onPress={() => setPreviewImageUrl(imgUrl)}
                       className="w-16 h-16 rounded-xl bg-muted border border-border me-2 overflow-hidden"
                     >
-                      <Image source={{ uri: imgUrl }} className="w-full h-full object-cover" />
+                      <Image source={{ uri: getImageUrl(imgUrl) }} className="w-full h-full object-cover" />
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -838,7 +839,7 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
               ) : null}
             </View>
           )}
-        </ScrollView>
+        </View>
       </BottomSheet>
 
       {/* DELETE CONFIRMATION MODAL */}
@@ -876,7 +877,7 @@ export const ComplaintDetailSheet: React.FC<ComplaintDetailSheetProps> = ({
             <Icon as={X} size={24} color="#ffffff" />
           </TouchableOpacity>
           {previewImageUrl ? (
-            <Image source={{ uri: previewImageUrl }} className="w-full h-4/6 object-contain rounded-2xl" />
+            <Image source={{ uri: getImageUrl(previewImageUrl) }} className="w-full h-4/6 object-contain rounded-2xl" />
           ) : null}
         </View>
       </Modal>

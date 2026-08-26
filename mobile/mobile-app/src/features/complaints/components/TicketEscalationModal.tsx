@@ -55,7 +55,7 @@ export const TicketEscalationModal: React.FC<TicketEscalationModalProps> = ({
       onClose={onClose}
       title={ticket ? `Escalate Ticket (${ticket.complaintNumber})` : 'Escalate Ticket'}
     >
-      <View className="gap-3.5 pb-4">
+      <View className="gap-3.5 pb-2">
         {error && (
           <View className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl flex-row items-center gap-2">
             <ShieldAlert size={16} className="text-destructive shrink-0" />
@@ -63,7 +63,7 @@ export const TicketEscalationModal: React.FC<TicketEscalationModalProps> = ({
           </View>
         )}
 
-        <ScrollView className="max-h-[55vh]" contentContainerClassName="gap-3 pb-2" showsVerticalScrollIndicator={false}>
+        <View className="gap-3 pb-2">
           <View className="bg-destructive/10 border border-destructive/20 p-3 rounded-xl flex-row items-center gap-2">
             <AlertTriangle size={16} className="text-destructive shrink-0" />
             <Text className="text-xs text-destructive font-medium flex-1">
@@ -110,7 +110,7 @@ export const TicketEscalationModal: React.FC<TicketEscalationModalProps> = ({
             placeholder="e.g. Contacted facility supervisor for emergency override..."
             inputClassName="h-20 py-2 text-start"
           />
-        </ScrollView>
+        </View>
 
         {/* Action Buttons */}
         <View className="flex-row gap-2 pt-2 border-t border-border">

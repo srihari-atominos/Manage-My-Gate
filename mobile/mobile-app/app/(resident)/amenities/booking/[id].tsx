@@ -56,7 +56,7 @@ export default function AmenitySlotWizardScreen() {
       loading={loading && !currentAmenity}
       error={error && !isOCCError ? error : null}
     >
-      <ScrollView className="flex-1 px-4 pt-2" contentContainerClassName="pb-28">
+      <ScrollView className="flex-1 px-4 pt-2" contentContainerClassName="pb-6">
         {/* OCC Conflict Alert Banner */}
         {isOCCError ? (
           <View className="mb-4 bg-amber-500/10 border border-amber-500/40 p-4 rounded-2xl">
@@ -159,7 +159,7 @@ export default function AmenitySlotWizardScreen() {
       </ScrollView>
 
       {/* Proceed to Checkout CTA - Sticky Bottom */}
-      <View className="px-4 py-3 bg-card border-t border-border mt-auto">
+      <View className="px-4 py-3 bg-card border-t border-border">
         <Button
           variant="default"
           disabled={(currentAmenity?.pricing?.pricingType !== 'daily' && !selectedSlot) || loading}
