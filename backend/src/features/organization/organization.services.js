@@ -7,27 +7,6 @@ import orgEventEmitter from './organization.events.js';
 export class OrganizationService {
   async createOrganization(orgData, session) {
     const org = await organizationRepository.create(orgData, session);
-
-    // Auto-create / update CRM Inquiry Lead so the Organization Name appears in Enquiry Management
-    try {
-      const crmInquiryService = (await import('../crmInquiry/crmInquiry.service.js')).default;
-      const contactEmail = orgData.contactEmail || orgData.email || 'N/A';
-      const contactPhone = orgData.contactPhone || orgData.phone || 'N/A';
-      const customerName = orgData.contactName || orgData.name || 'Community Admin';
-      const unitCount = parseInt(orgData.unitCount || orgData.villas || orgData.totalUnits, 10) || 100;
-
-      await crmInquiryService.createInquiry({
-        customerName,
-        organizationName: org.name,
-        unitCount,
-        contactEmail,
-        contactPhone,
-        originSource: 'WORKSPACE_SETUP',
-      });
-    } catch (err) {
-      console.error('Auto-syncing CRM inquiry from Organization creation failed (non-blocking):', err.message);
-    }
-
     return org;
   }
 
