@@ -3,5 +3,7 @@ export * from './store/userSlice';
 export * from './hooks/useUserList';
 export * from './components/UserCard';
 export * from './components/InviteUserModal';
+export * from './components/BulkInviteModal';
+export * from './components/ConfigureInviteTemplateModal';
 export * from './components/ManageRolesModal';
 export * from './components/UserFilterSheet';

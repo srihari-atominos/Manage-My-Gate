@@ -16,27 +16,29 @@ const buttonVariants = cva(
       variant: {
         default: cn(
           'bg-primary active:opacity-90 shadow-xs',
-          Platform.select({ web: 'hover:opacity-90' })
+          Platform.OS === 'web' ? 'hover:opacity-90' : ''
+        ),
+        primary: cn(
+          'bg-primary active:opacity-90 shadow-xs',
+          Platform.OS === 'web' ? 'hover:opacity-90' : ''
         ),
         destructive: cn(
           'bg-destructive active:opacity-90 shadow-xs',
-          Platform.select({
-            web: 'hover:opacity-90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40',
-          })
+          Platform.OS === 'web'
+            ? 'hover:opacity-90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40'
+            : ''
         ),
         outline: cn(
           'border border-border/80 bg-card active:bg-secondary/60 shadow-xs',
-          Platform.select({
-            web: 'hover:bg-secondary/60',
-          })
+          Platform.OS === 'web' ? 'hover:bg-secondary/60' : ''
         ),
         secondary: cn(
           'bg-secondary border border-border/70 active:bg-secondary/80 shadow-xs',
-          Platform.select({ web: 'hover:bg-secondary/80' })
+          Platform.OS === 'web' ? 'hover:bg-secondary/80' : ''
         ),
         ghost: cn(
           'active:bg-secondary/50',
-          Platform.select({ web: 'hover:bg-secondary/50' })
+          Platform.OS === 'web' ? 'hover:bg-secondary/50' : ''
         ),
         link: '',
       },
@@ -63,6 +65,7 @@ const buttonTextVariants = cva(
     variants: {
       variant: {
         default: 'text-primary-foreground',
+        primary: 'text-primary-foreground',
         destructive: 'text-destructive-foreground',
         outline: 'text-foreground group-active:text-foreground',
         secondary: 'text-secondary-foreground',
@@ -87,8 +90,9 @@ const buttonTextVariants = cva(
 );
 
 export interface ButtonProps
-  extends React.ComponentPropsWithoutRef<typeof Pressable>,
-    VariantProps<typeof buttonVariants> {
+  extends React.ComponentPropsWithoutRef<typeof Pressable> {
+  variant?: 'default' | 'primary' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
   leftIcon?: React.ComponentType<{ size?: number; className?: string; color?: string }>;
   rightIcon?: React.ComponentType<{ size?: number; className?: string; color?: string }>;
   loading?: boolean;
@@ -115,13 +119,13 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
     const iconSize = size === 'sm' ? 16 : size === 'lg' ? 20 : 18;
 
     return (
-      <TextClassContext.Provider value={cn(buttonTextVariants({ variant, size }), textClassName)}>
+      <TextClassContext.Provider value={cn(buttonTextVariants({ variant: variant as any, size }), textClassName)}>
         <Pressable
           ref={ref}
           disabled={isDisabled}
           className={cn(
             isDisabled && 'opacity-50',
-            buttonVariants({ variant, size }),
+            buttonVariants({ variant: variant as any, size }),
             className
           )}
           role="button"

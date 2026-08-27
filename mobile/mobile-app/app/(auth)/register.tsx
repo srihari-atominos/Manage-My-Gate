@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
-import { Stack, router, useSegments } from 'expo-router';
+import { PhoneInput } from '@/components/forms/PhoneInput';
+import { Stack, router, useSegments, useLocalSearchParams } from 'expo-router';
 import { ShieldCheck, Mail, Lock, Phone, User } from 'lucide-react-native';
 import * as React from 'react';
 import { View, ScrollView } from 'react-native';
@@ -18,7 +19,23 @@ import { MicrosoftSignInButton } from '../../src/features/auth/components/Micros
 const registerSchema = yup.object().shape({
   name: yup.string().required('Full Name is required'),
   email: yup.string().required('Email is required').email('Invalid email address'),
-  phone: yup.string().required('Phone number is required').matches(/^\+?[1-9]\d{1,14}$/, 'Enter a valid international phone number (e.g., +919988776655)'),
+  phone: yup
+    .string()
+    .required('Phone number is required')
+    .test('valid-phone', 'Invalid phone number format', function (value) {
+      if (!value) return false;
+      if (value.startsWith('+91')) {
+        const nationalNumber = value.slice(3);
+        if (nationalNumber.length !== 10) {
+          return this.createError({ message: 'India mobile number must be exactly 10 digits' });
+        }
+        if (!/^[6-9]\d{9}$/.test(nationalNumber)) {
+          return this.createError({ message: 'India mobile number must start with 6, 7, 8, or 9' });
+        }
+        return true;
+      }
+      return /^\+[1-9]\d{7,14}$/.test(value);
+    }),
   password: yup
     .string()
     .required('Password is required')
@@ -37,6 +54,7 @@ type RegisterFormValues = yup.InferType<typeof registerSchema>;
 
 export default function RegisterScreen() {
   const { register: performRegister, loading, error, successMsg, clearStatus } = useAuth();
+  const params = useLocalSearchParams<{ email?: string; name?: string; isGoogleSso?: string }>();
   
   const segments = useSegments();
   const isFocused = segments[segments.length - 1] === 'register';
@@ -44,13 +62,22 @@ export default function RegisterScreen() {
   const form = useForm<RegisterFormValues>({
     resolver: yupResolver(registerSchema),
     defaultValues: {
-      name: '',
-      email: '',
+      name: params.name || '',
+      email: params.email || '',
       phone: '',
       password: '',
       confirmPassword: '',
     },
   });
+
+  React.useEffect(() => {
+    if (params.name) {
+      form.setValue('name', params.name);
+    }
+    if (params.email) {
+      form.setValue('email', params.email);
+    }
+  }, [params.name, params.email]);
 
   React.useEffect(() => {
     clearStatus();
@@ -151,16 +178,12 @@ export default function RegisterScreen() {
                 <Controller
                   control={form.control}
                   name="phone"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
+                  render={({ field: { onChange, value } }) => (
+                    <PhoneInput
                       label="Mobile Number"
-                      placeholder="+919988776655"
-                      leftIcon={<Phone size={18} className="text-muted-foreground" />}
-                      onBlur={onBlur}
+                      placeholder="99887 76655"
                       onChangeText={onChange}
                       value={value}
-                      keyboardType="phone-pad"
-                      autoComplete="tel"
                       error={form.formState.errors.phone?.message}
                     />
                   )}

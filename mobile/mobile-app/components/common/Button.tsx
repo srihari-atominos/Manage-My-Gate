@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils';
 
 export interface ButtonProps extends PressableProps {
   children: React.ReactNode;
-  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' | 'primary';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   leftIcon?: LucideIcon;
   rightIcon?: LucideIcon;
@@ -33,6 +33,7 @@ export const Button = forwardRef<View, ButtonProps>(
   ) => {
     const variantClasses = {
       default: 'bg-primary border border-primary/90 shadow-xs',
+      primary: 'bg-primary border border-primary/90 shadow-xs',
       destructive: 'bg-destructive border border-destructive/20 shadow-xs',
       outline: 'border border-border/80 bg-card shadow-xs',
       secondary: 'bg-secondary border border-border/70 shadow-xs',
@@ -42,6 +43,7 @@ export const Button = forwardRef<View, ButtonProps>(
 
     const textClasses = {
       default: 'text-primary-foreground',
+      primary: 'text-primary-foreground',
       destructive: 'text-destructive-foreground',
       outline: 'text-foreground',
       secondary: 'text-secondary-foreground',

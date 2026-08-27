@@ -17,6 +17,7 @@ export interface DropdownSelectProps {
   error?: string;
   className?: string;
   inline?: boolean;
+  accordion?: boolean;
 }
 
 export const DropdownSelect = ({
@@ -28,9 +29,11 @@ export const DropdownSelect = ({
   error,
   className,
   inline = false,
+  accordion = false,
 }: DropdownSelectProps) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const isInline = inline || accordion;
 
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -78,7 +81,7 @@ export const DropdownSelect = ({
       )}
 
       {/* Inline Dropdown List overlay */}
-      {inline && isOpen && (
+      {isInline && isOpen && (
         <View 
           className="absolute left-0 right-0 z-[1000] bg-card border border-border rounded-xl shadow-lg mt-1 overflow-hidden"
           style={{ 

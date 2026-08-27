@@ -16,7 +16,11 @@ export interface ScreenShellProps {
   title: string;
   subtitle?: string;
   iconName?: string;             // Lucide icon name for header
+  domainName?: string;
+  sharedSlice?: string;
+  permission?: string;
   showBackButton?: boolean;      // default true
+  onBackPress?: () => void;
   headerRight?: React.ReactNode; // slot for action buttons (filter, add, etc.)
   children?: React.ReactNode;
   loading?: boolean;             // shows skeleton overlay

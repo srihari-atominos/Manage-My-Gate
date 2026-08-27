@@ -23,19 +23,21 @@ export const ListItem = ({
   className,
   ...props
 }: ListItemProps) => {
-  return (
-    <ListCard
-      title={title}
-      subtitle={subtitle}
-      leftIcon={leftIcon}
-      showChevron={showChevron}
-      rightContent={RightIcon ? <RightIcon size={20} className="text-muted-foreground" /> : undefined}
-      onPress={onPress}
-      variant="row"
-      className={className}
-      {...props}
-    />
-  );
+    const { onLongPress, ...restProps } = props;
+    return (
+      <ListCard
+        title={title}
+        subtitle={subtitle}
+        leftIcon={leftIcon}
+        showChevron={showChevron}
+        rightContent={RightIcon ? <RightIcon size={20} className="text-muted-foreground" /> : undefined}
+        onPress={onPress}
+        onLongPress={onLongPress ? () => onLongPress(null as any) : undefined}
+        variant="row"
+        className={className}
+        {...restProps}
+      />
+    );
 };
 
 export default ListItem;

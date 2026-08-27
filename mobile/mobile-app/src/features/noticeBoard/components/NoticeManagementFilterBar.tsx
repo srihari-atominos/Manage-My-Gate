@@ -5,7 +5,7 @@ import { Text } from '@/components/ui/text';
 import { Search, X, RotateCcw } from 'lucide-react-native';
 import { NoticeCategoryChip } from './NoticeCategoryChip';
 
-const CATEGORIES = [
+export const CATEGORIES = [
   'All',
   'General',
   'Maintenance',
@@ -14,14 +14,14 @@ const CATEGORIES = [
   'Meetings',
 ];
 
-const PRIORITIES = {
+export const PRIORITIES = {
   LOW: 'Low',
   MEDIUM: 'Medium',
   HIGH: 'High',
   URGENT: 'Urgent',
 };
 
-const STATUSES = {
+export const STATUSES = {
   DRAFT: 'Draft',
   PUBLISHED: 'Published',
   EXPIRED: 'Expired',
@@ -37,14 +37,43 @@ export const SORT_OPTIONS = [
   { value: 'title_desc', label: 'Title (Z-A)', sortBy: 'title', sortOrder: 'desc' },
 ];
 
-export const NoticeBoardFilters = ({
-  search,
-  filters,
+export interface NoticeFiltersState {
+  category?: string;
+  priority?: string;
+  status?: string;
+  noticeType?: string;
+  isBookmarked?: boolean;
+  readStatus?: string;
+  sortBy?: string;
+  sortOrder?: string;
+}
+
+export interface NoticeSortState {
+  sortBy?: string;
+  sortOrder?: string;
+  value?: string;
+}
+
+export interface NoticeManagementFilterBarProps {
+  search?: string;
+  filters?: NoticeFiltersState;
+  sort?: NoticeSortState | string;
+  onSearchChange?: (val: string) => void;
+  onFiltersChange?: (filters: NoticeFiltersState) => void;
+  onSortChange?: (val: any) => void;
+  onReset?: () => void;
+  hideStatusFilter?: boolean;
+  showNoticeTypeFilter?: boolean;
+}
+
+export const NoticeBoardFilters: React.FC<NoticeManagementFilterBarProps> = ({
+  search = '',
+  filters = {},
   sort,
-  onSearchChange,
-  onFiltersChange,
-  onSortChange,
-  onReset,
+  onSearchChange = () => {},
+  onFiltersChange = () => {},
+  onSortChange = () => {},
+  onReset = () => {},
   hideStatusFilter = false,
   showNoticeTypeFilter = false,
 }) => {
@@ -63,7 +92,7 @@ export const NoticeBoardFilters = ({
     onSearchChange('');
   };
 
-  const handleSortSelect = (value) => {
+  const handleSortSelect = (value: string) => {
     const selected = SORT_OPTIONS.find((opt) => opt.value === value);
     if (selected) {
       if (onSortChange) {
@@ -75,11 +104,15 @@ export const NoticeBoardFilters = ({
   };
 
   const activeSortOption =
-    SORT_OPTIONS.find((opt) => opt.sortBy === sort?.sortBy && opt.sortOrder === sort?.sortOrder)?.value || 'newest';
+    SORT_OPTIONS.find(
+      (opt) =>
+        opt.sortBy === (typeof sort === 'object' ? sort?.sortBy : undefined) &&
+        opt.sortOrder === (typeof sort === 'object' ? sort?.sortOrder : undefined)
+    )?.value || 'newest';
 
   const selectedCategory = filters?.category || 'All';
 
-  const handleCategorySelect = (category) => {
+  const handleCategorySelect = (category: string) => {
     if (category === 'All') {
       onFiltersChange({ category: '' });
     } else {
@@ -88,18 +121,18 @@ export const NoticeBoardFilters = ({
   };
 
   const getNoticeType = () => {
-    if (filters?.isBookmarked === 'true' || filters?.isBookmarked === true) return 'Bookmarks';
+    if (filters?.isBookmarked) return 'Bookmarks';
     if (filters?.readStatus === 'Unread') return 'Unread';
     return 'All';
   };
 
-  const handleNoticeTypeChange = (val) => {
+  const handleNoticeTypeChange = (val: string) => {
     if (val === 'Bookmarks') {
-      onFiltersChange({ isBookmarked: 'true', readStatus: '' });
+      onFiltersChange({ isBookmarked: true, readStatus: undefined });
     } else if (val === 'Unread') {
-      onFiltersChange({ readStatus: 'Unread', isBookmarked: '' });
+      onFiltersChange({ readStatus: 'Unread', isBookmarked: false });
     } else {
-      onFiltersChange({ readStatus: '', isBookmarked: '' });
+      onFiltersChange({ readStatus: undefined, isBookmarked: false });
     }
   };
 
@@ -219,4 +252,5 @@ export const NoticeBoardFilters = ({
   );
 };
 
+export const NoticeManagementFilterBar = NoticeBoardFilters;
 export default NoticeBoardFilters;

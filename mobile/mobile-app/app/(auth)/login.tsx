@@ -1,4 +1,5 @@
 import { Text } from '@/components/ui/text';
+import { PhoneInput } from '@/components/forms/PhoneInput';
 import { Stack, router, useSegments } from 'expo-router';
 import {
   Mail,
@@ -7,7 +8,6 @@ import {
   Eye,
   EyeOff,
   Check,
-  Shield,
   ArrowRight,
   Sparkles,
 } from 'lucide-react-native';
@@ -33,7 +33,6 @@ import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import {
   NahomEmblem,
   NahomWordmark,
-  NahomTrustBadges,
 } from '@/components/auth/NahomBrandLogo';
 import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
 import { MicrosoftSignInButton } from '../../src/features/auth/components/MicrosoftSignInButton';
@@ -516,38 +515,19 @@ export default function LoginScreen() {
                   /* Phone OTP Form */
                   <View className="gap-3.5">
                     <View>
-                      <Text className="text-xs font-bold text-foreground mb-1.5">
-                        Mobile Number
-                      </Text>
                       <Controller
                         control={phoneForm.control}
                         name="phone"
-                        render={({ field: { onChange, onBlur, value } }) => (
-                          <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
-                            <Smartphone size={18} color="#94A3B8" className="me-2.5 shrink-0" />
-                            <TextInput
-                              value={value}
-                              onChangeText={onChange}
-                              onBlur={onBlur}
-                              placeholder="+919988776655"
-                              placeholderTextColor="#94A3B8"
-                              keyboardType="phone-pad"
-                              autoComplete="tel"
-                              returnKeyType="send"
-                              onSubmitEditing={phoneForm.handleSubmit(onPhoneSubmit)}
-                              className={cnText(
-                                'flex-1 text-sm text-foreground font-sans p-0',
-                                Platform.select({ web: 'outline-none' })
-                              )}
-                            />
-                          </View>
+                        render={({ field: { onChange, value } }) => (
+                          <PhoneInput
+                            label="Mobile Number"
+                            placeholder="99887 76655"
+                            onChangeText={onChange}
+                            value={value}
+                            error={phoneForm.formState.errors.phone?.message}
+                          />
                         )}
                       />
-                      {phoneForm.formState.errors.phone && (
-                        <Text className="text-rose-500 text-[11px] mt-1 ms-1 font-medium">
-                          {phoneForm.formState.errors.phone.message}
-                        </Text>
-                      )}
                     </View>
 
                     {/* Global Error Banner */}
@@ -610,19 +590,6 @@ export default function LoginScreen() {
                     Create Account
                   </Text>
                 </TouchableOpacity>
-              </View>
-
-              {/* Step 12: Subtle, Scaled Down Bottom 4 Feature Trust Badges */}
-              <View className="pt-1 px-1 items-center justify-center">
-                <NahomTrustBadges />
-              </View>
-
-              {/* Bottom 256-Bit Encrypted Security Caption */}
-              <View className="flex-row items-center justify-center pb-2 pt-0.5 gap-1.5">
-                <Shield size={12} color="#172B70" strokeWidth={2.5} />
-                <Text className="text-[11px] text-slate-900 dark:text-slate-100 font-bold font-sans">
-                  256-Bit Encrypted Community Security Network
-                </Text>
               </View>
             </Animated.View>
           </View>

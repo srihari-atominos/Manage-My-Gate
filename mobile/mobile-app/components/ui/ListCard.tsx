@@ -11,8 +11,14 @@ import { cn } from '@/lib/utils';
 export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeof Pressable>, 'title'> {
   title: string;
   subtitle?: string;
-  leftIcon?: string;               // Lucide icon name
+  variant?: string;
+  leftIcon?: string | React.ComponentType<any>; // Lucide icon name or component
   leftImage?: string;              // Image URL for left square
+  leftAvatar?: string;             // Avatar image URL
+  leftAvatarFallback?: string;      // Fallback text avatar initials
+  showChevron?: boolean;           // Toggle chevron right icon
+  isLastItem?: boolean;
+  disableRelativeTime?: boolean;
   backgroundImage?: string;        // Full card background image URL
   leftIconBgColor?: string;        // icon container bg hex
   leftIconColor?: string;          // icon color hex
@@ -65,6 +71,9 @@ const ListCard = React.forwardRef<View, ListCardProps>(
       subtitle,
       leftIcon,
       leftImage,
+      leftAvatar,
+      leftAvatarFallback,
+      showChevron,
       backgroundImage,
       leftIconBgColor = 'rgba(59, 130, 246, 0.12)',
       leftIconColor = '#3b82f6',
@@ -72,6 +81,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
       secondaryBadge,
       timestamp,
       rightContent,
+      children,
       onPress,
       onLongPress,
       className,
@@ -80,7 +90,88 @@ const ListCard = React.forwardRef<View, ListCardProps>(
     },
     ref
   ) => {
-    const DynamicIcon = leftIcon ? (LucideIcons as Record<string, any>)[leftIcon] : undefined;
+    const DynamicIcon = typeof leftIcon === 'string' ? (LucideIcons as Record<string, any>)[leftIcon] : leftIcon;
+    const showDefaultChevron = showChevron && rightContent === undefined;
+
+    const renderCardHeader = () => (
+      <View className="flex-row items-center w-full">
+        {/* Left Avatar / Image / Icon Container */}
+        {leftAvatar ? (
+          <Image
+            source={{ uri: leftAvatar }}
+            className="w-10 h-10 rounded-full shrink-0 me-3 border border-border/50"
+            resizeMode="cover"
+          />
+        ) : leftAvatarFallback ? (
+          <View className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0">
+            <Text className="text-xs font-bold text-primary">{leftAvatarFallback}</Text>
+          </View>
+        ) : leftImage ? (
+          <Image
+            source={{ uri: leftImage }}
+            className="w-11 h-11 rounded-xl shrink-0 me-3.5"
+            resizeMode="cover"
+          />
+        ) : DynamicIcon ? (
+          <View
+            className="w-11 h-11 rounded-xl items-center justify-center shrink-0 me-3.5 border border-border/50"
+            style={{ backgroundColor: leftIconBgColor }}
+          >
+            <Icon as={DynamicIcon} size={20} color={leftIconColor} />
+          </View>
+        ) : null}
+
+        {/* Middle Details */}
+        <View className="flex-1 justify-center min-w-0">
+          <Text variant="default" className={cn("font-semibold text-[15px] font-sans tracking-tight", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text variant="muted" numberOfLines={1} className={cn("mt-0.5 text-[13px] font-sans font-medium", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
+              {subtitle}
+            </Text>
+          ) : null}
+          {timestamp ? (
+            <Text variant="muted" className={cn("text-[11px] font-sans mt-0.5", backgroundImage ? "text-white/60" : "text-muted-foreground/80")}>
+              {formatRelativeTime(timestamp)}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* Right Action / Badges */}
+        <View className="items-end justify-center gap-1 ms-2 shrink-0">
+          {status ? (
+            <StatusBadge label={status.label} variant={status.variant} size="sm" />
+          ) : null}
+          {secondaryBadge ? (
+            <StatusBadge label={secondaryBadge.label} variant={secondaryBadge.variant} size="sm" />
+          ) : null}
+          {rightContent !== undefined ? (
+            rightContent
+          ) : showDefaultChevron ? (
+            <Icon as={ChevronRight} size={16} className={backgroundImage ? "text-white/70" : "text-muted-foreground"} />
+          ) : null}
+        </View>
+      </View>
+    );
+
+    if (children) {
+      return (
+        <View
+          ref={ref}
+          className={cn("bg-card rounded-2xl border border-border/80 mb-3 p-3.5 overflow-hidden", className)}
+          style={style as any}
+        >
+          <Pressable
+            onPress={onPress}
+            onLongPress={onLongPress}
+          >
+            {renderCardHeader()}
+          </Pressable>
+          {typeof children === 'function' ? (children as any)({ pressed: false }) : children}
+        </View>
+      );
+    }
 
     return (
       <Pressable
@@ -104,53 +195,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
           </>
         ) : null}
 
-        {/* Left Icon / Image Container */}
-        {leftImage ? (
-          <Image
-            source={{ uri: leftImage }}
-            className="w-11 h-11 rounded-xl shrink-0 me-3.5"
-            resizeMode="cover"
-          />
-        ) : DynamicIcon ? (
-          <View
-            className="w-11 h-11 rounded-xl items-center justify-center shrink-0 me-3.5 border border-border/50"
-            style={{ backgroundColor: leftIconBgColor }}
-          >
-            <Icon as={DynamicIcon} size={20} color={leftIconColor} />
-          </View>
-        ) : null}
-
-        {/* Middle Details */}
-        <View className="flex-1 justify-center">
-          <Text variant="default" className={cn("font-semibold text-[15px] font-sans tracking-tight", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text variant="muted" numberOfLines={1} className={cn("mt-0.5 text-[13px] font-sans font-medium", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
-              {subtitle}
-            </Text>
-          ) : null}
-          {timestamp ? (
-            <Text variant="muted" className={cn("text-[11px] font-sans mt-0.5", backgroundImage ? "text-white/60" : "text-muted-foreground/80")}>
-              {formatRelativeTime(timestamp)}
-            </Text>
-          ) : null}
-        </View>
-
-        {/* Right Action / Badges */}
-        <View className="items-end justify-center gap-1 ms-2 shrink-0">
-          {rightContent !== undefined ? (
-            rightContent
-          ) : (
-            <Icon as={ChevronRight} size={16} className={backgroundImage ? "text-white/70" : "text-muted-foreground"} />
-          )}
-          {status ? (
-            <StatusBadge label={status.label} variant={status.variant} size="sm" />
-          ) : null}
-          {secondaryBadge ? (
-            <StatusBadge label={secondaryBadge.label} variant={secondaryBadge.variant} size="sm" />
-          ) : null}
-        </View>
+        {renderCardHeader()}
       </Pressable>
     );
   }

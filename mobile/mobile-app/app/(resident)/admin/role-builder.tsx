@@ -1,12 +1,12 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { View, TouchableOpacity, Alert, Modal } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, FlatList, RefreshControl, TouchableOpacity, Alert, Modal } from 'react-native';
 import { ChevronLeft, ChevronRight, Plus, Hash, X } from 'lucide-react-native';
 import { ScreenShell } from '../../../components/ui/ScreenShell';
 import { SearchFilterBar } from '../../../components/ui/SearchFilterBar';
-import { PaginatedList } from '../../../components/ui/PaginatedList';
 import { FAB } from '../../../components/ui/FAB';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
-import { ErrorBanner } from '../../../components/feedback/ErrorBanner';
+import { EmptyState } from '../../../components/feedback/EmptyState';
+import { SkeletonLoader } from '../../../components/feedback/SkeletonLoader';
 import { Button } from '../../../components/ui/button';
 import { Icon } from '../../../components/ui/icon';
 import { Text } from '../../../components/ui/text';
@@ -17,7 +17,6 @@ import { RoleCard } from '../../../src/features/roleBuilder/components/RoleCard'
 import { RoleFormSheetModal } from '../../../src/features/roleBuilder/components/RoleFormSheetModal';
 
 export default function RoleBuilderScreen() {
-  // Listen for realtime socket events
   useRoleSocket();
 
   const {
@@ -49,31 +48,23 @@ export default function RoleBuilderScreen() {
     dismissError,
   } = useRoles();
 
-  // Scope Filter Chips State
   const [scopeFilter, setScopeFilter] = useState<'ALL' | 'TENANT' | 'GLOBAL'>('ALL');
   const [showPageJumpModal, setShowPageJumpModal] = useState(false);
   const [targetPageInput, setTargetPageInput] = useState('');
 
-  // Compute Statistics for Filter Tab Counts
   const stats = useMemo(() => {
     const list = roles || [];
-    const globalCount = list.filter((r) => !r.isTenantRole).length;
-    const unitCount = list.filter((r) => r.isTenantRole === true).length;
     return {
       total: list.length,
-      global: globalCount,
-      unit: unitCount,
+      global: list.filter((r) => !r.isTenantRole).length,
+      unit: list.filter((r) => r.isTenantRole === true).length,
     };
   }, [roles]);
 
   const filteredRoles = useMemo(() => {
     return (roles || []).filter((role) => {
-      if (scopeFilter === 'TENANT') {
-        return role.isTenantRole === true;
-      }
-      if (scopeFilter === 'GLOBAL') {
-        return !role.isTenantRole;
-      }
+      if (scopeFilter === 'TENANT') return role.isTenantRole === true;
+      if (scopeFilter === 'GLOBAL') return !role.isTenantRole;
       return true;
     });
   }, [roles, scopeFilter]);
@@ -89,142 +80,25 @@ export default function RoleBuilderScreen() {
     }
   };
 
-  // Record Range Calculations
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
   const endRecord = Math.min(currentPage * rowsPerPage, totalRecords);
 
-  // Clean Native List Header matching User Management UI
-  const renderListHeader = useCallback(() => {
-    return (
-      <View className="gap-2.5 mb-2">
-        {/* Error Alert Banner */}
-        {error ? (
-          <ErrorBanner
-            title="Role Operation Failed"
-            message={error}
-            onRetry={handleRefresh}
-            onDismiss={dismissError}
-          />
-        ) : null}
-
-        {/* User Management Search Filter Bar */}
-        <SearchFilterBar
-          searchValue={searchQuery}
-          onSearchChange={handleSearch}
-          searchPlaceholder="Search roles by name or scope..."
-        />
-
-        {/* Filter Chips Bar */}
-        <View className="flex-row items-center gap-1.5 py-0.5">
-          {[
-            { id: 'ALL', label: 'All Roles', count: stats.total },
-            { id: 'GLOBAL', label: 'Global', count: stats.global },
-            { id: 'TENANT', label: 'Unit Scope', count: stats.unit },
-          ].map((tab) => {
-            const isActive = scopeFilter === tab.id;
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                onPress={() => setScopeFilter(tab.id as any)}
-                activeOpacity={0.8}
-                className={`px-3 py-1.5 rounded-xl border flex-row items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-primary border-primary shadow-xs'
-                    : 'bg-card border-border/80'
-                }`}
-              >
-                <Text
-                  className={`text-xs font-semibold ${
-                    isActive ? 'text-primary-foreground' : 'text-foreground'
-                  }`}
-                >
-                  {tab.label}
-                </Text>
-                <View
-                  className={`px-1.5 py-0.2 rounded-full ${
-                    isActive
-                      ? 'bg-primary-foreground/20'
-                      : 'bg-muted-foreground/15'
-                  }`}
-                >
-                  <Text
-                    className={`text-[10px] font-bold ${
-                      isActive ? 'text-primary-foreground' : 'text-muted-foreground'
-                    }`}
-                  >
-                    {tab.count}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Summary & Rows Per Page Top Toolbar matching User Management */}
-        <View className="px-3 py-1.5 flex-row items-center justify-between border-y border-border/40 bg-muted/20 rounded-lg">
-          <Text className="text-[11px] font-semibold text-muted-foreground text-start">
-            Showing <Text className="font-bold text-foreground">{startRecord}-{endRecord}</Text> of <Text className="font-bold text-foreground">{totalRecords}</Text> Roles
-          </Text>
-
-          <View className="flex-row items-center gap-1">
-            <Text className="text-[10px] font-semibold text-muted-foreground me-0.5">
-              Rows:
-            </Text>
-            {[10, 20, 50, 100].map((limit) => (
-              <TouchableOpacity
-                key={limit}
-                onPress={() => setRowsPerPage(limit)}
-                className={`px-1.5 py-0.5 rounded-md border active:opacity-70 ${
-                  rowsPerPage === limit
-                    ? 'bg-primary border-primary'
-                    : 'bg-background border-border/60'
-                }`}
-              >
-                <Text
-                  className={`text-[10px] font-bold ${
-                    rowsPerPage === limit ? 'text-primary-foreground' : 'text-foreground'
-                  }`}
-                >
-                  {limit}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </View>
-    );
-  }, [
-    error,
-    handleRefresh,
-    dismissError,
-    searchQuery,
-    handleSearch,
-    scopeFilter,
-    stats,
-    startRecord,
-    endRecord,
-    totalRecords,
-    rowsPerPage,
-    setRowsPerPage,
-  ]);
-
-  // Pagination Footer Component matching User Management UI
+  // Pagination Footer matching User Management exactly
   const renderPaginationFooter = () => {
     if (totalRecords === 0) return null;
-
     return (
       <View className="mt-3 pt-2.5 border-t border-border/40">
         <View className="flex-row items-center justify-between bg-card border border-border/60 p-2 rounded-xl shadow-xs">
           <TouchableOpacity
-            onPress={() => {
-              if (currentPage > 1) setCurrentPage(currentPage - 1);
-            }}
+            onPress={() => { if (currentPage > 1) setCurrentPage(currentPage - 1); }}
             disabled={currentPage <= 1 || isLoading}
             className={`flex-row items-center px-3 py-1.5 rounded-lg border ${
               currentPage <= 1 || isLoading
                 ? 'bg-muted/40 border-border/40 opacity-40'
                 : 'bg-primary/10 border-primary/20 active:opacity-70'
             }`}
+            accessibilityRole="button"
+            accessibilityLabel="Previous page"
           >
             <ChevronLeft size={16} color={currentPage <= 1 || isLoading ? '#9ca3af' : '#6366f1'} className="me-1" />
             <Text className={`text-xs font-bold ${currentPage <= 1 || isLoading ? 'text-muted-foreground' : 'text-primary'}`}>
@@ -241,6 +115,8 @@ export default function RoleBuilderScreen() {
             }}
             disabled={totalPages <= 1}
             className="px-3 py-1.5 rounded-lg bg-muted/60 border border-border/60 flex-row items-center"
+            accessibilityRole="button"
+            accessibilityLabel="Current page"
           >
             <Text className="text-xs font-bold text-foreground">
               Page {currentPage} of {totalPages}
@@ -248,15 +124,15 @@ export default function RoleBuilderScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => {
-              if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-            }}
+            onPress={() => { if (currentPage < totalPages) setCurrentPage(currentPage + 1); }}
             disabled={currentPage >= totalPages || isLoading}
             className={`flex-row items-center px-3 py-1.5 rounded-lg border ${
               currentPage >= totalPages || isLoading
                 ? 'bg-muted/40 border-border/40 opacity-40'
                 : 'bg-primary/10 border-primary/20 active:opacity-70'
             }`}
+            accessibilityRole="button"
+            accessibilityLabel="Next page"
           >
             <Text className={`text-xs font-bold me-1 ${currentPage >= totalPages || isLoading ? 'text-muted-foreground' : 'text-primary'}`}>
               Next
@@ -275,52 +151,125 @@ export default function RoleBuilderScreen() {
       iconName="ShieldCheck"
       domainName="Administration & Security"
       sharedSlice="roleSlice.ts"
+      loading={false}
+      error={error}
+      onRetry={handleRefresh}
       headerRight={
         <TouchableOpacity
           onPress={openCreateModal}
-          activeOpacity={0.8}
-          className="w-8 h-8 rounded-xl bg-primary items-center justify-center shadow-xs"
+          className="p-2 rounded-xl bg-muted/60 border border-border flex-row items-center"
+          accessibilityRole="button"
+          accessibilityLabel="Add role"
         >
-          <Icon as={Plus} size={18} className="text-primary-foreground" />
+          <Plus size={16} color="#6366f1" />
         </TouchableOpacity>
       }
     >
-      <View className="flex-1 bg-background">
-        <PaginatedList
-          data={filteredRoles}
-          loading={isLoading}
-          refreshing={isLoading}
-          onRefresh={handleRefresh}
-          onLoadMore={() => {
-            if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-          }}
-          pagination={{
-            currentPage,
-            totalPages,
-            totalRecords: filteredRoles.length,
-            limit: rowsPerPage,
-          }}
-          keyExtractor={(item: any) => item.id || item._id || String(Math.random())}
-          ListHeaderComponent={renderListHeader()}
-          contentContainerClassName="px-3.5 pt-3 pb-28"
-          renderItem={(item: any) => (
-            <View className="mb-2.5">
+      <View className="flex-1">
+        {/* Search & Filter Bar (outside list, matching User Management) */}
+        <SearchFilterBar
+          searchValue={searchQuery}
+          onSearchChange={handleSearch}
+          searchPlaceholder="Search roles by name or scope..."
+        />
+
+        {/* Scope Filter Chips (below search bar, outside list) */}
+        <View className="px-3 py-1.5 flex-row items-center gap-1.5">
+          {[
+            { id: 'ALL', label: 'All Roles', count: stats.total },
+            { id: 'GLOBAL', label: 'Global', count: stats.global },
+            { id: 'TENANT', label: 'Unit Scope', count: stats.unit },
+          ].map((tab) => {
+            const isActive = scopeFilter === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                onPress={() => setScopeFilter(tab.id as any)}
+                activeOpacity={0.8}
+                className={`px-3 py-1.5 rounded-xl border flex-row items-center gap-1.5 ${
+                  isActive
+                    ? 'bg-primary border-primary shadow-xs'
+                    : 'bg-card border-border/80'
+                }`}
+              >
+                <Text className={`text-xs font-semibold ${isActive ? 'text-white' : 'text-foreground'}`}>
+                  {tab.label}
+                </Text>
+                <View className={`px-1.5 py-0.2 rounded-full ${isActive ? 'bg-white/20' : 'bg-muted-foreground/15'}`}>
+                  <Text className={`text-[10px] font-bold ${isActive ? 'text-white' : 'text-muted-foreground'}`}>
+                    {tab.count}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Summary & Rows-Per-Page Selector (matching User Management exactly) */}
+        <View className="px-3 py-1.5 flex-row items-center justify-between border-b border-border/40 bg-muted/20">
+          <Text className="text-[11px] font-semibold text-muted-foreground text-start">
+            Showing <Text className="font-bold text-foreground">{startRecord}-{endRecord}</Text> of <Text className="font-bold text-foreground">{totalRecords}</Text> Roles
+          </Text>
+
+          <View className="flex-row items-center gap-1">
+            <Text className="text-[10px] font-semibold text-muted-foreground me-0.5">Rows:</Text>
+            {[10, 20, 50, 100].map((limit) => (
+              <TouchableOpacity
+                key={limit}
+                onPress={() => setRowsPerPage(limit)}
+                className={`px-1.5 py-0.5 rounded-md border active:opacity-70 ${
+                  rowsPerPage === limit ? 'bg-primary border-primary' : 'bg-background border-border/60'
+                }`}
+                accessibilityRole="button"
+                accessibilityLabel={`Set ${limit} rows per page`}
+              >
+                <Text className={`text-[10px] font-bold ${rowsPerPage === limit ? 'text-white' : 'text-foreground'}`}>
+                  {limit}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* List Content (matching User Management: FlatList, not PaginatedList) */}
+        {isLoading && filteredRoles.length === 0 ? (
+          <View className="p-3">
+            <SkeletonLoader count={4} variant="card" />
+          </View>
+        ) : filteredRoles.length === 0 ? (
+          <EmptyState
+            title={searchQuery ? 'No Matching Roles' : 'No Roles Configured'}
+            description={
+              searchQuery
+                ? `No roles found matching "${searchQuery}".`
+                : 'No roles configured yet. Tap the button below to create your first role.'
+            }
+            actionLabel="Create Role"
+            onAction={openCreateModal}
+          />
+        ) : (
+          <FlatList
+            data={filteredRoles}
+            keyExtractor={(item) => item.id || item._id || String(Math.random())}
+            renderItem={({ item }) => (
               <RoleCard
                 role={item}
                 onEdit={openEditModal}
                 onDelete={openDeleteModal}
               />
-            </View>
-          )}
-          emptyTitle={searchQuery ? 'No Matching Roles' : 'No Roles Configured'}
-          emptySubtitle={
-            searchQuery
-              ? `No roles found matching "${searchQuery}".`
-              : 'Create your first system security role to manage access permissions.'
-          }
-        />
-
-        {renderPaginationFooter()}
+            )}
+            contentContainerClassName="p-2.5 pb-28"
+            ListFooterComponent={renderPaginationFooter}
+            refreshControl={
+              <RefreshControl
+                refreshing={isLoading}
+                onRefresh={handleRefresh}
+                colors={['#6366f1']}
+                tintColor="#6366f1"
+              />
+            }
+          />
+        )}
       </View>
 
       {/* Floating Action Button */}
@@ -350,60 +299,43 @@ export default function RoleBuilderScreen() {
         onCancel={closeDeleteModal}
       />
 
-      {/* Direct Page Jump Modal matching User Management */}
-      <Modal
-        visible={showPageJumpModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowPageJumpModal(false)}
-      >
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setShowPageJumpModal(false)}
-          className="flex-1 bg-black/60 items-center justify-center p-4"
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-            className="w-full max-w-xs bg-card border border-border rounded-2xl p-5 shadow-xl"
-          >
-            <View className="flex-row items-center justify-between mb-3 border-b border-border/60 pb-2">
+      {/* Quick Jump To Page Modal (matching User Management exactly) */}
+      <Modal visible={showPageJumpModal} transparent animationType="fade" onRequestClose={() => setShowPageJumpModal(false)}>
+        <View className="flex-1 justify-center items-center bg-black/50 p-4">
+          <View className="bg-card rounded-2xl p-5 border border-border w-full max-w-xs shadow-lg">
+            <View className="flex-row items-center justify-between pb-2 border-b border-border mb-3">
               <View className="flex-row items-center">
                 <Hash size={18} color="#6366f1" className="me-2" />
                 <Text className="text-base font-bold text-foreground">Jump to Page</Text>
               </View>
               <TouchableOpacity onPress={() => setShowPageJumpModal(false)}>
-                <X size={18} className="text-muted-foreground" />
+                <X size={16} color="#6b7280" />
               </TouchableOpacity>
             </View>
 
+            <Text className="text-xs text-muted-foreground mb-3 text-start">
+              Enter page number between <Text className="font-bold text-foreground">1</Text> and <Text className="font-bold text-foreground">{totalPages}</Text>:
+            </Text>
+
             <TextInput
-              label={`Target Page Number (1-${totalPages})`}
               value={targetPageInput}
               onChangeText={setTargetPageInput}
+              placeholder={`1 - ${totalPages}`}
               keyboardType="number-pad"
-              placeholder={`Enter 1-${totalPages}`}
               autoFocus
+              className="mb-4"
             />
 
-            <View className="flex-row items-center gap-2 mt-4">
-              <Button
-                variant="outline"
-                onPress={() => setShowPageJumpModal(false)}
-                className="flex-1 rounded-xl"
-              >
-                <Text className="text-xs font-semibold text-foreground">Cancel</Text>
+            <View className="flex-row items-center justify-end gap-2">
+              <Button variant="outline" size="sm" onPress={() => setShowPageJumpModal(false)}>
+                Cancel
               </Button>
-              <Button
-                variant="default"
-                onPress={handleExecutePageJump}
-                className="flex-1 rounded-xl"
-              >
-                <Text className="text-xs font-bold text-primary-foreground">Jump</Text>
+              <Button variant="default" size="sm" onPress={handleExecutePageJump}>
+                Go to Page
               </Button>
             </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </ScreenShell>
   );

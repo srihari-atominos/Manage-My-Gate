@@ -14,9 +14,8 @@ export default function DashboardScreen() {
 
   const {
     activeQuickActions,
-    featureCatalog,
-    allFeaturesList,
     equippedFeatures,
+    allFeaturesList,
     saveQuickActions,
   } = useQuickActions();
 
@@ -74,7 +73,7 @@ export default function DashboardScreen() {
           {/* Sliding Notice Board Banner Carousel */}
           <HeroBanner />
 
-          {/* 4-Column Quick Actions Grid (Dynamically Connected to Redux & Backend) */}
+          {/* 4-Column Quick Actions Grid */}
           <QuickActionsGrid
             activeFeatureIds={activeQuickActions}
             equippedFeatures={equippedFeatures}

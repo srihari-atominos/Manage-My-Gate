@@ -27,6 +27,37 @@ const CATEGORY_CONFIG = {
   General: { icon: Megaphone, bg: 'bg-sky-500/15', color: '#0284c7' },
 };
 
+export interface NoticeItem {
+  id?: string;
+  _id?: string;
+  title: string;
+  content: string;
+  description?: string;
+  category?: 'Emergency' | 'Maintenance' | 'Events' | 'Meetings' | 'General';
+  priority?: 'High' | 'Normal' | 'Low';
+  status?: 'Published' | 'Draft' | 'Archived';
+  isPinned?: boolean;
+  isBookmarkedByUser?: boolean;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  likesCount?: number;
+  authorName?: string;
+}
+
+export interface NoticeCardProps {
+  notice: NoticeItem;
+  onPress?: (notice: NoticeItem) => void;
+  onBookmarkToggle?: (id: string, current: boolean) => void;
+  onPinToggle?: (id: string, current: boolean) => void;
+  onStatusChange?: (id: string, newStatus: string) => void;
+  onEditPress?: (notice: NoticeItem) => void;
+  onDeletePress?: (id: string) => void;
+  isAdmin?: boolean;
+  canPin?: boolean;
+  canUpdate?: boolean;
+  canDelete?: boolean;
+}
+
 /**
  * NoticeCard Component
  * Modern, clean, and responsive Notice Card with perfect alignment for Resident & Admin workflows.
@@ -43,7 +74,7 @@ export function NoticeCard({
   canPin,
   canUpdate,
   canDelete,
-}) {
+}: NoticeCardProps) {
   const isBookmarked = notice?.isBookmarkedByUser;
   const isPinned = notice?.isPinned;
   const status = notice?.status || 'Published';
@@ -53,14 +84,12 @@ export function NoticeCard({
   const categoryMeta = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.General;
   const CategoryIcon = categoryMeta.icon;
 
-  const getStatusBadgeVariant = (st) => {
+  const getStatusBadgeVariant = (st?: string) => {
     switch (st) {
       case 'Published': return 'success';
-      case 'Draft': return 'secondary';
-      case 'Archived': return 'outline';
-      case 'Expired': return 'destructive';
-      case 'Scheduled': return 'info';
-      default: return 'secondary';
+      case 'Draft': return 'neutral';
+      case 'Archived': return 'warning';
+      default: return 'neutral';
     }
   };
 
@@ -140,7 +169,7 @@ export function NoticeCard({
         <View className="flex-row items-center gap-1.5">
           <Clock size={12} className="text-muted-foreground/70" />
           <Text className="text-[11.5px] font-medium text-muted-foreground font-sans">
-            {formatRelativeTime(notice?.createdAt)}
+            {formatRelativeTime(notice?.createdAt || '')}
           </Text>
         </View>
 
@@ -149,7 +178,8 @@ export function NoticeCard({
           <TouchableOpacity
             onPress={(e) => {
               e.stopPropagation();
-              onBookmarkToggle?.(notice?._id, !isBookmarked);
+              const id = notice?._id || notice?.id || '';
+              if (id) onBookmarkToggle?.(id, Boolean(isBookmarked));
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             className="flex-row items-center gap-1 bg-secondary/80 px-2.5 py-1 rounded-full border border-border"
@@ -177,7 +207,8 @@ export function NoticeCard({
               <TouchableOpacity
                 onPress={(e) => {
                   e.stopPropagation();
-                  onPinToggle?.(notice?._id, isPinned);
+                  const id = notice?._id || notice?.id || '';
+                  if (id) onPinToggle?.(id, Boolean(isPinned));
                 }}
                 className={`p-1.5 rounded-lg border ${
                   isPinned
@@ -195,7 +226,8 @@ export function NoticeCard({
               <TouchableOpacity
                 onPress={(e) => {
                   e.stopPropagation();
-                  onStatusChange?.(notice?._id, 'Archived');
+                  const id = notice?._id || notice?.id || '';
+                  if (id) onStatusChange?.(id, 'Archived');
                 }}
                 className="flex-row items-center gap-1 bg-secondary border border-border px-2 py-1 rounded-lg"
                 accessibilityLabel="Archive Notice"
@@ -211,7 +243,8 @@ export function NoticeCard({
               <TouchableOpacity
                 onPress={(e) => {
                   e.stopPropagation();
-                  onStatusChange?.(notice?._id, 'Published');
+                  const id = notice?._id || notice?.id || '';
+                  if (id) onStatusChange?.(id, 'Published');
                 }}
                 className="flex-row items-center gap-1 bg-primary/10 border border-primary/30 px-2 py-1 rounded-lg"
                 accessibilityLabel="Publish Notice"
@@ -228,7 +261,7 @@ export function NoticeCard({
               <TouchableOpacity
                 onPress={(e) => {
                   e.stopPropagation();
-                  onEditPress?.(notice?._id);
+                  if (notice) onEditPress?.(notice);
                 }}
                 className="p-1.5 rounded-lg bg-secondary border border-border"
                 accessibilityLabel="Edit Notice"
@@ -242,7 +275,8 @@ export function NoticeCard({
               <TouchableOpacity
                 onPress={(e) => {
                   e.stopPropagation();
-                  onDeletePress?.(notice?._id);
+                  const id = notice?._id || notice?.id || '';
+                  if (id) onDeletePress?.(id);
                 }}
                 className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/25"
                 accessibilityLabel="Delete Notice"

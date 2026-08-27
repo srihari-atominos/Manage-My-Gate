@@ -10,7 +10,9 @@ export interface DataPoint {
 
 export interface RealtimeMetricChartProps {
   title: string;
+  subtitle?: string;
   data: DataPoint[];
+  currentValOverride?: any;
   className?: string;
 }
 

@@ -39,7 +39,7 @@ export const OnboardingCarousel = ({
   const currentSlide = slides[currentIndex];
 
   return (
-    <View className={cn('flex-1 bg-white dark:bg-slate-950', className)}>
+    <View className={cn('flex-1 bg-background', className)}>
       <View className="flex-1 items-center justify-center p-6">
         <ImagePreview 
           altText={currentSlide.imageAlt}
@@ -47,10 +47,10 @@ export const OnboardingCarousel = ({
           height={width * 0.8}
           className="mb-8 rounded-2xl"
         />
-        <Text className="mb-4 text-center text-2xl font-bold text-slate-900 dark:text-white">
+        <Text className="mb-4 text-center text-2xl font-bold text-foreground">
           {currentSlide.title}
         </Text>
-        <Text className="text-center text-base text-slate-500 dark:text-slate-400 px-4">
+        <Text className="text-center text-base text-muted-foreground px-4">
           {currentSlide.description}
         </Text>
       </View>
@@ -62,7 +62,7 @@ export const OnboardingCarousel = ({
               key={index}
               className={cn(
                 'h-2 rounded-full transition-all',
-                index === currentIndex ? 'w-6 bg-primary' : 'w-2 bg-slate-200 dark:bg-slate-800'
+                index === currentIndex ? 'w-6 bg-primary' : 'w-2 bg-muted'
               )}
             />
           ))}

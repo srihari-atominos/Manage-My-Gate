@@ -12,18 +12,21 @@ const generateUUID = (): string => {
 
 import { Platform } from 'react-native';
 
-const getDefaultBaseUrl = () => {
+const getApiBaseUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
   if (__DEV__) {
     if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:5002/api';
+      return 'http://10.0.2.2:5002/api/v1';
     }
-    return 'http://localhost:5002/api';
+    return 'http://localhost:5002/api/v1';
   }
   return 'https://managemygate.e3esg.com/api/v1';
 };
 
 const apiClient = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL || getDefaultBaseUrl(),
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

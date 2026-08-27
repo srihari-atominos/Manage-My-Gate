@@ -3,7 +3,6 @@
     "name": "ManageMyGate",
     "slug": "mobile-app",
     "version": "1.0.0",
-    "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile-app",
@@ -59,11 +58,7 @@
         {
           "cameraPermission": "ManageMyGate requires camera access to scan visitor QR passes and verify amenity tickets."
         }
-      ],
-      "expo-font",
-      "expo-secure-store",
-      "expo-sharing",
-      "expo-status-bar"
+      ]
     ],
     "experiments": {
       "typedRoutes": true

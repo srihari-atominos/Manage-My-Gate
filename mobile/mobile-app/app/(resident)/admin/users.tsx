@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, RefreshControl, TouchableOpacity, Alert, Modal } from 'react-native';
+import { View, Text, FlatList, RefreshControl, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Filter, Users, ChevronLeft, ChevronRight, UserCheck, Hash, X } from 'lucide-react-native';
+import { Filter, Users, ChevronLeft, ChevronRight, Mail, UserPlus, Users2, Hash, X } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { FAB } from '@/components/ui/FAB';
@@ -14,6 +14,8 @@ import {
   useUserList,
   UserCard,
   InviteUserModal,
+  BulkInviteModal,
+  ConfigureInviteTemplateModal,
   ManageRolesModal,
   UserFilterSheet,
   UserData,
@@ -44,6 +46,7 @@ export default function UserManagementScreen() {
     setRowsPerPage,
     deleteUser,
     inviteUser,
+    bulkInviteUsers,
     selectedUserForRoles,
     selectedUnitForRoles,
     openManageRolesModal,
@@ -56,6 +59,8 @@ export default function UserManagementScreen() {
 
   // Local UI State
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showBulkInviteModal, setShowBulkInviteModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showPageJumpModal, setShowPageJumpModal] = useState(false);
   const [targetPageInput, setTargetPageInput] = useState('');
@@ -228,6 +233,37 @@ export default function UserManagementScreen() {
           activeFilterCount={activeFilterCount}
         />
 
+        {/* Action Bar (Configure Invitation Mail, Bulk Invite, Invite User) */}
+        <View className="px-3 py-1.5 border-b border-border/40">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row items-center gap-2">
+              <TouchableOpacity
+                onPress={() => setShowTemplateModal(true)}
+                className="px-2.5 py-1.5 rounded-xl bg-card border border-border/80 flex-row items-center shadow-xs active:opacity-70"
+              >
+                <Mail size={14} color="#6366f1" className="me-1.5" />
+                <Text className="text-xs font-semibold text-foreground">Configure Invitation Mail</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowBulkInviteModal(true)}
+                className="px-2.5 py-1.5 rounded-xl bg-primary/10 border border-primary/20 flex-row items-center active:opacity-70"
+              >
+                <Users2 size={14} color="#6366f1" className="me-1.5" />
+                <Text className="text-xs font-bold text-primary">Bulk Invite</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowInviteModal(true)}
+                className="px-2.5 py-1.5 rounded-xl bg-primary flex-row items-center active:opacity-80"
+              >
+                <UserPlus size={14} color="#ffffff" className="me-1.5" />
+                <Text className="text-xs font-bold text-white">Invite User</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+
         {/* User Summary & Rows-Per-Page Selector Top Toolbar */}
         <View className="px-3 py-1.5 flex-row items-center justify-between border-b border-border/40 bg-muted/20">
           <Text className="text-[11px] font-semibold text-muted-foreground text-start">
@@ -320,6 +356,17 @@ export default function UserManagementScreen() {
         visible={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         onSendInvite={handleSendInvite}
+      />
+
+      <BulkInviteModal
+        visible={showBulkInviteModal}
+        onClose={() => setShowBulkInviteModal(false)}
+        onBulkInvite={bulkInviteUsers}
+      />
+
+      <ConfigureInviteTemplateModal
+        visible={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
       />
 
       <ManageRolesModal

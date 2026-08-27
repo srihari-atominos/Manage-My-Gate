@@ -101,3 +101,5 @@ export const WalkInApprovalCard: React.FC<WalkInApprovalCardProps> = ({
     </View>
   );
 };
+
+export default WalkInApprovalCard;

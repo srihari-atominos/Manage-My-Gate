@@ -9,6 +9,7 @@ import { Platform, Pressable, View } from 'react-native';
 export interface KPICardProps {
   title: string;
   value: string | number;
+  variant?: 'default' | 'primary' | 'secondary' | 'accent' | 'muted' | 'success' | 'info' | 'warning' | 'destructive';
   iconName?: string;
   iconColor?: string;   // hex color for icon
   bgColor?: string;     // hex color for card bg

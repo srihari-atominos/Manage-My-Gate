@@ -5,6 +5,7 @@ import { LucideIcon } from 'lucide-react-native';
 
 export interface TextInputProps extends RNTextInputProps {
   label?: string;
+  required?: boolean;
   error?: string;
   leftIcon?: LucideIcon;
   rightIcon?: LucideIcon;

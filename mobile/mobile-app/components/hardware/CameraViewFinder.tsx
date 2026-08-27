@@ -10,6 +10,9 @@ export interface CameraViewFinderProps {
   onScan: (data: string) => void;
   instruction?: string;
   isScanning?: boolean;
+  enableTorch?: boolean;
+  fullscreen?: boolean;
+  className?: string;
 }
 
 export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({

@@ -6,7 +6,10 @@ export interface User {
   id: string;
   _id?: string;
   email: string;
+  username?: string;
   name?: string;
+  phone?: string;
+  avatar?: string;
   role?: string;
   orgId?: string;
   permissions?: string[];
@@ -71,11 +74,26 @@ const initialState: AuthState = {
 export const bootstrapAuth = createAsyncThunk(
   'auth/bootstrapAuth',
   async (_, { dispatch }) => {
-    const token = await storage.getItem('token');
-    const refreshToken = await storage.getItem('refreshToken');
-    const userStr = await storage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
-    return { token, refreshToken, user };
+    try {
+      const token = await storage.getItem('token');
+      const refreshToken = await storage.getItem('refreshToken');
+      const userStr = await storage.getItem('user');
+      let user = null;
+
+      if (userStr) {
+        try {
+          user = JSON.parse(userStr);
+        } catch (e) {
+          console.warn('Corrupted user JSON in storage, clearing key:', e);
+          await storage.removeItem('user');
+        }
+      }
+
+      return { token, refreshToken, user };
+    } catch (err) {
+      console.warn('Error bootstrapping auth state from storage:', err);
+      return { token: null, refreshToken: null, user: null };
+    }
   }
 );
 
@@ -85,11 +103,19 @@ export const loginUser = createAsyncThunk(
     try {
       const response = await authService.login(credentials);
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      const innerData = body?.data || body;
+      
+      if (body && body.success === false) {
+        return rejectWithValue(body.message || 'Login failed');
+      }
 
+      const innerData = body?.data || body;
       const token = innerData?.token;
       const refreshToken = innerData?.refreshToken;
       const user = innerData?.user;
+
+      if (!token || !user) {
+        return rejectWithValue(body?.message || 'Invalid credentials or login response');
+      }
 
       if (token) await storage.setItem('token', token);
       if (refreshToken) await storage.setItem('refreshToken', refreshToken);
@@ -147,7 +173,7 @@ export const loginWithGoogleThunk = createAsyncThunk(
       const innerData = body?.data || body;
 
       if (innerData?.isNewUser) {
-        return rejectWithValue('User not found. Please register first.');
+        return { isNewUser: true, googleData: innerData.googleData || innerData };
       }
 
       const token = innerData?.token;
@@ -171,6 +197,10 @@ export const loginWithMicrosoftThunk = createAsyncThunk(
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       const innerData = body?.data || body;
 
+      if (innerData?.isNewUser) {
+        return { isNewUser: true, googleData: innerData.microsoftData || innerData.googleData || innerData };
+      }
+
       const token = innerData?.token;
       const user = innerData?.user;
 
@@ -193,6 +223,10 @@ export const requestOtp = createAsyncThunk(
       const response = isEmail
         ? await authService.initiateEmailOtpLogin(identifier)
         : await authService.initiatePhoneLogin(identifier);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      if (body && body.success === false) {
+        return rejectWithValue(body.message || 'Failed to request OTP');
+      }
       return response as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to request OTP');
@@ -209,11 +243,18 @@ export const verifyOtpLogin = createAsyncThunk(
         : await authService.verifyPhoneLogin(identifier, code);
 
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      const innerData = body?.data || body;
+      if (body && body.success === false) {
+        return rejectWithValue(body.message || 'OTP verification failed');
+      }
 
+      const innerData = body?.data || body;
       const token = innerData?.token;
       const refreshToken = innerData?.refreshToken;
       const user = innerData?.user;
+
+      if (!token || !user) {
+        return rejectWithValue(body?.message || 'Invalid OTP response from server');
+      }
 
       if (token) await storage.setItem('token', token);
       if (refreshToken) await storage.setItem('refreshToken', refreshToken);
@@ -306,6 +347,19 @@ const authSlice = createSlice({
         }
       }
     },
+    updateUserProfile: (
+      state,
+      action: PayloadAction<{ username?: string; name?: string; email?: string; phone?: string; avatar?: string }>
+    ) => {
+      if (state.user) {
+        const updated = {
+          ...state.user,
+          ...action.payload,
+        };
+        state.user = updated;
+        storage.setItem('user', JSON.stringify(updated)).catch(() => {});
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -315,6 +369,13 @@ const authSlice = createSlice({
         state.refreshToken = action.payload.refreshToken;
         state.user = normalizeUser(action.payload.user);
         state.isAuthenticated = !!(action.payload.token && state.user?.id);
+        state.isInitialized = true;
+      })
+      .addCase(bootstrapAuth.rejected, (state) => {
+        state.token = null;
+        state.refreshToken = null;
+        state.user = null;
+        state.isAuthenticated = false;
         state.isInitialized = true;
       })
       // Login User
@@ -377,6 +438,10 @@ const authSlice = createSlice({
       })
       .addCase(loginWithGoogleThunk.fulfilled, (state, action) => {
         state.loading = false;
+        if (action.payload?.isNewUser) {
+          state.successMsg = 'Google account verified. Please complete registration.';
+          return;
+        }
         state.token = action.payload?.token || action.payload?.data?.token || null;
         const rawUser = action.payload?.user || action.payload?.data?.user || null;
         state.user = normalizeUser(rawUser);
@@ -395,6 +460,10 @@ const authSlice = createSlice({
       })
       .addCase(loginWithMicrosoftThunk.fulfilled, (state, action) => {
         state.loading = false;
+        if (action.payload?.isNewUser) {
+          state.successMsg = 'Microsoft account verified. Please complete registration.';
+          return;
+        }
         state.token = action.payload?.token || action.payload?.data?.token || null;
         const rawUser = action.payload?.user || action.payload?.data?.user || null;
         state.user = normalizeUser(rawUser);
@@ -465,5 +534,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearStatus, updateTokenAndUser } = authSlice.actions;
+export const { logout, clearStatus, updateTokenAndUser, updateUserProfile } = authSlice.actions;
 export default authSlice.reducer;

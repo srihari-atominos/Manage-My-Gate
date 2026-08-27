@@ -12,8 +12,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../src/features/auth/hooks/useAuth';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-
 import { useFonts, HankenGrotesk_400Regular, HankenGrotesk_500Medium, HankenGrotesk_600SemiBold, HankenGrotesk_700Bold } from '@expo-google-fonts/hanken-grotesk';
+import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
+import storage from '../src/utils/storage';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -22,6 +23,7 @@ export {
 
 function AppInitializer({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isInitialized, bootstrap } = useAuth();
+  const { colorScheme, setColorScheme } = useColorScheme();
   const segments = useSegments();
   const router = useRouter();
 
@@ -32,11 +34,23 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
     HankenGrotesk_700Bold,
   });
 
-  // Run the session restoration thunk on startup
+  // Restore saved theme and session restoration on startup (Mount once)
   useEffect(() => {
     bootstrap();
-  }, [bootstrap]);
-  
+    const restoreTheme = async () => {
+      try {
+        const savedTheme = await storage.getItem('theme_preference');
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+          setColorScheme(savedTheme);
+        }
+      } catch (e) {
+        console.warn('Failed to restore theme on startup:', e);
+      }
+    };
+    restoreTheme();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Handle dynamic routing redirects depending on session state
   useEffect(() => {
     if (!isInitialized || !fontsLoaded) return;
@@ -66,6 +80,7 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
+  const navigationTheme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
 
   return (
     <SafeAreaProvider>
@@ -73,9 +88,11 @@ export default function RootLayout() {
         <Provider store={store}>
           <BottomSheetModalProvider>
             <AppInitializer>
-              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-              <Stack screenOptions={{ headerShown: false }} />
-              <PortalHost />
+              <ThemeProvider value={navigationTheme}>
+                <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+                <Stack screenOptions={{ headerShown: false }} />
+                <PortalHost />
+              </ThemeProvider>
             </AppInitializer>
           </BottomSheetModalProvider>
         </Provider>

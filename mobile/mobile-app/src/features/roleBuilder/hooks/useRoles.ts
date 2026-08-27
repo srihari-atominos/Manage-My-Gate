@@ -70,7 +70,7 @@ export const useRoles = () => {
   const handleSaveRole = async (data: RoleData) => {
     if (selectedRole?.id || selectedRole?._id) {
       const roleId = selectedRole.id || selectedRole._id || '';
-      return await dispatch(updateRoleAsync({ roleId, updateData: data })).unwrap();
+      return await dispatch(updateRoleAsync({ roleId, roleData: data })).unwrap();
     } else {
       return await dispatch(createRoleAsync(data)).unwrap();
     }

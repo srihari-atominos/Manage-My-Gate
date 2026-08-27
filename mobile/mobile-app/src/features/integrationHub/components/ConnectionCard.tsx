@@ -1,17 +1,21 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Trash2, Lock } from 'lucide-react-native';
+import { Trash2, Lock, Edit2 } from 'lucide-react-native';
 import { ListCard } from '@/components/ui/ListCard';
 import { StatusVariant } from '@/components/ui/StatusBadge';
 import { IntegrationConnection } from '../services/integrationHubApi';
 
 interface ConnectionCardProps {
   connection: IntegrationConnection;
+  onPress?: (connection: IntegrationConnection) => void;
+  onEdit?: (connection: IntegrationConnection) => void;
   onDisconnect: (connection: IntegrationConnection) => void;
 }
 
 export const ConnectionCard: React.FC<ConnectionCardProps> = ({
   connection,
+  onPress,
+  onEdit,
   onDisconnect,
 }) => {
   const getProviderIcon = (provider: string) => {
@@ -50,7 +54,8 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
         label: isConnected ? 'CONNECTED' : 'DISCONNECTED',
         variant: mapStatusVariant(),
       }}
-      showChevron={false}
+      showChevron={true}
+      onPress={() => onPress && onPress(connection)}
       className="mb-2 p-2.5 bg-card border border-border/70 rounded-xl shadow-xs"
     >
       {/* Sub-Metadata Footer Row matching User Management / Role Card */}
@@ -64,16 +69,30 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
           </View>
         </View>
 
-        {/* Disconnect Action Button matching User Management Icon Button */}
-        <TouchableOpacity
-          onPress={() => onDisconnect(connection)}
-          activeOpacity={0.7}
-          className="w-7 h-7 rounded-lg bg-destructive/10 border border-destructive/20 items-center justify-center"
-          accessibilityRole="button"
-          accessibilityLabel="Disconnect Integration"
-        >
-          <Trash2 size={13} color="#ef4444" />
-        </TouchableOpacity>
+        {/* Action Button Row */}
+        <View className="flex-row items-center gap-2">
+          {onEdit && (
+            <TouchableOpacity
+              onPress={() => onEdit(connection)}
+              activeOpacity={0.7}
+              className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 items-center justify-center"
+              accessibilityRole="button"
+              accessibilityLabel="Edit Connection Label"
+            >
+              <Edit2 size={13} color="#0d9488" />
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            onPress={() => onDisconnect(connection)}
+            activeOpacity={0.7}
+            className="w-7 h-7 rounded-lg bg-destructive/10 border border-destructive/20 items-center justify-center"
+            accessibilityRole="button"
+            accessibilityLabel="Disconnect Integration"
+          >
+            <Trash2 size={13} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
       </View>
     </ListCard>
   );
