@@ -16,7 +16,7 @@ import { SlidersHorizontal, Play, Send, ShieldAlert, Landmark, Calendar, Layers,
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import billingService from '../services/billingService';
-import { AssessmentWizardModal } from '../components/wizard/AssessmentWizardModal';
+import { AssessmentWizardModal } from '../components/wizard';
 
 export function AssessmentManagementScreen() {
   const router = useRouter();
