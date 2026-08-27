@@ -111,9 +111,16 @@ export class AuthService {
       } catch (inqErr) {
         console.warn('[Register] Non-blocking CRM inquiry auto-creation error:', inqErr.message);
       }
+      
+      const isDev = process.env.NODE_ENV !== 'production';
+      if (isDev) {
+        console.log('\n=========================================');
+        console.log(`[DEV MODE REGISTER] OTP for ${email} is: ${plainCode}`);
+        console.log('=========================================\n');
+      }
 
       return {
-        message: 'Registration successful. OTP sent for verification.',
+        message: isDev ? `Registration successful. OTP sent for verification. (Dev Code: ${plainCode})` : 'Registration successful. OTP sent for verification.',
         email: newUser.email,
         status: 'Pending Verification'
       };
@@ -1062,13 +1069,14 @@ export class AuthService {
     // Emit event for SMS delivery
     authEvents.emit('OTP_SENT', { identifier: phone, code: plainCode, type: 'SMS' });
 
-    if (process.env.NODE_ENV !== 'production') {
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
       console.log('\n=========================================');
       console.log(`[DEV MODE SMS] OTP for ${phone} is: ${plainCode}`);
       console.log('=========================================\n');
     }
 
-    return { message: 'OTP sent successfully' };
+    return { message: isDev ? `OTP sent successfully (Dev Code: ${plainCode})` : 'OTP sent successfully' };
   }
 
   /**
@@ -1181,13 +1189,14 @@ export class AuthService {
     const plainCode = await otpService.createOTP(email, 'LOGIN');
     authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
 
-    if (process.env.NODE_ENV !== 'production') {
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
       console.log('\n=========================================');
       console.log(`[DEV MODE EMAIL] OTP for ${email} is: ${plainCode}`);
       console.log('=========================================\n');
     }
 
-    return { message: 'OTP sent to email' };
+    return { message: isDev ? `OTP sent to email (Dev Code: ${plainCode})` : 'OTP sent to email' };
   }
 
   /**

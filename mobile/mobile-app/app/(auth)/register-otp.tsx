@@ -3,7 +3,7 @@ import { Text } from '@/components/ui/text';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { KeyRoundIcon } from 'lucide-react-native';
 import * as React from 'react';
-import { View, ScrollView, TextInput } from 'react-native';
+import { View, ScrollView, TextInput, Alert } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -41,6 +41,12 @@ export default function RegisterOtpScreen() {
   React.useEffect(() => {
     return () => clearStatus();
   }, []);
+
+  React.useEffect(() => {
+    if (successMsg) {
+      Alert.alert('Verification', successMsg);
+    }
+  }, [successMsg]);
 
   const onSubmit = async (data: OtpFormValues) => {
     if (!fixedEmail) return;

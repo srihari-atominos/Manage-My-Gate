@@ -7,7 +7,7 @@ export class AuthController {
   async register(req, res, next) {
     try {
       const data = await authService.register(req.body);
-      res.success(data, 'User registered successfully, pending verification', 201);
+      res.success(data, data?.message || 'User registered successfully, pending verification', 201);
     } catch (error) {
       console.error('[AuthController.register] Error:', error);
       next(error);
