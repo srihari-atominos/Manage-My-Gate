@@ -133,6 +133,17 @@ const AmenityGrid = memo(
                     ></i>{' '}
                     {item.status === 'active' ? 'Deactivate' : 'Activate'}
                   </button>
+                  <button
+                    className="small btn btn-outline"
+                    style={{ flex: 1, padding: '10px 16px', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(item);
+                    }}
+                    disabled={!(canDelete ?? canManage)}
+                  >
+                    <i className="small fa-solid fa-trash"></i> Delete
+                  </button>
                 </div>
               </div>
             </div>

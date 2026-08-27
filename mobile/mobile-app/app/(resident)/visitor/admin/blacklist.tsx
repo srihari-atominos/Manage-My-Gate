@@ -91,8 +91,8 @@ export default function AdminBlacklistScreen() {
         {/* High-Performance Paginated List */}
         <PaginatedList<BlacklistEntry>
           data={(filteredBlacklist || []) as BlacklistEntry[]}
-          renderItem={renderEntry}
-          keyExtractor={(item) => item._id}
+          renderItem={(item) => item ? renderEntry(item) : null}
+          keyExtractor={(item, index) => item?._id || `empty-${index}`}
           pagination={{
             currentPage: 1,
             totalPages: 1,

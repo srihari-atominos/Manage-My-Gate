@@ -1,5 +1,5 @@
 import { Text } from '@/components/ui/text';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useSegments } from 'expo-router';
 import {
   Mail,
   Lock,
@@ -35,6 +35,8 @@ import {
   NahomWordmark,
   NahomTrustBadges,
 } from '@/components/auth/NahomBrandLogo';
+import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
+import { MicrosoftSignInButton } from '../../src/features/auth/components/MicrosoftSignInButton';
 
 // 1. Basic Auth Validation Schema
 const basicAuthSchema = yup.object().shape({
@@ -172,6 +174,9 @@ export default function LoginScreen() {
     });
   }, []);
 
+  const segments = useSegments();
+  const isFocused = segments[segments.length - 1] === 'login';
+
   // Basic Auth Form Hook
   const basicForm = useForm<BasicAuthFormValues>({
     resolver: yupResolver(basicAuthSchema),
@@ -204,16 +209,15 @@ export default function LoginScreen() {
       return () => clearTimeout(timer);
     }
   }, [isAuthenticated]);
-
   // Reactively route to OTP screen if Phone OTP sent
   React.useEffect(() => {
-    if (otpSent && submittedPhone) {
+    if (isFocused && otpSent && submittedPhone) {
       router.push({
         pathname: '/(auth)/otp',
         params: { phone: submittedPhone },
       });
     }
-  }, [otpSent, submittedPhone]);
+  }, [otpSent, submittedPhone, isFocused]);
 
   // Handle Basic Auth Submit
   const onBasicSubmit = async (data: BasicAuthFormValues) => {
@@ -577,13 +581,29 @@ export default function LoginScreen() {
                 )}
               </View>
 
+              {/* SSO Separator */}
+              <View className="flex-row items-center my-2">
+                <View className="flex-1 h-px bg-border/60" />
+                <Text className="mx-3 text-muted-foreground font-medium text-[10px] uppercase tracking-wider">OR CONTINUE WITH</Text>
+                <View className="flex-1 h-px bg-border/60" />
+              </View>
+
+              <View className="flex-row gap-3 my-1">
+                <View className="flex-1">
+                  <GoogleSignInButton />
+                </View>
+                <View className="flex-1">
+                  <MicrosoftSignInButton />
+                </View>
+              </View>
+
               {/* Create Account Prompt */}
-              <View className="flex-row items-center justify-center pt-0.5">
+              <View className="flex-row items-center justify-center pt-1">
                 <Text className="text-xs text-slate-900 dark:text-white font-bold">
                   Don't have an account?{' '}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => router.push('/(auth)/signup')}
+                  onPress={() => router.push('/(auth)/register')}
                   activeOpacity={0.8}
                 >
                   <Text className="text-xs font-extrabold text-[#172B70] dark:text-[#60A5FA] underline">

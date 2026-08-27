@@ -111,9 +111,16 @@ export class AuthService {
       } catch (inqErr) {
         console.warn('[Register] Non-blocking CRM inquiry auto-creation error:', inqErr.message);
       }
+      
+      const isDev = process.env.NODE_ENV !== 'production';
+      if (isDev) {
+        console.log('\n=========================================');
+        console.log(`[DEV MODE REGISTER] OTP for ${email} is: ${plainCode}`);
+        console.log('=========================================\n');
+      }
 
       return {
-        message: 'Registration successful. OTP sent for verification.',
+        message: isDev ? `Registration successful. OTP sent for verification. (Dev Code: ${plainCode})` : 'Registration successful. OTP sent for verification.',
         email: newUser.email,
         status: 'Pending Verification'
       };
@@ -1062,7 +1069,14 @@ export class AuthService {
     // Emit event for SMS delivery
     authEvents.emit('OTP_SENT', { identifier: phone, code: plainCode, type: 'SMS' });
 
-    return { message: 'OTP sent successfully' };
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      console.log('\n=========================================');
+      console.log(`[DEV MODE SMS] OTP for ${phone} is: ${plainCode}`);
+      console.log('=========================================\n');
+    }
+
+    return { message: isDev ? `OTP sent successfully (Dev Code: ${plainCode})` : 'OTP sent successfully' };
   }
 
   /**
@@ -1175,7 +1189,14 @@ export class AuthService {
     const plainCode = await otpService.createOTP(email, 'LOGIN');
     authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
 
-    return { message: 'OTP sent successfully' };
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      console.log('\n=========================================');
+      console.log(`[DEV MODE EMAIL] OTP for ${email} is: ${plainCode}`);
+      console.log('=========================================\n');
+    }
+
+    return { message: isDev ? `OTP sent to email (Dev Code: ${plainCode})` : 'OTP sent to email' };
   }
 
   /**
@@ -1263,7 +1284,8 @@ export class AuthService {
     
     authEvents.emit('OTP_SENT', { identifier, code: plainCode, type });
 
-    return { message: 'Password reset OTP sent' };
+    const isDev = process.env.NODE_ENV !== 'production';
+    return { message: isDev ? `Password reset instructions sent (Dev Code: ${plainCode})` : 'Password reset instructions sent' };
   }
 
   /**

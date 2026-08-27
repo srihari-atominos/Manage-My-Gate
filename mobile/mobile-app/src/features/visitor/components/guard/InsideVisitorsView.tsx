@@ -96,32 +96,34 @@ export const InsideVisitorsView: React.FC = () => {
         emptyTitle="No Active Visitors Inside"
         emptySubtitle="All entered visitors have been checked out at the security gate."
         contentContainerClassName="px-4 pt-3 pb-28 gap-3"
-        renderItem={(log) => (
-          <ListCard
-            key={log._id}
-            title={log.snapshot?.visitorName || log.visitorName || 'Visitor'}
-            subtitle={`Checked in: ${
-              log.checkInTime
-                ? new Date(log.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : 'Recently'
-            }${log.snapshot?.vehicleNumber ? ` • Vehicle: ${log.snapshot.vehicleNumber}` : ''}`}
-            leftIcon="ShieldCheck"
-            leftIconBgColor="bg-status-success/15"
-            status={{ label: 'INSIDE', variant: 'success' }}
-            rightContent={
-              <Button
-                variant="outline"
-                size="sm"
-                onPress={() => setSelectedLogId(log._id)}
-                className="flex-row items-center gap-1 h-8 px-2.5 rounded-xl border-status-success/30 bg-status-success/10"
-                accessibilityLabel="Check Out Visitor"
-              >
-                <LogOut size={13} className="text-status-success" />
-                <Text className="text-xs font-bold text-status-success">Check Out</Text>
-              </Button>
-            }
-          />
-        )}
+        renderItem={(log) => {
+          if (!log) return null;
+          return (
+            <ListCard
+              title={log.snapshot?.visitorName || log.visitorName || 'Visitor'}
+              subtitle={`Checked in: ${
+                log.checkInTime
+                  ? new Date(log.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  : 'Recently'
+              }${log.snapshot?.vehicleNumber ? ` • Vehicle: ${log.snapshot.vehicleNumber}` : ''}`}
+              leftIcon="ShieldCheck"
+              leftIconBgColor="bg-status-success/15"
+              status={{ label: 'INSIDE', variant: 'success' }}
+              rightContent={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onPress={() => setSelectedLogId(log._id)}
+                  className="flex-row items-center gap-1 h-8 px-2.5 rounded-xl border-status-success/30 bg-status-success/10"
+                  accessibilityLabel="Check Out Visitor"
+                >
+                  <LogOut size={13} className="text-status-success" />
+                  <Text className="text-xs font-bold text-status-success">Check Out</Text>
+                </Button>
+              }
+            />
+          );
+        }}
       />
 
       <ConfirmationModal

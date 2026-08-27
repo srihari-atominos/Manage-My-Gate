@@ -7,7 +7,7 @@ export class AuthController {
   async register(req, res, next) {
     try {
       const data = await authService.register(req.body);
-      res.success(data, 'User registered successfully, pending verification', 201);
+      res.success(data, data?.message || 'User registered successfully, pending verification', 201);
     } catch (error) {
       console.error('[AuthController.register] Error:', error);
       next(error);
@@ -162,7 +162,7 @@ export class AuthController {
     try {
       const { phone } = req.body;
       const data = await authService.initiatePhoneLogin(phone);
-      res.success(data, 'OTP sent to phone');
+      res.success(data, data?.message || 'OTP sent to phone');
     } catch (error) {
       next(error);
     }
@@ -190,7 +190,7 @@ export class AuthController {
     try {
       const { email } = req.body;
       const data = await authService.initiateEmailOtpLogin(email);
-      res.success(data, 'OTP sent to email');
+      res.success(data, data?.message || 'OTP sent to email');
     } catch (error) {
       next(error);
     }

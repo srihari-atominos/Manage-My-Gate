@@ -25,8 +25,8 @@ const msalConfig = {
     redirectUri: window.location.origin,
   },
   cache: {
-    cacheLocation: 'sessionStorage',
-    storeAuthStateInCookie: false,
+    cacheLocation: 'localStorage',
+    storeAuthStateInCookie: true,
   },
 }
 
@@ -90,10 +90,14 @@ const renderApp = () => (
   </ErrorBoundary>
 )
 
-// Initialize MSAL and then render the app
+// Initialize MSAL, process redirects, and then render the app
 if (msalInstance) {
   msalInstance
     .initialize()
+    .then(() => {
+      // Must handle redirect promise before HashRouter mounts, otherwise HashRouter overwrites the MSAL #code= fragment!
+      return msalInstance.handleRedirectPromise()
+    })
     .then(() => {
       createRoot(document.getElementById('root')).render(renderApp())
     })

@@ -38,8 +38,15 @@ function BottomSheet({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <Pressable className="flex-1 bg-black/60 justify-end" onPress={onClose}>
-        <Pressable className="bg-card border-t border-border/80 rounded-t-3xl max-h-[85vh] shadow-2xl overflow-hidden" onPress={(e) => e.stopPropagation()}>
+      <View className="flex-1 justify-end">
+        {/* Backdrop */}
+        <Pressable 
+          className="absolute inset-0 bg-black/60" 
+          onPress={onClose} 
+        />
+        
+        {/* Content Box */}
+        <View className="bg-card border-t border-border/80 rounded-t-3xl max-h-[85vh] shadow-2xl overflow-hidden">
           {/* Top grab handle */}
           <View className="items-center pt-2.5 pb-1 bg-card">
             <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />
@@ -64,11 +71,12 @@ function BottomSheet({
             className="px-4 pt-2 pb-6 max-h-[75vh]"
             showsVerticalScrollIndicator={false}
             bounces={false}
+            keyboardShouldPersistTaps="handled"
           >
             {children}
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

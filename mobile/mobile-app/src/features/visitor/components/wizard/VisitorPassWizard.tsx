@@ -264,7 +264,6 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
         <GeneratedPassView
           passData={generatedPass}
           onDone={onClose}
-          onShare={() => {}}
         />
       </View>
     );

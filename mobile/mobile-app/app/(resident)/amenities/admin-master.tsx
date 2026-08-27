@@ -190,16 +190,19 @@ export default function AdminAmenityMasterScreen() {
         onScheduleMaintenanceClick={() => router.push('/(resident)/amenities/maintenance' as any)}
       />
 
-      {/* Deactivate Confirmation Modal */}
+      {/* Status Toggle Confirmation Modal */}
       <ConfirmationModal
         visible={!!deactivateTarget}
-        title="Deactivate Amenity Facility?"
-        message={`"${deactivateTarget?.name}" has active or upcoming resident bookings. Deactivating this facility will cancel all associated future bookings. Are you sure you want to proceed?`}
-        variant="warning"
-        confirmLabel="Deactivate & Cancel Bookings"
-        cancelLabel="Keep Active"
+        title={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Deactivate Amenity Facility?' : 'Activate Amenity Facility?'}
+        message={deactivateTarget?.status?.toLowerCase() === 'active' 
+          ? `"${deactivateTarget?.name}" has active or upcoming resident bookings. Deactivating this facility will cancel all associated future bookings. Are you sure you want to proceed?`
+          : `Are you sure you want to activate "${deactivateTarget?.name}" and open it for resident bookings?`
+        }
+        variant={deactivateTarget?.status?.toLowerCase() === 'active' ? 'warning' : 'primary'}
+        confirmLabel={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Deactivate & Cancel Bookings' : 'Activate Facility'}
+        cancelLabel={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Keep Active' : 'Keep Inactive'}
         onConfirm={handleConfirmDeactivate}
-        onCancel={() => setDeleteTarget(null)}
+        onCancel={() => setDeactivateTarget(null)}
       />
 
       {/* Delete Confirmation Modal */}

@@ -142,20 +142,22 @@ export const VisitorHistoryView: React.FC = () => {
         emptyTitle="No History Passes Found"
         emptySubtitle={`No ${activeTab.toLowerCase()} visitor passes found.`}
         contentContainerClassName="px-4 pt-3 pb-28"
-        renderItem={(pass) => (
-          <VisitorPassCard
-            key={pass._id}
-            pass={pass}
-            onPress={(p) => {
-              setSelectedPass(p as ExtendedVisitorPass);
-              setDetailsModalOpen(true);
-            }}
-            onShowQR={(p) => {
-              setSelectedPass(p as ExtendedVisitorPass);
-              setDetailsModalOpen(true);
-            }}
-          />
-        )}
+        renderItem={(pass) => {
+          if (!pass) return null;
+          return (
+            <VisitorPassCard
+              pass={pass}
+              onPress={(p) => {
+                setSelectedPass(p as ExtendedVisitorPass);
+                setDetailsModalOpen(true);
+              }}
+              onShowQR={(p) => {
+                setSelectedPass(p as ExtendedVisitorPass);
+                setDetailsModalOpen(true);
+              }}
+            />
+          );
+        }}
       />
 
       {/* Details & Log View Modal */}

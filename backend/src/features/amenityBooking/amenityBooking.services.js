@@ -377,14 +377,25 @@ export class AmenityBookingService {
     }
 
     try {
-      let { orgId, amenityId, userId, bookingDate, startTime, endTime, paymentStatus = 'success' } = bookingData;
+      let { orgId, amenityId, userId, residentId, villaNumber, bookingDate, startTime, endTime, paymentStatus = 'success' } = bookingData;
       
-      // Resident membership check
+      let effectiveUserId = userId || residentId;
       const userService = (await import('../user/user.services.js')).default;
-      const user = await userService.getUserById(userId, sessionOpt);
-      if (!user || user.orgId.toString() !== orgId.toString()) {
-        throw new HttpError(400, 'Resident not found in this organization');
+      let user = null;
+      
+      if (effectiveUserId) {
+        user = await userService.getUserById(effectiveUserId, sessionOpt);
+      } else if (villaNumber) {
+        // If residentId is missing but we have villaNumber, find user by villaNumber
+        const userRepository = (await import('../user/user.repository.js')).default;
+        user = await userRepository.findByVillaNumber(villaNumber, orgId, sessionOpt);
       }
+
+      if (!user || user.orgId.toString() !== orgId.toString()) {
+        throw new HttpError(400, 'Resident not found in this organization for the given villa or ID.');
+      }
+      
+      bookingData.userId = user._id;
       
       const amenityService = (await import('../amenity/amenity.services.js')).default;
       const amenity = await amenityService.getAmenityById(amenityId, orgId, sessionOpt);
@@ -444,7 +455,8 @@ export class AmenityBookingService {
         pricingDetails,
         totalPrice: pricingDetails.totalAmount,
         deposit: pricingDetails.securityDeposit,
-        isManual: true
+        isManual: true,
+        amenityName: amenity.name
       };
 
       const booking = await amenityBookingRepository.create(newBookingData, sessionOpt);

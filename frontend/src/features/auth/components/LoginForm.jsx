@@ -196,36 +196,44 @@ export const LoginForm = () => {
   const handleGoogleError = useCallback(() => {
     toast.error('Google Sign-In failed')
   }, [])
+  const { instance: msalInstanceObj, accounts, inProgress } = useMsal()
 
   const handleMicrosoftLogin = () => {
     let retries = 0
     const triggerLogin = () => {
-      msalInstance
+      msalInstanceObj
         .loginPopup({
           scopes: ['openid', 'profile', 'user.read'],
         })
-        .then((response) => {
-          if (response && response.idToken) {
-            loginMicrosoft(response.idToken, inviteTokenParam)
+        .then(async (response) => {
+          if (!response) {
+            toast.error('MSAL returned an empty response.')
+            return
+          }
+          if (!response.idToken && !response.accessToken) {
+            toast.error('MSAL succeeded but no tokens were found in the response.')
+            return
+          }
+          
+          const tokenToUse = response.idToken || response.accessToken
+          const res = await loginMicrosoft(tokenToUse, inviteTokenParam)
+          if (!res.success) {
+            const errorMessage = typeof res.error === 'string' ? res.error : (res.error?.message || 'Microsoft login failed on server.')
+            toast.error(errorMessage)
           }
         })
         .catch((err) => {
           console.error('Microsoft login failed:', err)
-          // Automatically recover from MSAL's notoriously sticky interaction_in_progress bug
           if (
             (err.errorCode === 'interaction_in_progress' ||
               (err.message && err.message.includes('interaction_in_progress'))) &&
             retries < 3
           ) {
             retries++
-            sessionStorage.clear()
+            localStorage.removeItem('msal.interaction.status')
             triggerLogin()
           } else {
-            toast.error(
-              t('auth.login.msalFailed', 'Microsoft login failed: {{error}}', {
-                error: err.message || 'Unknown error',
-              }),
-            )
+            toast.error('Microsoft Error: ' + (err.message || 'Unknown error. Check Azure SPA settings.'))
           }
         })
     }
@@ -304,6 +312,15 @@ export const LoginForm = () => {
           {/* Fake fields to intercept Chrome's aggressive autofill */}
           <input type="text" name="fakeusernameremembered" style={{ opacity: 0, position: 'absolute', zIndex: -1, width: 0, height: 0 }} tabIndex="-1" aria-hidden="true" autoComplete="off" />
           <input type="password" name="fakepasswordremembered" style={{ opacity: 0, position: 'absolute', zIndex: -1, width: 0, height: 0 }} tabIndex="-1" aria-hidden="true" autoComplete="new-password" />
+
+          <div style={styles.logoContainer}>
+            <div style={styles.logoBox}>
+              M
+            </div>
+            <h2 style={styles.logoText}>
+              Manage My Gate
+            </h2>
+          </div>
 
           <h1 style={styles.title}>{t('auth.login.title', 'Welcome Back')}</h1>
           <p style={styles.subtitle}>
@@ -711,6 +728,34 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
     fontWeight: '500',
+  },
+  logoContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '28px',
+    marginTop: '12px',
+  },
+  logoBox: {
+    width: '44px',
+    height: '44px',
+    backgroundColor: '#2563eb',
+    borderRadius: '10px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: '22px',
+    marginRight: '14px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  },
+  logoText: {
+    fontSize: '28px',
+    fontWeight: '700',
+    color: '#0f172a',
+    margin: 0,
+    letterSpacing: '-0.025em',
   },
   msButton: {
     background: '#2f2f2f',
