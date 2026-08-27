@@ -46,20 +46,24 @@ export const tenantContext = (optionsOrReq, res, next) => {
           throw new HttpError(400, 'Workspace context is required.');
         }
 
+        const userOrgIdStr = req.user?.orgId ? String(req.user.orgId) : '';
+        const requestedOrgIdStr = orgIdHeader ? String(orgIdHeader) : '';
+
         // If target tenant context orgId does not match user's active token orgId, verify membership
-        if (req.user?.orgId && orgIdHeader !== req.user.orgId) {
-          if (req.user.role === 'Super Admin' || req.user.role === 'Platform Super Admin' || userIsPlatform) {
-            console.log(`[TENANT DEBUG] Super Admin / Platform user operating across workspace. Header: ${orgIdHeader}, Token: ${req.user.orgId}`);
+        if (userOrgIdStr && requestedOrgIdStr && userOrgIdStr !== requestedOrgIdStr) {
+          const isAdminRole = ['Super Admin', 'Platform Admin', 'Platform Super Admin', 'SUPER_ADMIN', 'PLATFORM_ADMIN', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
+          if (isAdminRole || userIsPlatform) {
+            console.log(`[TENANT DEBUG] Admin operating across workspace. Header: ${requestedOrgIdStr}, Token: ${userOrgIdStr}`);
           } else {
             const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
             const userId = req.user.id || req.user._id;
             const membership = await OrgMembership.findOne({
               userId,
-              orgId: orgIdHeader,
+              orgId: requestedOrgIdStr,
             }).lean();
 
             if (!membership || (membership.status && membership.status !== 'Active')) {
-              console.error(`[TENANT DEBUG] 403 Forbidden. User ${userId} has no valid membership in ${orgIdHeader}. Token orgId: ${req.user.orgId}`);
+              console.error(`[TENANT DEBUG] 403 Forbidden. User ${userId} has no valid membership in ${requestedOrgIdStr}. Token orgId: ${userOrgIdStr}`);
               throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
             }
           }

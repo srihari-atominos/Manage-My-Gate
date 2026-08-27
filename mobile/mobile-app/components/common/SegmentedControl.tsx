@@ -35,12 +35,12 @@ export const SegmentedControl = ({
   return (
     <View
       className={cn(
-        'flex-row items-center rounded-lg bg-slate-100 p-1 dark:bg-slate-800',
+        'flex-row items-center rounded-xl bg-secondary border border-border p-1',
         className
       )}
     >
       <Animated.View
-        className="absolute bottom-1 top-1 rounded-md bg-white shadow-sm dark:bg-slate-900"
+        className="absolute bottom-1 top-1 rounded-lg bg-card border border-border shadow-xs"
         style={animatedStyle}
       />
       {segments.map((segment) => {
@@ -53,8 +53,8 @@ export const SegmentedControl = ({
           >
             <Text
               className={cn(
-                'text-sm font-medium',
-                isActive ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'
+                'text-[13px] font-semibold font-sans',
+                isActive ? 'text-foreground' : 'text-muted-foreground'
               )}
             >
               {segment.label}

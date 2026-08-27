@@ -27,9 +27,11 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 30000,
   withCredentials: true,
 });
+
+console.log(`[ApiClient] Configured baseURL: ${apiClient.defaults.baseURL}`);
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -287,6 +289,10 @@ apiClient.interceptors.response.use(
 
     if (error.response?.data?.message) {
       error.message = error.response.data.message;
+    } else if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout')) {
+      error.message = 'Connection timed out. Please check backend server status.';
+    } else if (error.message === 'Network Error' || (!error.response && error.request)) {
+      error.message = 'Unable to connect to server. Please verify backend is running.';
     }
 
     return Promise.reject(error);

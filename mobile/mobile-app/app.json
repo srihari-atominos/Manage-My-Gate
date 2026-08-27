@@ -26,11 +26,11 @@
       }
     },
     "android": {
+      "package": "com.naveenpvn.managemygate",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      },
-      "package": "com.naveenpvn.managemygate"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -59,7 +59,11 @@
         {
           "cameraPermission": "ManageMyGate requires camera access to scan visitor QR passes and verify amenity tickets."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-secure-store",
+      "expo-sharing",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true

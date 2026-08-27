@@ -153,13 +153,11 @@ export function ResidentMyTicketsScreen() {
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadData} tintColor="#6366f1" />}
         >
           {/* SECTION 1: SEARCH BAR */}
-          <View className="px-4 pt-3 pb-2">
-            <SearchFilterBar
-              searchValue={searchQuery}
-              onSearchChange={setSearchQuery}
-              searchPlaceholder="Search ticket # or title..."
-            />
-          </View>
+          <SearchFilterBar
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search ticket # or title..."
+          />
 
           {/* SECTION 2: HORIZONTAL FILTER CHIPS */}
           <View className="px-4 py-1.5">
