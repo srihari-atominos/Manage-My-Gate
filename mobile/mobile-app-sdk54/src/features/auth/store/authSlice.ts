@@ -1,0 +1,295 @@
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import authService from '../services/authService';
+import storage from '../../../utils/storage';
+
+export interface User {
+  id: string;
+  _id?: string;
+  email: string;
+  name?: string;
+  role?: string;
+  orgId?: string;
+  permissions?: string[];
+  isPlatform?: boolean;
+}
+
+export const normalizeUser = (user: any): User | null => {
+  if (!user) return null;
+  const canonicalId = user.id || user._id || '';
+  
+  // Recursively extract the actual string ID if an object was passed
+  const extractId = (val: any): string => {
+    if (!val) return '';
+    if (typeof val === 'string' && val !== '[object Object]') return val;
+    if (typeof val === 'object') return val._id || val.id || '';
+    return '';
+  };
+
+  const canonicalOrgId =
+    extractId(user.orgId) ||
+    extractId(user.organizationId) ||
+    extractId(user.org) ||
+    extractId(user.organization) ||
+    extractId(user.activeOrgId) ||
+    extractId(user.activeOrganizationId) ||
+    (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.orgId)) ||
+    (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?._id)) ||
+    '';
+
+  return {
+    ...user,
+    id: canonicalId,
+    _id: canonicalId || user._id,
+    orgId: canonicalOrgId,
+  };
+};
+
+interface AuthState {
+  isAuthenticated: boolean;
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+  error: string | null;
+  successMsg: string | null;
+  otpSent: boolean;
+  isInitialized: boolean;
+}
+
+const initialState: AuthState = {
+  isAuthenticated: false,
+  user: null,
+  token: null,
+  loading: false,
+  error: null,
+  successMsg: null,
+  otpSent: false,
+  isInitialized: false,
+};
+
+export const bootstrapAuth = createAsyncThunk(
+  'auth/bootstrapAuth',
+  async (_, { dispatch }) => {
+    const token = await storage.getItem('token');
+    const userStr = await storage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    return { token, user };
+  }
+);
+
+export const loginUser = createAsyncThunk(
+  'auth/loginUser',
+  async (credentials: any, { rejectWithValue }) => {
+    try {
+      const response = await authService.login(credentials);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const innerData = body?.data || body;
+
+      const token = innerData?.token;
+      const user = innerData?.user;
+
+      if (token) await storage.setItem('token', token);
+      if (user) await storage.setItem('user', JSON.stringify(user));
+
+      return innerData as any;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Login failed');
+    }
+  }
+);
+
+export const requestOtp = createAsyncThunk(
+  'auth/requestOtp',
+  async ({ identifier, isEmail }: { identifier: string; isEmail: boolean }, { rejectWithValue }) => {
+    try {
+      const response = isEmail
+        ? await authService.initiateEmailOtpLogin(identifier)
+        : await authService.initiatePhoneLogin(identifier);
+      return response as any;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to request OTP');
+    }
+  }
+);
+
+export const verifyOtpLogin = createAsyncThunk(
+  'auth/verifyOtpLogin',
+  async ({ identifier, code, isEmail }: { identifier: string; code: string; isEmail: boolean }, { rejectWithValue }) => {
+    try {
+      const response = isEmail
+        ? await authService.verifyEmailOtpLogin(identifier, code)
+        : await authService.verifyPhoneLogin(identifier, code);
+
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const innerData = body?.data || body;
+
+      const token = innerData?.token;
+      const user = innerData?.user;
+
+      if (token) await storage.setItem('token', token);
+      if (user) await storage.setItem('user', JSON.stringify(user));
+
+      return innerData as any;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'OTP verification failed');
+    }
+  }
+);
+
+export const switchWorkspaceContextThunk = createAsyncThunk<
+  any,
+  { targetOrgId?: string; targetRole?: string; targetVillaId?: string },
+  { rejectValue: string }
+>('auth/switchWorkspaceContext', async (payload, { dispatch, rejectWithValue }) => {
+  try {
+    const response = await authService.switchContext(payload);
+    const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+    const innerData = body?.data || body;
+
+    const token = innerData?.token;
+    const user = innerData?.user;
+
+    if (token) await storage.setItem('token', token);
+    if (user) await storage.setItem('user', JSON.stringify(user));
+
+    const { fetchQuickActionsThunk } = require('../../dashboard/dashboardSlice');
+    dispatch(fetchQuickActionsThunk());
+
+    return innerData;
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || error.message || 'Failed to switch workspace context');
+  }
+});
+
+export const performLogout = createAsyncThunk(
+  'auth/performLogout',
+  async (_, { dispatch }) => {
+    try {
+      await authService.logoutApi();
+    } catch (error) {
+      console.warn('Logout API call failed, removing local session anyway.');
+    }
+    await storage.removeItem('token');
+    await storage.removeItem('user');
+    dispatch(logout());
+    return true;
+  }
+);
+
+const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    logout: (state) => {
+      state.isAuthenticated = false;
+      state.user = null;
+      state.token = null;
+      state.error = null;
+      state.successMsg = null;
+      state.otpSent = false;
+    },
+    clearStatus: (state) => {
+      state.error = null;
+      state.successMsg = null;
+      state.loading = false;
+      state.otpSent = false;
+    },
+    updateTokenAndUser: (state, action: PayloadAction<{ token?: string; user?: User }>) => {
+      const { token, user } = action.payload;
+      if (token) {
+        state.token = token;
+        storage.setItem('token', token);
+      }
+      if (user) {
+        const normalized = normalizeUser(user);
+        state.user = normalized;
+        if (normalized) {
+          storage.setItem('user', JSON.stringify(normalized));
+        }
+      }
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Bootstrap
+      .addCase(bootstrapAuth.fulfilled, (state, action) => {
+        state.token = action.payload.token;
+        state.user = normalizeUser(action.payload.user);
+        state.isAuthenticated = !!(action.payload.token && state.user?.id);
+        state.isInitialized = true;
+      })
+      // Login User
+      .addCase(loginUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(loginUser.fulfilled, (state, action) => {
+        state.loading = false;
+        state.token = action.payload?.token || action.payload?.data?.token || null;
+        const rawUser = action.payload?.user || action.payload?.data?.user || null;
+        state.user = normalizeUser(rawUser);
+        state.isAuthenticated = !!(state.token && state.user?.id);
+        state.successMsg = action.payload?.message || 'Login successful!';
+      })
+      .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Login failed';
+      })
+      // Request OTP
+      .addCase(requestOtp.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(requestOtp.fulfilled, (state, action) => {
+        state.loading = false;
+        state.otpSent = true;
+        state.successMsg = action.payload?.message || 'OTP sent successfully!';
+      })
+      .addCase(requestOtp.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Failed to send OTP';
+      })
+      // Verify OTP Login
+      .addCase(verifyOtpLogin.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(verifyOtpLogin.fulfilled, (state, action) => {
+        state.loading = false;
+        state.otpSent = false;
+        state.token = action.payload?.token || action.payload?.data?.token || null;
+        const rawUser = action.payload?.user || action.payload?.data?.user || null;
+        state.user = normalizeUser(rawUser);
+        state.isAuthenticated = !!(state.token && state.user?.id);
+        state.successMsg = action.payload?.message || 'Login successful!';
+      })
+      .addCase(verifyOtpLogin.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Login failed';
+      })
+      // Switch Workspace Context
+      .addCase(switchWorkspaceContextThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(switchWorkspaceContextThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload?.token) {
+          state.token = action.payload.token;
+        }
+        if (action.payload?.user) {
+          state.user = normalizeUser(action.payload.user);
+        }
+        state.successMsg = 'Workspace context updated';
+      })
+      .addCase(switchWorkspaceContextThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Failed to switch workspace context';
+      });
+  },
+});
+
+export const { logout, clearStatus, updateTokenAndUser } = authSlice.actions;
+export default authSlice.reducer;

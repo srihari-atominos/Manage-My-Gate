@@ -113,8 +113,9 @@ export const authorizePermission = (feature, action) => {
           }
         }
       }
-      // Super Admin bypasses all permission checks
-      if (req.user.role === 'Super Admin' || req.user.role === 'Platform Super Admin') {
+      // Super Admin and Community Admin bypass all permission checks
+      const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
+      if (isFullAdmin) {
         console.log(`[RBAC DEBUG] User ${req.user.username} is ${req.user.role}. Bypassing check.`);
         return next();
       }
@@ -156,7 +157,8 @@ export const authorizeAnyPermission = (permissionsArray) => {
       if (!req.user) {
         throw new HttpError(401, 'Unauthorized. Authentication required.');
       }
-      if (req.user.role === 'Super Admin' || req.user.role === 'Platform Super Admin') {
+      const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
+      if (isFullAdmin) {
         return next();
       }
 

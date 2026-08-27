@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 98%; /* #F7F8FA Clean Premium Light */
+    --foreground: 222 24% 11%; /* #151922 Deep Charcoal */
+    --card: 0 0% 100%; /* #FFFFFF Pure White Surface */
+    --card-foreground: 222 24% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 24% 11%;
+    --primary: 221 83% 40%; /* #1146A8 NAHOM Royal Navy */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 14% 95%; /* #F1F3F5 Soft Neutral */
+    --secondary-foreground: 222 24% 11%;
+    --muted: 210 14% 95%;
+    --muted-foreground: 220 9% 46%; /* #6B7280 Muted Secondary */
+    --accent: 271 76% 53%; /* #9333EA NAHOM Harmony Purple */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%; /* #DC2626 Danger */
+    --border: 220 13% 90%; /* #E2E4E9 Thin Glass Border */
+    --input: 220 13% 90%;
+    --ring: 221 83% 40%;
+    --radius: 1.125rem; /* 18px */
+    --chart-1: 221 83% 40%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark:root {
+    --background: 222 30% 6%; /* #0B0E14 Sleek Obsidian Base */
+    --foreground: 210 20% 98%; /* #F8FAFC Ultra Crisp Text */
+    --card: 222 25% 10%; /* #121721 Clean Frosted Surface */
+    --card-foreground: 210 20% 98%;
+    --popover: 222 24% 13%; /* #181F2C Elevated Glass Surface */
+    --popover-foreground: 210 20% 98%;
+    --primary: 217 91% 60%; /* #3B82F6 Vibrant Royal Blue */
+    --primary-foreground: 222 35% 6%; /* #080B10 Deep Contrast Font */
+    --secondary: 222 20% 13%; /* #171E29 Secondary Surface */
+    --secondary-foreground: 210 20% 98%;
+    --muted: 222 20% 13%;
+    --muted-foreground: 218 15% 65%; /* #94A3B8 Crisp Slate */
+    --accent: 271 85% 65%; /* #A855F7 Vibrant Harmony Purple */
+    --accent-foreground: 222 35% 6%;
+    --destructive: 0 84% 60%; /* #EF4444 Danger */
+    --border: 222 20% 18%; /* #222B3A Sleek Hairline Border */
+    --input: 222 20% 18%;
+    --ring: 217 91% 60%; /* Royal Blue Focus Ring */
+    --chart-1: 217 91% 60%;
+    --chart-2: 142 71% 45%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 0 84% 60%;
+  }
+}
