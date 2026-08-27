@@ -15,6 +15,7 @@ import notificationReducer from '../features/notification/store/notificationSlic
 import roleBuilderReducer from '../features/roleBuilder/store/roleSlice';
 import userManagementReducer from '../features/userManagement/store/userSlice';
 import integrationHubReducer from '../features/integrationHub/store/integrationHubSlice';
+import workspaceReducer from '../features/workspace/store/workspaceSlice';
 
 export const store = configureStore({
   reducer: {
@@ -34,6 +35,7 @@ export const store = configureStore({
     roleBuilder: roleBuilderReducer,
     userManagement: userManagementReducer,
     integrationHub: integrationHubReducer,
+    workspace: workspaceReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
