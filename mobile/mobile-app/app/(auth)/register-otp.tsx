@@ -13,24 +13,19 @@ const otpSchema = yup.object().shape({
   code: yup
     .string()
     .required('Verification code is required')
-    .matches(/^\d{4,8}$/, 'Code must be between 4 and 8 digits'),
+    .matches(/^\d{6}$/, 'Code must be exactly 6 digits'),
 });
 
 interface OtpFormValues {
   code: string;
 }
 
-export default function OtpScreen() {
-  const { phone, email } = useLocalSearchParams<{ phone?: string; email?: string }>();
-  const { verifyOtp, requestOtp, loading, error, successMsg, isAuthenticated, clearStatus } = useAuth();
-  const [resendCooldown, setResendCooldown] = React.useState(30);
-
+export default function RegisterOtpScreen() {
+  const { email } = useLocalSearchParams<{ email: string }>();
+  const { verifyRegistration, requestRegistrationOtp, loading, error, successMsg, isAuthenticated, clearStatus } = useAuth();
+  
   // Fix URL decoding issue where '+' might have been converted to a space
-  const fixedPhone = phone ? phone.replace(/\s/g, '+') : undefined;
-  const fixedEmail = email ? email.replace(/\s/g, '+') : undefined;
-
-  const identifier = fixedEmail || fixedPhone || '';
-  const isEmail = !!fixedEmail;
+  const fixedEmail = email ? email.replace(/\s/g, '+') : '';
 
   const {
     control,
@@ -47,31 +42,16 @@ export default function OtpScreen() {
     return () => clearStatus();
   }, []);
 
-  // Cooldown countdown timer for resending OTP
-  React.useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const timer = setInterval(() => {
-      setResendCooldown((prev) => prev - 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [resendCooldown]);
-
   const onSubmit = async (data: OtpFormValues) => {
-    if (!identifier) return;
-    await verifyOtp(identifier, data.code, isEmail);
-  };
-
-  const handleResend = async () => {
-    if (!identifier || resendCooldown > 0) return;
-    await requestOtp(identifier, isEmail);
-    setResendCooldown(30);
+    if (!fixedEmail) return;
+    await verifyRegistration(fixedEmail, data.code);
   };
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Verify Identity' }} />
+      <Stack.Screen options={{ title: 'Verify Email' }} />
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="bg-background p-6">
-        <View className="gap-6 flex-1 justify-center max-w-sm mx-auto w-full">
+        <View className="gap-6 flex-1 justify-center max-w-sm mx-auto w-full py-8">
           {/* Header */}
           <View className="items-center mb-6">
             <View className="bg-primary/10 p-4 rounded-full mb-3">
@@ -81,8 +61,8 @@ export default function OtpScreen() {
               Enter Verification Code
             </Text>
             <Text className="text-muted-foreground text-sm text-center mt-1.5 px-4">
-              We sent a verification code to your {isEmail ? 'email' : 'phone number'}:{'\n'}
-              <Text className="font-semibold text-foreground">{identifier}</Text>
+              We sent a verification code to your email:{'\n'}
+              <Text className="font-semibold text-foreground">{fixedEmail || 'your email'}</Text>
             </Text>
           </View>
 
@@ -102,7 +82,7 @@ export default function OtpScreen() {
                     onChangeText={onChange}
                     value={value}
                     keyboardType="number-pad"
-                    maxLength={8}
+                    maxLength={6}
                     className="bg-muted/50 text-foreground border border-border rounded-xl px-4 py-3.5 text-center text-lg font-bold tracking-[6px]"
                   />
                 )}
@@ -130,19 +110,6 @@ export default function OtpScreen() {
             >
               Verify & Sign In
             </Button>
-
-            {/* Resend Helper */}
-            <View className="items-center mt-2">
-              {resendCooldown > 0 ? (
-                <Text className="text-muted-foreground text-xs font-medium">
-                  Resend code in {resendCooldown}s
-                </Text>
-              ) : (
-                <Button onPress={handleResend} variant="ghost" className="h-8">
-                  <Text className="text-primary text-xs font-semibold">Resend verification code</Text>
-                </Button>
-              )}
-            </View>
           </View>
         </View>
       </ScrollView>

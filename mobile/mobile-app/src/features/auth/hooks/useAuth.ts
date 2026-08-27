@@ -2,6 +2,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import {
   loginUser,
+  loginWithGoogleThunk,
+  loginWithMicrosoftThunk,
+  registerUserThunk,
+  verifyRegistrationThunk,
   requestOtp,
   verifyOtpLogin,
   performLogout,
@@ -37,6 +41,34 @@ export const useAuth = () => {
     [dispatch]
   );
 
+  const handleLoginWithGoogle = useCallback(
+    (token: string) => {
+      return dispatch ? dispatch(loginWithGoogleThunk({ token })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleLoginWithMicrosoft = useCallback(
+    (token: string) => {
+      return dispatch ? dispatch(loginWithMicrosoftThunk({ token })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleRegister = useCallback(
+    (userData: any) => {
+      return dispatch ? dispatch(registerUserThunk(userData)) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleVerifyRegistration = useCallback(
+    (email: string, code: string) => {
+      return dispatch ? dispatch(verifyRegistrationThunk({ email, code })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
   const handleRequestOtp = useCallback(
     (identifier: string, isEmail: boolean = false) => {
       return dispatch ? dispatch(requestOtp({ identifier, isEmail })) : Promise.resolve();
@@ -66,6 +98,10 @@ export const useAuth = () => {
   return {
     ...authState,
     login: handleLogin,
+    register: handleRegister,
+    verifyRegistration: handleVerifyRegistration,
+    loginWithGoogle: handleLoginWithGoogle,
+    loginWithMicrosoft: handleLoginWithMicrosoft,
     requestOtp: handleRequestOtp,
     verifyOtp: handleVerifyOtp,
     logout: handleLogout,

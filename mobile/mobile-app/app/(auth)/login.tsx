@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useSegments } from 'expo-router';
 import { ShieldCheck, Mail, Lock, Phone } from 'lucide-react-native';
 import * as React from 'react';
 import { View } from 'react-native';
@@ -12,6 +12,8 @@ import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
+import { MicrosoftSignInButton } from '../../src/features/auth/components/MicrosoftSignInButton';
 
 // Basic Auth Validation Schema
 const basicAuthSchema = yup.object().shape({
@@ -47,6 +49,9 @@ export default function LoginScreen() {
   const [authMode, setAuthMode] = React.useState<'basic' | 'phone'>('basic');
   const [submittedPhone, setSubmittedPhone] = React.useState('');
 
+  const segments = useSegments();
+  const isFocused = segments[segments.length - 1] === 'login';
+
   // Basic Auth Form Hook
   const basicForm = useForm<BasicAuthFormValues>({
     resolver: yupResolver(basicAuthSchema),
@@ -69,22 +74,15 @@ export default function LoginScreen() {
     return () => clearStatus();
   }, [authMode]);
 
-  // Navigate to Resident Dashboard when authenticated
-  React.useEffect(() => {
-    if (isAuthenticated) {
-      router.replace('/(resident)/dashboard');
-    }
-  }, [isAuthenticated]);
-
   // Reactively route to OTP screen if Phone OTP sent
   React.useEffect(() => {
-    if (otpSent && submittedPhone) {
+    if (isFocused && otpSent && submittedPhone) {
       router.push({
         pathname: '/(auth)/otp',
         params: { phone: submittedPhone },
       });
     }
-  }, [otpSent, submittedPhone]);
+  }, [otpSent, submittedPhone, isFocused]);
 
   // Handle Basic Auth Submit
   const onBasicSubmit = async (data: BasicAuthFormValues) => {
@@ -217,6 +215,31 @@ export default function LoginScreen() {
                 </Button>
               </View>
             )}
+
+            {/* SSO Separator */}
+            <View className="flex-row items-center mt-2 mb-1">
+              <View className="flex-1 h-px bg-border" />
+              <Text className="mx-4 text-muted-foreground font-medium text-xs uppercase tracking-wider">OR CONTINUE WITH</Text>
+              <View className="flex-1 h-px bg-border" />
+            </View>
+
+            <View className="flex-row gap-3 mt-2">
+              <View className="flex-1">
+                <GoogleSignInButton />
+              </View>
+              <View className="flex-1">
+                <MicrosoftSignInButton />
+              </View>
+            </View>
+
+            {/* Registration Link */}
+            <View className="items-center mt-4">
+              <Button variant="link" onPress={() => router.push('/(auth)/register')}>
+                <Text className="text-primary font-medium text-sm">
+                  Don't have an account? Sign Up
+                </Text>
+              </Button>
+            </View>
           </View>
         </View>
       </KeyboardAvoidingShell>

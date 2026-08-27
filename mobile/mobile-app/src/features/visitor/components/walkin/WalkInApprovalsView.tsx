@@ -70,18 +70,20 @@ export const WalkInApprovalsView: React.FC = () => {
             />
           ) : null
         }
-        renderItem={(item) => (
-          <WalkInApprovalCard
-            key={item.id}
-            item={item}
-            onApprove={(i) => handleApprove(i.id)}
-            onReject={(i) => handleReject(i.id)}
-            onPressDetails={(i) => {
-              setSelectedItem(i);
-              setModalOpen(true);
-            }}
-          />
-        )}
+        renderItem={(item) => {
+          if (!item) return null;
+          return (
+            <WalkInApprovalCard
+              item={item}
+              onApprove={(i) => handleApprove(i.id)}
+              onReject={(i) => handleReject(i.id)}
+              onPressDetails={(i) => {
+                setSelectedItem(i);
+                setModalOpen(true);
+              }}
+            />
+          );
+        }}
       />
 
       <WalkInVisitorDetailsModal

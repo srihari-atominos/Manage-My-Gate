@@ -110,6 +110,7 @@ export const GuardWalkInStatusView: React.FC = () => {
         emptySubtitle="Walk-in entry requests initiated at the gate will appear here with live status updates."
         contentContainerClassName="px-4 pt-3 pb-28"
         renderItem={(item) => {
+          if (!item) return null;
           const badge = mapWalkInBadge(item.status);
           const subtitle = item.phone ? `Ph: ${item.phone}` : 'Unplanned Gate Visitor';
 

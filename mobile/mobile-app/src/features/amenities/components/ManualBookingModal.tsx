@@ -49,7 +49,7 @@ export const ManualBookingModal: React.FC<ManualBookingModalProps> = ({
     formState: { errors },
   } = useForm<ManualBookingFormData>({
     defaultValues: {
-      amenityId: amenities[0]?._id || '',
+      amenityId: amenities.length > 0 ? amenities[0]._id : '',
       villaNumber: '',
       date: todayStr,
       startTime: '09:00',
@@ -57,6 +57,12 @@ export const ManualBookingModal: React.FC<ManualBookingModalProps> = ({
       notes: 'Admin Manual Override Reservation',
     },
   });
+
+  React.useEffect(() => {
+    if (amenities.length > 0 && !watch('amenityId')) {
+      setValue('amenityId', amenities[0]._id, { shouldDirty: false });
+    }
+  }, [amenities, setValue, watch]);
 
   const selectedDateVal = watch('date');
 
@@ -74,6 +80,7 @@ export const ManualBookingModal: React.FC<ManualBookingModalProps> = ({
                 value={value}
                 onValueChange={onChange}
                 error={errors.amenityId?.message}
+                accordion={true}
               />
             )}
           />

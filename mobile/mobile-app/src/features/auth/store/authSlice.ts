@@ -102,6 +102,90 @@ export const loginUser = createAsyncThunk(
   }
 );
 
+export const registerUserThunk = createAsyncThunk(
+  'auth/registerUser',
+  async (userData: any, { rejectWithValue }) => {
+    try {
+      const response = await authService.register(userData);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      return body?.data || body;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Registration failed');
+    }
+  }
+);
+
+export const verifyRegistrationThunk = createAsyncThunk(
+  'auth/verifyRegistration',
+  async ({ email, code }: { email: string; code: string }, { rejectWithValue }) => {
+    try {
+      const response = await authService.verifyRegistration(email, code);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const innerData = body?.data || body;
+
+      const token = innerData?.token;
+      const refreshToken = innerData?.refreshToken;
+      const user = innerData?.user;
+
+      if (token) await storage.setItem('token', token);
+      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
+      if (user) await storage.setItem('user', JSON.stringify(user));
+
+      return innerData as any;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Registration verification failed');
+    }
+  }
+);
+
+export const loginWithGoogleThunk = createAsyncThunk(
+  'auth/loginWithGoogle',
+  async (tokenPayload: string | { token: string }, { rejectWithValue }) => {
+    try {
+      const response = await authService.loginWithGoogle(tokenPayload);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const innerData = body?.data || body;
+
+      if (innerData?.isNewUser) {
+        return rejectWithValue('User not found. Please register first.');
+      }
+
+      const token = innerData?.token;
+      const user = innerData?.user;
+
+      if (token) await storage.setItem('token', token);
+      if (user) await storage.setItem('user', JSON.stringify(user));
+
+      return innerData as any;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Google Login failed');
+    }
+  }
+);
+
+export const loginWithMicrosoftThunk = createAsyncThunk(
+  'auth/loginWithMicrosoft',
+  async (tokenPayload: string | { token: string }, { rejectWithValue }) => {
+    try {
+      const response = await authService.loginWithMicrosoft(tokenPayload);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const innerData = body?.data || body;
+
+      const token = innerData?.token;
+      const user = innerData?.user;
+
+      if (token) await storage.setItem('token', token);
+      if (user) await storage.setItem('user', JSON.stringify(user));
+
+      return innerData as any;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Microsoft Login failed');
+    }
+  }
+);
+
+
+
 export const requestOtp = createAsyncThunk(
   'auth/requestOtp',
   async ({ identifier, isEmail }: { identifier: string; isEmail: boolean }, { rejectWithValue }) => {
@@ -251,6 +335,75 @@ const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || 'Login failed';
+      })
+      // Register User
+      .addCase(registerUserThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(registerUserThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.successMsg = action.payload?.message || 'Registration successful! Check your email for OTP.';
+      })
+      .addCase(registerUserThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Registration failed';
+      })
+      // Verify Registration
+      .addCase(verifyRegistrationThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(verifyRegistrationThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.token = action.payload?.token || action.payload?.data?.token || null;
+        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
+        const rawUser = action.payload?.user || action.payload?.data?.user || null;
+        state.user = normalizeUser(rawUser);
+        state.isAuthenticated = !!(state.token && state.user?.id);
+        state.successMsg = action.payload?.message || 'Verification successful!';
+      })
+      .addCase(verifyRegistrationThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Verification failed';
+      })
+      // Google SSO
+      .addCase(loginWithGoogleThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(loginWithGoogleThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.token = action.payload?.token || action.payload?.data?.token || null;
+        const rawUser = action.payload?.user || action.payload?.data?.user || null;
+        state.user = normalizeUser(rawUser);
+        state.isAuthenticated = !!(state.token && state.user?.id);
+        state.successMsg = action.payload?.message || 'Login successful!';
+      })
+      .addCase(loginWithGoogleThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Google Login failed';
+      })
+      // Microsoft SSO
+      .addCase(loginWithMicrosoftThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(loginWithMicrosoftThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.token = action.payload?.token || action.payload?.data?.token || null;
+        const rawUser = action.payload?.user || action.payload?.data?.user || null;
+        state.user = normalizeUser(rawUser);
+        state.isAuthenticated = !!(state.token && state.user?.id);
+        state.successMsg = action.payload?.message || 'Login successful!';
+      })
+      .addCase(loginWithMicrosoftThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Microsoft Login failed';
       })
       // Request OTP
       .addCase(requestOtp.pending, (state) => {

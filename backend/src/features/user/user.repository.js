@@ -87,6 +87,23 @@ export class UserRepository {
 
     return await User.findOne({ $or: orConditions }).session(session || null);
   }
+
+  /**
+   * Find a user by villaNumber/flatNumber and orgId
+   * @param {string} villaNumber
+   * @param {string} orgId
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async findByVillaNumber(villaNumber, orgId, session) {
+    const trimmed = villaNumber.trim();
+    return await User.findOne({
+      orgId,
+      $or: [
+        { villaNumber: new RegExp(`^${trimmed}$`, 'i') },
+        { flatNumber: new RegExp(`^${trimmed}$`, 'i') }
+      ]
+    }).session(session || null);
+  }
 }
 
 export default new UserRepository();

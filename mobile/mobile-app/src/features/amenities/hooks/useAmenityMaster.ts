@@ -59,20 +59,51 @@ export const useAmenityMaster = () => {
     setEditingAmenity(null);
   };
 
-  const handleFormSubmit = async (data: Partial<Amenity>) => {
+  const handleFormSubmit = async (data: any) => {
     setSaving(true);
     try {
+      const payload = {
+        name: data.name,
+        type: data.type || data.category,
+        location: data.location,
+        description: data.description,
+        capacity: Number(data.capacity),
+        status: data.status,
+        maxBookingsPerUserPerSlot: Number(data.maxBookingsPerUserPerSlot),
+        openDays: data.openDays,
+        images: data.imageUrl ? [data.imageUrl] : [],
+        pricing: {
+          pricingType: data.pricingType,
+          baseRate: Number(data.bookingFee),
+          securityDeposit: Number(data.securityDeposit),
+          securityDepositDescription: data.securityDepositDescription,
+        },
+        bookingRules: {
+          openTime: data.openTime,
+          closeTime: data.closeTime,
+          slotDurationMinutes: Number(data.slotDurationMinutes),
+          bufferTimeMinutes: Number(data.bufferTimeMinutes),
+          advanceBookingDays: Number(data.advanceBookingDays),
+          isCancellationEnabled: data.isCancellationEnabled,
+          cancellationRefundRules: data.cancellationRefundRules?.map((rule: any) => ({
+            cancelBeforeHours: Number(rule.cancelBeforeHours),
+            refundPercentage: Number(rule.refundPercentage)
+          })) || [],
+        }
+      };
+
       if (editingAmenity) {
-        await dispatch(updateAmenityThunk({ id: editingAmenity._id, payload: data })).unwrap();
+        await dispatch(updateAmenityThunk({ id: editingAmenity._id, payload })).unwrap();
+        Alert.alert('Success', 'Amenity updated successfully');
       } else {
-        await dispatch(createAmenityThunk(data)).unwrap();
+        await dispatch(createAmenityThunk(payload)).unwrap();
+        Alert.alert('Success', 'Amenity created successfully');
       }
       handleCloseFormModal();
       loadData();
     } catch (err: any) {
-      console.error('Failed to save amenity:', err);
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to save amenity record';
-      Alert.alert('Save Failed', msg);
+      console.error('Failed to save amenity', err);
+      Alert.alert('Error', typeof err === 'string' ? err : err.message || 'Failed to save amenity. Please check your inputs.');
     } finally {
       setSaving(false);
     }
@@ -86,11 +117,15 @@ export const useAmenityMaster = () => {
     if (!deactivateTarget) return;
     setSaving(true);
     try {
-      const newStatus = deactivateTarget.status === 'Active' ? 'Inactive' : 'Active';
+      const currentStatus = (deactivateTarget.status || '').toLowerCase();
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
       await dispatch(updateAmenityStatusThunk({ id: deactivateTarget._id, status: newStatus })).unwrap();
+      Alert.alert('Success', `Amenity ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
       setDeactivateTarget(null);
-    } catch (err) {
+      loadData();
+    } catch (err: any) {
       console.error('Failed to change status', err);
+      Alert.alert('Error', typeof err === 'string' ? err : err.message || 'Failed to update status');
     } finally {
       setSaving(false);
     }
@@ -102,6 +137,7 @@ export const useAmenityMaster = () => {
     try {
       await dispatch(deleteAmenityThunk({ id: deleteTarget._id })).unwrap();
       setDeleteTarget(null);
+      loadData();
     } catch (err) {
       console.error('Failed to delete amenity', err);
     } finally {

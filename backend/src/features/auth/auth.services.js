@@ -1062,6 +1062,12 @@ export class AuthService {
     // Emit event for SMS delivery
     authEvents.emit('OTP_SENT', { identifier: phone, code: plainCode, type: 'SMS' });
 
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('\n=========================================');
+      console.log(`[DEV MODE SMS] OTP for ${phone} is: ${plainCode}`);
+      console.log('=========================================\n');
+    }
+
     return { message: 'OTP sent successfully' };
   }
 
@@ -1175,7 +1181,13 @@ export class AuthService {
     const plainCode = await otpService.createOTP(email, 'LOGIN');
     authEvents.emit('OTP_SENT', { identifier: email, code: plainCode, type: 'EMAIL' });
 
-    return { message: 'OTP sent successfully' };
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('\n=========================================');
+      console.log(`[DEV MODE EMAIL] OTP for ${email} is: ${plainCode}`);
+      console.log('=========================================\n');
+    }
+
+    return { message: 'OTP sent to email' };
   }
 
   /**
@@ -1263,7 +1275,8 @@ export class AuthService {
     
     authEvents.emit('OTP_SENT', { identifier, code: plainCode, type });
 
-    return { message: 'Password reset OTP sent' };
+    const isDev = process.env.NODE_ENV !== 'production';
+    return { message: isDev ? `Password reset instructions sent (Dev Code: ${plainCode})` : 'Password reset instructions sent' };
   }
 
   /**

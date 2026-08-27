@@ -30,13 +30,16 @@ export const Modal = ({
       onRequestClose={onClose}
       {...props}
     >
-      <Pressable className={cn('flex-1 items-center justify-center bg-black/50 p-4', className)} onPress={onClose}>
-        <Pressable
+      <View className={cn('flex-1 items-center justify-center p-4', className)}>
+        <Pressable 
+          className="absolute inset-0 bg-black/50" 
+          onPress={onClose} 
+        />
+        <View
           className={cn(
             'w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg dark:bg-slate-900',
             contentClassName
           )}
-          onPress={(e) => e.stopPropagation()}
         >
           {Boolean(title) && (
             <View className="mb-4 flex-row items-center justify-between">
@@ -53,8 +56,8 @@ export const Modal = ({
             </View>
           )}
           {children}
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </RNModal>
   );
 };
