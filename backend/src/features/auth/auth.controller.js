@@ -129,8 +129,8 @@ export class AuthController {
 
   async googleLogin(req, res, next) {
     try {
-      const { token, inviteToken, isRegister } = req.body;
-      const data = await authService.loginWithGoogle(token, inviteToken, isRegister);
+      const { token, inviteToken } = req.body;
+      const data = await authService.loginWithGoogle(token, inviteToken, true);
       
       if (data.isNewUser) {
         return res.success(data, 'Google token verified. User not found.', 200);
@@ -149,9 +149,13 @@ export class AuthController {
   async microsoftLogin(req, res, next) {
     try {
       const { token, inviteToken } = req.body;
-      const data = await authService.loginWithMicrosoft(token, inviteToken);
-      setAuthCookie(res, data.token);
-      setRefreshTokenCookie(res, data.refreshToken);
+      const data = await authService.loginWithMicrosoft(token, inviteToken, true);
+      if (data.token) {
+        setAuthCookie(res, data.token);
+      }
+      if (data.refreshToken) {
+        setRefreshTokenCookie(res, data.refreshToken);
+      }
       res.success(data, 'Microsoft login successful');
     } catch (error) {
       next(error);
