@@ -1,7 +1,8 @@
 import React from 'react'
 import { CDropdown, CDropdownToggle, CDropdownMenu, CDropdownItem } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilBuilding } from '@coreui/icons'
+import { useNavigate } from 'react-router-dom'
+import { cilBuilding, cilPlus } from '@coreui/icons'
 import { useTranslation } from 'react-i18next'
 import useWorkspaceSwitcher from '../../features/workspace/hooks/useWorkspaceSwitcher.js'
 
@@ -15,6 +16,7 @@ import useWorkspaceSwitcher from '../../features/workspace/hooks/useWorkspaceSwi
  */
 export const WorkspaceSwitcher = () => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { availableWorkspaces, activeWorkspace, handleSwitchWorkspace } = useWorkspaceSwitcher()
 
   // Do not render switcher if there is only 1 or no workspaces available
@@ -70,6 +72,16 @@ export const WorkspaceSwitcher = () => {
           </CDropdownItem>
           )
         })}
+        <CDropdownItem
+          as="button"
+          type="button"
+          className="d-flex align-items-center py-2 px-3 text-primary border-top w-100 fw-semibold"
+          onClick={() => navigate('/workspace-setup?intent=create')}
+          id="workspace-switcher-create-org-btn"
+        >
+          <CIcon icon={cilPlus} className="me-2" />
+          {t('workspace.createNewOrg', { defaultValue: 'Create New Organization' })}
+        </CDropdownItem>
       </CDropdownMenu>
     </CDropdown>
   )

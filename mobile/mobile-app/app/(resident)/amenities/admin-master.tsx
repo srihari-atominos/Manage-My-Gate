@@ -198,7 +198,7 @@ export default function AdminAmenityMasterScreen() {
           ? `"${deactivateTarget?.name}" has active or upcoming resident bookings. Deactivating this facility will cancel all associated future bookings. Are you sure you want to proceed?`
           : `Are you sure you want to activate "${deactivateTarget?.name}" and open it for resident bookings?`
         }
-        variant={deactivateTarget?.status?.toLowerCase() === 'active' ? 'warning' : 'primary'}
+        variant={deactivateTarget?.status?.toLowerCase() === 'active' ? 'warning' : 'info'}
         confirmLabel={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Deactivate & Cancel Bookings' : 'Activate Facility'}
         cancelLabel={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Keep Active' : 'Keep Inactive'}
         onConfirm={handleConfirmDeactivate}

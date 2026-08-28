@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
-import { Stack, router, useSegments } from 'expo-router';
+import { PhoneInput } from '@/components/forms/PhoneInput';
+import { Stack, router, useSegments, useLocalSearchParams } from 'expo-router';
 import { ShieldCheck, Mail, Lock, Phone, User } from 'lucide-react-native';
 import * as React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Platform } from 'react-native';
 import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { useForm, Controller } from 'react-hook-form';
@@ -13,12 +14,29 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
 import { MicrosoftSignInButton } from '../../src/features/auth/components/MicrosoftSignInButton';
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 
 // Registration Validation Schema
 const registerSchema = yup.object().shape({
   name: yup.string().required('Full Name is required'),
   email: yup.string().required('Email is required').email('Invalid email address'),
-  phone: yup.string().required('Phone number is required').matches(/^\+?[1-9]\d{1,14}$/, 'Enter a valid international phone number (e.g., +919988776655)'),
+  phone: yup
+    .string()
+    .required('Phone number is required')
+    .test('valid-phone', 'Invalid phone number format', function (value) {
+      if (!value) return false;
+      if (value.startsWith('+91')) {
+        const nationalNumber = value.slice(3);
+        if (nationalNumber.length !== 10) {
+          return this.createError({ message: 'India mobile number must be exactly 10 digits' });
+        }
+        if (!/^[6-9]\d{9}$/.test(nationalNumber)) {
+          return this.createError({ message: 'India mobile number must start with 6, 7, 8, or 9' });
+        }
+        return true;
+      }
+      return /^\+[1-9]\d{7,14}$/.test(value);
+    }),
   password: yup
     .string()
     .required('Password is required')
@@ -37,6 +55,7 @@ type RegisterFormValues = yup.InferType<typeof registerSchema>;
 
 export default function RegisterScreen() {
   const { register: performRegister, loading, error, successMsg, clearStatus } = useAuth();
+  const params = useLocalSearchParams<{ email?: string; name?: string; isGoogleSso?: string }>();
   
   const segments = useSegments();
   const isFocused = segments[segments.length - 1] === 'register';
@@ -44,8 +63,8 @@ export default function RegisterScreen() {
   const form = useForm<RegisterFormValues>({
     resolver: yupResolver(registerSchema),
     defaultValues: {
-      name: '',
-      email: '',
+      name: params.name || '',
+      email: params.email || '',
       phone: '',
       password: '',
       confirmPassword: '',
@@ -53,8 +72,22 @@ export default function RegisterScreen() {
   });
 
   React.useEffect(() => {
+    if (params.name) {
+      form.setValue('name', params.name);
+    }
+    if (params.email) {
+      form.setValue('email', params.email);
+    }
+  }, [params.name, params.email]);
+
+  React.useEffect(() => {
     clearStatus();
-    return () => clearStatus();
+    return () => {
+      clearStatus();
+      if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    };
   }, []);
 
   // Reactively route to OTP verification screen if registration succeeds (successMsg implies OTP was sent)
@@ -151,16 +184,12 @@ export default function RegisterScreen() {
                 <Controller
                   control={form.control}
                   name="phone"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
+                  render={({ field: { onChange, value } }) => (
+                    <PhoneInput
                       label="Mobile Number"
-                      placeholder="+919988776655"
-                      leftIcon={<Phone size={18} className="text-muted-foreground" />}
-                      onBlur={onBlur}
+                      placeholder="99887 76655"
                       onChangeText={onChange}
                       value={value}
-                      keyboardType="phone-pad"
-                      autoComplete="tel"
                       error={form.formState.errors.phone?.message}
                     />
                   )}
@@ -170,18 +199,21 @@ export default function RegisterScreen() {
                   control={form.control}
                   name="password"
                   render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="Password"
-                      placeholder="••••••••"
-                      isPassword
-                      leftIcon={<Lock size={18} className="text-muted-foreground" />}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
-                      autoCapitalize="none"
-                      autoComplete="new-password"
-                      error={form.formState.errors.password?.message}
-                    />
+                    <View>
+                      <Input
+                        label="Password"
+                        placeholder="••••••••"
+                        isPassword
+                        leftIcon={<Lock size={18} className="text-muted-foreground" />}
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        value={value}
+                        autoCapitalize="none"
+                        autoComplete="new-password"
+                        error={form.formState.errors.password?.message}
+                      />
+                      <PasswordStrengthIndicator password={value} />
+                    </View>
                   )}
                 />
 
@@ -205,7 +237,26 @@ export default function RegisterScreen() {
                 />
 
                 {/* Global Error Banner */}
-                {error ? <ErrorBanner message={error} /> : null}
+                {error ? (
+                  <View className="gap-2">
+                    <ErrorBanner message={error} />
+                    {error.toLowerCase().includes('already exists') ? (
+                      <Button
+                        variant="link"
+                        onPress={() => {
+                          if (typeof window !== 'undefined') {
+                            sessionStorage.setItem('mobile_auth_intent', 'create-org');
+                          }
+                          router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
+                        }}
+                      >
+                        <Text className="text-primary font-bold text-xs text-center underline">
+                          Already have an account? Sign in to create another organization under your account
+                        </Text>
+                      </Button>
+                    ) : null}
+                  </View>
+                ) : null}
 
                 <Button
                   onPress={form.handleSubmit(onSubmit)}
@@ -235,7 +286,15 @@ export default function RegisterScreen() {
 
               {/* Login Link */}
               <View className="items-center mt-4">
-                <Button variant="link" onPress={() => router.push('/(auth)/login')}>
+                <Button
+                  variant="link"
+                  onPress={() => {
+                    if (typeof window !== 'undefined') {
+                      sessionStorage.setItem('mobile_auth_intent', 'create-org');
+                    }
+                    router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
+                  }}
+                >
                   <Text className="text-primary font-medium text-sm">
                     Already have an account? Sign In
                   </Text>

@@ -21,8 +21,26 @@ export const updateOrganizationStatus = async (orgId, status) => {
   })
 }
 
+export const fetchOrganizationDetails = async (orgId) => {
+  return await apiClient.get(`/organizations/${orgId}`)
+}
+
+export const fetchOrganizationUsers = async (orgId, { page = 1, limit = 10, search = '', role = '', status = '' } = {}) => {
+  return await apiClient.get(`/organizations/${orgId}/users`, {
+    params: { page, limit, search, role, status },
+  })
+}
+
+export const fetchOrganizationUserDetails = async (orgId, userId) => {
+  return await apiClient.get(`/organizations/${orgId}/users/${userId}`)
+}
+
 export default {
   updateOrganizationFeatures,
   fetchOrganizations,
   updateOrganizationStatus,
+  fetchOrganizationDetails,
+  fetchOrganizationUsers,
+  fetchOrganizationUserDetails,
 }
+

@@ -32,14 +32,29 @@ export default function AmenityExecutiveDashboardScreen() {
   const router = useRouter();
   const { dashboardStats, loading, error, loadData } = useAmenityDashboard();
 
-  const rawRevenue = dashboardStats?.kpis?.revenue ?? dashboardStats?.revenue;
-  const totalRevenue = parseRevenue(rawRevenue, 42500);
+  // Dynamic real-time metrics from backend DTO (/amenity-bookings/stats/dashboard)
+  const totalRevenue = parseRevenue(
+    dashboardStats?.revenue?.monthlyRevenue ?? dashboardStats?.revenue?.dailyRevenue ?? dashboardStats?.kpis?.revenue ?? dashboardStats?.revenue,
+    0
+  );
 
-  const rawTodayRevenue = dashboardStats?.kpis?.todayRevenue ?? dashboardStats?.todayRevenue;
-  const todayRevenue = parseRevenue(rawTodayRevenue, 8250);
+  const todayRevenue = parseRevenue(
+    dashboardStats?.revenue?.dailyRevenue ?? dashboardStats?.kpis?.todayRevenue ?? dashboardStats?.todayRevenue,
+    0
+  );
 
-  const activeMaintenance = dashboardStats?.kpis?.activeMaintenance ?? dashboardStats?.amenityKpis?.underMaintenance ?? 2;
-  const totalFacilities = dashboardStats?.kpis?.totalAmenities ?? dashboardStats?.amenityKpis?.totalAmenities ?? 8;
+  const activeMaintenance =
+    dashboardStats?.amenityKpis?.underMaintenance ??
+    dashboardStats?.kpis?.activeMaintenance ??
+    dashboardStats?.underMaintenance ??
+    0;
+
+  const totalFacilities =
+    dashboardStats?.amenityKpis?.activeAmenities ??
+    dashboardStats?.amenityKpis?.totalAmenities ??
+    dashboardStats?.kpis?.totalAmenities ??
+    dashboardStats?.totalAmenities ??
+    0;
 
   const kpiCards: KPICardProps[] = [
     {

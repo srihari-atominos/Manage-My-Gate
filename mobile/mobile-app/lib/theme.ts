@@ -1,4 +1,59 @@
-export interface ThemeColors {
+export const THEME = {
+  light: {
+    background: 'hsl(218 38% 94%)', // #EEF3F9 Soft Cool Blue/Grey Canvas
+    foreground: 'hsl(227 66% 12%)', // #0B1437 Deep NAHOM Charcoal
+    card: 'hsl(0 0% 100%)', // #FFFFFF Pure White
+    cardForeground: 'hsl(227 66% 12%)',
+    popover: 'hsl(0 0% 100%)',
+    popoverForeground: 'hsl(227 66% 12%)',
+    primary: 'hsl(227 66% 26%)', // #172B70 NAHOM Primary Navy
+    primaryForeground: 'hsl(0 0% 100%)',
+    secondary: 'hsl(218 35% 91%)', // #DCE6F3 Elevated Secondary Surface
+    secondaryForeground: 'hsl(227 66% 20%)',
+    muted: 'hsl(218 30% 90%)',
+    mutedForeground: 'hsl(220 20% 36%)', // #475569 High-Contrast Slate
+    accent: 'hsl(252 38% 41%)', // #51418F NAHOM Indigo
+    accentForeground: 'hsl(0 0% 100%)',
+    destructive: 'hsl(0 72% 51%)', // #DC2626
+    border: 'hsl(218 28% 85%)', // #CBD7E6 Crisp Defined Border
+    input: 'hsl(218 28% 85%)',
+    ring: 'hsl(227 66% 26%)',
+    radius: '1.125rem', // 18px
+    chart1: 'hsl(227 66% 26%)',
+    chart2: 'hsl(213 65% 40%)', // #245FA8 Royal Blue
+    chart3: 'hsl(252 38% 41%)', // #51418F Indigo
+    chart4: 'hsl(322 72% 38%)', // #A51B73 Magenta
+    chart5: 'hsl(142 71% 45%)',
+  },
+  dark: {
+    background: 'hsl(227 50% 6%)', // #070B18 Sleek Obsidian/Midnight Base
+    foreground: 'hsl(210 20% 98%)', // #F8FAFC
+    card: 'hsl(227 40% 10%)', // #0F162B Clean Frosted Surface
+    cardForeground: 'hsl(210 20% 98%)',
+    popover: 'hsl(227 38% 13%)', // #151F3D
+    popoverForeground: 'hsl(210 20% 98%)',
+    primary: 'hsl(213 85% 58%)', // #3884E8 Vibrant Royal Blue
+    primaryForeground: 'hsl(227 50% 6%)', // #070B18
+    secondary: 'hsl(227 30% 14%)', // #16203B
+    secondaryForeground: 'hsl(210 20% 98%)',
+    muted: 'hsl(227 30% 14%)',
+    mutedForeground: 'hsl(218 18% 65%)', // #94A3B8
+    accent: 'hsl(252 65% 65%)', // #8A7CE0
+    accentForeground: 'hsl(227 50% 6%)',
+    destructive: 'hsl(0 84% 60%)', // #EF4444
+    border: 'hsl(227 25% 18%)', // #202D4E
+    input: 'hsl(227 25% 18%)',
+    ring: 'hsl(213 85% 58%)',
+    radius: '1.125rem', // 18px
+    chart1: 'hsl(213 85% 58%)',
+    chart2: 'hsl(252 65% 65%)',
+    chart3: 'hsl(322 72% 55%)',
+    chart4: 'hsl(142 71% 45%)',
+    chart5: 'hsl(38 92% 50%)',
+  },
+};
+
+export interface NavThemeColors {
   primary: string;
   background: string;
   card: string;
@@ -9,64 +64,9 @@ export interface ThemeColors {
 
 export interface NavTheme {
   dark: boolean;
-  colors: ThemeColors;
+  colors: NavThemeColors;
 }
 
-export const THEME = {
-  light: {
-    background: 'hsl(0 0% 100%)',
-    foreground: 'hsl(0 0% 3.9%)',
-    card: 'hsl(0 0% 100%)',
-    cardForeground: 'hsl(0 0% 3.9%)',
-    popover: 'hsl(0 0% 100%)',
-    popoverForeground: 'hsl(0 0% 3.9%)',
-    primary: 'hsl(0 0% 9%)',
-    primaryForeground: 'hsl(0 0% 98%)',
-    secondary: 'hsl(0 0% 96.1%)',
-    secondaryForeground: 'hsl(0 0% 9%)',
-    muted: 'hsl(0 0% 96.1%)',
-    mutedForeground: 'hsl(0 0% 45.1%)',
-    accent: 'hsl(0 0% 96.1%)',
-    accentForeground: 'hsl(0 0% 9%)',
-    destructive: 'hsl(0 84.2% 60.2%)',
-    border: 'hsl(0 0% 89.8%)',
-    input: 'hsl(0 0% 89.8%)',
-    ring: 'hsl(0 0% 63%)',
-    radius: '0.625rem',
-    chart1: 'hsl(12 76% 61%)',
-    chart2: 'hsl(173 58% 39%)',
-    chart3: 'hsl(197 37% 24%)',
-    chart4: 'hsl(43 74% 66%)',
-    chart5: 'hsl(27 87% 67%)',
-  },
-  dark: {
-    background: 'hsl(0 0% 3.9%)',
-    foreground: 'hsl(0 0% 98%)',
-    card: 'hsl(0 0% 3.9%)',
-    cardForeground: 'hsl(0 0% 98%)',
-    popover: 'hsl(0 0% 3.9%)',
-    popoverForeground: 'hsl(0 0% 98%)',
-    primary: 'hsl(0 0% 98%)',
-    primaryForeground: 'hsl(0 0% 9%)',
-    secondary: 'hsl(0 0% 14.9%)',
-    secondaryForeground: 'hsl(0 0% 98%)',
-    muted: 'hsl(0 0% 14.9%)',
-    mutedForeground: 'hsl(0 0% 63.9%)',
-    accent: 'hsl(0 0% 14.9%)',
-    accentForeground: 'hsl(0 0% 98%)',
-    destructive: 'hsl(0 70.9% 59.4%)',
-    border: 'hsl(0 0% 14.9%)',
-    input: 'hsl(0 0% 14.9%)',
-    ring: 'hsl(300 0% 45%)',
-    radius: '0.625rem',
-    chart1: 'hsl(220 70% 50%)',
-    chart2: 'hsl(160 60% 45%)',
-    chart3: 'hsl(30 80% 55%)',
-    chart4: 'hsl(280 65% 60%)',
-    chart5: 'hsl(340 75% 55%)',
-  },
-};
- 
 export const NAV_THEME: Record<'light' | 'dark', NavTheme> = {
   light: {
     dark: false,

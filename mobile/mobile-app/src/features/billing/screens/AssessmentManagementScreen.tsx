@@ -7,18 +7,16 @@ import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/common/Button';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { SearchBar } from '@/components/forms/SearchBar';
-import { PaginatedList } from '@/components/ui/PaginatedList';
-import { Landmark, Plus, ShieldAlert } from 'lucide-react-native';
+import { SlidersHorizontal, Play, Send, ShieldAlert, Landmark, Calendar, Layers, CheckCircle2, Clock, Plus, Trash2, Pencil, Filter } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import billingService from '../services/billingService';
-import { AssessmentWizardModal } from '../components/wizard/AssessmentWizardModal';
-import { AssessmentRuleCard } from '../components/AssessmentRuleCard';
+import { AssessmentWizardModal } from '../components/wizard';
 
 export function AssessmentManagementScreen() {
   const router = useRouter();
@@ -168,122 +166,215 @@ export function AssessmentManagementScreen() {
       <ScreenShell
         title="Assessment Management"
         subtitle="Maintenance calculation formulas & billing runs"
-        iconName="Sliders"
+        iconName="SlidersHorizontal"
         loading={isLoading && assessments.length === 0}
-        headerRight={
-          <Button
-            variant="default"
-            size="sm"
-            className="flex-row items-center px-3 h-9 rounded-full"
-            onPress={() => {
-              setAssessmentToEdit(null);
-              setShowCreateModal(true);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Create New Assessment Rule"
-          >
-            <Icon as={Plus} size={14} className="text-primary-foreground me-1" />
-            <Text className="font-bold text-xs text-primary-foreground">Create Rule</Text>
-          </Button>
-        }
       >
-        <View className="flex-1 bg-background">
-          <PaginatedList<any>
-            data={filteredAssessments}
-            renderItem={(rule) => {
-              const ruleId = rule._id || rule.id;
-              return (
-                <AssessmentRuleCard
-                  key={ruleId}
-                  rule={rule}
-                  onRun={handleOpenRunModal}
-                  onEdit={(r) => {
-                    setAssessmentToEdit(r);
+        {/* ── FIXED TOP CONTROL BAR (Search, Filters & Create Action) ───── */}
+        <View className="px-4 pt-3 pb-3 bg-card border-b border-border gap-2.5 z-10">
+          {/* Row 1: Search Input Box + Create Rule Button */}
+          <View className="flex-row items-center gap-2">
+            <SearchBar
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search rule..."
+              className="flex-1"
+            />
+            <Button
+              variant="default"
+              size="sm"
+              className="bg-primary flex-row items-center px-3 h-11"
+              onPress={() => {
+                setAssessmentToEdit(null);
+                setShowCreateModal(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Create New Assessment Rule"
+            >
+              <Icon as={Plus} size={14} className="text-white me-1" />
+              <Text className="font-bold text-xs text-white">Create Rule</Text>
+            </Button>
+          </View>
+
+          {/* Row 2: Full Width Type Filter Chips */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="w-full">
+            <View className="flex-row gap-1.5 pe-4">
+              {[
+                { label: 'All', value: 'ALL' },
+                { label: 'Recurring', value: 'RECURRING' },
+                { label: 'One-Time', value: 'ONE_TIME' },
+                { label: 'Capital Repair', value: 'CAPITAL_REPAIR' },
+              ].map((tab) => {
+                const isSelected = typeFilter === tab.value;
+                return (
+                  <TouchableOpacity
+                    key={tab.value}
+                    onPress={() => setTypeFilter(tab.value)}
+                    activeOpacity={0.7}
+                    className={`px-3 py-1.5 rounded-full border ${
+                      isSelected
+                        ? 'border-primary bg-primary'
+                        : 'border-border bg-background'
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-bold ${
+                        isSelected ? 'text-white' : 'text-foreground'
+                      }`}
+                    >
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+
+          {/* Row 3: Rule Count Header */}
+          <View className="flex-row items-center justify-between pt-0.5">
+            <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              Assessment Rules ({filteredAssessments.length} of {assessments.length})
+            </Text>
+          </View>
+        </View>
+
+        {/* ── SCROLLABLE CARDS AREA ────────────────────────────────────────── */}
+        <ScrollView
+          className="flex-1 bg-background"
+          contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 16 }}
+          refreshControl={
+            <RefreshControl refreshing={isLoading} onRefresh={fetchAssessments} colors={['#6366f1']} />
+          }
+        >
+          {/* Error Banner */}
+          {error ? (
+            <View className="mb-4">
+              <ErrorBanner message={error} onDismiss={resetBillingError} />
+            </View>
+          ) : null}
+
+          {/* Assessments Rules List */}
+          {filteredAssessments.length === 0 && !isLoading ? (
+            <View className="bg-card border border-border rounded-xl p-6 items-center my-4">
+              <Icon as={Landmark} size={32} className="text-muted-foreground mb-2" />
+              <Text className="font-bold text-foreground text-base mb-1">
+                {searchQuery || typeFilter !== 'ALL' ? 'No Matching Rules Found' : 'No Assessment Rules Found'}
+              </Text>
+              <Text className="text-xs text-muted-foreground text-center mb-4">
+                {searchQuery || typeFilter !== 'ALL'
+                  ? `No rules match "${searchQuery}" with filter "${typeFilter}". Try resetting your search.`
+                  : 'No active maintenance assessment calculation formulas exist for this community.'}
+              </Text>
+              {searchQuery || typeFilter !== 'ALL' ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onPress={() => {
+                    setSearchQuery('');
+                    setTypeFilter('ALL');
+                  }}
+                >
+                  Reset Search & Filters
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="bg-primary"
+                  onPress={() => {
+                    setAssessmentToEdit(null);
                     setShowCreateModal(true);
                   }}
-                  onDelete={(r) => {
-                    setAssessmentToDelete(r);
-                    setShowDeleteConfirmModal(true);
-                  }}
-                  className="mb-3"
-                />
-              );
-            }}
-            pagination={{
-              currentPage: 1,
-              totalPages: 1,
-              totalRecords: filteredAssessments.length,
-              limit: 50,
-            }}
-            onLoadMore={() => {}}
-            onRefresh={fetchAssessments}
-            loading={isLoading}
-            ListHeaderComponent={
-              <View className="gap-2.5 mb-3">
-                {/* Error Banner */}
-                {error ? (
-                  <ErrorBanner message={error} onDismiss={resetBillingError} />
-                ) : null}
+                  accessibilityRole="button"
+                  accessibilityLabel="Create First Assessment Rule"
+                >
+                  + Create First Assessment Rule
+                </Button>
+              )}
+            </View>
+          ) : (
+            filteredAssessments.map((rule) => {
+              const ruleId = rule._id || rule.id;
+              const calcType = rule.calculationMethod?.type || 'FLAT_RATE';
+              const rateDisplay =
+                calcType === 'PER_SQ_FT'
+                  ? `₹${rule.calculationMethod?.ratePerSqFt || 0} / sq.ft`
+                  : `₹${(rule.calculationMethod?.flatAmount || 0).toLocaleString('en-IN')} Flat`;
 
-                {/* Search Input Box */}
-                <SearchBar
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholder="Search rule..."
-                />
-
-                {/* Type Filter Chips */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="w-full">
-                  <View className="flex-row gap-1.5 pe-4">
-                    {[
-                      { label: 'All', value: 'ALL' },
-                      { label: 'Recurring', value: 'RECURRING' },
-                      { label: 'One-Time', value: 'ONE_TIME' },
-                      { label: 'Capital Repair', value: 'CAPITAL_REPAIR' },
-                    ].map((tab) => {
-                      const isSelected = typeFilter === tab.value;
-                      return (
-                        <TouchableOpacity
-                          key={tab.value}
-                          onPress={() => setTypeFilter(tab.value)}
-                          activeOpacity={0.7}
-                          className={`px-3 py-1.5 rounded-full border ${
-                            isSelected
-                              ? 'border-primary bg-primary'
-                              : 'border-border bg-card'
-                          }`}
-                        >
-                          <Text
-                            className={`text-xs font-bold ${
-                              isSelected ? 'text-primary-foreground' : 'text-foreground'
-                            }`}
-                          >
-                            {tab.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+              return (
+                <View key={ruleId} className="bg-card border border-border rounded-xl p-4 mb-4 shadow-sm">
+                  <View className="flex-row items-start justify-between mb-2">
+                    <View className="flex-1 me-2">
+                      <Text className="font-extrabold text-base text-foreground">{rule.name}</Text>
+                      <Text className="text-xs text-muted-foreground">
+                        {rule.billingCycle || 'MONTHLY'} • {rule.type || 'RECURRING'}
+                      </Text>
+                    </View>
+                    <StatusBadge label={rule.isActive !== false ? 'ACTIVE' : 'INACTIVE'} variant={rule.isActive !== false ? 'success' : 'neutral'} dot />
                   </View>
-                </ScrollView>
 
-                {/* Rule Count Header */}
-                <View className="flex-row items-center justify-between pt-1">
-                  <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    Assessment Rules ({filteredAssessments.length} of {assessments.length})
-                  </Text>
+                  {/* Calculation Details */}
+                  <View className="bg-muted/50 rounded-lg p-3 my-2 gap-1.5">
+                    <View className="flex-row justify-between">
+                      <Text className="text-xs text-muted-foreground font-semibold">Calculation Method:</Text>
+                      <Text className="text-xs font-bold text-foreground">{calcType.replace(/_/g, ' ')}</Text>
+                    </View>
+                    <View className="flex-row justify-between">
+                      <Text className="text-xs text-muted-foreground font-semibold">Assessment Rate:</Text>
+                      <Text className="text-xs font-extrabold text-primary">{rateDisplay}</Text>
+                    </View>
+                    <View className="flex-row justify-between">
+                      <Text className="text-xs text-muted-foreground font-semibold">Generation Day:</Text>
+                      <Text className="text-xs font-bold text-foreground">{rule.generationDay || '1'}</Text>
+                    </View>
+                  </View>
+
+                  {/* Action CTAs */}
+                  <View className="flex-row gap-2 mt-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="flex-1 bg-emerald-600 active:bg-emerald-700"
+                      onPress={() => handleOpenRunModal(rule)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Run billing for ${rule.name}`}
+                    >
+                      <Icon as={Play} size={14} className="text-white me-1.5" />
+                      <Text className="font-bold text-xs text-white">Run Billing</Text>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-border bg-card px-3"
+                      onPress={() => {
+                        setAssessmentToEdit(rule);
+                        setShowCreateModal(true);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit assessment rule ${rule.name}`}
+                    >
+                      <Icon as={Pencil} size={14} className="text-foreground" />
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/30 px-3"
+                      onPress={() => {
+                        setAssessmentToDelete(rule);
+                        setShowDeleteConfirmModal(true);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete assessment rule ${rule.name}`}
+                    >
+                      <Icon as={Trash2} size={14} className="text-red-600 dark:text-red-400" />
+                    </Button>
+                  </View>
                 </View>
-              </View>
-            }
-            emptyIcon="Sliders"
-            emptyTitle={searchQuery || typeFilter !== 'ALL' ? 'No Matching Rules Found' : 'No Assessment Rules Found'}
-            emptySubtitle={
-              searchQuery || typeFilter !== 'ALL'
-                ? `No rules match "${searchQuery}" with filter "${typeFilter}". Try resetting your search.`
-                : 'No active maintenance assessment calculation formulas exist for this community.'
-            }
-            contentContainerClassName="px-4 pt-3 pb-28"
-          />
-        </View>
+              );
+            })
+          )}
+        </ScrollView>
       </ScreenShell>
 
       {/* 5-Step Assessment Wizard Modal */}

@@ -6,18 +6,19 @@ dotenv.config();
 import User from './src/features/user/user.model.js';
 
 async function checkAdmin() {
-  await mongoose.connect(process.env.MONGODB_URI);
+  const uri = process.env.MONGODB_URI || 'mongodb://admin:adminpassword@localhost:27018/manage-my-gate?authSource=admin';
+  await mongoose.connect(uri);
   console.log('Connected to DB');
 
-  const admin = await User.findOne({ email: 'admin@enterprise.com' });
-  if (!admin) {
-    console.log('Superadmin not found in database!');
-  } else {
-    console.log('Superadmin found:', admin.email);
-    console.log('Stored hashed password:', admin.password);
-    const isMatch = await bcrypt.compare('SuperAdminPwd@123', admin.password);
-    console.log('Password match:', isMatch);
+  const users = await User.find({});
+  console.log(`Total users in DB: ${users.length}`);
+
+  for (const u of users) {
+    const isPwd = await bcrypt.compare('password', u.password || '');
+    const isPwd123 = await bcrypt.compare('Password@123', u.password || '');
+    console.log(`- Username: "${u.username}", Email: "${u.email}", Status: "${u.status}", Matches 'password': ${isPwd}, Matches 'Password@123': ${isPwd123}`);
   }
+
   await mongoose.disconnect();
 }
 

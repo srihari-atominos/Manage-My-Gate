@@ -70,6 +70,27 @@ const userSchema = new mongoose.Schema(
       }],
       default: [],
     },
+    // Directory Privacy Settings
+    showPhoneInDirectory: {
+      type: Boolean,
+      default: true,
+    },
+    allowDirectoryMessages: {
+      type: Boolean,
+      default: true,
+    },
+    allowIntercomCalls: {
+      type: Boolean,
+      default: true,
+    },
+    hideFromDirectory: {
+      type: Boolean,
+      default: false,
+    },
+    interests: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,

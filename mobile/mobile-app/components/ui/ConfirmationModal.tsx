@@ -42,7 +42,7 @@ export const CONFIRMATION_VARIANT_CONFIG = {
 
 const confirmationModalVariants = cva(
   cn(
-    'bg-card rounded-2xl p-6 mx-6 w-full max-w-sm shadow-xl border border-border/40',
+    'bg-card rounded-3xl p-6 mx-6 w-full max-w-sm shadow-2xl border border-border/80',
     Platform.select({
       web: 'transition-all duration-200',
     })
@@ -101,12 +101,12 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
             </View>
 
             {/* Title */}
-            <Text variant="large" className="text-center mt-4">
+            <Text className="text-center mt-4 text-[18px] font-bold font-sans text-foreground">
               {title}
             </Text>
 
             {/* Message */}
-            <Text variant="muted" className="text-center mt-2">
+            <Text variant="muted" className="text-center mt-2 text-[14px] font-sans text-muted-foreground">
               {message}
             </Text>
 

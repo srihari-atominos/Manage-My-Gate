@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Platform } from 'react-native';
-import { SearchBar } from '@/components/forms/SearchBar';
+import { View, ScrollView, TouchableOpacity, TextInput as RNTextInput, Platform } from 'react-native';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
-import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Search, X, RotateCcw } from 'lucide-react-native';
+import { NoticeCategoryChip } from './NoticeCategoryChip';
 
-export const CATEGORIES = {
-  GENERAL: 'General',
-  MAINTENANCE: 'Maintenance',
-  EVENTS: 'Events',
-  EMERGENCY: 'Emergency',
-  MEETINGS: 'Meetings',
-};
+export const CATEGORIES = [
+  'All',
+  'General',
+  'Maintenance',
+  'Events',
+  'Emergency',
+  'Meetings',
+];
 
 export const PRIORITIES = {
   LOW: 'Low',
@@ -29,60 +30,66 @@ export const STATUSES = {
 };
 
 export const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest First', sortBy: 'createdAt', sortOrder: 'desc' as const },
-  { value: 'oldest', label: 'Oldest First', sortBy: 'createdAt', sortOrder: 'asc' as const },
-  { value: 'priority', label: 'Highest Priority', sortBy: 'priority', sortOrder: 'desc' as const },
-  { value: 'title_asc', label: 'Title (A-Z)', sortBy: 'title', sortOrder: 'asc' as const },
-  { value: 'title_desc', label: 'Title (Z-A)', sortBy: 'title', sortOrder: 'desc' as const },
+  { value: 'newest', label: 'Newest First', sortBy: 'createdAt', sortOrder: 'desc' },
+  { value: 'oldest', label: 'Oldest First', sortBy: 'createdAt', sortOrder: 'asc' },
+  { value: 'priority', label: 'Highest Priority', sortBy: 'priority', sortOrder: 'desc' },
+  { value: 'title_asc', label: 'Title (A-Z)', sortBy: 'title', sortOrder: 'asc' },
+  { value: 'title_desc', label: 'Title (Z-A)', sortBy: 'title', sortOrder: 'desc' },
 ];
 
 export interface NoticeFiltersState {
   category?: string;
   priority?: string;
   status?: string;
-  isBookmarked?: boolean | string;
+  noticeType?: string;
+  isBookmarked?: boolean;
   readStatus?: string;
-  [key: string]: any;
+  sortBy?: string;
+  sortOrder?: string;
 }
 
 export interface NoticeSortState {
-  sortBy: string;
-  sortOrder: 'asc' | 'desc';
+  sortBy?: string;
+  sortOrder?: string;
+  value?: string;
 }
 
 export interface NoticeManagementFilterBarProps {
-  search: string;
-  filters: NoticeFiltersState;
-  sort: NoticeSortState;
-  onSearchChange: (text: string) => void;
-  onFiltersChange: (filters: Partial<NoticeFiltersState>) => void;
-  onSortChange?: (sort: NoticeSortState) => void;
-  onReset: () => void;
+  search?: string;
+  filters?: NoticeFiltersState;
+  sort?: NoticeSortState | string;
+  onSearchChange?: (val: string) => void;
+  onFiltersChange?: (filters: NoticeFiltersState) => void;
+  onSortChange?: (val: any) => void;
+  onReset?: () => void;
   hideStatusFilter?: boolean;
   showNoticeTypeFilter?: boolean;
-  className?: string;
 }
 
-export const NoticeManagementFilterBar: React.FC<NoticeManagementFilterBarProps> = ({
-  search,
-  filters,
+export const NoticeBoardFilters: React.FC<NoticeManagementFilterBarProps> = ({
+  search = '',
+  filters = {},
   sort,
-  onSearchChange,
-  onFiltersChange,
-  onSortChange,
-  onReset,
+  onSearchChange = () => {},
+  onFiltersChange = () => {},
+  onSortChange = () => {},
+  onReset = () => {},
   hideStatusFilter = false,
   showNoticeTypeFilter = false,
-  className = '',
 }) => {
-  const [searchTerm, setSearchTerm] = useState(search);
+  const [searchTerm, setSearchTerm] = useState(search || '');
 
   useEffect(() => {
-    setSearchTerm(search);
+    setSearchTerm(search || '');
   }, [search]);
 
   const handleSearchSubmit = () => {
     onSearchChange(searchTerm);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    onSearchChange('');
   };
 
   const handleSortSelect = (value: string) => {
@@ -97,85 +104,112 @@ export const NoticeManagementFilterBar: React.FC<NoticeManagementFilterBarProps>
   };
 
   const activeSortOption =
-    SORT_OPTIONS.find((opt) => opt.sortBy === sort.sortBy && opt.sortOrder === sort.sortOrder)?.value ||
-    'newest';
+    SORT_OPTIONS.find(
+      (opt) =>
+        opt.sortBy === (typeof sort === 'object' ? sort?.sortBy : undefined) &&
+        opt.sortOrder === (typeof sort === 'object' ? sort?.sortOrder : undefined)
+    )?.value || 'newest';
+
+  const selectedCategory = filters?.category || 'All';
+
+  const handleCategorySelect = (category: string) => {
+    if (category === 'All') {
+      onFiltersChange({ category: '' });
+    } else {
+      onFiltersChange({ category });
+    }
+  };
 
   const getNoticeType = () => {
-    if (filters.isBookmarked === 'true' || filters.isBookmarked === true) return 'Bookmarks';
-    if (filters.readStatus === 'Unread') return 'Unread';
+    if (filters?.isBookmarked) return 'Bookmarks';
+    if (filters?.readStatus === 'Unread') return 'Unread';
     return 'All';
   };
 
   const handleNoticeTypeChange = (val: string) => {
     if (val === 'Bookmarks') {
-      onFiltersChange({ isBookmarked: 'true', readStatus: '' });
+      onFiltersChange({ isBookmarked: true, readStatus: undefined });
     } else if (val === 'Unread') {
-      onFiltersChange({ readStatus: 'Unread', isBookmarked: '' });
+      onFiltersChange({ readStatus: 'Unread', isBookmarked: false });
     } else {
-      onFiltersChange({ readStatus: '', isBookmarked: '' });
+      onFiltersChange({ readStatus: undefined, isBookmarked: false });
     }
   };
 
   const isWeb = Platform.OS === 'web';
 
   return (
-    <View className={`gap-2.5 ${className}`}>
+    <View className="gap-2.5">
+      {/* Search Bar & Reset Row */}
       <View className="flex-row items-center gap-2">
-        <View className="flex-1">
-          <SearchBar
+        <View className="flex-1 flex-row items-center bg-secondary/80 border border-border rounded-xl px-3 h-10">
+          <Search size={16} className="text-muted-foreground me-2" />
+          <RNTextInput
             value={searchTerm}
             onChangeText={(text) => {
               setSearchTerm(text);
               if (text === '') onSearchChange('');
             }}
-            placeholder="Search Notices..."
-            onClear={() => onSearchChange('')}
+            placeholder="Search announcements..."
+            placeholderTextColor="#94a3b8"
+            className="flex-1 text-[13.5px] font-sans font-medium text-foreground h-full p-0"
+            onSubmitEditing={handleSearchSubmit}
+            returnKeyType="search"
           />
+          {searchTerm.length > 0 && (
+            <TouchableOpacity onPress={handleClearSearch} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={15} className="text-muted-foreground" />
+            </TouchableOpacity>
+          )}
         </View>
-        <Button variant="outline" size="sm" onPress={onReset} className="h-11 px-3.5 rounded-xl">
-          <Text className="text-xs font-semibold text-foreground">Reset</Text>
-        </Button>
+
+        <TouchableOpacity
+          onPress={onReset}
+          activeOpacity={0.7}
+          className="h-10 px-3 bg-secondary border border-border rounded-xl flex-row items-center gap-1.5 shrink-0"
+          accessibilityLabel="Reset all filters"
+        >
+          <RotateCcw size={13} className="text-muted-foreground" />
+          <Text className="text-[12px] font-bold font-sans text-foreground">Reset</Text>
+        </TouchableOpacity>
       </View>
 
-      <View className="flex-row flex-wrap gap-2">
-        <View className="flex-1 min-w-[130px]">
-          <DropdownSelect
-            options={[
-              { label: 'All Categories', value: '' },
-              ...Object.values(CATEGORIES).map((cat) => ({ label: cat, value: cat })),
-            ]}
-            value={filters.category || ''}
-            onValueChange={(val) => onFiltersChange({ category: val })}
-            placeholder="Category"
-            inline={isWeb}
+      {/* Horizontal Scrollable Category Chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        className="-mx-4 px-4"
+        contentContainerStyle={{ gap: 6 }}
+      >
+        {CATEGORIES.map((cat) => (
+          <NoticeCategoryChip
+            key={cat}
+            category={cat}
+            selected={selectedCategory === cat || (cat === 'All' && !filters?.category)}
+            onPress={() => handleCategorySelect(cat)}
           />
-        </View>
+        ))}
+      </ScrollView>
 
-        <View className="flex-1 min-w-[130px]">
+      {/* Structured Dropdown Filter Row */}
+      <View className="flex-row items-center gap-2">
+        {/* Priority Filter */}
+        <View className="flex-1 min-w-[90px]">
           <DropdownSelect
             options={[
               { label: 'All Priorities', value: '' },
               ...Object.values(PRIORITIES).map((pri) => ({ label: pri, value: pri })),
             ]}
-            value={filters.priority || ''}
+            value={filters?.priority || ''}
             onValueChange={(val) => onFiltersChange({ priority: val })}
             placeholder="Priority"
             inline={isWeb}
           />
         </View>
 
-        <View className="flex-1 min-w-[130px]">
-          <DropdownSelect
-            options={SORT_OPTIONS}
-            value={activeSortOption}
-            onValueChange={handleSortSelect}
-            placeholder="Sort By"
-            inline={isWeb}
-          />
-        </View>
-
-        {showNoticeTypeFilter && (
-          <View className="flex-1 min-w-[130px]">
+        {/* Notice Type (Resident) OR Status (Admin) */}
+        {showNoticeTypeFilter ? (
+          <View className="flex-1 min-w-[90px]">
             <DropdownSelect
               options={[
                 { label: 'All Notices', value: 'All' },
@@ -184,29 +218,39 @@ export const NoticeManagementFilterBar: React.FC<NoticeManagementFilterBarProps>
               ]}
               value={getNoticeType()}
               onValueChange={handleNoticeTypeChange}
-              placeholder="Notice Type"
+              placeholder="Type"
               inline={isWeb}
             />
           </View>
-        )}
-
-        {!hideStatusFilter && (
-          <View className="flex-1 min-w-[130px]">
+        ) : !hideStatusFilter ? (
+          <View className="flex-1 min-w-[90px]">
             <DropdownSelect
               options={[
                 { label: 'All Statuses', value: '' },
                 ...Object.values(STATUSES).map((st) => ({ label: st, value: st })),
               ]}
-              value={filters.status || ''}
+              value={filters?.status || ''}
               onValueChange={(val) => onFiltersChange({ status: val })}
               placeholder="Status"
               inline={isWeb}
             />
           </View>
-        )}
+        ) : null}
+
+        {/* Sort By Filter */}
+        <View className="flex-1 min-w-[90px]">
+          <DropdownSelect
+            options={SORT_OPTIONS}
+            value={activeSortOption}
+            onValueChange={handleSortSelect}
+            placeholder="Sort"
+            inline={isWeb}
+          />
+        </View>
       </View>
     </View>
   );
 };
 
-export default NoticeManagementFilterBar;
+export const NoticeManagementFilterBar = NoticeBoardFilters;
+export default NoticeBoardFilters;

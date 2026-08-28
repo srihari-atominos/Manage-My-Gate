@@ -1,91 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Modal, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Sparkles } from 'lucide-react-native';
+import { Sparkles, X, Check } from 'lucide-react-native';
 import CustomiseDeckZone from './CustomiseDeckZone';
 import CustomiseAvailableZone from './CustomiseAvailableZone';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import {
+  ALL_AVAILABLE_FEATURES,
+  REAL_APP_FEATURES,
+  DEFAULT_5_QUICK_ACTIONS,
+  AppFeatureItem,
+} from '@/src/features/dashboard/dashboardCatalog';
 
-export interface AppFeatureItem {
-  id: string;
-  name: string;
-  subtitle: string;
-  iconName: string;
-  colorBg: string;
-  colorIcon: string;
-  route?: string;
-  categoryKey?: string;
-  categoryName?: string;
-  badge?: string;
-  badgeColor?: string;
-  permission?: string;
-}
+export { ALL_AVAILABLE_FEATURES, REAL_APP_FEATURES, AppFeatureItem };
 
-export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
-  // Visitor & Gate Security (Web App Aligned)
-  { id: 'visitor_resident_passes', name: 'Resident Passes', subtitle: 'QR Visitor Pass', iconName: 'QrCode', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/visitor', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-  { id: 'visitor_admin_dashboard', name: 'Admin Visitor Console', subtitle: 'Master Control', iconName: 'LayoutDashboard', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/visitor/admin', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-  { id: 'visitor_community_passes', name: 'All Community Passes', subtitle: 'All Villa Passes', iconName: 'Filter', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/visitor/admin/community-passes', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-  { id: 'visitor_blacklist', name: 'Visitor Blacklist', subtitle: 'Restricted Registry', iconName: 'ShieldX', colorBg: 'bg-rose-500/10', colorIcon: '#f43f5e', route: '/(resident)/visitor/admin/blacklist', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-  { id: 'visitor_admin_logs', name: 'Admin Gate Logs', subtitle: 'Live Gate Audit', iconName: 'ShieldAlert', colorBg: 'bg-slate-500/10', colorIcon: '#64748b', route: '/(resident)/visitor/admin-logs', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-  { id: 'visitor_gate_console', name: 'Gate Console', subtitle: 'Guard Check-in', iconName: 'ScanLine', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/visitor/gate-console', permission: 'visitor:guard', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-
-  // Amenities & Booking (Web App Aligned)
-  { id: 'amenities_dashboard', name: 'Amenity Dashboard', subtitle: 'Executive Analytics', iconName: 'BarChart3', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', route: '/(resident)/amenities/dashboard', permission: 'amenities:dashboard', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
-  { id: 'amenities_discover', name: 'Discover Amenities', subtitle: 'Browse Facilities', iconName: 'Search', colorBg: 'bg-blue-500/10', colorIcon: '#3b82f6', route: '/(resident)/amenities/discover', permission: 'amenities:discover', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
-  { id: 'amenities_my_booking', name: 'My Bookings', subtitle: 'Active Reservations', iconName: 'CalendarCheck', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/amenities/my-bookings', permission: 'amenities:my_booking', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
-  { id: 'amenities_wallet', name: 'Digital Wallet', subtitle: 'Prepaid Credits', iconName: 'Wallet', colorBg: 'bg-cyan-500/10', colorIcon: '#06b6d4', route: '/(resident)/amenities/wallet', permission: 'amenities:wallet', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
-  { id: 'amenities_master', name: 'Amenity Master', subtitle: 'Slot & Pricing Config', iconName: 'Building2', colorBg: 'bg-teal-500/10', colorIcon: '#14b8a6', route: '/(resident)/amenities/admin-master', permission: 'amenities:amenities', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
-  { id: 'amenities_admin_calendar', name: 'Admin Calendar', subtitle: 'Master Schedule', iconName: 'CalendarDays', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/amenities/admin-calendar', permission: 'amenities:admin_calander', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
-  { id: 'amenities_ledgers', name: 'Ledgers', subtitle: 'Revenue & Refunds', iconName: 'Receipt', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/amenities/ledgers', permission: 'amenities:ledgers', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
-  { id: 'amenities_maintenance', name: 'Maintenance', subtitle: 'Facility Downtime', iconName: 'Wrench', colorBg: 'bg-amber-500/10', colorIcon: '#f59e0b', route: '/(resident)/amenities/maintenance', permission: 'amenities:maintenance', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
-  { id: 'amenities_scanner', name: 'Security Scanner', subtitle: 'Gate Scanner', iconName: 'QrCode', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', route: '/(resident)/amenities/scanner', permission: 'amenities:scanner', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
-  { id: 'amenities_security_logs', name: 'Security Logs', subtitle: 'Audit Trails', iconName: 'ClipboardList', colorBg: 'bg-slate-500/10', colorIcon: '#64748b', route: '/(resident)/amenities/security-logs', permission: 'amenities:security_logs', categoryKey: 'amenities_facilities', categoryName: 'Amenities & Booking' },
-
-  // Complaints & Helpdesk (Web App Aligned)
-  { id: 'complaints_dashboard', name: 'Complaints Analytics', subtitle: 'SLA Tracking', iconName: 'BarChart3', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', permission: 'complaints:dashboard', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
-  { id: 'complaints_raise_ticket', name: 'Raise Ticket', subtitle: 'Report Issue', iconName: 'PlusCircle', colorBg: 'bg-rose-500/10', colorIcon: '#f43f5e', permission: 'complaints:raise_ticket', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
-  { id: 'complaints_track_requests', name: 'Track My Tickets', subtitle: 'Live Ticket Status', iconName: 'ListOrdered', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', permission: 'complaints:track_requests', badge: '1', badgeColor: 'bg-rose-500 text-white', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
-  { id: 'complaints_complaint_management', name: 'Complaint Queue', subtitle: 'Admin Board', iconName: 'Kanban', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', permission: 'complaints:complaint_management', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
-  { id: 'complaints_staff', name: 'Staff & Vendors', subtitle: 'Roster & Contacts', iconName: 'Users2', colorBg: 'bg-teal-500/10', colorIcon: '#14b8a6', permission: 'complaints:staff', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
-  { id: 'complaints_assignee', name: 'Assignee Console', subtitle: 'Work Orders', iconName: 'UserCheck', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', permission: 'complaints:assignee', categoryKey: 'complaints_helpdesk', categoryName: 'Complaints & Maintenance' },
-
-  // Notice Board (Web App Aligned)
-  { id: 'notices_active_board', name: 'Notice Board', subtitle: 'Community Circulars', iconName: 'BellRing', colorBg: 'bg-teal-500/10', colorIcon: '#14b8a6', permission: 'notices:active_board', badge: '8', badgeColor: 'bg-teal-600 text-white', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
-  { id: 'notices_dashboard', name: 'Notice Dashboard', subtitle: 'Broadcast Stats', iconName: 'LayoutDashboard', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', permission: 'notices:dashboard', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
-  { id: 'notices_manage_notices', name: 'Manage Notices', subtitle: 'Draft & Publish', iconName: 'FileEdit', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', permission: 'notices:manage_notices', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
-  { id: 'notices_polls', name: 'Community Polls', subtitle: 'Resident Voting', iconName: 'Vote', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', permission: 'notices:polls', categoryKey: 'notice_board_polls', categoryName: 'Notice Board' },
-
-  // Financial Suite & Billing (Web App Aligned)
-  { id: 'billing_dashboard', name: 'Billing Dashboard', subtitle: 'Collection Overview', iconName: 'CreditCard', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/billing', permission: 'billing:action_center', badge: 'Due', badgeColor: 'bg-amber-500 text-white', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
-  { id: 'billing_my_dues', name: 'My Personal Dues', subtitle: 'Unit Liabilities', iconName: 'Receipt', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/billing/my-dues', permission: 'billing:action_center', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
-  { id: 'billing_wallet', name: 'Digital Wallet', subtitle: 'Prepaid Top-Up', iconName: 'Wallet', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/billing/wallet', permission: 'billing:action_center', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
-  { id: 'billing_assessment_manager', name: 'Assessments', subtitle: 'Levy Generation', iconName: 'Calculator', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', route: '/(resident)/admin/billing/assessments', permission: 'billing:assessment_manager', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
-  { id: 'billing_action_center', name: 'Billing Ledger', subtitle: 'Community Audits', iconName: 'Receipt', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/admin/billing/ledger', permission: 'billing:dashboard', categoryKey: 'financial_billing', categoryName: 'Financial Suite & Billing' },
-
-
-  // Administration & Security (Web App Aligned)
-  { id: 'admin_users', name: 'User Management', subtitle: 'Residents & Staff', iconName: 'Users', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/admin/users', permission: 'users:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  { id: 'admin_villas', name: 'Unit Management', subtitle: 'Blocks & Villas', iconName: 'Home', colorBg: 'bg-teal-500/10', colorIcon: '#14b8a6', route: '/(resident)/admin/villas', permission: 'villas:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  { id: 'admin_role_builder', name: 'Role Builder', subtitle: 'RBAC Matrices', iconName: 'ShieldCheck', colorBg: 'bg-rose-500/10', colorIcon: '#f43f5e', route: '/(resident)/admin/role-builder', permission: 'roles:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  { id: 'admin_integrations', name: 'Integration Hub', subtitle: 'API & Webhooks', iconName: 'Layers', colorBg: 'bg-amber-500/10', colorIcon: '#f59e0b', route: '/(resident)/admin/integrations', permission: 'integrations:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  { id: 'admin_organizations', name: 'Org Manager', subtitle: 'Platform Multi-tenant', iconName: 'Building', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', route: '/(resident)/admin/organizations', permission: 'platform:super_admin', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  { id: 'admin_audit_logs', name: 'Audit Logs', subtitle: 'Security & Access Logs', iconName: 'FileSpreadsheet', colorBg: 'bg-slate-500/10', colorIcon: '#64748b', route: '/(resident)/admin/audit-logs', permission: 'platform:super_admin', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  
-  // Workspace Settings (Grouped under Administration & Security)
-  { id: 'admin_workspace_settings', name: 'Workspace Settings', subtitle: 'Tenant Rules', iconName: 'Settings', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/admin/workspace-settings', permission: 'workspaces:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-];
-
-export const REAL_APP_FEATURES = ALL_AVAILABLE_FEATURES;
-
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const VALID_CATALOG_IDS = new Set(ALL_AVAILABLE_FEATURES.map((f) => f.id));
-
-const DEFAULT_FEATURE_SELECTION = [
-  'billing_dashboard',
-  'visitor_resident_passes',
-  'complaints_track_requests',
-  'notices_active_board',
-];
 
 interface CustomiseSheetModalProps {
   visible: boolean;
@@ -99,14 +29,21 @@ interface CustomiseSheetModalProps {
 export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   visible,
   onClose,
-  activeFeatureIds = DEFAULT_FEATURE_SELECTION,
+  activeFeatureIds = DEFAULT_5_QUICK_ACTIONS,
   availableFeatures,
   onToggleFeature,
   onSave,
 }) => {
   const { user } = useAuth();
   const userPermissions: string[] = user?.permissions || [];
-  const userRoleName = user?.role || (user as any)?.activeRole || (Array.isArray((user as any)?.roles) ? (typeof (user as any).roles[0] === 'string' ? (user as any).roles[0] : (user as any).roles[0]?.name) : '');
+  const userRoleName =
+    user?.role ||
+    (user as any)?.activeRole ||
+    (Array.isArray((user as any)?.roles)
+      ? typeof (user as any).roles[0] === 'string'
+        ? (user as any).roles[0]
+        : (user as any).roles[0]?.name
+      : '');
   const isSuperAdmin = Boolean(
     userPermissions.includes('platform:super_admin') ||
     userRoleName === 'Platform Super Admin' ||
@@ -124,13 +61,13 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
     });
   }, [availableFeatures, userPermissions, isSuperAdmin]);
 
-  // Sanitize incoming IDs to ensure only valid current catalog items are retained
+  // Sanitize incoming IDs to ensure only valid current catalog items are retained (max 5)
   const sanitizedActiveIds = useMemo(() => {
     if (!activeFeatureIds || activeFeatureIds.length === 0) {
-      return DEFAULT_FEATURE_SELECTION;
+      return DEFAULT_5_QUICK_ACTIONS;
     }
-    const valid = activeFeatureIds.filter((id) => VALID_CATALOG_IDS.has(id));
-    return valid.length > 0 ? valid : DEFAULT_FEATURE_SELECTION;
+    const valid = activeFeatureIds.filter((id) => VALID_CATALOG_IDS.has(id)).slice(0, 5);
+    return valid.length > 0 ? valid : DEFAULT_5_QUICK_ACTIONS;
   }, [activeFeatureIds]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>(sanitizedActiveIds);
@@ -144,30 +81,46 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
 
   const toggleSelect = (id: string) => {
     if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter((item) => item !== id));
-    } else if (selectedIds.length < 7) {
-      setSelectedIds([...selectedIds, id]);
+      setSelectedIds((prev) => prev.filter((item) => item !== id));
+    } else if (selectedIds.length < 5) {
+      setSelectedIds((prev) => [...prev, id]);
     }
     if (onToggleFeature) onToggleFeature(id);
   };
 
   const handleSave = () => {
-    if (onSave) onSave(selectedIds);
+    if (onSave) onSave(selectedIds.slice(0, 5));
     onClose();
   };
 
-  // Active selected items (up to 7)
+  // Active selected items (up to 5)
   const activeItems = useMemo(() => {
-    return ALL_AVAILABLE_FEATURES.filter((f) => selectedIds.includes(f.id)).slice(0, 7);
+    return ALL_AVAILABLE_FEATURES.filter((f) => selectedIds.includes(f.id)).slice(0, 5);
   }, [selectedIds]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 bg-black/60 justify-end">
-        <View className="bg-card border-t border-border rounded-t-3xl max-h-[90%] shadow-2xl overflow-hidden flex-col">
+        {/* Backdrop dismiss touchable */}
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+
+        {/* Bottom Sheet Container with guaranteed height */}
+        <View
+          style={{ height: Math.round(SCREEN_HEIGHT * 0.85) }}
+          className="bg-card border-t border-border rounded-t-3xl shadow-2xl overflow-hidden flex-col"
+        >
+          {/* Top Pill Handle */}
+          <View className="items-center pt-2.5 pb-1 bg-card">
+            <View className="w-10 h-1.5 rounded-full bg-muted-foreground/30" />
+          </View>
+
           {/* Header Bar */}
-          <View className="flex-row justify-between items-center px-5 py-4 border-b border-border bg-card">
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="py-1 px-2">
+          <View className="flex-row justify-between items-center px-5 py-3 border-b border-border bg-card">
+            <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="py-1 px-2 rounded-lg active:bg-secondary">
               <Text className="text-sm font-semibold text-muted-foreground">Cancel</Text>
             </TouchableOpacity>
 
@@ -178,24 +131,23 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
             </TouchableOpacity>
           </View>
 
+          {/* Scrollable Content Body */}
           <ScrollView
-            className="flex-1"
-            showsVerticalScrollIndicator={true}
-            nestedScrollEnabled={true}
-            keyboardShouldPersistTaps="handled"
+            style={{ flex: 1 }}
             contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
           >
-            {/* Active Selection Zone (The Deck) */}
+            {/* Active Selection Zone (The Deck - 5 Slots) */}
             <CustomiseDeckZone
               activeItems={activeItems}
-              maxCapacity={7}
+              maxCapacity={5}
               onRemoveItem={toggleSelect}
             />
 
             {/* Divider Sub-header */}
             <View className="px-5 py-3 bg-muted/30 border-b border-border flex-row items-center justify-between">
               <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Available Actions ({selectedIds.length}/7 Selected)
+                Available Actions ({selectedIds.length}/5 Selected)
               </Text>
               <Sparkles size={14} color="#0284c7" />
             </View>

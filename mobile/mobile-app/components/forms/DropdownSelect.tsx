@@ -33,11 +33,12 @@ export const DropdownSelect = ({
 }: DropdownSelectProps) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const isInline = inline || accordion;
 
   const selectedOption = options.find((opt) => opt.value === value);
 
   const handlePress = () => {
-    if (inline || accordion) {
+    if (inline) {
       setIsOpen(!isOpen);
     } else {
       setModalVisible(true);
@@ -46,64 +47,47 @@ export const DropdownSelect = ({
 
   return (
     <View 
-      className={cn('w-full', !accordion && 'relative', className)}
-      style={(inline || accordion) && isOpen && !accordion ? { zIndex: 1000 } : undefined}
+      className={cn('w-full relative', className)}
+      style={inline && isOpen ? { zIndex: 1000 } : undefined}
     >
       {Boolean(label) && (
-        <Text className="mb-1.5 text-sm font-bold text-foreground">
+        <Text className="mb-1.5 text-sm font-medium text-foreground">
           {label}
         </Text>
       )}
       
       <Pressable
         className={cn(
-          'flex-row items-center justify-between rounded-xl border border-border bg-card px-3 py-3.5',
-          Boolean(error) && 'border-destructive'
+          'flex-row items-center justify-between rounded-2xl border border-border/80 bg-card px-3.5 py-3 shadow-xs active:bg-secondary/50',
+          Boolean(error) && 'border-destructive bg-destructive/5'
         )}
         onPress={handlePress}
       >
         <Text
           className={cn(
-            'text-base',
+            'text-[15px] font-sans',
             selectedOption ? 'text-foreground font-medium' : 'text-muted-foreground'
           )}
         >
           {selectedOption ? selectedOption.label : placeholder}
         </Text>
-        <ChevronDown size={20} className="text-muted-foreground" />
+        <ChevronDown size={18} className="text-muted-foreground" />
       </Pressable>
 
       {Boolean(error) && (
-        <Text className="mt-1.5 text-xs text-destructive">
+        <Text className="mt-1 text-xs text-destructive font-medium ms-1">
           {error}
         </Text>
       )}
 
-      {/* Inline/Accordion Dropdown List overlay */}
-      {(inline || accordion) && isOpen && (
-        <>
-          {Platform.OS === 'web' && (
-            <Pressable
-              style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: 999,
-              } as any}
-              onPress={() => setIsOpen(false)}
-            />
-          )}
-          <View 
-            className={cn(
-              'bg-card border border-border rounded-xl shadow-lg mt-1 overflow-hidden',
-              accordion ? 'relative' : 'absolute left-0 right-0 z-[1000]'
-            )}
+      {/* Inline Dropdown List overlay */}
+      {isInline && isOpen && (
+        <View 
+          className="absolute left-0 right-0 z-[1000] bg-card border border-border rounded-xl shadow-lg mt-1 overflow-hidden"
           style={{ 
-            top: accordion ? undefined : '100%', 
-            maxHeight: accordion ? 300 : 200, 
-            elevation: accordion ? 0 : 5,
+            top: '100%', 
+            maxHeight: 200, 
+            elevation: 5,
           }}
         >
           <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
@@ -118,7 +102,7 @@ export const DropdownSelect = ({
                   <Pressable
                     key={item.value}
                     className={cn(
-                      'flex-row items-center justify-between px-4 py-3 border-b border-border/40 last:border-b-0',
+                      'flex-row items-center justify-between px-4 py-3 border-b border-border/50 last:border-b-0',
                       isSelected && 'bg-primary/10'
                     )}
                     onPress={() => {
@@ -128,7 +112,7 @@ export const DropdownSelect = ({
                   >
                     <Text
                       className={cn(
-                        'text-sm',
+                        'text-sm font-sans',
                         isSelected
                           ? 'font-bold text-primary'
                           : 'text-foreground'
@@ -143,7 +127,6 @@ export const DropdownSelect = ({
             )}
           </ScrollView>
         </View>
-        </>
       )}
 
       {/* Full Sheet Modal Dropdown for standard (non-inline) usage */}
@@ -153,13 +136,13 @@ export const DropdownSelect = ({
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View className="flex-1 justify-end bg-black/50">
+        <View className="flex-1 justify-end bg-black/60">
           <Pressable 
             className="absolute top-0 bottom-0 left-0 right-0" 
             onPress={() => setModalVisible(false)} 
           />
-          <View className="max-h-[70%] rounded-t-3xl bg-card p-4 border-t border-border shadow-lg">
-            <Text className="mb-4 text-center text-lg font-bold text-foreground">
+          <View className="max-h-[70%] rounded-t-3xl bg-card border-t border-border p-4 shadow-xl">
+            <Text className="mb-4 text-center text-lg font-bold font-sans text-foreground">
               {label || 'Select'}
             </Text>
             
@@ -176,7 +159,7 @@ export const DropdownSelect = ({
                 return (
                   <Pressable
                     className={cn(
-                      'flex-row items-center justify-between rounded-xl px-4 py-4 mb-1',
+                      'flex-row items-center justify-between rounded-xl px-4 py-3.5 mb-1',
                       isSelected && 'bg-primary/10'
                     )}
                     onPress={() => {
@@ -186,7 +169,7 @@ export const DropdownSelect = ({
                   >
                     <Text
                       className={cn(
-                        'text-base',
+                        'text-base font-sans',
                         isSelected
                           ? 'font-bold text-primary'
                           : 'text-foreground'
@@ -194,7 +177,7 @@ export const DropdownSelect = ({
                     >
                       {item.label}
                     </Text>
-                    {isSelected && <Check size={20} className="text-primary" />}
+                    {isSelected && <Check size={18} className="text-primary" />}
                   </Pressable>
                 );
               }}
@@ -207,5 +190,3 @@ export const DropdownSelect = ({
     </View>
   );
 };
-
-export default DropdownSelect;

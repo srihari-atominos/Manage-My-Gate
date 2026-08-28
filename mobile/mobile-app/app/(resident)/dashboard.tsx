@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { View, ScrollView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MobileHeader from '@/components/navigation/MobileHeader';
 import HeroBanner from '@/components/dashboard/HeroBanner';
 import QuickActionsGrid from '@/components/dashboard/QuickActionsGrid';
@@ -13,11 +14,12 @@ export default function DashboardScreen() {
 
   const {
     activeQuickActions,
-    featureCatalog,
-    allFeaturesList,
     equippedFeatures,
+    allFeaturesList,
     saveQuickActions,
   } = useQuickActions();
+
+  const insets = useSafeAreaInsets();
 
   const handleSaveCustomisation = async (selectedIds: string[]) => {
     await saveQuickActions(selectedIds);
@@ -71,12 +73,15 @@ export default function DashboardScreen() {
       <MobileHeader />
 
       {/* Main Dashboard Scrollable Content */}
-      <ScrollView className="flex-1 px-4 pt-2">
-        <View className="gap-2 pb-12 max-w-md mx-auto w-full">
+      <ScrollView 
+        className="flex-1 px-4 pt-2"
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }}
+      >
+        <View className="gap-2 max-w-md mx-auto w-full">
           {/* Sliding Notice Board Banner Carousel */}
           <HeroBanner />
 
-          {/* 4-Column Quick Actions Grid (Dynamically Connected to Redux & Backend) */}
+          {/* 4-Column Quick Actions Grid */}
           <QuickActionsGrid
             activeFeatureIds={activeQuickActions}
             equippedFeatures={equippedFeatures}

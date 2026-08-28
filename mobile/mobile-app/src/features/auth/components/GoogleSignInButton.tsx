@@ -5,25 +5,56 @@ import { Button } from '@/components/ui/button';
 import { Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '../hooks/useAuth';
+import { router } from 'expo-router';
 
-// Completes the authentication session when returning back from the web browser.
+import * as AuthSession from 'expo-auth-session';
+
 WebBrowser.maybeCompleteAuthSession();
+
+const DEFAULT_GOOGLE_CLIENT_ID = '66219996167-57amlm9js0r3uoov6ijhdbu3cqqrmpmb.apps.googleusercontent.com';
 
 export function GoogleSignInButton() {
   const { loginWithGoogle, loading } = useAuth();
+  const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
+
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'managemygate',
+  });
+
+  React.useEffect(() => {
+    console.log('[GoogleSignIn] Redirect URI used by Expo:', redirectUri);
+  }, [redirectUri]);
   
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'your-web-client-id.apps.googleusercontent.com',
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    clientId: googleClientId,
+    webClientId: googleClientId,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || googleClientId,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || googleClientId,
+    redirectUri,
   });
 
   React.useEffect(() => {
     if (response?.type === 'success') {
-      const { id_token } = response.params;
-      if (id_token) {
-        loginWithGoogle(id_token);
+      const idToken = response.params?.id_token || response.authentication?.idToken;
+      if (idToken) {
+        loginWithGoogle(idToken).then((res: any) => {
+          if (res?.payload?.isNewUser) {
+            const googleData = res.payload.googleData || {};
+            router.push({
+              pathname: '/(auth)/register',
+              params: {
+                email: googleData.email || '',
+                name: googleData.name || '',
+                isGoogleSso: 'true',
+              },
+            });
+          }
+        });
+      } else {
+        console.warn('[GoogleSignIn] Success response received but ID Token missing:', response);
       }
+    } else if (response?.type === 'error') {
+      console.error('[GoogleSignIn] Auth Session Error:', response.error);
     }
   }, [response, loginWithGoogle]);
 

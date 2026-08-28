@@ -1,64 +1,35 @@
-import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
-import { cva, type VariantProps } from 'class-variance-authority';
+import { cva } from 'class-variance-authority';
 import * as LucideIcons from 'lucide-react-native';
-import { TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react-native';
+import { TrendingDown, TrendingUp } from 'lucide-react-native';
 import * as React from 'react';
 import { Platform, Pressable, View } from 'react-native';
 
-export type KPICardVariant = 'default' | 'success' | 'warning' | 'destructive' | 'info';
+export interface KPICardProps {
+  title: string;
+  value: string | number;
+  variant?: 'default' | 'primary' | 'secondary' | 'accent' | 'muted' | 'success' | 'info' | 'warning' | 'destructive';
+  iconName?: string;
+  iconColor?: string;   // hex color for icon
+  bgColor?: string;     // hex color for card bg
+  trend?: { direction: 'up' | 'down'; value: string };
+  subtitle?: string;
+  onPress?: () => void;
+  className?: string;
+}
 
-export const KPI_VARIANT_STYLES: Record<
-  KPICardVariant,
-  {
-    iconBg: string;
-    iconText: string;
-    border: string;
-  }
-> = {
-  default: {
-    iconBg: 'bg-primary/10',
-    iconText: 'text-primary',
-    border: 'border-border/60',
-  },
-  success: {
-    iconBg: 'bg-status-success/10',
-    iconText: 'text-status-success',
-    border: 'border-status-success/20',
-  },
-  warning: {
-    iconBg: 'bg-status-warning/10',
-    iconText: 'text-status-warning',
-    border: 'border-status-warning/20',
-  },
-  destructive: {
-    iconBg: 'bg-destructive/10',
-    iconText: 'text-destructive',
-    border: 'border-destructive/20',
-  },
-  info: {
-    iconBg: 'bg-status-info/10',
-    iconText: 'text-status-info',
-    border: 'border-status-info/20',
-  },
-};
-
-export const kpiCardVariants = cva(
+const kpiCardVariants = cva(
   cn(
-    'min-w-[140px] rounded-xl p-3 shadow-xs border border-border bg-card justify-between',
+    'w-[150px] rounded-2xl p-3.5 border border-border/80 bg-card justify-between active:bg-secondary/60',
     Platform.select({
-      web: 'transition-all duration-200 hover:shadow-md cursor-pointer select-none',
+      web: 'transition-all duration-200 hover:border-border cursor-pointer select-none',
     })
   ),
   {
     variants: {
       variant: {
-        default: 'border-border/60',
-        success: 'border-status-success/20',
-        warning: 'border-status-warning/20',
-        destructive: 'border-destructive/20',
-        info: 'border-status-info/20',
+        default: '',
       },
     },
     defaultVariants: {
@@ -67,18 +38,22 @@ export const kpiCardVariants = cva(
   }
 );
 
-export interface KPICardProps extends VariantProps<typeof kpiCardVariants> {
-  title: string;
-  value: string | number;
-  variant?: KPICardVariant;
-  iconName?: string;
-  icon?: React.ReactNode;
-  iconColor?: string;
-  bgColor?: string;
-  trend?: { direction: 'up' | 'down'; value: string };
-  subtitle?: string;
-  onPress?: () => void;
-  className?: string;
+function getBgWithOpacity(color?: string, opacity: number = 0.12): string | undefined {
+  if (!color) return undefined;
+  const trimmed = color.trim();
+  if (trimmed.startsWith('#')) {
+    let hex = trimmed.slice(1);
+    if (hex.length === 3) {
+      hex = hex.split('').map((c) => c + c).join('');
+    }
+    if (hex.length === 6) {
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+  }
+  return trimmed;
 }
 
 const KPICard = React.forwardRef<View, KPICardProps>(
@@ -86,10 +61,8 @@ const KPICard = React.forwardRef<View, KPICardProps>(
     {
       title,
       value,
-      variant = 'default',
       iconName,
-      icon,
-      iconColor,
+      iconColor = '#3b82f6',
       bgColor,
       trend,
       subtitle,
@@ -98,89 +71,86 @@ const KPICard = React.forwardRef<View, KPICardProps>(
     },
     ref
   ) => {
-    const variantStyles = KPI_VARIANT_STYLES[variant] || KPI_VARIANT_STYLES.default;
+    // Safe Dynamic Lucide icon lookup
+    const IconComponent = React.useMemo(() => {
+      if (!iconName) return null;
+      const icons = LucideIcons as Record<string, any>;
+      return (
+        icons[iconName] ||
+        icons[iconName.replace('BarChart3', 'ChartColumn').replace('BarChart', 'ChartBar').replace('Sliders', 'SlidersHorizontal')] ||
+        null
+      );
+    }, [iconName]);
 
-    // Dynamic Lucide icon lookup
-    const IconComponent = iconName
-      ? ((LucideIcons as Record<string, any>)[iconName] as LucideIcon)
-      : null;
+    const activeColorForBg = bgColor || (iconName ? iconColor : undefined);
+    const computedBg = getBgWithOpacity(activeColorForBg, 0.12);
 
     return (
       <Pressable
         ref={ref}
         onPress={onPress}
         disabled={!onPress}
-        role={onPress ? 'button' : undefined}
+        style={computedBg ? { backgroundColor: computedBg } : undefined}
         className={cn(
-          kpiCardVariants({ variant }),
+          kpiCardVariants(),
           onPress && 'active:opacity-75',
           className
         )}
       >
-        {/* 1. [Lucide Icon] Section */}
-        <View className="flex-row items-center justify-between mb-1.5">
-          {icon ? (
+        {/* Top Section: Icon Circle & Trend Indicator */}
+        <View className="flex-row items-center justify-between mb-2">
+          {IconComponent ? (
             <View
-              style={bgColor ? { backgroundColor: bgColor } : undefined}
-              className={cn('size-8 rounded-full items-center justify-center', !bgColor && variantStyles.iconBg)}
+              className="w-8 h-8 rounded-full items-center justify-center"
+              style={{ backgroundColor: iconColor }}
             >
-              {icon}
-            </View>
-          ) : IconComponent ? (
-            <View
-              style={bgColor ? { backgroundColor: bgColor } : undefined}
-              className={cn('size-8 rounded-full items-center justify-center', !bgColor && variantStyles.iconBg)}
-            >
-              <Icon
-                as={IconComponent}
-                size={16}
-                color={iconColor}
-                className={!iconColor ? variantStyles.iconText : undefined}
-              />
+              <IconComponent size={16} color="#ffffff" />
             </View>
           ) : (
             <View />
           )}
+
+          {trend ? (
+            <View className="flex-row items-center gap-0.5">
+              {trend.direction === 'up' ? (
+                <TrendingUp size={14} color="#16a34a" />
+              ) : (
+                <TrendingDown size={14} color="#dc2626" />
+              )}
+              <Text
+                className={cn(
+                  'text-[12px] font-semibold font-sans',
+                  trend.direction === 'up'
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-red-600 dark:text-red-400'
+                )}
+              >
+                {trend.value}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
-        {/* 2. [Label] Section */}
+        {/* Middle Section: Value */}
         <Text
-          className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider"
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
-
-        {/* 3. [Value] Section */}
-        <Text
-          className="text-2xl font-extrabold text-foreground tracking-tight my-0.5"
+          className="text-[20px] font-bold font-sans text-foreground tracking-tight"
           numberOfLines={1}
         >
           {value}
         </Text>
 
-        {/* 4. [Trend / Status / Subtitle] Section */}
-        {trend ? (
-          <View className="flex-row items-center gap-x-1 mt-0.5">
-            {trend.direction === 'up' ? (
-              <Icon as={TrendingUp} size={13} className="text-status-success" />
-            ) : (
-              <Icon as={TrendingDown} size={13} className="text-destructive" />
-            )}
-            <Text
-              className={cn(
-                'text-xs font-semibold',
-                trend.direction === 'up'
-                  ? 'text-status-success'
-                  : 'text-destructive'
-              )}
-            >
-              {trend.value}
-            </Text>
-          </View>
-        ) : subtitle ? (
+        {/* Bottom Section: Title */}
+        <Text
+          className="text-[13px] text-muted-foreground mt-0.5 font-medium font-sans"
+          numberOfLines={1}
+        >
+          {title}
+        </Text>
+
+        {/* Optional Subtitle */}
+        {subtitle ? (
           <Text
-            className="text-[11px] text-muted-foreground/80 mt-0.5 font-medium"
+            className="text-[11px] text-muted-foreground/80 mt-0.5 font-sans"
             numberOfLines={1}
           >
             {subtitle}
@@ -193,5 +163,4 @@ const KPICard = React.forwardRef<View, KPICardProps>(
 
 KPICard.displayName = 'KPICard';
 
-export { KPICard };
-export default KPICard;
+export { KPICard, kpiCardVariants };

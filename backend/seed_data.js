@@ -59,6 +59,7 @@ async function seed() {
   org = await Organization.create({
     name: 'Srihariparthasarathi Community',
     status: 'Active',
+    organizationType: 'Residential',
     allowedFeatures: ['billing', 'villas', 'visitor', 'complaints', 'amenities'],
     isPlatform: false
   });
@@ -99,11 +100,12 @@ async function seed() {
   console.log('Creating Users (Hashing Passwords)...');
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash('Password@123', salt);
+  const adminHashedPassword = await bcrypt.hash('password', salt);
 
   const adminUser = await User.create({
     email: 'admin@mygate.com',
     username: 'admin',
-    password: hashedPassword,
+    password: adminHashedPassword,
     status: 'Active',
     name: 'Community Admin',
     phone: '+919999999991',
@@ -272,10 +274,16 @@ async function seed() {
   
   // Invoice 1: Owner 1 (Villa A-101) - PAID Maintenance
   const invoice1 = await Invoice.create({
+    communityId: org._id,
+    orgId: org._id,
     assessmentId: assessmentMaintenance._id,
     targetUserId: owner1User._id,
     unitId: villaA101._id,
     billingPeriodString: '2026-07',
+    currentCharge: 7000,
+    totalAmount: 7000,
+    paidAmount: 7000,
+    outstandingAmount: 0,
     hardcodedAmount: 7000,
     taxAmount: 0,
     totalDue: 7000,
@@ -288,10 +296,16 @@ async function seed() {
 
   // Invoice 2: Owner 1 (Villa A-101) - UNPAID Security Fund
   const invoice2 = await Invoice.create({
+    communityId: org._id,
+    orgId: org._id,
     assessmentId: assessmentSecurity._id,
     targetUserId: owner1User._id,
     unitId: villaA101._id,
     billingPeriodString: '2026-07',
+    currentCharge: 5000,
+    totalAmount: 5000,
+    paidAmount: 0,
+    outstandingAmount: 5000,
     hardcodedAmount: 5000,
     taxAmount: 0,
     totalDue: 5000,
@@ -301,10 +315,16 @@ async function seed() {
 
   // Invoice 3: Tenant 1 (Villa A-102) - UNPAID Maintenance (Owner 2 sees under Tenant Arrears)
   const invoice3 = await Invoice.create({
+    communityId: org._id,
+    orgId: org._id,
     assessmentId: assessmentMaintenance._id,
     targetUserId: tenant1User._id,
     unitId: villaA102._id,
     billingPeriodString: '2026-07',
+    currentCharge: 7000,
+    totalAmount: 7000,
+    paidAmount: 0,
+    outstandingAmount: 7000,
     hardcodedAmount: 7000,
     taxAmount: 0,
     totalDue: 7000,
@@ -314,10 +334,16 @@ async function seed() {
 
   // Invoice 4: Tenant 2 (Villa B-201) - PENDING Cheque Clearing (Owner 1 sees under Tenant Arrears)
   const invoice4 = await Invoice.create({
+    communityId: org._id,
+    orgId: org._id,
     assessmentId: assessmentMaintenance._id,
     targetUserId: tenant2User._id,
     unitId: villaB201._id,
     billingPeriodString: '2026-07',
+    currentCharge: 7000,
+    totalAmount: 7000,
+    paidAmount: 0,
+    outstandingAmount: 7000,
     hardcodedAmount: 7000,
     taxAmount: 0,
     totalDue: 7000,
@@ -338,7 +364,7 @@ async function seed() {
       'Name': 'Community Admin',
       'Username': 'admin',
       'Email': 'admin@mygate.com',
-      'Password': 'Password@123',
+      'Password': 'password',
       'Assigned Unit': 'N/A',
       'Residency Type': 'None',
       'Testing Context': 'Manage assessments, view ledger, verify offline cheque payments.'

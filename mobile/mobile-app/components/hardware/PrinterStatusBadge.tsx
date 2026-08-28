@@ -31,16 +31,16 @@ export const PrinterStatusBadge = ({
   const config = getStatusConfig();
 
   return (
-    <View className={cn('flex-row items-center rounded-lg border border-slate-200 bg-white p-2 px-3 dark:border-slate-800 dark:bg-slate-900', className)}>
-      <Printer size={16} className="mr-2 text-slate-500 dark:text-slate-400" />
-      <View className="flex-1 mr-4">
-        <Text className="text-sm font-medium text-slate-900 dark:text-slate-100" numberOfLines={1}>
+    <View className={cn('flex-row items-center rounded-lg border border-border bg-card p-2 px-3', className)}>
+      <Printer size={16} className="me-2 text-muted-foreground" />
+      <View className="flex-1 me-4">
+        <Text className="text-sm font-medium text-foreground" numberOfLines={1}>
           {printerName}
         </Text>
       </View>
       <View className="flex-row items-center">
-        <View className={cn('mr-1.5 h-2 w-2 rounded-full animate-pulse', config.color)} />
-        <Text className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+        <View className={cn('me-1.5 h-2 w-2 rounded-full animate-pulse', config.color)} />
+        <Text className="text-xs font-semibold text-muted-foreground">
           {config.text}
         </Text>
       </View>

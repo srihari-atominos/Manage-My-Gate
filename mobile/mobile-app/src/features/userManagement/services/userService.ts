@@ -31,6 +31,7 @@ export interface FetchUsersParams {
 
 export interface InviteUserData {
   email: string;
+  phone?: string;
   villaId?: string | null;
   residentType?: string;
   roleName?: string | null;

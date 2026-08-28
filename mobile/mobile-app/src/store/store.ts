@@ -16,6 +16,12 @@ import roleBuilderReducer from '../features/roleBuilder/store/roleSlice';
 import userManagementReducer from '../features/userManagement/store/userSlice';
 import integrationHubReducer from '../features/integrationHub/store/integrationHubSlice';
 import workspaceReducer from '../features/workspace/store/workspaceSlice';
+import communityPulseReducer from '../features/communityPulse/store/communityPulseSlice';
+import directoryReducer from '../features/directory/store/directorySlice';
+import communityNoteReducer from '../features/directory/store/communityNoteSlice';
+import directoryMessagingReducer from '../features/directory/store/directoryMessagingSlice';
+
+import { injectStore } from '../services/apiClient';
 
 export const store = configureStore({
   reducer: {
@@ -36,12 +42,18 @@ export const store = configureStore({
     userManagement: userManagementReducer,
     integrationHub: integrationHubReducer,
     workspace: workspaceReducer,
+    communityPulse: communityPulseReducer,
+    directory: directoryReducer,
+    communityNote: communityNoteReducer,
+    directoryMessaging: directoryMessagingReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
     }),
 });
+
+injectStore(store);
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

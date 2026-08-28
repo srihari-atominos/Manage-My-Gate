@@ -1,0 +1,172 @@
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { View } from 'react-native';
+import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
+import { PaginatedList } from '@/components/ui/PaginatedList';
+import { TabBar } from '@/components/ui/TabBar';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { VisitorPassCard } from '../VisitorPassCard';
+import { VisitorLogDetailsModal } from './VisitorLogDetailsModal';
+import { ExtendedVisitorPass } from '../../mocks/visitorMocks';
+import { useVisitorPass } from '../../hooks/useVisitorPass';
+import { mapBackendPassToHistoryItem } from '../../utils/mapBackendPassToHistoryItem';
+
+export const VisitorHistoryView: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<string>('ACTIVE');
+  const [search, setSearch] = useState<string>('');
+  const [selectedPass, setSelectedPass] = useState<ExtendedVisitorPass | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+
+  const { passes, pagination, status, error, fetchPasses } = useVisitorPass();
+
+  const tabs = useMemo(
+    () => [
+      { key: 'ACTIVE', label: 'Active' },
+      { key: 'PENDING', label: 'Upcoming' },
+      { key: 'EXPIRED', label: 'Completed' },
+      { key: 'REVOKED', label: 'Rejected' },
+    ],
+    []
+  );
+
+  const mappedHistoryPasses = useMemo(() => {
+    if (!Array.isArray(passes)) return [];
+    return passes.map((pass: any) => mapBackendPassToHistoryItem(pass));
+  }, [passes]);
+
+  const loadData = useCallback(
+    (page: number, append: boolean = false) => {
+      return fetchPasses({
+        page,
+        limit: 10,
+        statuses: activeTab,
+        append,
+      });
+    },
+    [fetchPasses, activeTab]
+  );
+
+  useEffect(() => {
+    loadData(1, false);
+  }, [activeTab, loadData]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData(1, false);
+    setRefreshing(false);
+  }, [loadData]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (
+      status === 'loading' ||
+      loadingMore ||
+      refreshing ||
+      pagination.currentPage >= pagination.totalPages
+    ) {
+      return;
+    }
+    setLoadingMore(true);
+    await loadData(pagination.currentPage + 1, true);
+    setLoadingMore(false);
+  }, [status, loadingMore, refreshing, pagination, loadData]);
+
+  const filteredPasses = useMemo(() => {
+    if (!search.trim()) return mappedHistoryPasses;
+    const query = search.toLowerCase().trim();
+    return mappedHistoryPasses.filter((pass) => {
+      const matchName = pass.visitorName ? pass.visitorName.toLowerCase().includes(query) : false;
+      const matchPhone = pass.phone ? pass.phone.includes(query) : false;
+      const matchCode = pass.code ? pass.code.toLowerCase().includes(query) : false;
+      const matchProvider = pass.provider ? pass.provider.toLowerCase().includes(query) : false;
+      const matchVehicle = pass.vehicleNo ? pass.vehicleNo.toLowerCase().includes(query) : false;
+      const matchOrder = pass.orderId ? pass.orderId.toLowerCase().includes(query) : false;
+
+      return matchName || matchPhone || matchCode || matchProvider || matchVehicle || matchOrder;
+    });
+  }, [mappedHistoryPasses, search]);
+
+  const isLoadingInitial = status === 'loading' && !refreshing && !loadingMore && passes.length === 0;
+
+  return (
+    <View className="flex-1 bg-background">
+      {/* Status Tab Bar */}
+      <TabBar
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={(tabKey) => {
+          setSearch('');
+          setActiveTab(tabKey);
+        }}
+        variant="pill"
+        className="my-2"
+      />
+
+      {/* Search Bar */}
+      <SearchFilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search loaded history by name, phone, or code..."
+        variant="bordered"
+      />
+
+      {/* Error Retry Banner */}
+      {status === 'failed' && (
+        <View className="p-3 mx-4 my-2 bg-destructive/10 border border-destructive/20 rounded-xl flex-row items-center justify-between">
+          <Text className="text-xs text-destructive flex-1 font-medium me-2">
+            {error || 'Failed to load visitor history.'}
+          </Text>
+          <Button size="sm" variant="outline" onPress={() => loadData(1, false)}>
+            <Text className="text-xs font-semibold">Retry</Text>
+          </Button>
+        </View>
+      )}
+
+      {/* Paginated List of History Passes */}
+      <PaginatedList<ExtendedVisitorPass>
+        data={filteredPasses}
+        pagination={{
+          currentPage: pagination.currentPage,
+          totalPages: pagination.totalPages,
+          totalRecords: pagination.totalRecords,
+          limit: pagination.limit,
+        }}
+        onLoadMore={handleLoadMore}
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
+        loading={isLoadingInitial}
+        emptyIcon="History"
+        emptyTitle="No History Passes Found"
+        emptySubtitle={`No ${activeTab.toLowerCase()} visitor passes found.`}
+        contentContainerClassName="p-4 gap-3"
+        renderItem={(pass) => (
+          <VisitorPassCard
+            key={pass._id}
+            pass={pass}
+            onPress={(p) => {
+              setSelectedPass(p as ExtendedVisitorPass);
+              setDetailsModalOpen(true);
+            }}
+            onShowQR={(p) => {
+              setSelectedPass(p as ExtendedVisitorPass);
+              setDetailsModalOpen(true);
+            }}
+          />
+        )}
+      />
+
+      {/* Details & Log View Modal */}
+      <VisitorLogDetailsModal
+        visible={detailsModalOpen}
+        pass={selectedPass}
+        onClose={() => {
+          setDetailsModalOpen(false);
+          setSelectedPass(null);
+        }}
+      />
+    </View>
+  );
+};
+
+export default VisitorHistoryView;

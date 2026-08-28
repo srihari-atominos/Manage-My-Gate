@@ -14,11 +14,11 @@ export interface AppBottomSheetProps {
 }
 
 const bottomSheetHeaderVariants = cva(
-  'w-full pb-2.5 border-b border-border items-center justify-between flex-row px-5 py-3'
+  'w-full pb-2.5 border-b border-border/80 items-center justify-between flex-row px-5 py-3.5'
 );
 
 const bottomSheetTitleVariants = cva(
-  'text-base font-extrabold text-foreground'
+  'text-[17px] font-bold font-sans text-foreground tracking-tight'
 );
 
 const bottomSheetContentVariants = cva('px-4 pb-6');
@@ -46,7 +46,7 @@ function BottomSheet({
         />
         
         {/* Content Box */}
-        <View className="bg-card border-t border-border rounded-t-3xl max-h-[85vh] shadow-2xl overflow-hidden">
+        <View className="bg-card border-t border-border/80 rounded-t-3xl max-h-[85vh] shadow-2xl overflow-hidden">
           {/* Top grab handle */}
           <View className="items-center pt-2.5 pb-1 bg-card">
             <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />
@@ -59,7 +59,7 @@ function BottomSheet({
               <TouchableOpacity
                 onPress={onClose}
                 activeOpacity={0.7}
-                className="p-1.5 rounded-full bg-muted/60 border border-border"
+                className="p-1.5 rounded-full bg-secondary border border-border/60"
               >
                 <X size={16} className="text-foreground" />
               </TouchableOpacity>
@@ -86,4 +86,3 @@ export {
   bottomSheetHeaderVariants,
   bottomSheetTitleVariants,
 };
-export default BottomSheet;

@@ -12,24 +12,26 @@ const generateUUID = (): string => {
 
 import { Platform } from 'react-native';
 
-const getDefaultBaseUrl = () => {
-  if (__DEV__) {
-    if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:5002/api';
-    }
-    return 'http://localhost:5002/api';
+const getApiBaseUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
   }
-  return 'https://managemygate.e3esg.com/api/v1';
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:5002/api/v1';
+  }
+  return 'http://localhost:5002/api/v1';
 };
 
 const apiClient = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL || getDefaultBaseUrl(),
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 30000,
   withCredentials: true,
 });
+
+console.log(`[ApiClient] Configured baseURL: ${apiClient.defaults.baseURL}`);
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -139,10 +141,15 @@ apiClient.interceptors.request.use(
           jwtData?.activeOrgId;
       }
 
+      // Extract target orgId from URL if requesting an organization-scoped endpoint (e.g., /organizations/:id/features)
+      const urlOrgMatch = config.url ? config.url.match(/\/organizations\/([a-fA-F0-9]{24})/) : null;
+      const targetUrlOrgId = urlOrgMatch ? urlOrgMatch[1] : null;
+
       const activeOrgId =
-        typeof rawOrgId === 'object' && rawOrgId !== null
+        targetUrlOrgId ||
+        (typeof rawOrgId === 'object' && rawOrgId !== null
           ? rawOrgId._id || rawOrgId.id || String(rawOrgId)
-          : rawOrgId;
+          : rawOrgId);
 
       if (activeOrgId && activeOrgId !== '[object Object]') {
         config.headers['x-organization-id'] = activeOrgId;
@@ -289,6 +296,10 @@ apiClient.interceptors.response.use(
 
     if (error.response?.data?.message) {
       error.message = error.response.data.message;
+    } else if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout')) {
+      error.message = 'Connection timed out. Please check backend server status.';
+    } else if (error.message === 'Network Error' || (!error.response && error.request)) {
+      error.message = 'Unable to connect to server. Please verify backend is running.';
     }
 
     return Promise.reject(error);

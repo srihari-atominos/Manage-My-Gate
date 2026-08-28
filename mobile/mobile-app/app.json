@@ -3,11 +3,11 @@
     "name": "ManageMyGate",
     "slug": "mobile-app",
     "version": "1.0.0",
-    "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile-app",
     "userInterfaceStyle": "automatic",
+    "jsEngine": "jsc",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -26,11 +26,11 @@
       }
     },
     "android": {
+      "package": "com.naveenpvn.managemygate",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      },
-      "package": "com.naveenpvn.managemygate"
+      }
     },
     "web": {
       "bundler": "metro",

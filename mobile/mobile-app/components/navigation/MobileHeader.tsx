@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, StatusBar, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Bell, Home, Building2, ChevronDown } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useSelector } from 'react-redux';
 import { RoleSwitchModal } from './RoleSwitchModal';
@@ -26,14 +26,6 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   unreadNotificationCount,
   onNotificationPress,
 }) => {
-  const insets = useSafeAreaInsets();
-  const topInsetPadding =
-    Platform.OS === 'android'
-      ? Math.max(insets.top, StatusBar.currentHeight || 28, 28)
-      : Platform.OS === 'ios'
-      ? Math.max(insets.top, 20)
-      : Math.max(insets.top, 10);
-
   const { user } = useAuth();
   
   // Real-time notification count from Redux store if available
@@ -61,14 +53,23 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
     if (userOrg) return userOrg;
 
-    // 2. Fall back to availableWorkspaces list in Redux
-    const workspaces = (user as any)?.availableWorkspaces || [];
-    if (Array.isArray(workspaces) && workspaces.length > 0 && workspaces[0]?.name) {
-      return workspaces[0].name;
+    // 2. Fall back to availableWorkspaces list matching active workspace orgId
+    const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
+    const workspaces = (user as any)?.availableWorkspaces || reduxWorkspaces || [];
+    if (Array.isArray(workspaces) && workspaces.length > 0) {
+      if (activeOrgId) {
+        const activeWs = workspaces.find(
+          (w: any) => w.orgId === activeOrgId || w._id === activeOrgId || w.id === activeOrgId,
+        );
+        if (activeWs?.name) return activeWs.name;
+      }
+      if (workspaces[0]?.name) {
+        return workspaces[0].name;
+      }
     }
 
     return 'Community Workspace';
-  }, [communityName, user]);
+  }, [communityName, user, reduxWorkspaces]);
 
   const [activeVilla, setActiveVilla] = useState<string | null>(dynamicVilla);
   const [activeCommunity, setActiveCommunity] = useState<string>(dynamicCommunity);
@@ -129,65 +130,69 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     return comm;
   }, [hasUnit, activeVilla, activeCommunity]);
 
+  const insets = useSafeAreaInsets();
+
   return (
     <>
-      <View
-        style={{ paddingTop: topInsetPadding }}
-        className="bg-card border-b border-border px-4 pb-3 flex-row items-center justify-between shadow-xs z-20"
+      <View 
+        style={{ paddingTop: Math.max(insets.top, 16) }}
+        className="bg-card border-b border-border px-4 pb-3 flex-row items-center justify-between shadow-xs"
       >
-        {/* Left Section: Compact Context Pill (Constrained to ~65% width max, height-aligned with right icons) */}
+        {/* Left Section: Community Context Pill */}
         <TouchableOpacity
           onPress={handleContextPress}
           activeOpacity={canSwitchContext ? 0.8 : 1}
           disabled={!canSwitchContext}
-          className="flex-row items-center gap-2 max-w-[65%] h-10 bg-muted/40 border border-border px-3 rounded-full shadow-xs"
+          className="flex-row items-center gap-2 max-w-[64%] bg-secondary border border-border/80 px-3 py-1.5 rounded-full shadow-xs"
         >
-          <View className={`w-7 h-7 rounded-full items-center justify-center ${hasUnit ? 'bg-primary/15' : 'bg-indigo-500/15'}`}>
+          <View className="p-1.5 rounded-full bg-primary items-center justify-center border border-primary/30">
             {hasUnit ? (
-              <Home size={16} color="#03A9F4" />
+              <Home size={12} color="#FFFFFF" />
             ) : (
-              <Building2 size={16} color="#6366f1" />
+              <Building2 size={12} color="#FFFFFF" />
             )}
           </View>
 
           <Text
             numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
             ellipsizeMode="tail"
-            className="text-xs font-extrabold text-foreground flex-1"
+            className="text-[13px] font-bold font-sans text-foreground flex-1 tracking-tight"
           >
             {headerTextString}
           </Text>
 
           {canSwitchContext ? (
-            <ChevronDown size={14} color="#03A9F4" className="flex-shrink-0" />
+            <ChevronDown size={13} className="text-muted-foreground flex-shrink-0" />
           ) : null}
         </TouchableOpacity>
 
-        {/* Right Section: Notification Bell & Profile Avatar (Far Right, Height-Aligned) */}
-        <View className="flex-row items-center gap-2.5">
+        {/* Right Section: Notification Bell & Profile Avatar (Primary Navy) */}
+        <View className="flex-row items-center gap-2">
           {/* Notification Bell Icon Button */}
           <TouchableOpacity
             onPress={handleBellPress}
             activeOpacity={0.7}
-            className="w-10 h-10 rounded-full bg-muted/50 border border-border items-center justify-center relative shadow-xs"
+            className="size-10 rounded-full bg-card border border-border items-center justify-center relative active:bg-secondary shadow-xs"
           >
-            <Bell size={18} color="#555" />
+            <Bell size={18} className="text-foreground" />
             {liveUnreadCount > 0 ? (
-              <View className="absolute -top-1 -right-1 bg-rose-500 rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card z-10">
-                <Text className="text-[8px] font-black text-white leading-none">
+              <View className="absolute -top-0.5 -right-0.5 bg-[#A51B73] rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card">
+                <Text className="text-[8.5px] font-bold font-sans text-white leading-tight">
                   {liveUnreadCount > 99 ? '99+' : liveUnreadCount}
                 </Text>
               </View>
             ) : null}
           </TouchableOpacity>
 
-          {/* Profile Avatar Button (Far Right End) */}
+          {/* Profile Avatar Button (Primary Navy #172B70) */}
           <TouchableOpacity
             onPress={() => setProfileModalVisible(true)}
-            activeOpacity={0.8}
-            className="w-10 h-10 rounded-full bg-primary/15 items-center justify-center border border-primary/40 shadow-xs"
+            activeOpacity={0.85}
+            className="size-10 rounded-full bg-primary items-center justify-center border border-primary shadow-xs active:opacity-90"
           >
-            <Text className="text-primary font-bold text-sm">{avatarLetter}</Text>
+            <Text className="text-white font-bold font-sans text-[14px]">{avatarLetter}</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -3,7 +3,6 @@ import { View } from 'react-native';
 import {
   ListCard,
   type ListCardProps,
-  type ListCardDateSquare,
   formatRelativeTime,
 } from '@/components/ui/ListCard';
 
@@ -11,7 +10,7 @@ import {
  * @deprecated StandardRecordCard is deprecated in favor of the canonical `ListCard` primitive (`@/components/ui/ListCard`).
  * Please import and use `ListCard` directly.
  */
-export type StandardRecordCardDateSquare = ListCardDateSquare;
+export type StandardRecordCardDateSquare = any;
 
 /**
  * @deprecated Use `ListCardProps` from `@/components/ui/ListCard`.

@@ -1,0 +1,409 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Pressable, TextInput, Alert, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { Button } from '@/components/common/Button';
+import { ErrorBanner } from '@/components/feedback/ErrorBanner';
+import { Wallet, CreditCard, AlertCircle, CheckCircle2, ShieldAlert, ChevronRight, RefreshCw } from 'lucide-react-native';
+import { useBilling } from '../hooks/useBilling';
+import { useMobilePayment, PaymentMethod } from '../hooks/useMobilePayment';
+import { Invoice } from '../types';
+import { RazorpayCheckoutModal, RazorpayCheckoutOptions } from './RazorpayCheckoutModal';
+
+export interface PaymentCheckoutSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  invoice: Invoice | null;
+  onPaymentSuccess?: (result: any) => void;
+}
+
+export function PaymentCheckoutSheet({
+  visible,
+  onClose,
+  invoice,
+  onPaymentSuccess,
+}: PaymentCheckoutSheetProps) {
+  const router = useRouter();
+  const { walletBalance, loadResidentDues } = useBilling();
+  const {
+    paymentState,
+    isGlobalSettling,
+    processWalletPayment,
+    initiateRazorpayPayment,
+    confirmRazorpayPayment,
+    resetPaymentState,
+  } = useMobilePayment();
+
+  // Selection states
+  const [paymentMode, setPaymentMode] = useState<'FULL' | 'CUSTOM'>('FULL');
+  const [customAmountStr, setCustomAmountStr] = useState<string>('');
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('WALLET');
+  const [showWalletConfirmModal, setShowWalletConfirmModal] = useState<boolean>(false);
+  const [showUnknownStateAlert, setShowUnknownStateAlert] = useState<boolean>(false);
+  const [razorpayOptions, setRazorpayOptions] = useState<RazorpayCheckoutOptions | null>(null);
+
+  // Derived figures
+  const totalDue = invoice?.totalDue ?? invoice?.amount ?? 0;
+  const paidAmount = invoice?.paidAmount ?? 0;
+  const remainingDue = Math.max(0, totalDue - paidAmount);
+
+  // Parse amount to pay
+  const amountToPay = useMemo(() => {
+    if (paymentMode === 'FULL') return remainingDue;
+    const parsed = parseFloat(customAmountStr);
+    return isNaN(parsed) || parsed <= 0 ? 0 : parsed;
+  }, [paymentMode, customAmountStr, remainingDue]);
+
+  const remainingAfterPayment = Math.max(0, remainingDue - amountToPay);
+  const isWalletInsufficient = selectedMethod === 'WALLET' && walletBalance < amountToPay;
+  const isAmountTooHigh = amountToPay > remainingDue;
+  const isAmountInvalid = amountToPay <= 0 || isAmountTooHigh;
+
+  // Invoice eligibility
+  const status = invoice?.status || 'UNPAID';
+  const isPaid = status === 'PAID';
+  const isPendingVerification = status === 'VERIFICATION_PENDING';
+  const isCancelled = status === 'CANCELLED';
+  const isPaymentDisabled = isPaid || isPendingVerification || isCancelled || remainingDue <= 0;
+
+  useEffect(() => {
+    if (visible) {
+      resetPaymentState();
+      setPaymentMode('FULL');
+      setCustomAmountStr('');
+      setSelectedMethod(walletBalance >= remainingDue ? 'WALLET' : 'RAZORPAY');
+      setShowWalletConfirmModal(false);
+      setShowUnknownStateAlert(false);
+    }
+  }, [visible, invoice, walletBalance, remainingDue, resetPaymentState]);
+
+  if (!invoice) return null;
+
+  const invNo = invoice.invoiceNumber || invoice._id || '—';
+
+  // --- Handlers ---
+
+  const handleOpenWalletRecharge = () => {
+    onClose();
+    router.push('/(resident)/billing/wallet' as any);
+  };
+
+  const handleInitiatePayment = () => {
+    if (isPaymentDisabled || isAmountInvalid) return;
+
+    if (selectedMethod === 'WALLET') {
+      if (isWalletInsufficient) {
+        Alert.alert('Insufficient Wallet Balance', `Insufficient wallet balance. Please recharge your wallet or choose Razorpay.`);
+        return;
+      }
+      setShowWalletConfirmModal(true);
+    } else if (selectedMethod === 'RAZORPAY') {
+      handleProcessRazorpay();
+    }
+  };
+
+  const handleConfirmWalletPayment = async () => {
+    if (!invoice._id || amountToPay <= 0) return;
+    try {
+      const result = await processWalletPayment(invoice._id, amountToPay);
+      setShowWalletConfirmModal(false);
+      await loadResidentDues();
+      if (onPaymentSuccess) onPaymentSuccess(result);
+      onClose();
+      Alert.alert('Payment Successful!', `Settled ₹${amountToPay.toLocaleString('en-IN')} via Digital Wallet for Invoice #${invNo}.`);
+    } catch (err: any) {
+      setShowWalletConfirmModal(false);
+      Alert.alert('Wallet Payment Failed', err.message || 'Transaction could not be completed.');
+    }
+  };
+
+  const handleProcessRazorpay = async () => {
+    if (!invoice._id || amountToPay <= 0) return;
+
+    try {
+      const orderData = await initiateRazorpayPayment(invoice._id, amountToPay);
+      
+      const keyId = orderData?.razorpayKeyId || process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || '';
+      const orderId = orderData?.orderId || orderData?.id || '';
+      const paymentId = orderData?.paymentId || '';
+
+      setRazorpayOptions({
+        razorpayKeyId: keyId,
+        orderId,
+        paymentId,
+        amount: amountToPay,
+        currency: orderData?.currency || 'INR',
+        description: `Settlement for Invoice #${invNo}`,
+        customerName: (invoice as any)?.targetUser || 'Resident',
+      });
+    } catch (err: any) {
+      if (err?.code === 'NETWORK_ERROR' || err?.message?.includes('network')) {
+        setShowUnknownStateAlert(true);
+      } else {
+        Alert.alert('Payment Failed', err.message || 'Razorpay order creation failed.');
+      }
+    }
+  };
+
+  const handleRazorpaySuccess = async (payload: any) => {
+    setRazorpayOptions(null);
+    try {
+      const verifyResult = await confirmRazorpayPayment(payload);
+      await loadResidentDues();
+      if (onPaymentSuccess) onPaymentSuccess(verifyResult);
+      onClose();
+      Alert.alert('Razorpay Payment Confirmed!', `Verified & settled ₹${amountToPay.toLocaleString('en-IN')} for Invoice #${invNo}.`);
+    } catch (err: any) {
+      if (err?.code === 'NETWORK_ERROR' || err?.message?.includes('network')) {
+        setShowUnknownStateAlert(true);
+      } else {
+        Alert.alert('Signature Verification Failed', err.message || 'Payment signature could not be verified by backend.');
+      }
+    }
+  };
+
+  return (
+    <>
+      <BottomSheet visible={visible} onClose={onClose} title={`Payment Checkout • #${invNo}`}>
+        <ScrollView className="py-2" contentContainerStyle={{ paddingBottom: 60 }}>
+
+          {/* Payment Disabled Alert */}
+          {isPaymentDisabled ? (
+            <View className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-4 flex-row items-center me-1">
+              <Icon as={AlertCircle} size={20} className="text-amber-600 dark:text-amber-400 me-3" />
+              <Text className="text-xs font-semibold text-amber-900 dark:text-amber-200 flex-1">
+                {isPaid ? 'This invoice has already been fully settled.' :
+                 isPendingVerification ? 'Offline payment submitted and pending admin verification.' :
+                 'Invoice is cancelled and cannot accept payments.'}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Payment Error Banner */}
+          {paymentState.error ? (
+            <View className="mb-4">
+              <ErrorBanner message={paymentState.error} onDismiss={() => resetPaymentState()} />
+            </View>
+          ) : null}
+
+          {/* Section 1: Payment Amount Selection */}
+          <View className="mb-5">
+            <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+              1. Select Payment Amount
+            </Text>
+
+            {/* Full Amount Option */}
+            <Pressable
+              onPress={() => setPaymentMode('FULL')}
+              className={`p-4 rounded-xl border mb-2.5 flex-row items-center justify-between ${
+                paymentMode === 'FULL'
+                  ? 'bg-primary/5 border-primary'
+                  : 'bg-card border-border'
+              }`}
+            >
+              <View className="flex-row items-center">
+                <View className={`w-5 h-5 rounded-full border items-center justify-center me-3 ${
+                  paymentMode === 'FULL' ? 'border-primary bg-primary' : 'border-muted-foreground'
+                }`}>
+                  {paymentMode === 'FULL' ? <View className="w-2 h-2 rounded-full bg-white" /> : null}
+                </View>
+                <View>
+                  <Text className="font-bold text-sm text-foreground">Pay Full Remaining Amount</Text>
+                  <Text className="text-xs text-muted-foreground">Settle total outstanding invoice balance</Text>
+                </View>
+              </View>
+
+              <Text className="text-base font-extrabold text-foreground">
+                ₹{remainingDue.toLocaleString('en-IN')}
+              </Text>
+            </Pressable>
+
+            {/* Custom Partial Amount Option */}
+            <Pressable
+              onPress={() => setPaymentMode('CUSTOM')}
+              className={`p-4 rounded-xl border ${
+                paymentMode === 'CUSTOM'
+                  ? 'bg-primary/5 border-primary'
+                  : 'bg-card border-border'
+              }`}
+            >
+              <View className="flex-row items-center mb-2">
+                <View className={`w-5 h-5 rounded-full border items-center justify-center me-3 ${
+                  paymentMode === 'CUSTOM' ? 'border-primary bg-primary' : 'border-muted-foreground'
+                }`}>
+                  {paymentMode === 'CUSTOM' ? <View className="w-2 h-2 rounded-full bg-white" /> : null}
+                </View>
+                <Text className="font-bold text-sm text-foreground">Pay Custom Partial Amount</Text>
+              </View>
+
+              {paymentMode === 'CUSTOM' ? (
+                <View className="mt-2 ps-8">
+                  <View className="flex-row items-center bg-background border border-border rounded-xl px-3 py-2">
+                    <Text className="text-foreground font-bold text-lg me-2">₹</Text>
+                    <TextInput
+                      value={customAmountStr}
+                      onChangeText={setCustomAmountStr}
+                      placeholder={`Enter amount (Max ₹${remainingDue})`}
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="numeric"
+                      className="flex-1 text-foreground font-bold text-base py-1"
+                    />
+                  </View>
+
+                  {isAmountTooHigh ? (
+                    <Text className="text-xs text-destructive mt-1.5 font-medium">
+                      Amount cannot exceed remaining due of ₹{remainingDue.toLocaleString('en-IN')}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+            </Pressable>
+
+            {/* Amount Breakdown Preview */}
+            <View className="mt-3 bg-muted/40 border border-border/60 rounded-xl p-3.5 flex-row items-center justify-between">
+              <View>
+                <Text className="text-xs text-muted-foreground">Amount Being Paid Now</Text>
+                <Text className="text-base font-extrabold text-primary">₹{amountToPay.toLocaleString('en-IN')}</Text>
+              </View>
+              <View className="items-end">
+                <Text className="text-xs text-muted-foreground">Remaining After Payment</Text>
+                <Text className="text-base font-bold text-foreground">₹{remainingAfterPayment.toLocaleString('en-IN')}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Section 2: Payment Method Selection */}
+          <View className="mb-5">
+            <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+              2. Select Payment Method
+            </Text>
+
+            {/* Digital Wallet Option */}
+            <Pressable
+              onPress={() => setSelectedMethod('WALLET')}
+              className={`p-4 rounded-xl border mb-2.5 flex-row items-center justify-between ${
+                selectedMethod === 'WALLET' ? 'bg-emerald-500/5 border-emerald-500' : 'bg-card border-border'
+              }`}
+            >
+              <View className="flex-row items-center flex-1 me-2">
+                <View className="w-10 h-10 rounded-xl bg-emerald-500/10 items-center justify-center me-3">
+                  <Icon as={Wallet} size={20} className="text-emerald-600 dark:text-emerald-400" />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-bold text-sm text-foreground">Digital Wallet</Text>
+                  <Text className="text-xs text-muted-foreground">
+                    Available Balance: ₹{walletBalance.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+              </View>
+
+              {isWalletInsufficient ? (
+                <View className="bg-rose-500/10 px-2.5 py-1 rounded-md">
+                  <Text className="text-xs font-bold text-rose-600 dark:text-rose-400">Insufficient</Text>
+                </View>
+              ) : (
+                <View className={`w-5 h-5 rounded-full border items-center justify-center ${
+                  selectedMethod === 'WALLET' ? 'border-emerald-500 bg-emerald-500' : 'border-muted-foreground'
+                }`}>
+                  {selectedMethod === 'WALLET' ? <View className="w-2 h-2 rounded-full bg-white" /> : null}
+                </View>
+              )}
+            </Pressable>
+
+            {/* Razorpay Online Option */}
+            <Pressable
+              onPress={() => setSelectedMethod('RAZORPAY')}
+              className={`p-4 rounded-xl border mb-2.5 flex-row items-center justify-between ${
+                selectedMethod === 'RAZORPAY' ? 'bg-primary/5 border-primary' : 'bg-card border-border'
+              }`}
+            >
+              <View className="flex-row items-center">
+                <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center me-3">
+                  <Icon as={CreditCard} size={20} className="text-primary" />
+                </View>
+                <View>
+                  <Text className="font-bold text-sm text-foreground">Razorpay Online</Text>
+                  <Text className="text-xs text-muted-foreground">UPI, Credit/Debit Card, NetBanking</Text>
+                </View>
+              </View>
+
+              <View className={`w-5 h-5 rounded-full border items-center justify-center ${
+                selectedMethod === 'RAZORPAY' ? 'border-primary bg-primary' : 'border-muted-foreground'
+              }`}>
+                {selectedMethod === 'RAZORPAY' ? <View className="w-2 h-2 rounded-full bg-white" /> : null}
+              </View>
+            </Pressable>
+          </View>
+
+          {/* Primary Action Button */}
+          <Button
+            variant="default"
+            size="lg"
+            className="w-full flex-row items-center justify-center mt-2"
+            disabled={isPaymentDisabled || isAmountInvalid || (selectedMethod === 'WALLET' && isWalletInsufficient) || isGlobalSettling}
+            loading={isGlobalSettling}
+            onPress={handleInitiatePayment}
+            accessibilityRole="button"
+            accessibilityLabel={`Confirm and Pay ₹${amountToPay.toLocaleString('en-IN')}`}
+          >
+            <Text className="font-bold text-base text-primary-foreground me-1">
+              {selectedMethod === 'WALLET' ? `Pay ₹${amountToPay.toLocaleString('en-IN')} via Wallet` : `Proceed to Razorpay (₹${amountToPay.toLocaleString('en-IN')})`}
+            </Text>
+            <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
+          </Button>
+
+        </ScrollView>
+      </BottomSheet>
+
+      {/* Wallet Deduction Confirmation Modal */}
+      <ConfirmationModal
+        visible={showWalletConfirmModal}
+        title="Confirm Wallet Payment"
+        message={`Are you sure you want to deduct ₹${amountToPay.toLocaleString('en-IN')} from your Digital Wallet to settle Invoice #${invNo}? Your remaining wallet balance will become ₹${(walletBalance - amountToPay).toLocaleString('en-IN')}.`}
+        confirmLabel="Confirm & Pay"
+        cancelLabel="Cancel"
+        variant="info"
+        loading={isGlobalSettling}
+        onConfirm={handleConfirmWalletPayment}
+        onCancel={() => setShowWalletConfirmModal(false)}
+      />
+
+      {/* Unknown Payment Reconciliation Alert Modal */}
+      <ConfirmationModal
+        visible={showUnknownStateAlert}
+        title="Payment Verification In Progress"
+        message="Your payment was submitted to Razorpay, but network status is unknown. Please wait while we reconcile the payment with the server."
+        confirmLabel="Check Payment Status"
+        cancelLabel="Close"
+        variant="info"
+        loading={isGlobalSettling}
+        onConfirm={async () => {
+          await loadResidentDues();
+          setShowUnknownStateAlert(false);
+          onClose();
+        }}
+        onCancel={() => setShowUnknownStateAlert(false)}
+      />
+
+      {/* Razorpay WebView Checkout Modal */}
+      <RazorpayCheckoutModal
+        visible={!!razorpayOptions}
+        options={razorpayOptions}
+        onSuccess={handleRazorpaySuccess}
+        onDismiss={(reason) => {
+          setRazorpayOptions(null);
+          Alert.alert('Payment Cancelled', reason || 'Payment was cancelled by user.');
+        }}
+        onError={(err) => {
+          setRazorpayOptions(null);
+          Alert.alert('Payment Error', err.description || 'Razorpay checkout encountered an error.');
+        }}
+      />
+    </>
+  );
+}
+
+export default PaymentCheckoutSheet;

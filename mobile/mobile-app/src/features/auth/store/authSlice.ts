@@ -6,11 +6,18 @@ export interface User {
   id: string;
   _id?: string;
   email: string;
+  username?: string;
   name?: string;
+  phone?: string;
+  avatar?: string;
   role?: string;
   orgId?: string;
+  organizationName?: string;
+  activeOrganizationName?: string;
+  orgName?: string;
   permissions?: string[];
   isPlatform?: boolean;
+  availableWorkspaces?: any[];
 }
 
 export const normalizeUser = (user: any): User | null => {
@@ -34,6 +41,7 @@ export const normalizeUser = (user: any): User | null => {
     extractId(user.activeOrganizationId) ||
     (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.orgId)) ||
     (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?._id)) ||
+    (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.id)) ||
     '';
 
   return {
@@ -41,6 +49,7 @@ export const normalizeUser = (user: any): User | null => {
     id: canonicalId,
     _id: canonicalId || user._id,
     orgId: canonicalOrgId,
+    allowedFeatures: user.allowedFeatures || user.organization?.allowedFeatures || [],
   };
 };
 
@@ -71,11 +80,26 @@ const initialState: AuthState = {
 export const bootstrapAuth = createAsyncThunk(
   'auth/bootstrapAuth',
   async (_, { dispatch }) => {
-    const token = await storage.getItem('token');
-    const refreshToken = await storage.getItem('refreshToken');
-    const userStr = await storage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
-    return { token, refreshToken, user };
+    try {
+      const token = await storage.getItem('token');
+      const refreshToken = await storage.getItem('refreshToken');
+      const userStr = await storage.getItem('user');
+      let user = null;
+
+      if (userStr) {
+        try {
+          user = JSON.parse(userStr);
+        } catch (e) {
+          console.warn('Corrupted user JSON in storage, clearing key:', e);
+          await storage.removeItem('user');
+        }
+      }
+
+      return { token, refreshToken, user };
+    } catch (err) {
+      console.warn('Error bootstrapping auth state from storage:', err);
+      return { token: null, refreshToken: null, user: null };
+    }
   }
 );
 
@@ -85,17 +109,27 @@ export const loginUser = createAsyncThunk(
     try {
       const response = await authService.login(credentials);
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      const innerData = body?.data || body;
+      
+      if (body && body.success === false) {
+        return rejectWithValue(body.message || 'Login failed');
+      }
 
+      const innerData = body?.data || body;
       const token = innerData?.token;
       const refreshToken = innerData?.refreshToken;
-      const user = innerData?.user;
+      const rawUser = innerData?.user;
+      const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
+      const user = rawUser ? { ...rawUser, availableWorkspaces } : null;
+
+      if (!token || !user) {
+        return rejectWithValue(body?.message || 'Invalid credentials or login response');
+      }
 
       if (token) await storage.setItem('token', token);
       if (refreshToken) await storage.setItem('refreshToken', refreshToken);
       if (user) await storage.setItem('user', JSON.stringify(user));
 
-      return innerData as any;
+      return { ...innerData, user } as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Login failed');
     }
@@ -147,7 +181,7 @@ export const loginWithGoogleThunk = createAsyncThunk(
       const innerData = body?.data || body;
 
       if (innerData?.isNewUser) {
-        return rejectWithValue('User not found. Please register first.');
+        return { isNewUser: true, googleData: innerData.googleData || innerData };
       }
 
       const token = innerData?.token;
@@ -171,6 +205,10 @@ export const loginWithMicrosoftThunk = createAsyncThunk(
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       const innerData = body?.data || body;
 
+      if (innerData?.isNewUser) {
+        return { isNewUser: true, googleData: innerData.microsoftData || innerData.googleData || innerData };
+      }
+
       const token = innerData?.token;
       const user = innerData?.user;
 
@@ -193,6 +231,10 @@ export const requestOtp = createAsyncThunk(
       const response = isEmail
         ? await authService.initiateEmailOtpLogin(identifier)
         : await authService.initiatePhoneLogin(identifier);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      if (body && body.success === false) {
+        return rejectWithValue(body.message || 'Failed to request OTP');
+      }
       return response as any;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to request OTP');
@@ -209,11 +251,18 @@ export const verifyOtpLogin = createAsyncThunk(
         : await authService.verifyPhoneLogin(identifier, code);
 
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      const innerData = body?.data || body;
+      if (body && body.success === false) {
+        return rejectWithValue(body.message || 'OTP verification failed');
+      }
 
+      const innerData = body?.data || body;
       const token = innerData?.token;
       const refreshToken = innerData?.refreshToken;
       const user = innerData?.user;
+
+      if (!token || !user) {
+        return rejectWithValue(body?.message || 'Invalid OTP response from server');
+      }
 
       if (token) await storage.setItem('token', token);
       if (refreshToken) await storage.setItem('refreshToken', refreshToken);
@@ -238,7 +287,9 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
 
     const token = innerData?.token;
     const refreshToken = innerData?.refreshToken;
-    const user = innerData?.user;
+    const rawUser = innerData?.user;
+    const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
+    const user = rawUser ? { ...rawUser, availableWorkspaces } : null;
 
     if (token) await storage.setItem('token', token);
     if (refreshToken) await storage.setItem('refreshToken', refreshToken);
@@ -247,11 +298,65 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
     const { fetchQuickActionsThunk } = require('../../dashboard/dashboardSlice');
     dispatch(fetchQuickActionsThunk());
 
-    return innerData;
+    return { ...innerData, user };
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || error.message || 'Failed to switch workspace context');
   }
 });
+
+export const createWorkspaceThunk = createAsyncThunk(
+  'auth/createWorkspace',
+  async (workspaceData: any, { rejectWithValue }) => {
+    try {
+      const response = await authService.createWorkspace(workspaceData);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      if (body && body.success === false) {
+        return rejectWithValue(body.message || 'Failed to create workspace');
+      }
+
+      const innerData = body?.data || body;
+      const token = innerData?.token;
+      const refreshToken = innerData?.refreshToken;
+      const rawUser = innerData?.user;
+      const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
+      const user = rawUser ? { ...rawUser, availableWorkspaces } : null;
+
+      if (token) await storage.setItem('token', token);
+      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
+      if (user) await storage.setItem('user', JSON.stringify(user));
+
+      return { ...innerData, user } as any;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to create workspace');
+    }
+  }
+);
+
+export const updateOrganizationFeaturesThunk = createAsyncThunk(
+  'auth/updateOrganizationFeatures',
+  async ({ orgId, features }: { orgId: string; features: string[] }, { rejectWithValue }) => {
+    try {
+      const response = await authService.updateOrganizationFeatures(orgId, features);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      if (body && body.success === false) {
+        return rejectWithValue(body.message || 'Failed to update organization features');
+      }
+
+      const innerData = body?.data || body;
+      const token = innerData?.token;
+      const refreshToken = innerData?.refreshToken;
+      const user = innerData?.user;
+
+      if (token) await storage.setItem('token', token);
+      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
+      if (user) await storage.setItem('user', JSON.stringify(user));
+
+      return innerData as any;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to update features');
+    }
+  }
+);
 
 export const performLogout = createAsyncThunk(
   'auth/performLogout',
@@ -306,6 +411,19 @@ const authSlice = createSlice({
         }
       }
     },
+    updateUserProfile: (
+      state,
+      action: PayloadAction<{ username?: string; name?: string; email?: string; phone?: string; avatar?: string }>
+    ) => {
+      if (state.user) {
+        const updated = {
+          ...state.user,
+          ...action.payload,
+        };
+        state.user = updated;
+        storage.setItem('user', JSON.stringify(updated)).catch(() => {});
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -315,6 +433,13 @@ const authSlice = createSlice({
         state.refreshToken = action.payload.refreshToken;
         state.user = normalizeUser(action.payload.user);
         state.isAuthenticated = !!(action.payload.token && state.user?.id);
+        state.isInitialized = true;
+      })
+      .addCase(bootstrapAuth.rejected, (state) => {
+        state.token = null;
+        state.refreshToken = null;
+        state.user = null;
+        state.isAuthenticated = false;
         state.isInitialized = true;
       })
       // Login User
@@ -377,6 +502,10 @@ const authSlice = createSlice({
       })
       .addCase(loginWithGoogleThunk.fulfilled, (state, action) => {
         state.loading = false;
+        if (action.payload?.isNewUser) {
+          state.successMsg = 'Google account verified. Please complete registration.';
+          return;
+        }
         state.token = action.payload?.token || action.payload?.data?.token || null;
         const rawUser = action.payload?.user || action.payload?.data?.user || null;
         state.user = normalizeUser(rawUser);
@@ -395,6 +524,10 @@ const authSlice = createSlice({
       })
       .addCase(loginWithMicrosoftThunk.fulfilled, (state, action) => {
         state.loading = false;
+        if (action.payload?.isNewUser) {
+          state.successMsg = 'Microsoft account verified. Please complete registration.';
+          return;
+        }
         state.token = action.payload?.token || action.payload?.data?.token || null;
         const rawUser = action.payload?.user || action.payload?.data?.user || null;
         state.user = normalizeUser(rawUser);
@@ -461,9 +594,74 @@ const authSlice = createSlice({
       .addCase(switchWorkspaceContextThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to switch workspace context';
+      })
+      // Create Workspace
+      .addCase(createWorkspaceThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(createWorkspaceThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload?.token) {
+          state.token = action.payload.token;
+        }
+        if (action.payload?.refreshToken) {
+          state.refreshToken = action.payload.refreshToken;
+        }
+        const rawUser = action.payload?.user || null;
+        const availableWorkspaces = action.payload?.availableWorkspaces || rawUser?.availableWorkspaces || null;
+        if (rawUser) {
+          const userWithWorkspaces = {
+            ...rawUser,
+            availableWorkspaces: availableWorkspaces || rawUser?.availableWorkspaces || state.user?.availableWorkspaces,
+          };
+          state.user = normalizeUser(userWithWorkspaces);
+        }
+        state.isAuthenticated = !!(state.token && state.user?.id);
+        state.successMsg = 'Organization workspace created successfully!';
+      })
+      .addCase(createWorkspaceThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Failed to create workspace';
+      })
+      // Update Organization Features
+      .addCase(updateOrganizationFeaturesThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(updateOrganizationFeaturesThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload?.token) {
+          state.token = action.payload.token;
+        }
+        if (action.payload?.refreshToken) {
+          state.refreshToken = action.payload.refreshToken;
+        }
+        const rawUser = action.payload?.user || state.user || null;
+        const organization = action.payload?.organization;
+        const updatedFeatures = organization?.allowedFeatures || action.meta?.arg?.features;
+
+        if (rawUser) {
+          const userWithWorkspaces = {
+            ...rawUser,
+            allowedFeatures: updatedFeatures || rawUser?.allowedFeatures || [],
+            availableWorkspaces: action.payload?.availableWorkspaces || rawUser?.availableWorkspaces || state.user?.availableWorkspaces,
+          };
+          state.user = normalizeUser(userWithWorkspaces);
+          if (state.user) {
+            storage.setItem('user', JSON.stringify(state.user)).catch(() => {});
+          }
+        }
+        state.successMsg = 'Organization features configured successfully!';
+      })
+      .addCase(updateOrganizationFeaturesThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Failed to update organization features';
       });
   },
 });
 
-export const { logout, clearStatus, updateTokenAndUser } = authSlice.actions;
+export const { logout, clearStatus, updateTokenAndUser, updateUserProfile } = authSlice.actions;
 export default authSlice.reducer;

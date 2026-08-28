@@ -3,6 +3,7 @@ import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Building2, Check, X } from 'lucide-react-native';
+import { router } from 'expo-router';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
@@ -71,15 +72,15 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
       <View className="flex-1 bg-black/60 justify-center items-center p-4">
         <View className="bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-xl gap-4">
           {/* Header */}
-          <View className="flex-row justify-between items-center pb-2 border-b border-border">
+          <View className="flex-row justify-between items-center pb-2.5 border-b border-border/80">
             <View className="flex-row items-center gap-2">
-              <View className="bg-indigo-500/10 p-2 rounded-xl">
-                <Building2 size={20} color="#6366f1" />
+              <View className="bg-indigo-500/15 border border-indigo-500/25 p-2 rounded-xl">
+                <Building2 size={19} color="#6366f1" />
               </View>
               <Text className="text-lg font-bold text-foreground">Switch Community</Text>
             </View>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1">
-              <X size={20} color="#888" />
+            <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1.5 rounded-full bg-secondary">
+              <X size={16} className="text-muted-foreground" />
             </TouchableOpacity>
           </View>
 
@@ -88,7 +89,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
           </Text>
 
           {/* Workspaces List */}
-          <ScrollView className="max-h-60">
+          <ScrollView className="max-h-60" showsVerticalScrollIndicator={false}>
             <View className="gap-2.5">
               {workspacesList.map((ws) => {
                 const isSelected = ws.name === activeCommunity;
@@ -97,21 +98,21 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                     key={ws.orgId}
                     onPress={() => handleSelect(ws)}
                     activeOpacity={0.8}
-                    className={`flex-row items-center justify-between p-3.5 rounded-2xl border ${
+                    className={`flex-row items-center justify-between p-3.5 rounded-2xl border shadow-xs ${
                       isSelected
-                        ? 'bg-indigo-500/10 border-indigo-500'
-                        : 'bg-muted/30 border-border'
+                        ? 'bg-primary/10 border-primary/40'
+                        : 'bg-card border-border/80 active:bg-secondary/50'
                     }`}
                   >
                     <View className="flex-row items-center gap-3 flex-1">
                       <View
-                        className={`p-2.5 rounded-xl ${
-                          isSelected ? 'bg-indigo-500/20' : 'bg-muted'
+                        className={`p-2.5 rounded-xl border ${
+                          isSelected ? 'bg-primary/20 border-primary/30' : 'bg-secondary border-border/50'
                         }`}
                       >
                         <Building2
                           size={18}
-                          color={isSelected ? '#6366f1' : '#777'}
+                          color={isSelected ? '#172B70' : '#a1a1aa'}
                         />
                       </View>
                       <View className="flex-1">
@@ -120,13 +121,13 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                             numberOfLines={1}
                             ellipsizeMode="tail"
                             className={`text-sm font-bold flex-1 ${
-                              isSelected ? 'text-indigo-600 font-extrabold' : 'text-foreground'
+                              isSelected ? 'text-primary font-extrabold' : 'text-foreground'
                             }`}
                           >
                             {ws.name}
                           </Text>
                           {ws.isPlatform && (
-                            <View className="bg-primary/10 px-1.5 py-0.5 rounded-md">
+                            <View className="bg-primary/15 border border-primary/25 px-1.5 py-0.5 rounded-md">
                               <Text className="text-primary text-[9px] font-bold">Platform</Text>
                             </View>
                           )}
@@ -137,14 +138,14 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                       </View>
                     </View>
 
-                    {isSelected && <Check size={18} color="#6366f1" />}
+                    {isSelected && <Check size={18} className="text-primary" />}
                   </TouchableOpacity>
                 );
               })}
             </View>
           </ScrollView>
 
-          <Button onPress={onClose} className="mt-2 h-11 bg-muted border border-border">
+          <Button onPress={onClose} variant="secondary" className="mt-1 h-11">
             <Text className="font-bold text-foreground text-sm">Cancel</Text>
           </Button>
         </View>

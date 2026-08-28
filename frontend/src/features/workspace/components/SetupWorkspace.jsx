@@ -22,6 +22,7 @@ import {
   cilLockLocked,
 } from '@coreui/icons'
 import useSetupWorkspace from '../hooks/useSetupWorkspace.js'
+import { useSelector } from 'react-redux'
 import useAuth from '../../auth/hooks/useAuth.js'
 
 /**
@@ -36,9 +37,17 @@ export const SetupWorkspace = () => {
   const navigate = useNavigate()
   const { logout } = useAuth()
 
+  const authUser = useSelector((state) => state.auth.user)
+  const availableWorkspaces = useSelector((state) => state.workspace?.availableWorkspaces) || []
+
   const handleBack = () => {
-    logout()
-    navigate('/register')
+    const hasExistingOrg = authUser?.orgId || availableWorkspaces.length > 0
+    if (hasExistingOrg) {
+      navigate('/dashboard')
+    } else {
+      logout()
+      navigate('/register')
+    }
   }
 
   const {

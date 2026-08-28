@@ -15,6 +15,8 @@ export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string): st
         return '/(resident)/notices';
       case 'AMENITY':
         return '/(resident)/amenities/discover';
+      case 'DIRECTORY_MESSAGE':
+        return '/(resident)/directory';
       default:
         return '/(resident)/dashboard';
     }
@@ -23,6 +25,11 @@ export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string): st
   let cleanUrl = actionUrl.trim();
   if (cleanUrl.startsWith('#/')) {
     cleanUrl = cleanUrl.replace('#', '');
+  }
+
+  if (cleanUrl.includes('/directory/conversation/')) {
+    const convId = cleanUrl.split('/directory/conversation/')[1];
+    return `/(resident)/directory/conversation/${convId}`;
   }
 
   // Exact Web Action URL to Mobile Expo Router Route Mappings

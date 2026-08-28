@@ -4,7 +4,6 @@ export * from './NoticeImageGallery';
 export * from './ErrorBoundary';
 export * from './MemoizedNoticeCard';
 export * from './MemoizedCategoryChip';
-export * from './NoticeBoardFilters';
 export * from './NoticeManagementFilterBar';
 export * from './NoticeBoardTopNav';
 export * from './DeleteNoticeDialog';

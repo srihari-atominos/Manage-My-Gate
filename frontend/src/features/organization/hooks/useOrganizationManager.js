@@ -1,4 +1,5 @@
 import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import { loadOrganizations, toggleOrgStatus } from '../store/organizationSlice.js'
 
 /**
@@ -6,6 +7,7 @@ import { loadOrganizations, toggleOrgStatus } from '../store/organizationSlice.j
  */
 export const useOrganizationManager = () => {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
 
   const organizations = useSelector((state) => state.organization.list)
   const total = useSelector((state) => state.organization.total)
@@ -23,6 +25,10 @@ export const useOrganizationManager = () => {
     dispatch(toggleOrgStatus({ orgId, currentStatus }))
   }
 
+  const viewDetails = (orgId) => {
+    navigate(`/super-admin/organizations/${orgId}`)
+  }
+
   return {
     organizations,
     total,
@@ -33,6 +39,7 @@ export const useOrganizationManager = () => {
     error,
     fetchOrgs,
     toggleStatus,
+    viewDetails,
   }
 }
 

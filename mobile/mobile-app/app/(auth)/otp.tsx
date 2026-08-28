@@ -3,7 +3,7 @@ import { Text } from '@/components/ui/text';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { KeyRoundIcon } from 'lucide-react-native';
 import * as React from 'react';
-import { View, ScrollView, TextInput, Alert } from 'react-native';
+import { View, ScrollView, ActivityIndicator, TextInput, ImageBackground, Platform, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -76,21 +76,34 @@ export default function OtpScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Verify Identity' }} />
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="bg-background p-6">
-        <View className="gap-6 flex-1 justify-center max-w-sm mx-auto w-full">
-          {/* Header */}
-          <View className="items-center mb-6">
-            <View className="bg-primary/10 p-4 rounded-full mb-3">
-              <KeyRoundIcon className="size-8 text-primary" />
+      <ImageBackground
+        source={require('../../assets/images/auth-bg.jpg')}
+        style={{ flex: 1 }}
+        blurRadius={Platform.OS === 'ios' ? 3 : 2}
+        resizeMode="cover"
+      >
+        <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" />
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          className="p-6"
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View className="gap-6 flex-1 justify-center max-w-sm mx-auto w-full">
+            {/* Header */}
+            <View className="items-center mb-6">
+              <View className="bg-primary/10 p-4 rounded-full mb-3">
+                <KeyRoundIcon className="size-8 text-primary" />
+              </View>
+              <Text className="text-2xl font-extrabold text-foreground tracking-tight">
+                Enter Verification Code
+              </Text>
+              <Text className="text-muted-foreground text-sm text-center mt-1.5 px-4">
+                We sent a verification code to your {isEmail ? 'email' : 'phone number'}:{'\n'}
+                <Text className="font-semibold text-foreground">{identifier}</Text>
+              </Text>
             </View>
-            <Text className="text-2xl font-extrabold text-foreground tracking-tight">
-              Enter Verification Code
-            </Text>
-            <Text className="text-muted-foreground text-sm text-center mt-1.5 px-4">
-              We sent a verification code to your {isEmail ? 'email' : 'phone number'}:{'\n'}
-              <Text className="font-semibold text-foreground">{identifier}</Text>
-            </Text>
-          </View>
 
           {/* Form Card */}
           <View className="bg-card border border-border rounded-2xl p-5 gap-4">
@@ -128,13 +141,12 @@ export default function OtpScreen() {
               </View>
             )}
 
-            <Button
-              onPress={handleSubmit(onSubmit)}
-              loading={loading}
-              textClassName="font-bold text-base"
-              className="mt-2 h-12"
-            >
-              Verify & Sign In
+            <Button onPress={handleSubmit(onSubmit)} disabled={loading} className="mt-2 h-12">
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="font-bold text-primary-foreground">Verify & Sign In</Text>
+              )}
             </Button>
 
             {/* Resend Helper */}
@@ -150,8 +162,10 @@ export default function OtpScreen() {
               )}
             </View>
           </View>
-        </View>
+          </View>
+        </TouchableWithoutFeedback>
       </ScrollView>
-    </>
-  );
+    </ImageBackground>
+  </>
+);
 }

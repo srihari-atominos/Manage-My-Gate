@@ -31,9 +31,11 @@ scratch/
 expo-env.d.ts
 
 
-# OS Files
+# OS & Archive Files
 .DS_Store
 Thumbs.db
+*.zip
+mobile.zip
 
 # Spreadsheet & Credentials Data
 *.xlsx

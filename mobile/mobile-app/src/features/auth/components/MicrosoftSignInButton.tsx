@@ -21,10 +21,9 @@ export function MicrosoftSignInButton() {
     path: 'auth-spa'
   });
   
-  // Log this so we can see exactly what Expo generated
-  console.log('--- MICROSOFT REDIRECT URI ---');
-  console.log(redirectUri);
-  console.log('--------------------------------');
+  React.useEffect(() => {
+    console.log('[MicrosoftSignIn] Redirect URI:', redirectUri);
+  }, [redirectUri]);
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
@@ -52,14 +51,14 @@ export function MicrosoftSignInButton() {
           },
           discovery
         )
-          .then((tokenResponse) => {
+          .then((tokenResponse: any) => {
             const tokenToUse = tokenResponse.idToken || tokenResponse.accessToken;
             console.log("Extracted Token:", tokenToUse ? "Token Found!" : "No Token Found!");
             
             if (tokenToUse) {
               loginWithMicrosoft(tokenToUse)
                 .unwrap()
-                .catch((err) => {
+                .catch((err: any) => {
                   console.error("Backend Error:", err);
                   Alert.alert('Microsoft Login Failed', typeof err === 'string' ? err : (err.message || 'Unknown error. Please check your network connection or try again.'));
                 });
@@ -67,7 +66,7 @@ export function MicrosoftSignInButton() {
               console.warn("Token exchange succeeded but no token was returned:", tokenResponse);
             }
           })
-          .catch((err) => {
+          .catch((err: any) => {
             console.error("Token Exchange Error:", err);
             Alert.alert('Microsoft Login Error', 'Failed to exchange authorization code for token.');
           });

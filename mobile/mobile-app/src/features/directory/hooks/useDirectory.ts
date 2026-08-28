@@ -1,138 +1,91 @@
-import { useState, useMemo, useCallback } from 'react';
-import { DirectoryMember } from '../components/DirectoryContactCard';
-import { Alert, Linking, Platform } from 'react-native';
-
-const MOCK_DIRECTORY_MEMBERS: DirectoryMember[] = [
-  {
-    id: 'dir-1',
-    name: 'Ahmed Al-Mansoori',
-    role: 'resident',
-    designation: 'Villa Owner',
-    unitNumber: 'Villa A-101',
-    phone: '+971 50 111 2233',
-    intercomNumber: '101',
-    isOnline: true,
-  },
-  {
-    id: 'dir-2',
-    name: 'Sarah Jenkins',
-    role: 'resident',
-    designation: 'Resident Tenant',
-    unitNumber: 'Villa A-104',
-    phone: '+971 50 222 3344',
-    intercomNumber: '104',
-    isOnline: true,
-  },
-  {
-    id: 'dir-3',
-    name: 'Guard Tariq Khan',
-    role: 'guard',
-    designation: 'Main Security Gate',
-    unitNumber: 'Gate 1',
-    phone: '+971 50 333 4455',
-    intercomNumber: '901',
-    isOnline: true,
-  },
-  {
-    id: 'dir-4',
-    name: 'Guard Rajesh Kumar',
-    role: 'guard',
-    designation: 'Clubhouse Patrol',
-    unitNumber: 'Gate 2',
-    phone: '+971 50 444 5566',
-    intercomNumber: '902',
-    isOnline: false,
-  },
-  {
-    id: 'dir-5',
-    name: 'Mikhail Voronin',
-    role: 'staff',
-    designation: 'Head Electrician',
-    unitNumber: 'Facility Office',
-    phone: '+971 50 555 6677',
-    intercomNumber: '801',
-    isOnline: true,
-  },
-  {
-    id: 'dir-6',
-    name: 'Suresh Patel',
-    role: 'staff',
-    designation: 'HVAC Specialist',
-    unitNumber: 'Maintenance Hub',
-    phone: '+971 50 666 7788',
-    intercomNumber: '802',
-    isOnline: true,
-  },
-  {
-    id: 'dir-7',
-    name: 'Dr. Zaid Al-Nuaimi',
-    role: 'admin',
-    designation: 'Community Board President',
-    unitNumber: 'Villa B-205',
-    phone: '+971 50 777 8899',
-    intercomNumber: '205',
-    isOnline: true,
-  },
-];
+import { useEffect, useCallback } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '@/src/store/store';
+import {
+  fetchDirectory,
+  setSearchQuery,
+  setActiveTab,
+} from '../store/directorySlice';
+import { Alert, Linking } from 'react-native';
 
 export const useDirectory = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
-  const [refreshing, setRefreshing] = useState(false);
-  const [members, setMembers] = useState<DirectoryMember[]>(MOCK_DIRECTORY_MEMBERS);
+  const dispatch = useDispatch<AppDispatch>();
+  const directoryState = useSelector((state: RootState) => (state as any).directory);
+  const {
+    members = [],
+    pagination = { currentPage: 1, totalPages: 1, totalRecords: 0, limit: 50 },
+    searchQuery = '',
+    activeTab = 'all',
+    loading = false,
+    refreshing = false,
+    error = null,
+  } = directoryState || {};
 
-  const filteredMembers = useMemo(() => {
-    return members.filter((member) => {
-      // Role filter check
-      if (activeTab !== 'all') {
-        if (activeTab === 'resident' && member.role !== 'resident') return false;
-        if (activeTab === 'guard' && member.role !== 'guard') return false;
-        if (activeTab === 'staff' && member.role !== 'staff' && member.role !== 'admin') return false;
-      }
+  const safeMembers = Array.isArray(members) ? members : [];
 
-      // Keyword query check
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const matchName = member.name.toLowerCase().includes(query);
-        const matchUnit = member.unitNumber?.toLowerCase().includes(query);
-        const matchDesignation = member.designation?.toLowerCase().includes(query);
-        const matchIntercom = member.intercomNumber?.includes(query);
-        return matchName || matchUnit || matchDesignation || matchIntercom;
-      }
+  const loadData = useCallback(
+    (page = 1, isRefreshing = false) => {
+      const validRoles = ['resident', 'guard', 'staff', 'admin'];
+      const roleFilter = validRoles.includes(activeTab.toLowerCase()) ? activeTab.toLowerCase() : undefined;
 
-      return true;
-    });
-  }, [members, activeTab, searchQuery]);
+      dispatch(
+        fetchDirectory({
+          role: roleFilter,
+          search: searchQuery.trim() || undefined,
+          page,
+          limit: 50,
+          refreshing: isRefreshing,
+        })
+      );
+    },
+    [dispatch, activeTab, searchQuery]
+  );
 
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    // Simulate network re-fetch
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 600);
-  }, []);
+  useEffect(() => {
+    // Debounced search / tab change trigger
+    const timer = setTimeout(() => {
+      loadData(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [loadData]);
+
+  const handleRefresh = useCallback(() => {
+    loadData(1, true);
+  }, [loadData]);
+
+  const handleLoadMore = useCallback(() => {
+    if (!loading && (pagination?.currentPage || 1) < (pagination?.totalPages || 1)) {
+      loadData((pagination?.currentPage || 1) + 1);
+    }
+  }, [loading, pagination, loadData]);
 
   const handleCall = useCallback((phone: string) => {
+    if (!phone) return;
     Linking.openURL(`tel:${phone}`);
   }, []);
 
   const handleIntercom = useCallback((intercom: string) => {
+    if (!intercom) return;
     Alert.alert(
-      'Calling Intercom',
-      `Initiating direct community voice intercom connection to #${intercom}...`,
+      'Calling Community Intercom',
+      `Initiating direct voice intercom call to Unit #${intercom}...`,
       [{ text: 'End Call', style: 'cancel' }]
     );
   }, []);
 
   return {
+    members: safeMembers,
+    pagination,
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: (q: string) => dispatch(setSearchQuery(q)),
     activeTab,
-    setActiveTab,
+    setActiveTab: (t: string) => dispatch(setActiveTab(t)),
+    loading,
     refreshing,
-    filteredMembers,
-    totalCount: filteredMembers.length,
+    error,
+    totalCount: pagination?.totalRecords ?? safeMembers.length,
     onRefresh: handleRefresh,
+    onLoadMore: handleLoadMore,
     onCall: handleCall,
     onIntercom: handleIntercom,
   };

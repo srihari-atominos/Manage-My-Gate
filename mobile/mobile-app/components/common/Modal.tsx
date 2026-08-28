@@ -37,13 +37,13 @@ export const Modal = ({
         />
         <View
           className={cn(
-            'w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg dark:bg-slate-900',
+            'w-full max-w-sm rounded-2xl bg-card border border-border p-5 shadow-xl',
             contentClassName
           )}
         >
           {Boolean(title) && (
             <View className="mb-4 flex-row items-center justify-between">
-              <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">
+              <Text className="text-xl font-bold font-sans text-foreground">
                 {title}
               </Text>
               <IconButton

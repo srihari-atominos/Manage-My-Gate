@@ -1,39 +1,76 @@
 import React from 'react';
+import { Pressable, PressableProps, View } from 'react-native';
 import { LucideIcon } from 'lucide-react-native';
-import { Button, type ButtonProps } from '@/components/ui/button';
 import { cn } from '../../lib/utils';
 
-export interface IconButtonProps extends Omit<ButtonProps, 'children' | 'size'> {
+export interface IconButtonProps extends PressableProps {
   icon: LucideIcon;
   size?: 'sm' | 'md' | 'lg';
+  variant?: 'default' | 'primary' | 'secondary' | 'ghost' | 'destructive' | 'outline';
+  disabled?: boolean;
+  className?: string;
   iconClassName?: string;
 }
 
 export const IconButton = ({
   icon: Icon,
   size = 'md',
-  variant = 'outline',
+  variant = 'default',
   disabled = false,
   className,
   iconClassName,
   ...props
 }: IconButtonProps) => {
-  const iconSize = size === 'sm' ? 16 : size === 'lg' ? 22 : 18;
-  const buttonSizeClass = size === 'sm' ? 'h-8 w-8' : size === 'lg' ? 'h-12 w-12' : 'h-10 w-10';
+  const sizeClasses = {
+    sm: 'h-8 w-8',
+    md: 'h-10 w-10',
+    lg: 'h-12 w-12',
+  };
+
+  const iconSizes = {
+    sm: 16,
+    md: 20,
+    lg: 24,
+  };
+
+  const variantClasses = {
+    default: 'bg-card border border-border',
+    primary: 'bg-primary',
+    secondary: 'bg-secondary border border-border',
+    outline: 'bg-card border border-border',
+    ghost: 'bg-transparent',
+    destructive: 'bg-destructive',
+  };
+
+  const iconColors = {
+    default: 'text-foreground',
+    primary: 'text-primary-foreground',
+    secondary: 'text-foreground',
+    outline: 'text-foreground',
+    ghost: 'text-foreground',
+    destructive: 'text-destructive-foreground',
+  };
 
   return (
-    <Button
-      variant={(variant as any) === 'primary' ? 'default' : (variant as any) === 'default' ? 'outline' : variant}
-      size="icon"
+    <Pressable
+      className={cn(
+        'items-center justify-center rounded-full',
+        sizeClasses[size],
+        variantClasses[variant],
+        disabled && 'opacity-50',
+        className
+      )}
       disabled={disabled}
-      className={cn('rounded-full', buttonSizeClass, className)}
       {...props}
     >
-      {Icon && (typeof Icon === 'function' || (typeof Icon === 'object' && Icon !== null)) ? (
-        <Icon size={iconSize} className={iconClassName} />
-      ) : null}
-    </Button>
+      {({ pressed }) => (
+        <View className={cn(pressed && 'opacity-70')}>
+          <Icon
+            size={iconSizes[size]}
+            className={cn(iconColors[variant], iconClassName)}
+          />
+        </View>
+      )}
+    </Pressable>
   );
 };
-
-export default IconButton;

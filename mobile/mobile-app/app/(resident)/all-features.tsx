@@ -25,6 +25,7 @@ export default function AllFeaturesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [customiseOpen, setCustomiseOpen] = useState(false);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(params.category || null);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   
   const { user } = useAuth();
   const { featureCatalog, allFeaturesList, activeQuickActions, saveQuickActions } = useQuickActions();
@@ -86,6 +87,13 @@ export default function AllFeaturesScreen() {
     }
   };
 
+  const toggleCategoryExpand = (categoryKey: string) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [categoryKey]: !prev[categoryKey],
+    }));
+  };
+
   const handleSaveCustomisation = async (selectedIds: string[]) => {
     await saveQuickActions(selectedIds);
   };
@@ -116,26 +124,26 @@ export default function AllFeaturesScreen() {
           activeOpacity={0.8}
           className="flex-row items-center gap-1 bg-primary/10 border border-primary/30 px-2.5 py-1.5 rounded-full"
         >
-          <SlidersHorizontal size={13} color="#03A9F4" />
-          <Text className="text-xs font-bold text-primary">Customise</Text>
+          <SlidersHorizontal size={13} className="text-muted-foreground" />
+          <Text className="text-xs font-bold text-foreground font-sans">Customise</Text>
         </TouchableOpacity>
       }
     >
-      <ScrollView className="flex-1 px-4 pt-3">
+      <ScrollView className="flex-1 px-4 pt-3" showsVerticalScrollIndicator={false}>
         <View className="gap-4 pb-12 max-w-md mx-auto w-full">
           {/* Search All Features Bar */}
-          <View className="flex-row items-center bg-muted/50 border border-border rounded-2xl px-3.5 py-2.5 shadow-xs">
-            <Search size={18} color="#888" className="mr-2" />
+          <View className="flex-row items-center bg-card border border-border rounded-2xl px-3.5 py-3 shadow-xs">
+            <Search size={18} color="#172B70" className="mr-2.5 shrink-0" />
             <TextInput
-              placeholder="Search all features"
-              placeholderTextColor="#888"
+              placeholder="Search all features..."
+              placeholderTextColor="#64748B"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              className="flex-1 text-xs text-foreground py-0"
+              className="flex-1 text-[13px] font-sans text-foreground py-0"
             />
             {searchQuery ? (
               <TouchableOpacity onPress={() => setSearchQuery('')} className="p-0.5">
-                <X size={16} color="#888" />
+                <X size={15} className="text-muted-foreground" />
               </TouchableOpacity>
             ) : null}
           </View>
@@ -223,7 +231,6 @@ export default function AllFeaturesScreen() {
               .filter((cat) => !selectedCategoryKey || cat.categoryKey === selectedCategoryKey)
               .map((category) => {
                 const filteredItems = category.items.filter((item) => {
-                  // Search query filter
                   if (
                     searchQuery &&
                     !item.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -231,7 +238,6 @@ export default function AllFeaturesScreen() {
                     return false;
                   }
 
-                  // RBAC permission check
                   if (item.permission && !isSuperAdmin) {
                     return userPermissions.includes(item.permission);
                   }
@@ -241,41 +247,59 @@ export default function AllFeaturesScreen() {
 
                 if (filteredItems.length === 0) return null;
 
-                const isCategorySelected = selectedCategoryKey === category.categoryKey;
+                const isExpanded = Boolean(expandedCategories[category.categoryKey]) || Boolean(searchQuery);
+                const hasMore = filteredItems.length > 6;
+                const displayedItems = isExpanded ? filteredItems : filteredItems.slice(0, 6);
 
                 return (
                   <View key={category.categoryKey} className="gap-3">
-                    {/* Section Header */}
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-sm font-extrabold text-foreground">
+                    <View className="flex-row items-center justify-between pt-1">
+                      <Text className="text-[13.5px] font-bold font-sans text-primary uppercase tracking-wider">
                         {category.categoryName}
                       </Text>
 
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onPress={() =>
-                          setSelectedCategoryKey(isCategorySelected ? null : category.categoryKey)
-                        }
-                        className="flex-row items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20"
-                      >
-                        <Text className="text-xs font-bold text-primary">
-                          {isCategorySelected ? 'Show All' : 'View all'}
-                        </Text>
-                        <ChevronRight size={13} className="text-primary" />
-                      </Button>
+                      {hasMore && (
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => toggleCategoryExpand(category.categoryKey)}
+                          className="flex-row items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20 shadow-xs"
+                        >
+                          <Text className="text-xs font-bold text-primary font-sans">
+                            {isExpanded ? 'Show less' : `View all (${filteredItems.length})`}
+                          </Text>
+                          <ChevronRight
+                            size={13}
+                            color="#245FA8"
+                            style={{ transform: [{ rotate: isExpanded ? '90deg' : '0deg' }] }}
+                          />
+                        </TouchableOpacity>
+                      )}
                     </View>
 
-                    {/* 4-Column Action Grid */}
-                    <View className="flex-row flex-wrap gap-y-3.5 -mx-1">
-                      {filteredItems.map((item) => (
-                        <ActionTile
-                          key={item.id}
-                          icon={<FeatureIcon iconName={item.iconName} color={item.colorIcon || '#555'} />}
-                          label={item.name}
-                          onPress={() => handleTileClick(item.id)}
-                        />
-                      ))}
+                    <View className="flex-row flex-wrap gap-y-2.5 -mx-1">
+                      {displayedItems.map((item) => {
+                        const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === item.id);
+                        const iconName = meta?.iconName || item.iconName;
+                        const colorIcon = meta?.colorIcon || item.colorIcon || '#245FA8';
+                        const colorBg = meta?.colorBg || item.colorBg || 'bg-secondary';
+                        const iconShapeClass = meta?.iconShapeClass;
+
+                        return (
+                          <ActionTile
+                            key={item.id}
+                            containerClassName="w-1/3 px-1"
+                            iconBgColor={colorBg}
+                            iconShapeClass={iconShapeClass}
+                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={22} />}
+                            label={meta?.name || item.name}
+                            subtitle={meta?.subtitle || item.subtitle}
+                            metaValue={meta?.subtitle || item.subtitle}
+                            badge={item.badge}
+                            badgeColor={item.badgeColor}
+                            onPress={() => handleTileClick(item.id)}
+                          />
+                        );
+                      })}
                     </View>
                   </View>
                 );

@@ -125,10 +125,10 @@ function ManageNoticesContent() {
   );
 
   const handleEditPress = useCallback(
-    (id: string) => {
+    (notice: NoticeItem) => {
       router.push({
         pathname: '/(resident)/notices/create' as any,
-        params: { id },
+        params: { id: notice._id || notice.id },
       });
     },
     [router]
@@ -252,7 +252,7 @@ function ManageNoticesContent() {
           <PaginatedList<NoticeItem>
             data={notices}
             renderItem={renderNoticeItem}
-            keyExtractor={(item) => item._id}
+            keyExtractor={(item) => item._id || item.id || ''}
             loading={loading}
             onRefresh={handleRefresh}
             onLoadMore={handleLoadMore}

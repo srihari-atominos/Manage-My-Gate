@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'expo-router';
 import { Home, LogOut, X, Settings, ShieldCheck, Mail, Building2, ChevronRight } from 'lucide-react-native';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 
@@ -13,6 +14,7 @@ interface ProfileModalProps {
   onOpenOrgModal?: () => void;
   onOpenRoleModal?: () => void;
   onOpenVillaModal?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -23,7 +25,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onOpenOrgModal,
   onOpenRoleModal,
   onOpenVillaModal,
+  onOpenSettings,
 }) => {
+  const router = useRouter();
   const { user, logout } = useAuth();
   const userAny = user as any;
 
@@ -56,6 +60,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     return 'U';
   }, [user]);
 
+  const handleOpenSettings = () => {
+    onClose();
+    if (onOpenSettings) {
+      onOpenSettings();
+    } else {
+      router.push('/(resident)/settings' as any);
+    }
+  };
+
   const handleLogout = () => {
     onClose();
     logout();
@@ -66,18 +79,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       <View className="flex-1 bg-black/60 justify-center items-center p-4">
         <View className="bg-card border border-border rounded-3xl w-full max-w-sm p-5 shadow-xl gap-4">
           {/* Header Bar */}
-          <View className="flex-row justify-between items-center pb-2 border-b border-border">
+          <View className="flex-row justify-between items-center pb-2.5 border-b border-border/80">
             <Text className="text-base font-bold text-foreground">User Profile & Account</Text>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1">
-              <X size={18} color="#888" />
+            <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1 rounded-full bg-secondary">
+              <X size={16} className="text-muted-foreground" />
             </TouchableOpacity>
           </View>
 
-          <ScrollView className="max-h-96">
+          <ScrollView className="max-h-96" showsVerticalScrollIndicator={false}>
             <View className="gap-4">
-              {/* User Card */}
-              <View className="items-center bg-primary/5 border border-primary/20 rounded-2xl p-4 gap-1.5">
-                <View className="size-14 rounded-full bg-primary/15 items-center justify-center border-2 border-primary/30">
+              {/* User Liquid Glass Card */}
+              <View className="items-center bg-primary/10 border border-primary/25 rounded-2xl p-4 gap-1.5 shadow-xs">
+                <View className="size-14 rounded-full bg-primary/20 items-center justify-center border-2 border-primary/40 shadow-xs">
                   <Text className="text-primary font-black text-xl">{avatarLetter}</Text>
                 </View>
 
@@ -86,18 +99,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </Text>
 
                 <View className="flex-row items-center gap-1">
-                  <Mail size={12} color="#888" />
+                  <Mail size={12} className="text-muted-foreground" />
                   <Text className="text-xs text-muted-foreground text-center">{user?.email || ''}</Text>
                 </View>
 
                 <View className="flex-row gap-2 mt-1">
-                  <View className="bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
+                  <View className="bg-primary/15 px-2.5 py-0.5 rounded-full border border-primary/30">
                     <Text className="text-primary text-[10px] font-bold">
                       {dynamicUnit}
                     </Text>
                   </View>
-                  <View className="bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                    <Text className="text-emerald-600 text-[10px] font-bold">
+                  <View className="bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/25">
+                    <Text className="text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
                       {dynamicRole}
                     </Text>
                   </View>
@@ -117,10 +130,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     if (onOpenOrgModal) onOpenOrgModal();
                   }}
                   activeOpacity={0.7}
-                  className="bg-muted/30 border border-border rounded-xl p-3 flex-row items-center justify-between"
+                  className="bg-card border border-border/80 rounded-xl p-3 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
                 >
                   <View className="flex-row items-center gap-3">
-                    <View className="bg-indigo-500/10 p-2 rounded-lg">
+                    <View className="bg-indigo-500/10 border border-indigo-500/20 p-2 rounded-lg">
                       <Building2 size={16} color="#6366f1" />
                     </View>
                     <View>
@@ -128,7 +141,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       <Text className="text-[10px] text-muted-foreground">{dynamicCommunity}</Text>
                     </View>
                   </View>
-                  <ChevronRight size={16} color="#888" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </TouchableOpacity>
 
                 {/* Switch Role */}
@@ -138,18 +151,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     if (onOpenRoleModal) onOpenRoleModal();
                   }}
                   activeOpacity={0.7}
-                  className="bg-muted/30 border border-border rounded-xl p-3 flex-row items-center justify-between"
+                  className="bg-card border border-border/80 rounded-xl p-3 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
                 >
                   <View className="flex-row items-center gap-3">
-                    <View className="bg-primary/10 p-2 rounded-lg">
-                      <ShieldCheck size={16} color="#03A9F4" />
+                    <View className="bg-primary/10 border border-primary/20 p-2 rounded-lg">
+                      <ShieldCheck size={16} className="text-primary" />
                     </View>
                     <View>
                       <Text className="text-xs font-bold text-foreground">Switch Role Persona</Text>
                       <Text className="text-[10px] text-muted-foreground">{dynamicRole}</Text>
                     </View>
                   </View>
-                  <ChevronRight size={16} color="#888" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </TouchableOpacity>
 
                 {/* Switch Villa Unit */}
@@ -159,10 +172,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     if (onOpenVillaModal) onOpenVillaModal();
                   }}
                   activeOpacity={0.7}
-                  className="bg-muted/30 border border-border rounded-xl p-3 flex-row items-center justify-between"
+                  className="bg-card border border-border/80 rounded-xl p-3 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
                 >
                   <View className="flex-row items-center gap-3">
-                    <View className="bg-emerald-500/10 p-2 rounded-lg">
+                    <View className="bg-emerald-500/10 border border-emerald-500/20 p-2 rounded-lg">
                       <Home size={16} color="#10b981" />
                     </View>
                     <View>
@@ -170,7 +183,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       <Text className="text-[10px] text-muted-foreground">{dynamicUnit}</Text>
                     </View>
                   </View>
-                  <ChevronRight size={16} color="#888" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </TouchableOpacity>
               </View>
 
@@ -180,12 +193,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   Preferences
                 </Text>
 
-                <TouchableOpacity activeOpacity={0.7} className="bg-muted/30 border border-border rounded-xl p-3 flex-row items-center justify-between">
+                <TouchableOpacity
+                  onPress={handleOpenSettings}
+                  activeOpacity={0.7}
+                  className="bg-card border border-border/80 rounded-xl p-3 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
+                  accessibilityRole="button"
+                  accessibilityLabel="App Settings"
+                >
                   <View className="flex-row items-center gap-3">
-                    <Settings size={16} color="#777" />
+                    <Settings size={16} className="text-muted-foreground" />
                     <Text className="text-xs font-medium text-foreground">App Settings</Text>
                   </View>
-                  <ChevronRight size={16} color="#888" />
+                  <ChevronRight size={15} className="text-muted-foreground" />
                 </TouchableOpacity>
               </View>
             </View>

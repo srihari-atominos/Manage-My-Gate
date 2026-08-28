@@ -74,6 +74,18 @@ export const switchContext = async (payload: { targetOrgId?: string; targetRole?
   return await apiClient.post('/auth/switch-context', payload);
 };
 
+export const checkOrganizationName = async (name: string) => {
+  return await apiClient.get(`/organizations/check-name?name=${encodeURIComponent(name.trim())}`);
+};
+
+export const createWorkspace = async (workspaceData: any) => {
+  return await apiClient.post('/organizations/setup', workspaceData);
+};
+
+export const updateOrganizationFeatures = async (orgId: string, features: string[]) => {
+  return await apiClient.patch(`/organizations/${orgId}/features`, { features });
+};
+
 export default {
   login,
   register,
@@ -93,4 +105,7 @@ export default {
   revokeSession,
   revokeAllSessions,
   switchContext,
+  checkOrganizationName,
+  createWorkspace,
+  updateOrganizationFeatures,
 };
