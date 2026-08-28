@@ -79,6 +79,27 @@ router.get(
   organizationController.getAll
 );
 
+router.get(
+  '/:id',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  organizationController.getDetails
+);
+
+router.get(
+  '/:id/users',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  organizationController.getUsers
+);
+
+router.get(
+  '/:id/users/:userId',
+  isAuthenticated,
+  tenantContext({ requirePlatformContext: true }),
+  organizationController.getUserDetails
+);
+
 router.patch(
   '/:id/status',
   isAuthenticated,
@@ -97,3 +118,4 @@ router.patch(
 );
 
 export default router;
+

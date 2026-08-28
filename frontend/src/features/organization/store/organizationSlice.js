@@ -3,7 +3,7 @@ import organizationApi from '../services/organizationApi.js'
 
 export const loadOrganizations = createAsyncThunk(
   'organization/loadOrganizations',
-  async ({ page, limit }, { rejectWithValue }) => {
+  async ({ page = 1, limit = 10 } = {}, { rejectWithValue }) => {
     try {
       const response = await organizationApi.fetchOrganizations(page, limit)
       return response.data
@@ -26,6 +26,48 @@ export const toggleOrgStatus = createAsyncThunk(
   },
 )
 
+export const loadOrganizationDetails = createAsyncThunk(
+  'organization/loadOrganizationDetails',
+  async ({ orgId }, { rejectWithValue }) => {
+    try {
+      const response = await organizationApi.fetchOrganizationDetails(orgId)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch organization details')
+    }
+  },
+)
+
+export const loadOrganizationUsers = createAsyncThunk(
+  'organization/loadOrganizationUsers',
+  async ({ orgId, page = 1, limit = 10, search = '', role = '', status = '' }, { rejectWithValue }) => {
+    try {
+      const response = await organizationApi.fetchOrganizationUsers(orgId, {
+        page,
+        limit,
+        search,
+        role,
+        status,
+      })
+      return response.data
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch organization users')
+    }
+  },
+)
+
+export const loadOrganizationUserDetails = createAsyncThunk(
+  'organization/loadOrganizationUserDetails',
+  async ({ orgId, userId }, { rejectWithValue }) => {
+    try {
+      const response = await organizationApi.fetchOrganizationUserDetails(orgId, userId)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch user details')
+    }
+  },
+)
+
 const initialState = {
   list: [],
   total: 0,
@@ -34,6 +76,26 @@ const initialState = {
   totalPages: 0,
   loading: false,
   error: null,
+
+  selectedOrganization: null,
+  detailsLoading: false,
+  detailsError: null,
+
+  users: {
+    list: [],
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+    search: '',
+    roleFilter: '',
+    statusFilter: '',
+    loading: false,
+    error: null,
+    selectedUser: null,
+    userDrawerOpen: false,
+    userDrawerLoading: false,
+  },
 }
 
 export const organizationSlice = createSlice({
@@ -42,6 +104,33 @@ export const organizationSlice = createSlice({
   reducers: {
     clearOrganizationError: (state) => {
       state.error = null
+      state.detailsError = null
+      state.users.error = null
+    },
+    setUserSearch: (state, action) => {
+      state.users.search = action.payload
+      state.users.page = 1
+    },
+    setUserRoleFilter: (state, action) => {
+      state.users.roleFilter = action.payload
+      state.users.page = 1
+    },
+    setUserStatusFilter: (state, action) => {
+      state.users.statusFilter = action.payload
+      state.users.page = 1
+    },
+    closeUserDrawer: (state) => {
+      state.users.userDrawerOpen = false
+      state.users.selectedUser = null
+    },
+    clearSelectedOrganization: (state) => {
+      state.selectedOrganization = null
+      state.users.list = []
+      state.users.total = 0
+      state.users.page = 1
+      state.users.totalPages = 0
+      state.users.selectedUser = null
+      state.users.userDrawerOpen = false
     },
   },
   extraReducers: (builder) => {
@@ -73,14 +162,68 @@ export const organizationSlice = createSlice({
         const updatedOrg = action.payload
         if (updatedOrg && updatedOrg._id) {
           state.list = state.list.map((org) => (org._id === updatedOrg._id ? updatedOrg : org))
+          if (state.selectedOrganization && state.selectedOrganization.organization._id === updatedOrg._id) {
+            state.selectedOrganization.organization = updatedOrg
+          }
         }
       })
       .addCase(toggleOrgStatus.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload || 'Failed to update organization status'
       })
+      // loadOrganizationDetails
+      .addCase(loadOrganizationDetails.pending, (state) => {
+        state.detailsLoading = true
+        state.detailsError = null
+      })
+      .addCase(loadOrganizationDetails.fulfilled, (state, action) => {
+        state.detailsLoading = false
+        state.selectedOrganization = action.payload
+      })
+      .addCase(loadOrganizationDetails.rejected, (state, action) => {
+        state.detailsLoading = false
+        state.detailsError = action.payload || 'Failed to load organization details'
+      })
+      // loadOrganizationUsers
+      .addCase(loadOrganizationUsers.pending, (state) => {
+        state.users.loading = true
+        state.users.error = null
+      })
+      .addCase(loadOrganizationUsers.fulfilled, (state, action) => {
+        state.users.loading = false
+        state.users.list = action.payload?.data || []
+        state.users.total = action.payload?.total || 0
+        state.users.page = action.payload?.page || 1
+        state.users.limit = action.payload?.limit || 10
+        state.users.totalPages = action.payload?.totalPages || 0
+      })
+      .addCase(loadOrganizationUsers.rejected, (state, action) => {
+        state.users.loading = false
+        state.users.error = action.payload || 'Failed to load organization users'
+      })
+      // loadOrganizationUserDetails
+      .addCase(loadOrganizationUserDetails.pending, (state) => {
+        state.users.userDrawerLoading = true
+        state.users.userDrawerOpen = true
+      })
+      .addCase(loadOrganizationUserDetails.fulfilled, (state, action) => {
+        state.users.userDrawerLoading = false
+        state.users.selectedUser = action.payload
+      })
+      .addCase(loadOrganizationUserDetails.rejected, (state, action) => {
+        state.users.userDrawerLoading = false
+        state.users.error = action.payload || 'Failed to load user details'
+      })
   },
 })
 
-export const { clearOrganizationError } = organizationSlice.actions
+export const {
+  clearOrganizationError,
+  setUserSearch,
+  setUserRoleFilter,
+  setUserStatusFilter,
+  closeUserDrawer,
+  clearSelectedOrganization,
+} = organizationSlice.actions
+
 export default organizationSlice.reducer

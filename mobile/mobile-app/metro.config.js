@@ -1,3 +1,7 @@
+const fs = require('fs');
+const gracefulFs = require('graceful-fs');
+gracefulFs.gracefulify(fs);
+
 const { getDefaultConfig } = require('expo/metro-config');
 const { withNativeWind } = require('nativewind/metro');
 const os = require('os');
@@ -15,3 +19,4 @@ config.resolver.blockList = [
 ];
 
 module.exports = withNativeWind(config, { input: './global.css', inlineRem: 16 });
+

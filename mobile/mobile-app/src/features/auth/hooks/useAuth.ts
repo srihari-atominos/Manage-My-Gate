@@ -6,17 +6,20 @@ import {
   loginWithMicrosoftThunk,
   registerUserThunk,
   verifyRegistrationThunk,
+  createWorkspaceThunk,
+  updateOrganizationFeaturesThunk,
   requestOtp,
   verifyOtpLogin,
   performLogout,
   clearStatus,
   bootstrapAuth,
 } from '../store/authSlice';
+import authService from '../services/authService';
 import { useCallback } from 'react';
 
 export const useAuth = () => {
-  let dispatch: AppDispatch | null = null;
-  let authState: any = {
+  const dispatch = useDispatch<AppDispatch>();
+  const authState = useSelector((state: RootState) => state.auth) || {
     user: null,
     isAuthenticated: false,
     isInitialized: true,
@@ -24,15 +27,6 @@ export const useAuth = () => {
     error: null,
     otpSent: false,
   };
-
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    dispatch = useDispatch<AppDispatch>();
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    authState = useSelector((state: RootState) => state.auth) || authState;
-  } catch (err) {
-    // Return safe initial fallback state if Redux Provider is not yet in tree
-  }
 
   const handleLogin = useCallback(
     (credentials: any) => {
@@ -69,6 +63,24 @@ export const useAuth = () => {
     [dispatch]
   );
 
+  const handleCreateWorkspace = useCallback(
+    (workspaceData: any) => {
+      return dispatch ? dispatch(createWorkspaceThunk(workspaceData)) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleUpdateOrganizationFeatures = useCallback(
+    (orgId: string, features: string[]) => {
+      return dispatch ? dispatch(updateOrganizationFeaturesThunk({ orgId, features })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleCheckOrganizationName = useCallback((name: string) => {
+    return authService.checkOrganizationName(name);
+  }, []);
+
   const handleRequestOtp = useCallback(
     (identifier: string, isEmail: boolean = false) => {
       return dispatch ? dispatch(requestOtp({ identifier, isEmail })) : Promise.resolve();
@@ -100,6 +112,9 @@ export const useAuth = () => {
     login: handleLogin,
     register: handleRegister,
     verifyRegistration: handleVerifyRegistration,
+    createWorkspace: handleCreateWorkspace,
+    updateOrganizationFeatures: handleUpdateOrganizationFeatures,
+    checkOrganizationName: handleCheckOrganizationName,
     loginWithGoogle: handleLoginWithGoogle,
     loginWithMicrosoft: handleLoginWithMicrosoft,
     requestOtp: handleRequestOtp,

@@ -484,7 +484,7 @@ export default function SignupScreen() {
                   Already have an account?{' '}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => router.push('/(auth)/login')}
+                  onPress={() => router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } })}
                   activeOpacity={0.8}
                 >
                   <Text className="text-xs font-extrabold text-[#172B70] dark:text-[#60A5FA] underline">

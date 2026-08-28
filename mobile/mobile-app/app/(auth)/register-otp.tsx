@@ -3,11 +3,12 @@ import { Text } from '@/components/ui/text';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { KeyRoundIcon } from 'lucide-react-native';
 import * as React from 'react';
-import { View, ScrollView, TextInput, Alert } from 'react-native';
+import { View, ScrollView, Alert } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { OtpInputField } from '@/components/auth/OtpInputField';
 
 const otpSchema = yup.object().shape({
   code: yup
@@ -22,7 +23,7 @@ interface OtpFormValues {
 
 export default function RegisterOtpScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
-  const { verifyRegistration, requestRegistrationOtp, loading, error, successMsg, isAuthenticated, clearStatus } = useAuth();
+  const { verifyRegistration, loading, error, successMsg, clearStatus } = useAuth();
   
   // Fix URL decoding issue where '+' might have been converted to a space
   const fixedEmail = email ? email.replace(/\s/g, '+') : '';
@@ -42,15 +43,25 @@ export default function RegisterOtpScreen() {
     return () => clearStatus();
   }, []);
 
-  React.useEffect(() => {
-    if (successMsg) {
-      Alert.alert('Verification', successMsg);
-    }
-  }, [successMsg]);
-
   const onSubmit = async (data: OtpFormValues) => {
     if (!fixedEmail) return;
-    await verifyRegistration(fixedEmail, data.code);
+    const action = await verifyRegistration(fixedEmail, data.code);
+    if (action && (action.type?.endsWith('/fulfilled') || (action.meta && action.meta.requestStatus === 'fulfilled'))) {
+      const resUser = action.payload?.user || action.payload?.data?.user;
+      const hasOrg = !!(
+        resUser && (
+          resUser.orgId ||
+          resUser.activeOrgId ||
+          resUser.organizationId ||
+          (Array.isArray(resUser.availableWorkspaces) && resUser.availableWorkspaces.length > 0)
+        )
+      );
+      if (hasOrg) {
+        router.replace('/(resident)/dashboard');
+      } else {
+        router.replace('/(auth)/setup-organization');
+      }
+    }
   };
 
   return (
@@ -80,16 +91,13 @@ export default function RegisterOtpScreen() {
               <Controller
                 control={control}
                 name="code"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    placeholder="123456"
-                    placeholderTextColor="#777"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
+                render={({ field: { onChange, value } }) => (
+                  <OtpInputField
+                    length={6}
                     value={value}
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    className="bg-muted/50 text-foreground border border-border rounded-xl px-4 py-3.5 text-center text-lg font-bold tracking-[6px]"
+                    onValueChange={onChange}
+                    error={!!errors.code}
+                    className="py-2"
                   />
                 )}
               />
@@ -114,7 +122,7 @@ export default function RegisterOtpScreen() {
               textClassName="font-bold text-base"
               className="mt-2 h-12"
             >
-              Verify & Sign In
+              Verify & Continue
             </Button>
           </View>
         </View>

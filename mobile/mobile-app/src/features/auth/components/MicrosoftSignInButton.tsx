@@ -21,10 +21,9 @@ export function MicrosoftSignInButton() {
     path: 'auth-spa'
   });
   
-  // Log this so we can see exactly what Expo generated
-  console.log('--- MICROSOFT REDIRECT URI ---');
-  console.log(redirectUri);
-  console.log('--------------------------------');
+  React.useEffect(() => {
+    console.log('[MicrosoftSignIn] Redirect URI:', redirectUri);
+  }, [redirectUri]);
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {

@@ -3,6 +3,7 @@ import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Building2, Check, X } from 'lucide-react-native';
+import { router } from 'expo-router';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
@@ -144,7 +145,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
             </View>
           </ScrollView>
 
-          <Button onPress={onClose} variant="secondary" className="mt-2 h-11">
+          <Button onPress={onClose} variant="secondary" className="mt-1 h-11">
             <Text className="font-bold text-foreground text-sm">Cancel</Text>
           </Button>
         </View>

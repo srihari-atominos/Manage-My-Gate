@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PulseItem } from '@/src/features/communityPulse/types/communityPulseTypes';
 import { formatRelativeTime } from '@/src/features/communityPulse/hooks/useCommunityPulse';
+import { useDirectory } from '@/src/features/directory/hooks/useDirectory';
+import { DirectoryMember } from '@/src/features/directory/types/directoryTypes';
 
 export interface ResidentDirectoryModalProps {
   visible: boolean;
@@ -82,30 +84,42 @@ export const ResidentDirectoryModal = ({
   pulses,
 }: ResidentDirectoryModalProps) => {
   const insets = useSafeAreaInsets();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'active_pulse' | 'interests'>('all');
+  const { members, searchQuery, setSearchQuery, activeTab, setActiveTab } = useDirectory();
   const [connectNeighbor, setConnectNeighbor] = useState<ResidentProfileItem | null>(null);
   const [messageText, setMessageText] = useState('');
 
-  const neighborList: ResidentProfileItem[] = SAMPLE_NEIGHBORS.map((neighbor) => {
-    const pulse = pulses.find((p) =>
-      p.userName.toLowerCase().includes(neighbor.name.split(' ')[0].toLowerCase())
-    );
-    return { ...neighbor, activePulse: pulse || undefined };
-  });
+  const neighborList: ResidentProfileItem[] = (members || []).map((member: DirectoryMember) => ({
+    id: member.id || member.userId,
+    name: member.name || 'Resident',
+    villa: member.unitNumber || 'Villa',
+    role: member.role || 'Resident',
+    phone: member.phone || '',
+    avatar: member.avatarUrl || undefined,
+    interests: (member.interests || []).map((i: string) => ({ name: i, emoji: '✨' })),
+    activePulse: member.activeCommunityNote
+      ? {
+          id: member.activeCommunityNote._id || member.activeCommunityNote.id || '',
+          userId: member.userId,
+          userName: member.name,
+          text: member.activeCommunityNote.text,
+          category: 'general',
+          createdAt: member.activeCommunityNote.createdAt,
+          expiresAt: member.activeCommunityNote.expiresAt,
+        }
+      : undefined,
+  }));
 
   const filteredNeighbors = neighborList.filter((item) => {
-    const query = searchQuery.trim().toLowerCase();
-    const matchesSearch =
-      !query ||
-      item.name.toLowerCase().includes(query) ||
-      item.villa.toLowerCase().includes(query) ||
-      (item.activePulse && item.activePulse.text.toLowerCase().includes(query)) ||
-      item.interests.some((i) => i.name.toLowerCase().includes(query));
-
-    if (!matchesSearch) return false;
-    if (activeTab === 'active_pulse') return Boolean(item.activePulse);
-    if (activeTab === 'interests') return item.interests.length > 0;
+    if (activeTab === 'active_pulse' && !item.activePulse) return false;
+    if (activeTab === 'interests' && item.interests.length === 0) return false;
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchName = item.name.toLowerCase().includes(q);
+      const matchVilla = item.villa.toLowerCase().includes(q);
+      const matchPulse = item.activePulse?.text?.toLowerCase().includes(q);
+      const matchInterest = item.interests.some((i) => i.name.toLowerCase().includes(q));
+      return matchName || matchVilla || matchPulse || matchInterest;
+    }
     return true;
   });
 

@@ -10,6 +10,9 @@ import {
   DEFAULT_5_QUICK_ACTIONS,
 } from '@/src/features/dashboard/dashboardCatalog';
 
+import { useSelector } from 'react-redux';
+import { RootState } from '@/src/store/store';
+
 interface QuickActionsGridProps {
   activeFeatureIds?: string[];
   equippedFeatures?: FeatureItem[];
@@ -25,6 +28,54 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   onOpenViewMore,
   onTilePress,
 }) => {
+  // Redux Selectors for Real-Time App-Wide Feature Badges
+  const visitorPassState = useSelector((state: RootState) => (state as any).visitorPass);
+  const billingState = useSelector((state: RootState) => (state as any).billing);
+  const complaintState = useSelector((state: RootState) => (state as any).complaints);
+  const noticeState = useSelector((state: RootState) => (state as any).noticeBoard);
+  const pollState = useSelector((state: RootState) => (state as any).poll);
+  const directoryState = useSelector((state: RootState) => (state as any).directory);
+  const amenityState = useSelector((state: RootState) => (state as any).amenityBookings);
+
+  // Dynamic Badge Resolver
+  const getFeatureBadge = (featureId: string): string | undefined => {
+    switch (featureId) {
+      case 'visitor_resident_passes':
+      case 'visitor_management': {
+        const count = visitorPassState?.passes?.length || visitorPassState?.pendingWalkInsCount || 0;
+        return count > 0 ? String(count) : undefined;
+      }
+      case 'amenities': {
+        const count = amenityState?.dashboardStats?.amenityKpis?.activeAmenities ?? amenityState?.dashboardStats?.kpis?.totalAmenities ?? 0;
+        return count > 0 ? String(count) : undefined;
+      }
+      case 'billing':
+      case 'billing_dashboard': {
+        const count = billingState?.invoices?.length || billingState?.unpaidCount || 0;
+        return count > 0 ? String(count) : undefined;
+      }
+      case 'complaints': {
+        const count = complaintState?.complaints?.length || complaintState?.openCount || 0;
+        return count > 0 ? String(count) : undefined;
+      }
+      case 'notices':
+      case 'notices_active_board': {
+        const count = noticeState?.stats?.activeNotices || noticeState?.notices?.length || 0;
+        return count > 0 ? String(count) : undefined;
+      }
+      case 'polls': {
+        const count = pollState?.polls?.length || 0;
+        return count > 0 ? String(count) : undefined;
+      }
+      case 'directory': {
+        const count = directoryState?.pagination?.totalRecords || directoryState?.members?.length || 0;
+        return count > 0 ? String(count) : undefined;
+      }
+      default:
+        return undefined;
+    }
+  };
+
   // Exactly 5 customizable feature items for slots 1 through 5
   const displayFeatures = React.useMemo(() => {
     if (propEquippedFeatures && propEquippedFeatures.length > 0) {
@@ -84,7 +135,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
               label={meta?.name || tile.name}
               subtitle={meta?.subtitle || tile.subtitle}
               metaValue={meta?.subtitle || tile.subtitle}
-              badge={tile.badge}
+              badge={getFeatureBadge(tile.id) ?? tile.badge}
               badgeColor={tile.badgeColor}
               onPress={() => onTilePress && onTilePress(tile.id)}
             />

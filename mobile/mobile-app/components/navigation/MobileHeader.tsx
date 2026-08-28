@@ -53,14 +53,23 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
     if (userOrg) return userOrg;
 
-    // 2. Fall back to availableWorkspaces list in Redux
-    const workspaces = (user as any)?.availableWorkspaces || [];
-    if (Array.isArray(workspaces) && workspaces.length > 0 && workspaces[0]?.name) {
-      return workspaces[0].name;
+    // 2. Fall back to availableWorkspaces list matching active workspace orgId
+    const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
+    const workspaces = (user as any)?.availableWorkspaces || reduxWorkspaces || [];
+    if (Array.isArray(workspaces) && workspaces.length > 0) {
+      if (activeOrgId) {
+        const activeWs = workspaces.find(
+          (w: any) => w.orgId === activeOrgId || w._id === activeOrgId || w.id === activeOrgId,
+        );
+        if (activeWs?.name) return activeWs.name;
+      }
+      if (workspaces[0]?.name) {
+        return workspaces[0].name;
+      }
     }
 
     return 'Community Workspace';
-  }, [communityName, user]);
+  }, [communityName, user, reduxWorkspaces]);
 
   const [activeVilla, setActiveVilla] = useState<string | null>(dynamicVilla);
   const [activeCommunity, setActiveCommunity] = useState<string>(dynamicCommunity);

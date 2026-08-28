@@ -5,7 +5,7 @@ import { PhoneInput } from '@/components/forms/PhoneInput';
 import { Stack, router, useSegments, useLocalSearchParams } from 'expo-router';
 import { ShieldCheck, Mail, Lock, Phone, User } from 'lucide-react-native';
 import * as React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Platform } from 'react-native';
 import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { useForm, Controller } from 'react-hook-form';
@@ -14,6 +14,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
 import { MicrosoftSignInButton } from '../../src/features/auth/components/MicrosoftSignInButton';
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 
 // Registration Validation Schema
 const registerSchema = yup.object().shape({
@@ -81,7 +82,12 @@ export default function RegisterScreen() {
 
   React.useEffect(() => {
     clearStatus();
-    return () => clearStatus();
+    return () => {
+      clearStatus();
+      if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    };
   }, []);
 
   // Reactively route to OTP verification screen if registration succeeds (successMsg implies OTP was sent)
@@ -193,18 +199,21 @@ export default function RegisterScreen() {
                   control={form.control}
                   name="password"
                   render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="Password"
-                      placeholder="••••••••"
-                      isPassword
-                      leftIcon={<Lock size={18} className="text-muted-foreground" />}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
-                      autoCapitalize="none"
-                      autoComplete="new-password"
-                      error={form.formState.errors.password?.message}
-                    />
+                    <View>
+                      <Input
+                        label="Password"
+                        placeholder="••••••••"
+                        isPassword
+                        leftIcon={<Lock size={18} className="text-muted-foreground" />}
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        value={value}
+                        autoCapitalize="none"
+                        autoComplete="new-password"
+                        error={form.formState.errors.password?.message}
+                      />
+                      <PasswordStrengthIndicator password={value} />
+                    </View>
                   )}
                 />
 
@@ -228,7 +237,26 @@ export default function RegisterScreen() {
                 />
 
                 {/* Global Error Banner */}
-                {error ? <ErrorBanner message={error} /> : null}
+                {error ? (
+                  <View className="gap-2">
+                    <ErrorBanner message={error} />
+                    {error.toLowerCase().includes('already exists') ? (
+                      <Button
+                        variant="link"
+                        onPress={() => {
+                          if (typeof window !== 'undefined') {
+                            sessionStorage.setItem('mobile_auth_intent', 'create-org');
+                          }
+                          router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
+                        }}
+                      >
+                        <Text className="text-primary font-bold text-xs text-center underline">
+                          Already have an account? Sign in to create another organization under your account
+                        </Text>
+                      </Button>
+                    ) : null}
+                  </View>
+                ) : null}
 
                 <Button
                   onPress={form.handleSubmit(onSubmit)}
@@ -258,7 +286,15 @@ export default function RegisterScreen() {
 
               {/* Login Link */}
               <View className="items-center mt-4">
-                <Button variant="link" onPress={() => router.push('/(auth)/login')}>
+                <Button
+                  variant="link"
+                  onPress={() => {
+                    if (typeof window !== 'undefined') {
+                      sessionStorage.setItem('mobile_auth_intent', 'create-org');
+                    }
+                    router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
+                  }}
+                >
                   <Text className="text-primary font-medium text-sm">
                     Already have an account? Sign In
                   </Text>

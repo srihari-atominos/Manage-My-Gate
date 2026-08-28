@@ -44,6 +44,10 @@ import complaintRouter from '../features/complaint/complaint.router.js';
 import complaintSettingsRouter from '../features/complaintSettings/complaintSettings.router.js';
 import technicianRouter from '../features/technician/technician.router.js';
 
+import directoryRouter from '../features/directory/directory.router.js';
+import communityNoteRouter from '../features/communityNote/communityNote.router.js';
+import directoryMessageRouter from '../features/directoryMessage/directoryMessage.router.js';
+
 const router = Router();
 
 import dashboardFeedRouter from '../features/dashboardFeed/dashboardFeed.routes.js';
@@ -59,6 +63,9 @@ router.use('/auth', authRouter);
 router.use('/roles', roleRouter);
 router.use('/users', userRouter);
 router.use('/notifications', notificationRouter);
+router.use('/directory', directoryRouter);
+router.use('/community-notes', communityNoteRouter);
+router.use('/directory-messages', directoryMessageRouter);
 router.use('/integrations', integrationHubRouter);
 router.use('/organizations', organizationRouter);
 router.use('/audit-logs', auditLogRouter);

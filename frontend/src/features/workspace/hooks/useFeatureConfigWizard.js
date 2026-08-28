@@ -8,7 +8,10 @@ import useFeatureConfig from './useFeatureConfig.js'
 export const useFeatureConfigWizard = () => {
   const activeOrganizationId = useSelector((state) => state.workspace.activeOrganizationId)
   const location = useLocation()
-  const isCreateIntent = location.search.includes('intent=create')
+  const isCreateIntent =
+    location.search.includes('intent=create') ||
+    window.location.href.includes('intent=create') ||
+    location.state?.intent === 'create'
 
   const { selectedFeatures, loading, error, toggleFeature, submitFeatures } = useFeatureConfig()
 

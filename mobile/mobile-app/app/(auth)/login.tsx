@@ -1,6 +1,6 @@
 import { Text } from '@/components/ui/text';
 import { PhoneInput } from '@/components/forms/PhoneInput';
-import { Stack, router, useSegments } from 'expo-router';
+import { Stack, router, useSegments, useLocalSearchParams } from 'expo-router';
 import {
   Mail,
   Lock,
@@ -67,7 +67,25 @@ interface PhoneFormValues {
 }
 
 export default function LoginScreen() {
-  const { login: performLogin, requestOtp, loading, error, isAuthenticated, otpSent, clearStatus } = useAuth();
+  const { user, login: performLogin, requestOtp, loading, error, isAuthenticated, otpSent, clearStatus } = useAuth();
+  const params = useLocalSearchParams<{ intent?: string }>();
+  const isCreateOrgIntent =
+    params.intent === 'create-org' ||
+    params.intent === 'create' ||
+    (typeof window !== 'undefined' && (
+      window.location.href.includes('intent=create-org') ||
+      window.location.href.includes('intent=create') ||
+      sessionStorage.getItem('mobile_auth_intent') === 'create-org'
+    ));
+
+  React.useEffect(() => {
+    if (params.intent === 'create-org' || params.intent === 'create') {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('mobile_auth_intent', params.intent);
+      }
+    }
+  }, [params.intent]);
+
   const [authMode, setAuthMode] = React.useState<'basic' | 'phone'>('basic');
   const [submittedPhone, setSubmittedPhone] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
@@ -195,19 +213,45 @@ export default function LoginScreen() {
 
   React.useEffect(() => {
     clearStatus();
-    return () => clearStatus();
+    return () => {
+      clearStatus();
+      if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      Keyboard.dismiss();
+    };
   }, [authMode]);
 
-  // Connect Harmony transition & navigate to Resident Dashboard upon authentication
+  // Connect Harmony transition & navigate upon authentication
   React.useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && isFocused) {
+      if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      Keyboard.dismiss();
       setConnectingHarmony(true);
       const timer = setTimeout(() => {
-        router.replace('/(resident)/dashboard');
+        const hasOrg = !!(
+          user && (
+            user.orgId ||
+            user.activeOrgId ||
+            user.organizationId ||
+            (Array.isArray((user as any).availableWorkspaces) && (user as any).availableWorkspaces.length > 0)
+          )
+        );
+        if (isCreateOrgIntent || !hasOrg) {
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('mobile_auth_intent');
+          }
+          router.replace({ pathname: '/(auth)/setup-organization', params: { intent: 'create-org' } });
+        } else {
+          router.replace('/(resident)/dashboard');
+        }
       }, 900);
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isFocused, user, isCreateOrgIntent]);
+
   // Reactively route to OTP screen if Phone OTP sent
   React.useEffect(() => {
     if (isFocused && otpSent && submittedPhone) {
@@ -257,8 +301,7 @@ export default function LoginScreen() {
             keyboardDismissMode="on-drag"
             className="px-5 py-6"
           >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-              <View className="max-w-sm mx-auto w-full gap-3.5">
+            <View className="max-w-sm mx-auto w-full gap-3.5">
             {/* Step 1, 2, 3: Top Brand Identity Section (Logo → App Name → Nexus Around Home → Slogan) */}
             <View className="items-center justify-center">
               {/* Step 1: Logo Emblem */}
@@ -593,8 +636,7 @@ export default function LoginScreen() {
               </View>
             </Animated.View>
           </View>
-        </TouchableWithoutFeedback>
-      </ScrollView>
+        </ScrollView>
     </KeyboardAvoidingView>
     </ImageBackground>
 

@@ -79,6 +79,8 @@ export default function NoticeDashboardScreen() {
       iconName: 'CheckCircle',
       colorBg: 'bg-emerald-500/10',
       colorIcon: '#10b981',
+      badge: stats.activeNotices > 0 ? String(stats.activeNotices) : undefined,
+      badgeColor: 'bg-emerald-500',
       route: '/(resident)/notices',
     },
     {
@@ -87,6 +89,8 @@ export default function NoticeDashboardScreen() {
       iconName: 'ListChecks',
       colorBg: 'bg-primary/10',
       colorIcon: '#6366f1',
+      badge: stats.totalNotices > 0 ? String(stats.totalNotices) : undefined,
+      badgeColor: 'bg-primary',
       onPress: () => {
         setFilters({});
         router.push('/(resident)/notices/manage' as any);

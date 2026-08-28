@@ -109,13 +109,16 @@ export const RegisterForm = () => {
       ? `&password=${encodeURIComponent(currentPassword.trim())}`
       : ''
     if (isLoginMode) {
+      sessionStorage.removeItem('auth_intent')
       navigate('/register', { state: location.state })
     } else {
+      sessionStorage.setItem('auth_intent', 'create-org')
       navigate(`/login?intent=create-org${emailParam}${passwordParam}`, {
         state: {
           ...location.state,
           email: currentEmail.trim(),
           password: currentPassword,
+          intent: 'create-org',
         },
       })
     }
@@ -249,7 +252,21 @@ export const RegisterForm = () => {
 
         {error && (
           <CAlert color="danger" style={styles.alert}>
-            {error}
+            <div>{error}</div>
+            {typeof error === 'string' && error.toLowerCase().includes('already exists') && (
+              <div className="mt-2 pt-2 border-top border-danger-subtle">
+                <CButton
+                  color="link"
+                  className="p-0 text-danger text-decoration-underline fw-semibold small"
+                  onClick={toggleMode}
+                >
+                  {t('auth.register.userExistsSignInPrompt', {
+                    defaultValue:
+                      'Already have an account? Sign in to create another organisation under your account',
+                  })}
+                </CButton>
+              </div>
+            )}
           </CAlert>
         )}
 
@@ -622,8 +639,8 @@ export const RegisterForm = () => {
         <div className="text-center mt-2">
           <CButton color="link" onClick={toggleMode} style={styles.toggleLink} className="p-0">
             {isLoginMode
-              ? t('auth.register.signUpLink', { defaultValue: "Don't have an account? Sign Up" })
-              : t('auth.register.loginLink', { defaultValue: 'Already have an account? Log in' })}
+              ? t('auth.login.noAccount', { defaultValue: "Don't have an account? Create an Account" })
+              : t('auth.register.loginLink', { defaultValue: 'Already have an account? Sign in' })}
           </CButton>
         </div>
       </CCardBody>

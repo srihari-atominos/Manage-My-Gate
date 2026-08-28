@@ -157,7 +157,7 @@ export default function SettingsScreen() {
         </Text>
         <View className="mx-4 bg-card rounded-2xl border border-border overflow-hidden">
           <Pressable
-            onPress={() => setDirectoryOpen(true)}
+            onPress={() => router.push('/(resident)/directory')}
             className="flex-row items-center px-4 py-3.5 active:bg-muted/40"
           >
             <View className="h-9 w-9 rounded-xl bg-blue-500/10 border border-blue-500/20 items-center justify-center me-3 shrink-0">
@@ -165,7 +165,7 @@ export default function SettingsScreen() {
             </View>
             <View className="flex-1">
               <Text className="text-sm font-semibold text-foreground">Community Directory</Text>
-              <Text className="text-xs text-muted-foreground mt-0.5">Neighbor pulses & shared interests</Text>
+              <Text className="text-xs text-muted-foreground mt-0.5">Discover neighbors & active notes</Text>
             </View>
             <ChevronRight size={18} className="text-muted-foreground shrink-0" />
           </Pressable>

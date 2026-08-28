@@ -16,13 +16,10 @@ const getApiBaseUrl = () => {
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
-  if (__DEV__) {
-    if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:5002/api/v1';
-    }
-    return 'http://localhost:5002/api/v1';
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:5002/api/v1';
   }
-  return 'https://managemygate.e3esg.com/api/v1';
+  return 'http://localhost:5002/api/v1';
 };
 
 const apiClient = axios.create({
@@ -144,10 +141,15 @@ apiClient.interceptors.request.use(
           jwtData?.activeOrgId;
       }
 
+      // Extract target orgId from URL if requesting an organization-scoped endpoint (e.g., /organizations/:id/features)
+      const urlOrgMatch = config.url ? config.url.match(/\/organizations\/([a-fA-F0-9]{24})/) : null;
+      const targetUrlOrgId = urlOrgMatch ? urlOrgMatch[1] : null;
+
       const activeOrgId =
-        typeof rawOrgId === 'object' && rawOrgId !== null
+        targetUrlOrgId ||
+        (typeof rawOrgId === 'object' && rawOrgId !== null
           ? rawOrgId._id || rawOrgId.id || String(rawOrgId)
-          : rawOrgId;
+          : rawOrgId);
 
       if (activeOrgId && activeOrgId !== '[object Object]') {
         config.headers['x-organization-id'] = activeOrgId;

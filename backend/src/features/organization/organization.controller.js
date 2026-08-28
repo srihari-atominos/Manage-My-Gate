@@ -67,6 +67,43 @@ export class OrganizationController {
       next(error);
     }
   }
+
+  async getDetails(req, res, next) {
+    try {
+      const orgId = req.params.id;
+      const data = await organizationService.getOrganizationDetails(orgId);
+      res.success(data, 'Organization details retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getUsers(req, res, next) {
+    try {
+      const orgId = req.params.id;
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 10;
+      const search = req.query.search || '';
+      const role = req.query.role || '';
+      const status = req.query.status || '';
+
+      const data = await organizationService.getOrganizationUsers(orgId, { page, limit, search, role, status });
+      res.success(data, 'Organization users retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getUserDetails(req, res, next) {
+    try {
+      const { id: orgId, userId } = req.params;
+      const data = await organizationService.getOrganizationUserDetails(orgId, userId);
+      res.success(data, 'Organization user details retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new OrganizationController();
+
