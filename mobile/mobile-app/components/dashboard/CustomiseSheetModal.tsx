@@ -65,13 +65,15 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
 
 
   // Administration & Security (Web App Aligned)
-  { id: 'admin_users', name: 'User Management', subtitle: 'Residents & Staff', iconName: 'Users', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', permission: 'users:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  { id: 'admin_villas', name: 'Unit Management', subtitle: 'Blocks & Villas', iconName: 'Home', colorBg: 'bg-teal-500/10', colorIcon: '#14b8a6', permission: 'villas:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  { id: 'admin_role_builder', name: 'Role Builder', subtitle: 'RBAC Matrices', iconName: 'ShieldCheck', colorBg: 'bg-rose-500/10', colorIcon: '#f43f5e', permission: 'roles:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  { id: 'admin_workspace_settings', name: 'Workspace Settings', subtitle: 'Tenant Rules', iconName: 'Settings', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', permission: 'workspaces:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  { id: 'admin_integrations', name: 'Integration Hub', subtitle: 'API & Webhooks', iconName: 'Layers', colorBg: 'bg-amber-500/10', colorIcon: '#f59e0b', permission: 'integrations:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  { id: 'admin_organizations', name: 'Org Manager', subtitle: 'Platform Multi-tenant', iconName: 'Building', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', permission: 'platform:super_admin', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
-  { id: 'admin_audit_logs', name: 'Audit Logs', subtitle: 'Security & Access Logs', iconName: 'FileSpreadsheet', colorBg: 'bg-slate-500/10', colorIcon: '#64748b', permission: 'platform:super_admin', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
+  { id: 'admin_users', name: 'User Management', subtitle: 'Residents & Staff', iconName: 'Users', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/admin/users', permission: 'users:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
+  { id: 'admin_villas', name: 'Unit Management', subtitle: 'Blocks & Villas', iconName: 'Home', colorBg: 'bg-teal-500/10', colorIcon: '#14b8a6', route: '/(resident)/admin/villas', permission: 'villas:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
+  { id: 'admin_role_builder', name: 'Role Builder', subtitle: 'RBAC Matrices', iconName: 'ShieldCheck', colorBg: 'bg-rose-500/10', colorIcon: '#f43f5e', route: '/(resident)/admin/role-builder', permission: 'roles:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
+  { id: 'admin_integrations', name: 'Integration Hub', subtitle: 'API & Webhooks', iconName: 'Layers', colorBg: 'bg-amber-500/10', colorIcon: '#f59e0b', route: '/(resident)/admin/integrations', permission: 'integrations:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
+  { id: 'admin_organizations', name: 'Org Manager', subtitle: 'Platform Multi-tenant', iconName: 'Building', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', route: '/(resident)/admin/organizations', permission: 'platform:super_admin', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
+  { id: 'admin_audit_logs', name: 'Audit Logs', subtitle: 'Security & Access Logs', iconName: 'FileSpreadsheet', colorBg: 'bg-slate-500/10', colorIcon: '#64748b', route: '/(resident)/admin/audit-logs', permission: 'platform:super_admin', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
+  
+  // Workspace Settings (Grouped under Administration & Security)
+  { id: 'admin_workspace_settings', name: 'Workspace Settings', subtitle: 'Tenant Rules', iconName: 'Settings', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/admin/workspace-settings', permission: 'workspaces:read', categoryKey: 'administration_security', categoryName: 'Administration & Security' },
 ];
 
 export const REAL_APP_FEATURES = ALL_AVAILABLE_FEATURES;
@@ -89,6 +91,7 @@ interface CustomiseSheetModalProps {
   visible: boolean;
   onClose: () => void;
   activeFeatureIds?: string[];
+  availableFeatures?: AppFeatureItem[];
   onToggleFeature?: (featureId: string) => void;
   onSave?: (selectedIds: string[]) => void;
 }
@@ -97,6 +100,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   visible,
   onClose,
   activeFeatureIds = DEFAULT_FEATURE_SELECTION,
+  availableFeatures,
   onToggleFeature,
   onSave,
 }) => {
@@ -112,13 +116,13 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   );
 
   const availableFeaturesForUser = useMemo(() => {
-    return ALL_AVAILABLE_FEATURES.filter((item: any) => {
+    return (availableFeatures || ALL_AVAILABLE_FEATURES).filter((item: any) => {
       if (item.permission && !isSuperAdmin) {
         return userPermissions.includes(item.permission);
       }
       return true;
     });
-  }, [userPermissions, isSuperAdmin]);
+  }, [availableFeatures, userPermissions, isSuperAdmin]);
 
   // Sanitize incoming IDs to ensure only valid current catalog items are retained
   const sanitizedActiveIds = useMemo(() => {

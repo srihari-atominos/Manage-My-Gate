@@ -4,7 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import MobileHeader from '@/components/navigation/MobileHeader';
 import HeroBanner from '@/components/dashboard/HeroBanner';
 import QuickActionsGrid from '@/components/dashboard/QuickActionsGrid';
-import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
+import CustomiseSheetModal, { ALL_AVAILABLE_FEATURES } from '@/components/dashboard/CustomiseSheetModal';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 
 export default function DashboardScreen() {
@@ -25,22 +25,26 @@ export default function DashboardScreen() {
 
   const handleTilePress = (tileId: string) => {
     if (tileId === 'visitor_resident_passes') {
-      router.push('/(resident)/visitor' as any);
+      router.navigate('/(resident)/visitor' as any);
       return;
     }
     if (tileId === 'billing_dashboard') {
-      router.push('/(resident)/billing' as any);
+      router.navigate('/(resident)/billing' as any);
       return;
     }
     if (tileId === 'billing_action_center') {
-      router.push('/(resident)/admin/billing/ledger' as any);
+      router.navigate('/(resident)/admin/billing/ledger' as any);
       return;
     }
     if (tileId === 'billing_assessment_manager') {
-      router.push('/(resident)/admin/billing/assessments' as any);
+      router.navigate('/(resident)/admin/billing/assessments' as any);
       return;
     }
-    const feature = allFeaturesList.find((item) => item.id === tileId);
+    let feature = allFeaturesList.find((item) => item.id === tileId);
+    if (!feature) {
+      feature = (ALL_AVAILABLE_FEATURES as any[]).find((item) => item.id === tileId);
+    }
+    
     if (feature && feature.route) {
       let targetRoute = feature.route;
       
@@ -51,7 +55,11 @@ export default function DashboardScreen() {
         targetRoute = '/(resident)/notices';
       }
       
-      router.push(targetRoute as any);
+      const finalRoute = targetRoute.includes('?') 
+        ? `${targetRoute}&t=${Date.now()}`
+        : `${targetRoute}?t=${Date.now()}`;
+      
+      router.push(finalRoute as any);
     }
   };
 
@@ -84,6 +92,7 @@ export default function DashboardScreen() {
         visible={customiseOpen}
         onClose={() => setCustomiseOpen(false)}
         activeFeatureIds={activeQuickActions}
+        availableFeatures={allFeaturesList}
         onSave={handleSaveCustomisation}
       />
     </View>

@@ -11,6 +11,8 @@ export interface FeatureItem {
   permission?: string;
   badge?: string;
   badgeColor?: string;
+  categoryKey?: string;
+  categoryName?: string;
 }
 
 export interface FeatureCategory {

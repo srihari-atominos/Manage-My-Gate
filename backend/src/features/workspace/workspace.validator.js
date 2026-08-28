@@ -213,20 +213,20 @@ export const reorderModulesRules = [
 
 export const idParamRules = [
   param('id')
-    .isMongoId()
-    .withMessage('Workspace ID must be a valid Mongo ID'),
+    .custom(value => value === 'current' || /^[0-9a-fA-F]{24}$/.test(value))
+    .withMessage('Workspace ID must be a valid Mongo ID or "current"'),
 ];
 
 export const workspaceIdParamRules = [
   param('workspaceId')
-    .isMongoId()
-    .withMessage('Workspace ID must be a valid Mongo ID'),
+    .custom(value => value === 'current' || /^[0-9a-fA-F]{24}$/.test(value))
+    .withMessage('Workspace ID must be a valid Mongo ID or "current"'),
 ];
 
 export const workspaceAndModuleIdParamRules = [
   param('workspaceId')
-    .isMongoId()
-    .withMessage('Workspace ID must be a valid Mongo ID'),
+    .custom(value => value === 'current' || /^[0-9a-fA-F]{24}$/.test(value))
+    .withMessage('Workspace ID must be a valid Mongo ID or "current"'),
   param('moduleId')
     .isMongoId()
     .withMessage('Module ID must be a valid Mongo ID'),

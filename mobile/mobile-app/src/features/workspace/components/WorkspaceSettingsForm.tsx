@@ -23,7 +23,6 @@ type WorkspaceFormValues = z.infer<typeof workspaceSchema>;
 
 export const WorkspaceSettingsForm = () => {
   const { loadWorkspaceDetails, saveWorkspaceDetails, settings, loading, saving } = useWorkspace();
-  const orgId = useSelector((state: RootState) => state.auth.user?.orgId);
 
   const {
     control,
@@ -42,10 +41,8 @@ export const WorkspaceSettingsForm = () => {
   });
 
   useEffect(() => {
-    if (orgId) {
-      loadWorkspaceDetails(orgId);
-    }
-  }, [orgId, loadWorkspaceDetails]);
+    loadWorkspaceDetails('current');
+  }, [loadWorkspaceDetails]);
 
   useEffect(() => {
     if (settings) {
@@ -60,10 +57,8 @@ export const WorkspaceSettingsForm = () => {
   }, [settings, reset]);
 
   const onSubmit = async (data: WorkspaceFormValues) => {
-    if (!orgId) return;
-    
     try {
-      await saveWorkspaceDetails(orgId, data).unwrap();
+      await saveWorkspaceDetails('current', data).unwrap();
       Alert.alert('Success', 'Workspace settings updated successfully');
     } catch (err: any) {
       Alert.alert('Error', err || 'Failed to save settings');

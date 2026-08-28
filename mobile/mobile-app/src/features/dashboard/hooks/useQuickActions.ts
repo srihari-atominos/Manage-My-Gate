@@ -8,6 +8,7 @@ import {
 } from '../dashboardSlice';
 import { FeatureCategory, FeatureItem } from '../dashboardService';
 import { ALL_AVAILABLE_FEATURES } from '../../../../components/dashboard/CustomiseSheetModal';
+import { useWorkspace } from '../../workspace/hooks/useWorkspace';
 
 // Helper to construct built-in feature catalog from local definitions
 const buildFallbackCatalog = (features: any[]): FeatureCategory[] => {
@@ -69,13 +70,55 @@ export const useQuickActions = () => {
     dispatch(clearDashboardError());
   }, [dispatch]);
 
-  // Effective feature catalog: uses backend catalog if non-empty, otherwise falls back to built-in catalog
+  const { modules } = useWorkspace();
+
+  // Effective feature catalog: uses backend catalog if non-empty, otherwise falls back to built-in catalog,
+  // then filters based on active workspace modules.
   const featureCatalog = useMemo<FeatureCategory[]>(() => {
-    if (rawCatalog && rawCatalog.length > 0) {
-      return rawCatalog;
+    let baseCatalog = (rawCatalog && rawCatalog.length > 0) ? rawCatalog : BUILT_IN_FEATURE_CATALOG;
+    
+    if (modules && modules.length > 0) {
+      const enabledModuleKeys = modules.filter(m => m.enabled).map(m => m.moduleKey);
+      
+      const categoryToModuleMap: Record<string, string[]> = {
+        'visitor_management': ['visitor'],
+        'amenities_facilities': ['amenities'],
+        'complaints_helpdesk': ['complaints'],
+        'notice_board_polls': ['notices'],
+        'financial_billing': ['billing']
+      };
+      
+      const itemToModuleMap: Record<string, string[]> = {
+        'admin_users': ['administration_security'],
+        'admin_villas': ['administration_security'],
+        'admin_role_builder': ['administration_security'],
+        'admin_integrations': ['administration_security'],
+        'admin_organizations': ['administration_security'],
+        'admin_audit_logs': ['administration_security']
+        // 'admin_workspace_settings' is intentionally omitted so it never gets hidden
+      };
+      
+      baseCatalog = baseCatalog.map(category => {
+        let requiredCategoryModules = categoryToModuleMap[category.categoryKey];
+        
+        // Filter items within the category
+        const filteredItems = category.items.filter(item => {
+          const requiredItemModules = itemToModuleMap[item.id];
+          if (requiredItemModules) {
+            return requiredItemModules.some(m => enabledModuleKeys.includes(m));
+          }
+          if (requiredCategoryModules) {
+             return requiredCategoryModules.some(m => enabledModuleKeys.includes(m));
+          }
+          return true;
+        });
+        
+        return { ...category, items: filteredItems };
+      }).filter(category => category.items.length > 0);
     }
-    return BUILT_IN_FEATURE_CATALOG;
-  }, [rawCatalog]);
+    
+    return baseCatalog;
+  }, [rawCatalog, modules]);
 
   // Flattened array of all available items across categories for easy lookup
   const allFeaturesList = useMemo<FeatureItem[]>(() => {
@@ -83,7 +126,12 @@ export const useQuickActions = () => {
       const list: FeatureItem[] = [];
       featureCatalog.forEach((category: FeatureCategory) => {
         if (Array.isArray(category.items)) {
-          list.push(...category.items);
+          const mappedItems = category.items.map((item) => ({
+            ...item,
+            categoryKey: category.categoryKey,
+            categoryName: category.categoryName,
+          }));
+          list.push(...mappedItems);
         }
       });
       if (list.length > 0) return list;

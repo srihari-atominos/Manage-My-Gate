@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
-import { fetchWorkspaceSettings, saveWorkspaceSettings, clearWorkspaceError, WorkspaceSettings } from '../store/workspaceSlice';
+import { fetchWorkspaceSettings, saveWorkspaceSettings, fetchWorkspaceModules, toggleWorkspaceModule, clearWorkspaceError, WorkspaceSettings } from '../store/workspaceSlice';
 
 export const useWorkspace = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -21,6 +21,20 @@ export const useWorkspace = () => {
     [dispatch]
   );
 
+  const loadWorkspaceModules = useCallback(
+    (workspaceId: string) => {
+      return dispatch(fetchWorkspaceModules(workspaceId));
+    },
+    [dispatch]
+  );
+
+  const toggleModuleStatus = useCallback(
+    (workspaceId: string, moduleId: string, enabled: boolean) => {
+      return dispatch(toggleWorkspaceModule({ workspaceId, moduleId, enabled }));
+    },
+    [dispatch]
+  );
+
   const clearError = useCallback(() => {
     dispatch(clearWorkspaceError());
   }, [dispatch]);
@@ -29,6 +43,9 @@ export const useWorkspace = () => {
     ...workspaceState,
     loadWorkspaceDetails,
     saveWorkspaceDetails,
+    loadWorkspaceModules,
+    allModules: workspaceState.allModules,
+    toggleModuleStatus,
     clearError,
   };
 };

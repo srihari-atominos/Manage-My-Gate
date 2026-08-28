@@ -78,10 +78,10 @@ export const SYSTEM_FEATURE_CATALOG = [
       { id: 'admin_users', name: 'User Management', permission: 'users:read', iconName: 'Users', colorBg: 'bg-indigo-500/10', colorIcon: '#6366f1', route: '/(resident)/admin/users' },
       { id: 'admin_villas', name: 'Unit & Villa Management', permission: 'villas:read', iconName: 'Home', colorBg: 'bg-teal-500/10', colorIcon: '#14b8a6', route: '/(resident)/admin/villas' },
       { id: 'admin_role_builder', name: 'Role Builder & RBAC', permission: 'roles:read', iconName: 'ShieldCheck', colorBg: 'bg-rose-500/10', colorIcon: '#f43f5e', route: '/(resident)/admin/role-builder' },
-      { id: 'admin_workspace_settings', name: 'Workspace Settings', permission: 'workspaces:read', iconName: 'Settings', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/admin/workspace-settings' },
       { id: 'admin_integrations', name: 'Integration Hub', permission: 'integrations:read', iconName: 'Layers', colorBg: 'bg-amber-500/10', colorIcon: '#f59e0b', route: '/(resident)/admin/integrations' },
       { id: 'admin_organizations', name: 'Organization Manager', permission: 'platform:super_admin', iconName: 'Building', colorBg: 'bg-purple-500/10', colorIcon: '#a855f7', route: '/(resident)/admin/organizations' },
-      { id: 'admin_audit_logs', name: 'Audit Logs', permission: 'platform:super_admin', iconName: 'FileSpreadsheet', colorBg: 'bg-slate-500/10', colorIcon: '#64748b', route: '/(resident)/admin/audit-logs' }
+      { id: 'admin_audit_logs', name: 'Audit Logs', permission: 'platform:super_admin', iconName: 'FileSpreadsheet', colorBg: 'bg-slate-500/10', colorIcon: '#64748b', route: '/(resident)/admin/audit-logs' },
+      { id: 'admin_workspace_settings', name: 'Workspace Settings', permission: 'workspaces:read', iconName: 'Settings', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', route: '/(resident)/admin/workspace-settings' }
     ]
   }
 ];

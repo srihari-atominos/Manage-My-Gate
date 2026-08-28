@@ -13,8 +13,19 @@ export interface WorkspaceSettings {
   settings?: any;
 }
 
+export interface WorkspaceModule {
+  _id: string;
+  moduleName: string;
+  moduleKey: string;
+  route: string;
+  icon: string;
+  enabled: boolean;
+}
+
 interface WorkspaceState {
   settings: WorkspaceSettings | null;
+  modules: WorkspaceModule[];
+  allModules: WorkspaceModule[];
   loading: boolean;
   saving: boolean;
   error: string | null;
@@ -22,6 +33,8 @@ interface WorkspaceState {
 
 const initialState: WorkspaceState = {
   settings: null,
+  modules: [],
+  allModules: [],
   loading: false,
   saving: false,
   error: null,
@@ -32,7 +45,6 @@ export const fetchWorkspaceSettings = createAsyncThunk(
   async (workspaceId: string, { rejectWithValue }) => {
     try {
       const response = await workspaceService.getWorkspaceDetails(workspaceId);
-      // Depending on axios/apiClient configuration, data might be response.data or response directly
       return response?.data || response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to load workspace settings');
@@ -48,6 +60,30 @@ export const saveWorkspaceSettings = createAsyncThunk(
       return response?.data || response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || error.message || 'Failed to save workspace settings');
+    }
+  }
+);
+
+export const fetchWorkspaceModules = createAsyncThunk(
+  'workspace/fetchModules',
+  async (workspaceId: string, { rejectWithValue }) => {
+    try {
+      const response = await workspaceService.getWorkspaceModules(workspaceId);
+      return response?.data || response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to load workspace modules');
+    }
+  }
+);
+
+export const toggleWorkspaceModule = createAsyncThunk(
+  'workspace/toggleModule',
+  async ({ workspaceId, moduleId, enabled }: { workspaceId: string; moduleId: string; enabled: boolean }, { rejectWithValue }) => {
+    try {
+      const response = await workspaceService.toggleWorkspaceModule(workspaceId, moduleId, enabled);
+      return response?.data || response; // Should return updated modules array
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to toggle module');
     }
   }
 );
@@ -85,6 +121,61 @@ const workspaceSlice = createSlice({
       .addCase(saveWorkspaceSettings.rejected, (state, action) => {
         state.saving = false;
         state.error = action.payload as string;
+      })
+      .addCase(fetchWorkspaceModules.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchWorkspaceModules.fulfilled, (state, action) => {
+        state.loading = false;
+        const data = action.payload?.data || action.payload;
+        state.modules = Array.isArray(data) ? data : (Array.isArray(data?.modules) ? data.modules : []);
+        state.allModules = Array.isArray(data) ? data : (Array.isArray(data?.allModules) ? data.allModules : state.modules);
+      })
+      .addCase(fetchWorkspaceModules.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(toggleWorkspaceModule.pending, (state, action) => {
+        state.saving = true;
+        state.error = null;
+        // Optimistic update for instant UI feedback
+        const { moduleId, enabled } = action.meta.arg;
+        const targetModule = state.modules.find(m => m._id === moduleId || m.moduleKey === moduleId);
+        if (targetModule) {
+          targetModule.enabled = enabled;
+        }
+        const targetAllModule = state.allModules.find(m => m._id === moduleId || m.moduleKey === moduleId);
+        if (targetAllModule) {
+          targetAllModule.enabled = enabled;
+        }
+      })
+      .addCase(toggleWorkspaceModule.fulfilled, (state, action) => {
+        state.saving = false;
+        const data = action.payload?.data || action.payload;
+        
+        const returnedModules = Array.isArray(data) ? data : (Array.isArray(data?.modules) ? data.modules : []);
+        
+        if (returnedModules && returnedModules.length > 0) {
+          // The backend toggleModule returns the full array of all modules.
+          // We need to update state.allModules with the raw array, and state.modules with only the enabled ones.
+          state.allModules = returnedModules;
+          state.modules = returnedModules.filter((m: any) => m.enabled);
+        }
+      })
+      .addCase(toggleWorkspaceModule.rejected, (state, action) => {
+        state.saving = false;
+        state.error = action.payload as string;
+        // Revert optimistic update if API call fails
+        const { moduleId, enabled } = action.meta.arg;
+        const targetModule = state.modules.find(m => m._id === moduleId || m.moduleKey === moduleId);
+        if (targetModule) {
+          targetModule.enabled = !enabled;
+        }
+        const targetAllModule = state.allModules.find(m => m._id === moduleId || m.moduleKey === moduleId);
+        if (targetAllModule) {
+          targetAllModule.enabled = !enabled;
+        }
       });
   },
 });

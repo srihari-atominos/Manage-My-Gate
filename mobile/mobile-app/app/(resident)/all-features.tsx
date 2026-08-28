@@ -16,7 +16,7 @@ import FeatureIcon from '@/components/ui/FeatureIcon';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
+import CustomiseSheetModal, { ALL_AVAILABLE_FEATURES } from '@/components/dashboard/CustomiseSheetModal';
 
 export default function AllFeaturesScreen() {
   const router = useRouter();
@@ -69,13 +69,20 @@ export default function AllFeaturesScreen() {
 
   const handleTileClick = (tileId: string) => {
     if (tileId === 'visitor_resident_passes') {
-      router.push('/(resident)/visitor' as any);
+      router.navigate('/(resident)/visitor' as any);
       return;
     }
-    const feature = allFeaturesList.find((item) => item.id === tileId);
+    let feature = allFeaturesList.find((item) => item.id === tileId);
+    if (!feature) {
+      feature = (ALL_AVAILABLE_FEATURES as any[]).find((item) => item.id === tileId);
+    }
+    
     if (feature && feature.route) {
       const targetRoute = feature.route.endsWith('/resident-passes') ? '/(resident)/visitor' : feature.route;
-      router.push(targetRoute as any);
+      const finalRoute = targetRoute.includes('?') 
+        ? `${targetRoute}&t=${Date.now()}`
+        : `${targetRoute}?t=${Date.now()}`;
+      router.push(finalRoute as any);
     }
   };
 
@@ -282,6 +289,7 @@ export default function AllFeaturesScreen() {
         visible={customiseOpen}
         onClose={() => setCustomiseOpen(false)}
         activeFeatureIds={activeQuickActions}
+        availableFeatures={allFeaturesList}
         onSave={handleSaveCustomisation}
       />
     </ScreenShell>
