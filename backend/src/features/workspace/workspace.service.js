@@ -7,12 +7,12 @@ import mongoose from 'mongoose';
 import Workspace from './workspace.model.js';
 
 export const DEFAULT_MODULES = [
-  { moduleName: 'Visitor Management', moduleKey: 'visitor', route: '/visitor-management', icon: 'QrCode', displayOrder: 1, enabled: true, sidebarVisible: true },
+  { moduleName: 'Visitor Management', moduleKey: 'visitor', route: '/visitor', icon: 'QrCode', displayOrder: 1, enabled: true, sidebarVisible: true },
   { moduleName: 'Administration & Security', moduleKey: 'administration_security', route: '/admin', icon: 'ShieldCheck', displayOrder: 2, enabled: true, sidebarVisible: true },
-  { moduleName: 'Amenities & Bookings', moduleKey: 'amenities', route: '/amenities', icon: 'Building', displayOrder: 6, enabled: true, sidebarVisible: true },
+  { moduleName: 'Amenities', moduleKey: 'amenities', route: '/amenities', icon: 'Building', displayOrder: 6, enabled: true, sidebarVisible: true },
   { moduleName: 'Notice Board', moduleKey: 'notices', route: '/notices', icon: 'List', displayOrder: 7, enabled: true, sidebarVisible: true },
-  { moduleName: 'Complaints / Maintenance', moduleKey: 'complaints', route: '/complaints', icon: 'Warning', displayOrder: 8, enabled: true, sidebarVisible: true },
-  { moduleName: 'Billing & Invoices', moduleKey: 'billing', route: '/billing', icon: 'Speedometer', displayOrder: 9, enabled: true, sidebarVisible: true }
+  { moduleName: 'Complaint', moduleKey: 'complaints', route: '/complaints', icon: 'Warning', displayOrder: 8, enabled: true, sidebarVisible: true },
+  { moduleName: 'Financial Suit', moduleKey: 'financial_suit', route: '/financials', icon: 'Speedometer', displayOrder: 9, enabled: true, sidebarVisible: true }
 ];
 
 export class WorkspaceService {
@@ -362,6 +362,9 @@ export class WorkspaceService {
         if (allowed.includes(m.moduleKey) || allowed.includes(m.moduleName)) return true;
         if (m.moduleKey === 'amenities') {
           return allowed.some(a => ['amenities', 'booking', 'amenity', 'amenitiesBooking', 'amenityBooking'].includes(a));
+        }
+        if (m.moduleKey === 'administration_security') {
+          return allowed.some(a => ['administration', 'administration_security', 'users', 'roles', 'integrations', 'villas'].includes(a));
         }
         return false;
       })

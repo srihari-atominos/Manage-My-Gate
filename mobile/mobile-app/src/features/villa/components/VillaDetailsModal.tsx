@@ -113,13 +113,22 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
     }
     setInviteError(null);
     setInviteSuccess(null);
+
+    // Map dropdown residency type values to exact database role names
+    const roleMapping: Record<string, string> = {
+      'Tenant': 'Resident Tenant',
+      'Resident Owner': 'Resident Owner',
+      'Family': 'Family Member'
+    };
+    const resolvedRoleName = roleMapping[inviteResidencyType] || inviteResidencyType;
+
     try {
       await inviteUser({
         email: inviteEmail.trim(),
         phone: invitePhone.trim(),
         villaId: villa._id,
         residentType: inviteResidencyType,
-        roleName: inviteResidencyType,
+        roleName: resolvedRoleName,
       });
       setInviteSuccess(`Invitation sent successfully to ${inviteEmail}!`);
       setInviteEmail('');

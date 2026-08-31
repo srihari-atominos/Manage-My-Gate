@@ -42,7 +42,7 @@ export const WorkspaceModulesForm = () => {
           </View>
         )}
         
-        {allModules.map((module) => {
+        {[...allModules].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)).map((module) => {
           // Try to map to an existing catalog item for rich colors if possible
           const catalogItem = ALL_AVAILABLE_FEATURES.find(f => f.categoryKey === module.moduleKey);
           

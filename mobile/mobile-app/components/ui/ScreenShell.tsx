@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Pressable, TouchableOpacity } from 'react-native';
+import { View, Pressable, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as LucideIcons from 'lucide-react-native';
@@ -28,6 +28,7 @@ export interface ScreenShellProps {
   onRetry?: () => void;
   className?: string;
   enableHeaderDoubleTap?: boolean; // Mobile gesture: double-tap header to switch role/villa
+  scrollable?: boolean;          // Wrap children in a ScrollView
 }
 
 export function ScreenShell({
@@ -42,6 +43,7 @@ export function ScreenShell({
   onRetry,
   className,
   enableHeaderDoubleTap = true,
+  scrollable = false,
 }: ScreenShellProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -173,6 +175,14 @@ export function ScreenShell({
       <View className="flex-1 bg-background">
         {loading && !hasChildren ? (
           <Skeleton variant="listItem" count={5} />
+        ) : scrollable ? (
+          <ScrollView 
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }}
+          >
+            {children}
+          </ScrollView>
         ) : (
           children
         )}

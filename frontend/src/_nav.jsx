@@ -48,25 +48,29 @@ const _nav = [
     requiredPermission: ['visitor:resident', 'visitor:guard', 'visitor:admin'],
   },
   {
-    component: CNavItem,
-    name: 'Unit Management',
-    to: '/villas',
-    icon: <CIcon icon={cilHome} customClassName="nav-icon" />,
-    requiredPermission: 'villas:read',
-  },
-  {
-    component: CNavItem,
-    name: 'User Management',
-    to: '/users',
-    icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
-    requiredPermission: 'users:read',
-  },
-  {
-    component: CNavItem,
-    name: 'Role Builder',
-    to: '/role-builder',
-    icon: <CIcon icon={cilLockLocked} customClassName="nav-icon" />,
-    requiredPermission: 'roles:read',
+    component: CNavGroup,
+    name: 'Administration & Security',
+    icon: <CIcon icon={cilShieldAlt} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Unit Management',
+        to: '/villas',
+        requiredPermission: 'villas:read',
+      },
+      {
+        component: CNavItem,
+        name: 'User Management',
+        to: '/users',
+        requiredPermission: 'users:read',
+      },
+      {
+        component: CNavItem,
+        name: 'Role Builder',
+        to: '/role-builder',
+        requiredPermission: 'roles:read',
+      },
+    ]
   },
   {
     component: CNavItem,
