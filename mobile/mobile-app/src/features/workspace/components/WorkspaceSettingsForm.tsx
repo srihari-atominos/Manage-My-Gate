@@ -17,7 +17,10 @@ import { TIMEZONE_OPTIONS, LANGUAGE_OPTIONS } from '@/src/utils/dropdownConstant
 const workspaceSchema = yup.object({
   workspaceName: yup.string().required('Workspace name is required').min(2, 'Workspace name must be at least 2 characters'),
   contactEmail: yup.string().email('Invalid email address').optional().default(''),
-  contactPhone: yup.string().optional().default(''),
+  contactPhone: yup.string()
+    .matches(/^(?:\d{10})?$/, 'Contact number must be exactly 10 digits')
+    .optional()
+    .default(''),
   timeZone: yup.string().optional().default(''),
   language: yup.string().optional().default(''),
 });
@@ -131,6 +134,7 @@ export const WorkspaceSettingsForm = () => {
             error={errors.contactPhone?.message}
             leftIcon={Phone}
             keyboardType="phone-pad"
+            maxLength={10}
           />
         )}
       />
