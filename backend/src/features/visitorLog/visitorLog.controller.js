@@ -6,7 +6,11 @@ export class VisitorLogController {
    */
   async logPreApproved(req, res, next) {
     try {
-      const { passId, guardId } = req.body;
+      let { passId, guardId, code } = req.body;
+      if (!passId && code) {
+        passId = await visitorPassTokenService.getPassIdByCode(code);
+      }
+      guardId = guardId || req.user?.id || req.user?._id;
       const data = await visitorLogService.logPreApprovedEntry(passId, guardId);
       res.success(data, 'Pre-approved visitor check-in logged successfully', 201);
     } catch (error) {

@@ -6,6 +6,7 @@ import { KPIRow } from '@/components/ui/KPIRow';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
+import { ScanResultSheet, ScanResultData } from '@/components/hardware/ScanResultSheet';
 import { VisitorPassDetailsModal } from '@/src/features/visitor/components/VisitorPassDetailsModal';
 import { GuardInitiateWalkInModal } from '@/src/features/visitor/components/guard/GuardInitiateWalkInModal';
 import { GuardQRScannerModal } from '@/src/features/visitor/components/guard/GuardQRScannerModal';
@@ -14,6 +15,7 @@ import { GuardWalkInStatusView } from '@/src/features/visitor/components/guard/G
 import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
 import { selectActiveOrgId, selectAuthUser } from '@/src/features/auth/store/authSelectors';
 import { useSelector } from 'react-redux';
+import visitorService from '@/src/features/visitor/services/visitorService';
 import { QrCode, ScanLine, Search, ShieldAlert, LogOut, CheckCircle2 } from 'lucide-react-native';
 
 const GATE_TABS = [
@@ -36,8 +38,11 @@ export default function GateConsoleScreen() {
 
   const [passCode, setPassCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [admitLoading, setAdmitLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [scanResultSheetOpen, setScanResultSheetOpen] = useState(false);
+  const [scanResult, setScanResult] = useState<ScanResultData | null>(null);
   const [walkInModalOpen, setWalkInModalOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'CONSOLE' | 'WALK_INS' | 'INSIDE'>('CONSOLE');
@@ -49,7 +54,7 @@ export default function GateConsoleScreen() {
     if (!activeOrgId) return;
     try {
       const activeList = await fetchActiveVisitors(activeOrgId);
-      setInsideCount(activeList.length);
+      setInsideCount(Array.isArray(activeList) ? activeList.length : 0);
     } catch {
       // Handled silently
     }
@@ -66,21 +71,125 @@ export default function GateConsoleScreen() {
   }, [loadData]);
 
   const handleVerifyPass = async (codeToVerify?: string) => {
-    const code = (codeToVerify || passCode).trim();
-    if (!code) return;
+    const raw = (codeToVerify || passCode).trim();
+    if (!raw) return;
+    const cleanCode = raw.replace(/^PASS-?/i, '').replace(/[\s-]/g, '').trim();
+    if (!cleanCode) return;
+
     setLoading(true);
     setStatusMessage(null);
+
+    let passData: any = null;
+
     try {
-      const res = await fetchPassDetails(code);
-      if (res?.payload) {
-        setDetailsModalOpen(true);
-      } else {
-        setStatusMessage('Pass code not found or invalid.');
+      // 1. Try Redux thunk fetch
+      const res: any = await fetchPassDetails(cleanCode);
+      if (res?.meta?.requestStatus === 'fulfilled' && res?.payload) {
+        passData = res.payload.data || res.payload;
       }
-    } catch (e: any) {
-      setStatusMessage(e?.message || 'Pass verification failed.');
+    } catch {
+      // Fallback
+    }
+
+    // 2. Direct service lookups fallback
+    if (!passData || (!passData._id && !passData.visitorName && !passData.visitorDetails)) {
+      try {
+        const res = await visitorService.getPassByCode(cleanCode);
+        const body = res && (res as any).success !== undefined ? res : (res as any)?.data;
+        passData = body?.data || body;
+      } catch {}
+    }
+
+    if (!passData || (!passData._id && !passData.visitorName && !passData.visitorDetails)) {
+      try {
+        const res = await visitorService.getPassDetails(cleanCode);
+        const body = res && (res as any).success !== undefined ? res : (res as any)?.data;
+        passData = body?.data || body;
+      } catch {}
+    }
+
+    setLoading(false);
+
+    if (passData && (passData._id || passData.visitorName || passData.visitorDetails)) {
+      const isRevoked = passData.status === 'REVOKED';
+      const isExpired =
+        passData.status === 'EXPIRED' ||
+        (passData.validUntil && new Date(passData.validUntil).getTime() < Date.now());
+      const isPending = passData.status === 'PENDING';
+      const isValid = passData.status === 'ACTIVE' || (!isRevoked && !isExpired);
+
+      const status: 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'PENDING' | 'REVOKED' = isRevoked
+        ? 'REVOKED'
+        : isExpired
+        ? 'EXPIRED'
+        : isValid
+        ? 'VERIFIED'
+        : 'REJECTED';
+
+      const result: ScanResultData = {
+        success: isValid,
+        status,
+        title: isValid ? 'Visitor Access Verified' : 'Access Verification Denied',
+        message: isRevoked
+          ? 'Pass has been revoked by host resident or estate admin.'
+          : isExpired
+          ? 'This visitor pass has expired.'
+          : isPending
+          ? 'Pass is pending resident approval.'
+          : 'Pre-approved pass is active and verified. Tap below to admit visitor.',
+        visitorName: passData.visitorDetails?.name || passData.visitorName || 'Guest Visitor',
+        visitorPhone: passData.visitorDetails?.phone || passData.phone,
+        passType: passData.passType || 'GUEST',
+        unitOrVilla: passData.villaId?.name || passData.villaId?.number || passData.unit || 'Estate',
+        hostName: passData.createdById?.name || passData.hostName || 'Host Resident',
+        bookingReference: passData.shortKey || passData.code || cleanCode,
+        validityWindow:
+          passData.validity?.startDate && passData.validity?.endDate
+            ? `${new Date(passData.validity.startDate).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })} - ${new Date(passData.validity.endDate).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}`
+            : 'Today',
+        metadata: {
+          passId: passData._id || passData.id,
+          code: passData.shortKey || passData.code || cleanCode,
+        },
+      };
+
+      setScanResult(result);
+      setScanResultSheetOpen(true);
+    } else {
+      setStatusMessage(`No active pass found matching code "${cleanCode}".`);
+    }
+  };
+
+  const handleAdmitVisitor = async () => {
+    if (!scanResult?.metadata?.passId && !scanResult?.bookingReference) {
+      setScanResultSheetOpen(false);
+      return;
+    }
+
+    setAdmitLoading(true);
+    try {
+      await visitorService.processPreApproved({
+        passId: scanResult.metadata?.passId,
+        code: scanResult.metadata?.code || scanResult.bookingReference,
+        guardId: authUser?.id || authUser?._id,
+        orgId: activeOrgId,
+        entryGate: 'Main Security Gate',
+      });
+
+      setScanResultSheetOpen(false);
+      setPassCode('');
+      setStatusMessage(`Visitor ${scanResult.visitorName || ''} successfully admitted!`);
+      await loadData();
+    } catch (err: any) {
+      setStatusMessage(err?.response?.data?.message || err?.message || 'Failed to admit visitor.');
     } finally {
-      setLoading(false);
+      setAdmitLoading(false);
     }
   };
 
@@ -258,7 +367,19 @@ export default function GateConsoleScreen() {
         )}
       </View>
 
-      {/* Verification Details Modal */}
+      {/* Hardware / Verification Scan Result Sheet with Admit Action */}
+      <ScanResultSheet
+        visible={scanResultSheetOpen}
+        result={scanResult}
+        loading={admitLoading}
+        primaryActionLabel="Confirm Gate Entry"
+        secondaryActionLabel="Dismiss"
+        onPrimaryAction={handleAdmitVisitor}
+        onSecondaryAction={() => setScanResultSheetOpen(false)}
+        onClose={() => setScanResultSheetOpen(false)}
+      />
+
+      {/* Verification Details Modal for Resident Review / Revocation */}
       <VisitorPassDetailsModal
         visible={detailsModalOpen}
         pass={activePass}

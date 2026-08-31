@@ -20,11 +20,13 @@ export class VisitorPassTokenRepository {
    */
   async findByCode(passCode, session = null) {
     if (!passCode) return null;
-    const clean = String(passCode).replace(/^PASS-?/i, '').trim();
+    const raw = String(passCode).trim();
+    const clean = raw.replace(/^PASS-?/i, '').replace(/[\s-]/g, '').trim();
     return await VisitorPassToken.findOne({
       $or: [
-        { passCode },
-        { shortKey: passCode },
+        { passCode: raw },
+        { passCode: clean },
+        { shortKey: raw },
         { shortKey: clean },
         { passCode: { $regex: new RegExp(`_${clean}$`, 'i') } },
       ],
