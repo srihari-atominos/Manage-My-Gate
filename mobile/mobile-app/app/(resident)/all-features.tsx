@@ -80,10 +80,7 @@ export default function AllFeaturesScreen() {
     
     if (feature && feature.route) {
       const targetRoute = feature.route.endsWith('/resident-passes') ? '/(resident)/visitor' : feature.route;
-      const finalRoute = targetRoute.includes('?') 
-        ? `${targetRoute}&t=${Date.now()}`
-        : `${targetRoute}?t=${Date.now()}`;
-      router.push(finalRoute as any);
+      router.push(targetRoute as any);
     }
   };
 

@@ -32,10 +32,7 @@ export default function WorkspaceSettingsScreen() {
 
   const handleTileClick = (feature: any) => {
     if (feature && feature.route) {
-      const finalRoute = feature.route.includes('?') 
-        ? `${feature.route}&t=${Date.now()}`
-        : `${feature.route}?t=${Date.now()}`;
-      router.push(finalRoute as any);
+      router.push(feature.route as any);
     }
   };
 

@@ -47,6 +47,8 @@ export const WorkspaceDetailsView = () => {
     handleModuleToggle,
   } = useWorkspaceDetails()
 
+  const isManager = ['Platform Super Admin', 'Super Admin', 'Community Admin'].includes(activeRole)
+
   const {
     register: registerEdit,
     handleSubmit: handleSubmitEdit,
@@ -220,11 +222,11 @@ export const WorkspaceDetailsView = () => {
                           <CFormSwitch
                             id={`toggle-visibility-${mod._id}`}
                             checked={mod.enabled}
-                            disabled={activeRole === 'Resident'}
+                            disabled={!isManager}
                             onChange={() => handleModuleToggle(mod._id, mod.enabled)}
                             style={{
                               transform: 'scale(1.25)',
-                              cursor: activeRole === 'Resident' ? 'not-allowed' : 'pointer',
+                              cursor: !isManager ? 'not-allowed' : 'pointer',
                             }}
                           />
                         </div>
@@ -260,7 +262,7 @@ export const WorkspaceDetailsView = () => {
                     <CCol md={6}>
                       <CFormInput
                         label={t('workspace.details.nameLabel', 'Workspace Name *')}
-                        disabled={activeRole === 'Resident'}
+                        disabled={!isManager}
                         {...registerEdit('workspaceName', {
                           required: 'Workspace name is required.',
                         })}
@@ -271,21 +273,21 @@ export const WorkspaceDetailsView = () => {
                     <CCol md={6}>
                       <CFormInput
                         label={t('workspace.details.descLabel', 'Workspace Description')}
-                        disabled={activeRole === 'Resident'}
+                        disabled={!isManager}
                         {...registerEdit('description')}
                       />
                     </CCol>
                     <CCol md={6}>
                       <CFormInput
                         label={t('workspace.details.orgNameLabel', 'Organization Name')}
-                        disabled={activeRole === 'Resident'}
+                        disabled={!isManager}
                         {...registerEdit('organizationName')}
                       />
                     </CCol>
                     <CCol md={6}>
                       <CFormSelect
                         label={t('workspace.details.timeZoneLabel', 'Time Zone')}
-                        disabled={activeRole === 'Resident'}
+                        disabled={!isManager}
                         {...registerEdit('timeZone')}
                       >
                         <option value="">
@@ -314,16 +316,16 @@ export const WorkspaceDetailsView = () => {
                     <CCol md={6}>
                       <SearchableLanguageSelect
                         label={t('workspace.details.languageLabel', 'Language')}
-                        disabled={activeRole === 'Resident'}
+                        disabled={!isManager}
                         value={watchEdit('language')}
-                        onChange={(val) => setValueEdit('language', val)}
+                        onChange={(val) => setValueEdit('language', val, { shouldDirty: true, shouldValidate: true })}
                       />
                     </CCol>
                     <CCol md={6}>
                       <CFormInput
                         type="email"
                         label={t('workspace.details.emailLabel', 'Contact Email')}
-                        disabled={activeRole === 'Resident'}
+                        disabled={!isManager}
                         {...registerEdit('contactEmail')}
                         feedbackInvalid={editErrors.contactEmail?.message}
                         invalid={!!editErrors.contactEmail}
@@ -333,21 +335,14 @@ export const WorkspaceDetailsView = () => {
                       <CFormInput
                         type="tel"
                         label={t('workspace.details.phoneLabel', 'Contact Phone')}
-                        disabled={activeRole === 'Resident'}
+                        disabled={!isManager}
                         {...registerEdit('contactPhone')}
                       />
                     </CCol>
-                    <CCol md={6}>
-                      <CFormInput
-                        label={t('workspace.details.locationLabel', 'Location')}
-                        disabled={activeRole === 'Resident'}
-                        {...registerEdit('location')}
-                      />
-                    </CCol>
                   </CRow>
-                  {activeRole !== 'Resident' && (
+                  {isManager && (
                     <div className="mt-4 text-end">
-                      <CButton type="submit" color="primary" disabled={isEditSubmitting}>
+                      <CButton type="submit" color="primary" disabled={isEditSubmitting || !editForm.formState.isDirty}>
                         {isEditSubmitting ? (
                           <CSpinner size="sm" />
                         ) : (

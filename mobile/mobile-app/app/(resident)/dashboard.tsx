@@ -48,20 +48,8 @@ export default function DashboardScreen() {
     }
     
     if (feature && feature.route) {
-      let targetRoute = feature.route;
-      
-      // Fallback routing mappings for dynamically loaded backend routes
-      if (targetRoute.endsWith('/resident-passes')) {
-        targetRoute = '/(resident)/visitor';
-      } else if (targetRoute.endsWith('/notices/active-board')) {
-        targetRoute = '/(resident)/notices';
-      }
-      
-      const finalRoute = targetRoute.includes('?') 
-        ? `${targetRoute}&t=${Date.now()}`
-        : `${targetRoute}?t=${Date.now()}`;
-      
-      router.push(finalRoute as any);
+      const targetRoute = feature.route.endsWith('/resident-passes') ? '/(resident)/visitor' : feature.route;
+      router.push(targetRoute as any);
     }
   };
 

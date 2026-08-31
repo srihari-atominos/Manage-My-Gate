@@ -50,13 +50,17 @@ export const useQuickActions = () => {
     (state: RootState) => state.dashboard
   );
 
+  const { modules, loadWorkspaceModules } = useWorkspace();
+
   useEffect(() => {
     dispatch(fetchQuickActionsThunk());
-  }, [dispatch]);
+    loadWorkspaceModules('current');
+  }, [dispatch, loadWorkspaceModules]);
 
   const loadQuickActions = useCallback(() => {
     dispatch(fetchQuickActionsThunk());
-  }, [dispatch]);
+    loadWorkspaceModules('current');
+  }, [dispatch, loadWorkspaceModules]);
 
   const saveQuickActions = useCallback(
     async (selectedIds: string[]) => {
@@ -69,8 +73,6 @@ export const useQuickActions = () => {
   const clearError = useCallback(() => {
     dispatch(clearDashboardError());
   }, [dispatch]);
-
-  const { modules } = useWorkspace();
 
   // Effective feature catalog: uses backend catalog if non-empty, otherwise falls back to built-in catalog,
   // then filters based on active workspace modules.
@@ -103,6 +105,8 @@ export const useQuickActions = () => {
         
         // Filter items within the category
         const filteredItems = category.items.filter(item => {
+          if (item.id === 'admin_workspace_settings') return true; // Never hide workspace settings
+          
           const requiredItemModules = itemToModuleMap[item.id];
           if (requiredItemModules) {
             return requiredItemModules.some(m => enabledModuleKeys.includes(m));
