@@ -20,6 +20,7 @@ export interface WorkspaceModule {
   route: string;
   icon: string;
   enabled: boolean;
+  displayOrder?: number;
 }
 
 interface WorkspaceState {
