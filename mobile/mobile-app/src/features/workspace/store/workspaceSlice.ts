@@ -155,13 +155,16 @@ const workspaceSlice = createSlice({
         state.saving = false;
         const data = action.payload?.data || action.payload;
         
-        const returnedModules = Array.isArray(data) ? data : (Array.isArray(data?.modules) ? data.modules : []);
-        
-        if (returnedModules && returnedModules.length > 0) {
-          // The backend toggleModule returns the full array of all modules.
-          // We need to update state.allModules with the raw array, and state.modules with only the enabled ones.
-          state.allModules = returnedModules;
-          state.modules = returnedModules.filter((m: any) => m.enabled);
+        if (data && Array.isArray(data.allModules)) {
+          state.allModules = data.allModules;
+          state.modules = Array.isArray(data.modules) ? data.modules : data.allModules.filter((m: any) => m.enabled);
+        } else {
+          const returnedModules = Array.isArray(data) ? data : (Array.isArray(data?.modules) ? data.modules : []);
+          
+          if (returnedModules && returnedModules.length > 0) {
+            state.allModules = returnedModules;
+            state.modules = returnedModules.filter((m: any) => m.enabled);
+          }
         }
       })
       .addCase(toggleWorkspaceModule.rejected, (state, action) => {
