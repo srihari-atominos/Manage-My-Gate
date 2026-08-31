@@ -48,15 +48,15 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           <TouchableOpacity
             onPress={onOpenViewMore}
             activeOpacity={0.7}
-            className="flex-row items-center gap-1 bg-primary/10 border border-primary/25 px-2.5 py-1 rounded-full"
+            className="flex-row items-center gap-1 bg-[#245FA8]/10 border border-[#245FA8]/30 px-2.5 py-1 rounded-full shadow-xs"
           >
-            <Text className="text-[11px] font-bold font-sans text-primary">View all</Text>
+            <Text className="text-[11px] font-bold font-sans text-[#245FA8]">View all</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={onOpenCustomise}
             activeOpacity={0.7}
-            className="flex-row items-center gap-1 bg-secondary border border-border/80 px-2.5 py-1 rounded-full"
+            className="flex-row items-center gap-1 bg-secondary border border-border/80 px-2.5 py-1 rounded-full shadow-xs"
           >
             <SlidersHorizontal size={11} className="text-muted-foreground" />
             <Text className="text-[11px] font-bold font-sans text-foreground">Customise</Text>
@@ -70,15 +70,17 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
         {displayFeatures.map((tile) => {
           const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === tile.id);
           const iconName = meta?.iconName || tile.iconName;
-          const colorIcon = meta?.colorIcon || tile.colorIcon || '#c5a059';
+          const colorIcon = meta?.colorIcon || tile.colorIcon || '#245FA8';
           const colorBg = meta?.colorBg || tile.colorBg || 'bg-secondary';
+          const iconShapeClass = meta?.iconShapeClass;
 
           return (
             <ActionTile
               key={tile.id}
               containerClassName="w-1/3 px-1"
               iconBgColor={colorBg}
-              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={20} />}
+              iconShapeClass={iconShapeClass}
+              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={22} />}
               label={meta?.name || tile.name}
               subtitle={meta?.subtitle || tile.subtitle}
               metaValue={meta?.subtitle || tile.subtitle}
@@ -92,8 +94,9 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
         {/* 6th Card: "View all" */}
         <ActionTile
           containerClassName="w-1/3 px-1"
-          iconBgColor="bg-primary/15 border border-primary/30"
-          icon={<LayoutGrid size={22} color="#0284c7" />}
+          iconBgColor="bg-[#EBF2FC]"
+          iconShapeClass="rounded-full"
+          icon={<LayoutGrid size={22} color="#245FA8" />}
           label="View all"
           subtitle="All features"
           metaValue="Explore 25+ modules"

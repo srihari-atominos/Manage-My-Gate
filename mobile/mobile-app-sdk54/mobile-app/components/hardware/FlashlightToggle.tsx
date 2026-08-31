@@ -1,50 +1,174 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
-import { Zap, ZapOff } from 'lucide-react-native';
+import { View, Text, Pressable, TouchableOpacity } from 'react-native';
+import { Zap, ZapOff, Sparkles } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 
+export type FlashMode = 'off' | 'on' | 'auto';
+
 export interface FlashlightToggleProps {
-  isOn: boolean;
-  onToggle: () => void;
+  mode?: FlashMode;
+  isOn?: boolean;
+  onModeChange?: (mode: FlashMode) => void;
+  onToggle?: () => void;
+  variant?: 'segmented' | 'compact-pill' | 'button';
   className?: string;
 }
 
 export const FlashlightToggle = ({
+  mode,
   isOn,
+  onModeChange,
   onToggle,
+  variant = 'segmented',
   className,
 }: FlashlightToggleProps) => {
+  // Derive active mode (support legacy isOn prop if mode not provided)
+  const currentMode: FlashMode = mode !== undefined ? mode : isOn ? 'on' : 'off';
+
+  const handleSelectMode = (newMode: FlashMode) => {
+    if (onModeChange) {
+      onModeChange(newMode);
+    } else if (onToggle) {
+      onToggle();
+    }
+  };
+
+  const handleCycleNext = () => {
+    const cycleMap: Record<FlashMode, FlashMode> = {
+      off: 'on',
+      on: 'auto',
+      auto: 'off',
+    };
+    const next = cycleMap[currentMode];
+    if (onModeChange) {
+      onModeChange(next);
+    } else if (onToggle) {
+      onToggle();
+    }
+  };
+
+  // 1. Segmented 3-Option Control [ OFF | ON | AUTO ]
+  if (variant === 'segmented') {
+    return (
+      <View
+        className={cn(
+          'flex-row items-center bg-black/80 dark:bg-black/90 p-1 rounded-full border border-white/20 shadow-lg',
+          className
+        )}
+      >
+        {/* OFF */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => handleSelectMode('off')}
+          className={cn(
+            'flex-row items-center gap-1.5 px-3 py-1.5 rounded-full',
+            currentMode === 'off' ? 'bg-slate-700 shadow-sm' : 'opacity-70'
+          )}
+        >
+          <ZapOff size={13} color={currentMode === 'off' ? '#ffffff' : '#94a3b8'} />
+          <Text
+            className={cn(
+              'text-[11px] font-bold tracking-wider',
+              currentMode === 'off' ? 'text-white' : 'text-slate-400'
+            )}
+          >
+            OFF
+          </Text>
+        </TouchableOpacity>
+
+        {/* ON */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => handleSelectMode('on')}
+          className={cn(
+            'flex-row items-center gap-1.5 px-3 py-1.5 rounded-full',
+            currentMode === 'on' ? 'bg-amber-400 shadow-sm' : 'opacity-70'
+          )}
+        >
+          <Zap
+            size={13}
+            color={currentMode === 'on' ? '#000000' : '#94a3b8'}
+            fill={currentMode === 'on' ? '#000000' : 'transparent'}
+          />
+          <Text
+            className={cn(
+              'text-[11px] font-extrabold tracking-wider',
+              currentMode === 'on' ? 'text-black' : 'text-slate-400'
+            )}
+          >
+            ON
+          </Text>
+        </TouchableOpacity>
+
+        {/* AUTO */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => handleSelectMode('auto')}
+          className={cn(
+            'flex-row items-center gap-1.5 px-3 py-1.5 rounded-full',
+            currentMode === 'auto' ? 'bg-sky-500 shadow-sm' : 'opacity-70'
+          )}
+        >
+          <Sparkles size={13} color={currentMode === 'auto' ? '#ffffff' : '#94a3b8'} />
+          <Text
+            className={cn(
+              'text-[11px] font-extrabold tracking-wider',
+              currentMode === 'auto' ? 'text-white' : 'text-slate-400'
+            )}
+          >
+            AUTO
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // 2. Compact cycling pill button
   return (
     <Pressable
-      onPress={onToggle}
+      onPress={handleCycleNext}
       className={cn(
-        'flex-row items-center justify-center rounded-xl p-3 border',
-        isOn 
-          ? 'border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30' 
-          : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
+        'flex-row items-center justify-center rounded-full px-3.5 py-1.5 border shadow-md active:opacity-80',
+        currentMode === 'on'
+          ? 'border-amber-300 bg-amber-400 shadow-amber-500/30'
+          : currentMode === 'auto'
+          ? 'border-sky-400 bg-sky-500/80 shadow-sky-500/30'
+          : 'border-white/25 bg-black/75 shadow-black/40',
         className
       )}
     >
-      <View 
+      <View
         className={cn(
-          'mr-2 h-8 w-8 items-center justify-center rounded-full',
-          isOn ? 'bg-amber-100 dark:bg-amber-900/50' : 'bg-slate-100 dark:bg-slate-800'
+          'mr-1.5 h-5 w-5 items-center justify-center rounded-full',
+          currentMode === 'on'
+            ? 'bg-black/15'
+            : currentMode === 'auto'
+            ? 'bg-black/20'
+            : 'bg-white/10'
         )}
       >
-        {isOn ? (
-          <Zap size={16} className="text-amber-500 fill-amber-500" />
+        {currentMode === 'on' ? (
+          <Zap size={12} color="#000000" fill="#000000" />
+        ) : currentMode === 'auto' ? (
+          <Sparkles size={12} color="#ffffff" />
         ) : (
-          <ZapOff size={16} className="text-slate-400" />
+          <ZapOff size={12} color="#ffffff" />
         )}
       </View>
-      <Text 
+      <Text
         className={cn(
-          'text-sm font-semibold',
-          isOn ? 'text-amber-700 dark:text-amber-500' : 'text-slate-700 dark:text-slate-300'
+          'text-[10px] font-black tracking-wider uppercase',
+          currentMode === 'on'
+            ? 'text-black'
+            : currentMode === 'auto'
+            ? 'text-white'
+            : 'text-white'
         )}
       >
-        {isOn ? 'Flashlight On' : 'Flashlight Off'}
+        Flash: {currentMode}
       </Text>
     </Pressable>
   );
 };
+
+export default FlashlightToggle;

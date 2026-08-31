@@ -49,15 +49,15 @@ export const BrandLockup: React.FC<BrandLockupProps> = ({
     }
   }, [size, variant]);
 
-  const emblemHeight = dimensions.emblemWidth * 0.674;
+  const emblemHeight = dimensions.emblemWidth * 0.615;
 
   const textColorClass = inverted
     ? 'text-white'
-    : 'text-[#172B70] dark:text-white';
+    : 'text-[#1E232E] dark:text-white';
 
   const taglineColorClass = inverted
-    ? 'text-blue-200/90'
-    : 'text-[#51418F] dark:text-indigo-300';
+    ? 'text-orange-200/90'
+    : 'text-[#FF5E00] dark:text-orange-400';
 
   if (variant === 'vertical') {
     return (
@@ -81,7 +81,7 @@ export const BrandLockup: React.FC<BrandLockupProps> = ({
             style={{ fontSize: dimensions.titleSize, letterSpacing: 1.5 }}
             className={`font-black font-sans leading-tight ${textColorClass} uppercase`}
           >
-            NAHOM
+            NAH<Text className="text-[#FF5E00]">O</Text>M
           </Text>
 
           {showTagline && (
@@ -125,7 +125,7 @@ export const BrandLockup: React.FC<BrandLockupProps> = ({
           style={{ fontSize: dimensions.titleSize, letterSpacing: 1.2 }}
           className={`font-black font-sans leading-none ${textColorClass} uppercase`}
         >
-          NAHOM
+          NAH<Text className="text-[#FF5E00]">O</Text>M
         </Text>
 
         {showTagline && (

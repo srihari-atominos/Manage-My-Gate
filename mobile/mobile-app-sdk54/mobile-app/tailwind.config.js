@@ -47,13 +47,21 @@ module.exports = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        brand: {
+          navy: '#172B70',
+          royal: '#245FA8',
+          indigo: '#51418F',
+          magenta: '#A51B73',
+          orange: '#C2410C',
+          orangeBright: '#FF6A00',
+        },
         status: {
           success: { DEFAULT: '#10b981', light: '#dcfce7', foreground: '#059669', dark: '#34d399' }, /* Emerald */
           warning: { DEFAULT: '#f59e0b', light: '#fef3c7', foreground: '#d97706', dark: '#fbbf24' }, /* Amber */
           danger:  { DEFAULT: '#f43f5e', light: '#ffe4e6', foreground: '#e11d48', dark: '#fb7185' }, /* Rose */
-          info:    { DEFAULT: '#3b82f6', light: '#dbeafe', foreground: '#2563eb', dark: '#60a5fa' }, /* Sapphire */
+          info:    { DEFAULT: '#245fa8', light: '#dbeafe', foreground: '#172b70', dark: '#60a5fa' }, /* Royal / Navy */
           neutral: { DEFAULT: '#71717a', light: '#f4f4f5', foreground: '#52525b', dark: '#a1a1aa' }, /* Zinc */
-          critical:{ DEFAULT: '#8b5cf6', light: '#f5f3ff', foreground: '#7c3aed', dark: '#a78bfa' }, /* Violet */
+          critical:{ DEFAULT: '#51418f', light: '#f5f3ff', foreground: '#51418f', dark: '#a78bfa' }, /* NAHOM Indigo */
           gold:    { DEFAULT: '#c5a059', light: '#fbf7ee', foreground: '#997328', dark: '#d4af37' }, /* Champagne */
         },
       },

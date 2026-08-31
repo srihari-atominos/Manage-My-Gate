@@ -50,8 +50,8 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
       title={pass.visitorName || 'Guest Visitor'}
       subtitle={subtitle}
       leftIcon="QrCode"
-      leftIconBgColor="rgba(9, 16, 38, 0.1)"
-      leftIconColor="#091026"
+      leftIconBgColor="rgba(23, 43, 112, 0.12)"
+      leftIconColor="#172B70"
       status={{
         label: pass.status,
         variant: mapPassStatusVariant(pass.status),

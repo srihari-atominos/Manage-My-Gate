@@ -5,16 +5,17 @@ import noticeBoardReducer from '../features/noticeBoard/store/noticeBoardSlice';
 import pollReducer from '../features/poll/store/pollSlice';
 import complaintReducer from '../features/complaints/store/complaintSlice';
 import billingReducer from '../features/billing/store/billingSlice';
-import billingWalletReducer from '../features/billing/store/walletSlice';
 import villaReducer from '../features/villa/store/villaSlice';
 import amenityReducer from '../features/amenities/store/amenitySlice';
-import amenityBookingReducer from '../features/amenities/store/amenityBookingSlice';
-import amenityWalletReducer from '../features/amenities/store/walletSlice';
 import securityLogReducer from '../features/amenities/store/securityLogSlice';
+import amenityBookingReducer from '../features/amenities/store/amenityBookingSlice';
+import walletReducer from '../features/amenities/store/walletSlice';
 import dashboardReducer from '../features/dashboard/dashboardSlice';
 import notificationReducer from '../features/notification/store/notificationSlice';
-import { injectStore } from '../services/apiClient';
-
+import roleBuilderReducer from '../features/roleBuilder/store/roleSlice';
+import userManagementReducer from '../features/userManagement/store/userSlice';
+import integrationHubReducer from '../features/integrationHub/store/integrationHubSlice';
+import communityPulseReducer from '../features/communityPulse/store/communityPulseSlice';
 
 export const store = configureStore({
   reducer: {
@@ -24,14 +25,17 @@ export const store = configureStore({
     poll: pollReducer,
     complaints: complaintReducer,
     billing: billingReducer,
-    wallet: billingWalletReducer,
     villa: villaReducer,
     amenities: amenityReducer,
-    amenityBookings: amenityBookingReducer,
-    amenityWallet: amenityWalletReducer,
     securityLogs: securityLogReducer,
+    amenityBookings: amenityBookingReducer,
+    wallet: walletReducer,
     dashboard: dashboardReducer,
     notification: notificationReducer,
+    roleBuilder: roleBuilderReducer,
+    userManagement: userManagementReducer,
+    integrationHub: integrationHubReducer,
+    communityPulse: communityPulseReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -39,10 +43,7 @@ export const store = configureStore({
     }),
 });
 
-injectStore(store);
-
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 
 export default store;
-

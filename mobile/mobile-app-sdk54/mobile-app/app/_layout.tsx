@@ -1,7 +1,5 @@
-// @ts-ignore
 import '@/global.css';
-
-import React, { createContext, useContext, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { NAV_THEME } from '@/lib/theme';
 import { PortalHost } from '@rn-primitives/portal';
 import { Stack, useSegments, useRouter } from 'expo-router';
@@ -10,17 +8,13 @@ import { useColorScheme } from 'nativewind';
 import { Provider } from 'react-redux';
 import { store } from '../src/store/store';
 import { View, ActivityIndicator } from 'react-native';
-
-const ThemeContext = createContext<any>(null);
-
-function ThemeProvider({ value, children }: { value: any; children: React.ReactNode }) {
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
-}
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../src/features/auth/hooks/useAuth';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-
 import { useFonts, HankenGrotesk_400Regular, HankenGrotesk_500Medium, HankenGrotesk_600SemiBold, HankenGrotesk_700Bold } from '@expo-google-fonts/hanken-grotesk';
+import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
+import storage from '../src/utils/storage';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -29,6 +23,7 @@ export {
 
 function AppInitializer({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isInitialized, bootstrap } = useAuth();
+  const { colorScheme, setColorScheme } = useColorScheme();
   const segments = useSegments();
   const router = useRouter();
 
@@ -39,11 +34,23 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
     HankenGrotesk_700Bold,
   });
 
-  // Run the session restoration thunk on startup
+  // Restore saved theme and session restoration on startup (Mount once)
   useEffect(() => {
     bootstrap();
-  }, [bootstrap]);
-  
+    const restoreTheme = async () => {
+      try {
+        const savedTheme = await storage.getItem('theme_preference');
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+          setColorScheme(savedTheme);
+        }
+      } catch (e) {
+        console.warn('Failed to restore theme on startup:', e);
+      }
+    };
+    restoreTheme();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Handle dynamic routing redirects depending on session state
   useEffect(() => {
     if (!isInitialized || !fontsLoaded) return;
@@ -73,20 +80,23 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
+  const navigationTheme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Provider store={store}>
-        <BottomSheetModalProvider>
-          <AppInitializer>
-            <ThemeProvider value={NAV_THEME[colorScheme ?? 'light']}>
-              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-              <Stack screenOptions={{ headerShown: false }} />
-              <PortalHost />
-            </ThemeProvider>
-          </AppInitializer>
-        </BottomSheetModalProvider>
-      </Provider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Provider store={store}>
+          <BottomSheetModalProvider>
+            <AppInitializer>
+              <ThemeProvider value={navigationTheme}>
+                <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+                <Stack screenOptions={{ headerShown: false }} />
+                <PortalHost />
+              </ThemeProvider>
+            </AppInitializer>
+          </BottomSheetModalProvider>
+        </Provider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

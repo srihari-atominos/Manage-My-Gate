@@ -15,14 +15,14 @@ export const Card = ({
   ...props
 }: CardProps) => {
   const variantClasses = {
-    default: 'bg-card border border-border',
-    elevated: 'bg-card border border-border/80 shadow-xs shadow-black/5',
-    outline: 'bg-transparent border border-border',
+    default: 'bg-card border border-border/80 shadow-xs',
+    elevated: 'bg-card border border-border/70 shadow-xs shadow-black/5',
+    outline: 'bg-transparent border border-border/80',
   };
 
   return (
     <View
-      className={cn('rounded-xl overflow-hidden', variantClasses[variant], className)}
+      className={cn('rounded-2xl overflow-hidden', variantClasses[variant], className)}
       {...props}
     >
       {children}

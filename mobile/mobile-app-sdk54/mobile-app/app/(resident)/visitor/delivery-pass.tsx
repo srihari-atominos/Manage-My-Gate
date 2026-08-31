@@ -1,23 +1,33 @@
 import React from 'react';
-import FeatureDetailScreen from '@/components/dashboard/FeatureDetailScreen';
 import { useRouter } from 'expo-router';
+import { useSelector } from 'react-redux';
+import { ScreenShell } from '@/components/ui/ScreenShell';
+import { VisitorPassWizard } from '@/src/features/visitor/components/wizard/VisitorPassWizard';
+import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
+import { selectActiveOrgId, selectAuthUser } from '@/src/features/auth/store/authSelectors';
 
 export default function DeliveryPassScreen() {
   const router = useRouter();
+  const authUser = useSelector(selectAuthUser);
+  const activeOrgId = useSelector(selectActiveOrgId);
+  const { createNewPass } = useVisitorPass();
+
+  const roleContext = {
+    role: 'RESIDENT' as const,
+    orgId: activeOrgId,
+    createdById: authUser?.id || authUser?._id,
+  };
 
   return (
-    <FeatureDetailScreen
-      title="Allow Delivery"
-      categoryName="Visitor & Gate Security"
-      sharedSlice="visitorSlice.js"
-      permission="visitor:resident"
-      iconName="PackageCheck"
-      iconColor="#a855f7"
-      description="Pre-approve courier, food, or grocery deliveries for seamless entry without guard intercom delays."
-      actionButton={{
-        label: 'Create Delivery Pass',
-        onPress: () => router.push({ pathname: '/(resident)/visitor/invite' as any, params: { type: 'DELIVERY' } }),
-      }}
-    />
+    <ScreenShell title="Delivery Entry Pass" subtitle="Pre-approve courier & food delivery access">
+      <VisitorPassWizard
+        initialType="DELIVERY"
+        roleContext={roleContext}
+        onSubmitPass={async (payload) => {
+          return await createNewPass(payload);
+        }}
+        onClose={() => router.back()}
+      />
+    </ScreenShell>
   );
 }

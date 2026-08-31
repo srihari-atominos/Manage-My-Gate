@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils';
 
 export interface ButtonProps extends PressableProps {
   children: React.ReactNode;
-  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' | 'primary';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   leftIcon?: LucideIcon;
   rightIcon?: LucideIcon;
@@ -32,16 +32,18 @@ export const Button = forwardRef<View, ButtonProps>(
     ref
   ) => {
     const variantClasses = {
-      default: 'bg-primary',
-      destructive: 'bg-destructive',
-      outline: 'border border-border bg-card',
-      secondary: 'bg-secondary border border-border',
+      default: 'bg-primary border border-primary/90 shadow-xs',
+      primary: 'bg-primary border border-primary/90 shadow-xs',
+      destructive: 'bg-destructive border border-destructive/20 shadow-xs',
+      outline: 'border border-border/80 bg-card shadow-xs',
+      secondary: 'bg-secondary border border-border/70 shadow-xs',
       ghost: 'bg-transparent',
       link: 'bg-transparent underline-offset-4',
     };
 
     const textClasses = {
       default: 'text-primary-foreground',
+      primary: 'text-primary-foreground',
       destructive: 'text-destructive-foreground',
       outline: 'text-foreground',
       secondary: 'text-secondary-foreground',
@@ -50,10 +52,10 @@ export const Button = forwardRef<View, ButtonProps>(
     };
 
     const sizeClasses = {
-      default: 'h-12 px-5 py-3',
-      sm: 'h-9 rounded-lg px-3.5',
-      lg: 'h-14 rounded-xl px-8',
-      icon: 'h-11 w-11 rounded-xl',
+      default: 'h-12 px-5 py-3 rounded-2xl',
+      sm: 'h-9 rounded-xl px-3.5',
+      lg: 'h-14 rounded-2xl px-8',
+      icon: 'h-11 w-11 rounded-2xl',
     };
 
     const isDisabled = disabled || loading;
@@ -63,7 +65,7 @@ export const Button = forwardRef<View, ButtonProps>(
         ref={ref}
         disabled={isDisabled}
         className={cn(
-          'flex-row items-center justify-center rounded-xl',
+          'flex-row items-center justify-center',
           variantClasses[variant],
           sizeClasses[size],
           isDisabled && 'opacity-50',

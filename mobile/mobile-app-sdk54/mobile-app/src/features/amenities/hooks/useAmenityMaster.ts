@@ -1,58 +1,48 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState, AppDispatch } from '../../../store/store';
-import {
-  fetchAmenitiesThunk,
-  createAmenityThunk,
-  updateAmenityThunk,
+import { AppDispatch, RootState } from '../../../store/store';
+import { 
+  fetchAmenitiesThunk, 
+  createAmenityThunk, 
+  updateAmenityThunk, 
   deleteAmenityThunk,
   updateAmenityStatusThunk,
-  Amenity,
+  Amenity 
 } from '../store/amenitySlice';
-import { AmenityFormData } from '../components/AmenityFormModal';
 
-export function useAmenityMaster() {
+export const useAmenityMaster = () => {
   const dispatch = useDispatch<AppDispatch>();
-
-  const [search, setSearch] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
-  const [editingAmenity, setEditingAmenity] = useState<Amenity | null>(null);
-  const [selectedAmenityDetail, setSelectedAmenityDetail] = useState<Amenity | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Amenity | null>(null);
-  const [saving, setSaving] = useState<boolean>(false);
-
   const { amenities, loading, error } = useSelector((state: RootState) => state.amenities);
 
+  const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [editingAmenity, setEditingAmenity] = useState<Amenity | null>(null);
+  
+  const [selectedAmenityDetail, setSelectedAmenityDetail] = useState<Amenity | null>(null);
+  
+  const [deleteTarget, setDeleteTarget] = useState<Amenity | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<Amenity | null>(null);
+  
+  const [saving, setSaving] = useState(false);
+
   const loadData = useCallback(() => {
-    dispatch(fetchAmenitiesThunk({ search, category: selectedCategory }));
-  }, [dispatch, search, selectedCategory]);
+    dispatch(fetchAmenitiesThunk({}));
+  }, [dispatch]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   const filteredAmenities = useMemo(() => {
-    if (!amenities) return [];
-
-    return amenities.filter((item) => {
-      // Category filter
-      if (selectedCategory && selectedCategory !== 'All') {
-        const itemCategory = item.category || item.type || 'General';
-        if (itemCategory.toLowerCase() !== selectedCategory.toLowerCase()) return false;
-      }
-      // Search text filter
-      if (search.trim()) {
-        const q = search.toLowerCase().trim();
-        const matchName = (item.name || '').toLowerCase().includes(q);
-        const matchLocation = (item.location || '').toLowerCase().includes(q);
-        const matchCategory = (item.category || item.type || '').toLowerCase().includes(q);
-        if (!matchName && !matchLocation && !matchCategory) return false;
-      }
-      return true;
+    return amenities.filter(amenity => {
+      const matchesSearch = amenity.name.toLowerCase().includes(search.toLowerCase());
+      const matchesCategory = selectedCategory === 'All' || amenity.type === selectedCategory;
+      return matchesSearch && matchesCategory;
     });
-  }, [amenities, selectedCategory, search]);
+  }, [amenities, search, selectedCategory]);
 
   const handleOpenCreateModal = () => {
     setEditingAmenity(null);
@@ -69,102 +59,89 @@ export function useAmenityMaster() {
     setEditingAmenity(null);
   };
 
-  const handleFormSubmit = async (formData: AmenityFormData) => {
+  const handleFormSubmit = async (data: any) => {
     setSaving(true);
-
-    const payload = {
-      name: formData.name,
-      type: formData.category,
-      category: formData.category,
-      location: formData.location,
-      capacity: Number(formData.capacity) || 0,
-      description: formData.description,
-      status: (formData.status || 'active').toLowerCase(),
-      bookingFee: Number(formData.bookingFee) || 0,
-      openTime: formData.openTime,
-      closeTime: formData.closeTime,
-      maxBookingsPerUserPerSlot: Number(formData.maxBookingsPerUserPerSlot) || 1,
-      openDays: formData.openDays,
-      imageUrl: formData.imageUrl,
-      images: formData.imageUrl ? [formData.imageUrl] : [],
-      pricing: {
-        pricingType: formData.pricingType,
-        baseRate: Number(formData.bookingFee) || 0,
-        securityDeposit: Number(formData.securityDeposit) || 0,
-        securityDepositDescription: formData.securityDepositDescription,
-      },
-      bookingRules: {
-        openTime: formData.openTime,
-        closeTime: formData.closeTime,
-        slotDurationMinutes: Number(formData.slotDurationMinutes) || 60,
-        bufferTimeMinutes: Number(formData.bufferTimeMinutes) || 0,
-        advanceBookingDays: Number(formData.advanceBookingDays) || 0,
-        isCancellationEnabled: formData.isCancellationEnabled,
-        cancellationRefundRules: formData.cancellationRefundRules,
-      },
-    };
-
     try {
+      const payload = {
+        name: data.name,
+        type: data.type || data.category,
+        location: data.location,
+        description: data.description,
+        capacity: Number(data.capacity),
+        status: data.status,
+        maxBookingsPerUserPerSlot: Number(data.maxBookingsPerUserPerSlot),
+        openDays: data.openDays,
+        images: data.imageUrl ? [data.imageUrl] : [],
+        pricing: {
+          pricingType: data.pricingType,
+          baseRate: Number(data.bookingFee),
+          securityDeposit: Number(data.securityDeposit),
+          securityDepositDescription: data.securityDepositDescription,
+        },
+        bookingRules: {
+          openTime: data.openTime,
+          closeTime: data.closeTime,
+          slotDurationMinutes: Number(data.slotDurationMinutes),
+          bufferTimeMinutes: Number(data.bufferTimeMinutes),
+          advanceBookingDays: Number(data.advanceBookingDays),
+          isCancellationEnabled: data.isCancellationEnabled,
+          cancellationRefundRules: data.cancellationRefundRules?.map((rule: any) => ({
+            cancelBeforeHours: Number(rule.cancelBeforeHours),
+            refundPercentage: Number(rule.refundPercentage)
+          })) || [],
+        }
+      };
+
       if (editingAmenity) {
         await dispatch(updateAmenityThunk({ id: editingAmenity._id, payload })).unwrap();
+        Alert.alert('Success', 'Amenity updated successfully');
       } else {
         await dispatch(createAmenityThunk(payload)).unwrap();
+        Alert.alert('Success', 'Amenity created successfully');
       }
-      setSaving(false);
       handleCloseFormModal();
       loadData();
-    } catch (error) {
-      console.error('Failed to save amenity:', error);
+    } catch (err: any) {
+      console.error('Failed to save amenity', err);
+      Alert.alert('Error', typeof err === 'string' ? err : err.message || 'Failed to save amenity. Please check your inputs.');
+    } finally {
       setSaving(false);
-      // Let the user correct the form if it fails (e.g. backend validation)
     }
   };
 
-  const [deactivateTarget, setDeactivateTarget] = useState<Amenity | null>(null);
-
-  const handleToggleStatus = async (amenity: Amenity) => {
-    const currentStatus = String(amenity.status || 'active').toLowerCase();
-    const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    try {
-      await dispatch(updateAmenityStatusThunk({ id: amenity._id, status: nextStatus })).unwrap();
-      loadData();
-    } catch (err: any) {
-      console.error('Failed to toggle status:', err);
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to update amenity status';
-      if (currentStatus === 'active' && (msg.includes('pending or approved future bookings') || msg.includes('bookings'))) {
-        setDeactivateTarget(amenity);
-      } else {
-        Alert.alert('Status Update Error', msg);
-      }
-    }
+  const handleToggleStatus = (amenity: Amenity) => {
+    setDeactivateTarget(amenity);
   };
 
   const handleConfirmDeactivate = async () => {
     if (!deactivateTarget) return;
+    setSaving(true);
     try {
-      await dispatch(updateAmenityStatusThunk({ id: deactivateTarget._id, status: 'inactive', force: true })).unwrap();
+      const currentStatus = (deactivateTarget.status || '').toLowerCase();
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      await dispatch(updateAmenityStatusThunk({ id: deactivateTarget._id, status: newStatus })).unwrap();
+      Alert.alert('Success', `Amenity ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
       setDeactivateTarget(null);
       loadData();
     } catch (err: any) {
-      console.error('Failed to force deactivate amenity:', err);
-      const msg = typeof err === 'string' ? err : err?.message || 'Failed to deactivate amenity';
-      Alert.alert('Deactivation Error', msg);
-      setDeactivateTarget(null);
+      console.error('Failed to change status', err);
+      Alert.alert('Error', typeof err === 'string' ? err : err.message || 'Failed to update status');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
+    setSaving(true);
     try {
-      await dispatch(deleteAmenityThunk({ id: deleteTarget._id, force: true })).unwrap();
+      await dispatch(deleteAmenityThunk({ id: deleteTarget._id })).unwrap();
       setDeleteTarget(null);
-      setSelectedAmenityDetail(null);
       loadData();
-    } catch (err: any) {
-      console.error('Failed to delete amenity:', err);
-      const msg = typeof err === 'string' ? err : err?.message || 'Cannot delete amenity: active or pending bookings exist.';
-      Alert.alert('Delete Error', msg);
-      setDeleteTarget(null);
+    } catch (err) {
+      console.error('Failed to delete amenity', err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -195,6 +172,6 @@ export function useAmenityMaster() {
     handleConfirmDeactivate,
     handleConfirmDelete,
   };
-}
+};
 
 export default useAmenityMaster;

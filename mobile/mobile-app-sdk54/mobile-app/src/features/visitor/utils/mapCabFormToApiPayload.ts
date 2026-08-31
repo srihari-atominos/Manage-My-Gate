@@ -99,21 +99,20 @@ export const mapCabFormToApiPayload = (
       const visitDateStr = schedule.customVisitDate && schedule.customVisitDate.trim()
         ? schedule.customVisitDate.trim()
         : now.toISOString().split('T')[0];
-      const start24 = convertTo24Hr(schedule.customStartTime || '02:00 PM');
-      const end24 = convertTo24Hr(schedule.customEndTime || '06:00 PM');
-
-      const [sHours, sMins] = start24.split(':').map(Number);
-      const [eHours, eMins] = end24.split(':').map(Number);
-
-      startDate = new Date(visitDateStr);
-      if (isNaN(startDate.getTime())) startDate = new Date(now);
-      startDate.setHours(sHours || 0, sMins || 0, 0, 0);
-
-      endDate = new Date(visitDateStr);
-      if (isNaN(endDate.getTime())) endDate = new Date(now);
-      endDate.setHours(eHours || 23, eMins || 59, 59, 999);
-
-      timeWindows = [{ start: start24, end: end24 }];
+      const baseDate = new Date(visitDateStr);
+      
+      if (schedule.customStartTime) {
+        const [h, m] = convertTo24Hr(schedule.customStartTime).split(':');
+        startDate = new Date(baseDate);
+        startDate.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+      }
+      if (schedule.customEndTime) {
+        const [h, m] = convertTo24Hr(schedule.customEndTime).split(':');
+        endDate = new Date(baseDate);
+        endDate.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+      } else {
+        endDate = new Date(startDate.getTime() + 2 * 60 * 60000); // 2 hrs default
+      }
     }
   }
 

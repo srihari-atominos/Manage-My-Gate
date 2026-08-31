@@ -21,6 +21,7 @@ export function ResidentMyTicketsScreen() {
     addComment,
     confirmCompletion,
     updateStatus,
+    deleteComplaint,
     clearErrors
   } = useComplaints();
 
@@ -28,7 +29,7 @@ export function ResidentMyTicketsScreen() {
   const [selectedStatusTab, setSelectedStatusTab] = useState<string>('ALL');
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
 
-  // Cancellation Confirmation Modal State
+  // Modal States
   const [cancelTicketId, setCancelTicketId] = useState<string | null>(null);
 
   const loadData = useCallback(() => {
@@ -110,6 +111,17 @@ export function ResidentMyTicketsScreen() {
     } catch (err: any) {
       console.error('Failed to reopen ticket:', err);
       Alert.alert('Error', err?.message || 'Failed to reopen ticket');
+    }
+  };
+
+  const handleConfirmDeleteTicket = async (id: string) => {
+    try {
+      await deleteComplaint(id);
+      loadData();
+    } catch (err: any) {
+      console.error('Failed to delete ticket:', err);
+      Alert.alert('Error', err?.message || 'Failed to delete ticket');
+      throw err;
     }
   };
 
@@ -235,6 +247,9 @@ export function ResidentMyTicketsScreen() {
           }}
           onReopenTicket={async (id, remarks) => {
             await handleReopenTicket(id, remarks);
+          }}
+          onDeleteTicket={async (id) => {
+            await handleConfirmDeleteTicket(id);
           }}
           isResident={true}
         />

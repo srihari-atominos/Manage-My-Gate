@@ -33,8 +33,9 @@ import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import {
   NahomEmblem,
   NahomWordmark,
-  NahomTrustBadges,
 } from '@/components/auth/NahomBrandLogo';
+import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 
 const signupSchema = yup.object().shape({
   name: yup
@@ -458,28 +459,68 @@ export default function SignupScreen() {
                   </View>
                 ) : null}
 
-                {/* Sign Up CTA Button */}
+                {/* Sign Up CTA Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
                 <TouchableOpacity
                   onPress={handleSubmit(onSubmit)}
                   disabled={loading || localLoading}
-                  activeOpacity={0.85}
-                  className="mt-1 h-12 bg-[#172B70] dark:bg-[#245FA8] rounded-2xl flex-row items-center justify-center gap-2 shadow-xs active:bg-[#0F1E50] dark:active:bg-[#1D4ED8]"
+                  activeOpacity={0.88}
+                  className="mt-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
                 >
+                  <View className="absolute inset-0">
+                    <Svg width="100%" height="100%" preserveAspectRatio="none">
+                      <Defs>
+                        <LinearGradient id="signUpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <Stop offset="0%" stopColor="#1E232E" />
+                          <Stop offset="45%" stopColor="#2A3342" />
+                          <Stop offset="82%" stopColor="#FF5E00" />
+                          <Stop offset="100%" stopColor="#FF7A00" />
+                        </LinearGradient>
+                      </Defs>
+                      <Rect width="100%" height="100%" rx="16" fill="url(#signUpGrad)" />
+                    </Svg>
+                  </View>
                   {loading || localLoading ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <View className="flex-row items-center gap-2 z-10">
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    </View>
                   ) : (
-                    <>
+                    <View className="flex-row items-center justify-center gap-2 z-10">
                       <Text className="font-bold text-white text-base font-sans">
                         Create Account
                       </Text>
                       <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
-                    </>
+                    </View>
                   )}
                 </TouchableOpacity>
               </View>
 
+              {/* OR CONTINUE WITH Divider */}
+              <View className="flex-row items-center my-1 gap-3">
+                <View className="flex-1 h-px bg-border/80" />
+                <Text className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase font-sans">
+                  Or Continue With
+                </Text>
+                <View className="flex-1 h-px bg-border/80" />
+              </View>
+
+              {/* Social Authentication: Google ID & Apple ID */}
+              <View className="flex-row items-center gap-3 w-full">
+                <SocialAuthButton
+                  provider="google"
+                  onPress={() => {
+                    // Trigger Google Sign-Up
+                  }}
+                />
+                <SocialAuthButton
+                  provider="apple"
+                  onPress={() => {
+                    // Trigger Apple Sign-Up
+                  }}
+                />
+              </View>
+
               {/* Already Have Account */}
-              <View className="flex-row items-center justify-center pt-0.5">
+              <View className="flex-row items-center justify-center pt-2 pb-1">
                 <Text className="text-xs text-slate-900 dark:text-white font-bold">
                   Already have an account?{' '}
                 </Text>
@@ -487,30 +528,17 @@ export default function SignupScreen() {
                   onPress={() => router.push('/(auth)/login')}
                   activeOpacity={0.8}
                 >
-                  <Text className="text-xs font-extrabold text-[#172B70] dark:text-[#60A5FA] underline">
+                  <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">
                     Sign In
                   </Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Trust Badges */}
-              <View className="pt-1 px-1 items-center justify-center">
-                <NahomTrustBadges />
-              </View>
-
-              {/* Bottom Security Caption */}
-              <View className="flex-row items-center justify-center pb-2 pt-0.5 gap-1.5">
-                <Shield size={12} color="#172B70" strokeWidth={2.5} />
-                <Text className="text-[11px] text-slate-900 dark:text-slate-100 font-bold font-sans">
-                  256-Bit Encrypted Community Security Network
-                </Text>
-              </View>
-              </Animated.View>
-            </View>
-          </TouchableWithoutFeedback>
-        </ScrollView>
-      </KeyboardAvoidingView>
-      </ImageBackground>
+            </Animated.View>
+          </View>
+        </TouchableWithoutFeedback>
+      </ScrollView>
+    </KeyboardAvoidingView>
+    </ImageBackground>
     </>
   );
 }

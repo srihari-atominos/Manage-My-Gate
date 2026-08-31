@@ -1,6 +1,9 @@
 import { Stack } from 'expo-router';
+import { useAmenitySocket } from '../../../src/features/amenities/hooks/useAmenitySocket';
 
 export default function AmenitiesLayout() {
+  useAmenitySocket(); // Initialize real-time updates for amenities
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="discover" />

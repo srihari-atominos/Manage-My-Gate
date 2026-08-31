@@ -18,6 +18,8 @@ export interface Attachment {
   file?: any;
 }
 
+export type AttachmentFile = Attachment;
+
 export interface AttachmentPickerProps {
   attachments: Attachment[];
   onAdd: (files: Attachment[]) => void;
@@ -41,16 +43,7 @@ function isImageFile(type?: string, name?: string): boolean {
   return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'svg'].includes(ext || '');
 }
 
-function getAbsoluteUrl(uri?: string) {
-  if (!uri) return '';
-  if (uri.startsWith('/')) {
-    const apiBaseURL = apiClient.defaults.baseURL || '';
-    // Strip /api, /api/v1, /api/v2, etc., from the end of the base URL
-    const host = apiBaseURL.replace(/\/api(\/v\d+)?\/?$/, '');
-    return `${host}${uri}`;
-  }
-  return uri;
-}
+import { getImageUrl as getAbsoluteUrl } from '@/src/utils/imageUrl';
 
 export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
   (
@@ -129,27 +122,28 @@ export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
               onAdd(newFiles);
             }
           } else {
-            const options: ImagePicker.ImagePickerOptions = {
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsMultipleSelection: maxFiles > 1,
-              quality: 0.8,
-            };
-            
             let result;
             if (optionName === 'Take Photo') {
               const permission = await ImagePicker.requestCameraPermissionsAsync();
               if (permission.status !== 'granted') {
-                Alert.alert('Permission needed', 'Sorry, we need camera permissions to make this work!');
+                Alert.alert('Permission needed', 'Camera permission is required to capture photos.');
                 return;
               }
-              result = await ImagePicker.launchCameraAsync(options);
+              result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 0.8,
+              });
             } else {
               const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
               if (permission.status !== 'granted') {
-                Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to make this work!');
+                Alert.alert('Permission needed', 'Photo library permission is required to select photos.');
                 return;
               }
-              result = await ImagePicker.launchImageLibraryAsync(options);
+              result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsMultipleSelection: maxFiles > 1,
+                quality: 0.8,
+              });
             }
             
             if (!result.canceled && result.assets) {

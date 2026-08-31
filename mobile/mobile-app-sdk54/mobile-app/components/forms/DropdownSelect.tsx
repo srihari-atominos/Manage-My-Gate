@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Modal, FlatList, ScrollView, Platform } from 'react-native';
+import { View, Text, Pressable, Modal, FlatList, ScrollView, Platform, Alert } from 'react-native';
 import { ChevronDown, Check } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 
@@ -17,6 +17,7 @@ export interface DropdownSelectProps {
   error?: string;
   className?: string;
   inline?: boolean;
+  accordion?: boolean;
 }
 
 export const DropdownSelect = ({
@@ -28,9 +29,11 @@ export const DropdownSelect = ({
   error,
   className,
   inline = false,
+  accordion = false,
 }: DropdownSelectProps) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const isInline = inline || accordion;
 
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -78,7 +81,7 @@ export const DropdownSelect = ({
       )}
 
       {/* Inline Dropdown List overlay */}
-      {inline && isOpen && (
+      {isInline && isOpen && (
         <View 
           className="absolute left-0 right-0 z-[1000] bg-card border border-border rounded-xl shadow-lg mt-1 overflow-hidden"
           style={{ 
@@ -88,34 +91,40 @@ export const DropdownSelect = ({
           }}
         >
           <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
-            {options.map((item) => {
-              const isSelected = item.value === value;
-              return (
-                <Pressable
-                  key={item.value}
-                  className={cn(
-                    'flex-row items-center justify-between px-4 py-3 border-b border-border/50 last:border-b-0',
-                    isSelected && 'bg-primary/10'
-                  )}
-                  onPress={() => {
-                    onValueChange(item.value);
-                    setIsOpen(false);
-                  }}
-                >
-                  <Text
+            {options.length === 0 ? (
+              <View className="px-4 py-4 items-center justify-center">
+                <Text className="text-sm text-muted-foreground italic">No options available</Text>
+              </View>
+            ) : (
+              options.map((item) => {
+                const isSelected = item.value === value;
+                return (
+                  <Pressable
+                    key={item.value}
                     className={cn(
-                      'text-sm font-sans',
-                      isSelected
-                        ? 'font-bold text-primary'
-                        : 'text-foreground'
+                      'flex-row items-center justify-between px-4 py-3 border-b border-border/50 last:border-b-0',
+                      isSelected && 'bg-primary/10'
                     )}
+                    onPress={() => {
+                      onValueChange(item.value);
+                      setIsOpen(false);
+                    }}
                   >
-                    {item.label}
-                  </Text>
-                  {isSelected && <Check size={16} className="text-primary" />}
-                </Pressable>
-              );
-            })}
+                    <Text
+                      className={cn(
+                        'text-sm font-sans',
+                        isSelected
+                          ? 'font-bold text-primary'
+                          : 'text-foreground'
+                      )}
+                    >
+                      {item.label}
+                    </Text>
+                    {isSelected && <Check size={16} className="text-primary" />}
+                  </Pressable>
+                );
+              })
+            )}
           </ScrollView>
         </View>
       )}
@@ -140,6 +149,11 @@ export const DropdownSelect = ({
             <FlatList
               data={options}
               keyExtractor={(item) => item.value}
+              ListEmptyComponent={() => (
+                <View className="py-6 items-center justify-center">
+                  <Text className="text-base text-muted-foreground italic">No options available</Text>
+                </View>
+              )}
               renderItem={({ item }) => {
                 const isSelected = item.value === value;
                 return (

@@ -36,7 +36,7 @@ export const FileUploadField = ({
   return (
     <View className={cn('w-full', className)}>
       {Boolean(label) && (
-        <Text className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+        <Text className="mb-1.5 text-sm font-medium text-foreground">
           {label}
         </Text>
       )}
@@ -44,15 +44,15 @@ export const FileUploadField = ({
       {files.length < maxFiles && (
         <Pressable
           onPress={onUploadPress}
-          className="mb-3 items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 py-6 dark:border-slate-700 dark:bg-slate-900/50"
+          className="mb-3 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/40 py-6"
         >
-          <View className="mb-2 h-10 w-10 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-800">
-            <UploadCloud size={20} className="text-slate-500" />
+          <View className="mb-2 h-10 w-10 items-center justify-center rounded-full bg-muted">
+            <UploadCloud size={20} className="text-muted-foreground" />
           </View>
           <Text className="text-sm font-medium text-primary">
             Tap to select file
           </Text>
-          <Text className="mt-1 text-xs text-slate-500">
+          <Text className="mt-1 text-xs text-muted-foreground">
             Supports PDF, JPG, PNG
           </Text>
         </Pressable>
@@ -63,27 +63,27 @@ export const FileUploadField = ({
           {files.map((file, index) => (
             <View 
               key={`${file.name}-${index}`} 
-              className="flex-row items-center justify-between rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900"
+              className="flex-row items-center justify-between rounded-lg border border-border bg-card p-2"
             >
               <View className="flex-row items-center flex-1">
                 {file.type === 'image' ? (
                   // Conceptual reference rendering
-                  <View className="h-10 w-10 overflow-hidden rounded-md border border-slate-100 mr-3">
+                  <View className="h-10 w-10 overflow-hidden rounded-md border border-border me-3">
                     <ImagePreview altText="Conceptual uploaded file" source={{ uri: file.uri }} className="h-full w-full rounded-none border-0" />
                   </View>
                 ) : (
-                  <View className="mr-3 h-10 w-10 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-900/30">
-                    <FileIcon size={20} className="text-blue-500" />
+                  <View className="me-3 h-10 w-10 items-center justify-center rounded-md bg-primary/10">
+                    <FileIcon size={20} className="text-primary" />
                   </View>
                 )}
-                <View className="flex-1 pr-2">
-                  <Text className="text-sm font-medium text-slate-900 dark:text-slate-100" numberOfLines={1}>
+                <View className="flex-1 pe-2">
+                  <Text className="text-sm font-medium text-foreground" numberOfLines={1}>
                     {file.name}
                   </Text>
                 </View>
               </View>
-              <Pressable onPress={() => onRemoveFile(index)} className="p-2 bg-slate-50 rounded-full dark:bg-slate-800">
-                <X size={16} className="text-slate-500" />
+              <Pressable onPress={() => onRemoveFile(index)} className="p-2 bg-muted rounded-full">
+                <X size={16} className="text-muted-foreground" />
               </Pressable>
             </View>
           ))}

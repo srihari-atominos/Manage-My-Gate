@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, TextInput, Pressable, Alert, ScrollView } from 'react-native';
+import { View, Alert, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
+import { TextInput } from '@/components/forms/TextInput';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { Landmark, FileText, Calendar, Clock, AlertCircle, ShieldAlert, ChevronRight, CheckCircle2 } from 'lucide-react-native';
+import { Landmark, FileText, Clock, AlertCircle, ChevronRight } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { Invoice } from '../types';
 
@@ -113,16 +114,16 @@ export function OfflineSettleSheet({
   return (
     <>
       <BottomSheet visible={visible} onClose={onClose} title={`Record Offline Payment • #${invNo}`}>
-        <ScrollView className="py-2" contentContainerStyle={{ paddingBottom: 60 }}>
+        <View className="py-2 pb-2">
 
           {/* Verification Pending Notice */}
-          <View className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-4 flex-row items-start">
-            <Icon as={Clock} size={20} className="text-blue-600 dark:text-blue-400 me-3 mt-0.5" />
+          <View className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-4 flex-row items-start">
+            <Icon as={Clock} size={20} className="text-primary me-3 mt-0.5" />
             <View className="flex-1">
-              <Text className="text-sm font-bold text-blue-900 dark:text-blue-200">
+              <Text className="text-sm font-bold text-foreground">
                 Admin Clearance Verification Required
               </Text>
-              <Text className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+              <Text className="text-xs text-muted-foreground mt-1">
                 Submitting offline payment details does NOT mark the invoice paid immediately. The invoice status will become VERIFICATION_PENDING until Admin/Treasury approves clearance.
               </Text>
             </View>
@@ -156,17 +157,16 @@ export function OfflineSettleSheet({
               {(['CHEQUE', 'NEFT'] as const).map((method) => {
                 const isSelected = paymentMethod === method;
                 return (
-                  <Pressable
+                  <Button
                     key={method}
+                    variant={isSelected ? 'default' : 'outline'}
                     onPress={() => setPaymentMethod(method)}
-                    className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                      isSelected ? 'bg-primary/10 border-primary' : 'bg-card border-border'
-                    }`}
+                    className="flex-1 h-12 rounded-xl"
                   >
-                    <Text className={`font-extrabold text-sm ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                    <Text className={`font-extrabold text-sm ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
                       {method}
                     </Text>
-                  </Pressable>
+                  </Button>
                 );
               })}
             </View>
@@ -174,62 +174,41 @@ export function OfflineSettleSheet({
 
           {/* Section 2: Settlement Amount */}
           <View className="mb-4">
-            <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-              2. Settlement Amount
-            </Text>
-            <View className="flex-row items-center bg-background border border-border rounded-xl px-3 py-2">
-              <Text className="text-foreground font-bold text-lg me-2">₹</Text>
-              <TextInput
-                value={amountStr}
-                onChangeText={setAmountStr}
-                placeholder={`Remaining Due ₹${remainingDue.toLocaleString('en-IN')}`}
-                placeholderTextColor="#94a3b8"
-                keyboardType="numeric"
-                className="flex-1 text-foreground font-bold text-base py-1"
-              />
-            </View>
-            {isAmountTooHigh ? (
-              <Text className="text-xs text-destructive mt-1.5 font-medium">
-                Amount cannot exceed remaining dues of ₹{remainingDue.toLocaleString('en-IN')}
-              </Text>
-            ) : null}
+            <TextInput
+              label="2. Settlement Amount (₹)"
+              required
+              value={amountStr}
+              onChangeText={setAmountStr}
+              placeholder={`Remaining Due ₹${remainingDue.toLocaleString('en-IN')}`}
+              keyboardType="numeric"
+              inputClassName="font-bold text-base"
+              error={isAmountTooHigh ? `Amount cannot exceed remaining dues of ₹${remainingDue.toLocaleString('en-IN')}` : undefined}
+            />
           </View>
 
           {/* Section 3: Reference Number (Cheque # / UTR #) */}
           <View className="mb-4">
-            <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-              3. {paymentMethod === 'CHEQUE' ? 'Cheque Number' : 'NEFT / UTR Transaction ID'} (Optional)
-            </Text>
-            <View className="flex-row items-center bg-background border border-border rounded-xl px-3 py-2">
-              <Icon as={FileText} size={18} className="text-muted-foreground me-2" />
-              <TextInput
-                value={offlineReference}
-                onChangeText={setOfflineReference}
-                placeholder={paymentMethod === 'CHEQUE' ? 'e.g. 000124 (Optional)' : 'e.g. N123456789 (Optional)'}
-                placeholderTextColor="#94a3b8"
-                className="flex-1 text-foreground font-bold text-base py-1"
-              />
-            </View>
-            <Text className="text-xs text-muted-foreground mt-1">
+            <TextInput
+              label={`3. ${paymentMethod === 'CHEQUE' ? 'Cheque Number' : 'NEFT / UTR Transaction ID'} (Optional)`}
+              leftIcon={FileText}
+              value={offlineReference}
+              onChangeText={setOfflineReference}
+              placeholder={paymentMethod === 'CHEQUE' ? 'e.g. 000124 (Optional)' : 'e.g. N123456789 (Optional)'}
+            />
+            <Text className="text-xs text-muted-foreground mt-1 ps-1">
               Leave blank to auto-generate a system reference number (e.g. {paymentMethod}-20260813-9182).
             </Text>
           </View>
 
           {/* Section 4: Bank Name (Optional) */}
           <View className="mb-5">
-            <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-              4. Issuing Bank Name (Optional)
-            </Text>
-            <View className="flex-row items-center bg-background border border-border rounded-xl px-3 py-2">
-              <Icon as={Landmark} size={18} className="text-muted-foreground me-2" />
-              <TextInput
-                value={bankName}
-                onChangeText={setBankName}
-                placeholder="e.g. HDFC Bank / ICICI Bank"
-                placeholderTextColor="#94a3b8"
-                className="flex-1 text-foreground text-sm py-1"
-              />
-            </View>
+            <TextInput
+              label="4. Issuing Bank Name (Optional)"
+              leftIcon={Landmark}
+              value={bankName}
+              onChangeText={setBankName}
+              placeholder="e.g. HDFC Bank / ICICI Bank"
+            />
           </View>
 
           {/* Submit Action Button */}
@@ -248,8 +227,7 @@ export function OfflineSettleSheet({
             </Text>
             <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
           </Button>
-
-        </ScrollView>
+        </View>
       </BottomSheet>
 
       {/* Confirmation Modal */}
@@ -269,3 +247,4 @@ export function OfflineSettleSheet({
 }
 
 export default OfflineSettleSheet;
+

@@ -19,10 +19,10 @@ export interface WorkflowTriggerLogProps {
 
 export const WorkflowTriggerLog = ({ events, className }: WorkflowTriggerLogProps) => {
   return (
-    <View className={cn('rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900', className)}>
-      <View className="flex-row items-center border-b border-slate-100 p-4 dark:border-slate-800">
-        <Zap size={18} className="mr-2 text-primary" />
-        <Text className="text-base font-bold text-slate-900 dark:text-slate-100">
+    <View className={cn('rounded-xl border border-border bg-card', className)}>
+      <View className="flex-row items-center border-b border-border p-4">
+        <Zap size={18} className="me-2 text-primary" />
+        <Text className="text-base font-bold text-foreground">
           Trigger Logs
         </Text>
       </View>
@@ -33,34 +33,34 @@ export const WorkflowTriggerLog = ({ events, className }: WorkflowTriggerLogProp
             key={event.id}
             className={cn(
               'flex-row items-center p-3',
-              index !== events.length - 1 && 'border-b border-slate-50 dark:border-slate-800/50'
+              index !== events.length - 1 && 'border-b border-border/50'
             )}
           >
-            <View className="mr-3 flex-1">
+            <View className="me-3 flex-1">
               <View className="flex-row items-center mb-1">
-                <Text className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <Text className="text-xs font-bold text-foreground">
                   {event.triggerSource}
                 </Text>
-                <ArrowRight size={12} className="mx-2 text-slate-400" />
-                <Text className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <ArrowRight size={12} className="mx-2 text-muted-foreground" />
+                <Text className="text-xs font-bold text-foreground">
                   {event.targetNode}
                 </Text>
               </View>
-              <Text className="text-[10px] text-slate-400 font-mono">
+              <Text className="text-[10px] text-muted-foreground font-mono">
                 {event.timestamp} • {event.payloadSize} bytes
               </Text>
             </View>
             <View className={cn(
               'rounded px-2 py-1',
-              event.status === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/30' :
-              event.status === 'dropped' ? 'bg-red-100 dark:bg-red-900/30' :
-              'bg-amber-100 dark:bg-amber-900/30'
+              event.status === 'success' ? 'bg-status-success-light' :
+              event.status === 'dropped' ? 'bg-status-danger-light' :
+              'bg-status-warning-light'
             )}>
               <Text className={cn(
                 'text-[10px] font-bold uppercase tracking-wider',
-                event.status === 'success' ? 'text-emerald-700 dark:text-emerald-400' :
-                event.status === 'dropped' ? 'text-red-700 dark:text-red-400' :
-                'text-amber-700 dark:text-amber-400'
+                event.status === 'success' ? 'text-status-success-foreground' :
+                event.status === 'dropped' ? 'text-status-danger-foreground' :
+                'text-status-warning-foreground'
               )}>
                 {event.status}
               </Text>
@@ -70,7 +70,7 @@ export const WorkflowTriggerLog = ({ events, className }: WorkflowTriggerLogProp
         
         {events.length === 0 && (
           <View className="p-6 items-center">
-            <Text className="text-sm text-slate-500">No triggers recorded yet.</Text>
+            <Text className="text-sm text-muted-foreground">No triggers recorded yet.</Text>
           </View>
         )}
       </ScrollView>

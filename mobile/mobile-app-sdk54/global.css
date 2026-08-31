@@ -3,50 +3,110 @@
 @tailwind utilities;
 
 @layer base {
+  /* ==========================================================================
+     THEME 2: VENTOREX ORANGE (ACTIVE)
+     ========================================================================== */
   :root {
-    --background: 218 38% 94%; /* #EEF3F9 Soft Cool Blue/Grey Canvas for crisp card separation */
-    --foreground: 227 66% 12%; /* #0B1437 Deep NAHOM Charcoal/Navy */
-    --card: 0 0% 100%; /* #FFFFFF Pure Crisp White Surface */
-    --card-foreground: 227 66% 12%;
+    --background: 30 29% 97%; /* #FAF8F6 Warm White Canvas */
+    --foreground: 220 3% 19%; /* #2F3032 Ventorex Graphite */
+    --card: 0 0% 100%; /* #FFFFFF Pure White Surface */
+    --card-foreground: 220 3% 19%;
     --popover: 0 0% 100%;
-    --popover-foreground: 227 66% 12%;
-    --primary: 227 66% 26%; /* #172B70 NAHOM Primary Navy */
+    --popover-foreground: 220 3% 19%;
+    --primary: 17 88% 40%; /* #C2410C Deep Ventorex Orange */
     --primary-foreground: 0 0% 100%;
-    --secondary: 218 35% 91%; /* #DCE6F3 Distinct Elevated Secondary Surface */
-    --secondary-foreground: 227 66% 20%;
-    --muted: 218 30% 90%;
-    --muted-foreground: 220 20% 36%; /* #475569 High-Contrast Readable Slate */
-    --accent: 252 38% 41%; /* #51418F NAHOM Indigo */
+    --secondary: 24 38% 95%; /* #F7F1ED Soft Warm Surface */
+    --secondary-foreground: 220 3% 19%;
+    --muted: 24 17% 89%; /* #E7E1DD Warm Neutral Surface */
+    --muted-foreground: 216 3% 37%; /* #5B5D60 Secondary Graphite */
+    --accent: 23 97% 46%; /* #E85D04 Brand Orange Accent */
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%; /* #DC2626 Restrained Red */
-    --border: 218 28% 85%; /* #CBD7E6 Crisp Defined Border */
-    --input: 218 28% 85%;
-    --ring: 227 66% 26%;
+    --destructive: 0 72% 51%; /* #DC2626 */
+    --border: 24 17% 89%; /* #E7E1DD Soft Warm Border */
+    --input: 24 17% 89%;
+    --ring: 17 88% 40%;
     --radius: 1.125rem; /* 18px */
-    --chart-1: 227 66% 26%;
-    --chart-2: 213 65% 40%; /* #245FA8 Royal Blue */
-    --chart-3: 252 38% 41%; /* #51418F Indigo */
-    --chart-4: 322 72% 38%; /* #A51B73 Magenta */
+    --chart-1: 17 88% 40%;
+    --chart-2: 23 97% 46%;
+    --chart-3: 25 95% 53%;
+    --chart-4: 14 100% 50%;
     --chart-5: 142 71% 45%;
   }
 
   .dark:root {
-    --background: 227 50% 6%; /* #070B18 Sleek NAHOM Midnight Base */
-    --foreground: 210 20% 98%; /* #F8FAFC Ultra Crisp Text */
-    --card: 227 40% 10%; /* #0F162B Clean Frosted Surface */
+    --background: 0 0% 9%; /* #171717 Deep Graphite Base */
+    --foreground: 0 0% 96%; /* #F5F5F4 Soft White */
+    --card: 0 0% 14%; /* #242424 Elevated Graphite Surface */
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 17%; /* #2B2B2B */
+    --popover-foreground: 0 0% 96%;
+    --primary: 25 100% 50%; /* #FF6A00 Ventorex Bright Orange */
+    --primary-foreground: 0 0% 9%; /* #171717 */
+    --secondary: 0 0% 17%; /* #2B2B2B Graphite Surface */
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 17%;
+    --muted-foreground: 0 0% 72%; /* #B8B8B8 */
+    --accent: 24 100% 62%; /* #FF8A3D Soft Bright Orange */
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84% 60%; /* #EF4444 */
+    --border: 0 0% 24%; /* #3D3D3D Graphite Border */
+    --input: 0 0% 24%;
+    --ring: 25 100% 50%;
+    --chart-1: 25 100% 50%;
+    --chart-2: 24 100% 62%;
+    --chart-3: 23 97% 46%;
+    --chart-4: 14 100% 50%;
+    --chart-5: 142 71% 45%;
+  }
+
+  /* ==========================================================================
+     THEME 1: NAHOM NAVY & INDIGO (To activate: uncomment below & comment Theme 2)
+     ========================================================================== */
+  /*
+  :root {
+    --background: 218 38% 94%;
+    --foreground: 227 66% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 227 66% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 227 66% 12%;
+    --primary: 227 66% 26%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 218 35% 91%;
+    --secondary-foreground: 227 66% 20%;
+    --muted: 218 30% 90%;
+    --muted-foreground: 220 20% 36%;
+    --accent: 252 38% 41%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --border: 218 28% 85%;
+    --input: 218 28% 85%;
+    --ring: 227 66% 26%;
+    --radius: 1.125rem;
+    --chart-1: 227 66% 26%;
+    --chart-2: 213 65% 40%;
+    --chart-3: 252 38% 41%;
+    --chart-4: 322 72% 38%;
+    --chart-5: 142 71% 45%;
+  }
+
+  .dark:root {
+    --background: 227 50% 6%;
+    --foreground: 210 20% 98%;
+    --card: 227 40% 10%;
     --card-foreground: 210 20% 98%;
-    --popover: 227 38% 13%; /* #151F3D Elevated Glass Surface */
+    --popover: 227 38% 13%;
     --popover-foreground: 210 20% 98%;
-    --primary: 213 85% 58%; /* #3884E8 Vibrant Royal Blue */
+    --primary: 213 85% 58%;
     --primary-foreground: 227 50% 6%;
-    --secondary: 227 30% 14%; /* #16203B Secondary Surface */
+    --secondary: 227 30% 14%;
     --secondary-foreground: 210 20% 98%;
     --muted: 227 30% 14%;
-    --muted-foreground: 218 18% 65%; /* #94A3B8 Crisp Slate */
-    --accent: 252 65% 65%; /* #8A7CE0 Vibrant Indigo */
+    --muted-foreground: 218 18% 65%;
+    --accent: 252 65% 65%;
     --accent-foreground: 227 50% 6%;
-    --destructive: 0 84% 60%; /* #EF4444 Danger */
-    --border: 227 25% 18%; /* #202D4E Sleek Hairline Border */
+    --destructive: 0 84% 60%;
+    --border: 227 25% 18%;
     --input: 227 25% 18%;
     --ring: 213 85% 58%;
     --chart-1: 213 85% 58%;
@@ -55,4 +115,119 @@
     --chart-4: 142 71% 45%;
     --chart-5: 38 92% 50%;
   }
+  */
+
+  /* ==========================================================================
+     THEME 3: ROYAL SAPPHIRE & CYAN (To activate: uncomment below & comment Theme 1)
+     ========================================================================== */
+  /*
+  :root {
+    --background: 215 35% 95%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 20%;
+    --muted: 214 30% 90%;
+    --muted-foreground: 215 19% 35%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --border: 214 25% 85%;
+    --input: 214 25% 85%;
+    --ring: 221 83% 45%;
+    --radius: 1.125rem;
+    --chart-1: 221 83% 45%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 252 65% 55%;
+    --chart-4: 170 80% 40%;
+    --chart-5: 142 71% 45%;
+  }
+  .dark:root {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
+    --card: 222 40% 12%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 38% 15%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 7%;
+    --secondary: 222 30% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 222 30% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 199 89% 58%;
+    --accent-foreground: 222 47% 7%;
+    --destructive: 0 84% 60%;
+    --border: 222 25% 22%;
+    --input: 222 25% 22%;
+    --ring: 217 91% 60%;
+    --chart-1: 217 91% 60%;
+    --chart-2: 199 89% 58%;
+    --chart-3: 252 65% 65%;
+    --chart-4: 170 80% 50%;
+    --chart-5: 142 71% 45%;
+  }
+  */
+
+  /* ==========================================================================
+     THEME 4: SUNSET AMBER & TERRACOTTA (To activate: uncomment below & comment Theme 1)
+     ========================================================================== */
+  /*
+  :root {
+    --background: 30 25% 95%;
+    --foreground: 20 40% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 40% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 40% 12%;
+    --primary: 16 80% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 30 25% 90%;
+    --secondary-foreground: 20 40% 18%;
+    --muted: 30 20% 88%;
+    --muted-foreground: 20 15% 38%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --border: 30 20% 84%;
+    --input: 30 20% 84%;
+    --ring: 16 80% 38%;
+    --radius: 1.125rem;
+    --chart-1: 16 80% 38%;
+    --chart-2: 38 92% 50%;
+    --chart-3: 12 75% 45%;
+    --chart-4: 200 65% 45%;
+    --chart-5: 142 71% 45%;
+  }
+  .dark:root {
+    --background: 20 30% 6%;
+    --foreground: 30 25% 98%;
+    --card: 20 25% 11%;
+    --card-foreground: 30 25% 98%;
+    --popover: 20 25% 14%;
+    --popover-foreground: 30 25% 98%;
+    --primary: 20 90% 58%;
+    --primary-foreground: 20 30% 6%;
+    --secondary: 20 20% 16%;
+    --secondary-foreground: 30 25% 98%;
+    --muted: 20 20% 16%;
+    --muted-foreground: 30 15% 65%;
+    --accent: 38 92% 58%;
+    --accent-foreground: 20 30% 6%;
+    --destructive: 0 84% 60%;
+    --border: 20 20% 20%;
+    --input: 20 20% 20%;
+    --ring: 20 90% 58%;
+    --chart-1: 20 90% 58%;
+    --chart-2: 38 92% 58%;
+    --chart-3: 12 75% 55%;
+    --chart-4: 200 65% 55%;
+    --chart-5: 142 71% 45%;
+  }
+  */
 }

@@ -38,7 +38,7 @@ export default function AdminCreatePassScreen() {
           }}
           onClose={() => router.back()}
           renderExtraStepHeader={() => (
-            <View className="px-4 py-2 bg-muted/30 border-b border-border flex-row items-center justify-between">
+            <View className="px-4 py-2.5 bg-muted/40 border-b border-border flex-row items-center justify-between">
               <View className="flex-row items-center gap-2">
                 <Building2 size={16} className="text-primary" />
                 <Text className="text-xs font-semibold text-muted-foreground">Target Destination:</Text>
@@ -46,10 +46,13 @@ export default function AdminCreatePassScreen() {
               </View>
               <TouchableOpacity
                 onPress={() => setVillaSheetOpen(true)}
+                activeOpacity={0.7}
                 className="flex-row items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20"
+                accessibilityRole="button"
+                accessibilityLabel="Change target destination"
               >
                 <Text className="text-xs font-bold text-primary">Change</Text>
-                <Filter size={12} className="text-primary" />
+                <Filter size={12} className="text-primary ms-0.5" />
               </TouchableOpacity>
             </View>
           )}

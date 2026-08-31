@@ -1,4 +1,5 @@
 export * from './ActionBar';
+export * from './ActionGrid';
 export * from './AttachmentPicker';
 export * from './BottomSheet';
 export * from './ConfirmationModal';
@@ -8,6 +9,7 @@ export * from './DetailSection';
 export * from './FAB';
 export * from './FeatureIcon';
 export * from './KPICard';
+export * from './KPIDashboardStrip';
 export * from './KPIRow';
 export * from './ListCard';
 export * from './PaginatedList';

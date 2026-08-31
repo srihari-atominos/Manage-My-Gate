@@ -29,6 +29,15 @@ export const AddGroupGuestsStep: React.FC<AddGroupGuestsStepProps> = ({
       setError('Guest name is required');
       return;
     }
+    
+    if (phone && phone.trim()) {
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length !== 10) {
+        setError('Contact number must be exactly 10 digits');
+        return;
+      }
+    }
+    
     setError('');
     onAddGuest({
       id: `guest-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -62,8 +71,9 @@ export const AddGroupGuestsStep: React.FC<AddGroupGuestsStepProps> = ({
 
         <Input
           label="Phone Number (Optional)"
-          placeholder="+91 98765 43210"
+          placeholder="9876543210"
           keyboardType="phone-pad"
+          maxLength={10}
           leftIcon={<Phone size={18} className="text-muted-foreground" />}
           value={phone}
           onChangeText={setPhone}

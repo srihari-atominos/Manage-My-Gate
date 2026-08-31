@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Share, Alert, TextInput } from 'react-native';
+import { View, Share, Alert } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
-import { Button } from '@/components/common/Button';
-import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
-import { Clock, CheckCircle2, ShieldAlert, FileText, Share2, AlertCircle, XCircle } from 'lucide-react-native';
+import { Button } from '@/components/ui/button';
+import { getStatusVariant } from '@/components/ui/StatusBadge';
+import { Clock } from 'lucide-react-native';
 import { Invoice } from '../types';
-import { generateInvoiceHtml } from '../utils/invoicePdfUtility';
 
 export interface InvoiceActionsBottomSheetProps {
   visible: boolean;
@@ -57,7 +56,6 @@ export function InvoiceActionsBottomSheet({
   const formattedAmount = `₹${(submittedAmount || totalAmount).toLocaleString('en-IN')}`;
 
   const status = invoice.status || 'UNPAID';
-  const statusVariant = getStatusVariant(status);
   const isPendingCheque = status === 'VERIFICATION_PENDING';
   const isUnpaid = status === 'UNPAID' || status === 'OVERDUE';
   const refStr = invoice.offlineReference || '—';
@@ -165,14 +163,14 @@ export function InvoiceActionsBottomSheet({
               <Button
                 variant="default"
                 size="lg"
-                className="w-full bg-emerald-600 active:bg-emerald-700"
+                className="w-full bg-status-success active:bg-status-success/90"
                 disabled={isApproving}
                 loading={isApproving}
                 onPress={() => setShowConfirmModal(true)}
                 accessibilityRole="button"
                 accessibilityLabel="Approve and Clear Offline Payment"
               >
-                <Text className="font-bold text-base text-white">Approve & Clear Payment</Text>
+                <Text className="font-bold text-base text-primary-foreground">Approve & Clear Payment</Text>
               </Button>
             ) : null}
 
@@ -223,3 +221,4 @@ export function InvoiceActionsBottomSheet({
 }
 
 export default InvoiceActionsBottomSheet;
+

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Modal, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect, DropdownOption } from '@/components/forms/DropdownSelect';
 import { Icon } from '@/components/ui/icon';

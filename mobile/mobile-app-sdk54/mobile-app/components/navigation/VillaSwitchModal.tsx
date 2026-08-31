@@ -104,7 +104,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
                         >
                           <Building2
                             size={18}
-                            color={isSelected ? '#c5a059' : '#a1a1aa'}
+                            color={isSelected ? '#172B70' : '#a1a1aa'}
                           />
                         </View>
                         <View>

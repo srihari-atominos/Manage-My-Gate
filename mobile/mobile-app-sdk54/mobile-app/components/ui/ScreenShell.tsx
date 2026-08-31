@@ -16,7 +16,11 @@ export interface ScreenShellProps {
   title: string;
   subtitle?: string;
   iconName?: string;             // Lucide icon name for header
+  domainName?: string;
+  sharedSlice?: string;
+  permission?: string;
   showBackButton?: boolean;      // default true
+  onBackPress?: () => void;
   headerRight?: React.ReactNode; // slot for action buttons (filter, add, etc.)
   children?: React.ReactNode;
   loading?: boolean;             // shows skeleton overlay
@@ -82,7 +86,7 @@ export function ScreenShell({
       {/* Header row (safe area inset top) */}
       <View
         style={{ paddingTop: topInsetPadding }}
-        className="bg-card border-b border-border/80 px-4 pb-3"
+        className="bg-card border-b border-border px-4 pb-3 shadow-xs"
       >
         <View className="flex-row items-center justify-between gap-2 min-h-[44px]">
           <View className="flex-row items-center flex-1 me-2">

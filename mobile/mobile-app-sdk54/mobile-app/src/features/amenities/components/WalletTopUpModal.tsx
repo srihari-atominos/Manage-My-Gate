@@ -19,9 +19,9 @@ export function WalletTopUpModal({
   onSubmit,
   loading = false,
 }: WalletTopUpModalProps) {
-  const presetAmounts = [10, 25, 50, 100];
-  const [selectedAmount, setSelectedAmount] = useState<number>(25);
-  const [customAmount, setCustomAmount] = useState<string>('25');
+  const presetAmounts = [100, 250, 500, 1000];
+  const [selectedAmount, setSelectedAmount] = useState<number>(250);
+  const [customAmount, setCustomAmount] = useState<string>('250');
 
   if (!visible) return null;
 

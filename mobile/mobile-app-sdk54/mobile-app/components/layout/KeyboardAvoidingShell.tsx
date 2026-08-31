@@ -45,7 +45,7 @@ export const KeyboardAvoidingShell = ({
   return (
     <KeyboardAvoidingView
       behavior={behavior}
-      className={cn('flex-1 bg-white dark:bg-slate-950', className)}
+      className={cn('flex-1 bg-background', className)}
       {...props}
     >
       {content}

@@ -87,8 +87,9 @@ export const StaffDetailsStep: React.FC<StaffDetailsStepProps> = ({
 
         <Input
           label="Staff Contact Phone Number"
-          placeholder="+91 98765 43210"
+          placeholder="9876543210"
           keyboardType="phone-pad"
+          maxLength={10}
           leftIcon={<Phone size={18} className="text-muted-foreground" />}
           value={data.phone}
           onChangeText={(val) => onChange({ ...data, phone: val })}

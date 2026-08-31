@@ -141,8 +141,8 @@ export const NahomAnimatedLogoSplash: React.FC<NahomAnimatedLogoSplashProps> = (
       <StatusBar barStyle="light-content" backgroundColor="#0B1437" />
 
       {/* Ambient Radial Luxury Glow */}
-      <View className="absolute w-72 h-72 rounded-full bg-[#245FA8]/20 blur-3xl" />
-      <View className="absolute w-56 h-56 rounded-full bg-[#A51B73]/15 blur-2xl -top-10 -right-10" />
+      <View className="absolute w-72 h-72 rounded-full bg-[#1E232E]/30 blur-3xl" />
+      <View className="absolute w-56 h-56 rounded-full bg-[#FF5E00]/20 blur-2xl -top-10 -right-10" />
 
       <View className="items-center justify-center gap-4 px-6 z-10">
         {/* Emblem Top Visual */}
@@ -153,12 +153,12 @@ export const NahomAnimatedLogoSplash: React.FC<NahomAnimatedLogoSplashProps> = (
           }}
           className="items-center justify-center mb-1"
         >
-          <NahomEmblem size={118} />
+          <NahomEmblem size={125} />
         </Animated.View>
 
-        {/* Animated Wordmark Split: "NA" (from Left) + "HOM" (from Right) */}
+        {/* Animated Wordmark Split: "NAH" + "O" + "M" */}
         <View className="flex-row items-center justify-center relative">
-          {/* "NA" from Left */}
+          {/* "NAH" from Left */}
           <Animated.View
             style={{
               opacity: naOpacity,
@@ -166,19 +166,31 @@ export const NahomAnimatedLogoSplash: React.FC<NahomAnimatedLogoSplashProps> = (
             }}
           >
             <Text className="text-[46px] font-black tracking-tight text-white font-sans">
-              NA
+              NAH
             </Text>
           </Animated.View>
 
-          {/* "HOM" from Right */}
+          {/* "O" in Vibrant Orange */}
           <Animated.View
             style={{
               opacity: homOpacity,
               transform: [{ translateX: homTranslateX }],
             }}
           >
-            <Text className="text-[46px] font-black tracking-tight text-[#A51B73] font-sans">
-              HOM
+            <Text className="text-[46px] font-black tracking-tight text-[#FF5E00] font-sans">
+              O
+            </Text>
+          </Animated.View>
+
+          {/* "M" from Right */}
+          <Animated.View
+            style={{
+              opacity: homOpacity,
+              transform: [{ translateX: homTranslateX }],
+            }}
+          >
+            <Text className="text-[46px] font-black tracking-tight text-white font-sans">
+              M
             </Text>
           </Animated.View>
 
@@ -191,7 +203,7 @@ export const NahomAnimatedLogoSplash: React.FC<NahomAnimatedLogoSplashProps> = (
               transform: [{ scale: sparkleScale }],
             }}
           >
-            <Sparkles size={20} color="#60A5FA" />
+            <Sparkles size={20} color="#FF5E00" />
           </Animated.View>
         </View>
 

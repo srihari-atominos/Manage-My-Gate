@@ -1,21 +1,9 @@
 import React from 'react';
-import { View, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Text } from '@/components/ui/text';
-import * as LucideIcons from 'lucide-react-native';
+import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 
-export interface QuickNavItem {
-  id: string;
-  name: string;
-  route: string;
-  iconName: string;
-  colorBg: string;
-  colorIcon: string;
-  badge?: string | number;
-  badgeColor?: string;
-}
+export interface QuickNavItem extends ActionGridItem {}
 
-const navItems: QuickNavItem[] = [
+export const amenityNavItems: ActionGridItem[] = [
   { id: 'master', name: 'Amenities', route: '/(resident)/amenities/admin-master', iconName: 'Building2', colorBg: 'bg-teal-500/10', colorIcon: '#14b8a6', badge: '12', badgeColor: 'bg-teal-500' },
   { id: 'calendar', name: 'Admin Calendar', route: '/(resident)/amenities/admin-calendar', iconName: 'CalendarDays', colorBg: 'bg-sky-500/10', colorIcon: '#03A9F4', badge: '18', badgeColor: 'bg-sky-500' },
   { id: 'ledgers', name: 'Ledgers', route: '/(resident)/amenities/ledgers', iconName: 'Receipt', colorBg: 'bg-emerald-500/10', colorIcon: '#10b981', badge: '₹42k', badgeColor: 'bg-emerald-500' },
@@ -32,57 +20,13 @@ export interface MobileQuickNavHubProps {
 }
 
 export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) {
-  const router = useRouter();
-
-  const filteredItems = navItems.filter((item) => {
-    if (!searchQuery.trim()) return true;
-    return item.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
-  });
-
   return (
-    <View className="mb-8">
-      <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-1 mb-4 px-1">
-        All Amenities Features
-      </Text>
-
-      {filteredItems.length > 0 ? (
-        <View className="flex-row flex-wrap justify-start gap-x-[3.5%] gap-y-3">
-          {filteredItems.map((item) => {
-            const IconComp = (LucideIcons as Record<string, any>)[item.iconName] || LucideIcons.Circle;
-
-            return (
-              <Pressable
-                key={item.id}
-                onPress={() => router.push(item.route as any)}
-                className="w-[31%] bg-card p-3 rounded-2xl border border-border items-center justify-center active:opacity-75 shadow-xs relative"
-              >
-                {item.badge ? (
-                  <View className={`absolute -top-1.5 -right-1.5 px-2 py-0.5 rounded-full ${item.badgeColor || 'bg-primary'} z-10`}>
-                    <Text className="text-[9px] font-bold text-white">{item.badge}</Text>
-                  </View>
-                ) : null}
-
-                <View className={`w-11 h-11 rounded-2xl ${item.colorBg} items-center justify-center mb-2`}>
-                  <IconComp size={20} color={item.colorIcon} />
-                </View>
-
-                <Text
-                  className="text-[11px] font-bold text-foreground text-center"
-                  numberOfLines={2}
-                >
-                  {item.name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : (
-        <View className="bg-card p-4 rounded-xl border border-border items-center">
-          <Text className="text-xs font-semibold text-muted-foreground">
-            No matching features found for "{searchQuery}"
-          </Text>
-        </View>
-      )}
-    </View>
+    <ActionGrid
+      title="Quick Actions"
+      items={amenityNavItems}
+      searchQuery={searchQuery}
+    />
   );
 }
+
+export default MobileQuickNavHub;
