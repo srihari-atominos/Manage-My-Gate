@@ -156,6 +156,9 @@ export const updateConnectionLabelAsync = createAsyncThunk(
   'integrationHub/updateConnectionLabel',
   async (payload: { id: string; accountLabel: string }, { rejectWithValue }) => {
     try {
+      if (!/^[0-9a-fA-F]{24}$/.test(payload.id)) {
+        return { id: payload.id, accountLabel: payload.accountLabel } as any;
+      }
       const updated = await integrationHubApi.updateConnectionLabel(
         payload.id,
         payload.accountLabel
@@ -173,6 +176,9 @@ export const deleteConnectionAsync = createAsyncThunk(
   'integrationHub/deleteConnection',
   async (id: string, { rejectWithValue }) => {
     try {
+      if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+        return id;
+      }
       await integrationHubApi.deleteConnection(id);
       return id;
     } catch (error: any) {
@@ -219,17 +225,16 @@ const integrationHubSlice = createSlice({
       .addCase(fetchConnectionsAsync.fulfilled, (state, action) => {
         state.isLoading = false;
         const fetchedData = action.payload?.data || [];
-        state.connections = fetchedData.length > 0 ? fetchedData : DUMMY_CONNECTIONS;
+        state.connections = fetchedData;
         state.pagination = {
           currentPage: action.payload?.page || 1,
           totalPages: action.payload?.pages || 1,
-          totalRecords: action.payload?.total || state.connections.length,
+          totalRecords: action.payload?.total ?? fetchedData.length,
           rowsPerPage: state.pagination.rowsPerPage,
         };
       })
       .addCase(fetchConnectionsAsync.rejected, (state, action) => {
         state.isLoading = false;
-        if (state.connections.length === 0) state.connections = DUMMY_CONNECTIONS;
         state.error = action.payload as string;
       })
 
