@@ -239,7 +239,9 @@ export class WorkspaceService {
       moduleKey: targetModule.moduleKey,
     });
 
-    return updated.modules;
+    // We must return the filtered modules so the frontend state doesn't suddenly show disabled modules
+    const result = await this.getCurrentWorkspaceModules(orgId || workspace.organizationId, actorId);
+    return result; // Returns { modules, allModules }
   }
 
   async reorderModules(workspaceId, orgId = null, isPlatform = false, orders, actorId, session = null) {
@@ -359,12 +361,10 @@ export class WorkspaceService {
     const allowedModules = (workspace.modules || [])
       .filter(m => {
         if (isPlatform || allowed.length === 0) return true;
+        if (m.moduleKey === 'administration_security') return true;
         if (allowed.includes(m.moduleKey) || allowed.includes(m.moduleName)) return true;
         if (m.moduleKey === 'amenities') {
           return allowed.some(a => ['amenities', 'booking', 'amenity', 'amenitiesBooking', 'amenityBooking'].includes(a));
-        }
-        if (m.moduleKey === 'administration_security') {
-          return allowed.some(a => ['administration', 'administration_security', 'users', 'roles', 'integrations', 'villas'].includes(a));
         }
         return false;
       })
