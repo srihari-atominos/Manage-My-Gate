@@ -12,7 +12,6 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { Mail, Phone, Clock, Globe, Building2 } from 'lucide-react-native';
 
-import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { TIMEZONE_OPTIONS, LANGUAGE_OPTIONS } from '@/src/utils/dropdownConstants';
 
 const workspaceSchema = yup.object({
