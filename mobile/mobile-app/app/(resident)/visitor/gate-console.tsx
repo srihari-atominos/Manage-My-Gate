@@ -12,6 +12,7 @@ import { GuardInitiateWalkInModal } from '@/src/features/visitor/components/guar
 import { GuardQRScannerModal } from '@/src/features/visitor/components/guard/GuardQRScannerModal';
 import { InsideVisitorsView } from '@/src/features/visitor/components/guard/InsideVisitorsView';
 import { GuardWalkInStatusView } from '@/src/features/visitor/components/guard/GuardWalkInStatusView';
+import { GuardVillaDirectoryView } from '@/src/features/visitor/components/guard/GuardVillaDirectoryView';
 import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
 import { selectActiveOrgId, selectAuthUser } from '@/src/features/auth/store/authSelectors';
 import { useSelector } from 'react-redux';
@@ -20,14 +21,16 @@ import { QrCode, ScanLine, Search, ShieldAlert, LogOut, CheckCircle2 } from 'luc
 
 const GATE_TABS = [
   { key: 'CONSOLE', label: 'Console' },
-  { key: 'WALK_INS', label: 'Walk-Ins Queue' },
-  { key: 'INSIDE', label: 'Visitors Inside' },
+  { key: 'WALK_INS', label: 'Walk-Ins' },
+  { key: 'INSIDE', label: 'Inside' },
+  { key: 'DIRECTORY', label: 'Directory' },
 ];
 
 export default function GateConsoleScreen() {
   const activeOrgId = useSelector(selectActiveOrgId);
   const authUser = useSelector(selectAuthUser);
   const {
+    passes,
     activePass,
     fetchPassDetails,
     walkIns,
@@ -43,9 +46,11 @@ export default function GateConsoleScreen() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [scanResultSheetOpen, setScanResultSheetOpen] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResultData | null>(null);
+  const [isInsideAction, setIsInsideAction] = useState(false);
+  const [activeLogId, setActiveLogId] = useState<string | null>(null);
   const [walkInModalOpen, setWalkInModalOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'CONSOLE' | 'WALK_INS' | 'INSIDE'>('CONSOLE');
+  const [activeTab, setActiveTab] = useState<'CONSOLE' | 'WALK_INS' | 'INSIDE' | 'DIRECTORY'>('CONSOLE');
   const [walkInLoading, setWalkInLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [insideCount, setInsideCount] = useState<number>(0);
@@ -91,7 +96,7 @@ export default function GateConsoleScreen() {
       // Fallback
     }
 
-    // 2. Direct service lookups fallback
+    // 2. Direct service lookups fallback by Code
     if (!passData || (!passData._id && !passData.visitorName && !passData.visitorDetails)) {
       try {
         const res = await visitorService.getPassByCode(cleanCode);
@@ -100,6 +105,7 @@ export default function GateConsoleScreen() {
       } catch {}
     }
 
+    // 3. Direct service lookup by ID
     if (!passData || (!passData._id && !passData.visitorName && !passData.visitorDetails)) {
       try {
         const res = await visitorService.getPassDetails(cleanCode);
@@ -108,9 +114,50 @@ export default function GateConsoleScreen() {
       } catch {}
     }
 
+    // 4. In-memory fallback across passes list (Search by Vehicle Plate Number or Visitor Name)
+    if ((!passData || (!passData._id && !passData.visitorName && !passData.visitorDetails)) && Array.isArray(passes)) {
+      const q = raw.toLowerCase().trim();
+      const matched = passes.find(
+        (p: any) =>
+          p.vehicleDetails?.number?.toLowerCase().replace(/[\s-]/g, '').includes(cleanCode.toLowerCase()) ||
+          p.vehicleNo?.toLowerCase().replace(/[\s-]/g, '').includes(cleanCode.toLowerCase()) ||
+          p.visitorDetails?.name?.toLowerCase().includes(q) ||
+          p.visitorName?.toLowerCase().includes(q) ||
+          p.phone?.includes(cleanCode) ||
+          p.visitorDetails?.phone?.includes(cleanCode)
+      );
+      if (matched) {
+        passData = matched;
+      }
+    }
+
     setLoading(false);
 
     if (passData && (passData._id || passData.visitorName || passData.visitorDetails)) {
+      // Check if visitor is currently INSIDE
+      let isCurrentlyInside = false;
+      let matchedLogId: string | null = null;
+
+      try {
+        if (activeOrgId) {
+          const insideList = await visitorService.getActiveVisitors(activeOrgId);
+          const rawLogs = insideList && (insideList as any).success !== undefined ? insideList : (insideList as any)?.data;
+          const logs = Array.isArray(rawLogs?.data || rawLogs) ? rawLogs?.data || rawLogs : [];
+          const foundInside = logs.find((l: any) => {
+            const lPassId = (l.passId?._id || l.passId)?.toString();
+            const targetId = (passData._id || passData.id)?.toString();
+            return lPassId && targetId && lPassId === targetId;
+          });
+          if (foundInside) {
+            isCurrentlyInside = true;
+            matchedLogId = foundInside._id || foundInside.id;
+          }
+        }
+      } catch {}
+
+      setIsInsideAction(isCurrentlyInside);
+      setActiveLogId(matchedLogId);
+
       const isRevoked = passData.status === 'REVOKED';
       const isExpired =
         passData.status === 'EXPIRED' ||
@@ -129,8 +176,14 @@ export default function GateConsoleScreen() {
       const result: ScanResultData = {
         success: isValid,
         status,
-        title: isValid ? 'Visitor Access Verified' : 'Access Verification Denied',
-        message: isRevoked
+        title: isCurrentlyInside
+          ? 'Visitor Currently On-Premises'
+          : isValid
+          ? 'Visitor Access Verified'
+          : 'Access Verification Denied',
+        message: isCurrentlyInside
+          ? 'Visitor is currently inside the estate. Tap below to log gate check-out.'
+          : isRevoked
           ? 'Pass has been revoked by host resident or estate admin.'
           : isExpired
           ? 'This visitor pass has expired.'
@@ -162,7 +215,7 @@ export default function GateConsoleScreen() {
       setScanResult(result);
       setScanResultSheetOpen(true);
     } else {
-      setStatusMessage(`No active pass found matching code "${cleanCode}".`);
+      setStatusMessage(`No active pass found matching "${raw}".`);
     }
   };
 
@@ -188,6 +241,26 @@ export default function GateConsoleScreen() {
       await loadData();
     } catch (err: any) {
       setStatusMessage(err?.response?.data?.message || err?.message || 'Failed to admit visitor.');
+    } finally {
+      setAdmitLoading(false);
+    }
+  };
+
+  const handleCheckOutFromConsole = async () => {
+    if (!activeLogId) {
+      setScanResultSheetOpen(false);
+      return;
+    }
+
+    setAdmitLoading(true);
+    try {
+      await visitorService.checkoutVisitor(activeLogId);
+      setScanResultSheetOpen(false);
+      setPassCode('');
+      setStatusMessage(`Visitor ${scanResult?.visitorName || ''} checked out successfully!`);
+      await loadData();
+    } catch (err: any) {
+      setStatusMessage(err?.response?.data?.message || err?.message || 'Failed to checkout visitor.');
     } finally {
       setAdmitLoading(false);
     }
@@ -265,7 +338,7 @@ export default function GateConsoleScreen() {
           />
         </View>
 
-        {/* Canonical TabBar: Console vs Walk-In Queue vs Inside Visitors */}
+        {/* Canonical TabBar: Console vs Walk-In Queue vs Inside Visitors vs Directory */}
         <TabBar
           tabs={GATE_TABS}
           activeTab={activeTab}
@@ -278,6 +351,8 @@ export default function GateConsoleScreen() {
           <InsideVisitorsView />
         ) : activeTab === 'WALK_INS' ? (
           <GuardWalkInStatusView />
+        ) : activeTab === 'DIRECTORY' ? (
+          <GuardVillaDirectoryView />
         ) : (
           <ScrollView
             className="flex-1"
@@ -296,7 +371,7 @@ export default function GateConsoleScreen() {
             <View className="bg-card border border-border rounded-2xl p-4 gap-3">
               <View className="flex-row items-center gap-2 border-b border-border/40 pb-2.5">
                 <ScanLine size={18} className="text-primary" />
-                <Text className="text-sm font-bold text-foreground">Verify Pass Code / QR</Text>
+                <Text className="text-sm font-bold text-foreground">Verify Pass Code / QR / Plate</Text>
               </View>
 
               <View className="flex-row items-center gap-2">
@@ -304,8 +379,8 @@ export default function GateConsoleScreen() {
                   <TextInput
                     value={passCode}
                     onChangeText={setPassCode}
-                    placeholder="Enter 6-digit PIN code..."
-                    keyboardType="number-pad"
+                    placeholder="Enter 6-digit PIN, Plate, or Name..."
+                    keyboardType="default"
                     inputClassName="font-mono text-sm tracking-wider"
                     onSubmitEditing={() => handleVerifyPass()}
                   />
@@ -352,13 +427,25 @@ export default function GateConsoleScreen() {
 
                 <Button
                   variant="outline"
+                  onPress={() => setActiveTab('DIRECTORY')}
+                  className="flex-1 h-auto py-3.5 rounded-xl flex-col items-center justify-center gap-1.5 bg-primary/10 border-primary/20"
+                  accessibilityLabel="Villa Intercom Directory"
+                >
+                  <Search size={22} className="text-primary" />
+                  <Text className="text-xs font-bold text-primary text-center">
+                    Villa Directory
+                  </Text>
+                </Button>
+
+                <Button
+                  variant="outline"
                   onPress={() => setActiveTab('INSIDE')}
                   className="flex-1 h-auto py-3.5 rounded-xl flex-col items-center justify-center gap-1.5 bg-status-success/10 border-status-success/20"
                   accessibilityLabel="Gate Check-Out"
                 >
                   <LogOut size={22} className="text-status-success" />
                   <Text className="text-xs font-bold text-status-success text-center">
-                    Gate Check-Out
+                    Check-Out List
                   </Text>
                 </Button>
               </View>
@@ -367,14 +454,14 @@ export default function GateConsoleScreen() {
         )}
       </View>
 
-      {/* Hardware / Verification Scan Result Sheet with Admit Action */}
+      {/* Hardware / Verification Scan Result Sheet with Admit / Checkout Action */}
       <ScanResultSheet
         visible={scanResultSheetOpen}
         result={scanResult}
         loading={admitLoading}
-        primaryActionLabel="Confirm Gate Entry"
+        primaryActionLabel={isInsideAction ? 'Gate Check-Out' : 'Confirm Gate Entry'}
         secondaryActionLabel="Dismiss"
-        onPrimaryAction={handleAdmitVisitor}
+        onPrimaryAction={isInsideAction ? handleCheckOutFromConsole : handleAdmitVisitor}
         onSecondaryAction={() => setScanResultSheetOpen(false)}
         onClose={() => setScanResultSheetOpen(false)}
       />

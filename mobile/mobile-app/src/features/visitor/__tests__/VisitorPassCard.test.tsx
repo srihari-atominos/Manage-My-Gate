@@ -272,6 +272,48 @@ describe('Visitor Management Mobile Pass Logic & Payload Mappings', () => {
       expect(payload.villaId).toBe('60c72b2f9b1d8e25d88db659');
     });
   });
+
+  describe('Gate Console Search & Matching Logic', () => {
+    const mockPasses = [
+      {
+        _id: '60c72b2f9b1d8e25d88db699',
+        code: '377208',
+        visitorName: 'David Lee',
+        vehicleDetails: { number: 'KA-01-MJ-5544' },
+        visitorDetails: { name: 'David Lee', phone: '9876543210' },
+      },
+      {
+        _id: '60c72b2f9b1d8e25d88db698',
+        code: '112233',
+        visitorName: 'Swiggy Courier',
+        vehicleDetails: { number: 'MH-12-AB-9999' },
+        visitorDetails: { name: 'Swiggy Courier', phone: '9888877777' },
+      },
+    ];
+
+    it('matches pass by vehicle license plate without formatting', () => {
+      const query = 'ka01mj5544';
+      const cleanQuery = query.replace(/[\s-]/g, '').toLowerCase();
+
+      const matched = mockPasses.find((p) =>
+        p.vehicleDetails?.number?.toLowerCase().replace(/[\s-]/g, '').includes(cleanQuery)
+      );
+
+      expect(matched).toBeDefined();
+      expect(matched?.visitorName).toBe('David Lee');
+      expect(matched?.code).toBe('377208');
+    });
+
+    it('matches pass by visitor name substring', () => {
+      const query = 'swiggy';
+      const matched = mockPasses.find((p) =>
+        p.visitorDetails?.name?.toLowerCase().includes(query.toLowerCase())
+      );
+
+      expect(matched).toBeDefined();
+      expect(matched?.code).toBe('112233');
+    });
+  });
 });
 
 
