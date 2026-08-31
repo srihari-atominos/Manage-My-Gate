@@ -12,22 +12,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { Mail, Phone, Clock, Globe, Building2 } from 'lucide-react-native';
 
-const TIMEZONE_OPTIONS = [
-  { label: 'UTC (Coordinated Universal Time)', value: 'UTC' },
-  { label: 'IST (Asia/Kolkata)', value: 'Asia/Kolkata' },
-  { label: 'EST (America/New_York)', value: 'America/New_York' },
-  { label: 'PST (America/Los_Angeles)', value: 'America/Los_Angeles' },
-  { label: 'GMT (Europe/London)', value: 'Europe/London' },
-  { label: 'GST (Asia/Dubai)', value: 'Asia/Dubai' },
-];
-
-const LANGUAGE_OPTIONS = [
-  { label: 'English (US)', value: 'en-US' },
-  { label: 'English (UK)', value: 'en-GB' },
-  { label: 'Arabic', value: 'ar-SA' },
-  { label: 'French', value: 'fr-FR' },
-  { label: 'Spanish', value: 'es-ES' },
-];
+import { DropdownSelect } from '@/components/forms/DropdownSelect';
+import { TIMEZONE_OPTIONS, LANGUAGE_OPTIONS } from '@/src/utils/dropdownConstants';
 
 const workspaceSchema = yup.object({
   workspaceName: yup.string().required('Workspace name is required').min(2, 'Workspace name must be at least 2 characters'),
