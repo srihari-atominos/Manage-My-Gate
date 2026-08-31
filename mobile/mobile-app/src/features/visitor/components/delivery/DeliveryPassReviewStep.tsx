@@ -93,7 +93,18 @@ export const DeliveryPassReviewStep: React.FC<DeliveryPassReviewStepProps> = ({
                   variant="info"
                 />
               ) : (
-                validity.validityDuration
+                <StatusBadge
+                  label={
+                    validity.validityDuration === 'THIRTY_MINS'
+                      ? '30 Minutes Quick Pass'
+                      : validity.validityDuration === 'ONE_HOUR'
+                      ? '1 Hour Pass'
+                      : validity.validityDuration === 'TWO_HOURS'
+                      ? '2 Hours Pass'
+                      : 'Valid Until Midnight Today'
+                  }
+                  variant="info"
+                />
               )
             }
             iconName="Clock"

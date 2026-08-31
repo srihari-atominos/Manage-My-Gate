@@ -250,7 +250,7 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
       
       const createdPass = res?.payload?.data || res?.payload || res;
 
-      const code = createdPass?.code || 'PASS-' + Math.floor(100000 + Math.random() * 900000);
+      const code = createdPass?.shortKey || createdPass?.code || String(Math.floor(100000 + Math.random() * 900000));
       setGeneratedPass({
         id: createdPass?._id || 'pass-' + Date.now(),
         code,

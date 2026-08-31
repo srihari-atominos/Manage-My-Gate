@@ -14,20 +14,21 @@ export const VisitorPassCode: React.FC<VisitorPassCodeProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
 
-  const formattedCode = code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
+  const cleanCode = (code || '').replace(/^PASS-?/i, '').trim();
+  const formattedCode = cleanCode.length === 6 ? `${cleanCode.slice(0, 3)} ${cleanCode.slice(3)}` : cleanCode;
 
   const handleCopy = useCallback(() => {
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(code);
+      navigator.clipboard.writeText(cleanCode);
     } else if (Clipboard && typeof Clipboard.setString === 'function') {
-      Clipboard.setString(code);
+      Clipboard.setString(cleanCode);
     }
 
     setCopied(true);
     setTimeout(() => {
       setCopied(false);
     }, 2000);
-  }, [code]);
+  }, [cleanCode]);
 
   return (
     <View className="bg-muted/40 border border-border rounded-2xl p-4 items-center justify-center gap-2">

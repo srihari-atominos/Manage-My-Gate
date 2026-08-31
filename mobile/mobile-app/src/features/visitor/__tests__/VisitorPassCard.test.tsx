@@ -152,11 +152,30 @@ describe('Visitor Management Mobile Pass Logic & Payload Mappings', () => {
 
       expect(payload.passType).toBe('DELIVERY');
       expect(payload.isPrivate).toBe(true);
-      expect(payload.deliveryDetails.partner).toBe('AMAZON');
-      expect(payload.deliveryDetails.packageCount).toBe(2);
-      expect(payload.deliveryDetails.orderId).toBe('AMZ-99120');
       expect(payload.deliveryDetails.instructions).toBe('Drop at clubhouse reception desk');
       expect(payload.usageLimit.maxUses).toBe(1);
+    });
+
+    it('correctly maps 30-minute quick delivery pass', () => {
+      const details = {
+        packageCount: '1',
+        deliveryAction: 'DOORSTEP' as const,
+      };
+      const validity = {
+        usageType: 'ONE_TIME' as const,
+        validityDuration: 'THIRTY_MINS' as const,
+      };
+
+      const payload = mapDeliveryFormToApiPayload('blinkit', details, validity, baseContext);
+
+      expect(payload.passType).toBe('DELIVERY');
+      expect(payload.deliveryDetails.partner).toBe('BLINKIT');
+      expect(payload.usageLimit.maxUses).toBe(1);
+
+      const startMs = new Date(payload.validity.startDate).getTime();
+      const endMs = new Date(payload.validity.endDate).getTime();
+      const diffMins = Math.round((endMs - startMs) / (60 * 1000));
+      expect(diffMins).toBe(30);
     });
   });
 

@@ -19,7 +19,16 @@ export class VisitorPassTokenRepository {
    * @returns {Promise<Object|null>} The token mapping document, or null if not found.
    */
   async findByCode(passCode, session = null) {
-    return await VisitorPassToken.findOne({ passCode }).session(session || null);
+    if (!passCode) return null;
+    const clean = String(passCode).replace(/^PASS-?/i, '').trim();
+    return await VisitorPassToken.findOne({
+      $or: [
+        { passCode },
+        { shortKey: passCode },
+        { shortKey: clean },
+        { passCode: { $regex: new RegExp(`_${clean}$`, 'i') } },
+      ],
+    }).session(session || null);
   }
 
   /**
