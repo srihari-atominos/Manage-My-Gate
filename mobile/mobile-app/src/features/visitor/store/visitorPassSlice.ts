@@ -129,9 +129,19 @@ export const createPass = createAsyncThunk(
 
 export const getPassDetails = createAsyncThunk(
   'visitorPass/getPassDetails',
-  async (id: string, { rejectWithValue }) => {
+  async (idOrCode: string, { rejectWithValue }) => {
     try {
-      const response = await visitorService.getPassDetails(id);
+      const clean = idOrCode?.trim();
+      let response: any;
+      if (clean && clean.length < 24) {
+        try {
+          response = await visitorService.getPassByCode(clean);
+        } catch {
+          response = await visitorService.getPassDetails(clean);
+        }
+      } else {
+        response = await visitorService.getPassDetails(clean);
+      }
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       return (body?.data || body) as any;
     } catch (error: any) {
