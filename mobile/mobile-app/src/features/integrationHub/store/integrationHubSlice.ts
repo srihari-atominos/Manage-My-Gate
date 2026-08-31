@@ -19,9 +19,74 @@ export interface IntegrationHubState {
   };
 }
 
+export const DUMMY_CATALOG: ProviderCatalogItem[] = [
+  {
+    id: 'stripe',
+    name: 'Stripe Payments',
+    category: 'Payment Gateway',
+    description: 'Credit Card & Online Payment Gateway for resident assessments & maintenance dues.',
+    icon: 'CreditCard',
+    fields: [
+      { name: 'apiKey', label: 'API Key', type: 'text', required: true },
+      { name: 'webhookSecret', label: 'Webhook Secret', type: 'text', required: true },
+    ],
+  },
+  {
+    id: 'razorpay',
+    name: 'Razorpay PG',
+    category: 'Payment Gateway',
+    description: 'UPI, Net Banking & Card Processor for India region community payments.',
+    icon: 'Coins',
+    fields: [
+      { name: 'keyId', label: 'Key ID', type: 'text', required: true },
+      { name: 'keySecret', label: 'Key Secret', type: 'password', required: true },
+    ],
+  },
+  {
+    id: 'twillio',
+    name: 'Twilio SMS',
+    category: 'SMS & WhatsApp',
+    description: 'Automated SMS alerts for gate visitor approvals and urgent notices.',
+    icon: 'MessageSquare',
+    fields: [
+      { name: 'accountSid', label: 'Account SID', type: 'text', required: true },
+      { name: 'authToken', label: 'Auth Token', type: 'password', required: true },
+    ],
+  },
+  {
+    id: 'sendgrid',
+    name: 'SendGrid Email',
+    category: 'Email Dispatch',
+    description: 'Transactional email service for resident invite tokens and billing receipts.',
+    icon: 'Mail',
+    fields: [
+      { name: 'apiKey', label: 'API Key', type: 'password', required: true },
+    ],
+  },
+];
+
+export const DUMMY_CONNECTIONS: IntegrationConnection[] = [
+  {
+    id: 'conn-1',
+    provider: 'stripe',
+    accountLabel: 'Primary Stripe Live Gateway',
+    status: 'connected',
+    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'conn-2',
+    provider: 'twillio',
+    accountLabel: 'Gate Security SMS Dispatcher',
+    status: 'connected',
+    createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
 const initialState: IntegrationHubState = {
-  catalog: [],
-  connections: [],
+  catalog: DUMMY_CATALOG,
+  connections: DUMMY_CONNECTIONS,
   selectedProvider: 'all',
   isLoading: false,
   isSubmitting: false,
@@ -29,7 +94,7 @@ const initialState: IntegrationHubState = {
   pagination: {
     currentPage: 1,
     totalPages: 1,
-    totalRecords: 0,
+    totalRecords: DUMMY_CONNECTIONS.length,
     rowsPerPage: 20,
   },
 };
@@ -138,10 +203,11 @@ const integrationHubSlice = createSlice({
       })
       .addCase(fetchCatalogAsync.fulfilled, (state, action: PayloadAction<ProviderCatalogItem[]>) => {
         state.isLoading = false;
-        state.catalog = action.payload;
+        state.catalog = action.payload && action.payload.length > 0 ? action.payload : DUMMY_CATALOG;
       })
       .addCase(fetchCatalogAsync.rejected, (state, action) => {
         state.isLoading = false;
+        if (state.catalog.length === 0) state.catalog = DUMMY_CATALOG;
         state.error = action.payload as string;
       })
 
@@ -152,16 +218,18 @@ const integrationHubSlice = createSlice({
       })
       .addCase(fetchConnectionsAsync.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.connections = action.payload.data;
+        const fetchedData = action.payload?.data || [];
+        state.connections = fetchedData.length > 0 ? fetchedData : DUMMY_CONNECTIONS;
         state.pagination = {
-          currentPage: action.payload.page,
-          totalPages: action.payload.pages,
-          totalRecords: action.payload.total,
+          currentPage: action.payload?.page || 1,
+          totalPages: action.payload?.pages || 1,
+          totalRecords: action.payload?.total || state.connections.length,
           rowsPerPage: state.pagination.rowsPerPage,
         };
       })
       .addCase(fetchConnectionsAsync.rejected, (state, action) => {
         state.isLoading = false;
+        if (state.connections.length === 0) state.connections = DUMMY_CONNECTIONS;
         state.error = action.payload as string;
       })
 

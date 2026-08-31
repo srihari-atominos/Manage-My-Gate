@@ -1,6 +1,4 @@
-import { CommunityNote } from './communityNoteTypes';
-
-export type DirectoryRole = 'resident' | 'guard' | 'staff' | 'admin' | string;
+export type DirectoryRole = 'resident' | 'guard' | 'security' | 'staff' | 'maintenance' | 'management' | 'admin' | string;
 
 export interface DirectoryMember {
   id: string;
@@ -10,6 +8,7 @@ export interface DirectoryMember {
   designation?: string;
   unitNumber?: string;
   phone?: string | null;
+  email?: string | null;
   intercomNumber?: string | null;
   avatarUrl?: string | null;
   isOnline?: boolean;
@@ -17,7 +16,7 @@ export interface DirectoryMember {
   showPhoneInDirectory?: boolean;
   allowIntercomCalls?: boolean;
   interests?: string[];
-  activeCommunityNote?: CommunityNote | null;
+  activeCommunityNote?: any;
 }
 
 export interface DirectoryPagination {

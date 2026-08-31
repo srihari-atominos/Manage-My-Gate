@@ -36,6 +36,7 @@ import {
 } from '@/components/auth/NahomBrandLogo';
 import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import { sessionStore } from '@/src/utils/storage';
 
 // 1. Basic Auth Validation Schema
 const basicAuthSchema = yup.object().shape({
@@ -72,17 +73,15 @@ export default function LoginScreen() {
   const isCreateOrgIntent =
     params.intent === 'create-org' ||
     params.intent === 'create' ||
-    (typeof window !== 'undefined' && (
+    (typeof window !== 'undefined' && typeof window.location !== 'undefined' && window.location?.href && (
       window.location.href.includes('intent=create-org') ||
-      window.location.href.includes('intent=create') ||
-      sessionStorage.getItem('mobile_auth_intent') === 'create-org'
-    ));
+      window.location.href.includes('intent=create')
+    )) ||
+    sessionStore.getItem('mobile_auth_intent') === 'create-org';
 
   React.useEffect(() => {
     if (params.intent === 'create-org' || params.intent === 'create') {
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('mobile_auth_intent', params.intent);
-      }
+      sessionStore.setItem('mobile_auth_intent', params.intent);
     }
   }, [params.intent]);
 
@@ -219,27 +218,25 @@ export default function LoginScreen() {
     };
   }, [authMode]);
 
-  // Connect Harmony transition & navigate upon authentication
   React.useEffect(() => {
-    if (isAuthenticated && isFocused) {
+    if (isAuthenticated) {
       if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
       Keyboard.dismiss();
       setConnectingHarmony(true);
       const timer = setTimeout(() => {
+        const uAny = user as any;
         const hasOrg = !!(
           user && (
-            user.orgId ||
-            user.activeOrgId ||
-            user.organizationId ||
-            (Array.isArray((user as any).availableWorkspaces) && (user as any).availableWorkspaces.length > 0)
+            uAny.orgId ||
+            uAny.activeOrgId ||
+            uAny.organizationId ||
+            (Array.isArray(uAny.availableWorkspaces) && uAny.availableWorkspaces.length > 0)
           )
         );
         if (isCreateOrgIntent || !hasOrg) {
-          if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('mobile_auth_intent');
-          }
+          sessionStore.removeItem('mobile_auth_intent');
           router.replace({ pathname: '/(auth)/setup-organization', params: { intent: 'create-org' } });
         } else {
           router.replace('/(resident)/dashboard');

@@ -70,14 +70,13 @@ const _nav = [
         to: '/role-builder',
         requiredPermission: 'roles:read',
       },
+      {
+        component: CNavItem,
+        name: 'Integration Hub',
+        to: '/integrations',
+        requiredPermission: 'integrations:read',
+      },
     ]
-  },
-  {
-    component: CNavItem,
-    name: 'Integration Hub',
-    to: '/integrations',
-    icon: <CIcon icon={cilApps} customClassName="nav-icon" />,
-    requiredPermission: 'integrations:read',
   },
   {
     component: CNavItem,

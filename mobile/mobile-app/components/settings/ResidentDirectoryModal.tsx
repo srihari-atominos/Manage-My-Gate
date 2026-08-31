@@ -5,15 +5,13 @@ import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PulseItem } from '@/src/features/communityPulse/types/communityPulseTypes';
-import { formatRelativeTime } from '@/src/features/communityPulse/hooks/useCommunityPulse';
 import { useDirectory } from '@/src/features/directory/hooks/useDirectory';
 import { DirectoryMember } from '@/src/features/directory/types/directoryTypes';
 
 export interface ResidentDirectoryModalProps {
   visible: boolean;
   onClose: () => void;
-  pulses: PulseItem[];
+  pulses?: any[];
 }
 
 export interface ResidentProfileItem {
@@ -23,7 +21,7 @@ export interface ResidentProfileItem {
   role: string;
   phone: string;
   avatar?: string;
-  activePulse?: PulseItem;
+  activePulse?: any;
   interests: Array<{ name: string; emoji: string }>;
 }
 
@@ -96,29 +94,16 @@ export const ResidentDirectoryModal = ({
     phone: member.phone || '',
     avatar: member.avatarUrl || undefined,
     interests: (member.interests || []).map((i: string) => ({ name: i, emoji: '✨' })),
-    activePulse: member.activeCommunityNote
-      ? {
-          id: member.activeCommunityNote._id || member.activeCommunityNote.id || '',
-          userId: member.userId,
-          userName: member.name,
-          text: member.activeCommunityNote.text,
-          category: 'general',
-          createdAt: member.activeCommunityNote.createdAt,
-          expiresAt: member.activeCommunityNote.expiresAt,
-        }
-      : undefined,
   }));
 
   const filteredNeighbors = neighborList.filter((item) => {
-    if (activeTab === 'active_pulse' && !item.activePulse) return false;
     if (activeTab === 'interests' && item.interests.length === 0) return false;
     if (searchQuery && searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       const matchName = item.name.toLowerCase().includes(q);
       const matchVilla = item.villa.toLowerCase().includes(q);
-      const matchPulse = item.activePulse?.text?.toLowerCase().includes(q);
       const matchInterest = item.interests.some((i) => i.name.toLowerCase().includes(q));
-      return matchName || matchVilla || matchPulse || matchInterest;
+      return matchName || matchVilla || matchInterest;
     }
     return true;
   });
@@ -207,7 +192,6 @@ export const ResidentDirectoryModal = ({
             <View className="flex-row mx-4 mb-3 bg-muted/40 border border-border p-0.5 rounded-xl gap-0.5">
               {[
                 { key: 'all', label: 'All' },
-                { key: 'active_pulse', label: 'Active Pulses' },
                 { key: 'interests', label: 'Interests' },
               ].map((tab) => {
                 const isActive = activeTab === tab.key;
@@ -271,29 +255,6 @@ export const ResidentDirectoryModal = ({
                         <Text className="text-[11px] font-bold text-primary">Connect</Text>
                       </Pressable>
                     </Pressable>
-
-                    {/* Active Pulse */}
-                    {item.activePulse ? (
-                      <Pressable
-                        onPress={() => setConnectNeighbor(item)}
-                        className="mx-3.5 mb-3 bg-primary/8 border border-primary/15 rounded-xl p-2.5 flex-row items-center active:opacity-80"
-                      >
-                        <Text className="text-base me-2">{item.activePulse.emoji || '💬'}</Text>
-                        <View className="flex-1 min-w-0 me-2">
-                          <Text className="text-xs font-bold text-foreground" numberOfLines={1}>
-                            {item.activePulse.text}
-                          </Text>
-                          {item.activePulse.contextText ? (
-                            <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
-                              {item.activePulse.contextText}
-                            </Text>
-                          ) : null}
-                        </View>
-                        <Text className="text-[10px] font-mono text-muted-foreground shrink-0">
-                          {formatRelativeTime(item.activePulse.createdAt)}
-                        </Text>
-                      </Pressable>
-                    ) : null}
 
                     {/* Interest Chips */}
                     <View className="flex-row flex-wrap gap-1.5 px-3.5 pb-3">
@@ -359,18 +320,6 @@ export const ResidentDirectoryModal = ({
                     <X size={16} className="text-foreground" />
                   </Pressable>
                 </View>
-
-                {/* Status Reference */}
-                {connectNeighbor.activePulse ? (
-                  <View className="bg-primary/8 border border-primary/15 rounded-2xl p-3">
-                    <Text className="text-[10px] font-bold text-primary uppercase mb-0.5">
-                      Responding to:
-                    </Text>
-                    <Text className="text-xs font-semibold text-foreground">
-                      {connectNeighbor.activePulse.emoji} {connectNeighbor.activePulse.text}
-                    </Text>
-                  </View>
-                ) : null}
 
                 {/* Quick Chips */}
                 <View className="gap-1.5">

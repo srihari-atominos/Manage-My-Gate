@@ -8,9 +8,14 @@ import { MessageSquareCode } from 'lucide-react-native';
 export interface DirectoryPulseNoteProps {
   note: CommunityNote;
   showCountdown?: boolean;
+  isMyNote?: boolean;
 }
 
-export const DirectoryPulseNote = ({ note, showCountdown = true }: DirectoryPulseNoteProps) => {
+export const DirectoryPulseNote = ({
+  note,
+  showCountdown = true,
+  isMyNote = false,
+}: DirectoryPulseNoteProps) => {
   if (!note || !note.text) return null;
 
   return (
@@ -19,7 +24,7 @@ export const DirectoryPulseNote = ({ note, showCountdown = true }: DirectoryPuls
         <View className="flex-row items-center gap-1.5">
           <MessageSquareCode size={14} className="text-primary" />
           <Text className="text-[11px] font-bold text-primary tracking-wider uppercase">
-            MY COMMUNITY NOTE
+            {isMyNote ? 'MY COMMUNITY NOTE' : 'COMMUNITY NOTE'}
           </Text>
         </View>
         {showCountdown && note.expiresAt && (

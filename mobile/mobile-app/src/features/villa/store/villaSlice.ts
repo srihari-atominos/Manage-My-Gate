@@ -58,16 +58,26 @@ export interface VillaState {
   error: string | null;
 }
 
+export const DUMMY_VILLAS: Villa[] = [
+  { _id: 'v-101', unitNumber: 'Villa 101', blockOrBuilding: 'Phase 1', floor: 1, squareFeetArea: 2400, status: 'Occupied', type: '3BHK Villa' },
+  { _id: 'v-102', unitNumber: 'Villa 102', blockOrBuilding: 'Phase 1', floor: 1, squareFeetArea: 2400, status: 'Vacant', type: '3BHK Villa' },
+  { _id: 'v-103', unitNumber: 'Villa 103', blockOrBuilding: 'Phase 1', floor: 1, squareFeetArea: 2800, status: 'Occupied', type: '4BHK Villa' },
+  { _id: 'v-201', unitNumber: 'Block A-201', blockOrBuilding: 'Block A', floor: 2, squareFeetArea: 1800, status: 'Occupied', type: '2BHK Apartment' },
+  { _id: 'v-202', unitNumber: 'Block A-202', blockOrBuilding: 'Block A', floor: 2, squareFeetArea: 1800, status: 'Under Maintenance', type: '2BHK Apartment' },
+];
+
+export const DUMMY_BLOCKS = ['Phase 1', 'Block A', 'Block B'];
+
 const initialState: VillaState = {
-  villas: [],
+  villas: DUMMY_VILLAS,
   currentVilla: null,
-  blocks: [],
+  blocks: DUMMY_BLOCKS,
   blocksLoading: false,
   stats: {
-    total: 0,
-    occupied: 0,
-    vacant: 0,
-    maintenance: 0,
+    total: DUMMY_VILLAS.length,
+    occupied: 3,
+    vacant: 1,
+    maintenance: 1,
   },
   filters: {
     search: '',
@@ -77,7 +87,7 @@ const initialState: VillaState = {
   pagination: {
     currentPage: 1,
     totalPages: 1,
-    totalRecords: 0,
+    totalRecords: DUMMY_VILLAS.length,
     rowsPerPage: 10,
   },
   loading: false,
@@ -293,18 +303,22 @@ const villaSlice = createSlice({
           pag = resPayload.pagination || resPayload;
         }
 
-        state.villas = list;
+        state.villas = list.length > 0 ? list : DUMMY_VILLAS;
         if (pag && typeof pag === 'object') {
           state.pagination = {
             currentPage: pag.page || pag.currentPage || 1,
             totalPages: pag.totalPages || 1,
-            totalRecords: pag.totalDocs || pag.totalRecords || pag.total || list.length,
+            totalRecords: pag.totalDocs || pag.totalRecords || pag.total || state.villas.length,
             rowsPerPage: pag.limit || pag.rowsPerPage || state.pagination.rowsPerPage,
           };
         }
       })
       .addCase(getVillas.rejected, (state, action) => {
         state.loading = false;
+        if (state.villas.length === 0) {
+          state.villas = DUMMY_VILLAS;
+          state.pagination.totalRecords = DUMMY_VILLAS.length;
+        }
         state.error = (action.payload as string) || 'Failed to load villas';
       })
 

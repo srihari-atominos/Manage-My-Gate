@@ -182,10 +182,15 @@ export const syncPermissions = async () => {
     const workspacesList = await WorkspaceModel.find({});
     const { DEFAULT_MODULES } = await import('../features/workspace/workspace.service.js');
     
+    const LEGACY_MODULE_KEYS = ['villas', 'users', 'roles', 'integrations', 'financial_suit', 'financials'];
     for (const ws of workspacesList) {
       let modified = false;
       if (!ws.modules) {
         ws.modules = [];
+      }
+      if (ws.modules.some(m => LEGACY_MODULE_KEYS.includes(m.moduleKey))) {
+        ws.modules = ws.modules.filter(m => !LEGACY_MODULE_KEYS.includes(m.moduleKey));
+        modified = true;
       }
       for (const defaultMod of DEFAULT_MODULES) {
         const hasModule = ws.modules.some(m => m.moduleKey === defaultMod.moduleKey);
@@ -196,7 +201,7 @@ export const syncPermissions = async () => {
       }
       if (modified) {
         await ws.save({ validateBeforeSave: false });
-        logger.info(`Self-healed workspace "${ws.workspaceName}" (${ws._id}) by backfilling missing default modules.`);
+        logger.info(`Self-healed workspace "${ws.workspaceName}" (${ws._id}) by updating module array.`);
       }
     }
 
@@ -206,12 +211,9 @@ export const syncPermissions = async () => {
     const defaultFeatureKeys = DEFAULT_MODULES.map(m => m.moduleKey);
     
     for (const org of orgsList) {
-      // Only set all default features for Platform orgs or orgs that have no allowedFeatures assigned (null/undefined)
-      if (org.isPlatform || !org.allowedFeatures) {
-        org.allowedFeatures = Array.from(new Set([...(org.allowedFeatures || []), ...defaultFeatureKeys]));
-        await org.save({ validateBeforeSave: false });
-        logger.info(`Self-healed platform/unassigned organization "${org.name}" (${org._id}) allowedFeatures.`);
-      }
+      org.allowedFeatures = Array.from(new Set([...(org.allowedFeatures || []), ...defaultFeatureKeys]));
+      await org.save({ validateBeforeSave: false });
+      logger.info(`Self-healed organization "${org.name}" (${org._id}) allowedFeatures.`);
     }
 
     // 6.10 Self-healing: Ensure all occupied units with no residents are marked as 'Vacant'

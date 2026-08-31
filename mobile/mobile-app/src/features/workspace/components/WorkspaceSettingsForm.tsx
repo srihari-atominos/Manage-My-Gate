@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { View, Alert } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 import { Button } from '@/components/common/Button';
 import { TextInput } from '@/components/forms/TextInput';
 import { Text } from '@/components/ui/text';
@@ -11,15 +11,15 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { Mail, Phone, Clock, Globe, Building2 } from 'lucide-react-native';
 
-const workspaceSchema = z.object({
-  workspaceName: z.string().min(2, 'Workspace name is required'),
-  contactEmail: z.string().email('Invalid email address').or(z.literal('')),
-  contactPhone: z.string().optional(),
-  timeZone: z.string().optional(),
-  language: z.string().optional(),
+const workspaceSchema = yup.object({
+  workspaceName: yup.string().required('Workspace name is required').min(2, 'Workspace name must be at least 2 characters'),
+  contactEmail: yup.string().email('Invalid email address').optional().default(''),
+  contactPhone: yup.string().optional().default(''),
+  timeZone: yup.string().optional().default(''),
+  language: yup.string().optional().default(''),
 });
 
-type WorkspaceFormValues = z.infer<typeof workspaceSchema>;
+type WorkspaceFormValues = yup.InferType<typeof workspaceSchema>;
 
 export const WorkspaceSettingsForm = () => {
   const { loadWorkspaceDetails, saveWorkspaceDetails, settings, loading, saving } = useWorkspace();
@@ -30,7 +30,7 @@ export const WorkspaceSettingsForm = () => {
     reset,
     formState: { errors },
   } = useForm<WorkspaceFormValues>({
-    resolver: zodResolver(workspaceSchema),
+    resolver: yupResolver(workspaceSchema),
     defaultValues: {
       workspaceName: '',
       contactEmail: '',

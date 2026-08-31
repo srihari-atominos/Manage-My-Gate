@@ -23,9 +23,47 @@ export const useDirectory = () => {
 
   const safeMembers = Array.isArray(members) ? members : [];
 
+  const filteredMembers = safeMembers.filter((m) => {
+    // 1. Role Filter Tab
+    if (activeTab && activeTab.toLowerCase() !== 'all') {
+      const memberRole = (m.role || '').toLowerCase();
+      const targetTab = activeTab.toLowerCase();
+
+      if (targetTab === 'guard' || targetTab === 'security') {
+        if (memberRole !== 'guard' && memberRole !== 'security') return false;
+      } else if (targetTab === 'staff') {
+        if (memberRole !== 'staff') return false;
+      } else if (targetTab === 'maintenance') {
+        if (memberRole !== 'maintenance' && memberRole !== 'staff') return false;
+      } else if (targetTab === 'management' || targetTab === 'admin') {
+        if (memberRole !== 'admin' && memberRole !== 'management') return false;
+      } else if (targetTab === 'resident') {
+        if (memberRole !== 'resident' && memberRole !== 'tenant' && memberRole !== 'owner') return false;
+      } else if (memberRole !== targetTab) {
+        return false;
+      }
+    }
+
+    // 2. Search Query Filter
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchName = (m.name || '').toLowerCase().includes(q);
+      const matchUnit = (m.unitNumber || '').toLowerCase().includes(q);
+      const matchPhone = (m.phone || '').toLowerCase().includes(q);
+      const matchEmail = (m.email || '').toLowerCase().includes(q);
+      const matchDesignation = (m.designation || '').toLowerCase().includes(q);
+      const matchRole = (m.role || '').toLowerCase().includes(q);
+      const matchInterests = (m.interests || []).some((i: string) => i.toLowerCase().includes(q));
+
+      return matchName || matchUnit || matchPhone || matchEmail || matchDesignation || matchRole || matchInterests;
+    }
+
+    return true;
+  });
+
   const loadData = useCallback(
     (page = 1, isRefreshing = false) => {
-      const validRoles = ['resident', 'guard', 'staff', 'admin'];
+      const validRoles = ['resident', 'guard', 'security', 'staff', 'maintenance', 'management', 'admin'];
       const roleFilter = validRoles.includes(activeTab.toLowerCase()) ? activeTab.toLowerCase() : undefined;
 
       dispatch(
@@ -74,7 +112,7 @@ export const useDirectory = () => {
   }, []);
 
   return {
-    members: safeMembers,
+    members: filteredMembers,
     pagination,
     searchQuery,
     setSearchQuery: (q: string) => dispatch(setSearchQuery(q)),
@@ -83,7 +121,7 @@ export const useDirectory = () => {
     loading,
     refreshing,
     error,
-    totalCount: pagination?.totalRecords ?? safeMembers.length,
+    totalCount: pagination?.totalRecords ?? filteredMembers.length,
     onRefresh: handleRefresh,
     onLoadMore: handleLoadMore,
     onCall: handleCall,

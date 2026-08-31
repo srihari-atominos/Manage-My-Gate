@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { Text } from '@/components/ui/text';
@@ -7,18 +8,22 @@ import { Button } from '@/components/ui/button';
 import { DirectorySearch } from '../components/DirectorySearch';
 import { DirectoryCategoryTabs } from '../components/DirectoryCategoryTabs';
 import { DirectoryContactCard } from '../components/DirectoryContactCard';
-import { DirectoryNoteComposer } from '../components/DirectoryNoteComposer';
 import { DirectoryQuickMessageSheet } from '../components/DirectoryQuickMessageSheet';
 import { useDirectory } from '../hooks/useDirectory';
-import { useCommunityNote } from '../hooks/useCommunityNote';
 import { useDirectoryMessaging } from '../hooks/useDirectoryMessaging';
 import { useDirectorySocket } from '../hooks/useDirectorySocket';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { DirectoryMember } from '../types/directoryTypes';
-import { PlusCircle, Sparkles } from 'lucide-react-native';
+import { Sparkles } from 'lucide-react-native';
 
 export function DirectoryScreen() {
-  // Real-time Socket Event Listener
+  const router = useRouter();
+
+  // Real-time Socket Event Listener for messaging
   useDirectorySocket();
+
+  const { user } = useAuth();
+  const currentUserId = (user as any)?.id || (user as any)?._id || (user as any)?.userId;
 
   const {
     members,
@@ -36,57 +41,47 @@ export function DirectoryScreen() {
   } = useDirectory();
 
   const {
-    myActiveNote,
-    composerOpen,
-    setComposerOpen,
-    expirationFormatted,
-  } = useCommunityNote();
-
-  const {
     quickSheetOpen,
     setQuickSheetOpen,
     selectedMember,
     onOpenQuickMessage,
-    onInterestedInNote,
     onOpenConversation,
   } = useDirectoryMessaging();
 
   const renderHeader = (
     <View className="gap-3 pb-3">
-      {/* Top Banner for Note Creation / Management */}
-      <View className="bg-primary/10 border border-primary/20 rounded-2xl p-3 flex-row items-center justify-between">
-        <View className="flex-1 pr-2">
+      {/* Direct Link Banner to All Notes & Publish Note Page */}
+      <View className="bg-primary/10 border border-primary/20 rounded-2xl p-3.5 flex-row items-center justify-between shadow-xs">
+        <View className="flex-1 me-2">
           <View className="flex-row items-center gap-1.5">
-            <Sparkles size={14} className="text-primary" />
-            <Text className="text-xs font-bold text-foreground">
-              {myActiveNote ? 'Your Active Note' : 'Share what you are up to!'}
-            </Text>
+            <Sparkles size={15} className="text-primary" />
+            <Text className="text-xs font-bold text-foreground">Community Notes</Text>
           </View>
-          <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
-            {myActiveNote ? `${myActiveNote.emoji} ${myActiveNote.text}` : 'Post a 24h note to let neighbors know.'}
+          <Text className="text-[11px] text-muted-foreground mt-0.5" numberOfLines={1}>
+            View 24h status notes or publish your own
           </Text>
-          {myActiveNote && (
-            <Text className="text-[10px] text-primary font-semibold mt-1">
-              {expirationFormatted}
-            </Text>
-          )}
         </View>
 
         <Button
           variant="default"
           size="sm"
-          onPress={() => setComposerOpen(true)}
-          leftIcon={PlusCircle}
-          className="rounded-xl px-3"
+          onPress={() => router.push('/(resident)/notes' as any)}
+          leftIcon={Sparkles}
+          className="rounded-xl px-3.5 h-9"
+          textClassName="text-xs font-bold text-primary-foreground"
         >
-          {myActiveNote ? 'Change' : 'Add Note'}
+          All Notes
         </Button>
       </View>
 
       {/* Search Bar */}
-      <DirectorySearch value={searchQuery} onChangeText={setSearchQuery} />
+      <DirectorySearch
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Search by name, unit, phone, or role..."
+      />
 
-      {/* Category Segmented Control */}
+      {/* Category Tabs (All, Residents, Staff, Security, Maintenance, Management) */}
       <DirectoryCategoryTabs activeTab={activeTab} onTabChange={setActiveTab} />
     </View>
   );
@@ -94,7 +89,7 @@ export function DirectoryScreen() {
   return (
     <ScreenShell
       title="Community Directory"
-      subtitle="Discover neighbors, active notes & security personnel"
+      subtitle="Find and contact residents, security & community staff"
       iconName="Users"
       showBackButton={true}
     >
@@ -105,10 +100,10 @@ export function DirectoryScreen() {
             <DirectoryContactCard
               key={member.id || member.userId}
               member={member}
+              currentUserId={currentUserId}
               onCall={onCall}
               onIntercom={onIntercom}
               onQuickMessage={onOpenQuickMessage}
-              onInterestedInNote={onInterestedInNote}
               onOpenConversation={onOpenConversation}
             />
           )}
@@ -126,8 +121,7 @@ export function DirectoryScreen() {
         />
       </View>
 
-      {/* Bottom Sheet Composers */}
-      <DirectoryNoteComposer visible={composerOpen} onClose={() => setComposerOpen(false)} />
+      {/* Quick Message Bottom Sheet */}
       <DirectoryQuickMessageSheet
         visible={quickSheetOpen}
         onClose={() => setQuickSheetOpen(false)}

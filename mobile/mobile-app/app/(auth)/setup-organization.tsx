@@ -97,23 +97,23 @@ export default function SetupOrganizationScreen() {
     <>
       <Stack.Screen options={{ title: 'Organization Setup', headerBackVisible: false }} />
       <KeyboardAvoidingShell className="bg-background">
-        <ScrollView contentContainerStyle={{ padding: 24, flexGrow: 1, justifyContent: 'center' }}>
-          <View className="gap-6 flex-1 justify-center max-w-sm mx-auto w-full py-4">
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 24, flexGrow: 1, justifyContent: 'center' }}>
+          <View className="gap-5 flex-1 justify-center max-w-sm sm:max-w-md mx-auto w-full py-2 sm:py-4">
             {/* Header */}
-            <View className="items-center mb-2">
-              <View className="bg-primary/10 p-4 rounded-3xl mb-3">
-                <Building2 className="size-10 text-primary" size={36} />
+            <View className="items-center mb-1">
+              <View className="bg-primary/10 p-3.5 rounded-2xl mb-2.5 items-center justify-center">
+                <Building2 className="size-9 text-primary" size={34} />
               </View>
               <Text className="text-2xl font-extrabold text-foreground tracking-tight text-center">
                 Create Organization
               </Text>
-              <Text className="text-muted-foreground text-sm text-center mt-1.5 px-2">
+              <Text className="text-muted-foreground text-sm text-center mt-1 px-2">
                 Establish your enterprise workspace environment
               </Text>
             </View>
 
             {/* Form Container */}
-            <View className="bg-card border border-border rounded-2xl p-5 gap-4 shadow-sm">
+            <View className="bg-card border border-border rounded-2xl p-4 sm:p-6 gap-4 shadow-xs">
               <View className="gap-4">
                 <Controller
                   control={form.control}
@@ -123,7 +123,7 @@ export default function SetupOrganizationScreen() {
                       <Input
                         label="Organization Name"
                         placeholder="e.g. Nahom Heights Community"
-                        leftIcon={<Building2 size={18} className="text-muted-foreground" />}
+                        leftIcon={<Building2 size={18} className="text-muted-foreground me-1" />}
                         onBlur={onBlur}
                         onChangeText={onChange}
                         value={value}
@@ -133,18 +133,18 @@ export default function SetupOrganizationScreen() {
 
                       {/* Live Validation Feedback */}
                       {Boolean(checking || isAvailable !== null || checkError) ? (
-                        <View className="mt-2.5 ms-1 flex-row items-center">
+                        <View className="mt-2 ms-0.5 flex-row items-center flex-wrap gap-1.5">
                           {checking ? (
                             <View className="flex-row items-center gap-2">
                               <ActivityIndicator size="small" color="#03A9F4" />
                               <Text className="text-xs text-muted-foreground font-medium">
-                                Checking name availability...
+                                Checking availability...
                               </Text>
                             </View>
                           ) : null}
                           {!checking && isAvailable === true ? (
                             <View className="flex-row items-center gap-1.5">
-                              <CheckCircle2 size={14} className="text-emerald-500" color="#10b981" />
+                              <CheckCircle2 size={15} className="text-emerald-500" color="#10b981" />
                               <Text className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                                 Name is available
                               </Text>
@@ -152,7 +152,7 @@ export default function SetupOrganizationScreen() {
                           ) : null}
                           {!checking && isAvailable === false && !checkError ? (
                             <View className="flex-row items-center gap-1.5">
-                              <XCircle size={14} className="text-destructive" color="#ef4444" />
+                              <XCircle size={15} className="text-destructive" color="#ef4444" />
                               <Text className="text-xs text-destructive font-semibold">
                                 Organization name is already taken
                               </Text>
@@ -160,8 +160,8 @@ export default function SetupOrganizationScreen() {
                           ) : null}
                           {Boolean(checkError) ? (
                             <View className="flex-row items-center gap-1.5">
-                              <XCircle size={14} className="text-destructive" color="#ef4444" />
-                              <Text className="text-xs text-destructive font-semibold">{checkError}</Text>
+                              <XCircle size={15} className="text-destructive" color="#ef4444" />
+                              <Text className="text-xs text-destructive font-semibold flex-1">{checkError}</Text>
                             </View>
                           ) : null}
                         </View>
@@ -178,7 +178,7 @@ export default function SetupOrganizationScreen() {
                   loading={loading}
                   disabled={isSubmitDisabled}
                   textClassName="font-bold text-base"
-                  className="mt-2 h-12 bg-primary rounded-xl"
+                  className="mt-1 h-12 bg-primary rounded-xl w-full items-center justify-center"
                 >
                   {loading ? 'Creating Organization...' : 'Create Organization'}
                 </Button>

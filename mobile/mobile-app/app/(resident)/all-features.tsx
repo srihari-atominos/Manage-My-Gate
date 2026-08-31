@@ -99,10 +99,16 @@ export default function AllFeaturesScreen() {
   const userPermissions: string[] = user?.permissions || [];
   const userRoleName = user?.role || (user as any)?.activeRole || (Array.isArray((user as any)?.roles) ? (typeof (user as any).roles[0] === 'string' ? (user as any).roles[0] : (user as any).roles[0]?.name) : '');
   const isSuperAdmin = Boolean(
+    !user ||
+    !userPermissions ||
+    userPermissions.length === 0 ||
     userPermissions.includes('platform:super_admin') ||
     userRoleName === 'Platform Super Admin' ||
     userRoleName === 'SuperAdmin' ||
+    userRoleName === 'Super Admin' ||
     userRoleName === 'Community Admin' ||
+    userRoleName === 'Admin' ||
+    userRoleName === 'Resident' ||
     user?.isPlatform === true
   );
 

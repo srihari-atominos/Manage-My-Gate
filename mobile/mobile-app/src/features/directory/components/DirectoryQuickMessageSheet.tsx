@@ -43,19 +43,6 @@ export const DirectoryQuickMessageSheet = ({
       title={`Message ${member.name}`}
     >
       <View className="px-4 pb-6 gap-4">
-        {/* Active Note Context Header if available */}
-        {member.activeCommunityNote?.text ? (
-          <View className="bg-muted/40 border border-border/40 rounded-xl p-2.5">
-            <Text className="text-[11px] font-semibold text-muted-foreground uppercase">
-              Regarding Note:
-            </Text>
-            <Text className="text-xs font-bold text-foreground">
-              {member.activeCommunityNote.emoji}{' '}
-              {member.activeCommunityNote.text}
-            </Text>
-          </View>
-        ) : null}
-
         {/* Quick Messages Preset Pills */}
         <View className="gap-1.5">
           <Text className="text-xs font-bold text-foreground">Quick Options</Text>

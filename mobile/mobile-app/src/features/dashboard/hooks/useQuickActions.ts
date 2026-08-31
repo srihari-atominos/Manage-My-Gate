@@ -87,14 +87,15 @@ export const useQuickActions = () => {
         'amenities_facilities': ['amenities'],
         'complaints_helpdesk': ['complaints'],
         'notice_board_polls': ['notices'],
-        'financial_billing': ['billing']
+        'financial_billing': ['billing'],
+        'administration_security': ['administration_security']
       };
       
       const itemToModuleMap: Record<string, string[]> = {
-        'admin_users': ['administration_security'],
-        'admin_villas': ['administration_security'],
-        'admin_role_builder': ['administration_security'],
-        'admin_integrations': ['administration_security'],
+        'admin_users': ['administration_security', 'users'],
+        'admin_villas': ['administration_security', 'villas'],
+        'admin_role_builder': ['administration_security', 'roles'],
+        'admin_integrations': ['administration_security', 'integrations'],
         'admin_organizations': ['administration_security'],
         'admin_audit_logs': ['administration_security']
         // 'admin_workspace_settings' is intentionally omitted so it never gets hidden

@@ -22,13 +22,40 @@ export interface RoleState {
   rowsPerPage: number;
 }
 
+export const DUMMY_ROLES: roleService.RoleData[] = [
+  {
+    id: 'role-1',
+    _id: 'role-1',
+    name: 'Community Admin',
+    description: 'Full administrative control over community settings, users, and villas.',
+    isTenantRole: false,
+    permissions: ['users:read', 'users:write', 'villas:read', 'villas:write', 'roles:read', 'roles:write', 'workspaces:read'],
+  },
+  {
+    id: 'role-2',
+    _id: 'role-2',
+    name: 'Resident Owner',
+    description: 'Property owner with full access to dues, amenity booking, and visitor passes.',
+    isTenantRole: true,
+    permissions: ['visitor:resident', 'amenities:discover', 'amenities:my_booking', 'billing:action_center', 'notices:active_board'],
+  },
+  {
+    id: 'role-3',
+    _id: 'role-3',
+    name: 'Security Guard',
+    description: 'Gate entry controller for visitor check-ins, scans, and emergency logs.',
+    isTenantRole: false,
+    permissions: ['visitor:guard', 'amenities:scanner'],
+  },
+];
+
 const initialState: RoleState = {
-  roles: [],
+  roles: DUMMY_ROLES,
   isLoading: false,
   isPermissionsLoading: false,
   error: null,
   permissionsList: {},
-  totalRecords: 0,
+  totalRecords: DUMMY_ROLES.length,
   currentPage: 1,
   totalPages: 1,
   rowsPerPage: 10,
@@ -130,13 +157,14 @@ const roleSlice = createSlice({
       .addCase(fetchRolesAsync.fulfilled, (state, action: any) => {
         state.isLoading = false;
         const payloadData = action.payload?.data || action.payload;
+        let list: roleService.RoleData[] = [];
         if (Array.isArray(payloadData)) {
-          state.roles = payloadData;
+          list = payloadData;
         } else if (Array.isArray(payloadData?.data)) {
-          state.roles = payloadData.data;
-        } else {
-          state.roles = [];
+          list = payloadData.data;
         }
+
+        state.roles = list.length > 0 ? list : DUMMY_ROLES;
 
         const pagination = action.payload?.pagination || payloadData?.pagination;
         state.totalRecords = pagination?.totalRecords || state.roles.length;
@@ -145,6 +173,10 @@ const roleSlice = createSlice({
       })
       .addCase(fetchRolesAsync.rejected, (state, action: any) => {
         state.isLoading = false;
+        if (state.roles.length === 0) {
+          state.roles = DUMMY_ROLES;
+          state.totalRecords = DUMMY_ROLES.length;
+        }
         state.error = action.payload || 'Failed to fetch roles';
       })
       // Fetch Permissions

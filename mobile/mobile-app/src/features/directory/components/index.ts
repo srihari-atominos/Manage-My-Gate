@@ -1,6 +1,6 @@
-export * from './DirectorySearch';
-export * from './DirectoryCategoryTabs';
-export * from './DirectoryContactCard';
-export * from './DirectoryPulseNote';
-export * from './DirectoryNoteComposer';
-export * from './DirectoryQuickMessageSheet';
+export { DirectorySearch } from './DirectorySearch';
+export { DirectoryCategoryTabs } from './DirectoryCategoryTabs';
+export { DirectoryContactCard } from './DirectoryContactCard';
+export { DirectoryPulseNote } from './DirectoryPulseNote';
+export { DirectoryNoteComposer } from './DirectoryNoteComposer';
+export { DirectoryQuickMessageSheet } from './DirectoryQuickMessageSheet';

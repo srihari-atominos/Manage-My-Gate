@@ -1,12 +1,13 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/src/store/store';
 import {
   fetchMyActiveNote,
+  fetchActiveNotes,
   createCommunityNote,
   deleteCommunityNote,
 } from '../store/communityNoteSlice';
-import { NoteCategory, PRESET_NOTE_OPTIONS } from '../types/communityNoteTypes';
+import { NoteCategory, PRESET_NOTE_OPTIONS, CommunityNote } from '../types/communityNoteTypes';
 
 export const formatExpirationCountdown = (expiresAt?: string): string => {
   if (!expiresAt) return '';
@@ -23,25 +24,66 @@ export const formatExpirationCountdown = (expiresAt?: string): string => {
 
 export const useCommunityNote = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { myActiveNote, loading, error } = useSelector(
-    (state: RootState) => (state as any).communityNote
+  const { myActiveNote, activeNotes: rawActiveNotes, loading, error } = useSelector(
+    (state: RootState) => (state as any).communityNote || {}
   );
 
   const [composerOpen, setComposerOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<NoteCategory>('GENERAL');
+  const [selectedCategory, setSelectedCategory] = useState<NoteCategory | 'ALL'>('ALL');
   const [selectedEmoji, setSelectedEmoji] = useState('💬');
+  const [noteSearchQuery, setNoteSearchQuery] = useState('');
 
   useEffect(() => {
     dispatch(fetchMyActiveNote());
+    dispatch(fetchActiveNotes());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (myActiveNote?.text) {
+      setNoteText(myActiveNote.text);
+      if (myActiveNote.category) setSelectedCategory(myActiveNote.category);
+      if (myActiveNote.emoji) setSelectedEmoji(myActiveNote.emoji);
+    }
+  }, [myActiveNote]);
+
+  const activeNotesList = useMemo(() => {
+    const now = new Date().getTime();
+    const list = Array.isArray(rawActiveNotes) ? rawActiveNotes : [];
+    
+    // Filter out expired notes
+    const validNotes = list.filter((n) => {
+      if (!n.expiresAt) return true;
+      return new Date(n.expiresAt).getTime() > now;
+    });
+
+    return validNotes.filter((note) => {
+      // Category filter
+      if (selectedCategory && selectedCategory !== 'ALL' && note.category !== selectedCategory) {
+        return false;
+      }
+      // Search query filter (user name, villa/unit, note text, category)
+      if (noteSearchQuery.trim()) {
+        const query = noteSearchQuery.trim().toLowerCase();
+        const nameMatch = (note.userName || '').toLowerCase().includes(query);
+        const unitMatch = (note.userUnit || '').toLowerCase().includes(query);
+        const textMatch = (note.text || '').toLowerCase().includes(query);
+        const categoryMatch = (note.category || '').toLowerCase().includes(query);
+        if (!nameMatch && !unitMatch && !textMatch && !categoryMatch) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [rawActiveNotes, selectedCategory, noteSearchQuery]);
 
   const handlePublishNote = useCallback(async () => {
     if (!noteText.trim() || noteText.trim().length > 80) return;
+    const cat = selectedCategory === 'ALL' ? 'GENERAL' : selectedCategory;
     const res = await dispatch(
       createCommunityNote({
         text: noteText.trim(),
-        category: selectedCategory,
+        category: cat as NoteCategory,
         emoji: selectedEmoji,
       })
     );
@@ -49,13 +91,16 @@ export const useCommunityNote = () => {
     if (createCommunityNote.fulfilled.match(res)) {
       setComposerOpen(false);
       setNoteText('');
+      dispatch(fetchActiveNotes());
     }
   }, [dispatch, noteText, selectedCategory, selectedEmoji]);
 
   const handleDeleteNote = useCallback(async () => {
-    if (!myActiveNote?._id && !myActiveNote?.id) return;
-    const noteId = myActiveNote._id || myActiveNote.id || '';
+    if (!myActiveNote) return;
+    const noteId = myActiveNote?._id || myActiveNote?.id || '';
+    if (!noteId) return;
     await dispatch(deleteCommunityNote(noteId));
+    dispatch(fetchActiveNotes());
   }, [dispatch, myActiveNote]);
 
   const handleSelectPreset = useCallback(
@@ -72,6 +117,8 @@ export const useCommunityNote = () => {
 
   return {
     myActiveNote,
+    activeNotes: activeNotesList,
+    totalActiveNotesCount: Array.isArray(rawActiveNotes) ? rawActiveNotes.length : 0,
     loading,
     error,
     composerOpen,
@@ -82,10 +129,13 @@ export const useCommunityNote = () => {
     setSelectedCategory,
     selectedEmoji,
     setSelectedEmoji,
+    noteSearchQuery,
+    setNoteSearchQuery,
     onPublish: handlePublishNote,
     onDelete: handleDeleteNote,
     onSelectPreset: handleSelectPreset,
     expirationFormatted: formatExpirationCountdown(myActiveNote?.expiresAt),
+    refreshActiveNotes: () => dispatch(fetchActiveNotes()),
   };
 };
 

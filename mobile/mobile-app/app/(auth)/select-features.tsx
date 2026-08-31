@@ -17,7 +17,9 @@ import {
 import * as React from 'react';
 import { View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
+import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { sessionStore } from '@/src/utils/storage';
 
 interface FeatureModule {
   id: string;
@@ -28,28 +30,16 @@ interface FeatureModule {
 
 const FEATURE_MODULES: FeatureModule[] = [
   {
-    id: 'users',
-    title: 'User Management',
-    description: 'Member directory, resident profiles, and staff accounts',
-    icon: Users,
-  },
-  {
-    id: 'roles',
-    title: 'Role Builder & RBAC',
-    description: 'Custom security roles, permissions, and access levels',
+    id: 'administration_security',
+    title: 'Administration & Security',
+    description: 'User management, role builder & RBAC, unit management, and integration hub',
     icon: ShieldCheck,
   },
   {
-    id: 'integrations',
-    title: 'Integration Hub',
-    description: 'API integrations, hardware webhooks, and device setup',
-    icon: Layers,
-  },
-  {
-    id: 'villas',
-    title: 'Villa & Units',
-    description: 'Unit numbers, occupancy tracking, and owner mappings',
-    icon: Home,
+    id: 'visitor',
+    title: 'Visitor Management',
+    description: 'Digital visitor passes, guard desk, and QR entry',
+    icon: Contact,
   },
   {
     id: 'amenities',
@@ -70,12 +60,6 @@ const FEATURE_MODULES: FeatureModule[] = [
     icon: Wrench,
   },
   {
-    id: 'visitor',
-    title: 'Visitor Management',
-    description: 'Digital visitor passes, guard desk, and QR entry',
-    icon: Contact,
-  },
-  {
     id: 'billing',
     title: 'Billing & Payments',
     description: 'Maintenance fee collection, invoices, and receipts',
@@ -86,20 +70,22 @@ const FEATURE_MODULES: FeatureModule[] = [
 export default function SelectFeaturesScreen() {
   const { user, updateOrganizationFeatures, loading, error, clearStatus } = useAuth();
 
+  const userAny = user as any;
+
   const [selectedFeatures, setSelectedFeatures] = React.useState<string[]>(() => {
-    if (Array.isArray(user?.allowedFeatures) && user.allowedFeatures.length > 0) {
-      return user.allowedFeatures;
+    if (Array.isArray(userAny?.allowedFeatures) && userAny.allowedFeatures.length > 0) {
+      return userAny.allowedFeatures;
     }
-    return ['users', 'roles', 'integrations', 'villas', 'amenities'];
+    return ['administration_security', 'visitor', 'amenities', 'notices', 'complaints', 'billing'];
   });
 
   React.useEffect(() => {
     clearStatus();
-    if (Array.isArray(user?.allowedFeatures) && user.allowedFeatures.length > 0) {
-      setSelectedFeatures(user.allowedFeatures);
+    if (Array.isArray(userAny?.allowedFeatures) && userAny.allowedFeatures.length > 0) {
+      setSelectedFeatures(userAny.allowedFeatures);
     }
     return () => clearStatus();
-  }, [user?.allowedFeatures]);
+  }, [userAny?.allowedFeatures]);
 
   const toggleFeature = (id: string) => {
     setSelectedFeatures((prev) => {
@@ -114,10 +100,10 @@ export default function SelectFeaturesScreen() {
 
   const onSubmit = async () => {
     const orgId =
-      user?.orgId ||
-      user?.activeOrgId ||
-      user?.organizationId ||
-      (Array.isArray(user?.availableWorkspaces) && user?.availableWorkspaces[0]?.orgId);
+      userAny?.orgId ||
+      userAny?.activeOrgId ||
+      userAny?.organizationId ||
+      (Array.isArray(userAny?.availableWorkspaces) && userAny?.availableWorkspaces[0]?.orgId);
 
     if (!orgId) {
       router.replace('/(auth)/setup-organization');
@@ -131,9 +117,7 @@ export default function SelectFeaturesScreen() {
         (action.meta && action.meta.requestStatus === 'fulfilled') ||
         action.payload?.organization)
     ) {
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('mobile_auth_intent');
-      }
+      sessionStore.removeItem('mobile_auth_intent');
       router.replace('/(resident)/dashboard');
     }
   };
@@ -141,78 +125,80 @@ export default function SelectFeaturesScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Configure Features', headerBackVisible: false }} />
-      <ScrollView contentContainerStyle={{ padding: 24, flexGrow: 1 }} className="bg-background">
-        <View className="gap-6 max-w-lg mx-auto w-full py-4">
-          {/* Header */}
-          <View className="items-center mb-2">
-            <View className="bg-primary/10 p-4 rounded-3xl mb-3">
-              <Sparkles className="size-10 text-primary" size={36} color="#03A9F4" />
+      <KeyboardAvoidingShell className="bg-background">
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 24, flexGrow: 1 }} className="bg-background">
+          <View className="gap-5 max-w-lg mx-auto w-full py-2 sm:py-4">
+            {/* Header */}
+            <View className="items-center mb-1">
+              <View className="bg-primary/10 p-3.5 rounded-2xl mb-2.5 items-center justify-center">
+                <Sparkles className="size-9 text-primary" size={34} color="#03A9F4" />
+              </View>
+              <Text className="text-2xl font-extrabold text-foreground tracking-tight text-center">
+                Select Organization Features
+              </Text>
+              <Text className="text-muted-foreground text-sm text-center mt-1 px-2">
+                Choose the modules you want active for your enterprise workspace
+              </Text>
             </View>
-            <Text className="text-2xl font-extrabold text-foreground tracking-tight text-center">
-              Select Organization Features
-            </Text>
-            <Text className="text-muted-foreground text-sm text-center mt-1.5 px-4">
-              Choose the modules you want active for your enterprise workspace
-            </Text>
-          </View>
 
-          {error ? <ErrorBanner message={error} /> : null}
+            {error ? <ErrorBanner message={error} /> : null}
 
-          {/* Module Cards Grid */}
-          <View className="gap-3">
-            {FEATURE_MODULES.map((item) => {
-              const isSelected = selectedFeatures.includes(item.id);
-              const IconComp = item.icon;
+            {/* Module Cards Grid */}
+            <View className="gap-3">
+              {FEATURE_MODULES.map((item) => {
+                const isSelected = selectedFeatures.includes(item.id);
+                const IconComp = item.icon;
 
-              return (
-                <Pressable
-                  key={item.id}
-                  onPress={() => toggleFeature(item.id)}
-                  className={`p-4 rounded-2xl border flex-row items-center gap-4 transition-all ${
-                    isSelected
-                      ? 'bg-primary/10 border-primary shadow-xs'
-                      : 'bg-card border-border hover:bg-muted/50'
-                  }`}
-                >
-                  <View
-                    className={`size-12 rounded-xl items-center justify-center ${
-                      isSelected ? 'bg-primary text-white' : 'bg-muted'
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => toggleFeature(item.id)}
+                    className={`p-3.5 sm:p-4 rounded-2xl border flex-row items-center gap-3.5 transition-all ${
+                      isSelected
+                        ? 'bg-primary/10 border-primary shadow-xs'
+                        : 'bg-card border-border hover:bg-muted/50'
                     }`}
                   >
-                    <IconComp size={22} color={isSelected ? '#ffffff' : '#64748b'} />
-                  </View>
+                    <View
+                      className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl items-center justify-center shrink-0 ${
+                        isSelected ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <IconComp size={22} color={isSelected ? '#ffffff' : '#64748b'} />
+                    </View>
 
-                  <View className="flex-1 me-2">
-                    <Text className="font-bold text-foreground text-base mb-0.5">{item.title}</Text>
-                    <Text className="text-muted-foreground text-xs leading-4">{item.description}</Text>
-                  </View>
+                    <View className="flex-1 me-1">
+                      <Text className="font-bold text-foreground text-sm sm:text-base mb-0.5">{item.title}</Text>
+                      <Text className="text-muted-foreground text-xs leading-4">{item.description}</Text>
+                    </View>
 
-                  <View
-                    className={`size-6 rounded-full items-center justify-center border ${
-                      isSelected ? 'bg-primary border-primary' : 'border-border bg-background'
-                    }`}
-                  >
-                    {isSelected ? <Check size={14} color="#ffffff" /> : null}
-                  </View>
-                </Pressable>
-              );
-            })}
+                    <View
+                      className={`w-6 h-6 rounded-full items-center justify-center border shrink-0 ${
+                        isSelected ? 'bg-primary border-primary' : 'border-border bg-background'
+                      }`}
+                    >
+                      {isSelected ? <Check size={14} color="#ffffff" /> : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Action Footer */}
+            <View className="mt-3 mb-2 gap-3">
+              <Button
+                onPress={onSubmit}
+                loading={loading}
+                disabled={loading || selectedFeatures.length === 0}
+                textClassName="font-bold text-base"
+                className="h-12 bg-primary rounded-xl w-full items-center justify-center"
+              >
+                {loading ? 'Finalizing Setup...' : 'Complete & Launch Workspace'}
+              </Button>
+            </View>
           </View>
-
-          {/* Action Footer */}
-          <View className="mt-4 gap-3">
-            <Button
-              onPress={onSubmit}
-              loading={loading}
-              disabled={loading || selectedFeatures.length === 0}
-              textClassName="font-bold text-base"
-              className="h-13 bg-primary rounded-xl"
-            >
-              {loading ? 'Finalizing Setup...' : 'Complete & Launch Workspace'}
-            </Button>
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingShell>
     </>
   );
 }

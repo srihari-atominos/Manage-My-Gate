@@ -54,24 +54,15 @@ export const useDirectoryMessaging = () => {
     },
     [dispatch, selectedMember]
   );
-
-  const handleInterestedInNote = useCallback(
-    async (member: DirectoryMember) => {
-      if (!member) return;
-      const noteText = member.activeCommunityNote?.text || 'activity';
-      const quickMessage = `I'd like to join 👍 regarding "${noteText}"`;
-      await handleSendQuickMessage(quickMessage, member);
-    },
-    [handleSendQuickMessage]
-  );
-
   const handleOpenConversation = useCallback(
     async (member: DirectoryMember) => {
       const targetUserId = member.userId || member.id;
       const res = await dispatch(getOrCreateConversation(targetUserId));
       if (getOrCreateConversation.fulfilled.match(res)) {
         const conv = res.payload;
-        router.push(`/(resident)/directory/conversation/${conv._id || conv.id}` as any);
+        if (conv?._id || conv?.id) {
+          router.push(`/(resident)/directory/conversation/${conv._id || conv.id}` as any);
+        }
       }
     },
     [dispatch, router]
@@ -81,10 +72,6 @@ export const useDirectoryMessaging = () => {
     if (!selectedMember) return CONTEXTUAL_QUICK_MESSAGES.default;
     if (selectedMember.role === 'guard' || selectedMember.role === 'security') {
       return [...CONTEXTUAL_QUICK_MESSAGES.guard, ...CONTEXTUAL_QUICK_MESSAGES.default];
-    }
-    const noteCategory = selectedMember.activeCommunityNote?.category;
-    if (noteCategory && CONTEXTUAL_QUICK_MESSAGES[noteCategory]) {
-      return [...CONTEXTUAL_QUICK_MESSAGES[noteCategory], ...CONTEXTUAL_QUICK_MESSAGES.default];
     }
     return CONTEXTUAL_QUICK_MESSAGES.default;
   }, [selectedMember]);
@@ -101,7 +88,6 @@ export const useDirectoryMessaging = () => {
     selectedMember,
     onOpenQuickMessage: handleOpenQuickMessage,
     onSendQuickMessage: handleSendQuickMessage,
-    onInterestedInNote: handleInterestedInNote,
     onOpenConversation: handleOpenConversation,
     quickOptions: getQuickOptions(),
     loadConversations: () => dispatch(fetchConversations()),

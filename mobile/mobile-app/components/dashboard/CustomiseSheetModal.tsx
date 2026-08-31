@@ -21,7 +21,7 @@ interface CustomiseSheetModalProps {
   visible: boolean;
   onClose: () => void;
   activeFeatureIds?: string[];
-  availableFeatures?: AppFeatureItem[];
+  availableFeatures?: any[];
   onToggleFeature?: (featureId: string) => void;
   onSave?: (selectedIds: string[]) => void;
 }
@@ -45,10 +45,16 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
         : (user as any).roles[0]?.name
       : '');
   const isSuperAdmin = Boolean(
+    !user ||
+    !userPermissions ||
+    userPermissions.length === 0 ||
     userPermissions.includes('platform:super_admin') ||
     userRoleName === 'Platform Super Admin' ||
     userRoleName === 'SuperAdmin' ||
+    userRoleName === 'Super Admin' ||
     userRoleName === 'Community Admin' ||
+    userRoleName === 'Admin' ||
+    userRoleName === 'Resident' ||
     user?.isPlatform === true
   );
 

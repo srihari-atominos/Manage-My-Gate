@@ -18,7 +18,8 @@ import {
   Wallet,
   QrCode,
   Sliders,
-  Home
+  Home,
+  Sparkles,
 } from 'lucide-react-native';
 
 export interface GlobalNavCategory {
@@ -48,6 +49,13 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
       items: [
         { id: 'dash-main', label: 'Executive Dashboard', route: '/(resident)/amenities/dashboard', icon: Home, color: '#3b82f6' },
         { id: 'dash-comp', label: 'Complaints Dashboard', route: '/(resident)/complaints/dashboard', icon: Wrench, color: '#f59e0b' },
+      ],
+    },
+    {
+      title: 'COMMUNITY & DIRECTORY',
+      items: [
+        { id: 'cd-directory', label: 'Community Directory', route: '/(resident)/directory/index', icon: Users, color: '#10b981' },
+        { id: 'cd-notes', label: 'All Community Notes', route: '/(resident)/notes/index', icon: Sparkles, color: '#ec4899', badge: '24h' },
       ],
     },
     {

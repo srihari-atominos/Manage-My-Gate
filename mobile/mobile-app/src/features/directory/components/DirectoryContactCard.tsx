@@ -1,30 +1,29 @@
 import React from 'react';
-import { View, Linking, TouchableOpacity } from 'react-native';
+import { View, Linking } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ListCard } from '@/components/ui/ListCard';
 import { StatusVariant } from '@/components/ui/StatusBadge';
 import { DirectoryMember } from '../types/directoryTypes';
-import { DirectoryPulseNote } from './DirectoryPulseNote';
-import { Phone, MessageSquare, ThumbsUp, Send } from 'lucide-react-native';
+import { Phone, MessageSquare, Send, Mail } from 'lucide-react-native';
 import { cn } from '@/lib/utils';
 
 export interface DirectoryContactCardProps {
   member: DirectoryMember;
+  currentUserId?: string;
   onCall?: (phone: string) => void;
   onIntercom?: (intercom: string) => void;
   onQuickMessage?: (member: DirectoryMember) => void;
-  onInterestedInNote?: (member: DirectoryMember) => void;
   onOpenConversation?: (member: DirectoryMember) => void;
   className?: string;
 }
 
 export const DirectoryContactCard = ({
   member,
+  currentUserId,
   onCall,
   onIntercom,
   onQuickMessage,
-  onInterestedInNote,
   onOpenConversation,
   className,
 }: DirectoryContactCardProps) => {
@@ -37,6 +36,7 @@ export const DirectoryContactCard = ({
       case 'maintenance':
         return 'info';
       case 'admin':
+      case 'management':
         return 'critical';
       case 'resident':
       default:
@@ -58,15 +58,17 @@ export const DirectoryContactCard = ({
     }
   };
 
-  const subtitleText = member.unitNumber
+  const hasUnit = Boolean(member.unitNumber && member.unitNumber.trim());
+  const subtitleText = hasUnit
     ? member.designation
       ? `${member.unitNumber} • ${member.designation}`
       : member.unitNumber
     : member.designation || '';
 
   const canMessage = member.allowDirectoryMessages !== false;
-  const canCall = Boolean(member.phone) && member.showPhoneInDirectory !== false;
-  const canIntercom = Boolean(member.intercomNumber) && member.allowIntercomCalls !== false;
+  const canCall = Boolean(member.phone);
+  const intercomUnit = member.intercomNumber || (hasUnit ? member.unitNumber!.replace(/[^0-9]/g, '') : '');
+  const canIntercom = Boolean(intercomUnit);
 
   return (
     <ListCard
@@ -81,42 +83,33 @@ export const DirectoryContactCard = ({
         variant: getRoleVariant(member.role),
       }}
       showChevron={false}
-      onPress={() => onOpenConversation && canMessage ? onOpenConversation(member) : undefined}
-      className={cn('mb-3', className)}
+      onPress={() => (onOpenConversation && canMessage ? onOpenConversation(member) : undefined)}
+      className={cn('mb-3.5 p-4 rounded-2xl border border-border/80 shadow-xs', className)}
     >
-      {/* Active Community Note */}
-      {member.activeCommunityNote ? (
-        <DirectoryPulseNote note={member.activeCommunityNote} />
-      ) : null}
-
-      {/* Interest Tags */}
-      {member.interests && member.interests.length > 0 ? (
-        <View className="flex-row flex-wrap gap-1.5 py-1">
-          {member.interests.map((interest, idx) => (
-            <View key={idx} className="bg-muted/50 rounded-lg px-2 py-0.5 border border-border/30">
-              <Text className="text-[10px] font-semibold text-muted-foreground">{interest}</Text>
+      {/* Contact Details Section */}
+      {(member.phone || member.email) && (
+        <View className="gap-1.5 pt-2.5 mt-2.5 border-t border-border/30">
+          {member.phone ? (
+            <View className="flex-row items-center gap-2">
+              <Phone size={13} className="text-muted-foreground shrink-0" />
+              <Text className="text-xs font-semibold text-foreground tracking-wide">{member.phone}</Text>
             </View>
-          ))}
+          ) : null}
+
+          {member.email ? (
+            <View className="flex-row items-center gap-2">
+              <Mail size={13} className="text-muted-foreground shrink-0" />
+              <Text className="text-xs font-medium text-muted-foreground flex-1" numberOfLines={1}>
+                {member.email}
+              </Text>
+            </View>
+          ) : null}
         </View>
-      ) : null}
+      )}
 
       {/* Action Row */}
       {(canMessage || canCall || canIntercom) && (
-        <View className="flex-row items-center gap-2 pt-2.5 border-t border-border/40 w-full mt-1">
-          {/* Note Interaction CTA */}
-          {member.activeCommunityNote && canMessage ? (
-            <Button
-              variant="default"
-              size="sm"
-              onPress={() => onInterestedInNote && onInterestedInNote(member)}
-              leftIcon={ThumbsUp}
-              className="flex-1 h-9 rounded-xl bg-primary"
-              textClassName="text-xs font-semibold text-primary-foreground"
-            >
-              I'm Interested
-            </Button>
-          ) : null}
-
+        <View className="flex-row items-center gap-2 pt-3 mt-2.5 border-t border-border/40 w-full">
           {/* Quick Message CTA */}
           {canMessage ? (
             <Button
@@ -124,8 +117,8 @@ export const DirectoryContactCard = ({
               size="sm"
               onPress={() => onQuickMessage && onQuickMessage(member)}
               leftIcon={Send}
-              className="flex-1 h-9 rounded-xl bg-primary/10 border border-primary/20"
-              textClassName="text-xs font-semibold text-primary"
+              className="flex-1 h-9.5 rounded-xl bg-primary/10 border border-primary/20"
+              textClassName="text-xs font-bold text-primary"
             >
               Message
             </Button>
@@ -138,7 +131,7 @@ export const DirectoryContactCard = ({
               size="sm"
               onPress={handlePhonePress}
               leftIcon={Phone}
-              className="h-9 rounded-xl border-border bg-muted/40 px-3"
+              className="h-9.5 rounded-xl border-border bg-muted/30 px-3.5"
               textClassName="text-xs font-semibold text-foreground"
             >
               Call
@@ -150,12 +143,12 @@ export const DirectoryContactCard = ({
             <Button
               variant="outline"
               size="sm"
-              onPress={handleIntercomPress}
+              onPress={() => (onIntercom ? onIntercom(intercomUnit) : handleIntercomPress())}
               leftIcon={MessageSquare}
-              className="h-9 rounded-xl border-border bg-muted/40 px-3"
+              className="h-9.5 rounded-xl border-border bg-muted/30 px-3"
               textClassName="text-xs font-semibold text-foreground"
             >
-              #{member.intercomNumber}
+              #{intercomUnit}
             </Button>
           )}
         </View>

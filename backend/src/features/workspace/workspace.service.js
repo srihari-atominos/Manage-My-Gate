@@ -9,10 +9,10 @@ import Workspace from './workspace.model.js';
 export const DEFAULT_MODULES = [
   { moduleName: 'Visitor Management', moduleKey: 'visitor', route: '/visitor', icon: 'QrCode', displayOrder: 1, enabled: true, sidebarVisible: true },
   { moduleName: 'Administration & Security', moduleKey: 'administration_security', route: '/admin', icon: 'ShieldCheck', displayOrder: 2, enabled: true, sidebarVisible: true },
-  { moduleName: 'Amenities', moduleKey: 'amenities', route: '/amenities', icon: 'Building', displayOrder: 6, enabled: true, sidebarVisible: true },
+  { moduleName: 'Amenities & Bookings', moduleKey: 'amenities', route: '/amenities', icon: 'Building', displayOrder: 6, enabled: true, sidebarVisible: true },
   { moduleName: 'Notice Board', moduleKey: 'notices', route: '/notices', icon: 'List', displayOrder: 7, enabled: true, sidebarVisible: true },
-  { moduleName: 'Complaint', moduleKey: 'complaints', route: '/complaints', icon: 'Warning', displayOrder: 8, enabled: true, sidebarVisible: true },
-  { moduleName: 'Financial Suit', moduleKey: 'financial_suit', route: '/financials', icon: 'Speedometer', displayOrder: 9, enabled: true, sidebarVisible: true }
+  { moduleName: 'Complaints / Maintenance', moduleKey: 'complaints', route: '/complaints', icon: 'Warning', displayOrder: 8, enabled: true, sidebarVisible: true },
+  { moduleName: 'Billing & Invoices', moduleKey: 'billing', route: '/billing', icon: 'Speedometer', displayOrder: 9, enabled: true, sidebarVisible: true }
 ];
 
 export class WorkspaceService {
@@ -79,6 +79,30 @@ export class WorkspaceService {
       const org = await Organization.findById(workspace.organizationId).session(session);
       if (org) {
         workspace.organizationName = org.name;
+        await workspace.save({ validateBeforeSave: false });
+      }
+    }
+
+    // Self-healing: backfill missing default modules and prune legacy standalone modules
+    const LEGACY_STANDALONE_MODULE_KEYS = ['villas', 'users', 'roles', 'integrations', 'financial_suit', 'financials'];
+    if (workspace && Array.isArray(DEFAULT_MODULES)) {
+      let modified = false;
+      if (!workspace.modules) {
+        workspace.modules = [];
+        modified = true;
+      }
+      if (workspace.modules.some(m => LEGACY_STANDALONE_MODULE_KEYS.includes(m.moduleKey))) {
+        workspace.modules = workspace.modules.filter(m => !LEGACY_STANDALONE_MODULE_KEYS.includes(m.moduleKey));
+        modified = true;
+      }
+      for (const defaultMod of DEFAULT_MODULES) {
+        const exists = workspace.modules.some(m => m.moduleKey === defaultMod.moduleKey);
+        if (!exists) {
+          workspace.modules.push({ ...defaultMod });
+          modified = true;
+        }
+      }
+      if (modified) {
         await workspace.save({ validateBeforeSave: false });
       }
     }
@@ -185,7 +209,8 @@ export class WorkspaceService {
   async updateModule(workspaceId, orgId = null, isPlatform = false, moduleId, moduleData, actorId, session = null) {
     const workspace = await this.getWorkspaceById(workspaceId, orgId, isPlatform, session);
 
-    const targetModule = workspace.modules.id(moduleId);
+    const isMongoId = mongoose.Types.ObjectId.isValid(moduleId);
+    const targetModule = (isMongoId ? workspace.modules.id(moduleId) : null) || workspace.modules.find(m => m.moduleKey === moduleId || m._id?.toString() === moduleId);
     if (!targetModule) throw new HttpError(404, 'Module not found.');
 
     // Prevent duplicates
@@ -201,7 +226,8 @@ export class WorkspaceService {
     }
 
     const actualWorkspaceId = workspace._id;
-    const updated = await workspaceRepository.updateModule(actualWorkspaceId, moduleId, moduleData, session);
+    const lookupId = targetModule._id ? targetModule._id.toString() : targetModule.moduleKey;
+    const updated = await workspaceRepository.updateModule(actualWorkspaceId, lookupId, moduleData, session);
 
     await workspaceRepository.addActivityLog(actualWorkspaceId, {
       action: 'Module Updated',
@@ -220,11 +246,13 @@ export class WorkspaceService {
 
   async toggleModule(workspaceId, orgId = null, isPlatform = false, moduleId, enabled, actorId, session = null) {
     const workspace = await this.getWorkspaceById(workspaceId, orgId, isPlatform, session);
-    const targetModule = workspace.modules.id(moduleId);
+    const isMongoId = mongoose.Types.ObjectId.isValid(moduleId);
+    const targetModule = (isMongoId ? workspace.modules.id(moduleId) : null) || workspace.modules.find(m => m.moduleKey === moduleId || m._id?.toString() === moduleId);
     if (!targetModule) throw new HttpError(404, 'Module not found.');
 
     const actualWorkspaceId = workspace._id;
-    const updated = await workspaceRepository.updateModule(actualWorkspaceId, moduleId, { enabled }, session);
+    const lookupId = targetModule._id ? targetModule._id.toString() : targetModule.moduleKey;
+    const updated = await workspaceRepository.updateModule(actualWorkspaceId, lookupId, { enabled }, session);
 
     const actionText = enabled ? 'Module Enabled' : 'Module Disabled';
     await workspaceRepository.addActivityLog(actualWorkspaceId, {
@@ -248,7 +276,7 @@ export class WorkspaceService {
 
     const modulesList = workspace.modules.toObject();
     orders.forEach(ord => {
-      const target = modulesList.find(m => m._id.toString() === ord.moduleId);
+      const target = modulesList.find(m => (m._id && m._id.toString() === ord.moduleId) || m.moduleKey === ord.moduleId);
       if (target) {
         target.displayOrder = ord.displayOrder;
       }
@@ -276,11 +304,13 @@ export class WorkspaceService {
 
   async deleteModule(workspaceId, orgId = null, isPlatform = false, moduleId, actorId, session = null) {
     const workspace = await this.getWorkspaceById(workspaceId, orgId, isPlatform, session);
-    const targetModule = workspace.modules.id(moduleId);
+    const isMongoId = mongoose.Types.ObjectId.isValid(moduleId);
+    const targetModule = (isMongoId ? workspace.modules.id(moduleId) : null) || workspace.modules.find(m => m.moduleKey === moduleId || m._id?.toString() === moduleId);
     if (!targetModule) throw new HttpError(404, 'Module not found.');
 
     const actualWorkspaceId = workspace._id;
-    const updated = await workspaceRepository.deleteModule(actualWorkspaceId, moduleId, session);
+    const lookupId = targetModule._id ? targetModule._id.toString() : targetModule.moduleKey;
+    const updated = await workspaceRepository.deleteModule(actualWorkspaceId, lookupId, session);
 
     await workspaceRepository.addActivityLog(actualWorkspaceId, {
       action: 'Module Deleted',
@@ -296,7 +326,6 @@ export class WorkspaceService {
 
     return updated.modules;
   }
-
 
   // --- Settings & Activity Logs ---
 
@@ -347,6 +376,27 @@ export class WorkspaceService {
         organizationId: orgId,
         status: 'Active',
       }, actorId, session);
+    } else if (workspace && Array.isArray(DEFAULT_MODULES)) {
+      let modified = false;
+      if (!workspace.modules) {
+        workspace.modules = [];
+        modified = true;
+      }
+      const LEGACY_KEYS = ['villas', 'users', 'roles', 'integrations', 'financial_suit', 'financials'];
+      if (workspace.modules.some(m => LEGACY_KEYS.includes(m.moduleKey))) {
+        workspace.modules = workspace.modules.filter(m => !LEGACY_KEYS.includes(m.moduleKey));
+        modified = true;
+      }
+      for (const defaultMod of DEFAULT_MODULES) {
+        const exists = workspace.modules.some(m => m.moduleKey === defaultMod.moduleKey);
+        if (!exists) {
+          workspace.modules.push({ ...defaultMod });
+          modified = true;
+        }
+      }
+      if (modified) {
+        await workspace.save({ validateBeforeSave: false });
+      }
     }
 
     const platformSubscriptionService = (await import('../platformSubscription/platformSubscription.service.js')).default;
@@ -354,11 +404,13 @@ export class WorkspaceService {
 
     const allowed = org?.allowedFeatures || [];
     const isPlatform = org?.isPlatform || false;
+    const LEGACY_KEYS = ['villas', 'users', 'roles', 'integrations', 'financial_suit', 'financials'];
 
-    // Filter all allowed modules (whether enabled or not)
+    // Filter all allowed modules (whether enabled or not), strictly excluding legacy standalone module keys
     const allowedModules = (workspace.modules || [])
+      .filter(m => !LEGACY_KEYS.includes(m.moduleKey))
       .filter(m => {
-        if (isPlatform || allowed.length === 0) return true;
+        if (isPlatform || !allowed || allowed.length === 0) return true;
         if (allowed.includes(m.moduleKey) || allowed.includes(m.moduleName)) return true;
         if (m.moduleKey === 'amenities') {
           return allowed.some(a => ['amenities', 'booking', 'amenity', 'amenitiesBooking', 'amenityBooking'].includes(a));
@@ -366,6 +418,8 @@ export class WorkspaceService {
         if (m.moduleKey === 'administration_security') {
           return allowed.some(a => ['administration', 'administration_security', 'users', 'roles', 'integrations', 'villas'].includes(a));
         }
+        // Always allow standard default modules
+        if (DEFAULT_MODULES.some(d => d.moduleKey === m.moduleKey)) return true;
         return false;
       })
       .sort((a, b) => a.displayOrder - b.displayOrder);

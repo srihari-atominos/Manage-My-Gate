@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { cn } from '../../lib/utils';
-import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
 export interface SegmentItem {
   key: string;
@@ -21,41 +20,32 @@ export const SegmentedControl = ({
   onChange,
   className,
 }: SegmentedControlProps) => {
-  const activeIndex = segments.findIndex((s) => s.key === activeSegment);
-  const safeActiveIndex = activeIndex >= 0 ? activeIndex : 0;
-  const segmentWidth = 100 / (segments.length || 1);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      left: `${safeActiveIndex * segmentWidth}%`,
-      width: `${segmentWidth}%`,
-    };
-  });
-
   return (
     <View
       className={cn(
-        'flex-row items-center rounded-xl bg-secondary border border-border p-1',
+        'flex-row items-center rounded-2xl bg-muted/60 p-1 border border-border/80 w-full',
         className
       )}
     >
-      <Animated.View
-        className="absolute bottom-1 top-1 rounded-lg bg-card border border-border shadow-xs"
-        style={animatedStyle}
-      />
       {segments.map((segment) => {
         const isActive = segment.key === activeSegment;
         return (
           <Pressable
             key={segment.key}
             onPress={() => onChange(segment.key)}
-            className="flex-1 items-center justify-center py-2"
+            className={cn(
+              'flex-1 items-center justify-center py-2.5 px-2 rounded-xl transition-all',
+              isActive
+                ? 'bg-card border border-border shadow-xs'
+                : 'bg-transparent'
+            )}
           >
             <Text
               className={cn(
-                'text-[13px] font-semibold font-sans',
-                isActive ? 'text-foreground' : 'text-muted-foreground'
+                'text-xs font-sans text-center',
+                isActive ? 'font-bold text-primary' : 'font-semibold text-muted-foreground'
               )}
+              numberOfLines={1}
             >
               {segment.label}
             </Text>
@@ -65,3 +55,5 @@ export const SegmentedControl = ({
     </View>
   );
 };
+
+export default SegmentedControl;

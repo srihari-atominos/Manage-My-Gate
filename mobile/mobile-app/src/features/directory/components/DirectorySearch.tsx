@@ -10,7 +10,7 @@ export interface DirectorySearchProps {
 export const DirectorySearch = ({
   value,
   onChangeText,
-  placeholder = 'Search by name, villa unit, or role...',
+  placeholder = 'Search by name, unit, phone, or role...',
 }: DirectorySearchProps) => {
   return (
     <SearchFilterBar

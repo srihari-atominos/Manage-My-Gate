@@ -18,6 +18,23 @@ export interface CommunityNote {
   createdAt: string;
   expiresAt: string;
   isActive: boolean;
+  userName?: string;
+  userUnit?: string;
+  avatarUrl?: string | null;
+  phone?: string;
+  role?: string;
+  intercomNumber?: string;
+  interests?: string[];
+  memberData?: {
+    id: string;
+    userId: string;
+    name: string;
+    unitNumber: string;
+    role: string;
+    phone?: string;
+    intercomNumber?: string;
+    interests?: string[];
+  };
 }
 
 export interface CreateNotePayload {

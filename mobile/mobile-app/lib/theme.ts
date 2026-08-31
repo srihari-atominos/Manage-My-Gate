@@ -57,7 +57,6 @@ export const THEME_1_NAHOM_NAVY = {
 };
 
 export const THEME_2_VENTOREX_ORANGE = {
-z
   light: {
 
     // ─────────────────────────────────────────────
@@ -452,6 +451,8 @@ export interface NavTheme {
   dark: boolean;
   colors: NavThemeColors;
 }
+
+export const THEME = THEME_1_NAHOM_NAVY;
 
 export const NAV_THEME: Record<'light' | 'dark', NavTheme> = {
   light: {

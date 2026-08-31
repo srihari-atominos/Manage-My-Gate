@@ -14,7 +14,10 @@ export const WorkspaceModulesForm = () => {
   }, [loadWorkspaceModules]);
 
   const handleToggle = (module: WorkspaceModule, enabled: boolean) => {
-    toggleModuleStatus('current', module._id, enabled);
+    const targetId = module._id || module.moduleKey;
+    if (targetId) {
+      toggleModuleStatus('current', targetId, enabled);
+    }
   };
 
   if (loading && allModules.length === 0) {
@@ -42,11 +45,26 @@ export const WorkspaceModulesForm = () => {
           </View>
         )}
         
-        {[...allModules].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)).map((module) => {
-          // Try to map to an existing catalog item for rich colors if possible
-          const catalogItem = ALL_AVAILABLE_FEATURES.find(f => f.categoryKey === module.moduleKey);
+        {[...allModules]
+          .filter(m => !['villas', 'users', 'roles', 'integrations', 'financial_suit', 'financials'].includes(m.moduleKey))
+          .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+          .map((module) => {
+          // Map to catalog item for rich colors & icons
+          const key = module.moduleKey;
+          const catalogItem = ALL_AVAILABLE_FEATURES.find(
+            (f) =>
+              f.categoryKey === key ||
+              f.id === key ||
+              f.id === `admin_${key}` ||
+              (key === 'visitor' && f.categoryKey === 'visitor_management') ||
+              (key === 'amenities' && f.categoryKey === 'amenities_facilities') ||
+              (key === 'complaints' && f.categoryKey === 'complaints_helpdesk') ||
+              (key === 'notices' && f.categoryKey === 'notice_board_polls') ||
+              (key === 'billing' && f.categoryKey === 'financial_billing') ||
+              (key === 'administration_security' && f.categoryKey === 'administration_security')
+          );
           
-          const iconName = module.icon || catalogItem?.iconName || 'Box';
+          const iconName = catalogItem?.iconName || module.icon || 'Box';
           const colorIcon = catalogItem?.colorIcon || '#03A9F4';
           const colorBg = catalogItem?.colorBg || 'bg-sky-500/10';
           
@@ -73,13 +91,14 @@ export const WorkspaceModulesForm = () => {
                 </View>
               </View>
               
-              <Switch
-                trackColor={{ false: '#e2e8f0', true: '#bae6fd' }}
-                thumbColor={module.enabled ? '#0284c7' : '#f8fafc'}
-                ios_backgroundColor="#e2e8f0"
-                onValueChange={(val) => handleToggle(module, val)}
-                value={module.enabled}
-              />
+              <View pointerEvents="none">
+                <Switch
+                  trackColor={{ false: '#e2e8f0', true: '#bae6fd' }}
+                  thumbColor={module.enabled ? '#0284c7' : '#f8fafc'}
+                  ios_backgroundColor="#e2e8f0"
+                  value={module.enabled}
+                />
+              </View>
             </TouchableOpacity>
           );
         })}

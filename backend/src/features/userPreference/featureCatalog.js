@@ -60,7 +60,7 @@ export const SYSTEM_FEATURE_CATALOG = [
   },
   {
     categoryKey: 'financial_billing',
-    categoryName: 'Financial Suite & Billing',
+    categoryName: 'Billing & Invoices',
     actionButton: { label: 'View all', type: 'link', route: '/(resident)/billing' },
     items: [
       { id: 'billing_dashboard', name: 'Billing Dashboard', permission: 'billing:action_center', iconName: 'CreditCard', colorBg: 'bg-emerald-500/15', colorIcon: '#10b981', route: '/(resident)/billing', badge: 'Due', badgeColor: 'bg-amber-500 text-white' },

@@ -25,6 +25,7 @@ router.post(
 );
 
 router.get('/my', communityNoteController.getMyNote);
+router.get('/', communityNoteController.getActiveNotes);
 
 router.delete(
   '/:id',

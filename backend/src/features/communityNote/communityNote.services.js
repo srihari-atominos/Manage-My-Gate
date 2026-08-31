@@ -38,6 +38,10 @@ export const communityNoteService = {
     return communityNoteRepository.findActiveByUserId(userId, orgId);
   },
 
+  async getActiveNotes(orgId) {
+    return communityNoteRepository.findActiveByOrgId(orgId);
+  },
+
   async deleteNote(noteId, userId) {
     const updated = await communityNoteRepository.deactivateById(noteId, userId);
     if (!updated) {

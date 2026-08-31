@@ -192,7 +192,7 @@ export const updateModuleRules = [
 
 export const toggleModuleRules = [
   body('enabled')
-    .notEmpty()
+    .exists({ checkNull: true })
     .withMessage('Enabled is required')
     .isBoolean()
     .withMessage('Enabled must be a boolean'),
@@ -228,8 +228,8 @@ export const workspaceAndModuleIdParamRules = [
     .custom(value => value === 'current' || /^[0-9a-fA-F]{24}$/.test(value))
     .withMessage('Workspace ID must be a valid Mongo ID or "current"'),
   param('moduleId')
-    .isMongoId()
-    .withMessage('Module ID must be a valid Mongo ID'),
+    .custom(value => /^[0-9a-fA-F]{24}$/.test(value) || (typeof value === 'string' && value.trim().length > 0))
+    .withMessage('Module ID must be a valid Mongo ID or module key'),
 ];
 
 export const addMemberRules = [

@@ -1,13 +1,11 @@
 import OrgMembership from '../orgMembership/orgMembership.model.js';
 import User from '../user/user.model.js';
-import CommunityNote from '../communityNote/communityNote.model.js';
 import mongoose from 'mongoose';
 
 export const directoryRepository = {
   async getPaginatedDirectory({ orgId, role, search, page = 1, limit = 50 }) {
     const cleanOrgId = new mongoose.Types.ObjectId(orgId);
     const skip = (page - 1) * limit;
-    const now = new Date();
 
     // Match Stage for OrgMembership
     const matchStage = {
@@ -40,8 +38,19 @@ export const directoryRepository = {
       {
         $lookup: {
           from: 'villas',
-          localField: 'villaId',
-          foreignField: '_id',
+          let: { orgVillaId: '$villaId', userVillaId: '$user.villaId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$_id', '$$orgVillaId'] },
+                    { $eq: ['$_id', '$$userVillaId'] },
+                  ],
+                },
+              },
+            },
+          ],
           as: 'villa',
         },
       },
@@ -68,38 +77,7 @@ export const directoryRepository = {
         },
       },
 
-      // Lookup Active Community Note (unexpired & active)
-      {
-        $lookup: {
-          from: 'communitynotes',
-          let: { uId: '$user._id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$userId', '$$uId'] },
-                    { $eq: ['$orgId', cleanOrgId] },
-                    { $eq: ['$isActive', true] },
-                    { $gt: ['$expiresAt', now] },
-                  ],
-                },
-              },
-            },
-            { $sort: { createdAt: -1 } },
-            { $limit: 1 },
-          ],
-          as: 'activeNote',
-        },
-      },
-      {
-        $unwind: {
-          path: '$activeNote',
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-
-      // Transform fields & Privacy Masking
+      // Transform fields & Expose User Profile Data for Community Directory
       {
         $project: {
           _id: '$user._id',
@@ -107,6 +85,7 @@ export const directoryRepository = {
           userId: '$user._id',
           name: { $ifNull: ['$user.name', '$user.username'] },
           avatarUrl: '$user.avatar',
+          email: '$user.email',
           role: {
             $switch: {
               branches: [
@@ -132,7 +111,7 @@ export const directoryRepository = {
                   case: {
                     $regexMatch: {
                       input: { $ifNull: ['$role.name', ''] },
-                      regex: /admin|president|board/i,
+                      regex: /admin|president|board|management/i,
                     },
                   },
                   then: 'admin',
@@ -142,26 +121,13 @@ export const directoryRepository = {
             },
           },
           designation: { $ifNull: ['$role.name', '$residentType'] },
-          unitNumber: { $ifNull: ['$villa.unitNumber', '$villa.name'] },
-          phone: {
-            $cond: {
-              if: { $eq: ['$user.showPhoneInDirectory', false] },
-              then: null,
-              else: '$user.phone',
-            },
-          },
-          intercomNumber: {
-            $cond: {
-              if: { $eq: ['$user.allowIntercomCalls', false] },
-              then: null,
-              else: { $ifNull: ['$villa.unitNumber', ''] },
-            },
-          },
+          unitNumber: { $ifNull: ['$villa.unitNumber', '$villa.name', '$user.unitNumber', ''] },
+          phone: '$user.phone',
+          intercomNumber: { $ifNull: ['$villa.unitNumber', '$villa.name', '$user.unitNumber', ''] },
           allowDirectoryMessages: { $ifNull: ['$user.allowDirectoryMessages', true] },
-          showPhoneInDirectory: { $ifNull: ['$user.showPhoneInDirectory', true] },
-          allowIntercomCalls: { $ifNull: ['$user.allowIntercomCalls', true] },
+          showPhoneInDirectory: true,
+          allowIntercomCalls: true,
           interests: { $ifNull: ['$user.interests', []] },
-          activeCommunityNote: '$activeNote',
           isOnline: true,
         },
       },
@@ -169,9 +135,25 @@ export const directoryRepository = {
 
     // Optional Role Filter
     if (role && role !== 'all') {
+      const lowerRole = role.toLowerCase();
+      let roleCondition;
+      if (lowerRole === 'security' || lowerRole === 'guard') {
+        roleCondition = { $in: ['guard', 'security'] };
+      } else if (lowerRole === 'staff') {
+        roleCondition = { $in: ['staff'] };
+      } else if (lowerRole === 'maintenance') {
+        roleCondition = { $in: ['staff', 'maintenance'] };
+      } else if (lowerRole === 'management' || lowerRole === 'admin') {
+        roleCondition = { $in: ['admin', 'management'] };
+      } else if (lowerRole === 'resident' || lowerRole === 'residents') {
+        roleCondition = { $in: ['resident', 'tenant', 'owner'] };
+      } else {
+        roleCondition = lowerRole;
+      }
+
       pipeline.push({
         $match: {
-          role: role.toLowerCase(),
+          role: roleCondition,
         },
       });
     }
@@ -186,7 +168,8 @@ export const directoryRepository = {
             { unitNumber: searchRegex },
             { designation: searchRegex },
             { intercomNumber: searchRegex },
-            { 'activeCommunityNote.text': searchRegex },
+            { phone: searchRegex },
+            { email: searchRegex },
           ],
         },
       });

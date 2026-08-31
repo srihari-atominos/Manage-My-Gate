@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Pressable, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Pressable, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as LucideIcons from 'lucide-react-native';
@@ -36,6 +36,7 @@ export function ScreenShell({
   subtitle,
   iconName,
   showBackButton = true,
+  onBackPress,
   headerRight,
   children,
   loading = false,
@@ -54,6 +55,26 @@ export function ScreenShell({
   const [selectedVilla, setSelectedVilla] = useState('Villa 101');
 
   const lastTapRef = useRef<number>(0);
+
+  // Hardware Back Button Handler for Android / Mobile devices
+  React.useEffect(() => {
+    if (!showBackButton) return;
+
+    const onHardwareBack = () => {
+      if (onBackPress) {
+        onBackPress();
+        return true;
+      }
+      if (router.canGoBack()) {
+        router.back();
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+    return () => subscription.remove();
+  }, [showBackButton, onBackPress, router]);
 
   // Mobile Gesture Shortcut: Double Tap Header Title to Switch Role / Villa Unit Context
   const handleHeaderPress = () => {
@@ -95,10 +116,12 @@ export function ScreenShell({
             {showBackButton && (
               <Pressable
                 onPress={() => {
-                  if (router.canGoBack()) {
+                  if (onBackPress) {
+                    onBackPress();
+                  } else if (router.canGoBack()) {
                     router.back();
                   } else {
-                    router.replace('/(resident)/all-features' as any);
+                    router.replace('/(resident)/dashboard' as any);
                   }
                 }}
                 className="me-2 p-2 rounded-xl active:bg-secondary -ms-1 shrink-0 border border-transparent active:border-border/60"

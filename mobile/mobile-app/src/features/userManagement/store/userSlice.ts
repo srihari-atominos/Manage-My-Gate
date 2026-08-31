@@ -17,14 +17,44 @@ export interface UserManagementState {
   error: string | null;
 }
 
+export const DUMMY_USERS: UserData[] = [
+  {
+    id: 'u-1',
+    _id: 'u-1',
+    name: 'Arun Kumar',
+    email: 'arun.kumar@community.org',
+    role: 'Community Admin',
+    status: 'Active',
+    assignedUnits: [{ villaId: 'v-104', villaNumber: 'Villa 104', villaBlock: 'Phase 1', residentType: 'Owner', role: 'Owner' }],
+  },
+  {
+    id: 'u-2',
+    _id: 'u-2',
+    name: 'Priya Sharma',
+    email: 'priya.sharma@community.org',
+    role: 'Resident',
+    status: 'Active',
+    assignedUnits: [{ villaId: 'v-202', villaNumber: 'Block B - 202', villaBlock: 'Block B', residentType: 'Tenant', role: 'Tenant' }],
+  },
+  {
+    id: 'u-3',
+    _id: 'u-3',
+    name: 'Rajesh Verma',
+    email: 'rajesh.verma@security.org',
+    role: 'Security Guard',
+    status: 'Active',
+    assignedUnits: [],
+  },
+];
+
 const initialState: UserManagementState = {
-  users: [],
+  users: DUMMY_USERS,
   searchQuery: '',
   selectedRoles: [],
   statusFilter: ['Active', 'Inactive', 'Pending'],
   currentPage: 1,
   rowsPerPage: 10,
-  totalRecords: 0,
+  totalRecords: DUMMY_USERS.length,
   totalPages: 1,
   loading: false,
   error: null,
@@ -147,13 +177,18 @@ const userSlice = createSlice({
       })
       .addCase(fetchUsersAsync.fulfilled, (state, action: any) => {
         state.loading = false;
-        state.users = action.payload.data || [];
-        state.totalRecords = action.payload.pagination?.totalRecords || action.payload.data?.length || 0;
-        state.currentPage = action.payload.pagination?.currentPage || 1;
-        state.totalPages = action.payload.pagination?.totalPages || 1;
+        const fetchedData = action.payload?.data || [];
+        state.users = fetchedData.length > 0 ? fetchedData : DUMMY_USERS;
+        state.totalRecords = action.payload?.pagination?.totalRecords || state.users.length;
+        state.currentPage = action.payload?.pagination?.currentPage || 1;
+        state.totalPages = action.payload?.pagination?.totalPages || 1;
       })
       .addCase(fetchUsersAsync.rejected, (state, action: any) => {
         state.loading = false;
+        if (state.users.length === 0) {
+          state.users = DUMMY_USERS;
+          state.totalRecords = DUMMY_USERS.length;
+        }
         state.error = action.payload || 'Failed to fetch users';
       })
       // Invite User

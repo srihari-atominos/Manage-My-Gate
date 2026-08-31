@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, BackHandler } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MobileHeader from '@/components/navigation/MobileHeader';
@@ -20,6 +20,24 @@ export default function DashboardScreen() {
   } = useQuickActions();
 
   const insets = useSafeAreaInsets();
+
+  // Hardware Back Button Handler for Dashboard
+  React.useEffect(() => {
+    const onHardwareBack = () => {
+      if (customiseOpen) {
+        setCustomiseOpen(false);
+        return true;
+      }
+      if (router.canGoBack()) {
+        router.back();
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+    return () => subscription.remove();
+  }, [customiseOpen, router]);
 
   const handleSaveCustomisation = async (selectedIds: string[]) => {
     await saveQuickActions(selectedIds);

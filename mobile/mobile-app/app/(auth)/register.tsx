@@ -15,6 +15,7 @@ import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
 import { MicrosoftSignInButton } from '../../src/features/auth/components/MicrosoftSignInButton';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
+import { sessionStore } from '@/src/utils/storage';
 
 // Registration Validation Schema
 const registerSchema = yup.object().shape({
@@ -127,24 +128,24 @@ export default function RegisterScreen() {
     <>
       <Stack.Screen options={{ title: 'Create Account', headerBackVisible: true }} />
       <KeyboardAvoidingShell className="bg-background">
-        <ScrollView contentContainerStyle={{ padding: 24, flexGrow: 1, justifyContent: 'center' }}>
-          <View className="gap-6 flex-1 justify-center max-w-sm mx-auto w-full py-4">
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 24, flexGrow: 1, justifyContent: 'center' }}>
+          <View className="gap-5 flex-1 justify-center max-w-sm sm:max-w-md mx-auto w-full py-2 sm:py-4">
             {/* Brand Header */}
-            <View className="items-center mb-2">
-              <View className="bg-primary/10 p-4 rounded-3xl mb-3">
-                <ShieldCheck className="size-10 text-primary" size={36} />
+            <View className="items-center mb-1">
+              <View className="bg-primary/10 p-3.5 rounded-2xl mb-2.5 items-center justify-center">
+                <ShieldCheck className="size-9 text-primary" size={34} />
               </View>
               <Text className="text-2xl font-extrabold text-foreground tracking-tight text-center">
                 Register
               </Text>
-              <Text className="text-muted-foreground text-sm text-center mt-1.5 px-2">
+              <Text className="text-muted-foreground text-sm text-center mt-1 px-2">
                 Create your enterprise account to manage your workspace
               </Text>
             </View>
 
             {/* Form Container */}
-            <View className="bg-card border border-border rounded-2xl p-5 gap-4 shadow-sm">
-              <View className="gap-4">
+            <View className="bg-card border border-border rounded-2xl p-4 sm:p-6 gap-4 shadow-xs">
+              <View className="gap-3.5">
                 <Controller
                   control={form.control}
                   name="name"
@@ -152,7 +153,7 @@ export default function RegisterScreen() {
                     <Input
                       label="Full Name"
                       placeholder="John Doe"
-                      leftIcon={<User size={18} className="text-muted-foreground" />}
+                      leftIcon={<User size={18} className="text-muted-foreground me-1" />}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -169,7 +170,7 @@ export default function RegisterScreen() {
                     <Input
                       label="Email"
                       placeholder="admin@example.com"
-                      leftIcon={<Mail size={18} className="text-muted-foreground" />}
+                      leftIcon={<Mail size={18} className="text-muted-foreground me-1" />}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -204,7 +205,7 @@ export default function RegisterScreen() {
                         label="Password"
                         placeholder="••••••••"
                         isPassword
-                        leftIcon={<Lock size={18} className="text-muted-foreground" />}
+                        leftIcon={<Lock size={18} className="text-muted-foreground me-1" />}
                         onBlur={onBlur}
                         onChangeText={onChange}
                         value={value}
@@ -225,7 +226,7 @@ export default function RegisterScreen() {
                       label="Repeat Password"
                       placeholder="••••••••"
                       isPassword
-                      leftIcon={<Lock size={18} className="text-muted-foreground" />}
+                      leftIcon={<Lock size={18} className="text-muted-foreground me-1" />}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -238,15 +239,13 @@ export default function RegisterScreen() {
 
                 {/* Global Error Banner */}
                 {error ? (
-                  <View className="gap-2">
+                  <View className="gap-2 mt-1">
                     <ErrorBanner message={error} />
                     {error.toLowerCase().includes('already exists') ? (
                       <Button
                         variant="link"
                         onPress={() => {
-                          if (typeof window !== 'undefined') {
-                            sessionStorage.setItem('mobile_auth_intent', 'create-org');
-                          }
+                          sessionStore.setItem('mobile_auth_intent', 'create-org');
                           router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
                         }}
                       >
@@ -262,20 +261,21 @@ export default function RegisterScreen() {
                   onPress={form.handleSubmit(onSubmit)}
                   loading={loading}
                   textClassName="font-bold text-base"
-                  className="mt-2 h-12 bg-primary rounded-xl"
+                  className="mt-2 h-12 bg-primary rounded-xl w-full items-center justify-center"
                 >
                   Create Account
                 </Button>
               </View>
 
               {/* SSO Separator */}
-              <View className="flex-row items-center mt-2 mb-1">
+              <View className="flex-row items-center my-2">
                 <View className="flex-1 h-px bg-border" />
-                <Text className="mx-4 text-muted-foreground font-medium text-xs uppercase tracking-wider">OR CONTINUE WITH</Text>
+                <Text className="px-3 text-muted-foreground font-semibold text-[11px] uppercase tracking-wider">OR CONTINUE WITH</Text>
                 <View className="flex-1 h-px bg-border" />
               </View>
 
-              <View className="flex-row gap-3 mt-2">
+              {/* SSO Buttons */}
+              <View className="flex-col gap-2.5 sm:flex-row sm:gap-3">
                 <View className="flex-1">
                   <GoogleSignInButton />
                 </View>
@@ -285,13 +285,11 @@ export default function RegisterScreen() {
               </View>
 
               {/* Login Link */}
-              <View className="items-center mt-4">
+              <View className="items-center mt-2">
                 <Button
                   variant="link"
                   onPress={() => {
-                    if (typeof window !== 'undefined') {
-                      sessionStorage.setItem('mobile_auth_intent', 'create-org');
-                    }
+                    sessionStore.setItem('mobile_auth_intent', 'create-org');
                     router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
                   }}
                 >

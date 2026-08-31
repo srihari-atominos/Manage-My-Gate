@@ -12,12 +12,97 @@ export interface DirectoryState {
   error: string | null;
 }
 
+export const DUMMY_MEMBERS: DirectoryMember[] = [
+  {
+    id: 'dummy-1',
+    userId: 'user-dummy-1',
+    name: 'Arun Kumar',
+    role: 'resident',
+    designation: 'Villa Resident',
+    unitNumber: 'Villa 104',
+    phone: '+919876543210',
+    email: 'arun.kumar@community.org',
+    intercomNumber: '104',
+    avatarUrl: null,
+    isOnline: true,
+    allowDirectoryMessages: true,
+    showPhoneInDirectory: true,
+    allowIntercomCalls: true,
+    interests: ['Badminton 🏸', 'Coffee & Chat ☕', 'Fitness 🏋️'],
+  },
+  {
+    id: 'dummy-2',
+    userId: 'user-dummy-2',
+    name: 'Priya Sharma',
+    role: 'resident',
+    designation: 'Block B Resident',
+    unitNumber: 'Block B - 202',
+    phone: '+919876543211',
+    email: 'priya.sharma@community.org',
+    intercomNumber: '202',
+    avatarUrl: null,
+    isOnline: true,
+    allowDirectoryMessages: true,
+    showPhoneInDirectory: true,
+    allowIntercomCalls: true,
+    interests: ['Book Club 📚', 'Gardening 🌱', 'Coffee & Chat ☕'],
+  },
+  {
+    id: 'dummy-3',
+    userId: 'user-dummy-3',
+    name: 'Raj Kumar',
+    role: 'security',
+    designation: 'Main Gate Security Supervisor',
+    unitNumber: '',
+    phone: '+919876543212',
+    email: 'security.main@community.org',
+    intercomNumber: '99',
+    avatarUrl: null,
+    isOnline: true,
+    allowDirectoryMessages: true,
+    showPhoneInDirectory: true,
+    allowIntercomCalls: true,
+  },
+  {
+    id: 'dummy-4',
+    userId: 'user-dummy-4',
+    name: 'Suresh',
+    role: 'maintenance',
+    designation: 'Lead Electrician & Plumbing',
+    unitNumber: '',
+    phone: '+919876543213',
+    email: 'maintenance.suresh@community.org',
+    intercomNumber: '98',
+    avatarUrl: null,
+    isOnline: true,
+    allowDirectoryMessages: true,
+    showPhoneInDirectory: true,
+    allowIntercomCalls: true,
+  },
+  {
+    id: 'dummy-5',
+    userId: 'user-dummy-5',
+    name: 'Vikram Mehta',
+    role: 'management',
+    designation: 'Community General Manager',
+    unitNumber: 'Management Office',
+    phone: '+919876543214',
+    email: 'manager@community.org',
+    intercomNumber: '100',
+    avatarUrl: null,
+    isOnline: true,
+    allowDirectoryMessages: true,
+    showPhoneInDirectory: true,
+    allowIntercomCalls: true,
+  },
+];
+
 const initialState: DirectoryState = {
-  members: [],
+  members: DUMMY_MEMBERS,
   pagination: {
     currentPage: 1,
     totalPages: 1,
-    totalRecords: 0,
+    totalRecords: DUMMY_MEMBERS.length,
     limit: 50,
   },
   searchQuery: '',
@@ -63,7 +148,7 @@ const directorySlice = createSlice({
       state.pagination.currentPage = 1;
     },
     resetDirectoryState(state) {
-      state.members = [];
+      state.members = DUMMY_MEMBERS;
       state.pagination = initialState.pagination;
       state.error = null;
     },
@@ -83,7 +168,7 @@ const directorySlice = createSlice({
         state.refreshing = false;
 
         const payload = action.payload || {};
-        const safeData = Array.isArray(payload.data) ? payload.data : [];
+        const safeData = Array.isArray(payload.data) && payload.data.length > 0 ? payload.data : DUMMY_MEMBERS;
         const page = payload.page || 1;
 
         if (page === 1) {
@@ -106,6 +191,7 @@ const directorySlice = createSlice({
       .addCase(fetchDirectory.rejected, (state, action) => {
         state.loading = false;
         state.refreshing = false;
+        state.members = DUMMY_MEMBERS;
         state.error = action.payload as string;
       });
   },

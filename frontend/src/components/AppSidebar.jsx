@@ -84,7 +84,7 @@ const AppSidebar = () => {
       return allowedFeatures.some((f) => ['amenities', 'booking', 'amenity', 'amenitiesBooking'].includes(f))
     }
 
-    if (['villas', 'users', 'roles'].includes(featurePart)) {
+    if (['villas', 'users', 'roles', 'integrations'].includes(featurePart)) {
       return allowedFeatures.includes('administration_security') || allowedFeatures.includes(featurePart) || allowedFeatures.includes(perm)
     }
 
