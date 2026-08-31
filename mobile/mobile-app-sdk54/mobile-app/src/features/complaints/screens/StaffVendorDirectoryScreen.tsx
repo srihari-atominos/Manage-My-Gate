@@ -59,7 +59,7 @@ const DEFAULT_DIRECTORY: TechnicianData[] = [
 ];
 
 export function StaffVendorDirectoryScreen() {
-  const [technicians, setTechnicians] = useState<TechnicianData[]>(DEFAULT_DIRECTORY);
+  const [technicians, setTechnicians] = useState<TechnicianData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,15 +78,13 @@ export function StaffVendorDirectoryScreen() {
       .getAll()
       .then((res: any) => {
         const list = res?.data || res || [];
-        if (Array.isArray(list) && list.length > 0) {
+        if (Array.isArray(list)) {
           setTechnicians(list);
-        } else {
-          setTechnicians(DEFAULT_DIRECTORY);
         }
       })
       .catch((err: any) => {
-        console.log('[StaffDirectory] Fallback to default directory:', err);
-        setTechnicians(DEFAULT_DIRECTORY);
+        console.log('[StaffDirectory] Technician fetch failed:', err);
+        setTechnicians([]);
       })
       .finally(() => {
         setIsLoading(false);

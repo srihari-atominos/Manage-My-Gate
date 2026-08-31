@@ -1,0 +1,15 @@
+# Ignore documentation files
+*.md
+
+# Ignore coverage and testing artifacts
+coverage/
+jest/
+
+# Ignore local environment overrides
+.env.local
+.env*.local
+
+# Ignore build artifacts and local cache
+.expo/
+dist/
+web-build/

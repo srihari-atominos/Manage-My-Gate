@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
-import { View, ScrollView, Pressable, Switch, Image, Alert } from 'react-native';
+import { View, ScrollView, Pressable, Image, Alert } from 'react-native';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import * as ImagePicker from 'expo-image-picker';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
+import { ToggleSwitch } from '@/components/forms/ToggleSwitch';
+import { Chip } from '@/components/common/Chip';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
@@ -220,8 +222,74 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
   };
 
   const handleFormSubmit = (data: AmenityFormData) => {
-    data.type = data.category;
-    onSubmit(data);
+    const formatTimeStr = (t?: string, defaultVal = '08:00') => {
+      if (!t) return defaultVal;
+      const trimmed = t.trim();
+      if (!trimmed) return defaultVal;
+      if (/^\d:[0-5]\d$/.test(trimmed)) {
+        return `0${trimmed}`;
+      }
+      return trimmed;
+    };
+
+    const capacityNum = Math.max(1, parseInt(String(data.capacity || 50), 10) || 50);
+    const baseRateNum = Math.max(0, parseFloat(String(data.bookingFee || 0)) || 0);
+    const depositNum = Math.max(0, parseFloat(String(data.securityDeposit || 0)) || 0);
+    const slotDurationNum = Math.max(15, parseInt(String(data.slotDurationMinutes || 60), 10) || 60);
+    const bufferTimeNum = Math.max(0, parseInt(String(data.bufferTimeMinutes || 0), 10) || 0);
+    const advanceDaysNum = Math.max(0, parseInt(String(data.advanceBookingDays || 7), 10) || 7);
+    const maxBookingsNum = Math.max(1, parseInt(String(data.maxBookingsPerUserPerSlot || 2), 10) || 2);
+
+    const formattedRules = (data.cancellationRefundRules || []).map((r) => ({
+      cancelBeforeHours: Math.max(0, parseInt(String(r.cancelBeforeHours || 0), 10) || 0),
+      refundPercentage: Math.max(0, Math.min(100, parseFloat(String(r.refundPercentage || 0)) || 0)),
+    }));
+
+    const imagesArray = data.imageUrl ? [data.imageUrl] : [];
+
+    const openTimeFormatted = formatTimeStr(data.openTime, '08:00');
+    const closeTimeFormatted = formatTimeStr(data.closeTime, '21:00');
+
+    const formattedPayload: any = {
+      name: data.name?.trim(),
+      category: data.category || 'Event Space',
+      type: data.category || 'Event Space',
+      location: data.location?.trim() || 'Community Facilities',
+      capacity: capacityNum,
+      status: (data.status || 'active').toLowerCase(),
+      description: data.description?.trim() || '',
+      images: imagesArray,
+      imageUrl: data.imageUrl || '',
+      openDays: Array.isArray(data.openDays) && data.openDays.length > 0 ? data.openDays : [0, 1, 2, 3, 4, 5, 6],
+      maxBookingsPerUserPerSlot: maxBookingsNum,
+      ratePerHour: baseRateNum,
+      pricing: {
+        pricingType: data.pricingType || 'hourly',
+        baseRate: baseRateNum,
+        securityDeposit: depositNum,
+        securityDepositDescription: data.securityDepositDescription?.trim() || '',
+      },
+      bookingRules: {
+        openTime: openTimeFormatted,
+        closeTime: closeTimeFormatted,
+        slotDurationMinutes: slotDurationNum,
+        bufferTimeMinutes: bufferTimeNum,
+        advanceBookingDays: advanceDaysNum,
+        isCancellationEnabled: !!data.isCancellationEnabled,
+        cancellationRefundRules: formattedRules,
+        openDays: Array.isArray(data.openDays) && data.openDays.length > 0 ? data.openDays : [0, 1, 2, 3, 4, 5, 6],
+      },
+      openTime: openTimeFormatted,
+      closeTime: closeTimeFormatted,
+      bookingFee: baseRateNum,
+      slotDurationMinutes: slotDurationNum,
+      bufferTimeMinutes: bufferTimeNum,
+      advanceBookingDays: advanceDaysNum,
+      isCancellationEnabled: !!data.isCancellationEnabled,
+      cancellationRefundRules: formattedRules,
+    };
+
+    onSubmit(formattedPayload);
   };
 
   return (
@@ -230,8 +298,7 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
       onClose={onClose}
       title={amenity ? 'Edit Master Amenity' : 'Create Amenity Master'}
     >
-      <ScrollView className="max-h-[80vh] pt-1" showsVerticalScrollIndicator={false}>
-        <View className="gap-3.5 pb-8 px-0.5">
+      <View className="gap-3.5 pb-2 px-0.5">
           {/* Amenity Cover Image - Drag & Drop / Browse Drop Zone */}
           <View className="bg-card p-3 rounded-2xl border border-border gap-2">
             <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -253,15 +320,17 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
                     <Icon as={UploadCloud} size={14} className="text-white" />
                     <Text className="text-white text-xs font-bold">Change Image</Text>
                   </View>
-                  <Pressable
+                  <Button
+                    variant="destructive"
+                    size="icon"
                     onPress={(e) => {
                       e.stopPropagation();
                       setValue('imageUrl', '', { shouldDirty: true });
                     }}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-red-600/80 active:bg-red-700"
+                    className="absolute top-2 end-2 h-7 w-7 rounded-full"
                   >
-                    <Icon as={X} size={14} className="text-white" />
-                  </Pressable>
+                    <Icon as={X} size={14} className="text-destructive-foreground" />
+                  </Button>
                 </View>
               ) : (
                 <View className="items-center justify-center">
@@ -526,23 +595,12 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
                 {DAYS_NAMES.map((dayName, idx) => {
                   const isActive = openDays.includes(idx);
                   return (
-                    <Pressable
+                    <Chip
                       key={dayName}
+                      label={dayName}
+                      selected={isActive}
                       onPress={() => toggleDay(idx)}
-                      className={`px-3 py-1.5 rounded-full border text-xs ${
-                        isActive
-                          ? 'bg-primary border-primary'
-                          : 'bg-card border-border active:bg-muted'
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-bold ${
-                          isActive ? 'text-primary-foreground' : 'text-muted-foreground'
-                        }`}
-                      >
-                        {dayName}
-                      </Text>
-                    </Pressable>
+                    />
                   );
                 })}
               </View>
@@ -551,18 +609,18 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
 
           {/* Cancellation & Refund Rules Section */}
           <View className="bg-muted/20 p-3.5 rounded-2xl border border-border/60 gap-3">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Cancellation & Refund Policy
-              </Text>
-              <Controller
-                control={control}
-                name="isCancellationEnabled"
-                render={({ field: { onChange, value } }) => (
-                  <Switch value={value} onValueChange={onChange} />
-                )}
-              />
-            </View>
+            <Controller
+              control={control}
+              name="isCancellationEnabled"
+              render={({ field: { onChange, value } }) => (
+                <ToggleSwitch
+                  label="Cancellation & Refund Policy"
+                  description="Allow residents to cancel confirmed reservations"
+                  value={value}
+                  onValueChange={onChange}
+                />
+              )}
+            />
 
             {isCancellationEnabled ? (
               <View className="gap-2.5 mt-1">
@@ -613,12 +671,14 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
                           )}
                         />
                       </View>
-                      <Pressable
+                      <Button
+                        variant="destructive"
+                        size="icon"
                         onPress={() => remove(idx)}
-                        className="p-2 rounded-lg bg-red-500/10 active:bg-red-500/20 mt-4"
+                        className="h-10 w-10 mt-4 rounded-xl"
                       >
-                        <Icon as={Trash2} size={16} className="text-red-500" />
-                      </Pressable>
+                        <Icon as={Trash2} size={16} className="text-destructive-foreground" />
+                      </Button>
                     </View>
                   ))
                 )}
@@ -646,14 +706,13 @@ export const AmenityFormModal: React.FC<AmenityFormModalProps> = ({
             variant="default"
             disabled={loading}
             onPress={handleSubmit(handleFormSubmit)}
-            className="mt-2 bg-primary py-3.5"
+            className="mt-2 h-12 rounded-xl"
           >
-            <Text className="text-white font-bold text-base">
+            <Text className="text-primary-foreground font-bold text-base">
               {loading ? 'Saving Amenity...' : amenity ? 'Update Amenity Record' : 'Create Amenity Master'}
             </Text>
           </Button>
         </View>
-      </ScrollView>
     </BottomSheet>
   );
 };

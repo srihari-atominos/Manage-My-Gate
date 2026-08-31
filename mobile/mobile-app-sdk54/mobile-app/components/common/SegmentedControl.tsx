@@ -22,11 +22,12 @@ export const SegmentedControl = ({
   className,
 }: SegmentedControlProps) => {
   const activeIndex = segments.findIndex((s) => s.key === activeSegment);
-  const segmentWidth = 100 / segments.length;
+  const safeActiveIndex = activeIndex >= 0 ? activeIndex : 0;
+  const segmentWidth = 100 / (segments.length || 1);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      left: withTiming(`${activeIndex * segmentWidth}%`, { duration: 200 }),
+      left: `${safeActiveIndex * segmentWidth}%`,
       width: `${segmentWidth}%`,
     };
   });

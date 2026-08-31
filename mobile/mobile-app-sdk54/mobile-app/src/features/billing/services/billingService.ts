@@ -26,6 +26,16 @@ export const billingService = {
   },
 
   /**
+   * Fetch single invoice details by ID.
+   * @param id
+   */
+  async getInvoiceById(id: string): Promise<any> {
+    const response: any = await apiClient.get(`/invoices/${id}`);
+    const body = response?.success !== undefined ? response : response?.data;
+    return body?.data || body;
+  },
+
+  /**
    * Fetch paginated and filtered invoices for the grid/list.
    * @param page
    * @param limit

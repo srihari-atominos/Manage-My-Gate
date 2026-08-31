@@ -52,6 +52,8 @@ module.exports = {
           royal: '#245FA8',
           indigo: '#51418F',
           magenta: '#A51B73',
+          orange: '#C2410C',
+          orangeBright: '#FF6A00',
         },
         status: {
           success: { DEFAULT: '#10b981', light: '#dcfce7', foreground: '#059669', dark: '#34d399' }, /* Emerald */

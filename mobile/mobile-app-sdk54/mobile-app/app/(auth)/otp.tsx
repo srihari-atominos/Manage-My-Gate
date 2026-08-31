@@ -3,7 +3,7 @@ import { Text } from '@/components/ui/text';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { KeyRoundIcon } from 'lucide-react-native';
 import * as React from 'react';
-import { View, ScrollView, ActivityIndicator, TextInput, ImageBackground, Platform } from 'react-native';
+import { View, ScrollView, ActivityIndicator, TextInput, ImageBackground, Platform, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -21,9 +21,16 @@ interface OtpFormValues {
 }
 
 export default function OtpScreen() {
-  const { phone } = useLocalSearchParams<{ phone: string }>();
-  const { verifyOtp, requestOtp, loading, error, clearStatus } = useAuth();
+  const { phone, email } = useLocalSearchParams<{ phone?: string; email?: string }>();
+  const { verifyOtp, requestOtp, loading, error, successMsg, isAuthenticated, clearStatus } = useAuth();
   const [resendCooldown, setResendCooldown] = React.useState(30);
+
+  // Fix URL decoding issue where '+' might have been converted to a space
+  const fixedPhone = phone ? phone.replace(/\s/g, '+') : undefined;
+  const fixedEmail = email ? email.replace(/\s/g, '+') : undefined;
+
+  const identifier = fixedEmail || fixedPhone || '';
+  const isEmail = !!fixedEmail;
 
   const {
     control,
@@ -37,9 +44,14 @@ export default function OtpScreen() {
   });
 
   React.useEffect(() => {
-    clearStatus();
     return () => clearStatus();
   }, []);
+
+  React.useEffect(() => {
+    if (successMsg) {
+      Alert.alert('Verification', successMsg);
+    }
+  }, [successMsg]);
 
   // Cooldown countdown timer for resending OTP
   React.useEffect(() => {
@@ -51,13 +63,13 @@ export default function OtpScreen() {
   }, [resendCooldown]);
 
   const onSubmit = async (data: OtpFormValues) => {
-    if (!phone) return;
-    await verifyOtp(phone, data.code, false);
+    if (!identifier) return;
+    await verifyOtp(identifier, data.code, isEmail);
   };
 
   const handleResend = async () => {
-    if (!phone || resendCooldown > 0) return;
-    await requestOtp(phone, false);
+    if (!identifier || resendCooldown > 0) return;
+    await requestOtp(identifier, isEmail);
     setResendCooldown(30);
   };
 
@@ -71,21 +83,27 @@ export default function OtpScreen() {
         resizeMode="cover"
       >
         <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" />
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="p-6">
-          <View className="gap-6 flex-1 justify-center max-w-sm mx-auto w-full">
-          {/* Header */}
-          <View className="items-center mb-6">
-            <View className="bg-primary/10 p-4 rounded-full mb-3">
-              <KeyRoundIcon className="size-8 text-primary" />
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          className="p-6"
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View className="gap-6 flex-1 justify-center max-w-sm mx-auto w-full">
+            {/* Header */}
+            <View className="items-center mb-6">
+              <View className="bg-primary/10 p-4 rounded-full mb-3">
+                <KeyRoundIcon className="size-8 text-primary" />
+              </View>
+              <Text className="text-2xl font-extrabold text-foreground tracking-tight">
+                Enter Verification Code
+              </Text>
+              <Text className="text-muted-foreground text-sm text-center mt-1.5 px-4">
+                We sent a verification code to your {isEmail ? 'email' : 'phone number'}:{'\n'}
+                <Text className="font-semibold text-foreground">{identifier}</Text>
+              </Text>
             </View>
-            <Text className="text-2xl font-extrabold text-foreground tracking-tight">
-              Enter Verification Code
-            </Text>
-            <Text className="text-muted-foreground text-sm text-center mt-1.5 px-4">
-              We sent a verification code to your phone number:{'\n'}
-              <Text className="font-semibold text-foreground">{phone || 'your phone'}</Text>
-            </Text>
-          </View>
 
           {/* Form Card */}
           <View className="bg-card border border-border rounded-2xl p-5 gap-4">
@@ -110,7 +128,7 @@ export default function OtpScreen() {
               />
 
               {errors.code && (
-                <Text className="text-rose-500 text-xs font-semibold mt-1">
+                <Text className="text-destructive text-xs font-semibold mt-1">
                   {errors.code.message}
                 </Text>
               )}
@@ -118,8 +136,8 @@ export default function OtpScreen() {
 
             {/* Error Banner */}
             {error && (
-              <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3">
-                <Text className="text-rose-500 text-xs text-center font-medium">{error}</Text>
+              <View className="bg-destructive/10 border border-destructive/20 rounded-xl p-3">
+                <Text className="text-destructive text-xs text-center font-medium">{error}</Text>
               </View>
             )}
 
@@ -145,8 +163,9 @@ export default function OtpScreen() {
             </View>
           </View>
           </View>
-        </ScrollView>
-      </ImageBackground>
-    </>
-  );
+        </TouchableWithoutFeedback>
+      </ScrollView>
+    </ImageBackground>
+  </>
+);
 }

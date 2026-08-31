@@ -1,17 +1,16 @@
 import React, { useMemo } from 'react';
-import { View, Pressable } from 'react-native';
+import { View } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { KPICard } from '@/components/ui/KPICard';
+import { KPIRow } from '@/components/ui/KPIRow';
+import { KPICardProps } from '@/components/ui/KPICard';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { ListCard } from '@/components/ui/ListCard';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Text } from '@/components/ui/text';
-import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
-
-import { useAdminLedgers } from '../../../src/features/amenities/hooks/useAdminLedgers';
-import { BookingDetailModal } from '../../../src/features/amenities/components/BookingDetailModal';
-import { AmenityBooking } from '../../../src/features/amenities/store/amenityBookingSlice';
+import { useAdminLedgers } from '@/src/features/amenities/hooks/useAdminLedgers';
+import { BookingDetailModal } from '@/src/features/amenities/components/BookingDetailModal';
+import { AmenityLedgerCard } from '@/src/features/amenities/components/AmenityLedgerCard';
+import { AmenityBooking } from '@/src/features/amenities/store/amenityBookingSlice';
 
 export default function AmenityLedgersScreen() {
   const {
@@ -48,41 +47,43 @@ export default function AmenityLedgersScreen() {
     { label: 'Cancelled', value: 'CANCELLED' },
   ];
 
+  const kpiCards: KPICardProps[] = useMemo(
+    () => [
+      {
+        title: 'Total Revenue',
+        value: `₹${kpis.totalMasterRevenue.toFixed(2)}`,
+        iconName: 'DollarSign',
+        variant: 'success',
+      },
+      {
+        title: 'Today Earnings',
+        value: `₹${kpis.todayEarnings.toFixed(2)}`,
+        iconName: 'TrendingUp',
+        variant: 'warning',
+      },
+      {
+        title: 'Total Entries',
+        value: kpis.totalEntries,
+        iconName: 'Receipt',
+        variant: 'info',
+      },
+    ],
+    [kpis.totalMasterRevenue, kpis.todayEarnings, kpis.totalEntries]
+  );
+
   const renderHeader = () => (
-    <View className="mb-4">
+    <View className="mb-3 gap-3">
       {/* Financial Master KPI Summary */}
-      <View className="flex-row gap-2.5 mb-4">
-        <KPICard
-          title="Total Revenue"
-          value={`₹${kpis.totalMasterRevenue.toFixed(2)}`}
-          iconName="DollarSign"
-          iconColor="#10b981"
-          className="flex-1"
-        />
-        <KPICard
-          title="Today Earnings"
-          value={`₹${kpis.todayEarnings.toFixed(2)}`}
-          iconName="TrendingUp"
-          iconColor="#f59e0b"
-          className="flex-1"
-        />
-        <KPICard
-          title="Total Entries"
-          value={kpis.totalEntries}
-          iconName="Receipt"
-          iconColor="#3b82f6"
-          className="flex-1"
-        />
-      </View>
+      <KPIRow cards={kpiCards} className="px-0" />
 
       {/* Search & Filter Controls */}
-      <View className="bg-card p-3.5 rounded-2xl border border-border mb-3 gap-3">
+      <View className="bg-card p-3.5 rounded-2xl border border-border gap-3 shadow-xs">
         <SearchFilterBar
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder="Search booking ID, resident, villa #..."
-          variant="default"
-          className="px-0 py-0"
+          variant="bordered"
+          className="px-0 py-0 border-0"
         />
 
         <View className="flex-row gap-3">
@@ -105,75 +106,11 @@ export default function AmenityLedgersScreen() {
         </View>
       </View>
 
-      <Text variant="large" className="font-bold text-foreground mb-2">
+      <Text variant="large" className="font-bold text-foreground mt-1">
         Master Financial Ledger Entries ({filteredBookings.length})
       </Text>
     </View>
   );
-
-  const statusVariantMap: Record<string, StatusVariant> = {
-    CONFIRMED: 'success',
-    APPROVED: 'success',
-    PENDING: 'warning',
-    CHECKED_IN: 'info',
-    COMPLETED: 'neutral',
-    CANCELLED: 'danger',
-  };
-
-  const renderMasterItem = (item: AmenityBooking) => {
-    const amenityName =
-      typeof item.amenityId === 'object' && item.amenityId
-        ? item.amenityId.name
-        : item.amenityName || 'Amenity Slot';
-
-    const residentName =
-      item.residentName ||
-      (typeof item.userId === 'object' && item.userId ? item.userId.name || item.userId.username : '') ||
-      (item as any).userName ||
-      'Community Resident';
-
-    const villaNum =
-      (item as any).villaNumber ||
-      (item as any).flatNumber ||
-      (typeof item.userId === 'object' && item.userId ? item.userId.villaNumber || item.userId.flatNumber : '') ||
-      'Villa 101';
-
-    const bookingCode = item.bookingId ? `#${item.bookingId}` : `#${item._id.slice(-6).toUpperCase()}`;
-
-    const isCancelled = (item.status as string) === 'CANCELLED' || (item.status as string) === 'REJECTED';
-    const statusLabel = isCancelled ? 'CANCELLED' : item.status === 'COMPLETED' ? 'COMPLETED' : 'CONFIRMED';
-    const statusVariant = isCancelled ? 'danger' : item.status === 'COMPLETED' ? 'neutral' : 'success';
-
-    return (
-      <View key={item._id} className="mb-2">
-        <ListCard
-          title={`${bookingCode} • ${amenityName}`}
-          subtitle={`Resident: ${residentName} (${villaNum}) • ${item.date}`}
-          leftIcon="Receipt"
-          leftIconBgColor="#f0fdf4"
-          leftIconColor="#16a34a"
-          status={{
-            label: statusLabel,
-            variant: statusVariant,
-          }}
-          rightContent={
-            <View className="items-end">
-              <Text className="font-bold text-sm text-foreground">
-                {item.totalFee ? `₹${item.totalFee.toFixed(2)}` : 'Free'}
-              </Text>
-              <StatusBadge
-                label={isCancelled ? 'REFUNDED' : 'PAID'}
-                variant={isCancelled ? 'neutral' : 'success'}
-                size="sm"
-                className="mt-1"
-              />
-            </View>
-          }
-          onPress={() => setSelectedLedgerDetail(item)}
-        />
-      </View>
-    );
-  };
 
   return (
     <ScreenShell
@@ -184,10 +121,17 @@ export default function AmenityLedgersScreen() {
       error={error}
       onRetry={handleRefresh}
     >
-      <View className="flex-1 px-4 pt-2">
-        <PaginatedList
+      <View className="flex-1 bg-background">
+        <PaginatedList<AmenityBooking>
           data={filteredBookings}
-          renderItem={(item: AmenityBooking) => renderMasterItem(item)}
+          renderItem={(item: AmenityBooking) => (
+            <AmenityLedgerCard
+              key={item._id}
+              booking={item}
+              onPress={() => setSelectedLedgerDetail(item)}
+              className="mb-2"
+            />
+          )}
           pagination={pagination}
           onLoadMore={() => {
             if (currentPage < pagination.totalPages) {
@@ -200,7 +144,7 @@ export default function AmenityLedgersScreen() {
           emptyIcon="Receipt"
           emptyTitle="No Master Ledger Entries"
           emptySubtitle="No financial ledger entries match your filter."
-          contentContainerClassName="pb-6"
+          contentContainerClassName="px-4 pt-2 pb-28"
         />
       </View>
 

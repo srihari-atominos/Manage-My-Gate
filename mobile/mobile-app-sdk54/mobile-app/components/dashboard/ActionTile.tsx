@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { ArrowUpRight } from 'lucide-react-native';
+import { ArrowUpRight, ChevronRight } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -26,6 +26,7 @@ export interface ActionTileProps {
   badge?: string;
   badgeColor?: string;
   iconBgColor?: string;
+  iconShapeClass?: string;
   containerClassName?: string;
   showArrow?: boolean;
 }
@@ -39,6 +40,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   badge,
   badgeColor,
   iconBgColor,
+  iconShapeClass,
   containerClassName = 'w-1/3 px-1 py-1',
   showArrow = false,
 }) => {
@@ -65,12 +67,14 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={animatedStyle}
-        className="bg-card border border-border/80 rounded-2xl p-3 h-[122px] justify-between relative overflow-hidden active:bg-secondary/60 shadow-xs"
+        className="bg-card border border-border rounded-2xl p-3 h-[130px] justify-between relative overflow-hidden active:bg-secondary/70 shadow-sm"
       >
-        {/* Top Row: Icon Container + Optional Count Badge / Arrow */}
+        {/* Top Row: Tailored Feature Icon Container + Optional Due Badge / Arrow */}
         <View className="flex-row items-center justify-between w-full">
           <View
-            className={`w-10 h-10 rounded-[14px] items-center justify-center border border-border/40 ${
+            className={`w-11 h-11 items-center justify-center ${
+              iconShapeClass || 'rounded-[15px]'
+            } ${
               iconBgColor || 'bg-secondary'
             }`}
           >
@@ -79,11 +83,11 @@ export const ActionTile: React.FC<ActionTileProps> = ({
 
           {badge ? (
             <View
-              className={`px-1.5 py-0.5 rounded-full border border-card ${
-                badgeColor || 'bg-destructive'
+              className={`px-2 py-0.5 rounded-full ${
+                badgeColor || 'bg-[#FF7A00]'
               }`}
             >
-              <Text className="text-[9px] font-bold text-white font-sans">{badge}</Text>
+              <Text className="text-[9.5px] font-bold text-white font-sans">{badge}</Text>
             </View>
           ) : showArrow ? (
             <View className="w-5 h-5 rounded-full bg-secondary items-center justify-center border border-border/40 shrink-0">
@@ -92,23 +96,27 @@ export const ActionTile: React.FC<ActionTileProps> = ({
           ) : null}
         </View>
 
-        {/* Bottom Block: Balanced Label & Subtitle Text Hierarchy */}
-        <View className="w-full justify-end">
+        {/* Bottom Block: Balanced Label, Subtitle, and Subtle Chevron */}
+        <View className="w-full">
           <Text
             numberOfLines={2}
-            className="text-[12px] font-bold font-sans text-foreground leading-[16px] tracking-tight"
+            className="text-[12.5px] font-bold font-sans text-foreground leading-[16px] tracking-tight"
           >
             {label}
           </Text>
 
-          {displaySubtitle ? (
-            <Text
-              numberOfLines={1}
-              className="text-[10px] font-medium font-sans text-muted-foreground leading-[14px] mt-0.5"
-            >
-              {displaySubtitle}
-            </Text>
-          ) : null}
+          <View className="flex-row items-center justify-between mt-1">
+            {displaySubtitle ? (
+              <Text
+                numberOfLines={1}
+                className="text-[10px] font-medium font-sans text-muted-foreground leading-[14px] flex-1 mr-1"
+              >
+                {displaySubtitle}
+              </Text>
+            ) : <View className="flex-1" />}
+
+            <ChevronRight size={13} color="#94A3B8" className="shrink-0 -mr-0.5" />
+          </View>
         </View>
       </AnimatedPressable>
     </View>

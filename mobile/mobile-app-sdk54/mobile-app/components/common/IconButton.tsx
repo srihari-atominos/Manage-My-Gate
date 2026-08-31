@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils';
 export interface IconButtonProps extends PressableProps {
   icon: LucideIcon;
   size?: 'sm' | 'md' | 'lg';
-  variant?: 'default' | 'primary' | 'secondary' | 'ghost' | 'destructive';
+  variant?: 'default' | 'primary' | 'secondary' | 'ghost' | 'destructive' | 'outline';
   disabled?: boolean;
   className?: string;
   iconClassName?: string;
@@ -37,6 +37,7 @@ export const IconButton = ({
     default: 'bg-card border border-border',
     primary: 'bg-primary',
     secondary: 'bg-secondary border border-border',
+    outline: 'bg-card border border-border',
     ghost: 'bg-transparent',
     destructive: 'bg-destructive',
   };
@@ -45,6 +46,7 @@ export const IconButton = ({
     default: 'text-foreground',
     primary: 'text-primary-foreground',
     secondary: 'text-foreground',
+    outline: 'text-foreground',
     ghost: 'text-foreground',
     destructive: 'text-destructive-foreground',
   };

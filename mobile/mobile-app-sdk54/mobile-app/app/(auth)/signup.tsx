@@ -21,6 +21,10 @@ import {
   Platform,
   KeyboardAvoidingView,
   ImageBackground,
+  Animated,
+  Easing,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
@@ -29,8 +33,9 @@ import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import {
   NahomEmblem,
   NahomWordmark,
-  NahomTrustBadges,
 } from '@/components/auth/NahomBrandLogo';
+import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 
 const signupSchema = yup.object().shape({
   name: yup
@@ -72,6 +77,20 @@ export default function SignupScreen() {
   const [localLoading, setLocalLoading] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
 
+  // Input focus refs
+  const emailInputRef = React.useRef<TextInput>(null);
+  const phoneInputRef = React.useRef<TextInput>(null);
+  const unitInputRef = React.useRef<TextInput>(null);
+  const passwordInputRef = React.useRef<TextInput>(null);
+  const confirmPasswordInputRef = React.useRef<TextInput>(null);
+
+  // Logo & Content Entrance Animation Drivers
+  const emblemScale = React.useRef(new Animated.Value(0)).current;
+  const emblemOpacity = React.useRef(new Animated.Value(0)).current;
+  const emblemFloat = React.useRef(new Animated.Value(0)).current;
+  const contentOpacity = React.useRef(new Animated.Value(0)).current;
+  const contentTranslateY = React.useRef(new Animated.Value(20)).current;
+
   const {
     control,
     handleSubmit,
@@ -90,6 +109,54 @@ export default function SignupScreen() {
 
   React.useEffect(() => {
     clearStatus();
+    Animated.parallel([
+      Animated.spring(emblemScale, {
+        toValue: 1,
+        friction: 5,
+        tension: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(emblemOpacity, {
+        toValue: 1,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.delay(200),
+        Animated.parallel([
+          Animated.timing(contentOpacity, {
+            toValue: 1,
+            duration: 400,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(contentTranslateY, {
+            toValue: 0,
+            duration: 400,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
+    ]).start(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(emblemFloat, {
+            toValue: -5,
+            duration: 2000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(emblemFloat, {
+            toValue: 5,
+            duration: 2000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    });
     return () => clearStatus();
   }, []);
 
@@ -131,16 +198,32 @@ export default function SignupScreen() {
             contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             className="px-5 py-6"
           >
-            <View className="max-w-sm mx-auto w-full gap-3.5">
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+              <View className="max-w-sm mx-auto w-full gap-3.5">
               {/* Brand Header */}
-              <View className="items-center justify-center">
-                <NahomEmblem size={120} />
+              <Animated.View
+                style={{
+                  opacity: emblemOpacity,
+                  transform: [{ scale: emblemScale }, { translateY: emblemFloat }],
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <NahomEmblem size={102} />
                 <NahomWordmark />
-              </View>
+              </Animated.View>
 
               {/* Form Card */}
+              <Animated.View
+                style={{
+                  opacity: contentOpacity,
+                  transform: [{ translateY: contentTranslateY }],
+                }}
+                className="gap-3.5 w-full"
+              >
               <View className="bg-card border border-border/80 rounded-3xl p-5 gap-3.5 shadow-xs">
                 <Text className="text-base font-bold text-foreground text-center">
                   Create Resident Account
@@ -164,6 +247,9 @@ export default function SignupScreen() {
                           placeholder="e.g. John Doe"
                           placeholderTextColor="#94A3B8"
                           autoCapitalize="words"
+                          returnKeyType="next"
+                          onSubmitEditing={() => emailInputRef.current?.focus()}
+                          blurOnSubmit={false}
                           className="flex-1 text-sm text-foreground font-sans p-0"
                         />
                       </View>
@@ -188,6 +274,7 @@ export default function SignupScreen() {
                       <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
                         <Mail size={18} color="#94A3B8" className="me-2.5 shrink-0" />
                         <TextInput
+                          ref={emailInputRef}
                           value={value}
                           onChangeText={onChange}
                           onBlur={onBlur}
@@ -195,6 +282,9 @@ export default function SignupScreen() {
                           placeholderTextColor="#94A3B8"
                           keyboardType="email-address"
                           autoCapitalize="none"
+                          returnKeyType="next"
+                          onSubmitEditing={() => phoneInputRef.current?.focus()}
+                          blurOnSubmit={false}
                           className="flex-1 text-sm text-foreground font-sans p-0"
                         />
                       </View>
@@ -219,12 +309,16 @@ export default function SignupScreen() {
                       <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
                         <Smartphone size={18} color="#94A3B8" className="me-2.5 shrink-0" />
                         <TextInput
+                          ref={phoneInputRef}
                           value={value}
                           onChangeText={onChange}
                           onBlur={onBlur}
                           placeholder="+919988776655"
                           placeholderTextColor="#94A3B8"
                           keyboardType="phone-pad"
+                          returnKeyType="next"
+                          onSubmitEditing={() => unitInputRef.current?.focus()}
+                          blurOnSubmit={false}
                           className="flex-1 text-sm text-foreground font-sans p-0"
                         />
                       </View>
@@ -249,11 +343,15 @@ export default function SignupScreen() {
                       <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
                         <Home size={18} color="#94A3B8" className="me-2.5 shrink-0" />
                         <TextInput
+                          ref={unitInputRef}
                           value={value}
                           onChangeText={onChange}
                           onBlur={onBlur}
                           placeholder="e.g. Villa 104, Block B"
                           placeholderTextColor="#94A3B8"
+                          returnKeyType="next"
+                          onSubmitEditing={() => passwordInputRef.current?.focus()}
+                          blurOnSubmit={false}
                           className="flex-1 text-sm text-foreground font-sans p-0"
                         />
                       </View>
@@ -273,6 +371,7 @@ export default function SignupScreen() {
                       <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
                         <Lock size={18} color="#94A3B8" className="me-2.5 shrink-0" />
                         <TextInput
+                          ref={passwordInputRef}
                           value={value}
                           onChangeText={onChange}
                           onBlur={onBlur}
@@ -280,6 +379,9 @@ export default function SignupScreen() {
                           placeholderTextColor="#94A3B8"
                           secureTextEntry={!showPassword}
                           autoCapitalize="none"
+                          returnKeyType="next"
+                          onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+                          blurOnSubmit={false}
                           className="flex-1 text-sm text-foreground font-sans p-0"
                         />
                         <TouchableOpacity
@@ -315,6 +417,7 @@ export default function SignupScreen() {
                       <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
                         <Lock size={18} color="#94A3B8" className="me-2.5 shrink-0" />
                         <TextInput
+                          ref={confirmPasswordInputRef}
                           value={value}
                           onChangeText={onChange}
                           onBlur={onBlur}
@@ -322,6 +425,8 @@ export default function SignupScreen() {
                           placeholderTextColor="#94A3B8"
                           secureTextEntry={!showConfirmPassword}
                           autoCapitalize="none"
+                          returnKeyType="go"
+                          onSubmitEditing={handleSubmit(onSubmit)}
                           className="flex-1 text-sm text-foreground font-sans p-0"
                         />
                         <TouchableOpacity
@@ -354,57 +459,86 @@ export default function SignupScreen() {
                   </View>
                 ) : null}
 
-                {/* Sign Up CTA Button */}
+                {/* Sign Up CTA Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
                 <TouchableOpacity
                   onPress={handleSubmit(onSubmit)}
                   disabled={loading || localLoading}
-                  activeOpacity={0.85}
-                  className="mt-1 h-12 bg-[#1E3A8A] dark:bg-[#2563EB] rounded-2xl flex-row items-center justify-center gap-2 shadow-xs active:bg-[#172554] dark:active:bg-[#1D4ED8]"
+                  activeOpacity={0.88}
+                  className="mt-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
                 >
+                  <View className="absolute inset-0">
+                    <Svg width="100%" height="100%" preserveAspectRatio="none">
+                      <Defs>
+                        <LinearGradient id="signUpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <Stop offset="0%" stopColor="#1E232E" />
+                          <Stop offset="45%" stopColor="#2A3342" />
+                          <Stop offset="82%" stopColor="#FF5E00" />
+                          <Stop offset="100%" stopColor="#FF7A00" />
+                        </LinearGradient>
+                      </Defs>
+                      <Rect width="100%" height="100%" rx="16" fill="url(#signUpGrad)" />
+                    </Svg>
+                  </View>
                   {loading || localLoading ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <View className="flex-row items-center gap-2 z-10">
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    </View>
                   ) : (
-                    <>
+                    <View className="flex-row items-center justify-center gap-2 z-10">
                       <Text className="font-bold text-white text-base font-sans">
                         Create Account
                       </Text>
                       <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
-                    </>
+                    </View>
                   )}
                 </TouchableOpacity>
               </View>
 
+              {/* OR CONTINUE WITH Divider */}
+              <View className="flex-row items-center my-1 gap-3">
+                <View className="flex-1 h-px bg-border/80" />
+                <Text className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase font-sans">
+                  Or Continue With
+                </Text>
+                <View className="flex-1 h-px bg-border/80" />
+              </View>
+
+              {/* Social Authentication: Google ID & Apple ID */}
+              <View className="flex-row items-center gap-3 w-full">
+                <SocialAuthButton
+                  provider="google"
+                  onPress={() => {
+                    // Trigger Google Sign-Up
+                  }}
+                />
+                <SocialAuthButton
+                  provider="apple"
+                  onPress={() => {
+                    // Trigger Apple Sign-Up
+                  }}
+                />
+              </View>
+
               {/* Already Have Account */}
-              <View className="flex-row items-center justify-center pt-0.5">
-                <Text className="text-xs text-muted-foreground font-medium">
+              <View className="flex-row items-center justify-center pt-2 pb-1">
+                <Text className="text-xs text-slate-900 dark:text-white font-bold">
                   Already have an account?{' '}
                 </Text>
                 <TouchableOpacity
                   onPress={() => router.push('/(auth)/login')}
                   activeOpacity={0.8}
                 >
-                  <Text className="text-xs font-bold text-[#1E3A8A] dark:text-[#60A5FA]">
+                  <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">
                     Sign In
                   </Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Trust Badges */}
-              <View className="pt-1 px-1 items-center justify-center">
-                <NahomTrustBadges />
-              </View>
-
-              {/* Bottom Security Caption */}
-              <View className="flex-row items-center justify-center pb-2 pt-0.5 gap-1.5">
-                <Shield size={11} color="#94A3B8" />
-                <Text className="text-[10px] text-muted-foreground/75 font-medium font-sans">
-                  256-Bit Encrypted Community Security Network
-                </Text>
-              </View>
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </ImageBackground>
+            </Animated.View>
+          </View>
+        </TouchableWithoutFeedback>
+      </ScrollView>
+    </KeyboardAvoidingView>
+    </ImageBackground>
     </>
   );
 }

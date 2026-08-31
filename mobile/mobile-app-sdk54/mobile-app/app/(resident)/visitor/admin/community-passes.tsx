@@ -11,7 +11,8 @@ import { VisitorPassDetailsModal } from '@/src/features/visitor/components/Visit
 import { AdminVillaFilterSheet } from '@/src/features/visitor/components/admin/AdminVillaFilterSheet';
 import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
 import { VisitorPass } from '@/src/features/visitor/store/visitorPassSlice';
-import { Building2, UserPlus, Filter } from 'lucide-react-native';
+import { Button } from '@/components/ui/button';
+import { Building, UserPlus, Filter } from 'lucide-react-native';
 
 export default function AdminCommunityPassesScreen() {
   const router = useRouter();
@@ -69,52 +70,59 @@ export default function AdminCommunityPassesScreen() {
     }
   };
 
+  const renderHeader = () => (
+    <View className="gap-3 mb-3">
+      {/* Search & Filter Bar */}
+      <SearchFilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search visitor name, phone or pass code..."
+        sortOptions={[
+          { label: 'All', value: 'ALL' },
+          { label: 'Active', value: 'ACTIVE' },
+          { label: 'Pending', value: 'PENDING' },
+          { label: 'Revoked', value: 'REVOKED' },
+          { label: 'Expired', value: 'EXPIRED' },
+        ]}
+        currentSort={activeStatusFilter}
+        onSortChange={setActiveStatusFilter}
+        variant="default"
+        className="px-0 py-0 border-0"
+      />
+
+      {/* Villa Filter Trigger Pill */}
+      <View className="flex-row items-center justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          onPress={() => setVillaSheetOpen(true)}
+          className="flex-row items-center gap-2 border-primary/30 h-9 px-3 rounded-xl"
+        >
+          <Building size={15} className="text-primary" />
+          <Text className="text-xs font-bold text-primary">{selectedVillaName}</Text>
+          <Filter size={13} className="text-primary ms-1" />
+        </Button>
+      </View>
+    </View>
+  );
+
   return (
     <ScreenShell
       title="All Community Passes"
       subtitle="Master pass registry & villa-level security filters"
       headerRight={
-        <TouchableOpacity
+        <Button
+          size="sm"
+          variant="default"
           onPress={() => router.push('/(resident)/visitor/admin/create-pass' as any)}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full"
+          className="flex-row items-center gap-1.5 rounded-full"
         >
-          <UserPlus size={14} color="#fff" />
+          <UserPlus size={14} className="text-primary-foreground" />
           <Text className="text-xs font-bold text-primary-foreground">New Pass</Text>
-        </TouchableOpacity>
+        </Button>
       }
     >
       <View className="flex-1 bg-background">
-        {/* Search & Filter Bar */}
-        <SearchFilterBar
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search visitor name, phone or pass code..."
-          sortOptions={[
-            { label: 'All', value: 'ALL' },
-            { label: 'Active', value: 'ACTIVE' },
-            { label: 'Pending', value: 'PENDING' },
-            { label: 'Revoked', value: 'REVOKED' },
-            { label: 'Expired', value: 'EXPIRED' },
-          ]}
-          currentSort={activeStatusFilter}
-          onSortChange={setActiveStatusFilter}
-          variant="bordered"
-        />
-
-        {/* Villa Filter Trigger Pill */}
-        <View className="px-4 pb-2 flex-row items-center justify-between">
-          <TouchableOpacity
-            onPress={() => setVillaSheetOpen(true)}
-            activeOpacity={0.8}
-            className="flex-row items-center gap-2 bg-card border border-primary/30 px-3 py-2 rounded-xl"
-          >
-            <Building2 size={16} className="text-primary" />
-            <Text className="text-xs font-bold text-primary">{selectedVillaName}</Text>
-            <Filter size={14} className="text-primary ml-1" />
-          </TouchableOpacity>
-        </View>
-
         {/* Paginated List using Reusable VisitorPassCard */}
         <PaginatedList<VisitorPass>
           data={communityPasses}
@@ -122,10 +130,11 @@ export default function AdminCommunityPassesScreen() {
           loading={status === 'loading'}
           onRefresh={handleRefresh}
           onLoadMore={handleLoadMore}
+          ListHeaderComponent={renderHeader()}
           emptyIcon="QrCode"
           emptyTitle="No Community Passes Found"
           emptySubtitle="No passes matched your search or villa filter parameters."
-          contentContainerClassName="p-4 pt-1"
+          contentContainerClassName="px-4 pt-3 pb-28"
           renderItem={(pass) => (
             <VisitorPassCard
               key={pass._id}

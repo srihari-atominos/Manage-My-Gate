@@ -1,8 +1,7 @@
 import * as React from 'react';
-import { ActivityIndicator, Modal, Platform, View } from 'react-native';
-import { useColorScheme } from 'nativewind';
+import { Modal, Platform, View } from 'react-native';
 import { AlertTriangle, Info } from 'lucide-react-native';
-import { cva, type VariantProps } from 'class-variance-authority';
+import { cva } from 'class-variance-authority';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -23,34 +22,23 @@ export interface ConfirmationModalProps {
   className?: string;
 }
 
-export const CONFIRMATION_VARIANT_CONFIG: Record<
-  ConfirmationVariant,
-  {
-    lightBg: string;
-    darkBg: string;
-    iconColor: string;
-    icon: typeof AlertTriangle | typeof Info;
-  }
-> = {
+export const CONFIRMATION_VARIANT_CONFIG = {
   danger: {
-    lightBg: '#fee2e2',
-    darkBg: '#450a0a',
-    iconColor: '#dc2626',
+    iconBgClass: 'bg-destructive/10 border border-destructive/20',
+    iconColorClass: 'text-destructive',
     icon: AlertTriangle,
   },
   warning: {
-    lightBg: '#ffedd5',
-    darkBg: '#431407',
-    iconColor: '#ea580c',
+    iconBgClass: 'bg-amber-500/10 border border-amber-500/20',
+    iconColorClass: 'text-amber-600 dark:text-amber-400',
     icon: AlertTriangle,
   },
   info: {
-    lightBg: '#dbeafe',
-    darkBg: '#172554',
-    iconColor: '#2563eb',
+    iconBgClass: 'bg-primary/10 border border-primary/20',
+    iconColorClass: 'text-primary',
     icon: Info,
   },
-};
+} as const;
 
 const confirmationModalVariants = cva(
   cn(
@@ -89,12 +77,8 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
     },
     ref
   ) => {
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === 'dark';
-
-    const validVariant = CONFIRMATION_VARIANT_CONFIG[variant] ? variant : 'danger';
+    const validVariant: ConfirmationVariant = CONFIRMATION_VARIANT_CONFIG[variant] ? variant : 'danger';
     const config = CONFIRMATION_VARIANT_CONFIG[validVariant];
-
     const confirmButtonVariant = validVariant === 'danger' ? 'destructive' : 'default';
 
     return (
@@ -111,12 +95,9 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
           >
             {/* Icon circle header */}
             <View
-              className="w-12 h-12 rounded-full items-center justify-center self-center"
-              style={{
-                backgroundColor: isDark ? config.darkBg : config.lightBg,
-              }}
+              className={cn('w-12 h-12 rounded-full items-center justify-center self-center', config.iconBgClass)}
             >
-              <Icon as={config.icon} size={24} color={config.iconColor} />
+              <Icon as={config.icon} size={24} className={config.iconColorClass} />
             </View>
 
             {/* Title */}
@@ -142,10 +123,10 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
               <Button
                 variant={confirmButtonVariant}
                 disabled={loading}
+                loading={loading}
                 onPress={onConfirm}
                 className="flex-1"
               >
-                {loading && <ActivityIndicator size="small" color="#ffffff" />}
                 <Text>{confirmLabel}</Text>
               </Button>
             </View>

@@ -1,17 +1,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, RefreshControl } from 'react-native';
+import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { ListCard } from '@/components/ui/ListCard';
+import { PaginatedList } from '@/components/ui/PaginatedList';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { useSelector } from 'react-redux';
 import { selectActiveOrgId } from '@/src/features/auth/store/authSelectors';
 import visitorService from '../../services/visitorService';
-import { LogOut, ShieldCheck, Users } from 'lucide-react-native';
+import { LogOut, Users } from 'lucide-react-native';
+
+export interface ActiveVisitorLog {
+  _id: string;
+  visitorName?: string;
+  checkInTime?: string;
+  snapshot?: {
+    visitorName?: string;
+    vehicleNumber?: string;
+    idProofNumber?: string;
+  };
+}
 
 export const InsideVisitorsView: React.FC = () => {
   const activeOrgId = useSelector(selectActiveOrgId);
-  const [insideLogs, setInsideLogs] = useState<any[]>([]);
+  const [insideLogs, setInsideLogs] = useState<ActiveVisitorLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
@@ -53,61 +65,71 @@ export const InsideVisitorsView: React.FC = () => {
     }
   };
 
+  const renderHeader = () => (
+    <View className="flex-row items-center justify-between bg-card border border-border rounded-2xl p-3.5 mb-3">
+      <View className="flex-row items-center gap-2">
+        <Users size={18} className="text-status-success" />
+        <Text className="text-sm font-bold text-foreground">Active Visitors Inside</Text>
+      </View>
+      <Text className="text-xs font-extrabold text-status-success bg-status-success/15 px-3 py-1 rounded-full">
+        {insideLogs.length} On-Premises
+      </Text>
+    </View>
+  );
+
   return (
     <View className="flex-1 bg-background">
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="p-4 gap-3 pb-8"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-      >
-        <View className="flex-row items-center justify-between bg-card border border-border rounded-xl p-3">
-          <View className="flex-row items-center gap-2">
-            <Users size={18} className="text-emerald-600 dark:text-emerald-400" />
-            <Text className="text-sm font-bold text-foreground">Active Visitors Currently Inside</Text>
-          </View>
-          <Text className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
-            {insideLogs.length} Inside
-          </Text>
-        </View>
-
-        {insideLogs.length === 0 ? (
-          <View className="p-8 bg-card border border-border rounded-2xl items-center justify-center gap-2">
-            <ShieldCheck size={36} className="text-muted-foreground opacity-50" />
-            <Text className="text-sm font-semibold text-foreground text-center">No Active Visitors Inside</Text>
-            <Text className="text-xs text-muted-foreground text-center">
-              All entered visitors have been checked out at the gate.
-            </Text>
-          </View>
-        ) : (
-          insideLogs.map((log: any) => (
+      <PaginatedList<ActiveVisitorLog>
+        data={insideLogs}
+        pagination={{
+          currentPage: 1,
+          totalPages: 1,
+          totalRecords: insideLogs.length,
+          limit: 50,
+        }}
+        onLoadMore={() => {}}
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
+        loading={loading && !refreshing && insideLogs.length === 0}
+        ListHeaderComponent={renderHeader()}
+        emptyIcon="ShieldCheck"
+        emptyTitle="No Active Visitors Inside"
+        emptySubtitle="All entered visitors have been checked out at the security gate."
+        contentContainerClassName="px-4 pt-3 pb-28 gap-3"
+        renderItem={(log) => {
+          if (!log) return null;
+          return (
             <ListCard
-              key={log._id}
               title={log.snapshot?.visitorName || log.visitorName || 'Visitor'}
-              subtitle={`Checked in: ${log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}${log.snapshot?.vehicleNumber ? ` • Vehicle: ${log.snapshot.vehicleNumber}` : ''}`}
+              subtitle={`Checked in: ${
+                log.checkInTime
+                  ? new Date(log.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  : 'Recently'
+              }${log.snapshot?.vehicleNumber ? ` • Vehicle: ${log.snapshot.vehicleNumber}` : ''}`}
               leftIcon="ShieldCheck"
-              leftIconBgColor="rgba(16, 185, 129, 0.1)"
-              leftIconColor="#10b981"
+              leftIconBgColor="bg-status-success/15"
               status={{ label: 'INSIDE', variant: 'success' }}
               rightContent={
                 <Button
                   variant="outline"
                   size="sm"
                   onPress={() => setSelectedLogId(log._id)}
-                  className="flex-row items-center gap-1 h-8 px-2.5 rounded-lg border-emerald-500/30 bg-emerald-500/5"
+                  className="flex-row items-center gap-1 h-8 px-2.5 rounded-xl border-status-success/30 bg-status-success/10"
+                  accessibilityLabel="Check Out Visitor"
                 >
-                  <LogOut size={14} className="text-emerald-600 dark:text-emerald-400" />
-                  <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Check Out</Text>
+                  <LogOut size={13} className="text-status-success" />
+                  <Text className="text-xs font-bold text-status-success">Check Out</Text>
                 </Button>
               }
             />
-          ))
-        )}
-      </ScrollView>
+          );
+        }}
+      />
 
       <ConfirmationModal
         visible={Boolean(selectedLogId)}
         title="Check Out Visitor?"
-        message="Are you sure you want to mark this visitor as checked out at the gate?"
+        message="Are you sure you want to mark this visitor as checked out at the gate desk?"
         variant="info"
         confirmLabel="Confirm Check-Out"
         onConfirm={handleConfirmCheckout}

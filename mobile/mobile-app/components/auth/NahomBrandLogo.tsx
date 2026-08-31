@@ -8,8 +8,8 @@ export interface NahomBrandLogoProps {
 }
 
 // 1. Top Gated Community Network Emblem Illustration (100% Transparent Background)
-export const NahomEmblem: React.FC<NahomBrandLogoProps> = ({ size = 115 }) => {
-  const height = size * 0.674; // 465 / 690 aspect ratio
+export const NahomEmblem: React.FC<NahomBrandLogoProps> = ({ size = 120 }) => {
+  const height = size * 0.615; // 557 / 905 aspect ratio
   return (
     <View className="items-center justify-center self-center bg-transparent">
       <Image
@@ -24,10 +24,10 @@ export const NahomEmblem: React.FC<NahomBrandLogoProps> = ({ size = 115 }) => {
   );
 };
 
-// 2. NAHOM App Name Graphic (100% Transparent Background)
+// 2. NAHOM App Name Graphic (100% Transparent Background - Charcoal & Vibrant Orange Brand)
 export const NahomTitle: React.FC<{ width?: number }> = ({ width }) => {
-  const TITLE_WIDTH = width || Math.min(SCREEN_WIDTH - 140, 168);
-  const TITLE_HEIGHT = TITLE_WIDTH * 0.209; // 140 / 670 aspect ratio
+  const TITLE_WIDTH = width || Math.min(SCREEN_WIDTH - 80, 220);
+  const TITLE_HEIGHT = TITLE_WIDTH * 0.165; // 123 / 745 aspect ratio
 
   return (
     <View className="items-center justify-center self-center bg-transparent">
@@ -43,7 +43,7 @@ export const NahomTitle: React.FC<{ width?: number }> = ({ width }) => {
   );
 };
 
-// 3. Brand Abbreviation (NEXUS AROUND HOME - 100% Transparent Background with generous breathing space)
+// 3. Brand Abbreviation (NEXUS AROUND HOME - 100% Transparent Background)
 export const NahomAbbreviation: React.FC<{ width?: number }> = ({ width }) => {
   const ABBR_WIDTH = width || Math.min(SCREEN_WIDTH - 140, 168);
   const ABBR_HEIGHT = ABBR_WIDTH * 0.0764; // 55 / 720 aspect ratio
@@ -62,7 +62,7 @@ export const NahomAbbreviation: React.FC<{ width?: number }> = ({ width }) => {
   );
 };
 
-// 4. Slogan (—— CONNECTED HARMONY —— - Full display with ample height)
+// 4. Slogan (—— CONNECTED HARMONY ——)
 export const NahomSlogan: React.FC<{ width?: number }> = ({ width }) => {
   const SLOGAN_WIDTH = width || Math.min(SCREEN_WIDTH - 120, 185);
   const SLOGAN_HEIGHT = SLOGAN_WIDTH * 0.0903; // 65 / 720 aspect ratio
@@ -82,21 +82,26 @@ export const NahomSlogan: React.FC<{ width?: number }> = ({ width }) => {
 };
 
 // 5. Unified Wordmark with Balanced Vertical Spacing
-export const NahomWordmark: React.FC = () => {
+export const NahomWordmark: React.FC<{ width?: number; showSubtext?: boolean }> = ({
+  width,
+  showSubtext = false,
+}) => {
   return (
     <View className="items-center justify-center self-center mt-2 bg-transparent">
-      {/* App Name */}
-      <NahomTitle />
+      {/* App Name & Graphic Lockup */}
+      <NahomTitle width={width} />
 
-      {/* Space between App Name and Abbreviation */}
-      <View className="mt-1.5">
-        <NahomAbbreviation />
-      </View>
-
-      {/* Space between Abbreviation and Slogan */}
-      <View className="mt-2">
-        <NahomSlogan />
-      </View>
+      {/* Optional subtext */}
+      {showSubtext && (
+        <>
+          <View className="mt-1.5">
+            <NahomAbbreviation />
+          </View>
+          <View className="mt-2">
+            <NahomSlogan />
+          </View>
+        </>
+      )}
     </View>
   );
 };

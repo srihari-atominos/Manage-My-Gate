@@ -52,7 +52,7 @@ export const CustomiseAvailableZone: React.FC<CustomiseAvailableZoneProps> = ({
             {group.items.map((feature) => {
               const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === feature.id);
               const iconName = meta?.iconName || feature.iconName;
-              const colorIcon = meta?.colorIcon || feature.colorIcon || '#c5a059';
+              const colorIcon = meta?.colorIcon || feature.colorIcon || '#245FA8';
               const colorBg = meta?.colorBg || feature.colorBg || 'bg-secondary';
               const isSelected = selectedIds.includes(feature.id);
               return (

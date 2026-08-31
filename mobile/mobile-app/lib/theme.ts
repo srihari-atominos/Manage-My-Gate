@@ -1,4 +1,7 @@
-export const THEME = {
+// ============================================================================
+// 1. THEME 1: NAHOM NAVY & INDIGO (Default Modern Estate)
+// ============================================================================
+export const THEME_1_NAHOM_NAVY = {
   light: {
     background: 'hsl(218 38% 94%)', // #EEF3F9 Soft Cool Blue/Grey Canvas
     foreground: 'hsl(227 66% 12%)', // #0B1437 Deep NAHOM Charcoal
@@ -52,6 +55,389 @@ export const THEME = {
     chart5: 'hsl(38 92% 50%)',
   },
 };
+
+export const THEME_2_VENTOREX_ORANGE = {
+z
+  light: {
+
+    // ─────────────────────────────────────────────
+    // FOUNDATION
+    // ─────────────────────────────────────────────
+
+    background: 'hsl(30 29% 97%)', // #FAF8F6 Warm White / Main App Canvas
+
+    foreground: 'hsl(220 3% 19%)', // #2F3032 Ventorex Graphite
+
+    card: 'hsl(0 0% 100%)', // #FFFFFF Clean White Surface
+
+    cardForeground: 'hsl(220 3% 19%)',
+
+    popover: 'hsl(0 0% 100%)',
+
+    popoverForeground: 'hsl(220 3% 19%)',
+
+
+    // ─────────────────────────────────────────────
+    // BRAND / PRIMARY
+    // ─────────────────────────────────────────────
+
+    primary: 'hsl(17 88% 40%)', // #C2410C Accessible Deep Ventorex Orange
+
+    primaryForeground: 'hsl(0 0% 100%)', // #FFFFFF
+
+
+    // ─────────────────────────────────────────────
+    // SECONDARY
+    // ─────────────────────────────────────────────
+
+    secondary: 'hsl(24 38% 95%)', // #F7F1ED Soft Warm Surface
+
+    secondaryForeground: 'hsl(220 3% 19%)',
+
+
+    // ─────────────────────────────────────────────
+    // MUTED
+    // ─────────────────────────────────────────────
+
+    muted: 'hsl(24 17% 89%)', // #E7E1DD Warm Neutral Surface
+
+    mutedForeground: 'hsl(216 3% 37%)', // #5B5D60 Secondary Graphite
+
+
+    // ─────────────────────────────────────────────
+    // ACCENT
+    // ─────────────────────────────────────────────
+
+    accent: 'hsl(23 97% 46%)', // #E85D04 Brand Orange Accent
+
+    accentForeground: 'hsl(0 0% 100%)',
+
+
+    // ─────────────────────────────────────────────
+    // SEMANTIC
+    // ─────────────────────────────────────────────
+
+    destructive: 'hsl(0 72% 51%)', // #DC2626 Error / Destructive
+
+
+    // ─────────────────────────────────────────────
+    // STRUCTURE
+    // ─────────────────────────────────────────────
+
+    border: 'hsl(24 17% 89%)', // #E7E1DD Soft Warm Border
+
+    input: 'hsl(24 17% 89%)',
+
+    ring: 'hsl(17 88% 40%)', // #C2410C Focus Ring
+
+
+    // ─────────────────────────────────────────────
+    // SHAPE
+    // ─────────────────────────────────────────────
+
+    radius: '1.125rem', // 18px
+
+
+    // ─────────────────────────────────────────────
+    // DATA VISUALIZATION
+    // ─────────────────────────────────────────────
+
+    chart1: 'hsl(17 88% 40%)', // #C2410C Deep Orange
+
+    chart2: 'hsl(23 97% 46%)', // #E85D04 Orange
+
+    chart3: 'hsl(25 95% 53%)', // #F97316 Bright Orange
+
+    chart4: 'hsl(14 100% 50%)', // #FF3D00 Red Orange
+
+    chart5: 'hsl(142 71% 45%)', // #22C55E Success Green
+
+  },
+
+
+  dark: {
+
+    // ─────────────────────────────────────────────
+    // FOUNDATION
+    // ─────────────────────────────────────────────
+
+    background: 'hsl(0 0% 9%)', // #171717 Deep Graphite
+
+    foreground: 'hsl(0 0% 96%)', // #F5F5F4 Soft White
+
+    card: 'hsl(0 0% 14%)', // #242424 Elevated Graphite Surface
+
+    cardForeground: 'hsl(0 0% 96%)',
+
+    popover: 'hsl(0 0% 17%)', // #2B2B2B
+
+    popoverForeground: 'hsl(0 0% 96%)',
+
+
+    // ─────────────────────────────────────────────
+    // BRAND / PRIMARY
+    // ─────────────────────────────────────────────
+
+    primary: 'hsl(25 100% 50%)', // #FF6A00 Ventorex Bright Orange
+
+    primaryForeground: 'hsl(0 0% 9%)', // #171717
+
+
+    // ─────────────────────────────────────────────
+    // SECONDARY
+    // ─────────────────────────────────────────────
+
+    secondary: 'hsl(0 0% 17%)', // #2B2B2B Graphite Surface
+
+    secondaryForeground: 'hsl(0 0% 96%)',
+
+
+    // ─────────────────────────────────────────────
+    // MUTED
+    // ─────────────────────────────────────────────
+
+    muted: 'hsl(0 0% 17%)', // #2B2B2B
+
+    mutedForeground: 'hsl(0 0% 72%)', // #B8B8B8
+
+
+    // ─────────────────────────────────────────────
+    // ACCENT
+    // ─────────────────────────────────────────────
+
+    accent: 'hsl(24 100% 62%)', // #FF8A3D Soft Bright Orange
+
+    accentForeground: 'hsl(0 0% 9%)',
+
+
+    // ─────────────────────────────────────────────
+    // SEMANTIC
+    // ─────────────────────────────────────────────
+
+    destructive: 'hsl(0 84% 60%)', // #EF4444
+
+
+    // ─────────────────────────────────────────────
+    // STRUCTURE
+    // ─────────────────────────────────────────────
+
+    border: 'hsl(0 0% 24%)', // #3D3D3D Graphite Border
+
+    input: 'hsl(0 0% 24%)',
+
+    ring: 'hsl(25 100% 50%)', // #FF6A00
+
+
+    // ─────────────────────────────────────────────
+    // SHAPE
+    // ─────────────────────────────────────────────
+
+    radius: '1.125rem', // 18px
+
+
+    // ─────────────────────────────────────────────
+    // DATA VISUALIZATION
+    // ─────────────────────────────────────────────
+
+    chart1: 'hsl(25 100% 50%)', // #FF6A00 Bright Orange
+
+    chart2: 'hsl(24 100% 62%)', // #FF8A3D Light Orange
+
+    chart3: 'hsl(14 100% 50%)', // #FF3D00 Red Orange
+
+    chart4: 'hsl(0 0% 72%)', // #B8B8B8 Neutral Graphite
+
+    chart5: 'hsl(142 71% 45%)', // #22C55E Success Green
+
+  },
+
+};
+
+// ============================================================================
+// 2. THEME 2: EMERALD LUXURY & GOLD (High-End Gated Communities / Nature)
+// ============================================================================
+export const THEME_2_EMERALD_LUXURY = {
+  light: {
+    background: 'hsl(150 25% 95%)', // #EDF7F2 Soft Mint Canvas
+    foreground: 'hsl(165 60% 10%)', // #0A291E Deep Pine Text
+    card: 'hsl(0 0% 100%)', // #FFFFFF Pure White
+    cardForeground: 'hsl(165 60% 10%)',
+    popover: 'hsl(0 0% 100%)',
+    popoverForeground: 'hsl(165 60% 10%)',
+    primary: 'hsl(160 84% 20%)', // #085E44 Rich Emerald Green
+    primaryForeground: 'hsl(0 0% 100%)',
+    secondary: 'hsl(150 25% 90%)', // #D5EBE0 Sage Secondary
+    secondaryForeground: 'hsl(165 60% 16%)',
+    muted: 'hsl(150 20% 88%)',
+    mutedForeground: 'hsl(160 15% 38%)', // #476B5D
+    accent: 'hsl(43 74% 49%)', // #DAA520 Warm Gold/Champagne
+    accentForeground: 'hsl(0 0% 100%)',
+    destructive: 'hsl(0 72% 51%)',
+    border: 'hsl(150 20% 84%)', // #C4DFD2 Soft Mint Border
+    input: 'hsl(150 20% 84%)',
+    ring: 'hsl(160 84% 20%)',
+    radius: '1.125rem',
+    chart1: 'hsl(160 84% 20%)',
+    chart2: 'hsl(43 74% 49%)',
+    chart3: 'hsl(165 60% 35%)',
+    chart4: 'hsl(190 75% 35%)',
+    chart5: 'hsl(142 71% 45%)',
+  },
+  dark: {
+    background: 'hsl(165 45% 6%)', // #081711 Deep Forest Obsidian Base
+    foreground: 'hsl(150 20% 98%)', // #F2FAF6
+    card: 'hsl(165 35% 11%)', // #11261E Frosted Moss Card
+    cardForeground: 'hsl(150 20% 98%)',
+    popover: 'hsl(165 35% 14%)',
+    popoverForeground: 'hsl(150 20% 98%)',
+    primary: 'hsl(152 65% 52%)', // #34D399 Bright Mint Emerald
+    primaryForeground: 'hsl(165 45% 6%)',
+    secondary: 'hsl(165 25% 16%)', // #1A332A
+    secondaryForeground: 'hsl(150 20% 98%)',
+    muted: 'hsl(165 25% 16%)',
+    mutedForeground: 'hsl(150 15% 65%)', // #92B0A3
+    accent: 'hsl(43 85% 62%)', // #F6C85F Radiant Gold
+    accentForeground: 'hsl(165 45% 6%)',
+    destructive: 'hsl(0 84% 60%)',
+    border: 'hsl(165 20% 20%)', // #234236
+    input: 'hsl(165 20% 20%)',
+    ring: 'hsl(152 65% 52%)',
+    radius: '1.125rem',
+    chart1: 'hsl(152 65% 52%)',
+    chart2: 'hsl(43 85% 62%)',
+    chart3: 'hsl(165 60% 45%)',
+    chart4: 'hsl(190 75% 45%)',
+    chart5: 'hsl(142 71% 45%)',
+  },
+};
+
+// ============================================================================
+// 3. THEME 3: ROYAL SAPPHIRE & CYAN (Modern High-Tech / Smart Security)
+// ============================================================================
+export const THEME_3_ROYAL_SAPPHIRE = {
+  light: {
+    background: 'hsl(215 35% 95%)', // #EEF4FC Crisp Ice Blue Canvas
+    foreground: 'hsl(222 47% 11%)', // #0F172A Slate Black Text
+    card: 'hsl(0 0% 100%)', // #FFFFFF Pure White
+    cardForeground: 'hsl(222 47% 11%)',
+    popover: 'hsl(0 0% 100%)',
+    popoverForeground: 'hsl(222 47% 11%)',
+    primary: 'hsl(221 83% 45%)', // #1D4ED8 Royal Sapphire Blue
+    primaryForeground: 'hsl(0 0% 100%)',
+    secondary: 'hsl(214 32% 91%)', // #DEE9F7
+    secondaryForeground: 'hsl(222 47% 20%)',
+    muted: 'hsl(214 30% 90%)',
+    mutedForeground: 'hsl(215 19% 35%)', // #475569
+    accent: 'hsl(199 89% 48%)', // #0EA5E9 Electric Cyan
+    accentForeground: 'hsl(0 0% 100%)',
+    destructive: 'hsl(0 72% 51%)',
+    border: 'hsl(214 25% 85%)', // #CAD9EB
+    input: 'hsl(214 25% 85%)',
+    ring: 'hsl(221 83% 45%)',
+    radius: '1.125rem',
+    chart1: 'hsl(221 83% 45%)',
+    chart2: 'hsl(199 89% 48%)',
+    chart3: 'hsl(252 65% 55%)',
+    chart4: 'hsl(170 80% 40%)',
+    chart5: 'hsl(142 71% 45%)',
+  },
+  dark: {
+    background: 'hsl(222 47% 7%)', // #090E17 Deep Sapphire Obsidian Base
+    foreground: 'hsl(210 40% 98%)', // #F8FAFC
+    card: 'hsl(222 40% 12%)', // #121C2B Frosted Navy Card
+    cardForeground: 'hsl(210 40% 98%)',
+    popover: 'hsl(222 38% 15%)',
+    popoverForeground: 'hsl(210 40% 98%)',
+    primary: 'hsl(217 91% 60%)', // #3B82F6 Electric Cobalt
+    primaryForeground: 'hsl(222 47% 7%)',
+    secondary: 'hsl(222 30% 17%)', // #1C2A3D
+    secondaryForeground: 'hsl(210 40% 98%)',
+    muted: 'hsl(222 30% 17%)',
+    mutedForeground: 'hsl(215 20% 65%)', // #94A3B8
+    accent: 'hsl(199 89% 58%)', // #38BDF8 Cyan Glow
+    accentForeground: 'hsl(222 47% 7%)',
+    destructive: 'hsl(0 84% 60%)',
+    border: 'hsl(222 25% 22%)', // #24364D
+    input: 'hsl(222 25% 22%)',
+    ring: 'hsl(217 91% 60%)',
+    radius: '1.125rem',
+    chart1: 'hsl(217 91% 60%)',
+    chart2: 'hsl(199 89% 58%)',
+    chart3: 'hsl(252 65% 65%)',
+    chart4: 'hsl(170 80% 50%)',
+    chart5: 'hsl(142 71% 45%)',
+  },
+};
+
+// ============================================================================
+// 4. THEME 4: SUNSET AMBER & TERRACOTTA (Warm Luxury / Hospitality)
+// ============================================================================
+export const THEME_4_SUNSET_AMBER = {
+  light: {
+    background: 'hsl(30 25% 95%)', // #F7F3EE Warm Sand Canvas
+    foreground: 'hsl(20 40% 12%)', // #2B1B14 Deep Roasted Espresso
+    card: 'hsl(0 0% 100%)', // #FFFFFF Pure White
+    cardForeground: 'hsl(20 40% 12%)',
+    popover: 'hsl(0 0% 100%)',
+    popoverForeground: 'hsl(20 40% 12%)',
+    primary: 'hsl(16 80% 38%)', // #AD3B18 Warm Terracotta Copper
+    primaryForeground: 'hsl(0 0% 100%)',
+    secondary: 'hsl(30 25% 90%)', // #EDE5DB Warm Stone
+    secondaryForeground: 'hsl(20 40% 18%)',
+    muted: 'hsl(30 20% 88%)',
+    mutedForeground: 'hsl(20 15% 38%)', // #6B5850
+    accent: 'hsl(38 92% 50%)', // #F59E0B Sunset Amber
+    accentForeground: 'hsl(0 0% 100%)',
+    destructive: 'hsl(0 72% 51%)',
+    border: 'hsl(30 20% 84%)', // #DDD4C8
+    input: 'hsl(30 20% 84%)',
+    ring: 'hsl(16 80% 38%)',
+    radius: '1.125rem',
+    chart1: 'hsl(16 80% 38%)',
+    chart2: 'hsl(38 92% 50%)',
+    chart3: 'hsl(12 75% 45%)',
+    chart4: 'hsl(200 65% 45%)',
+    chart5: 'hsl(142 71% 45%)',
+  },
+  dark: {
+    background: 'hsl(20 30% 6%)', // #140E0A Dark Bronze Obsidian Base
+    foreground: 'hsl(30 25% 98%)', // #FCF9F5
+    card: 'hsl(20 25% 11%)', // #241913 Frosted Espresso Card
+    cardForeground: 'hsl(30 25% 98%)',
+    popover: 'hsl(20 25% 14%)',
+    popoverForeground: 'hsl(30 25% 98%)',
+    primary: 'hsl(20 90% 58%)', // #F97316 Glowing Warm Amber
+    primaryForeground: 'hsl(20 30% 6%)',
+    secondary: 'hsl(20 20% 16%)', // #33241C
+    secondaryForeground: 'hsl(30 25% 98%)',
+    muted: 'hsl(20 20% 16%)',
+    mutedForeground: 'hsl(30 15% 65%)', // #AD9E96
+    accent: 'hsl(38 92% 58%)', // #FBBF24 Warm Sunburst
+    accentForeground: 'hsl(20 30% 6%)',
+    destructive: 'hsl(0 84% 60%)',
+    border: 'hsl(20 20% 20%)', // #423027
+    input: 'hsl(20 20% 20%)',
+    ring: 'hsl(20 90% 58%)',
+    radius: '1.125rem',
+    chart1: 'hsl(20 90% 58%)',
+    chart2: 'hsl(38 92% 58%)',
+    chart3: 'hsl(12 75% 55%)',
+    chart4: 'hsl(200 65% 55%)',
+    chart5: 'hsl(142 71% 45%)',
+  },
+};
+
+// ============================================================================
+// ACTIVE THEME SWITCHER
+// Uncomment ONE theme below to activate it across the entire application:
+// (Note: Also uncomment the corresponding theme section in global.css)
+// ============================================================================
+
+//export const THEME = THEME_1_NAHOM_NAVY;
+// export const THEME = THEME_2_EMERALD_LUXURY;
+// export const THEME = THEME_3_ROYAL_SAPPHIRE;
+// export const THEME = THEME_4_SUNSET_AMBER;
+// export const THEME = THEME_2_VENTOREX_ORANGE;
 
 export interface NavThemeColors {
   primary: string;

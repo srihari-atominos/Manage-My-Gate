@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mobile-app",
+    "name": "ManageMyGate",
     "slug": "mobile-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,10 +12,20 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.managemygate.app"
+      "bundleIdentifier": "com.naveenpvn.managemygate",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "ManageMyGate requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints.",
+        "NSPhotoLibraryUsageDescription": "ManageMyGate requires photo library access to upload images for amenity bookings and complaint tickets.",
+        "LSApplicationQueriesSchemes": [
+          "tel",
+          "whatsapp"
+        ]
+      }
     },
     "android": {
-      "package": "com.managemygate.app",
+      "package": "com.naveenpvn.managemygate",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -36,10 +46,19 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-font",
-      "expo-secure-store",
-      "expo-sharing",
-      "expo-status-bar"
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ManageMyGate requires photo library access to upload images for amenity bookings and complaint tickets.",
+          "cameraPermission": "ManageMyGate requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "ManageMyGate requires camera access to scan visitor QR passes and verify amenity tickets."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -47,8 +66,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "073cd797-0be9-4fe0-b93c-2e279c589162"
+        "projectId": "20145594-5bc2-4f26-be5b-75a575444e78"
       }
-    }
+    },
+    "owner": "naveenpvn"
   }
 }

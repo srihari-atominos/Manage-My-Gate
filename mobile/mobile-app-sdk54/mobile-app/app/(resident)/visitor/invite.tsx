@@ -1,7 +1,6 @@
 import React from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSelector } from 'react-redux';
-import { RootState } from '@/src/store/store';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { VisitorPassWizard } from '@/src/features/visitor/components/wizard/VisitorPassWizard';
 import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';

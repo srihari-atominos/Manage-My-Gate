@@ -127,20 +127,20 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     <>
       <View 
         style={{ paddingTop: Math.max(insets.top, 16) }}
-        className="bg-card/95 border-b border-border/80 px-4 pb-3 flex-row items-center justify-between shadow-xs"
+        className="bg-card border-b border-border px-4 pb-3 flex-row items-center justify-between shadow-xs"
       >
-        {/* Left Section: Compact Liquid Glass Context Pill */}
+        {/* Left Section: Community Context Pill */}
         <TouchableOpacity
           onPress={handleContextPress}
           activeOpacity={canSwitchContext ? 0.8 : 1}
           disabled={!canSwitchContext}
-          className="flex-row items-center gap-2 max-w-[64%] bg-secondary border border-border/70 px-3 py-1.5 rounded-full"
+          className="flex-row items-center gap-2 max-w-[64%] bg-secondary border border-border/80 px-3 py-1.5 rounded-full shadow-xs"
         >
-          <View className="p-1.5 rounded-full bg-primary/15 items-center justify-center border border-primary/20">
+          <View className="p-1.5 rounded-full bg-primary items-center justify-center border border-primary/30">
             {hasUnit ? (
-              <Home size={13} className="text-primary" />
+              <Home size={12} color="#FFFFFF" />
             ) : (
-              <Building2 size={13} className="text-primary" />
+              <Building2 size={12} color="#FFFFFF" />
             )}
           </View>
 
@@ -159,31 +159,31 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           ) : null}
         </TouchableOpacity>
 
-        {/* Right Section: Notification Bell & Profile Avatar (Far Right) */}
+        {/* Right Section: Notification Bell & Profile Avatar (Primary Navy) */}
         <View className="flex-row items-center gap-2">
           {/* Notification Bell Icon Button */}
           <TouchableOpacity
             onPress={handleBellPress}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-secondary border border-border/70 items-center justify-center relative active:bg-muted"
+            className="size-10 rounded-full bg-card border border-border items-center justify-center relative active:bg-secondary shadow-xs"
           >
-            <Bell size={17} className="text-foreground" />
+            <Bell size={18} className="text-foreground" />
             {liveUnreadCount > 0 ? (
-              <View className="absolute -top-0.5 -right-0.5 bg-destructive rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card">
-                <Text className="text-[8.5px] font-bold font-sans text-destructive-foreground leading-tight">
+              <View className="absolute -top-0.5 -right-0.5 bg-[#A51B73] rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card">
+                <Text className="text-[8.5px] font-bold font-sans text-white leading-tight">
                   {liveUnreadCount > 99 ? '99+' : liveUnreadCount}
                 </Text>
               </View>
             ) : null}
           </TouchableOpacity>
 
-          {/* Profile Avatar Button (Far Right End) */}
+          {/* Profile Avatar Button (Primary Navy #172B70) */}
           <TouchableOpacity
             onPress={() => setProfileModalVisible(true)}
-            activeOpacity={0.8}
-            className="size-10 rounded-full bg-primary/15 items-center justify-center border border-primary/30 shadow-xs"
+            activeOpacity={0.85}
+            className="size-10 rounded-full bg-primary items-center justify-center border border-primary shadow-xs active:opacity-90"
           >
-            <Text className="text-primary font-bold font-sans text-[13.5px]">{avatarLetter}</Text>
+            <Text className="text-white font-bold font-sans text-[14px]">{avatarLetter}</Text>
           </TouchableOpacity>
         </View>
       </View>

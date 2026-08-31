@@ -1,21 +1,27 @@
-import React from 'react';
-import { View, ScrollView, Pressable, Image } from 'react-native';
+import React, { useMemo } from 'react';
+import { View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
+import { KPIRow } from '@/components/ui/KPIRow';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { ListCard } from '@/components/ui/ListCard';
-import { SearchBar } from '@/components/forms/SearchBar';
+import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
-import { useAmenityMaster } from '../../../src/features/amenities/hooks/useAmenityMaster';
-import { AmenityFormModal } from '../../../src/features/amenities/components/AmenityFormModal';
-import { AmenityDetailSheet } from '../../../src/features/amenities/components/AmenityDetailSheet';
-import { Amenity } from '../../../src/features/amenities/store/amenitySlice';
+import { FAB } from '@/components/ui/FAB';
 
-const CATEGORY_CHIPS = ['All', 'Event Space', 'Sports', 'Fitness', 'Wellness', 'Workspace', 'Clubhouse'];
+import { AmenityMasterCard } from '@/src/features/amenities/components/AmenityMasterCard';
+import { useAmenityMaster } from '@/src/features/amenities/hooks/useAmenityMaster';
+import { AmenityFormModal } from '@/src/features/amenities/components/AmenityFormModal';
+import { AmenityDetailSheet } from '@/src/features/amenities/components/AmenityDetailSheet';
+import { Amenity } from '@/src/features/amenities/store/amenitySlice';
+import { Plus, Wrench } from 'lucide-react-native';
+
+const CATEGORY_CHIPS = ['All', 'Sports', 'Fitness', 'Event Space', 'Clubhouse', 'Wellness', 'Workspace'];
 
 export default function AdminAmenityMasterScreen() {
+  const router = useRouter();
   const {
     amenities,
     filteredAmenities,
@@ -44,142 +50,61 @@ export default function AdminAmenityMasterScreen() {
     handleConfirmDelete,
   } = useAmenityMaster();
 
-  const renderHeader = () => (
-    <View className="mb-3">
-      {/* Header Action Row & Search */}
-      <View className="flex-row items-center justify-between mb-3 gap-2">
-        <View className="flex-1">
-          <SearchBar
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search amenity master..."
-          />
-        </View>
-        <Button variant="default" onPress={handleOpenCreateModal} className="bg-primary px-3.5 py-3">
-          <Text className="text-white font-bold text-xs">+ Add Amenity</Text>
-        </Button>
-      </View>
+  const kpis = useMemo(() => {
+    const total = amenities.length;
+    const active = amenities.filter((a) => (a.status || 'active').toLowerCase() === 'active').length;
+    const maintenance = amenities.filter((a) => (a.status || '').toLowerCase() === 'maintenance').length;
+    return { total, active, maintenance };
+  }, [amenities]);
 
-      {/* Category Filter Chips Bar */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 mb-1">
-        {CATEGORY_CHIPS.map((cat) => {
-          const isActive = selectedCategory === cat;
-          return (
-            <Pressable
-              key={cat}
-              onPress={() => setSelectedCategory(cat)}
-              className={`px-3.5 py-1.5 rounded-full border text-xs me-1.5 ${
-                isActive
-                  ? 'bg-primary border-primary'
-                  : 'bg-muted/40 border-border active:bg-muted'
-              }`}
-            >
-              <Text
-                className={`text-xs font-bold ${
-                  isActive ? 'text-primary-foreground' : 'text-muted-foreground'
-                }`}
-              >
-                {cat}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+  const categorySortOptions = useMemo(() => {
+    return CATEGORY_CHIPS.map((cat) => ({ label: cat, value: cat }));
+  }, []);
+
+  const renderHeader = () => (
+    <View className="mb-3 gap-3">
+      {/* Facility Summary KPI Strip */}
+      <KPIRow
+        cards={[
+          {
+            title: 'Total Amenities',
+            value: String(kpis.total),
+            subtitle: 'Master Catalog',
+            iconName: 'Building2',
+            variant: 'info',
+            onPress: () => setSelectedCategory('All'),
+          },
+          {
+            title: 'Active',
+            value: String(kpis.active),
+            subtitle: 'Open for Booking',
+            iconName: 'CheckCircle2',
+            variant: 'success',
+          },
+          {
+            title: 'Under Maintenance',
+            value: String(kpis.maintenance),
+            subtitle: 'Temporary Closed',
+            iconName: 'Wrench',
+            variant: kpis.maintenance > 0 ? 'warning' : 'default',
+            onPress: () => router.push('/(resident)/amenities/maintenance' as any),
+          },
+        ]}
+      />
+
+      {/* Unified Search & Category Filter Bar */}
+      <SearchFilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search facility name or location..."
+        sortOptions={categorySortOptions}
+        currentSort={selectedCategory}
+        onSortChange={setSelectedCategory}
+        variant="default"
+        className="px-0 py-0 border-0"
+      />
     </View>
   );
-
-  const renderAmenityItem = (item: Amenity) => {
-    const itemStatus = (item.status || '').toLowerCase();
-    const isMaintenance = itemStatus === 'maintenance';
-    const isInactive = itemStatus === 'inactive';
-    const isActive = itemStatus === 'active';
-    const pricingType = item.pricing?.pricingType || 'hourly';
-    const baseRate = item.pricing?.baseRate ?? item.bookingFee ?? 0;
-    const openTime = item.bookingRules?.openTime || item.openTime || '08:00';
-    const closeTime = item.bookingRules?.closeTime || item.closeTime || '21:00';
-    const category = item.category || item.type || 'General';
-    const imageUrl = item.imageUrl || (Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : '');
-
-    return (
-      <View key={item._id} className="mb-2">
-        <Pressable onPress={() => setSelectedAmenityDetail(item)}>
-          {imageUrl ? (
-            <View className="bg-card rounded-2xl border border-border overflow-hidden mb-1 p-3">
-              <View className="h-32 w-full rounded-xl overflow-hidden mb-2.5">
-                <Image source={{ uri: imageUrl }} className="w-full h-full" resizeMode="cover" />
-              </View>
-              <View className="flex-row items-center justify-between">
-                <View className="flex-1 mr-2">
-                  <Text className="font-bold text-base text-foreground">{item.name}</Text>
-                  <Text className="text-xs text-muted-foreground mt-0.5">
-                    {category} • {item.location || 'Zone'} • Cap: {item.capacity || 20} • {openTime}-{closeTime}
-                  </Text>
-                </View>
-                <View className="items-end gap-1">
-                  <Text className="text-xs font-bold text-primary">
-                    {baseRate ? `$${baseRate}/${pricingType === 'daily' ? 'day' : 'slot'}` : 'Free'}
-                  </Text>
-                  <Text
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      isMaintenance
-                        ? 'bg-amber-500/10 text-amber-600'
-                        : isInactive
-                        ? 'bg-muted text-muted-foreground'
-                        : 'bg-emerald-500/10 text-emerald-600'
-                    }`}
-                  >
-                    {isMaintenance ? 'Maintenance' : isInactive ? 'Inactive' : 'Active'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          ) : (
-            <ListCard
-              title={item.name}
-              subtitle={`${category} • ${item.location || 'Zone'} • Cap: ${item.capacity || 20} • ${openTime}-${closeTime}`}
-              leftIcon="Building2"
-              leftIconBgColor="#ccfbf1"
-              leftIconColor="#0d9488"
-              status={{
-                label: isMaintenance ? 'Maintenance' : isInactive ? 'Inactive' : 'Active',
-                variant: isMaintenance ? 'warning' : isInactive ? 'neutral' : 'success',
-              }}
-              secondaryBadge={
-                baseRate
-                  ? { label: `$${baseRate}/${pricingType === 'daily' ? 'day' : 'slot'}`, variant: 'info' }
-                  : { label: 'Free', variant: 'neutral' }
-              }
-            />
-          )}
-        </Pressable>
-        <View className="flex-row justify-end gap-2 px-1 -mt-0.5 mb-2">
-          <Button
-            variant="outline"
-            onPress={() => handleOpenEditModal(item)}
-            className="py-1 px-3 border-primary/30 bg-primary/10"
-          >
-            <Text className="text-primary text-xs font-bold">Edit</Text>
-          </Button>
-          <Button
-            variant="outline"
-            onPress={() => handleToggleStatus(item)}
-            className="py-1 px-3 bg-muted/40"
-          >
-            <Text className="text-foreground text-xs font-semibold">
-              {isActive ? 'Deactivate' : 'Activate'}
-            </Text>
-          </Button>
-          <Button
-            variant="outline"
-            onPress={() => setDeleteTarget(item)}
-            className="py-1 px-3 border-red-500/30 bg-red-500/10"
-          >
-            <Text className="text-red-600 dark:text-red-400 text-xs font-semibold">Delete</Text>
-          </Button>
-        </View>
-      </View>
-    );
-  };
 
   return (
     <ScreenShell
@@ -189,21 +114,61 @@ export default function AdminAmenityMasterScreen() {
       loading={loading && amenities.length === 0}
       error={error}
       onRetry={loadData}
+      headerRight={
+        <View className="flex-row items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={() => router.push('/(resident)/amenities/maintenance' as any)}
+            className="flex-row items-center gap-1 rounded-full px-2.5 h-8 bg-amber-500/10 border-amber-500/30"
+            accessibilityLabel="Maintenance Schedule"
+          >
+            <Wrench size={13} className="text-amber-600 dark:text-amber-400" />
+            <Text className="text-amber-600 dark:text-amber-400 font-bold text-xs">Maintenance</Text>
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onPress={handleOpenCreateModal}
+            className="flex-row items-center gap-1 rounded-full px-2.5 h-8"
+            accessibilityLabel="Add New Amenity Facility"
+          >
+            <Plus size={14} className="text-primary-foreground" />
+            <Text className="text-primary-foreground font-bold text-xs">Add</Text>
+          </Button>
+        </View>
+      }
     >
-      <View className="flex-1 px-4 pt-2">
+      <View className="flex-1 bg-background">
         {/* Master Amenity List */}
-        <PaginatedList
+        <PaginatedList<Amenity>
           data={filteredAmenities}
-          renderItem={renderAmenityItem}
-          pagination={{ currentPage: 1, totalPages: 1, totalRecords: filteredAmenities.length, limit: 20 }}
+          renderItem={(item) => (
+            <AmenityMasterCard
+              key={item._id}
+              item={item}
+              onPress={(a) => setSelectedAmenityDetail(a)}
+              onEdit={(a) => handleOpenEditModal(a)}
+              onToggleStatus={(a) => handleToggleStatus(a)}
+              onDelete={(a) => setDeleteTarget(a)}
+            />
+          )}
+          pagination={{ currentPage: 1, totalPages: 1, totalRecords: filteredAmenities.length, limit: 50 }}
           onLoadMore={() => {}}
           onRefresh={loadData}
-          loading={loading}
+          loading={loading && amenities.length === 0}
           ListHeaderComponent={renderHeader()}
           emptyIcon="Building2"
-          emptyTitle="No Amenity Records"
-          emptySubtitle="No master amenity records match your active category filter."
-          contentContainerClassName="pb-6"
+          emptyTitle="No Amenity Records Found"
+          emptySubtitle="No facility records match your active category filter or search query."
+          contentContainerClassName="px-4 pt-3 pb-28"
+        />
+
+        {/* Primary Creation Action: Add Facility FAB */}
+        <FAB
+          iconName="Plus"
+          label="Add Facility"
+          onPress={handleOpenCreateModal}
         />
       </View>
 
@@ -211,7 +176,7 @@ export default function AdminAmenityMasterScreen() {
       <AmenityFormModal
         visible={isFormModalOpen}
         onClose={handleCloseFormModal}
-        onSubmit={handleFormSubmit}
+        onSubmit={handleFormSubmit as any}
         amenity={editingAmenity}
         loading={saving}
       />
@@ -222,16 +187,20 @@ export default function AdminAmenityMasterScreen() {
         onClose={() => setSelectedAmenityDetail(null)}
         amenity={selectedAmenityDetail}
         onEditClick={handleOpenEditModal}
+        onScheduleMaintenanceClick={() => router.push('/(resident)/amenities/maintenance' as any)}
       />
 
-      {/* Deactivate Confirmation Modal */}
+      {/* Status Toggle Confirmation Modal */}
       <ConfirmationModal
         visible={!!deactivateTarget}
-        title="Deactivate Amenity Facility?"
-        message={`"${deactivateTarget?.name}" has active or upcoming resident bookings. Deactivating this facility will cancel all associated future bookings. Are you sure you want to proceed?`}
-        variant="warning"
-        confirmLabel="Deactivate & Cancel Bookings"
-        cancelLabel="Keep Active"
+        title={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Deactivate Amenity Facility?' : 'Activate Amenity Facility?'}
+        message={deactivateTarget?.status?.toLowerCase() === 'active' 
+          ? `"${deactivateTarget?.name}" has active or upcoming resident bookings. Deactivating this facility will cancel all associated future bookings. Are you sure you want to proceed?`
+          : `Are you sure you want to activate "${deactivateTarget?.name}" and open it for resident bookings?`
+        }
+        variant={deactivateTarget?.status?.toLowerCase() === 'active' ? 'warning' : 'info'}
+        confirmLabel={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Deactivate & Cancel Bookings' : 'Activate Facility'}
+        cancelLabel={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Keep Active' : 'Keep Inactive'}
         onConfirm={handleConfirmDeactivate}
         onCancel={() => setDeactivateTarget(null)}
       />

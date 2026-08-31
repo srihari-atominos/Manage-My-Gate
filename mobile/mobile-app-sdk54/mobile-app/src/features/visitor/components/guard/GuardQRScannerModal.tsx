@@ -100,25 +100,25 @@ export const GuardQRScannerModal: React.FC<GuardQRScannerModalProps> = ({
                 />
                 <QRScannerOverlay instruction="Align Visitor QR Code inside Frame" />
 
-                {/* Quick Flashlight Torch Toggle Overlay */}
+                {/* Compact Flashlight Torch Toggle Overlay */}
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setTorchOn(!torchOn)}
-                  className={`absolute top-3 right-3 z-30 p-2.5 rounded-full flex-row items-center gap-1.5 border shadow-md ${
+                  className={`absolute top-3 right-3 z-30 px-2.5 py-1.5 rounded-full flex-row items-center gap-1 border shadow-lg ${
                     torchOn
-                      ? 'bg-amber-400 border-amber-300'
-                      : 'bg-black/60 border-white/20'
+                      ? 'bg-amber-400 border-amber-300 shadow-amber-500/40'
+                      : 'bg-black/75 border-white/30 shadow-black/50'
                   }`}
                 >
                   {torchOn ? (
                     <>
-                      <Zap size={16} color="#000" fill="#000" />
-                      <Text className="text-[11px] font-extrabold text-black">Flash ON</Text>
+                      <Zap size={13} color="#000000" fill="#000000" strokeWidth={2.5} />
+                      <Text className="text-[10px] font-black text-black tracking-wider uppercase">Flash ON</Text>
                     </>
                   ) : (
                     <>
-                      <ZapOff size={16} color="#fff" />
-                      <Text className="text-[11px] font-bold text-white">Flash</Text>
+                      <ZapOff size={13} color="#ffffff" strokeWidth={2.5} />
+                      <Text className="text-[10px] font-bold text-white tracking-wider uppercase">Flash OFF</Text>
                     </>
                   )}
                 </TouchableOpacity>

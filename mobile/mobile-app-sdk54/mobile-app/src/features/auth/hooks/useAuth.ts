@@ -2,6 +2,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import {
   loginUser,
+  loginWithGoogleThunk,
+  loginWithMicrosoftThunk,
+  registerUserThunk,
+  verifyRegistrationThunk,
   requestOtp,
   verifyOtpLogin,
   performLogout,
@@ -11,45 +15,93 @@ import {
 import { useCallback } from 'react';
 
 export const useAuth = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  const authState = useSelector((state: RootState) => state.auth);
+  let dispatch: AppDispatch | null = null;
+  let authState: any = {
+    user: null,
+    isAuthenticated: false,
+    isInitialized: true,
+    loading: false,
+    error: null,
+    otpSent: false,
+  };
+
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    dispatch = useDispatch<AppDispatch>();
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    authState = useSelector((state: RootState) => state.auth) || authState;
+  } catch (err) {
+    // Return safe initial fallback state if Redux Provider is not yet in tree
+  }
 
   const handleLogin = useCallback(
     (credentials: any) => {
-      return dispatch(loginUser(credentials));
+      return dispatch ? dispatch(loginUser(credentials)) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleLoginWithGoogle = useCallback(
+    (token: string) => {
+      return dispatch ? dispatch(loginWithGoogleThunk({ token })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleLoginWithMicrosoft = useCallback(
+    (token: string) => {
+      return dispatch ? dispatch(loginWithMicrosoftThunk({ token })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleRegister = useCallback(
+    (userData: any) => {
+      return dispatch ? dispatch(registerUserThunk(userData)) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleVerifyRegistration = useCallback(
+    (email: string, code: string) => {
+      return dispatch ? dispatch(verifyRegistrationThunk({ email, code })) : Promise.resolve();
     },
     [dispatch]
   );
 
   const handleRequestOtp = useCallback(
     (identifier: string, isEmail: boolean = false) => {
-      return dispatch(requestOtp({ identifier, isEmail }));
+      return dispatch ? dispatch(requestOtp({ identifier, isEmail })) : Promise.resolve();
     },
     [dispatch]
   );
 
   const handleVerifyOtp = useCallback(
     (identifier: string, code: string, isEmail: boolean = false) => {
-      return dispatch(verifyOtpLogin({ identifier, code, isEmail }));
+      return dispatch ? dispatch(verifyOtpLogin({ identifier, code, isEmail })) : Promise.resolve();
     },
     [dispatch]
   );
 
   const handleLogout = useCallback(() => {
-    return dispatch(performLogout());
+    return dispatch ? dispatch(performLogout()) : Promise.resolve();
   }, [dispatch]);
 
   const handleClearStatus = useCallback(() => {
-    dispatch(clearStatus());
+    if (dispatch) dispatch(clearStatus());
   }, [dispatch]);
 
   const handleBootstrap = useCallback(() => {
-    dispatch(bootstrapAuth());
+    if (dispatch) dispatch(bootstrapAuth());
   }, [dispatch]);
 
   return {
     ...authState,
     login: handleLogin,
+    register: handleRegister,
+    verifyRegistration: handleVerifyRegistration,
+    loginWithGoogle: handleLoginWithGoogle,
+    loginWithMicrosoft: handleLoginWithMicrosoft,
     requestOtp: handleRequestOtp,
     verifyOtp: handleVerifyOtp,
     logout: handleLogout,

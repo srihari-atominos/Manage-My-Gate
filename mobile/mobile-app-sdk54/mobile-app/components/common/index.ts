@@ -21,6 +21,7 @@ export * from './QuantitySelector';
 export * from './Rating';
 export * from './SectionHeader';
 export * from './SegmentedControl';
+export * from './StandardRecordCard';
 export * from './SwipeableRow';
 export * from './Tabs';
 export * from './TimePicker';

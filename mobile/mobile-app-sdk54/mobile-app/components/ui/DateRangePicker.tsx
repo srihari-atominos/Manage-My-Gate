@@ -322,14 +322,12 @@ export const DateRangePicker = React.forwardRef<View, DateRangePickerProps>(
           animationType="fade"
           onRequestClose={() => setModalVisible(false)}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => setModalVisible(false)}
-            className="flex-1 bg-black/60 justify-center items-center p-4"
-          >
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={(e) => e.stopPropagation()}
+          <View className="flex-1 justify-center items-center p-4">
+            <Pressable
+              className="absolute inset-0 bg-black/60"
+              onPress={() => setModalVisible(false)}
+            />
+            <View
               className="w-full max-w-sm bg-background border border-border rounded-2xl p-4 shadow-lg"
             >
               {/* Header */}
@@ -492,8 +490,8 @@ export const DateRangePicker = React.forwardRef<View, DateRangePickerProps>(
                   </View>
                 </View>
               )}
-            </TouchableOpacity>
-          </TouchableOpacity>
+            </View>
+          </View>
         </Modal>
       </View>
     );

@@ -7,6 +7,7 @@ export interface ErrorBannerProps {
   title?: string;
   message: string;
   onDismiss?: () => void;
+  onRetry?: () => void;
   className?: string;
 }
 
@@ -14,6 +15,7 @@ export const ErrorBanner = ({
   title = 'Error',
   message,
   onDismiss,
+  onRetry,
   className,
 }: ErrorBannerProps) => {
   return (
@@ -31,6 +33,11 @@ export const ErrorBanner = ({
         <Text className="mt-0.5 text-xs font-sans text-destructive/90">
           {message}
         </Text>
+        {onRetry && (
+          <Pressable onPress={onRetry} className="mt-2 self-start rounded-lg bg-destructive px-3 py-1">
+            <Text className="text-xs font-bold font-sans text-white">Retry</Text>
+          </Pressable>
+        )}
       </View>
       {onDismiss && (
         <Pressable onPress={onDismiss} className="ms-2 p-1">

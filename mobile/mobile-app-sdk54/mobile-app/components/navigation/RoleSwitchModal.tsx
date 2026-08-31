@@ -86,7 +86,7 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
                       >
                         <UserCheck
                           size={18}
-                          color={isSelected ? '#c5a059' : '#a1a1aa'}
+                          color={isSelected ? '#172B70' : '#a1a1aa'}
                         />
                       </View>
                       <View>

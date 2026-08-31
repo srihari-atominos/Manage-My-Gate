@@ -42,7 +42,7 @@ export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
         {activeItems.map((item) => {
           const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === item.id);
           const iconName = meta?.iconName || item.iconName;
-          const colorIcon = meta?.colorIcon || item.colorIcon || '#c5a059';
+          const colorIcon = meta?.colorIcon || item.colorIcon || '#245FA8';
           const colorBg = meta?.colorBg || item.colorBg || 'bg-secondary';
 
           return (

@@ -1,6 +1,5 @@
 import { Text } from '@/components/ui/text';
-import { PhoneInput } from '@/components/forms/PhoneInput';
-import { Stack, router, useSegments, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import {
   Mail,
   Lock,
@@ -8,6 +7,7 @@ import {
   Eye,
   EyeOff,
   Check,
+  Shield,
   ArrowRight,
   Sparkles,
 } from 'lucide-react-native';
@@ -34,8 +34,8 @@ import {
   NahomEmblem,
   NahomWordmark,
 } from '@/components/auth/NahomBrandLogo';
-import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
-import { MicrosoftSignInButton } from '../../src/features/auth/components/MicrosoftSignInButton';
+import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 
 // 1. Basic Auth Validation Schema
 const basicAuthSchema = yup.object().shape({
@@ -191,9 +191,6 @@ export default function LoginScreen() {
     });
   }, []);
 
-  const segments = useSegments();
-  const isFocused = segments[segments.length - 1] === 'login';
-
   // Basic Auth Form Hook
   const basicForm = useForm<BasicAuthFormValues>({
     resolver: yupResolver(basicAuthSchema),
@@ -250,17 +247,17 @@ export default function LoginScreen() {
       }, 900);
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, isFocused, user, isCreateOrgIntent]);
+  }, [isAuthenticated, user, isCreateOrgIntent]);
 
   // Reactively route to OTP screen if Phone OTP sent
   React.useEffect(() => {
-    if (isFocused && otpSent && submittedPhone) {
+    if (otpSent && submittedPhone) {
       router.push({
         pathname: '/(auth)/otp',
         params: { phone: submittedPhone },
       });
     }
-  }, [otpSent, submittedPhone, isFocused]);
+  }, [otpSent, submittedPhone]);
 
   // Handle Basic Auth Submit
   const onBasicSubmit = async (data: BasicAuthFormValues) => {
@@ -363,11 +360,11 @@ export default function LoginScreen() {
                 >
                   <Lock
                     size={15}
-                    color={authMode === 'basic' ? '#172B70' : '#64748B'}
+                    color={authMode === 'basic' ? '#FF5E00' : '#64748B'}
                   />
                   <Text
                     className={`text-xs font-bold ${
-                      authMode === 'basic' ? 'text-[#172B70] dark:text-[#60A5FA]' : 'text-muted-foreground'
+                      authMode === 'basic' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'
                     }`}
                   >
                     Email / Password
@@ -385,11 +382,11 @@ export default function LoginScreen() {
                 >
                   <Smartphone
                     size={15}
-                    color={authMode === 'phone' ? '#172B70' : '#64748B'}
+                    color={authMode === 'phone' ? '#FF5E00' : '#64748B'}
                   />
                   <Text
                     className={`text-xs font-bold ${
-                      authMode === 'phone' ? 'text-[#172B70] dark:text-[#60A5FA]' : 'text-muted-foreground'
+                      authMode === 'phone' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'
                     }`}
                   >
                     Phone OTP
@@ -449,7 +446,7 @@ export default function LoginScreen() {
                           Password
                         </Text>
                         <TouchableOpacity activeOpacity={0.8}>
-                          <Text className="text-xs font-bold text-[#1E3A8A] dark:text-[#60A5FA]">
+                          <Text className="text-xs font-bold text-[#FF5E00] dark:text-[#FF7A00]">
                             Forgot?
                           </Text>
                         </TouchableOpacity>
@@ -509,7 +506,7 @@ export default function LoginScreen() {
                         <View
                           className={`size-4 rounded-full items-center justify-center me-2 ${
                             keepSignedIn
-                              ? 'bg-[#172B70] dark:bg-[#245FA8]'
+                              ? 'bg-[#FF5E00] dark:bg-[#FF5E00]'
                               : 'border border-border bg-background'
                           }`}
                         >
@@ -530,27 +527,40 @@ export default function LoginScreen() {
                       </View>
                     ) : null}
 
-                    {/* Step 7: Sign In CTA Button */}
+                    {/* Step 7: Sign In CTA Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
                     <TouchableOpacity
                       onPress={basicForm.handleSubmit(onBasicSubmit)}
                       disabled={loading || connectingHarmony}
-                      activeOpacity={0.85}
-                      className="mt-1 h-12 bg-[#172B70] dark:bg-[#245FA8] rounded-2xl flex-row items-center justify-center gap-2 shadow-xs active:bg-[#0F1E50] dark:active:bg-[#1D4ED8]"
+                      activeOpacity={0.88}
+                      className="mt-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
                     >
+                      <View className="absolute inset-0">
+                        <Svg width="100%" height="100%" preserveAspectRatio="none">
+                          <Defs>
+                            <LinearGradient id="signInGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <Stop offset="0%" stopColor="#1E232E" />
+                              <Stop offset="45%" stopColor="#2A3342" />
+                              <Stop offset="82%" stopColor="#FF5E00" />
+                              <Stop offset="100%" stopColor="#FF7A00" />
+                            </LinearGradient>
+                          </Defs>
+                          <Rect width="100%" height="100%" rx="16" fill="url(#signInGrad)" />
+                        </Svg>
+                      </View>
                       {loading || connectingHarmony ? (
-                        <View className="flex-row items-center gap-2">
+                        <View className="flex-row items-center gap-2 z-10">
                           <ActivityIndicator color="#FFFFFF" size="small" />
                           <Text className="font-bold text-white text-sm font-sans">
                             {connectingHarmony ? 'Connecting Harmony...' : 'Authenticating...'}
                           </Text>
                         </View>
                       ) : (
-                        <>
+                        <View className="flex-row items-center justify-center gap-2 z-10">
                           <Text className="font-bold text-white text-base font-sans">
                             Sign In
                           </Text>
                           <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
-                        </>
+                        </View>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -558,19 +568,38 @@ export default function LoginScreen() {
                   /* Phone OTP Form */
                   <View className="gap-3.5">
                     <View>
+                      <Text className="text-xs font-bold text-foreground mb-1.5">
+                        Mobile Number
+                      </Text>
                       <Controller
                         control={phoneForm.control}
                         name="phone"
-                        render={({ field: { onChange, value } }) => (
-                          <PhoneInput
-                            label="Mobile Number"
-                            placeholder="99887 76655"
-                            onChangeText={onChange}
-                            value={value}
-                            error={phoneForm.formState.errors.phone?.message}
-                          />
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
+                            <Smartphone size={18} color="#94A3B8" className="me-2.5 shrink-0" />
+                            <TextInput
+                              value={value}
+                              onChangeText={onChange}
+                              onBlur={onBlur}
+                              placeholder="+919988776655"
+                              placeholderTextColor="#94A3B8"
+                              keyboardType="phone-pad"
+                              autoComplete="tel"
+                              returnKeyType="send"
+                              onSubmitEditing={phoneForm.handleSubmit(onPhoneSubmit)}
+                              className={cnText(
+                                'flex-1 text-sm text-foreground font-sans p-0',
+                                Platform.select({ web: 'outline-none' })
+                              )}
+                            />
+                          </View>
                         )}
                       />
+                      {phoneForm.formState.errors.phone && (
+                        <Text className="text-rose-500 text-[11px] mt-1 ms-1 font-medium">
+                          {phoneForm.formState.errors.phone.message}
+                        </Text>
+                      )}
                     </View>
 
                     {/* Global Error Banner */}
@@ -582,54 +611,78 @@ export default function LoginScreen() {
                       </View>
                     ) : null}
 
-                    {/* Get OTP Button */}
+                    {/* Get OTP Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
                     <TouchableOpacity
                       onPress={phoneForm.handleSubmit(onPhoneSubmit)}
                       disabled={loading || connectingHarmony}
-                      activeOpacity={0.85}
-                      className="mt-1 h-12 bg-[#172B70] dark:bg-[#245FA8] rounded-2xl flex-row items-center justify-center gap-2 shadow-xs active:bg-[#0F1E50] dark:active:bg-[#1D4ED8]"
+                      activeOpacity={0.88}
+                      className="mt-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
                     >
+                      <View className="absolute inset-0">
+                        <Svg width="100%" height="100%" preserveAspectRatio="none">
+                          <Defs>
+                            <LinearGradient id="otpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <Stop offset="0%" stopColor="#1E232E" />
+                              <Stop offset="45%" stopColor="#2A3342" />
+                              <Stop offset="82%" stopColor="#FF5E00" />
+                              <Stop offset="100%" stopColor="#FF7A00" />
+                            </LinearGradient>
+                          </Defs>
+                          <Rect width="100%" height="100%" rx="16" fill="url(#otpGrad)" />
+                        </Svg>
+                      </View>
                       {loading || connectingHarmony ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
+                        <View className="flex-row items-center gap-2 z-10">
+                          <ActivityIndicator color="#FFFFFF" size="small" />
+                        </View>
                       ) : (
-                        <>
+                        <View className="flex-row items-center justify-center gap-2 z-10">
                           <Text className="font-bold text-white text-base font-sans">
                             Get OTP Code
                           </Text>
                           <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
-                        </>
+                        </View>
                       )}
                     </TouchableOpacity>
                   </View>
                 )}
               </View>
 
-              {/* SSO Separator */}
-              <View className="flex-row items-center my-2">
-                <View className="flex-1 h-px bg-border/60" />
-                <Text className="mx-3 text-muted-foreground font-medium text-[10px] uppercase tracking-wider">OR CONTINUE WITH</Text>
-                <View className="flex-1 h-px bg-border/60" />
+              {/* OR CONTINUE WITH Divider */}
+              <View className="flex-row items-center my-1 gap-3">
+                <View className="flex-1 h-px bg-border/80" />
+                <Text className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase font-sans">
+                  Or Continue With
+                </Text>
+                <View className="flex-1 h-px bg-border/80" />
               </View>
 
-              <View className="flex-row gap-3 my-1">
-                <View className="flex-1">
-                  <GoogleSignInButton />
-                </View>
-                <View className="flex-1">
-                  <MicrosoftSignInButton />
-                </View>
+              {/* Social Authentication: Google ID & Apple ID */}
+              <View className="flex-row items-center gap-3 w-full">
+                <SocialAuthButton
+                  provider="google"
+                  onPress={() => {
+                    // Trigger Google Sign-In
+                  }}
+                />
+                <SocialAuthButton
+                  provider="apple"
+                  onPress={() => {
+                    // Trigger Apple Sign-In
+                  }}
+                />
               </View>
 
               {/* Create Account Prompt */}
-              <View className="flex-row items-center justify-center pt-1">
+              <View className="flex-row items-center justify-center pt-2 pb-1">
                 <Text className="text-xs text-slate-900 dark:text-white font-bold">
                   Don't have an account?{' '}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => router.push('/(auth)/register')}
+                  onPress={() => router.push('/(auth)/signup')}
                   activeOpacity={0.8}
                 >
-                  <Text className="text-xs font-extrabold text-[#172B70] dark:text-[#60A5FA] underline">
+                  <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">
                     Create Account
                   </Text>
                 </TouchableOpacity>
@@ -639,24 +692,6 @@ export default function LoginScreen() {
         </ScrollView>
     </KeyboardAvoidingView>
     </ImageBackground>
-
-      {/* Connect Harmony Synchronization Overlay */}
-      {connectingHarmony && (
-        <View className="absolute inset-0 bg-background/80 backdrop-blur-md items-center justify-center z-50 p-6">
-          <View className="bg-card border border-border/80 rounded-3xl p-6 items-center max-w-xs w-full shadow-2xl gap-3">
-            <View className="w-14 h-14 rounded-2xl bg-[#172B70]/10 items-center justify-center border border-[#172B70]/20">
-              <Sparkles size={26} color="#51418F" />
-            </View>
-            <Text className="text-base font-bold text-foreground text-center">
-              Connecting Harmony
-            </Text>
-            <Text className="text-xs text-muted-foreground text-center leading-relaxed">
-              Synchronizing secure resident gateway & access passes...
-            </Text>
-            <ActivityIndicator color="#172B70" size="small" className="mt-1" />
-          </View>
-        </View>
-      )}
     </>
   );
 }

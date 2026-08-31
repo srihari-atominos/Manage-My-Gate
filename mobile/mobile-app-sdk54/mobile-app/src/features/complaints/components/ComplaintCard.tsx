@@ -3,7 +3,7 @@ import { View, Pressable, TouchableOpacity, Alert, Clipboard } from 'react-nativ
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { MapPin, ChevronRight, UserCheck, AlertTriangle, Sparkles, UserPlus } from 'lucide-react-native';
 import { Complaint, ComplaintStatus, ComplaintPriority } from '../types';
 
@@ -200,7 +200,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
               variant="default"
               size="sm"
               className="bg-amber-600 border-amber-600 py-1 px-2.5 h-7"
-              onPress={(e) => {
+              onPress={(e: any) => {
                 e?.stopPropagation?.();
                 onConfirmPress();
               }}

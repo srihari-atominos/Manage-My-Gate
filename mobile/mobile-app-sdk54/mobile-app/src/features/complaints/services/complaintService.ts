@@ -5,11 +5,15 @@ const BASE_URL = '/complaints';
 
 export const complaintService = {
   getAll: async (params?: any) => {
-    return await apiClient.get(BASE_URL, { params });
+    return await apiClient.get(BASE_URL, { 
+      params: { ...params, _t: new Date().getTime() } 
+    });
   },
 
   getById: async (id: string) => {
-    return await apiClient.get(`${BASE_URL}/${id}`);
+    return await apiClient.get(`${BASE_URL}/${id}`, {
+      params: { _t: new Date().getTime() }
+    });
   },
 
   create: async (data: any) => {
@@ -24,7 +28,7 @@ export const complaintService = {
     });
   },
 
-  assignTechnician: async (id: string, data: AssignTechnicianPayload) => {
+  assignTechnician: async (id: string, data: AssignTechnicianPayload | { technicianId?: string; vendor?: string; notes?: string; isBroadcast?: boolean }) => {
     return await apiClient.put(`${BASE_URL}/${id}/assign`, data);
   },
 
@@ -44,28 +48,35 @@ export const complaintService = {
     return await apiClient.post(`${BASE_URL}/${id}/accept`);
   },
 
-  rejectAssignment: async (id: string, reason: string) => {
-    return await apiClient.post(`${BASE_URL}/${id}/reject`, { reason });
+  rejectAssignment: async (id: string, reason?: string) => {
+    return await apiClient.post(`${BASE_URL}/${id}/reject`, { reason: reason || '' });
   },
 
   startWork: async (id: string) => {
     return await apiClient.post(`${BASE_URL}/${id}/start-work`);
   },
 
-  pauseWork: async (id: string, reason: string) => {
-    return await apiClient.post(`${BASE_URL}/${id}/pause-work`, { reason });
+  pauseWork: async (id: string, reason?: string) => {
+    return await apiClient.post(`${BASE_URL}/${id}/pause-work`, { reason: reason || '' });
   },
 
   resumeWork: async (id: string) => {
     return await apiClient.post(`${BASE_URL}/${id}/resume-work`);
   },
 
-  markWorkCompleted: async (id: string, data: { notes?: string; attachments?: string[] }) => {
-    return await apiClient.post(`${BASE_URL}/${id}/mark-completed`, data);
+  markWorkCompleted: async (id: string, payload?: any) => {
+    return await apiClient.post(`${BASE_URL}/${id}/mark-completed`, payload || {});
   },
 
-  uploadWorkAttachments: async (id: string, attachments: string[]) => {
-    return await apiClient.post(`${BASE_URL}/${id}/upload-work`, { attachments });
+  uploadWorkAttachments: async (id: string, data: any) => {
+    if (data instanceof FormData) {
+      return await apiClient.post(`${BASE_URL}/${id}/upload-work`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    return await apiClient.post(`${BASE_URL}/${id}/upload-work`, Array.isArray(data) ? { attachments: data } : data);
   },
 
   addWorkNotes: async (id: string, notes: string) => {
@@ -82,6 +93,10 @@ export const complaintService = {
 
   delete: async (id: string) => {
     return await apiClient.delete(`${BASE_URL}/${id}`);
+  },
+
+  getTechnicians: async (params?: any) => {
+    return await apiClient.get('/technicians', { params });
   },
 };
 

@@ -23,6 +23,8 @@ import {
   Easing,
   KeyboardAvoidingView,
   ImageBackground,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
@@ -31,8 +33,9 @@ import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import {
   NahomEmblem,
   NahomWordmark,
-  NahomTrustBadges,
 } from '@/components/auth/NahomBrandLogo';
+import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 
 // 1. Basic Auth Validation Schema
 const basicAuthSchema = yup.object().shape({
@@ -70,10 +73,13 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [keepSignedIn, setKeepSignedIn] = React.useState(true);
   const [connectingHarmony, setConnectingHarmony] = React.useState(false);
+  const passwordInputRef = React.useRef<TextInput>(null);
 
   // Staged Entrance Animation Drivers
-  const emblemScale = React.useRef(new Animated.Value(0.1)).current;
+  const emblemScale = React.useRef(new Animated.Value(0)).current;
   const emblemOpacity = React.useRef(new Animated.Value(0)).current;
+  const emblemRotate = React.useRef(new Animated.Value(-1)).current;
+  const emblemFloat = React.useRef(new Animated.Value(0)).current;
   const wordmarkScale = React.useRef(new Animated.Value(0.5)).current;
   const wordmarkOpacity = React.useRef(new Animated.Value(0)).current;
   const wordmarkTranslateY = React.useRef(new Animated.Value(20)).current;
@@ -83,23 +89,29 @@ export default function LoginScreen() {
   // Run smooth, relaxed cinematic opening sequence on mount
   React.useEffect(() => {
     Animated.parallel([
-      // Stage 1: Logo Emblem Smooth Blast & Bounce (0 - 450ms)
+      // Stage 1: Logo Emblem Dramatic Elastic Blast, Rotation & Bounce
       Animated.spring(emblemScale, {
         toValue: 1,
-        friction: 6,
-        tension: 45,
+        friction: 5,
+        tension: 50,
         useNativeDriver: true,
       }),
       Animated.timing(emblemOpacity, {
         toValue: 1,
-        duration: 380,
+        duration: 350,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
+      Animated.spring(emblemRotate, {
+        toValue: 0,
+        friction: 6,
+        tension: 45,
+        useNativeDriver: true,
+      }),
 
-      // Stage 2: App Name & Taglines Unfurl gracefully after logo (250ms - 700ms)
+      // Stage 2: App Name & Taglines Unfurl gracefully after logo (200ms - 650ms)
       Animated.sequence([
-        Animated.delay(260),
+        Animated.delay(200),
         Animated.parallel([
           Animated.spring(wordmarkScale, {
             toValue: 1,
@@ -122,9 +134,9 @@ export default function LoginScreen() {
         ]),
       ]),
 
-      // Stage 3: Form Cards, Tabs, Badges glide up smoothly (500ms - 950ms)
+      // Stage 3: Form Cards, Tabs, Badges glide up smoothly (450ms - 900ms)
       Animated.sequence([
-        Animated.delay(500),
+        Animated.delay(450),
         Animated.parallel([
           Animated.timing(contentOpacity, {
             toValue: 1,
@@ -140,7 +152,25 @@ export default function LoginScreen() {
           }),
         ]),
       ]),
-    ]).start();
+    ]).start(() => {
+      // Gentle continuous floating breath loop
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(emblemFloat, {
+            toValue: -5,
+            duration: 2000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(emblemFloat, {
+            toValue: 5,
+            duration: 2000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    });
   }, []);
 
   // Basic Auth Form Hook
@@ -222,21 +252,32 @@ export default function LoginScreen() {
             contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             className="px-5 py-6"
           >
-          <View className="max-w-sm mx-auto w-full gap-3.5">
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+              <View className="max-w-sm mx-auto w-full gap-3.5">
             {/* Step 1, 2, 3: Top Brand Identity Section (Logo → App Name → Nexus Around Home → Slogan) */}
             <View className="items-center justify-center">
               {/* Step 1: Logo Emblem */}
               <Animated.View
                 style={{
                   opacity: emblemOpacity,
-                  transform: [{ scale: emblemScale }],
+                  transform: [
+                    { scale: emblemScale },
+                    { translateY: emblemFloat },
+                    {
+                      rotate: emblemRotate.interpolate({
+                        inputRange: [-1, 0, 1],
+                        outputRange: ['-12deg', '0deg', '12deg'],
+                      }),
+                    },
+                  ],
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <NahomEmblem size={145} />
+                <NahomEmblem size={118} />
               </Animated.View>
 
               {/* Step 2 & 3: NoHome App Name + "Nexus Around Home" + Slogan with proper spacing */}
@@ -277,11 +318,11 @@ export default function LoginScreen() {
                 >
                   <Lock
                     size={15}
-                    color={authMode === 'basic' ? '#1E3A8A' : '#64748B'}
+                    color={authMode === 'basic' ? '#FF5E00' : '#64748B'}
                   />
                   <Text
                     className={`text-xs font-bold ${
-                      authMode === 'basic' ? 'text-[#1E3A8A] dark:text-[#60A5FA]' : 'text-muted-foreground'
+                      authMode === 'basic' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'
                     }`}
                   >
                     Email / Password
@@ -299,11 +340,11 @@ export default function LoginScreen() {
                 >
                   <Smartphone
                     size={15}
-                    color={authMode === 'phone' ? '#1E3A8A' : '#64748B'}
+                    color={authMode === 'phone' ? '#FF5E00' : '#64748B'}
                   />
                   <Text
                     className={`text-xs font-bold ${
-                      authMode === 'phone' ? 'text-[#1E3A8A] dark:text-[#60A5FA]' : 'text-muted-foreground'
+                      authMode === 'phone' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'
                     }`}
                   >
                     Phone OTP
@@ -338,6 +379,9 @@ export default function LoginScreen() {
                               autoCapitalize="none"
                               autoCorrect={false}
                               autoComplete="username"
+                              returnKeyType="next"
+                              onSubmitEditing={() => passwordInputRef.current?.focus()}
+                              blurOnSubmit={false}
                               className={cnText(
                                 'flex-1 text-sm text-foreground font-sans p-0',
                                 Platform.select({ web: 'outline-none' })
@@ -360,7 +404,7 @@ export default function LoginScreen() {
                           Password
                         </Text>
                         <TouchableOpacity activeOpacity={0.8}>
-                          <Text className="text-xs font-bold text-[#1E3A8A] dark:text-[#60A5FA]">
+                          <Text className="text-xs font-bold text-[#FF5E00] dark:text-[#FF7A00]">
                             Forgot?
                           </Text>
                         </TouchableOpacity>
@@ -372,6 +416,7 @@ export default function LoginScreen() {
                           <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
                             <Lock size={18} color="#94A3B8" className="me-2.5 shrink-0" />
                             <TextInput
+                              ref={passwordInputRef}
                               value={value}
                               onChangeText={onChange}
                               onBlur={onBlur}
@@ -381,6 +426,8 @@ export default function LoginScreen() {
                               autoCapitalize="none"
                               autoCorrect={false}
                               autoComplete="password"
+                              returnKeyType="go"
+                              onSubmitEditing={basicForm.handleSubmit(onBasicSubmit)}
                               className={cnText(
                                 'flex-1 text-sm text-foreground font-sans p-0',
                                 Platform.select({ web: 'outline-none' })
@@ -417,7 +464,7 @@ export default function LoginScreen() {
                         <View
                           className={`size-4 rounded-full items-center justify-center me-2 ${
                             keepSignedIn
-                              ? 'bg-[#1E3A8A] dark:bg-[#2563EB]'
+                              ? 'bg-[#FF5E00] dark:bg-[#FF5E00]'
                               : 'border border-border bg-background'
                           }`}
                         >
@@ -438,27 +485,40 @@ export default function LoginScreen() {
                       </View>
                     ) : null}
 
-                    {/* Step 7: Sign In CTA Button */}
+                    {/* Step 7: Sign In CTA Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
                     <TouchableOpacity
                       onPress={basicForm.handleSubmit(onBasicSubmit)}
                       disabled={loading || connectingHarmony}
-                      activeOpacity={0.85}
-                      className="mt-1 h-12 bg-[#1E3A8A] dark:bg-[#2563EB] rounded-2xl flex-row items-center justify-center gap-2 shadow-xs active:bg-[#172554] dark:active:bg-[#1D4ED8]"
+                      activeOpacity={0.88}
+                      className="mt-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
                     >
+                      <View className="absolute inset-0">
+                        <Svg width="100%" height="100%" preserveAspectRatio="none">
+                          <Defs>
+                            <LinearGradient id="signInGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <Stop offset="0%" stopColor="#1E232E" />
+                              <Stop offset="45%" stopColor="#2A3342" />
+                              <Stop offset="82%" stopColor="#FF5E00" />
+                              <Stop offset="100%" stopColor="#FF7A00" />
+                            </LinearGradient>
+                          </Defs>
+                          <Rect width="100%" height="100%" rx="16" fill="url(#signInGrad)" />
+                        </Svg>
+                      </View>
                       {loading || connectingHarmony ? (
-                        <View className="flex-row items-center gap-2">
+                        <View className="flex-row items-center gap-2 z-10">
                           <ActivityIndicator color="#FFFFFF" size="small" />
                           <Text className="font-bold text-white text-sm font-sans">
                             {connectingHarmony ? 'Connecting Harmony...' : 'Authenticating...'}
                           </Text>
                         </View>
                       ) : (
-                        <>
+                        <View className="flex-row items-center justify-center gap-2 z-10">
                           <Text className="font-bold text-white text-base font-sans">
                             Sign In
                           </Text>
                           <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
-                        </>
+                        </View>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -483,6 +543,8 @@ export default function LoginScreen() {
                               placeholderTextColor="#94A3B8"
                               keyboardType="phone-pad"
                               autoComplete="tel"
+                              returnKeyType="send"
+                              onSubmitEditing={phoneForm.handleSubmit(onPhoneSubmit)}
                               className={cnText(
                                 'flex-1 text-sm text-foreground font-sans p-0',
                                 Platform.select({ web: 'outline-none' })
@@ -507,78 +569,88 @@ export default function LoginScreen() {
                       </View>
                     ) : null}
 
-                    {/* Get OTP Button */}
+                    {/* Get OTP Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
                     <TouchableOpacity
                       onPress={phoneForm.handleSubmit(onPhoneSubmit)}
                       disabled={loading || connectingHarmony}
-                      activeOpacity={0.85}
-                      className="mt-1 h-12 bg-[#1E3A8A] dark:bg-[#2563EB] rounded-2xl flex-row items-center justify-center gap-2 shadow-xs active:bg-[#172554] dark:active:bg-[#1D4ED8]"
+                      activeOpacity={0.88}
+                      className="mt-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
                     >
+                      <View className="absolute inset-0">
+                        <Svg width="100%" height="100%" preserveAspectRatio="none">
+                          <Defs>
+                            <LinearGradient id="otpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <Stop offset="0%" stopColor="#1E232E" />
+                              <Stop offset="45%" stopColor="#2A3342" />
+                              <Stop offset="82%" stopColor="#FF5E00" />
+                              <Stop offset="100%" stopColor="#FF7A00" />
+                            </LinearGradient>
+                          </Defs>
+                          <Rect width="100%" height="100%" rx="16" fill="url(#otpGrad)" />
+                        </Svg>
+                      </View>
                       {loading || connectingHarmony ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
+                        <View className="flex-row items-center gap-2 z-10">
+                          <ActivityIndicator color="#FFFFFF" size="small" />
+                        </View>
                       ) : (
-                        <>
+                        <View className="flex-row items-center justify-center gap-2 z-10">
                           <Text className="font-bold text-white text-base font-sans">
                             Get OTP Code
                           </Text>
                           <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
-                        </>
+                        </View>
                       )}
                     </TouchableOpacity>
                   </View>
                 )}
               </View>
 
+              {/* OR CONTINUE WITH Divider */}
+              <View className="flex-row items-center my-1 gap-3">
+                <View className="flex-1 h-px bg-border/80" />
+                <Text className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase font-sans">
+                  Or Continue With
+                </Text>
+                <View className="flex-1 h-px bg-border/80" />
+              </View>
+
+              {/* Social Authentication: Google ID & Apple ID */}
+              <View className="flex-row items-center gap-3 w-full">
+                <SocialAuthButton
+                  provider="google"
+                  onPress={() => {
+                    // Trigger Google Sign-In
+                  }}
+                />
+                <SocialAuthButton
+                  provider="apple"
+                  onPress={() => {
+                    // Trigger Apple Sign-In
+                  }}
+                />
+              </View>
+
               {/* Create Account Prompt */}
-              <View className="flex-row items-center justify-center pt-0.5">
-                <Text className="text-xs text-muted-foreground font-medium">
+              <View className="flex-row items-center justify-center pt-2 pb-1">
+                <Text className="text-xs text-slate-900 dark:text-white font-bold">
                   Don't have an account?{' '}
                 </Text>
                 <TouchableOpacity
                   onPress={() => router.push('/(auth)/signup')}
                   activeOpacity={0.8}
                 >
-                  <Text className="text-xs font-bold text-[#1E3A8A] dark:text-[#60A5FA]">
+                  <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">
                     Create Account
                   </Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Step 12: Subtle, Scaled Down Bottom 4 Feature Trust Badges */}
-              <View className="pt-1 px-1 items-center justify-center">
-                <NahomTrustBadges />
-              </View>
-
-              {/* Bottom 256-Bit Encrypted Security Caption */}
-              <View className="flex-row items-center justify-center pb-2 pt-0.5 gap-1.5">
-                <Shield size={11} color="#94A3B8" />
-                <Text className="text-[10px] text-muted-foreground/75 font-medium font-sans">
-                  256-Bit Encrypted Community Security Network
-                </Text>
-              </View>
             </Animated.View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </ScrollView>
+    </KeyboardAvoidingView>
     </ImageBackground>
-
-      {/* Connect Harmony Synchronization Overlay */}
-      {connectingHarmony && (
-        <View className="absolute inset-0 bg-background/80 backdrop-blur-md items-center justify-center z-50 p-6">
-          <View className="bg-card border border-border/80 rounded-3xl p-6 items-center max-w-xs w-full shadow-2xl gap-3">
-            <View className="w-14 h-14 rounded-2xl bg-[#1E3A8A]/10 items-center justify-center border border-[#1E3A8A]/20">
-              <Sparkles size={26} color="#7C3AED" />
-            </View>
-            <Text className="text-base font-bold text-foreground text-center">
-              Connecting Harmony
-            </Text>
-            <Text className="text-xs text-muted-foreground text-center leading-relaxed">
-              Synchronizing secure resident gateway & access passes...
-            </Text>
-            <ActivityIndicator color="#1E3A8A" size="small" className="mt-1" />
-          </View>
-        </View>
-      )}
     </>
   );
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { Text, TextClassContext } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Platform, Pressable } from 'react-native';
+import { ActivityIndicator, Platform, Pressable } from 'react-native';
 
 const buttonVariants = cva(
   cn(
@@ -16,27 +16,29 @@ const buttonVariants = cva(
       variant: {
         default: cn(
           'bg-primary active:opacity-90 shadow-xs',
-          Platform.select({ web: 'hover:opacity-90' })
+          Platform.OS === 'web' ? 'hover:opacity-90' : ''
+        ),
+        primary: cn(
+          'bg-primary active:opacity-90 shadow-xs',
+          Platform.OS === 'web' ? 'hover:opacity-90' : ''
         ),
         destructive: cn(
           'bg-destructive active:opacity-90 shadow-xs',
-          Platform.select({
-            web: 'hover:opacity-90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40',
-          })
+          Platform.OS === 'web'
+            ? 'hover:opacity-90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40'
+            : ''
         ),
         outline: cn(
           'border border-border/80 bg-card active:bg-secondary/60 shadow-xs',
-          Platform.select({
-            web: 'hover:bg-secondary/60',
-          })
+          Platform.OS === 'web' ? 'hover:bg-secondary/60' : ''
         ),
         secondary: cn(
           'bg-secondary border border-border/70 active:bg-secondary/80 shadow-xs',
-          Platform.select({ web: 'hover:bg-secondary/80' })
+          Platform.OS === 'web' ? 'hover:bg-secondary/80' : ''
         ),
         ghost: cn(
           'active:bg-secondary/50',
-          Platform.select({ web: 'hover:bg-secondary/50' })
+          Platform.OS === 'web' ? 'hover:bg-secondary/50' : ''
         ),
         link: '',
       },
@@ -63,6 +65,7 @@ const buttonTextVariants = cva(
     variants: {
       variant: {
         default: 'text-primary-foreground',
+        primary: 'text-primary-foreground',
         destructive: 'text-destructive-foreground',
         outline: 'text-foreground group-active:text-foreground',
         secondary: 'text-secondary-foreground',
@@ -86,32 +89,82 @@ const buttonTextVariants = cva(
   }
 );
 
-type ButtonProps = React.ComponentProps<typeof Pressable> & React.RefAttributes<typeof Pressable> & VariantProps<typeof buttonVariants>;
-
-function Button({ className, variant, size, children, ...props }: ButtonProps) {
-  return (
-    <TextClassContext.Provider value={buttonTextVariants({ variant, size })}>
-      <Pressable
-        className={cn(props.disabled && 'opacity-50', buttonVariants({ variant, size }), className)}
-        role="button"
-        {...props}
-      >
-        {typeof children === 'function'
-          ? children
-          : React.Children.map(children, (child) => {
-              if (typeof child === 'string') {
-                if (!child.trim()) return null;
-                return <Text>{child}</Text>;
-              }
-              if (typeof child === 'number') {
-                return <Text>{child}</Text>;
-              }
-              return child;
-            })}
-      </Pressable>
-    </TextClassContext.Provider>
-  );
+export interface ButtonProps
+  extends React.ComponentPropsWithoutRef<typeof Pressable> {
+  variant?: 'default' | 'primary' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
+  leftIcon?: React.ComponentType<{ size?: number; className?: string; color?: string }>;
+  rightIcon?: React.ComponentType<{ size?: number; className?: string; color?: string }>;
+  loading?: boolean;
+  textClassName?: string;
 }
 
+const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>(
+  (
+    {
+      className,
+      variant,
+      size,
+      leftIcon: LeftIcon,
+      rightIcon: RightIcon,
+      loading = false,
+      disabled = false,
+      textClassName,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const isDisabled = disabled || loading;
+    const iconSize = size === 'sm' ? 16 : size === 'lg' ? 20 : 18;
+
+    return (
+      <TextClassContext.Provider value={cn(buttonTextVariants({ variant: variant as any, size }), textClassName)}>
+        <Pressable
+          ref={ref}
+          disabled={isDisabled}
+          className={cn(
+            isDisabled && 'opacity-50',
+            buttonVariants({ variant: variant as any, size }),
+            className
+          )}
+          role="button"
+          {...props}
+        >
+          {(state) => (
+            <>
+              {loading ? (
+                <ActivityIndicator
+                  size="small"
+                  color={variant === 'default' || variant === 'destructive' ? '#ffffff' : '#737373'}
+                />
+              ) : (
+                LeftIcon && <LeftIcon size={iconSize} className={cn(buttonTextVariants({ variant }))} />
+              )}
+              {typeof children === 'function'
+                ? children(state)
+                : React.Children.map(children, (child) => {
+                    if (typeof child === 'string') {
+                      if (!child.trim()) return null;
+                      return <Text>{child}</Text>;
+                    }
+                    if (typeof child === 'number') {
+                      return <Text>{child}</Text>;
+                    }
+                    return child;
+                  })}
+              {!loading && RightIcon && (
+                <RightIcon size={iconSize} className={cn(buttonTextVariants({ variant }))} />
+              )}
+            </>
+          )}
+        </Pressable>
+      </TextClassContext.Provider>
+    );
+  }
+);
+
+Button.displayName = 'Button';
+
 export { Button, buttonTextVariants, buttonVariants };
-export type { ButtonProps };
+export default Button;

@@ -9,6 +9,9 @@ type IconProps = LucideProps & {
 } & React.RefAttributes<LucideIcon>;
 
 function IconImpl({ as: IconComponent, ...props }: IconProps) {
+  if (!IconComponent || (typeof IconComponent !== 'function' && typeof IconComponent !== 'object')) {
+    return null;
+  }
   return <IconComponent {...props} />;
 }
 

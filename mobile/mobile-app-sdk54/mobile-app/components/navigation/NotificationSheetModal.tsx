@@ -171,7 +171,7 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
           <ScrollView className="flex-1 px-4 py-2" showsVerticalScrollIndicator={false}>
             {loading && items.length === 0 ? (
               <View className="py-12 items-center justify-center">
-                <ActivityIndicator size="small" color="#c5a059" />
+                <ActivityIndicator size="small" color="#172B70" />
                 <Text className="text-xs text-muted-foreground mt-2">Loading notifications...</Text>
               </View>
             ) : filteredItems.length > 0 ? (

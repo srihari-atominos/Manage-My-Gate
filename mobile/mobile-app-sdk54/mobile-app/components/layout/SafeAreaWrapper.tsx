@@ -14,7 +14,7 @@ export const SafeAreaWrapper = ({
   children,
   edges = ['top', 'bottom', 'left', 'right'],
   className,
-  backgroundColorClassName = 'bg-white dark:bg-slate-950',
+  backgroundColorClassName = 'bg-background',
   ...props
 }: SafeAreaWrapperProps) => {
   const insets = useSafeAreaInsets();

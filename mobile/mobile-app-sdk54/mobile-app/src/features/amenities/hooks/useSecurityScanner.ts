@@ -16,9 +16,12 @@ export function useSecurityScanner() {
   const [isFlashlightOn, setIsFlashlightOn] = useState<boolean>(false);
   const [isResultModalOpen, setIsResultModalOpen] = useState<boolean>(false);
 
-  const { checkInResult, checkingIn, recentScans } = useSelector(
-    (state: RootState) => state.amenityBookings
+  const amenityBookingsState = useSelector(
+    (state: RootState) => (state as any)?.amenityBookings || {}
   );
+  const checkInResult = amenityBookingsState?.checkInResult || null;
+  const checkingIn = Boolean(amenityBookingsState?.checkingIn);
+  const recentScans = amenityBookingsState?.recentScans || [];
 
   const loadRecentScans = useCallback(() => {
     dispatch(fetchRecentScansThunk({}));
