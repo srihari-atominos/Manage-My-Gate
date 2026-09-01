@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View } from 'react-native';
+import { useSelector } from 'react-redux';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { ListCard } from '@/components/ui/ListCard';
@@ -81,14 +82,25 @@ export const InsideVisitorsView: React.FC = () => {
         contentContainerClassName="px-4 pt-3 pb-28 gap-3"
         renderItem={(log) => {
           if (!log) return null;
+
+          const villaInfo = log.passId?.villaId || log.residentId?.villaId;
+          const villaUnit = villaInfo?.unitNumber || villaInfo?.villaNumber || '';
+          const villaBlock = villaInfo?.blockOrBuilding || villaInfo?.block ? ` (${villaInfo.blockOrBuilding || villaInfo.block})` : '';
+          const villaText = villaUnit ? `Villa ${villaUnit}${villaBlock}` : 'Estate Premises';
+
+          const hostName = log.residentId?.name || log.residentId?.username || 'Host Resident';
+          const vehiclePlate = log.snapshot?.vehicleNumber || log.passId?.vehicleDetails?.number || '';
+          const passType = log.passId?.passType || log.entryType || 'VISITOR';
+          const inTime = log.checkInTime
+            ? new Date(log.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : 'Recently';
+
+          const subtitle = `📍 ${villaText} • Host: ${hostName}\n⏰ In: ${inTime}${vehiclePlate ? ` • 🚗 ${vehiclePlate}` : ''} • ${passType}`;
+
           return (
             <ListCard
               title={log.snapshot?.visitorName || log.visitorName || 'Visitor'}
-              subtitle={`Checked in: ${
-                log.checkInTime
-                  ? new Date(log.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  : 'Recently'
-              }${log.snapshot?.vehicleNumber ? ` • Vehicle: ${log.snapshot.vehicleNumber}` : ''}`}
+              subtitle={subtitle}
               leftIcon="ShieldCheck"
               leftIconBgColor="bg-status-success/15"
               status={{ label: 'INSIDE', variant: 'success' }}

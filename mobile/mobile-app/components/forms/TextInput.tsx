@@ -1,5 +1,5 @@
-import React, { forwardRef } from 'react';
-import { TextInput as RNTextInput, TextInputProps as RNTextInputProps, View, Text } from 'react-native';
+import React, { forwardRef, isValidElement } from 'react';
+import { TextInput as RNTextInput, TextInputProps as RNTextInputProps, View, Text, TouchableOpacity } from 'react-native';
 import { cn } from '../../lib/utils';
 import { LucideIcon } from 'lucide-react-native';
 
@@ -7,8 +7,8 @@ export interface TextInputProps extends RNTextInputProps {
   label?: string;
   required?: boolean;
   error?: string;
-  leftIcon?: LucideIcon;
-  rightIcon?: LucideIcon;
+  leftIcon?: LucideIcon | React.ReactNode;
+  rightIcon?: LucideIcon | React.ReactNode;
   onRightIconPress?: () => void;
   containerClassName?: string;
   labelClassName?: string;
@@ -21,8 +21,8 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
     {
       label,
       error,
-      leftIcon: LeftIcon,
-      rightIcon: RightIcon,
+      leftIcon,
+      rightIcon,
       onRightIconPress,
       containerClassName,
       labelClassName,
@@ -33,6 +33,21 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
     },
     ref
   ) => {
+    const renderIcon = (icon: any, isLeft: boolean) => {
+      if (!icon) return null;
+      if (isValidElement(icon)) {
+        return <View className={isLeft ? 'me-2.5 mt-0.5' : 'ms-2 mt-0.5'}>{icon}</View>;
+      }
+      const IconComponent = icon;
+      return (
+        <IconComponent
+          size={18}
+          className={cn(isLeft ? 'me-2.5' : 'ms-2', 'text-muted-foreground mt-0.5')}
+          onPress={!isLeft ? onRightIconPress : undefined}
+        />
+      );
+    };
+
     return (
       <View className={cn('w-full', containerClassName)}>
         {Boolean(label) && (
@@ -48,7 +63,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
             className
           )}
         >
-          {LeftIcon && <LeftIcon size={18} className="me-2.5 text-muted-foreground mt-0.5" />}
+          {renderIcon(leftIcon, true)}
           <RNTextInput
             ref={ref}
             className={cn(
@@ -59,12 +74,14 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
             placeholderTextColor="#737c88"
             {...props}
           />
-          {RightIcon && (
-            <RightIcon
-              size={18}
-              className="ms-2 text-muted-foreground mt-0.5"
-              onPress={onRightIconPress}
-            />
+          {rightIcon && (
+            onRightIconPress && isValidElement(rightIcon) ? (
+              <TouchableOpacity onPress={onRightIconPress} activeOpacity={0.7}>
+                {renderIcon(rightIcon, false)}
+              </TouchableOpacity>
+            ) : (
+              renderIcon(rightIcon, false)
+            )
           )}
         </View>
         {Boolean(error) && (

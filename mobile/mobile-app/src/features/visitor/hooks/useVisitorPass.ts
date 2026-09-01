@@ -14,6 +14,9 @@ import {
   fetchDashboardSummary,
   fetchPendingWalkIns,
   resolveWalkInRequest,
+  fetchActiveVisitorsThunk,
+  processPreApprovedThunk,
+  checkoutVisitorThunk,
   VisitorPass,
 } from '../store/visitorPassSlice';
 
