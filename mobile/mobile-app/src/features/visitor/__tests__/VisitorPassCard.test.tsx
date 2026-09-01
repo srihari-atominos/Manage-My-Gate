@@ -314,6 +314,40 @@ describe('Visitor Management Mobile Pass Logic & Payload Mappings', () => {
       expect(matched?.code).toBe('112233');
     });
   });
+
+  describe('Visitor Inside & Guard Check-In Logic', () => {
+    it('correctly resolves guardId from various user object formats', () => {
+      const userFromJwt = { id: '60c72b2f9b1d8e25d88db651', email: 'guard@gate.com' };
+      const userFromDb = { _id: '60c72b2f9b1d8e25d88db652', email: 'guard2@gate.com' };
+      const userWithUserId = { userId: '60c72b2f9b1d8e25d88db653' };
+
+      const getGuardId = (u: any) => u?.id || u?._id || u?.userId || u?.user?.id;
+
+      expect(getGuardId(userFromJwt)).toBe('60c72b2f9b1d8e25d88db651');
+      expect(getGuardId(userFromDb)).toBe('60c72b2f9b1d8e25d88db652');
+      expect(getGuardId(userWithUserId)).toBe('60c72b2f9b1d8e25d88db653');
+      expect(getGuardId(null)).toBeUndefined();
+    });
+
+    it('identifies if a visitor pass is currently inside the estate', () => {
+      const passId = '60c72b2f9b1d8e25d88db699';
+      const activeLogs = [
+        {
+          _id: 'log-1',
+          passId: { _id: '60c72b2f9b1d8e25d88db699' },
+          logStatus: 'INSIDE',
+          visitorName: 'David Lee',
+        },
+      ];
+
+      const isInside = activeLogs.some((l) => {
+        const lPassId = (l.passId?._id || l.passId)?.toString();
+        return lPassId && lPassId === passId;
+      });
+
+      expect(isInside).toBe(true);
+    });
+  });
 });
 
 

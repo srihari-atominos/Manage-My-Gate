@@ -32,11 +32,14 @@ export default function GateConsoleScreen() {
   const {
     passes,
     activePass,
+    activeVisitors,
     fetchPassDetails,
     walkIns,
     loadPendingWalkIns,
     submitWalkIn,
     fetchActiveVisitors,
+    processPreApproved,
+    checkoutVisitor,
   } = useVisitorPass();
 
   const [passCode, setPassCode] = useState('');
@@ -53,23 +56,15 @@ export default function GateConsoleScreen() {
   const [activeTab, setActiveTab] = useState<'CONSOLE' | 'WALK_INS' | 'INSIDE' | 'DIRECTORY'>('CONSOLE');
   const [walkInLoading, setWalkInLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [insideCount, setInsideCount] = useState<number>(0);
-
-  const fetchGateMetrics = useCallback(async () => {
-    if (!activeOrgId) return;
-    try {
-      const activeList = await fetchActiveVisitors(activeOrgId);
-      setInsideCount(Array.isArray(activeList) ? activeList.length : 0);
-    } catch {
-      // Handled silently
-    }
-  }, [activeOrgId, fetchActiveVisitors]);
 
   const loadData = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([loadPendingWalkIns(), fetchGateMetrics()]);
+    await Promise.all([
+      loadPendingWalkIns(),
+      fetchActiveVisitors(activeOrgId),
+    ]);
     setRefreshing(false);
-  }, [loadPendingWalkIns, fetchGateMetrics]);
+  }, [loadPendingWalkIns, fetchActiveVisitors, activeOrgId]);
 
   useEffect(() => {
     loadData();
@@ -139,19 +134,16 @@ export default function GateConsoleScreen() {
       let matchedLogId: string | null = null;
 
       try {
-        if (activeOrgId) {
-          const insideList = await visitorService.getActiveVisitors(activeOrgId);
-          const rawLogs = insideList && (insideList as any).success !== undefined ? insideList : (insideList as any)?.data;
-          const logs = Array.isArray(rawLogs?.data || rawLogs) ? rawLogs?.data || rawLogs : [];
-          const foundInside = logs.find((l: any) => {
-            const lPassId = (l.passId?._id || l.passId)?.toString();
-            const targetId = (passData._id || passData.id)?.toString();
-            return lPassId && targetId && lPassId === targetId;
-          });
-          if (foundInside) {
-            isCurrentlyInside = true;
-            matchedLogId = foundInside._id || foundInside.id;
-          }
+        const currentActiveList = activeVisitors && activeVisitors.length > 0 ? activeVisitors : await fetchActiveVisitors(activeOrgId);
+        const logs = Array.isArray(currentActiveList) ? currentActiveList : [];
+        const foundInside = logs.find((l: any) => {
+          const lPassId = (l.passId?._id || l.passId)?.toString();
+          const targetId = (passData._id || passData.id)?.toString();
+          return lPassId && targetId && lPassId === targetId;
+        });
+        if (foundInside) {
+          isCurrentlyInside = true;
+          matchedLogId = foundInside._id || foundInside.id;
         }
       } catch {}
 
@@ -225,12 +217,19 @@ export default function GateConsoleScreen() {
       return;
     }
 
+    const guardId =
+      authUser?.id ||
+      authUser?._id ||
+      authUser?.userId ||
+      authUser?.user?.id ||
+      authUser?.user?._id;
+
     setAdmitLoading(true);
     try {
-      await visitorService.processPreApproved({
+      await processPreApproved({
         passId: scanResult.metadata?.passId,
         code: scanResult.metadata?.code || scanResult.bookingReference,
-        guardId: authUser?.id || authUser?._id,
+        ...(guardId ? { guardId } : {}),
         orgId: activeOrgId,
         entryGate: 'Main Security Gate',
       });
@@ -254,7 +253,7 @@ export default function GateConsoleScreen() {
 
     setAdmitLoading(true);
     try {
-      await visitorService.checkoutVisitor(activeLogId);
+      await checkoutVisitor(activeLogId);
       setScanResultSheetOpen(false);
       setPassCode('');
       setStatusMessage(`Visitor ${scanResult?.visitorName || ''} checked out successfully!`);
@@ -313,7 +312,7 @@ export default function GateConsoleScreen() {
             cards={[
               {
                 title: 'Inside Now',
-                value: String(insideCount),
+                value: String(activeVisitors?.length || 0),
                 subtitle: 'Active Visitors',
                 iconName: 'Users',
                 variant: 'success',

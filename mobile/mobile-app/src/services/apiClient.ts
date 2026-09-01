@@ -154,6 +154,30 @@ apiClient.interceptors.request.use(
       if (activeOrgId && activeOrgId !== '[object Object]') {
         config.headers['x-organization-id'] = activeOrgId;
       }
+
+      let rawUserId =
+        state?.auth?.user?.id ||
+        state?.auth?.user?._id ||
+        state?.auth?.user?.userId;
+
+      if (!rawUserId) {
+        const userStr = await storage.getItem('user');
+        if (userStr) {
+          try {
+            const parsedUser = JSON.parse(userStr);
+            rawUserId = parsedUser?.id || parsedUser?._id || parsedUser?.userId;
+          } catch (e) {}
+        }
+      }
+
+      if (!rawUserId && token) {
+        const jwtData = decodeJwtPayload(token);
+        rawUserId = jwtData?.id || jwtData?._id || jwtData?.userId || jwtData?.sub;
+      }
+
+      if (rawUserId && typeof rawUserId === 'string' && rawUserId !== '[object Object]') {
+        config.headers['X-User-ID'] = rawUserId;
+      }
     } catch (err) {
       console.error('Failed to inject headers in mobile request interceptor:', err);
     }

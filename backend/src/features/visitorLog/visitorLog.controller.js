@@ -1,4 +1,5 @@
 import visitorLogService from './visitorLog.service.js';
+import visitorPassTokenService from '../visitorPassToken/visitorPassToken.service.js';
 
 export class VisitorLogController {
   /**
@@ -10,7 +11,7 @@ export class VisitorLogController {
       if (!passId && code) {
         passId = await visitorPassTokenService.getPassIdByCode(code);
       }
-      guardId = guardId || req.user?.id || req.user?._id;
+      guardId = guardId || req.user?.id || req.user?._id || req.headers['x-user-id'];
       const data = await visitorLogService.logPreApprovedEntry(passId, guardId);
       res.success(data, 'Pre-approved visitor check-in logged successfully', 201);
     } catch (error) {
@@ -23,7 +24,7 @@ export class VisitorLogController {
    */
   async initiateWalkIn(req, res, next) {
     try {
-      const guardId = req.body.guardId || req.user?.id || req.user?._id;
+      const guardId = req.body.guardId || req.user?.id || req.user?._id || req.headers['x-user-id'];
       let residentId = req.body.residentId;
       if (residentId && !/^[0-9a-fA-F]{24}$/.test(residentId)) {
         residentId = undefined;
@@ -71,7 +72,7 @@ export class VisitorLogController {
    */
   async getInside(req, res, next) {
     try {
-      const { orgId } = req.params;
+      const orgId = req.params.orgId || req.user?.orgId || req.user?.organizationId;
       const data = await visitorLogService.getActiveLogsInside(orgId);
       res.success(data, 'Active logs retrieved successfully');
     } catch (error) {

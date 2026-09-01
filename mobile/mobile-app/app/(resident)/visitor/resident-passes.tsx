@@ -21,11 +21,13 @@ export default function ResidentPassesScreen() {
   const {
     passes,
     activePass,
+    activeVisitors,
     walkIns,
     pagination,
     status,
     actionStatus,
     fetchPasses,
+    fetchActiveVisitors,
     loadPendingWalkIns,
     revokePass,
     selectPass,
@@ -41,7 +43,8 @@ export default function ResidentPassesScreen() {
   const fetchFilteredPasses = useCallback((page: number = 1, append: boolean = false) => {
     const statuses = activeStatusFilter === 'ALL' ? 'PENDING,ACTIVE,REVOKED,EXPIRED' : activeStatusFilter;
     fetchPasses({ page, append, statuses });
-  }, [fetchPasses, activeStatusFilter]);
+    fetchActiveVisitors();
+  }, [fetchPasses, fetchActiveVisitors, activeStatusFilter]);
 
   // Initial fetch on screen load
   useEffect(() => {
@@ -152,20 +155,28 @@ export default function ResidentPassesScreen() {
         emptyTitle="No Visitor Passes Found"
         emptySubtitle="Create a visitor pass to pre-approve guests and send QR invites."
         contentContainerClassName="px-4 pt-3 pb-28"
-        renderItem={(pass) => (
-          <VisitorPassCard
-            key={pass._id}
-            pass={pass}
-            onPress={(p) => {
-              selectPass(p);
-              setDetailsModalOpen(true);
-            }}
-            onShowQR={(p) => {
-              selectPass(p);
-              setDetailsModalOpen(true);
-            }}
-          />
-        )}
+        renderItem={(pass) => {
+          const isInside = activeVisitors?.some((l) => {
+            const lPassId = (l.passId?._id || l.passId)?.toString();
+            return lPassId && (lPassId === pass._id || lPassId === (pass as any).id);
+          });
+
+          return (
+            <VisitorPassCard
+              key={pass._id}
+              pass={pass}
+              isInside={isInside}
+              onPress={(p) => {
+                selectPass(p);
+                setDetailsModalOpen(true);
+              }}
+              onShowQR={(p) => {
+                selectPass(p);
+                setDetailsModalOpen(true);
+              }}
+            />
+          );
+        }}
       />
 
       {/* Floating Action Button for Resident View */}

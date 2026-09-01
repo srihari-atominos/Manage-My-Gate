@@ -12,9 +12,11 @@ interface VisitorPassCardProps {
   onPress: (pass: VisitorPass) => void;
   onShowQR: (pass: VisitorPass) => void;
   villaBadge?: string;
+  isInside?: boolean;
 }
 
-const mapPassStatusVariant = (status: string): StatusVariant => {
+const mapPassStatusVariant = (status: string, isInside?: boolean): StatusVariant => {
+  if (isInside) return 'success';
   switch (status) {
     case 'ACTIVE':
       return 'success';
@@ -34,6 +36,7 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
   onPress,
   onShowQR,
   villaBadge,
+  isInside,
 }) => {
   const displayVilla = villaBadge || (pass as any).villaName || (pass as any).villaNumber || (pass as any).villaId?.name || (pass as any).villaId?.number;
 
@@ -45,6 +48,9 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
 
   const subtitle = subtitleParts.join(' • ');
 
+  const badgeLabel = isInside ? 'INSIDE' : pass.status;
+  const badgeVariant = mapPassStatusVariant(pass.status, isInside);
+
   return (
     <ListCard
       title={pass.visitorName || 'Guest Visitor'}
@@ -53,8 +59,8 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
       leftIconBgColor="rgba(23, 43, 112, 0.12)"
       leftIconColor="#172B70"
       status={{
-        label: pass.status,
-        variant: mapPassStatusVariant(pass.status),
+        label: badgeLabel,
+        variant: badgeVariant,
       }}
       onPress={() => onPress(pass)}
       rightContent={
