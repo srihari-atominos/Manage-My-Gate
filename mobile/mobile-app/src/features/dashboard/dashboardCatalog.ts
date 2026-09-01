@@ -16,9 +16,8 @@ export interface AppFeatureItem {
 
 export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
   // Visitor & Gate Security (Circle Badge Shape - 'rounded-full')
-  { id: 'visitor_resident_passes', name: 'Resident Passes', subtitle: 'Digital Verified Pass', iconName: 'BadgeCheck', colorBg: 'bg-[#E0EEFF]', colorIcon: '#245FA8', iconShapeClass: 'rounded-full', route: '/(resident)/visitor', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
+  { id: 'visitor_passes', name: 'Visitor Passes', subtitle: 'Digital Verified Pass', iconName: 'TicketCheck', colorBg: 'bg-[#E0EEFF]', colorIcon: '#245FA8', iconShapeClass: 'rounded-full', route: '/(resident)/visitor/resident-passes', permission: 'visitor:resident', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
   { id: 'visitor_admin_dashboard', name: 'Admin Console', subtitle: 'Visitor Monitoring', iconName: 'ContactRound', colorBg: 'bg-[#E0EEFF]', colorIcon: '#245FA8', iconShapeClass: 'rounded-full', route: '/(resident)/visitor/admin', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
-  { id: 'visitor_community_passes', name: 'Community Passes', subtitle: 'Pass Registry', iconName: 'TicketCheck', colorBg: 'bg-[#E0EEFF]', colorIcon: '#245FA8', iconShapeClass: 'rounded-full', route: '/(resident)/visitor/admin/community-passes', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
   { id: 'visitor_blacklist', name: 'Visitor Blacklist', subtitle: 'Restricted Registry', iconName: 'ShieldX', colorBg: 'bg-[#FCEBF4]', colorIcon: '#A51B73', iconShapeClass: 'rounded-full', route: '/(resident)/visitor/admin/blacklist', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
   { id: 'visitor_admin_logs', name: 'Admin Gate Logs', subtitle: 'Security Activity', iconName: 'History', colorBg: 'bg-[#E0EEFF]', colorIcon: '#245FA8', iconShapeClass: 'rounded-full', route: '/(resident)/visitor/admin-logs', permission: 'visitor:admin', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
   { id: 'visitor_gate_console', name: 'Gate Console', subtitle: 'Access Control', iconName: 'DoorOpen', colorBg: 'bg-[#E6F8F0]', colorIcon: '#16A34A', iconShapeClass: 'rounded-full', route: '/(resident)/visitor/gate-console', permission: 'visitor:guard', categoryKey: 'visitor_management', categoryName: 'Visitor & Gate Security' },
@@ -69,7 +68,7 @@ export const ALL_AVAILABLE_FEATURES: AppFeatureItem[] = [
 export const REAL_APP_FEATURES = ALL_AVAILABLE_FEATURES;
 
 export const DEFAULT_5_QUICK_ACTIONS = [
-  'visitor_resident_passes',
+  'visitor_passes',
   'billing_dashboard',
   'complaints_track_requests',
   'amenities_discover',

@@ -1,23 +1,43 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSelector } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { FAB } from '@/components/ui/FAB';
 import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
+import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
+import { selectAuthUser } from '@/src/features/auth/store/authSelectors';
 import { VisitorPass } from '@/src/features/visitor/store/visitorPassSlice';
 import { VisitorPassCard } from '@/src/features/visitor/components/VisitorPassCard';
 import { VisitorPassDetailsModal } from '@/src/features/visitor/components/VisitorPassDetailsModal';
 import { VisitorInvitationTypeSheet } from '@/src/features/visitor/components/shared/VisitorInvitationTypeSheet';
+import { AdminVillaFilterSheet } from '@/src/features/visitor/components/admin/AdminVillaFilterSheet';
 import { PassTypeKey } from '@/src/features/visitor/mocks/visitorMocks';
-import { ShieldAlert } from 'lucide-react-native';
+import { ShieldAlert, Home, Building2, ChevronDown } from 'lucide-react-native';
 
 export default function ResidentPassesScreen() {
   const router = useRouter();
+  const authUser = useSelector(selectAuthUser);
+
+  const rawRole = (
+    authUser?.role?.name ||
+    authUser?.role ||
+    authUser?.user?.role ||
+    authUser?.userRole ||
+    'RESIDENT'
+  ).toString().toUpperCase();
+
+  const isAdmin =
+    rawRole.includes('ADMIN') ||
+    rawRole.includes('MANAGER') ||
+    rawRole.includes('SUPER');
+
   const {
     passes,
     activePass,
@@ -33,6 +53,19 @@ export default function ResidentPassesScreen() {
     selectPass,
   } = useVisitorPass();
 
+  const {
+    communityPasses,
+    pagination: adminPagination,
+    status: adminStatus,
+    loadCommunityPasses,
+    forceRevoke,
+  } = useAdminVisitor();
+
+  const [adminViewScope, setAdminViewScope] = useState<'ALL' | 'COMMUNITY'>('ALL');
+  const [selectedVillaId, setSelectedVillaId] = useState<string | undefined>(undefined);
+  const [selectedVillaName, setSelectedVillaName] = useState<string>('All Villas');
+  const [villaSheetOpen, setVillaSheetOpen] = useState(false);
+
   const [search, setSearch] = useState('');
   const [activeStatusFilter, setActiveStatusFilter] = useState<string>('ALL');
   const [inviteSheetOpen, setInviteSheetOpen] = useState(false);
@@ -41,10 +74,25 @@ export default function ResidentPassesScreen() {
   const [selectedPassToRevoke, setSelectedPassToRevoke] = useState<VisitorPass | null>(null);
 
   const fetchFilteredPasses = useCallback((page: number = 1, append: boolean = false) => {
-    const statuses = activeStatusFilter === 'ALL' ? 'PENDING,ACTIVE,REVOKED,EXPIRED' : activeStatusFilter;
-    fetchPasses({ page, append, statuses });
+    const status = activeStatusFilter === 'ALL' ? undefined : activeStatusFilter;
+    if (isAdmin) {
+      loadCommunityPasses({
+        page,
+        append,
+        search,
+        villaId: selectedVillaId,
+        status,
+        scope: adminViewScope === 'COMMUNITY' ? 'COMMUNITY' : 'ALL',
+      });
+    } else {
+      fetchPasses({
+        page,
+        append,
+        statuses: activeStatusFilter === 'ALL' ? 'PENDING,ACTIVE,REVOKED,EXPIRED' : activeStatusFilter,
+      });
+    }
     fetchActiveVisitors();
-  }, [fetchPasses, fetchActiveVisitors, activeStatusFilter]);
+  }, [isAdmin, adminViewScope, loadCommunityPasses, fetchPasses, fetchActiveVisitors, activeStatusFilter, search, selectedVillaId]);
 
   // Initial fetch on screen load
   useEffect(() => {
@@ -58,13 +106,17 @@ export default function ResidentPassesScreen() {
   }, [fetchFilteredPasses, loadPendingWalkIns]);
 
   const handleLoadMore = useCallback(() => {
-    if (pagination.currentPage < pagination.totalPages) {
-      fetchFilteredPasses(pagination.currentPage + 1, true);
+    const currentPagination = isAdmin ? adminPagination : pagination;
+    if (currentPagination.currentPage < currentPagination.totalPages) {
+      fetchFilteredPasses(currentPagination.currentPage + 1, true);
     }
-  }, [pagination, fetchFilteredPasses]);
+  }, [isAdmin, adminPagination, pagination, fetchFilteredPasses]);
 
-  // Filtered passes list
-  const filteredPasses = useMemo(() => {
+  // Active pass dataset
+  const currentPassesList = useMemo(() => {
+    if (isAdmin) {
+      return communityPasses;
+    }
     return passes.filter((pass: VisitorPass) => {
       const matchesSearch =
         search.trim() === '' ||
@@ -73,10 +125,9 @@ export default function ResidentPassesScreen() {
         (pass.code && pass.code.toLowerCase().includes(search.toLowerCase()));
 
       const matchesStatus = activeStatusFilter === 'ALL' || pass.status === activeStatusFilter;
-
       return matchesSearch && matchesStatus;
     });
-  }, [passes, search, activeStatusFilter]);
+  }, [isAdmin, communityPasses, passes, search, activeStatusFilter]);
 
   const handleSelectType = (type: PassTypeKey) => {
     setInviteSheetOpen(false);
@@ -85,7 +136,11 @@ export default function ResidentPassesScreen() {
 
   const handleConfirmRevoke = async () => {
     if (selectedPassToRevoke) {
-      await revokePass(selectedPassToRevoke._id);
+      if (isAdmin) {
+        await forceRevoke(selectedPassToRevoke._id, 'Admin Force Revocation');
+      } else {
+        await revokePass(selectedPassToRevoke._id);
+      }
       setSelectedPassToRevoke(null);
       setRevokeConfirmOpen(false);
       fetchFilteredPasses(1, false);
@@ -96,6 +151,77 @@ export default function ResidentPassesScreen() {
 
   const renderHeader = () => (
     <View className="gap-3 mb-3">
+      {/* Admin Scope Switcher */}
+      {isAdmin && (
+        <View className="p-1 bg-muted/60 rounded-2xl flex-row gap-1">
+          <TouchableOpacity
+            onPress={() => {
+              setAdminViewScope('ALL');
+              setSelectedVillaId(undefined);
+              setSelectedVillaName('All Villas');
+            }}
+            activeOpacity={0.8}
+            className={`flex-1 flex-row items-center justify-center py-2.5 px-3 rounded-xl gap-1.5 ${
+              adminViewScope === 'ALL' ? 'bg-card shadow-xs' : 'bg-transparent'
+            }`}
+          >
+            <Home
+              size={15}
+              className={adminViewScope === 'ALL' ? 'text-primary' : 'text-muted-foreground'}
+            />
+            <Text
+              className={`text-xs font-bold ${
+                adminViewScope === 'ALL' ? 'text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              All Estate Passes
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => {
+              setAdminViewScope('COMMUNITY');
+              setSelectedVillaId(undefined);
+              setSelectedVillaName('Community Areas');
+            }}
+            activeOpacity={0.8}
+            className={`flex-1 flex-row items-center justify-center py-2.5 px-3 rounded-xl gap-1.5 ${
+              adminViewScope === 'COMMUNITY' ? 'bg-card shadow-xs' : 'bg-transparent'
+            }`}
+          >
+            <Building2
+              size={15}
+              className={adminViewScope === 'COMMUNITY' ? 'text-primary' : 'text-muted-foreground'}
+            />
+            <Text
+              className={`text-xs font-bold ${
+                adminViewScope === 'COMMUNITY' ? 'text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              Community Only
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Admin Villa Filter Trigger in All Estate Mode */}
+      {isAdmin && adminViewScope === 'ALL' && (
+        <Button
+          variant="outline"
+          size="sm"
+          onPress={() => setVillaSheetOpen(true)}
+          className="flex-row items-center justify-between border-primary/30 bg-primary/5 h-9 px-3.5 rounded-xl"
+        >
+          <View className="flex-row items-center gap-2">
+            <Home size={14} className="text-primary" />
+            <Text className="text-xs font-semibold text-foreground">
+              Filter: {selectedVillaName}
+            </Text>
+          </View>
+          <ChevronDown size={14} className="text-primary" />
+        </Button>
+      )}
+
       {/* Pending Walk-In Approval Alert Banner */}
       {pendingWalkInCount > 0 ? (
         <TouchableOpacity
@@ -121,7 +247,7 @@ export default function ResidentPassesScreen() {
       <SearchFilterBar
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search by visitor name or code..."
+        searchPlaceholder="Search visitor name, phone or code..."
         sortOptions={[
           { label: 'All', value: 'ALL' },
           { label: 'Active', value: 'ACTIVE' },
@@ -137,17 +263,24 @@ export default function ResidentPassesScreen() {
     </View>
   );
 
+  const activeLoading = (isAdmin && adminViewScope === 'COMMUNITY' ? adminStatus : status) === 'loading';
+  const activePaginationData = isAdmin && adminViewScope === 'COMMUNITY' ? adminPagination : pagination;
+
   return (
     <ScreenShell
-      title="Resident Visitor Passes"
-      subtitle="Manage guest entry & QR invitations"
-      iconName="UserCheck"
+      title="Visitor Passes"
+      subtitle={
+        isAdmin && adminViewScope === 'COMMUNITY'
+          ? 'All-estate pass registry & security oversight'
+          : 'Manage guest invitations & QR passes'
+      }
+      iconName="TicketCheck"
     >
       {/* Paginated List of Passes with ListHeaderComponent */}
       <PaginatedList<VisitorPass>
-        data={filteredPasses}
-        pagination={pagination}
-        loading={status === 'loading'}
+        data={currentPassesList}
+        pagination={activePaginationData}
+        loading={activeLoading}
         onRefresh={handleRefresh}
         onLoadMore={handleLoadMore}
         ListHeaderComponent={renderHeader()}
@@ -156,7 +289,7 @@ export default function ResidentPassesScreen() {
         emptySubtitle="Create a visitor pass to pre-approve guests and send QR invites."
         contentContainerClassName="px-4 pt-3 pb-28"
         renderItem={(pass) => {
-          const isInside = activeVisitors?.some((l) => {
+          const isInside = activeVisitors?.some((l: any) => {
             const lPassId = (l.passId?._id || l.passId)?.toString();
             return lPassId && (lPassId === pass._id || lPassId === (pass as any).id);
           });
@@ -218,6 +351,20 @@ export default function ResidentPassesScreen() {
         }}
         loading={actionStatus === 'loading'}
       />
+
+      {/* Admin Villa Filter Sheet */}
+      {isAdmin && (
+        <AdminVillaFilterSheet
+          visible={villaSheetOpen}
+          onClose={() => setVillaSheetOpen(false)}
+          selectedVillaId={selectedVillaId}
+          onSelectVilla={(villaId, villaName) => {
+            setSelectedVillaId(villaId);
+            setSelectedVillaName(villaName || 'All Villas');
+            setVillaSheetOpen(false);
+          }}
+        />
+      )}
     </ScreenShell>
   );
 }

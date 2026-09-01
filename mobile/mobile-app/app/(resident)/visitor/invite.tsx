@@ -19,8 +19,21 @@ export default function InviteVisitorScreen() {
       ? (routeParams.type.toUpperCase() as PassTypeKey)
       : 'GUEST';
 
+  const rawRole = (
+    authUser?.role?.name ||
+    authUser?.role ||
+    authUser?.user?.role ||
+    authUser?.userRole ||
+    'RESIDENT'
+  ).toString().toUpperCase();
+
+  const isAdmin =
+    rawRole.includes('ADMIN') ||
+    rawRole.includes('MANAGER') ||
+    rawRole.includes('SUPER');
+
   const roleContext = {
-    role: 'RESIDENT' as const,
+    role: (isAdmin ? 'ADMIN' : 'RESIDENT') as 'ADMIN' | 'RESIDENT',
     orgId: activeOrgId,
     createdById: authUser?.id || authUser?._id,
   };

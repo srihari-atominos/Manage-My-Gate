@@ -6,7 +6,7 @@ import dashboardService, {
 import storage from '../../utils/storage';
 
 export const DEFAULT_QUICK_ACTIONS = [
-  'visitor_resident_passes',
+  'visitor_passes',
   'billing_dashboard',
   'complaints_track_requests',
   'amenities_discover',

@@ -16,7 +16,8 @@ import FeatureIcon from '@/components/ui/FeatureIcon';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import CustomiseSheetModal, { ALL_AVAILABLE_FEATURES } from '@/components/dashboard/CustomiseSheetModal';
+import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
+import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
 
 export default function AllFeaturesScreen() {
   const router = useRouter();
@@ -97,7 +98,26 @@ export default function AllFeaturesScreen() {
 
   // RBAC Permission Check Helper
   const userPermissions: string[] = user?.permissions || [];
-  const userRoleName = user?.role || (user as any)?.activeRole || (Array.isArray((user as any)?.roles) ? (typeof (user as any).roles[0] === 'string' ? (user as any).roles[0] : (user as any).roles[0]?.name) : '');
+  const userRoleName = (
+    (typeof (user as any)?.role === 'object' ? (user as any)?.role?.name : (user as any)?.role) ||
+    (user as any)?.activeRole ||
+    (Array.isArray((user as any)?.roles)
+      ? typeof (user as any).roles[0] === 'string'
+        ? (user as any).roles[0]
+        : (user as any).roles[0]?.name
+      : '') ||
+    ''
+  ).toString();
+
+  const isAdminRole = Boolean(
+    userPermissions.includes('visitor:admin') ||
+    userPermissions.includes('platform:super_admin') ||
+    userRoleName.toLowerCase().includes('admin') ||
+    userRoleName.toLowerCase().includes('manager') ||
+    userRoleName.toLowerCase().includes('super') ||
+    user?.isPlatform === true
+  );
+
   const isSuperAdmin = Boolean(
     !user ||
     !userPermissions ||
@@ -111,6 +131,13 @@ export default function AllFeaturesScreen() {
     userRoleName === 'Resident' ||
     user?.isPlatform === true
   );
+
+  const filteredAvailableFeatures = React.useMemo(() => {
+    if (!isAdminRole) return allFeaturesList;
+    return allFeaturesList.filter(
+      (item) => item.id !== 'visitor_resident_passes' && item.id !== 'visitor_passes'
+    );
+  }, [allFeaturesList, isAdminRole]);
 
   const activeCategory = featureCatalog?.find(cat => cat.categoryKey === selectedCategoryKey);
 
@@ -241,6 +268,14 @@ export default function AllFeaturesScreen() {
                     return false;
                   }
 
+                  // Hide resident personal passes for Admin roles
+                  if (
+                    isAdminRole &&
+                    (item.id === 'visitor_resident_passes' || item.id === 'visitor_passes')
+                  ) {
+                    return false;
+                  }
+
                   if (item.permission && !isSuperAdmin) {
                     return userPermissions.includes(item.permission);
                   }
@@ -316,7 +351,7 @@ export default function AllFeaturesScreen() {
         visible={customiseOpen}
         onClose={() => setCustomiseOpen(false)}
         activeFeatureIds={activeQuickActions}
-        availableFeatures={allFeaturesList}
+        availableFeatures={filteredAvailableFeatures}
         onSave={handleSaveCustomisation}
       />
     </ScreenShell>

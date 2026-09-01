@@ -38,10 +38,14 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
   villaBadge,
   isInside,
 }) => {
-  const displayVilla = villaBadge || (pass as any).villaName || (pass as any).villaNumber || (pass as any).villaId?.name || (pass as any).villaId?.number;
+  const vObj = (pass as any).villaId;
+  const unitNum = vObj?.unitNumber || vObj?.villaNumber || (pass as any).villaNumber || (pass as any).villaName;
+  const block = vObj?.blockOrBuilding || vObj?.block ? ` (${vObj.blockOrBuilding || vObj.block})` : '';
+  const resolvedVilla = unitNum ? `Villa ${unitNum}${block}` : ((pass as any).passType === 'ADMIN_GUEST' || !vObj ? 'Community / Common Area' : '');
+  const displayVilla = villaBadge || resolvedVilla;
 
   const subtitleParts = [];
-  if (displayVilla) subtitleParts.push(`Villa: ${displayVilla}`);
+  if (displayVilla) subtitleParts.push(displayVilla);
   if (pass.phone) subtitleParts.push(`Ph: ${pass.phone}`);
   else if (pass.purpose) subtitleParts.push(`For: ${pass.purpose}`);
   else subtitleParts.push(`Code: ${pass.code || pass._id.slice(-6)}`);

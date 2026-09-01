@@ -10,7 +10,6 @@ import { SectionHeader } from '@/components/common/SectionHeader';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { FAB } from '@/components/ui/FAB';
 import { Button } from '@/components/ui/button';
-import { VisitorAnalyticsCard } from '@/src/features/visitor/components/admin/VisitorAnalyticsCard';
 import { VisitorPassCard } from '@/src/features/visitor/components/VisitorPassCard';
 import { VisitorLogDetailsModal } from '@/src/features/visitor/components/history/VisitorLogDetailsModal';
 import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
@@ -149,9 +148,6 @@ export default function AdminVisitorDashboardScreen() {
         contentContainerClassName="p-4 gap-4 pb-28"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
-        {/* Analytics Card */}
-        <VisitorAnalyticsCard analytics={analytics} />
-
         {/* Universal Admin KPIs 2x2 Grid */}
         <KPIDashboardStrip cards={adminKpis} />
 
@@ -196,10 +192,10 @@ export default function AdminVisitorDashboardScreen() {
         onClose={() => setSelectedPass(null)}
       />
 
-      {/* Primary Action: Create Admin Pass FAB */}
+      {/* Primary Action: Create Pass FAB */}
       <FAB
         iconName="UserPlus"
-        label="Admin Pass"
+        label="Create Pass"
         onPress={() => router.push('/(resident)/visitor/admin/create-pass' as any)}
       />
     </ScreenShell>

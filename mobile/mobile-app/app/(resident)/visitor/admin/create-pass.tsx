@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
@@ -8,10 +8,12 @@ import { VisitorPassWizard } from '@/src/features/visitor/components/wizard/Visi
 import { AdminVillaFilterSheet } from '@/src/features/visitor/components/admin/AdminVillaFilterSheet';
 import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
 import { selectActiveOrgId, selectAuthUser } from '@/src/features/auth/store/authSelectors';
+import { PassTypeKey } from '@/src/features/visitor/mocks/visitorMocks';
 import { Building2, Filter } from 'lucide-react-native';
 
 export default function AdminCreatePassScreen() {
   const router = useRouter();
+  const routeParams = useLocalSearchParams<{ type?: string }>();
   const authUser = useSelector(selectAuthUser);
   const activeOrgId = useSelector(selectActiveOrgId);
   const { createAdminPass } = useAdminVisitor();
@@ -19,6 +21,11 @@ export default function AdminCreatePassScreen() {
   const [targetVillaId, setTargetVillaId] = useState<string | undefined>(undefined);
   const [targetVillaName, setTargetVillaName] = useState<string>('Community Common Area');
   const [villaSheetOpen, setVillaSheetOpen] = useState(false);
+
+  const initialType: PassTypeKey =
+    routeParams.type && ['GUEST', 'GROUP', 'CAB', 'DELIVERY', 'SERVICE'].includes(routeParams.type.toUpperCase())
+      ? (routeParams.type.toUpperCase() as PassTypeKey)
+      : 'GUEST';
 
   const roleContext = {
     role: 'ADMIN' as const,
@@ -31,7 +38,7 @@ export default function AdminCreatePassScreen() {
     <ScreenShell title="Admin Pass Creation" subtitle="Issue visitor pass on behalf of villa or community event">
       <View className="flex-1 bg-background">
         <VisitorPassWizard
-          initialType="GUEST"
+          initialType={initialType}
           roleContext={roleContext}
           onSubmitPass={async (payload) => {
             return await createAdminPass(payload);
