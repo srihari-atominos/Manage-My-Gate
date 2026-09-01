@@ -54,32 +54,117 @@ export class VisitorPassRepository {
   }
 
   /**
-   * Paginated aggregation to retrieve passes in an organization by their statuses.
+   * Paginated aggregation to retrieve passes in an organization with multi-filtering and deep lookups.
    * @param {string} orgId - The organization ID.
-   * @param {number} [skip=0] - Number of items to skip.
-   * @param {number} [limit=10] - Number of items to return.
-   * @param {string[]} [statuses=['PENDING', 'ACTIVE']] - Array of statuses to match.
+   * @param {Object} [options={}] - Query options (skip, limit, statuses, search, villaId, scope).
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<{ data: Object[], totalRecords: number }>} Paginated list of passes and total count.
    */
-  async findActivePassesByOrg(orgId, skip = 0, limit = 10, statuses = ['PENDING', 'ACTIVE'], session = null) {
+  async findActivePassesByOrg(orgId, options = {}, session = null) {
+    const opts =
+      typeof options === 'object' && !Array.isArray(options)
+        ? options
+        : {
+            skip: arguments[1] || 0,
+            limit: arguments[2] || 10,
+            statuses: arguments[3] || ['PENDING', 'ACTIVE', 'REVOKED', 'EXPIRED'],
+          };
+
+    const {
+      skip = 0,
+      limit = 10,
+      statuses = ['PENDING', 'ACTIVE', 'REVOKED', 'EXPIRED'],
+      search,
+      villaId,
+      scope,
+    } = opts;
+
     const matchStage = {
       orgId: new mongoose.Types.ObjectId(orgId),
-      status: { $in: statuses }
     };
+
+    if (statuses && statuses.length > 0) {
+      matchStage.status = { $in: statuses };
+    }
+
+    if (scope === 'COMMUNITY') {
+      matchStage.$or = [
+        { villaId: { $exists: false } },
+        { villaId: null },
+        { passType: 'ADMIN_GUEST' },
+      ];
+    } else if (villaId && mongoose.Types.ObjectId.isValid(villaId)) {
+      matchStage.villaId = new mongoose.Types.ObjectId(villaId);
+    }
+
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      const searchOr = [
+        { 'visitorDetails.name': searchRegex },
+        { 'visitorDetails.phone': searchRegex },
+        { 'vehicleDetails.number': searchRegex },
+        { purpose: searchRegex },
+      ];
+      if (matchStage.$or) {
+        matchStage.$and = [{ $or: matchStage.$or }, { $or: searchOr }];
+        delete matchStage.$or;
+      } else {
+        matchStage.$or = searchOr;
+      }
+    }
 
     const pipeline = [
       { $match: matchStage },
       { $sort: { createdAt: -1 } },
       {
+        $lookup: {
+          from: 'villas',
+          localField: 'villaId',
+          foreignField: '_id',
+          as: 'villaId',
+        },
+      },
+      {
+        $unwind: {
+          path: '$villaId',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'createdById',
+          foreignField: '_id',
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+                firstName: 1,
+                lastName: 1,
+                email: 1,
+                phone: 1,
+                role: 1,
+              },
+            },
+          ],
+          as: 'createdById',
+        },
+      },
+      {
+        $unwind: {
+          path: '$createdById',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $facet: {
           metadata: [{ $count: 'totalRecords' }],
           data: [
             { $skip: skip },
-            { $limit: limit }
-          ]
-        }
-      }
+            { $limit: limit },
+          ],
+        },
+      },
     ];
 
     const result = await VisitorPass.aggregate(pipeline).session(session || null);

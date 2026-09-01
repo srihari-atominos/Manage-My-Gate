@@ -103,9 +103,9 @@ export const SearchFilterBar = React.forwardRef<View, SearchFilterBarProps>(
                   key={option.value}
                   onPress={() => onSortChange?.(option.value)}
                   className={cn(
-                    'flex-row items-center px-3 py-1.5 rounded-full border text-xs',
+                    'flex-row items-center px-4 py-2 rounded-full border',
                     isSelected
-                      ? 'bg-primary border-primary'
+                      ? 'bg-primary border-primary shadow-xs'
                       : 'bg-muted/60 border-border active:bg-muted'
                   )}
                   accessibilityRole="button"
@@ -113,8 +113,8 @@ export const SearchFilterBar = React.forwardRef<View, SearchFilterBarProps>(
                 >
                   <Text
                     className={cn(
-                      'text-xs font-medium font-sans',
-                      isSelected ? 'text-primary-foreground' : 'text-muted-foreground'
+                      'text-sm font-semibold font-sans',
+                      isSelected ? 'text-primary-foreground font-bold' : 'text-muted-foreground'
                     )}
                   >
                     {option.label}

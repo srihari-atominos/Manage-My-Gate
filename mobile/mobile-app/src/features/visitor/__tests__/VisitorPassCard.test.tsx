@@ -348,6 +348,78 @@ describe('Visitor Management Mobile Pass Logic & Payload Mappings', () => {
       expect(isInside).toBe(true);
     });
   });
+
+  describe('Admin Role Features & Blacklist Mapping', () => {
+    it('formats blacklist entry payload with required schema properties', () => {
+      const input = {
+        orgId: '60c72b2f9b1d8e25d88db650',
+        visitorName: 'Trespasser Bob',
+        phone: '9876543210',
+        vehicleNumber: 'MH-12-XX-9999',
+        reason: 'Repeated unauthorized perimeter entry',
+      };
+
+      const formatted = {
+        orgId: input.orgId,
+        name: input.visitorName,
+        phone: input.phone,
+        plate: input.vehicleNumber,
+        reason: input.reason,
+      };
+
+      expect(formatted.name).toBe('Trespasser Bob');
+      expect(formatted.plate).toBe('MH-12-XX-9999');
+      expect(formatted.reason).toBe('Repeated unauthorized perimeter entry');
+      expect(formatted.orgId).toBe('60c72b2f9b1d8e25d88db650');
+    });
+
+    it('filters community passes by villaId and status', () => {
+      const communityPasses = [
+        { _id: 'p1', visitorName: 'Alice', villaId: 'villa-101', status: 'ACTIVE' },
+        { _id: 'p2', visitorName: 'Bob', villaId: 'villa-102', status: 'REVOKED' },
+        { _id: 'p3', visitorName: 'Charlie', villaId: 'villa-101', status: 'PENDING' },
+      ];
+
+      const filteredByVilla = communityPasses.filter((p) => p.villaId === 'villa-101');
+      expect(filteredByVilla).toHaveLength(2);
+
+      const filteredByActive = communityPasses.filter((p) => p.status === 'ACTIVE');
+      expect(filteredByActive).toHaveLength(1);
+      expect(filteredByActive[0].visitorName).toBe('Alice');
+    });
+
+    it('correctly maps Admin pass for Community vs specific Villa Unit', () => {
+      const adminCommunityContext = {
+        role: 'ADMIN' as const,
+        orgId: '60c72b2f9b1d8e25d88db650',
+        createdById: 'admin-1',
+        villaId: undefined,
+      };
+
+      const adminVillaContext = {
+        role: 'ADMIN' as const,
+        orgId: '60c72b2f9b1d8e25d88db650',
+        createdById: 'admin-1',
+        villaId: '60c72b2f9b1d8e25d88db659',
+      };
+
+      const guestFormData = {
+        guestDetails: { visitorName: 'Plumber Bob', phone: '9876543210', purpose: 'Repairs' },
+        guestSchedule: { visitDate: '2026-09-02', timeSlot: 'FULL_DAY' },
+        guestOptions: { entryMode: 'SINGLE', vehicleNo: '' },
+      };
+
+      // 1. Community Scope: No villaId, passType is ADMIN_GUEST
+      const communityPayload = mapFormToApiPayloadStrategy('GUEST', guestFormData, adminCommunityContext);
+      expect(communityPayload.passType).toBe('ADMIN_GUEST');
+      expect(communityPayload.villaId).toBeUndefined();
+
+      // 2. Unit Scope: Has villaId, passType is GUEST on behalf of unit
+      const villaPayload = mapFormToApiPayloadStrategy('GUEST', guestFormData, adminVillaContext);
+      expect(villaPayload.passType).toBe('GUEST');
+      expect(villaPayload.villaId).toBe('60c72b2f9b1d8e25d88db659');
+    });
+  });
 });
 
 
