@@ -61,8 +61,8 @@ export class AuthController {
 
   async acceptInvite(req, res, next) {
     try {
-      const { token, password } = req.body;
-      const data = await authService.acceptInvitation(token, password);
+      const { token, password, email } = req.body;
+      const data = await authService.acceptInvitation(token, password, email);
       
       if (data && data.token) {
         setAuthCookie(res, data.token);
@@ -287,6 +287,16 @@ export class AuthController {
       const { email } = req.query;
       const data = await authService.checkAccountStatus(email);
       res.success(data, 'Account status fetched successfully.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async validateInvite(req, res, next) {
+    try {
+      const { token } = req.query;
+      const data = await authService.validateInvite(token);
+      res.success(data, 'Invitation token is valid.');
     } catch (error) {
       next(error);
     }

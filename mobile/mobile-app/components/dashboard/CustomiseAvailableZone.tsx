@@ -4,6 +4,7 @@ import { Text } from '@/components/ui/text';
 import { Check, Plus } from 'lucide-react-native';
 import FeatureIcon from '@/components/ui/FeatureIcon';
 import { ALL_AVAILABLE_FEATURES, AppFeatureItem } from '@/src/features/dashboard/dashboardCatalog';
+import { useTranslation } from '@/src/utils/i18n';
 
 export type AvailableFeatureCardItem = AppFeatureItem;
 
@@ -18,16 +19,19 @@ export const CustomiseAvailableZone: React.FC<CustomiseAvailableZoneProps> = ({
   selectedIds,
   onToggleSelect,
 }) => {
-  // Group features by categoryName
+  const { t, tCategoryName, tFeatureName } = useTranslation();
+
+  // Group features by categoryKey/categoryName
   const groupedCategories = useMemo(() => {
-    const map = new Map<string, { categoryName: string; items: AvailableFeatureCardItem[] }>();
+    const map = new Map<string, { categoryKey?: string; categoryName: string; items: AvailableFeatureCardItem[] }>();
 
     features.forEach((feature) => {
+      const catKey = feature.categoryKey || 'other';
       const catName = feature.categoryName || 'Other Actions';
-      if (!map.has(catName)) {
-        map.set(catName, { categoryName: catName, items: [] });
+      if (!map.has(catKey)) {
+        map.set(catKey, { categoryKey: feature.categoryKey, categoryName: catName, items: [] });
       }
-      map.get(catName)!.items.push(feature);
+      map.get(catKey)!.items.push(feature);
     });
 
     return Array.from(map.values());
@@ -36,14 +40,14 @@ export const CustomiseAvailableZone: React.FC<CustomiseAvailableZoneProps> = ({
   return (
     <View className="p-3.5 gap-4">
       {groupedCategories.map((group) => (
-        <View key={group.categoryName} className="gap-2">
+        <View key={group.categoryKey || group.categoryName} className="gap-2">
           {/* Category Sub-header */}
           <View className="flex-row items-center justify-between pb-1 border-b border-border/60">
             <Text className="text-xs font-extrabold text-foreground tracking-wide">
-              {group.categoryName}
+              {tCategoryName(group.categoryKey, group.categoryName)}
             </Text>
             <Text className="text-[10px] font-semibold text-muted-foreground">
-              {group.items.filter((i) => selectedIds.includes(i.id)).length}/{group.items.length} Enabled
+              {group.items.filter((i) => selectedIds.includes(i.id)).length}/{group.items.length} {t('enabled', 'Enabled')}
             </Text>
           </View>
 
@@ -75,7 +79,7 @@ export const CustomiseAvailableZone: React.FC<CustomiseAvailableZoneProps> = ({
                         className="text-[11px] font-medium font-sans text-foreground text-center leading-tight w-full"
                         numberOfLines={2}
                       >
-                        {meta?.name || feature.name}
+                        {tFeatureName(feature.id, meta?.name || feature.name)}
                       </Text>
                     </View>
 
@@ -83,12 +87,12 @@ export const CustomiseAvailableZone: React.FC<CustomiseAvailableZoneProps> = ({
                       {isSelected ? (
                         <View className="bg-primary px-2.5 py-0.5 rounded-full flex-row items-center gap-1">
                           <Check size={10} color="#fff" />
-                          <Text className="text-[9px] font-bold font-sans text-primary-foreground">Added</Text>
+                          <Text className="text-[9px] font-bold font-sans text-primary-foreground">{t('added', 'Added')}</Text>
                         </View>
                       ) : (
                         <View className="bg-secondary px-2.5 py-0.5 rounded-full flex-row items-center gap-1 border border-border/70">
                           <Plus size={10} className="text-muted-foreground" />
-                          <Text className="text-[9px] font-medium font-sans text-muted-foreground">Add</Text>
+                          <Text className="text-[9px] font-medium font-sans text-muted-foreground">{t('add', 'Add')}</Text>
                         </View>
                       )}
                     </View>

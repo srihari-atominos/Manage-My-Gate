@@ -247,7 +247,9 @@ class WalletService {
   }
 
   async createRechargeOrder(userId, amount) {
-    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'dummy_key' || process.env.RAZORPAY_KEY_ID === 'test_key';
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const isRealKey = keyId && (keyId.startsWith('rzp_test_') || keyId.startsWith('rzp_live_'));
+    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !isRealKey;
 
     if (isMock) {
       logger.info('Creating Mock Razorpay Recharge Order', { userId, amount });
@@ -255,29 +257,42 @@ class WalletService {
         id: `order_mock_${Math.random().toString(36).substring(2, 15)}`,
         amount: amount * 100, // Razorpay works in paise
         currency: "INR",
-        status: "created"
+        status: "created",
+        key: keyId || 'rzp_test_mockkey',
+        isMock: true
       };
     }
 
+    const instance = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET
+    });
+
     const options = {
-      amount: amount * 100, // Razorpay works in paise
+      amount: Math.round(amount * 100), // Razorpay works in paise
       currency: "INR",
       receipt: `rcpt_${userId}_${Date.now()}`.substring(0, 40)
     };
 
     try {
-      const order = await razorpay.orders.create(options);
-      return order;
+      const order = await instance.orders.create(options);
+      return {
+        ...order,
+        key: process.env.RAZORPAY_KEY_ID,
+        isMock: false
+      };
     } catch (error) {
       logger.error('Failed to create Razorpay order', error);
-      throw new HttpError(500, 'Failed to create Razorpay order');
+      throw new HttpError(500, `Failed to create Razorpay order: ${error.message}`);
     }
   }
 
   async verifyPaymentSignature(userId, orgId, paymentData) {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = paymentData;
 
-    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'dummy_key' || process.env.RAZORPAY_KEY_ID === 'test_key';
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const isRealKey = keyId && (keyId.startsWith('rzp_test_') || keyId.startsWith('rzp_live_'));
+    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !isRealKey || razorpay_order_id?.startsWith('order_mock_');
 
     if (isMock) {
       logger.info('Verifying Mock Razorpay Signature', { userId, orgId, paymentData });
@@ -310,7 +325,7 @@ class WalletService {
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'dummy_secret')
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
       .update(body.toString())
       .digest('hex');
 

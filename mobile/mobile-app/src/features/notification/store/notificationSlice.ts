@@ -4,6 +4,7 @@ import notificationService, { NotificationItemData, GetNotificationsResponse } f
 export interface NotificationState {
   items: NotificationItemData[];
   unreadCount: number;
+  latestNotification: NotificationItemData | null;
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -16,6 +17,7 @@ export interface NotificationState {
 const initialState: NotificationState = {
   items: [],
   unreadCount: 0,
+  latestNotification: null,
   pagination: {
     currentPage: 1,
     totalPages: 1,
@@ -91,6 +93,11 @@ export const notificationSlice = createSlice({
         state.unreadCount += 1;
         state.pagination.totalRecords += 1;
       }
+      // Set latest real-time notification to trigger screen banner/toast
+      state.latestNotification = action.payload;
+    },
+    clearLatestNotification: (state) => {
+      state.latestNotification = null;
     },
     clearNotificationError: (state) => {
       state.error = null;
@@ -168,5 +175,5 @@ export const notificationSlice = createSlice({
   },
 });
 
-export const { addRealTimeNotification, clearNotificationError } = notificationSlice.actions;
+export const { addRealTimeNotification, clearLatestNotification, clearNotificationError } = notificationSlice.actions;
 export default notificationSlice.reducer;

@@ -6,45 +6,53 @@ import nodemailer from 'nodemailer';
 
 authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
   if (type === 'EMAIL') {
+    // Log OTP explicitly for developer/admin visibility
+    logger.info(`[AUTH OTP DELIVERED] Identifier: ${identifier} | Verification OTP Code: ${code}`);
+
     try {
-      // 1. Prioritize Gmail SMTP if configured
-      const smtpIntegration = await IntegrationHub.findOne({ provider: 'smtp', status: 'connected' });
-      
-      if (smtpIntegration) {
-        const getCred = (key) => {
-          const cred = smtpIntegration.credentials.find((c) => c.key === key);
-          return cred ? decrypt(cred.encryptedValue, cred.iv) : null;
-        };
+      // 1. Check IntegrationHub SMTP integrations (prefer latest updated connected SMTP)
+      const smtpIntegrations = await IntegrationHub.find({ provider: 'smtp', status: 'connected' })
+        .sort({ updatedAt: -1, createdAt: -1 });
 
-        const host = getCred('host');
-        const port = getCred('port');
-        const authUsername = getCred('authUsername');
-        const authPassword = getCred('authPassword');
+      for (const smtpIntegration of smtpIntegrations) {
+        try {
+          const getCred = (key) => {
+            const cred = smtpIntegration.credentials.find((c) => c.key === key);
+            return cred ? decrypt(cred.encryptedValue, cred.iv) : null;
+          };
 
-        if (host && port && authUsername && authPassword) {
-          const transporter = nodemailer.createTransport({
-            host,
-            port: parseInt(port, 10),
-            secure: parseInt(port, 10) === 465,
-            auth: {
-              user: authUsername,
-              pass: authPassword,
-            },
-          });
+          const host = getCred('host');
+          const port = getCred('port');
+          const authUsername = getCred('authUsername');
+          const authPassword = getCred('authPassword');
 
-          await transporter.sendMail({
-            from: `"${smtpIntegration.accountLabel}" <${authUsername}>`,
-            to: identifier,
-            subject: 'Your One-Time Password (OTP)',
-            html: `<h3>Your Verification Code</h3><p>Your code is: <strong>${code}</strong></p><p>This code will expire in 5 minutes.</p>`,
-          });
+          if (host && port && authUsername && authPassword) {
+            const transporter = nodemailer.createTransport({
+              host,
+              port: parseInt(port, 10),
+              secure: parseInt(port, 10) === 465,
+              auth: {
+                user: authUsername,
+                pass: authPassword,
+              },
+            });
 
-          logger.info(`OTP email sent to ${identifier} via Gmail SMTP`);
-          return;
+            await transporter.sendMail({
+              from: `"${smtpIntegration.accountLabel || 'Manage My Gate'}" <${authUsername}>`,
+              to: identifier,
+              subject: 'Your One-Time Password (OTP)',
+              html: `<h3>Your Verification Code</h3><p>Your code is: <strong>${code}</strong></p><p>This code will expire in 15 minutes.</p>`,
+            });
+
+            logger.info(`OTP email sent successfully to ${identifier} via IntegrationHub SMTP (${host} - ${authUsername})`);
+            return;
+          }
+        } catch (smtpErr) {
+          logger.warn(`Failed sending email via IntegrationHub SMTP (${smtpIntegration._id}): ${smtpErr.message}. Trying next provider...`);
         }
       }
 
-      // 2. Fallback to Resend API
+      // 2. Check Resend API integration
       const resendIntegration = await IntegrationHub.findOne({ provider: 'resend', status: 'connected' });
       
       if (resendIntegration) {
@@ -62,7 +70,7 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
               from: 'ManageMyGate <onboarding@resend.dev>',
               to: [identifier],
               subject: 'Your One-Time Password (OTP)',
-              html: `<h3>Your Verification Code</h3><p>Your code is: <strong>${code}</strong></p><p>This code will expire in 5 minutes.</p>`,
+              html: `<h3>Your Verification Code</h3><p>Your code is: <strong>${code}</strong></p><p>This code will expire in 15 minutes.</p>`,
             }),
           });
 
@@ -76,9 +84,25 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
         }
       }
 
-      logger.warn(`No active email provider (Resend/SMTP) found. OTP email to ${identifier} was not sent.`);
+      // 3. Fallback to global environment SMTP via email.utils.js
+      const { getSmtpTransporter } = await import('../../utils/email.utils.js');
+      const smtpObj = await getSmtpTransporter();
+      if (smtpObj) {
+        const { transporter, from } = smtpObj;
+        await transporter.sendMail({
+          from,
+          to: identifier,
+          subject: 'Your One-Time Password (OTP)',
+          html: `<h3>Your Verification Code</h3><p>Your code is: <strong>${code}</strong></p><p>This code will expire in 15 minutes.</p>`,
+        });
+        logger.info(`OTP email sent to ${identifier} via Environment SMTP`);
+        return;
+      }
+
+      logger.warn(`No active SMTP/Resend provider configured. Email not sent. [DEV OTP CODE: ${code}]`);
     } catch (error) {
       logger.error(`Failed to send OTP email to ${identifier}:`, error);
+      logger.info(`[FALLBACK DEV OTP] Code for ${identifier}: ${code}`);
     }
   } else if (type === 'SMS') {
     try {

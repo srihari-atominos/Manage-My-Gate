@@ -13,6 +13,10 @@ import {
 import { useSelector } from 'react-redux';
 import { RootState } from '@/src/store/store';
 
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser, getDefaultQuickActionsForUser } from '@/src/utils/rbac';
+import { useTranslation } from '@/src/utils/i18n';
+
 interface QuickActionsGridProps {
   activeFeatureIds?: string[];
   equippedFeatures?: FeatureItem[];
@@ -22,12 +26,15 @@ interface QuickActionsGridProps {
 }
 
 export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
-  activeFeatureIds = DEFAULT_5_QUICK_ACTIONS,
+  activeFeatureIds,
   equippedFeatures: propEquippedFeatures,
   onOpenCustomise,
   onOpenViewMore,
   onTilePress,
 }) => {
+  const { user } = useAuth();
+  const { t, tFeatureName, tFeatureSubtitle } = useTranslation();
+
   // Redux Selectors for Real-Time App-Wide Feature Badges
   const visitorPassState = useSelector((state: RootState) => (state as any).visitorPass);
   const billingState = useSelector((state: RootState) => (state as any).billing);
@@ -76,23 +83,32 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
     }
   };
 
-  // Exactly 5 customizable feature items for slots 1 through 5
+  // Exactly 5 customizable feature items for slots 1 through 5 (filtered by user role & permissions)
   const displayFeatures = React.useMemo(() => {
     if (propEquippedFeatures && propEquippedFeatures.length > 0) {
-      return propEquippedFeatures.slice(0, 5);
+      const allowed = propEquippedFeatures.filter((item) => isFeatureAllowedForUser(item, user));
+      if (allowed.length > 0) return allowed.slice(0, 5);
     }
-    const ids = (activeFeatureIds && activeFeatureIds.length > 0 ? activeFeatureIds : DEFAULT_5_QUICK_ACTIONS).slice(0, 5);
-    return ids
+    const defaultIds = getDefaultQuickActionsForUser(user);
+    const ids = (activeFeatureIds && activeFeatureIds.length > 0 ? activeFeatureIds : defaultIds).slice(0, 5);
+    const items = ids
       .map((id) => ALL_AVAILABLE_FEATURES.find((item) => item.id === id))
-      .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] => Boolean(item));
-  }, [propEquippedFeatures, activeFeatureIds]);
+      .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] => Boolean(item) && isFeatureAllowedForUser(item!, user));
+
+    if (items.length > 0) return items.slice(0, 5);
+
+    return defaultIds
+      .map((id) => ALL_AVAILABLE_FEATURES.find((item) => item.id === id))
+      .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] => Boolean(item) && isFeatureAllowedForUser(item!, user))
+      .slice(0, 5);
+  }, [propEquippedFeatures, activeFeatureIds, user]);
 
   return (
     <View className="gap-3 my-3">
       {/* Section Header with View all & Customise Buttons */}
       <View className="flex-row items-center justify-between px-1">
         <Text className="text-[17px] font-bold font-sans text-foreground tracking-tight">
-          Quick Actions
+          {t('quick_actions', 'Quick Actions')}
         </Text>
 
         <View className="flex-row items-center gap-2">
@@ -101,7 +117,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
             activeOpacity={0.7}
             className="flex-row items-center gap-1 bg-[#245FA8]/10 border border-[#245FA8]/30 px-2.5 py-1 rounded-full shadow-xs"
           >
-            <Text className="text-[11px] font-bold font-sans text-[#245FA8]">View all</Text>
+            <Text className="text-[11px] font-bold font-sans text-[#245FA8]">{t('view_all', 'View all')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -110,7 +126,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
             className="flex-row items-center gap-1 bg-secondary border border-border/80 px-2.5 py-1 rounded-full shadow-xs"
           >
             <SlidersHorizontal size={11} className="text-muted-foreground" />
-            <Text className="text-[11px] font-bold font-sans text-foreground">Customise</Text>
+            <Text className="text-[11px] font-bold font-sans text-foreground">{t('customise', 'Customise')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -132,9 +148,9 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
               iconBgColor={colorBg}
               iconShapeClass={iconShapeClass}
               icon={<FeatureIcon iconName={iconName} color={colorIcon} size={22} />}
-              label={meta?.name || tile.name}
-              subtitle={meta?.subtitle || tile.subtitle}
-              metaValue={meta?.subtitle || tile.subtitle}
+              label={tFeatureName(tile.id, meta?.name || tile.name)}
+              subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
+              metaValue={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
               badge={getFeatureBadge(tile.id) ?? tile.badge}
               badgeColor={tile.badgeColor}
               onPress={() => onTilePress && onTilePress(tile.id)}
@@ -148,9 +164,9 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           iconBgColor="bg-[#EBF2FC]"
           iconShapeClass="rounded-full"
           icon={<LayoutGrid size={22} color="#245FA8" />}
-          label="View all"
-          subtitle="All features"
-          metaValue="Explore 25+ modules"
+          label={t('view_all', 'View all')}
+          subtitle={t('all_features', 'All features')}
+          metaValue={t('explore_module', 'Explore Module')}
           onPress={onOpenViewMore}
         />
       </View>

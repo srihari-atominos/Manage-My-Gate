@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { EmptyState } from '@/components/feedback/EmptyState';
+import { useTranslation } from '@/src/utils/i18n';
 
 import { useNoticeBoard } from '../hooks/useNoticeBoard';
 import { useNoticeSocket } from '../hooks/useNoticeSocket';
@@ -20,6 +21,7 @@ import { AlertTriangle } from 'lucide-react-native';
 export default function ActiveBoardScreen() {
   const router = useRouter();
   const { openNoticeId } = useLocalSearchParams();
+  const { t } = useTranslation();
 
   // Real-time socket sync
   useNoticeSocket();
@@ -136,8 +138,8 @@ export default function ActiveBoardScreen() {
   return (
     <ErrorBoundary>
       <ScreenShell 
-        title="Notice Board"
-        subtitle="Community updates & announcements"
+        title={t('notice_board', 'Notice Board')}
+        subtitle={t('official_announcements', 'Community updates & announcements')}
         iconName="Megaphone"
         loading={false}
       >
@@ -174,8 +176,8 @@ export default function ActiveBoardScreen() {
                   limit: pagination.limit || 10,
                 }}
                 emptyIcon="Megaphone"
-              emptyTitle="No Notices Available"
-              emptySubtitle="Check back later for community updates and announcements."
+              emptyTitle={t('no_notices', 'No Notices Available')}
+              emptySubtitle={t('check_back_later', 'Check back later for community updates and announcements.')}
               contentContainerClassName="px-4 pt-3 pb-28"
             />
           )}

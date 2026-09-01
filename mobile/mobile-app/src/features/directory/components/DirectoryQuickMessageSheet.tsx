@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { DirectoryMember } from '../types/directoryTypes';
 import { useDirectoryMessaging } from '../hooks/useDirectoryMessaging';
+import { useTranslation } from '@/src/utils/i18n';
 import { Send, MessageSquare } from 'lucide-react-native';
 
 export interface DirectoryQuickMessageSheetProps {
@@ -21,6 +22,7 @@ export const DirectoryQuickMessageSheet = ({
 }: DirectoryQuickMessageSheetProps) => {
   const { onSendQuickMessage, quickOptions, sending } = useDirectoryMessaging();
   const [customMessage, setCustomMessage] = useState('');
+  const { t } = useTranslation();
 
   if (!member) return null;
 
@@ -40,12 +42,12 @@ export const DirectoryQuickMessageSheet = ({
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      title={`Message ${member.name}`}
+      title={`${t('message_user', 'Message')} ${member.name}`}
     >
       <View className="px-4 pb-6 gap-4">
         {/* Quick Messages Preset Pills */}
         <View className="gap-1.5">
-          <Text className="text-xs font-bold text-foreground">Quick Options</Text>
+          <Text className="text-xs font-bold text-foreground">{t('quick_options', 'Quick Options')}</Text>
           <View className="flex-row flex-wrap gap-2">
             {quickOptions.map((opt) => (
               <TouchableOpacity
@@ -65,7 +67,7 @@ export const DirectoryQuickMessageSheet = ({
           <Input
             value={customMessage}
             onChangeText={setCustomMessage}
-            placeholder="Type a message..."
+            placeholder={t('type_message', 'Type a message...')}
             className="bg-background border-border text-foreground text-sm p-3 rounded-xl"
           />
           <Button
@@ -77,7 +79,7 @@ export const DirectoryQuickMessageSheet = ({
             leftIcon={Send}
             className="w-full rounded-xl"
           >
-            Send Message
+            {t('send_message', 'Send Message')}
           </Button>
         </View>
       </View>

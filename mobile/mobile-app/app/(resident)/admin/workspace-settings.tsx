@@ -4,8 +4,10 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 import { TabBar } from '@/components/ui/TabBar';
 import { WorkspaceModulesForm } from '@/src/features/workspace/components/WorkspaceModulesForm';
 import { WorkspaceSettingsForm } from '@/src/features/workspace/components/WorkspaceSettingsForm';
+import { useTranslation } from '@/src/utils/i18n';
 
 export default function WorkspaceSettingsScreen() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('modules');
 
   const tabs = [
@@ -14,7 +16,7 @@ export default function WorkspaceSettingsScreen() {
   ];
 
   return (
-    <ScreenShell title="Workspace Settings">
+    <ScreenShell title={t('feature_admin_workspace_settings_name', 'Workspace Settings')}>
       <View className="bg-background pt-2 pb-1">
         <TabBar 
           tabs={tabs} 

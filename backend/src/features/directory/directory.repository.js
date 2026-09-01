@@ -77,12 +77,23 @@ export const directoryRepository = {
         },
       },
 
+      // Group by user._id to deduplicate users with multiple membership/unit records
+      {
+        $group: {
+          _id: '$user._id',
+          user: { $first: '$user' },
+          villa: { $first: '$villa' },
+          role: { $first: '$role' },
+          residentType: { $first: '$residentType' },
+        },
+      },
+
       // Transform fields & Expose User Profile Data for Community Directory
       {
         $project: {
-          _id: '$user._id',
-          id: '$user._id',
-          userId: '$user._id',
+          _id: '$_id',
+          id: '$_id',
+          userId: '$_id',
           name: { $ifNull: ['$user.name', '$user.username'] },
           avatarUrl: '$user.avatar',
           email: '$user.email',

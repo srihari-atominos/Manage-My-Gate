@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, useColorScheme, Modal } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
 
 export interface SocialAuthButtonProps {
-  provider: 'google' | 'apple';
+  provider: 'google' | 'microsoft';
   onPress?: () => void;
   variant?: 'full' | 'compact';
   className?: string;
@@ -30,19 +30,14 @@ export const GoogleIcon: React.FC<{ size?: number }> = ({ size = 20 }) => (
   </Svg>
 );
 
-export const AppleIcon: React.FC<{ size?: number; color?: string }> = ({
-  size = 20,
-  color,
-}) => {
-  const isDark = useColorScheme() === 'dark';
-  const fillColor = color || (isDark ? '#FFFFFF' : '#0F172A');
-
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill={fillColor}>
-      <Path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 0.92-2.87-.93.04-2.02.63-2.67 1.38-.56.65-1.06 1.71-.93 2.74 1.04.08 2.07-.5 2.68-1.25z" />
-    </Svg>
-  );
-};
+export const MicrosoftIcon: React.FC<{ size?: number }> = ({ size = 20 }) => (
+  <Svg width={size} height={size} viewBox="0 0 21 21">
+    <Rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+    <Rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+    <Rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+    <Rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+  </Svg>
+);
 
 export const SocialAuthButton = ({
   provider,
@@ -61,16 +56,16 @@ export const SocialAuthButton = ({
   };
 
   const isGoogle = provider === 'google';
-  const providerName = isGoogle ? 'Google' : 'Apple';
+  const providerName = isGoogle ? 'Google' : 'Microsoft';
 
   return (
     <>
       <TouchableOpacity
         onPress={handlePress}
         activeOpacity={0.82}
-        className={`flex-1 h-12 bg-white dark:bg-[#1E232E] border border-border/90 rounded-2xl flex-row items-center justify-center gap-2.5 shadow-xs active:bg-muted/40 ${className}`}
+        className={`flex-1 h-11 bg-white dark:bg-[#1E232E] border border-border/90 rounded-2xl flex-row items-center justify-center gap-2 shadow-xs active:bg-muted/40 ${className}`}
       >
-        {isGoogle ? <GoogleIcon size={19} /> : <AppleIcon size={19} />}
+        {isGoogle ? <GoogleIcon size={17} /> : <MicrosoftIcon size={17} />}
         <Text className="text-xs font-bold text-slate-800 dark:text-white font-sans">
           {variant === 'full' ? `Sign in with ${providerName}` : providerName}
         </Text>
@@ -87,19 +82,19 @@ export const SocialAuthButton = ({
           <View className="bg-card border border-border/80 rounded-3xl p-6 items-center max-w-xs w-full shadow-2xl gap-3">
             {/* Icon Container */}
             <View className="w-14 h-14 rounded-2xl bg-muted/60 dark:bg-muted/30 items-center justify-center border border-border/80 shadow-xs">
-              {isGoogle ? <GoogleIcon size={28} /> : <AppleIcon size={28} />}
+              {isGoogle ? <GoogleIcon size={28} /> : <MicrosoftIcon size={28} />}
             </View>
 
             {/* Title */}
             <Text className="text-base font-bold text-foreground text-center font-sans">
-              {isGoogle ? 'Google OAuth' : 'Apple Sign-In'}
+              {isGoogle ? 'Google OAuth' : 'Microsoft Sign-In'}
             </Text>
 
             {/* Description */}
             <Text className="text-xs text-muted-foreground text-center leading-relaxed font-sans px-1">
               {isGoogle
                 ? 'Google OAuth is not integrated yet. Please sign in using your Email/Password or Phone OTP.'
-                : 'Apple Sign-In is not integrated yet. Please sign in using your Email/Password or Phone OTP.'}
+                : 'Microsoft Sign-In is not integrated yet. Please sign in using your Email/Password or Phone OTP.'}
             </Text>
 
             {/* Dismiss CTA Button */}

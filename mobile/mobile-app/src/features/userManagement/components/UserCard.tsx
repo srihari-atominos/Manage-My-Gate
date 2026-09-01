@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Shield, Phone, Trash2, Key, Send, Home } from 'lucide-react-native';
 import { ListCard } from '@/components/ui/ListCard';
 import { StatusVariant } from '@/components/ui/StatusBadge';
+import { useTranslation, i18n } from '@/src/utils/i18n';
 import { UserData, AssignedUnit } from '../services/userService';
 
 interface UserCardProps {
@@ -20,19 +21,22 @@ export const UserCard: React.FC<UserCardProps> = ({
   onResendInvite,
   onDeleteUser,
 }) => {
+  const { t } = useTranslation();
   const isSelf = user.id === currentUserId || user._id === currentUserId;
-  const isPending = user.status === 'Pending';
+  const isPending = user.status === 'Pending' || user.status === 'Pending Verification';
+  const displayStatus = isPending ? 'Pending' : user.status || 'Active';
 
   const mapStatusVariant = (status: string): StatusVariant => {
+    if (status === 'Pending' || status === 'Pending Verification') {
+      return 'warning';
+    }
     switch (status) {
       case 'Active':
         return 'success';
-      case 'Pending':
-        return 'warning';
       case 'Inactive':
         return 'danger';
       default:
-        return 'neutral';
+        return 'warning';
     }
   };
 
@@ -56,12 +60,12 @@ export const UserCard: React.FC<UserCardProps> = ({
       title={user.name}
       subtitle={user.email}
       leftAvatarFallback={getInitials(user.name)}
-      status={{ label: user.status || 'Active', variant: mapStatusVariant(user.status) }}
+      status={{ label: displayStatus, variant: mapStatusVariant(user.status) }}
       showChevron={false}
       className="mb-2 p-2.5 bg-card border border-border/70 rounded-xl shadow-xs"
     >
       <View className="mt-0.5">
-        {/* Phone & Role Row (Combined tight row if present) */}
+        {/* Phone & Role Row */}
         <View className="flex-row items-center flex-wrap gap-1 mb-1">
           {user.phone ? (
             <View className="flex-row items-center me-2">
@@ -81,7 +85,7 @@ export const UserCard: React.FC<UserCardProps> = ({
                   className="bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.2 rounded-full"
                 >
                   <Text className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 text-start">
-                    {roleStr}
+                    {i18n.tRole(roleStr)}
                   </Text>
                 </View>
               ))}
@@ -89,7 +93,7 @@ export const UserCard: React.FC<UserCardProps> = ({
           ) : null}
         </View>
 
-        {/* Assigned Villa Units Box (Ultra compact) */}
+        {/* Assigned Villa Units Box */}
         {user.assignedUnits && user.assignedUnits.length > 0 ? (
           <View className="my-1 border-t border-border/40 pt-1">
             {user.assignedUnits.map((unit, idx) => (
@@ -100,11 +104,11 @@ export const UserCard: React.FC<UserCardProps> = ({
                 <View className="flex-row items-center flex-1 me-1">
                   <Home size={10} color="#10b981" className="me-1" />
                   <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 text-start me-1">
-                    Unit {unit.villaNumber} {unit.villaBlock ? `(${unit.villaBlock})` : ''}
+                    {t('unit_label', 'Unit')} {unit.villaNumber} {unit.villaBlock ? `(${unit.villaBlock})` : ''}
                   </Text>
                   {unit.residentType && unit.residentType !== 'None' ? (
                     <Text className="text-[9px] text-muted-foreground text-start">
-                      • {unit.residentType}
+                      • {i18n.tRole(unit.residentType)}
                     </Text>
                   ) : null}
                 </View>
@@ -112,7 +116,7 @@ export const UserCard: React.FC<UserCardProps> = ({
                 {unit.role ? (
                   <View className="bg-background border border-border/60 px-1 py-0.2 rounded">
                     <Text className="text-[9px] font-medium text-foreground text-start">
-                      {unit.role}
+                      {i18n.tRole(unit.role)}
                     </Text>
                   </View>
                 ) : null}
@@ -131,7 +135,7 @@ export const UserCard: React.FC<UserCardProps> = ({
               accessibilityLabel={`Resend invite to ${user.name}`}
             >
               <Send size={10} color="#10b981" className="me-1" />
-              <Text className="text-[10px] font-bold text-emerald-600">Resend</Text>
+              <Text className="text-[10px] font-bold text-emerald-600">{t('role_resend', 'Resend')}</Text>
             </TouchableOpacity>
           ) : null}
 
@@ -148,7 +152,7 @@ export const UserCard: React.FC<UserCardProps> = ({
           >
             <Key size={10} color={isSelf ? '#9ca3af' : '#6366f1'} className="me-1" />
             <Text className={`text-[10px] font-bold ${isSelf ? 'text-muted-foreground' : 'text-primary'}`}>
-              Roles
+              {t('role_manage_roles', 'Roles')}
             </Text>
           </TouchableOpacity>
 
@@ -165,7 +169,7 @@ export const UserCard: React.FC<UserCardProps> = ({
           >
             <Trash2 size={10} color={isSelf ? '#9ca3af' : '#ef4444'} className="me-1" />
             <Text className={`text-[10px] font-bold ${isSelf ? 'text-muted-foreground' : 'text-destructive'}`}>
-              Delete
+              {t('role_delete', 'Delete')}
             </Text>
           </TouchableOpacity>
         </View>

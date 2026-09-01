@@ -273,10 +273,13 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
               </View>
             ) : (
               villa.residents.map((res: any, idx: number) => {
-                const userObj = typeof res.userId === 'object' && res.userId !== null ? res.userId : null;
-                const resId = userObj?._id || res.userId || `res-${idx}`;
-                const resName = userObj?.name || userObj?.login || userObj?.email || `Resident #${idx + 1}`;
-                const resEmail = userObj?.email;
+                const rawUserId = typeof res.userId === 'object' && res.userId !== null ? (res.userId._id || res.userId.id) : res.userId;
+                const userObj = typeof res.userId === 'object' && res.userId !== null 
+                  ? res.userId 
+                  : workspaceUsers.find((u) => String(u._id || u.id) === String(rawUserId));
+
+                const resId = rawUserId || `res-${idx}`;
+                const resEmail = userObj?.email || (typeof res.userId === 'string' && res.userId.includes('@') ? res.userId : null);
                 const isEditing = editingUserId === resId;
 
                 const isPrimary =
@@ -290,10 +293,10 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
                     className="p-3 bg-card border border-border rounded-xl space-y-2 mb-1"
                   >
                     <View className="flex-row items-center justify-between">
-                      <View className="flex-1 me-2">
-                        <View className="flex-row items-center gap-1.5">
+                      <View className="flex-1 me-2 space-y-1">
+                        <View className="flex-row items-center gap-1.5 flex-wrap">
                           <Text className="text-sm font-bold text-foreground" numberOfLines={1}>
-                            {resName}
+                            {resEmail || `Resident #${idx + 1}`}
                           </Text>
                           {isPrimary && (
                             <View className="bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
@@ -301,11 +304,6 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
                             </View>
                           )}
                         </View>
-                        {resEmail && (
-                          <Text variant="muted" className="text-xs" numberOfLines={1}>
-                            {resEmail}
-                          </Text>
-                        )}
                         <Text className="text-xs font-semibold text-muted-foreground">
                           Type: <Text className="text-foreground">{res.residencyType || 'Tenant'}</Text>
                         </Text>

@@ -10,6 +10,9 @@ import { FeatureCategory, FeatureItem } from '../dashboardService';
 import { ALL_AVAILABLE_FEATURES } from '../dashboardCatalog';
 import { useWorkspace } from '../../workspace/hooks/useWorkspace';
 
+import { useAuth } from '../../auth/hooks/useAuth';
+import { isFeatureAllowedForUser, getDefaultQuickActionsForUser } from '../../../utils/rbac';
+
 // Helper to construct built-in feature catalog from local definitions
 const buildFallbackCatalog = (features: any[]): FeatureCategory[] => {
   const map = new Map<string, { key: string; name: string; items: FeatureItem[] }>();
@@ -45,6 +48,7 @@ export const BUILT_IN_FEATURE_CATALOG = buildFallbackCatalog(ALL_AVAILABLE_FEATU
 
 export const useQuickActions = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const { user, isAuthenticated } = useAuth();
 
   const { activeQuickActions, featureCatalog: rawCatalog, loading, updating, error } = useSelector(
     (state: RootState) => state.dashboard
@@ -55,14 +59,18 @@ export const useQuickActions = () => {
   const userPermissions = authUser?.permissions || [];
 
   useEffect(() => {
-    dispatch(fetchQuickActionsThunk());
-    loadWorkspaceModules('current');
-  }, [dispatch, loadWorkspaceModules]);
+    if (isAuthenticated) {
+      dispatch(fetchQuickActionsThunk());
+      loadWorkspaceModules('current');
+    }
+  }, [dispatch, isAuthenticated, loadWorkspaceModules]);
 
   const loadQuickActions = useCallback(() => {
-    dispatch(fetchQuickActionsThunk());
-    loadWorkspaceModules('current');
-  }, [dispatch, loadWorkspaceModules]);
+    if (isAuthenticated) {
+      dispatch(fetchQuickActionsThunk());
+      loadWorkspaceModules('current');
+    }
+  }, [dispatch, isAuthenticated, loadWorkspaceModules]);
 
   const saveQuickActions = useCallback(
     async (selectedIds: string[]) => {
@@ -77,7 +85,7 @@ export const useQuickActions = () => {
   }, [dispatch]);
 
   // Effective feature catalog: uses backend catalog if non-empty, otherwise falls back to built-in catalog,
-  // then filters based on active workspace modules.
+  // then filters based on active workspace modules AND user role / permissions.
   const featureCatalog = useMemo<FeatureCategory[]>(() => {
     let baseCatalog = (rawCatalog && rawCatalog.length > 0) ? rawCatalog : BUILT_IN_FEATURE_CATALOG;
     
@@ -98,17 +106,15 @@ export const useQuickActions = () => {
         'admin_villas': ['administration_security', 'villas'],
         'admin_role_builder': ['administration_security', 'roles'],
         'admin_integrations': ['administration_security', 'integrations'],
-        'admin_organizations': ['administration_security'],
         'admin_audit_logs': ['administration_security']
-        // 'admin_workspace_settings' is intentionally omitted so it never gets hidden
       };
       
       baseCatalog = baseCatalog.map(category => {
         let requiredCategoryModules = categoryToModuleMap[category.categoryKey];
         
-        // Filter items within the category
+        // Filter items within the category by workspace modules
         const filteredItems = category.items.filter(item => {
-          if (item.id === 'admin_workspace_settings') return true; // Never hide workspace settings
+          if (item.id === 'admin_workspace_settings') return true;
           
           // 1. RBAC Filtering
           if (item.permission && userPermissions.length > 0) {
@@ -134,8 +140,12 @@ export const useQuickActions = () => {
       }).filter(category => category.items.length > 0);
     }
     
-    return baseCatalog;
-  }, [rawCatalog, modules, userPermissions]);
+    // RBAC permission filtering per user role & permissions and filter out excluded items
+    return baseCatalog.map(category => ({
+      ...category,
+      items: category.items.filter(item => item.id !== 'admin_organizations' && item.id !== 'admin_audit_logs' && isFeatureAllowedForUser(item, user))
+    })).filter(category => category.items.length > 0);
+  }, [rawCatalog, modules, userPermissions, user]);
 
   // Flattened array of all available items across categories for easy lookup
   const allFeaturesList = useMemo<FeatureItem[]>(() => {
@@ -153,32 +163,31 @@ export const useQuickActions = () => {
       });
       if (list.length > 0) return list;
     }
-    return ALL_AVAILABLE_FEATURES as FeatureItem[];
-  }, [featureCatalog]);
+    return (ALL_AVAILABLE_FEATURES as FeatureItem[]).filter(item => isFeatureAllowedForUser(item, user));
+  }, [featureCatalog, user]);
 
   // Equipped active quick action items (slots 1 through 7)
   const equippedFeatures = useMemo<FeatureItem[]>(() => {
-    if (!activeQuickActions || activeQuickActions.length === 0) {
-      return (ALL_AVAILABLE_FEATURES as FeatureItem[]).slice(0, 4);
-    }
+    const defaultIds = getDefaultQuickActionsForUser(user);
+    const targetIds = (activeQuickActions && activeQuickActions.length > 0) ? activeQuickActions : defaultIds;
+
     const itemMap = new Map<string, FeatureItem>();
-    allFeaturesList.forEach((item) => itemMap.set(item.id, item));
+    (ALL_AVAILABLE_FEATURES as FeatureItem[]).forEach((item) => itemMap.set(item.id, item));
 
-    const result = activeQuickActions
-      .map((id) => itemMap.get(id))
-      .filter((item): item is FeatureItem => Boolean(item))
+    const allowedItems = targetIds
+      .map((id: string) => itemMap.get(id))
+      .filter((item: FeatureItem | undefined): item is FeatureItem => Boolean(item) && isFeatureAllowedForUser(item!, user));
+
+    if (allowedItems.length > 0) {
+      return allowedItems.slice(0, 7);
+    }
+
+    // Fallback to role-appropriate defaults
+    return defaultIds
+      .map((id: string) => itemMap.get(id))
+      .filter((item: FeatureItem | undefined): item is FeatureItem => Boolean(item) && isFeatureAllowedForUser(item!, user))
       .slice(0, 7);
-
-    if (result.length > 0) return result;
-
-    // Direct fallback from ALL_AVAILABLE_FEATURES
-    const fallbackMap = new Map<string, FeatureItem>();
-    (ALL_AVAILABLE_FEATURES as FeatureItem[]).forEach((item) => fallbackMap.set(item.id, item));
-    return activeQuickActions
-      .map((id) => fallbackMap.get(id))
-      .filter((item): item is FeatureItem => Boolean(item))
-      .slice(0, 7);
-  }, [activeQuickActions, allFeaturesList]);
+  }, [activeQuickActions, user]);
 
   return {
     activeQuickActions,

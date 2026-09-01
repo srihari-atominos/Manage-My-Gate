@@ -9,6 +9,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
+import { useTranslation } from '@/src/utils/i18n';
 import {
   Wrench,
   FileText,
@@ -35,6 +36,7 @@ export function ComplaintDashboardScreen() {
   const { complaints, dashboardAnalytics, isLoading, error, fetchComplaints, fetchDashboardAnalytics, createComplaint, clearErrors } = useComplaints();
   const { amenities, fetchAmenities } = useAmenity();
   const maintenanceList = useSelector((state: any) => state.amenities?.maintenanceList || []);
+  const { t } = useTranslation();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showFeedbackSheet, setShowFeedbackSheet] = useState(false);
@@ -159,7 +161,7 @@ export function ComplaintDashboardScreen() {
 
   return (
     <ScreenShell
-      title="Complaints & Maintenance"
+      title={t('complaints_helpdesk', 'Complaints & Maintenance')}
       iconName="Wrench"
       loading={isLoading && !dashboardAnalytics && complaints.length === 0}
       error={error}
@@ -182,7 +184,7 @@ export function ComplaintDashboardScreen() {
             <SearchBar
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search tickets, staff, features, or upkeep..."
+              placeholder={t('search_tickets', 'Search tickets, staff, features, or upkeep...')}
             />
           </View>
 
@@ -190,29 +192,29 @@ export function ComplaintDashboardScreen() {
           <View className="flex-row gap-3 mb-6">
             <View className="flex-1 bg-card p-3 rounded-2xl border border-border shadow-xs">
               <View className="flex-row items-center justify-between mb-1">
-                <Text className="text-[10px] font-bold text-muted-foreground uppercase">REPORTED</Text>
+                <Text className="text-[10px] font-bold text-muted-foreground uppercase">{t('open_tickets', 'REPORTED')}</Text>
                 <FileText size={14} className="text-blue-500" />
               </View>
               <Text className="text-xl font-black text-foreground mb-0.5">{totalReported}</Text>
-              <Text className="text-[10px] font-bold text-blue-600 dark:text-blue-400">Total Tickets</Text>
+              <Text className="text-[10px] font-bold text-blue-600 dark:text-blue-400">{t('total_tickets', 'Total Tickets')}</Text>
             </View>
 
             <View className="flex-1 bg-card p-3 rounded-2xl border border-border shadow-xs">
               <View className="flex-row items-center justify-between mb-1">
-                <Text className="text-[10px] font-bold text-muted-foreground uppercase" numberOfLines={1}>TODAY NEW</Text>
+                <Text className="text-[10px] font-bold text-muted-foreground uppercase" numberOfLines={1}>{t('today_revenue', 'TODAY NEW')}</Text>
                 <Calendar size={14} className="text-amber-500" />
               </View>
               <Text className="text-xl font-black text-foreground mb-0.5">{kpis.today || 0}</Text>
-              <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400" numberOfLines={1}>Submissions</Text>
+              <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400" numberOfLines={1}>{t('submissions', 'Submissions')}</Text>
             </View>
 
             <View className="flex-1 bg-card p-3 rounded-2xl border border-border shadow-xs">
               <View className="flex-row items-center justify-between mb-1">
-                <Text className="text-[10px] font-bold text-muted-foreground uppercase">RESOLVED</Text>
+                <Text className="text-[10px] font-bold text-muted-foreground uppercase">{t('resolved_tickets', 'RESOLVED')}</Text>
                 <CheckCircle2 size={14} className="text-emerald-500" />
               </View>
               <Text className="text-xl font-black text-foreground mb-0.5">{totalResolved}</Text>
-              <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Completed</Text>
+              <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{t('completed', 'Completed')}</Text>
             </View>
           </View>
 

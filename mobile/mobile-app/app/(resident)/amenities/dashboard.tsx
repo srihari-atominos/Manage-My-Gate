@@ -11,6 +11,7 @@ import { CalendarCheck } from 'lucide-react-native';
 import { useAmenityDashboard } from '@/src/features/amenities/hooks/useAmenityDashboard';
 import { MobileQuickNavHub } from '@/src/features/amenities/components/MobileQuickNavHub';
 import { MobileLiveActivityWidget } from '@/src/features/amenities/components/MobileLiveActivityWidget';
+import { useTranslation } from '@/src/utils/i18n';
 
 const parseRevenue = (val: any, fallback: number): number => {
   if (val === undefined || val === null) return fallback;
@@ -31,6 +32,7 @@ const parseRevenue = (val: any, fallback: number): number => {
 export default function AmenityExecutiveDashboardScreen() {
   const router = useRouter();
   const { dashboardStats, loading, error, loadData } = useAmenityDashboard();
+  const { t } = useTranslation();
 
   // Dynamic real-time metrics from backend DTO (/amenity-bookings/stats/dashboard)
   const totalRevenue = parseRevenue(
@@ -58,31 +60,31 @@ export default function AmenityExecutiveDashboardScreen() {
 
   const kpiCards: KPICardProps[] = [
     {
-      title: 'Total Revenue',
+      title: t('total_revenue', 'Total Revenue'),
       value: `₹${totalRevenue.toLocaleString()}`,
-      subtitle: 'Total Earned',
+      subtitle: t('total_earned', 'Total Earned'),
       iconName: 'IndianRupee',
       variant: 'default',
     },
     {
-      title: 'Today Rev.',
+      title: t('today_revenue', 'Today Rev.'),
       value: `₹${todayRevenue.toLocaleString()}`,
-      trend: { direction: 'up', value: '+14% Live' },
+      trend: { direction: 'up', value: `+14% ${t('live', 'Live')}` },
       iconName: 'TrendingUp',
       variant: 'success',
     },
     {
-      title: 'Maintenance',
-      value: `${activeMaintenance} Active`,
-      subtitle: 'Upkeep & Tasks',
+      title: t('under_maintenance', 'Maintenance'),
+      value: `${activeMaintenance} ${t('active', 'Active')}`,
+      subtitle: t('upkeep_tasks', 'Upkeep & Tasks'),
       iconName: 'Wrench',
       variant: 'warning',
       onPress: () => router.push('/(resident)/amenities/maintenance' as any),
     },
     {
-      title: 'Facilities',
-      value: `${totalFacilities} Active`,
-      subtitle: 'Open for booking',
+      title: t('amenities_facilities', 'Facilities'),
+      value: `${totalFacilities} ${t('active', 'Active')}`,
+      subtitle: t('open_for_booking', 'Open for booking'),
       iconName: 'Building2',
       variant: 'info',
       onPress: () => router.push('/(resident)/amenities/admin-master' as any),
@@ -91,8 +93,8 @@ export default function AmenityExecutiveDashboardScreen() {
 
   return (
     <ScreenShell
-      title="Amenities Dashboard"
-      subtitle="Facility bookings, ledger revenue & maintenance"
+      title={t('amenities_facilities', 'Amenities Dashboard')}
+      subtitle={t('feature_amenities_discover_sub', 'Facility bookings, ledger revenue & maintenance')}
       iconName="BarChart3"
       loading={loading && !dashboardStats}
       error={error}
@@ -107,25 +109,25 @@ export default function AmenityExecutiveDashboardScreen() {
           accessibilityLabel="View My Bookings"
         >
           <CalendarCheck size={14} className="text-foreground" />
-          <Text className="text-xs font-semibold text-foreground">My Bookings</Text>
+          <Text className="text-xs font-semibold text-foreground">{t('feature_amenities_my_booking_name', 'My Bookings')}</Text>
         </Button>
       }
     >
       <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 pb-28 gap-4">
-        {/* Universal Top KPI Metrics Strip (Horizontal Carousel for 3 items) */}
+        {/* Universal Top KPI Metrics Strip */}
         <KPIDashboardStrip cards={kpiCards} loading={loading && !dashboardStats} />
 
-        {/* 2. All Features Module 3-Column Grid */}
+        {/* 2. All Features Module Grid */}
         <MobileQuickNavHub />
 
-        {/* 3. Live Gate Access Scanner Log Feed */}
+        {/* 3. Live Gate Access Log Feed */}
         <MobileLiveActivityWidget />
       </ScrollView>
 
       {/* Primary Action: Book Amenity FAB */}
       <FAB
         iconName="Plus"
-        label="Book Amenity"
+        label={t('feature_amenities_discover_name', 'Book Amenity')}
         onPress={() => router.push('/(resident)/amenities/discover' as any)}
       />
     </ScreenShell>

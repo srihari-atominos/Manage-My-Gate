@@ -6,7 +6,6 @@ export default function AdminLayout() {
       <Stack.Screen name="billing" />
       <Stack.Screen name="audit-logs" />
       <Stack.Screen name="integrations" />
-      <Stack.Screen name="organizations" />
       <Stack.Screen name="role-builder" />
       <Stack.Screen name="users" />
       <Stack.Screen name="villas" />

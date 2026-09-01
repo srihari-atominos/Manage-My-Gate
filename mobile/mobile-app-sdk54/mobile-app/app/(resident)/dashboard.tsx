@@ -57,6 +57,25 @@ export default function DashboardScreen() {
     }
   };
 
+  const handleBannerPress = (banner: any) => {
+    switch (banner.id) {
+      case '1':
+        router.push('/(resident)/all-features' as any);
+        break;
+      case '2':
+        router.push('/(resident)/visitor' as any);
+        break;
+      case '3':
+        router.push('/(resident)/amenities/dashboard' as any);
+        break;
+      case '4':
+        router.push('/(resident)/billing' as any);
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <View className="flex-1 bg-background">
       <Stack.Screen options={{ headerShown: false }} />
@@ -71,7 +90,7 @@ export default function DashboardScreen() {
       >
         <View className="gap-2 max-w-md mx-auto w-full">
           {/* Sliding Notice Board Banner Carousel */}
-          <HeroBanner />
+          <HeroBanner onBannerPress={handleBannerPress} />
 
           {/* 4-Column Quick Actions Grid */}
           <QuickActionsGrid

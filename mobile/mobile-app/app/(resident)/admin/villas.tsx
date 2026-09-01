@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { KPICard } from '@/components/ui/KPICard';
@@ -18,8 +18,10 @@ import { BatchGenerateModal } from '@/src/features/villa/components/BatchGenerat
 import { BulkUploadVillasModal } from '@/src/features/villa/components/BulkUploadVillasModal';
 import { Villa } from '@/src/features/villa/store/villaSlice';
 import { VillaPayload, BatchGenerateParams } from '@/src/features/villa/services/villaService';
+import { useTranslation } from '@/src/utils/i18n';
 
 export default function VillaManagementScreen() {
+  const { t } = useTranslation();
   const {
     villas,
     blocks,
@@ -99,15 +101,25 @@ export default function VillaManagementScreen() {
   };
 
   const handleFormSubmit = async (data: VillaPayload) => {
-    if (editingVilla) {
-      await updateUnit(editingVilla._id, data);
-    } else {
-      await createUnit(data);
+    try {
+      if (editingVilla) {
+        await updateUnit(editingVilla._id, data);
+      } else {
+        await createUnit(data);
+      }
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to save unit';
+      Alert.alert('Unit Save Error', msg);
     }
   };
 
   const handleDeleteUnit = async (villa: Villa) => {
-    await deleteUnit(villa._id);
+    try {
+      await deleteUnit(villa._id);
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Cannot delete unit';
+      Alert.alert('Cannot Delete Unit', msg);
+    }
   };
 
   const activeFilterCount = useMemo(() => {
@@ -118,7 +130,7 @@ export default function VillaManagementScreen() {
     return count;
   }, [filters]);
 
-  const availableStatuses = ['Vacant', 'Occupied', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent'];
+  const availableStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
 
   return (
     <ScreenShell
@@ -140,10 +152,10 @@ export default function VillaManagementScreen() {
             showsHorizontalScrollIndicator={false}
           >
             <View className="flex-row items-center gap-2">
-              <KPICard title="TOTAL UNITS" value={stats.total || 0} iconName="Building2" iconColor="#0d9488" />
-              <KPICard title="OCCUPIED" value={stats.occupied || 0} iconName="UserCheck" iconColor="#16a34a" />
-              <KPICard title="VACANT" value={stats.vacant || 0} iconName="DoorOpen" iconColor="#6b7280" />
-              <KPICard title="MAINTENANCE" value={stats.maintenance || 0} iconName="Wrench" iconColor="#eab308" />
+              <KPICard title={t('total_units', 'TOTAL UNITS')} value={stats.total || 0} iconName="Building2" iconColor="#0d9488" />
+              <KPICard title={t('occupied_units', 'OCCUPIED UNITS')} value={stats.occupied || 0} iconName="UserCheck" iconColor="#16a34a" />
+              <KPICard title={t('vacant_units', 'VACANT UNITS')} value={stats.vacant || 0} iconName="DoorOpen" iconColor="#6b7280" />
+              <KPICard title={t('under_maintenance', 'UNDER MAINTENANCE')} value={stats.maintenance || 0} iconName="Wrench" iconColor="#eab308" />
             </View>
           </ScrollView>
         </View>
@@ -160,7 +172,7 @@ export default function VillaManagementScreen() {
                 className="px-3 py-2 rounded-xl bg-muted/80 border border-border flex-row items-center gap-1.5 active:opacity-75"
               >
                 <Icon as={FileSpreadsheet} size={15} className="text-primary" />
-                <Text className="text-xs font-bold text-foreground">Bulk Upload</Text>
+                <Text className="text-xs font-bold text-foreground">{t('bulk_upload', 'Bulk Upload')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -168,7 +180,7 @@ export default function VillaManagementScreen() {
                 className="px-3 py-2 rounded-xl bg-muted/80 border border-border flex-row items-center gap-1.5 active:opacity-75"
               >
                 <Icon as={PlusCircle} size={15} className="text-primary" />
-                <Text className="text-xs font-bold text-foreground">Create Unit</Text>
+                <Text className="text-xs font-bold text-foreground">{t('create_unit', 'Create Unit')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -176,7 +188,7 @@ export default function VillaManagementScreen() {
                 className="px-3 py-2 rounded-xl bg-primary border border-primary flex-row items-center gap-1.5 active:opacity-85 shadow-xs"
               >
                 <Icon as={Zap} size={15} className="text-primary-foreground" />
-                <Text className="text-xs font-bold text-primary-foreground">Batch Generate</Text>
+                <Text className="text-xs font-bold text-primary-foreground">{t('batch_generate', 'Batch Generate')}</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -327,7 +339,12 @@ export default function VillaManagementScreen() {
         visible={batchModalVisible}
         onClose={() => setBatchModalVisible(false)}
         onSubmit={async (batchData: BatchGenerateParams) => {
-          await batchGenerate(batchData);
+          try {
+            await batchGenerate(batchData);
+          } catch (err: any) {
+            const msg = typeof err === 'string' ? err : err?.message || 'Batch generation failed';
+            Alert.alert('Batch Generate Error', msg);
+          }
         }}
         loading={actionLoading}
       />
@@ -337,7 +354,12 @@ export default function VillaManagementScreen() {
         visible={bulkUploadModalVisible}
         onClose={() => setBulkUploadModalVisible(false)}
         onBulkUpload={async (units) => {
-          await bulkUpload(units);
+          try {
+            await bulkUpload(units);
+          } catch (err: any) {
+            const msg = typeof err === 'string' ? err : err?.message || 'Bulk upload failed';
+            Alert.alert('Bulk Upload Error', msg);
+          }
         }}
         onDownloadTemplate={downloadTemplate}
         loading={actionLoading}

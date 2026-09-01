@@ -3,6 +3,7 @@ import { View, Pressable } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { ArrowUpRight, ChevronRight } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useTranslation } from '@/src/utils/i18n';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -44,6 +45,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   containerClassName = 'w-1/3 px-1 py-1',
   showArrow = false,
 }) => {
+  const { t } = useTranslation();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -59,6 +61,8 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   };
 
   const displaySubtitle = metaValue || subtitle;
+  const translatedLabel = t(label, label);
+  const translatedSubtitle = displaySubtitle ? t(displaySubtitle, displaySubtitle) : '';
 
   return (
     <View className={containerClassName}>
@@ -102,16 +106,16 @@ export const ActionTile: React.FC<ActionTileProps> = ({
             numberOfLines={2}
             className="text-[12.5px] font-bold font-sans text-foreground leading-[16px] tracking-tight"
           >
-            {label}
+            {translatedLabel}
           </Text>
 
           <View className="flex-row items-center justify-between mt-1">
-            {displaySubtitle ? (
+            {translatedSubtitle ? (
               <Text
                 numberOfLines={1}
                 className="text-[10px] font-medium font-sans text-muted-foreground leading-[14px] flex-1 mr-1"
               >
-                {displaySubtitle}
+                {translatedSubtitle}
               </Text>
             ) : <View className="flex-1" />}
 

@@ -141,9 +141,9 @@ const userSlice = createSlice({
     toggleRole: (state, action: PayloadAction<string>) => {
       const role = action.payload;
       if (state.selectedRoles.includes(role)) {
-        state.selectedRoles = state.selectedRoles.filter((r) => r !== role);
+        state.selectedRoles = [];
       } else {
-        state.selectedRoles.push(role);
+        state.selectedRoles = [role];
       }
     },
     toggleStatus: (state, action: PayloadAction<string>) => {

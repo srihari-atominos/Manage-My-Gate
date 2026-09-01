@@ -13,13 +13,11 @@ const generateUUID = (): string => {
 import { Platform } from 'react-native';
 
 const getApiBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+  let url = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:5002/api/v1' : 'http://localhost:5002/api/v1');
+  if (Platform.OS === 'android' && url.includes('localhost')) {
+    url = url.replace('localhost', '10.0.2.2');
   }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5002/api/v1';
-  }
-  return 'http://localhost:5002/api/v1';
+  return url;
 };
 
 const apiClient = axios.create({
@@ -27,7 +25,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 8000,
   withCredentials: true,
 });
 

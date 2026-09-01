@@ -70,10 +70,31 @@ export default function GateConsoleScreen() {
     loadData();
   }, [loadData]);
 
+  const extractCodeFromRaw = (raw: string): string => {
+    let text = (raw || '').trim();
+    if (text.startsWith('{') && text.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(text);
+        text = parsed.code || parsed.shortKey || parsed.token || parsed.passId || text;
+      } catch {}
+    }
+    if (text.includes('?')) {
+      const urlParams = text.split('?')[1];
+      const match = urlParams.match(/(?:code|token|passId|id)=([^&]+)/i);
+      if (match && match[1]) {
+        text = match[1];
+      }
+    } else if (text.includes('/')) {
+      const parts = text.split('/');
+      text = parts[parts.length - 1] || text;
+    }
+    return text.replace(/^PASS-?/i, '').replace(/[\s-]/g, '').trim();
+  };
+
   const handleVerifyPass = async (codeToVerify?: string) => {
     const raw = (codeToVerify || passCode).trim();
     if (!raw) return;
-    const cleanCode = raw.replace(/^PASS-?/i, '').replace(/[\s-]/g, '').trim();
+    const cleanCode = extractCodeFromRaw(raw);
     if (!cleanCode) return;
 
     setLoading(true);

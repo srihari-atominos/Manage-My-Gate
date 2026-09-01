@@ -4,13 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Stack, router } from 'expo-router';
 import { Building2, CheckCircle2, XCircle } from 'lucide-react-native';
 import * as React from 'react';
-import { View, ScrollView, ActivityIndicator } from 'react-native';
+import { View, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { sessionStore } from '@/src/utils/storage';
 
 const setupOrgSchema = yup.object().shape({
   name: yup
@@ -22,7 +23,7 @@ const setupOrgSchema = yup.object().shape({
 type SetupOrgFormValues = yup.InferType<typeof setupOrgSchema>;
 
 export default function SetupOrganizationScreen() {
-  const { createWorkspace, checkOrganizationName, loading, error, clearStatus } = useAuth();
+  const { createWorkspace, checkOrganizationName, loading, error, clearStatus, logout, isAuthenticated } = useAuth();
 
   const [checking, setChecking] = React.useState(false);
   const [isAvailable, setIsAvailable] = React.useState<boolean | null>(null);
@@ -182,6 +183,29 @@ export default function SetupOrganizationScreen() {
                 >
                   {loading ? 'Creating Organization...' : 'Create Organization'}
                 </Button>
+
+                {/* Already Have Account */}
+                <View className="flex-row items-center justify-center pt-2">
+                  <Text className="text-xs text-muted-foreground font-medium">
+                    Already have an account?{' '}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      if (isAuthenticated) {
+                        try {
+                          await logout();
+                        } catch (e) {}
+                      }
+                      sessionStore.setItem('mobile_auth_intent', 'create-org');
+                      router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text className="text-xs font-bold text-primary underline">
+                      Sign In
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </View>

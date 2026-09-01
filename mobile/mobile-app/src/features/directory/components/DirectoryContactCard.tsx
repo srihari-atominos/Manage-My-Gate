@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ListCard } from '@/components/ui/ListCard';
 import { StatusVariant } from '@/components/ui/StatusBadge';
+import { useTranslation, i18n } from '@/src/utils/i18n';
 import { DirectoryMember } from '../types/directoryTypes';
 import { Phone, MessageSquare, Send, Mail } from 'lucide-react-native';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,8 @@ export const DirectoryContactCard = ({
   onOpenConversation,
   className,
 }: DirectoryContactCardProps) => {
+  const { t } = useTranslation();
+
   const getRoleVariant = (role: string): StatusVariant => {
     switch (role?.toLowerCase()) {
       case 'guard':
@@ -59,11 +62,15 @@ export const DirectoryContactCard = ({
   };
 
   const hasUnit = Boolean(member.unitNumber && member.unitNumber.trim());
+  const cleanDesignation =
+    member.designation && member.designation.trim().toLowerCase() !== 'none'
+      ? member.designation.trim()
+      : '';
   const subtitleText = hasUnit
-    ? member.designation
-      ? `${member.unitNumber} • ${member.designation}`
+    ? cleanDesignation
+      ? `${member.unitNumber} • ${cleanDesignation}`
       : member.unitNumber
-    : member.designation || '';
+    : cleanDesignation;
 
   const canMessage = member.allowDirectoryMessages !== false;
   const canCall = Boolean(member.phone);
@@ -79,7 +86,7 @@ export const DirectoryContactCard = ({
         !member.avatarUrl ? (member.name ? member.name.charAt(0).toUpperCase() : 'M') : undefined
       }
       status={{
-        label: member.role ? member.role.toUpperCase() : 'RESIDENT',
+        label: i18n.tRole(member.role, member.role ? member.role.toUpperCase() : 'RESIDENT'),
         variant: getRoleVariant(member.role),
       }}
       showChevron={false}
@@ -120,7 +127,7 @@ export const DirectoryContactCard = ({
               className="flex-1 h-9.5 rounded-xl bg-primary/10 border border-primary/20"
               textClassName="text-xs font-bold text-primary"
             >
-              Message
+              {t('action_message', 'Message')}
             </Button>
           ) : null}
 
@@ -131,10 +138,10 @@ export const DirectoryContactCard = ({
               size="sm"
               onPress={handlePhonePress}
               leftIcon={Phone}
-              className="h-9.5 rounded-xl border-border bg-muted/30 px-3.5"
+              className="flex-1 h-9.5 rounded-xl border-border bg-muted/30 px-2"
               textClassName="text-xs font-semibold text-foreground"
             >
-              Call
+              {t('action_call', 'Call')}
             </Button>
           )}
 
@@ -145,7 +152,7 @@ export const DirectoryContactCard = ({
               size="sm"
               onPress={() => (onIntercom ? onIntercom(intercomUnit) : handleIntercomPress())}
               leftIcon={MessageSquare}
-              className="h-9.5 rounded-xl border-border bg-muted/30 px-3"
+              className="flex-1 h-9.5 rounded-xl border-border bg-muted/30 px-2"
               textClassName="text-xs font-semibold text-foreground"
             >
               #{intercomUnit}

@@ -55,7 +55,7 @@ const registerSchema = yup.object().shape({
 type RegisterFormValues = yup.InferType<typeof registerSchema>;
 
 export default function RegisterScreen() {
-  const { register: performRegister, loading, error, successMsg, clearStatus } = useAuth();
+  const { register: performRegister, loading, error, successMsg, clearStatus, logout, isAuthenticated } = useAuth();
   const params = useLocalSearchParams<{ email?: string; name?: string; isGoogleSso?: string }>();
   
   const segments = useSegments();
@@ -244,7 +244,12 @@ export default function RegisterScreen() {
                     {error.toLowerCase().includes('already exists') ? (
                       <Button
                         variant="link"
-                        onPress={() => {
+                        onPress={async () => {
+                          if (isAuthenticated) {
+                            try {
+                              await logout();
+                            } catch (e) {}
+                          }
                           sessionStore.setItem('mobile_auth_intent', 'create-org');
                           router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
                         }}
@@ -288,7 +293,12 @@ export default function RegisterScreen() {
               <View className="items-center mt-2">
                 <Button
                   variant="link"
-                  onPress={() => {
+                  onPress={async () => {
+                    if (isAuthenticated) {
+                      try {
+                        await logout();
+                      } catch (e) {}
+                    }
                     sessionStore.setItem('mobile_auth_intent', 'create-org');
                     router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
                   }}
