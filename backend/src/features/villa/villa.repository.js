@@ -35,7 +35,10 @@ export class VillaRepository {
    */
   async findById(id, orgId, session) {
     if (!orgId) throw new Error('orgId is required');
-    const query = Villa.findOne({ _id: id, orgId });
+    const filter = mongoose.Types.ObjectId.isValid(id)
+      ? { _id: id, orgId }
+      : { $or: [{ unitNumber: id }, { unitNumber: `Villa ${id.replace(/^v-/, '')}` }], orgId };
+    const query = Villa.findOne(filter);
     if (session) query.session(session);
     return await query;
   }
@@ -49,8 +52,11 @@ export class VillaRepository {
    */
   async update(id, orgId, updateData, session) {
     if (!orgId) throw new Error('orgId is required');
+    const filter = mongoose.Types.ObjectId.isValid(id)
+      ? { _id: id, orgId }
+      : { $or: [{ unitNumber: id }, { unitNumber: `Villa ${id.replace(/^v-/, '')}` }], orgId };
     const query = Villa.findOneAndUpdate(
-      { _id: id, orgId },
+      filter,
       updateData,
       { returnDocument: 'after', runValidators: true }
     );
@@ -66,7 +72,10 @@ export class VillaRepository {
    */
   async delete(id, orgId, session) {
     if (!orgId) throw new Error('orgId is required');
-    const query = Villa.findOneAndDelete({ _id: id, orgId });
+    const filter = mongoose.Types.ObjectId.isValid(id)
+      ? { _id: id, orgId }
+      : { $or: [{ unitNumber: id }, { unitNumber: `Villa ${id.replace(/^v-/, '')}` }], orgId };
+    const query = Villa.findOneAndDelete(filter);
     if (session) query.session(session);
     return await query;
   }

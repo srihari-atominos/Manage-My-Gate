@@ -31,6 +31,8 @@ export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeo
   className?: string;
 }
 
+import { i18n } from '@/src/utils/i18n';
+
 export function formatRelativeTime(date: string | Date): string {
   if (!date) return '';
   const past = new Date(date);
@@ -40,14 +42,14 @@ export function formatRelativeTime(date: string | Date): string {
   const diffMs = now.getTime() - past.getTime();
   const diffMins = Math.floor(diffMs / 60000);
 
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffMins < 1) return i18n.t('just_now', 'Just now');
+  if (diffMins < 60) return `${diffMins} ${i18n.t('mins_ago_unit', 'm ago')}`;
   const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffHours < 24) return `${diffHours} ${i18n.t('hours_ago_unit', 'h ago')}`;
   const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 7) return `${diffDays} ${i18n.t('days_ago_unit', 'd ago')}`;
   const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 4) return `${diffWeeks}w ago`;
+  if (diffWeeks < 4) return `${diffWeeks} ${i18n.t('weeks_ago_unit', 'w ago')}`;
   return past.toLocaleDateString();
 }
 

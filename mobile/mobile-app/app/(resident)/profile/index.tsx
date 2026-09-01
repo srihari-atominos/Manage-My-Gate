@@ -12,9 +12,11 @@ import { OrgSwitchModal } from '@/components/navigation/OrgSwitchModal';
 import { RoleSwitchModal } from '@/components/navigation/RoleSwitchModal';
 import { ProfileHeaderCard } from '@/src/features/profile/components/ProfileHeaderCard';
 import { useProfile } from '@/src/features/profile/hooks/useProfile';
+import { useTranslation } from '@/src/utils/i18n';
 import { LogOut, Save, Building2, Home, ShieldCheck } from 'lucide-react-native';
 
 export default function ProfileScreen() {
+  const { t, tRole } = useTranslation();
   const {
     user,
     dynamicUnit,
@@ -43,12 +45,12 @@ export default function ProfileScreen() {
     });
   };
 
-  const displayName = user?.name || (user?.email ? user.email.split('@')[0] : 'Resident User');
+  const displayName = user?.name || (user?.email ? user.email.split('@')[0] : t('logged_in_resident', 'Resident User'));
 
   return (
     <ScreenShell
-      title="User Profile & Account"
-      subtitle="Manage identity, unit binding & emergency contacts"
+      title={t('user_profile_account_title', 'User Profile & Account')}
+      subtitle={t('user_profile_account_subtitle', 'Manage identity, unit binding & emergency contacts')}
       iconName="User"
       showBackButton={true}
     >
@@ -62,36 +64,36 @@ export default function ProfileScreen() {
           name={displayName}
           email={user?.email}
           unitName={dynamicUnit}
-          roleName={dynamicRole}
+          roleName={tRole(dynamicRole, dynamicRole)}
           communityName={dynamicCommunity}
-          status="Active Resident"
+          status={t('active_resident', 'Active Resident')}
         />
 
         {/* Identity & Account Details */}
         <View className="gap-2">
           <Text className="text-xs font-bold text-muted-foreground uppercase px-1">
-            Account Details
+            {t('account_details_header', 'Account Details')}
           </Text>
 
           <View className="bg-card border border-border rounded-2xl p-4 shadow-xs">
-            <DetailRow label="Resident Name" value={displayName} />
-            <DetailRow label="Email Address" value={user?.email || 'Not Provided'} />
-            <DetailRow label="Active Unit" value={dynamicUnit} />
-            <DetailRow label="Community Workspace" value={dynamicCommunity} />
-            <DetailRow label="Role Persona" value={dynamicRole} />
+            <DetailRow label={t('resident_name', 'Resident Name')} value={displayName} />
+            <DetailRow label={t('email_address_label', 'Email Address')} value={user?.email || t('not_provided', 'Not Provided')} />
+            <DetailRow label={t('active_unit_label', 'Active Unit')} value={dynamicUnit} />
+            <DetailRow label={t('community_workspace_label', 'Community Workspace')} value={dynamicCommunity} />
+            <DetailRow label={t('role_persona_label', 'Role Persona')} value={tRole(dynamicRole, dynamicRole)} />
           </View>
         </View>
 
         {/* Context Switchers Section */}
         <View className="gap-2">
           <Text className="text-xs font-bold text-muted-foreground uppercase px-1">
-            Context Switchers
+            {t('context_switchers_header', 'Context Switchers')}
           </Text>
 
           <View className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
             <ListCard
               variant="row"
-              title="Switch Villa Unit"
+              title={t('switch_villa_unit_title', 'Switch Villa Unit')}
               subtitle={dynamicUnit}
               leftIcon={Home}
               showChevron={true}
@@ -100,7 +102,7 @@ export default function ProfileScreen() {
 
             <ListCard
               variant="row"
-              title="Switch Community Org"
+              title={t('switch_community_org_title', 'Switch Community Org')}
               subtitle={dynamicCommunity}
               leftIcon={Building2}
               showChevron={true}
@@ -109,8 +111,8 @@ export default function ProfileScreen() {
 
             <ListCard
               variant="row"
-              title="Switch Role Persona"
-              subtitle={dynamicRole}
+              title={t('switch_role_persona_title', 'Switch Role Persona')}
+              subtitle={tRole(dynamicRole, dynamicRole)}
               leftIcon={ShieldCheck}
               showChevron={true}
               isLastItem={true}
@@ -122,19 +124,19 @@ export default function ProfileScreen() {
         {/* Emergency Contacts Section */}
         <View className="gap-2">
           <Text className="text-xs font-bold text-muted-foreground uppercase px-1">
-            Emergency Contacts
+            {t('emergency_contacts_header', 'Emergency Contacts')}
           </Text>
 
           <View className="bg-card border border-border rounded-2xl p-4 shadow-xs gap-3.5">
             <TextInput
-              label="Emergency Contact Name"
+              label={t('emergency_contact_name_label', 'Emergency Contact Name')}
               placeholder="e.g. Fatima Al-Mansoor"
               value={contactName}
               onChangeText={setContactName}
             />
 
             <TextInput
-              label="Emergency Contact Phone"
+              label={t('emergency_contact_phone_label', 'Emergency Contact Phone')}
               placeholder="e.g. +971 50 987 6543"
               keyboardType="phone-pad"
               value={contactPhone}
@@ -152,7 +154,7 @@ export default function ProfileScreen() {
               className="mt-1 bg-primary/10 border border-primary/20"
               textClassName="text-primary font-semibold text-xs"
             >
-              Save Emergency Contact
+              {t('save_emergency_contact_btn', 'Save Emergency Contact')}
             </Button>
           </View>
         </View>
@@ -165,7 +167,7 @@ export default function ProfileScreen() {
           className="h-12 w-full mt-2 rounded-xl"
           textClassName="font-bold text-sm"
         >
-          Sign Out of Account
+          {t('sign_out', 'Sign Out')}
         </Button>
       </ScrollView>
 

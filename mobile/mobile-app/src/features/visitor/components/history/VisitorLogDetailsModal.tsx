@@ -11,6 +11,7 @@ import { VisitorPassCode } from '../shared/VisitorPassCode';
 import { VisitorQRCode } from '../shared/VisitorQRCode';
 import { ExtendedVisitorPass } from '../../mocks/visitorMocks';
 import { useVisitorPass } from '../../hooks/useVisitorPass';
+import { useTranslation } from '@/src/utils/i18n';
 import { X, ShieldAlert, Share2, QrCode } from 'lucide-react-native';
 
 export interface VisitorLogDetailsModalProps {
@@ -28,6 +29,7 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
   const [submittingRevoke, setSubmittingRevoke] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
+  const { t } = useTranslation();
 
   const { revokePass, actionStatus } = useVisitorPass();
 
@@ -95,7 +97,7 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
 
   return (
     <>
-      <BottomSheet visible={visible} onClose={onClose} title="Visitor Pass Details">
+      <BottomSheet visible={visible} onClose={onClose} title={t('visitor_pass_details', 'Visitor Pass Details')}>
         <ScrollView className="max-h-[520px] p-2">
           <View className="gap-4 pb-6">
             {/* Status Header */}
@@ -118,7 +120,7 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
               >
                 <Share2 size={16} color="#fff" />
                 <Text className="font-bold text-primary-foreground text-xs">
-                  Share Pass & Code
+                  {t('share_pass_code', 'Share Pass & Code')}
                 </Text>
               </Button>
 
@@ -129,7 +131,7 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
               >
                 <QrCode size={16} className="text-foreground" />
                 <Text className="font-bold text-foreground text-xs">
-                  {showQR ? 'Hide QR' : 'Show QR'}
+                  {showQR ? t('hide_qr', 'Hide QR') : t('show_qr', 'Show QR')}
                 </Text>
               </Button>
             </View>
@@ -151,16 +153,16 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
             )}
 
             {/* Primary Visitor Info */}
-            <DetailSection title="Visitor Details" iconName="User">
-              <DetailRow label="Visitor / Event" value={pass.visitorName} iconName="User" />
+            <DetailSection title={t('visitor_details', 'Visitor Details')} iconName="User">
+              <DetailRow label={t('visitor_event', 'Visitor / Event')} value={pass.visitorName} iconName="User" />
               <DetailRow
-                label="Phone Number"
+                label={t('phone_number', 'Phone Number')}
                 value={pass.phone || 'Not Provided'}
                 iconName="Phone"
                 copyable={Boolean(pass.phone)}
               />
               {pass.purpose ? (
-                <DetailRow label="Purpose of Visit" value={pass.purpose} iconName="Tag" />
+                <DetailRow label={t('purpose_of_visit', 'Purpose of Visit')} value={pass.purpose} iconName="Tag" />
               ) : null}
               {rawPass.visitorDetails?.idProofType ? (
                 <DetailRow

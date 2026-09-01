@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { ArrowRight, Sparkles, Megaphone, ShieldCheck, Building2, Coins } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = Math.min(SCREEN_WIDTH - 32, 400);
@@ -87,6 +88,7 @@ interface HeroBannerProps {
 export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -145,7 +147,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
                 <View className={`${banner.pillBg} border px-2.5 py-1 rounded-full flex-row items-center gap-1.5`}>
                   {banner.icon}
                   <Text className="text-white text-[10.5px] font-bold uppercase tracking-wider font-sans">
-                    {banner.tag}
+                    {t(`tag_${banner.id === '1' ? 'community' : banner.id === '2' ? 'security_gate' : banner.id === '3' ? 'amenities' : 'financial'}`, banner.tag)}
                   </Text>
                 </View>
 
@@ -155,21 +157,21 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
               {/* Title & Subtitle */}
               <View className="gap-1 pr-2 z-10">
                 <Text className={`${banner.textColor} text-[16px] font-extrabold tracking-tight font-sans leading-tight`}>
-                  {banner.title}
+                  {t(banner.id === '1' ? 'banner_welcome_title' : banner.id === '2' ? 'banner_qr_title' : banner.id === '3' ? 'banner_amenities_title' : 'banner_billing_title', banner.title)}
                 </Text>
                 <Text className={`${banner.subtextColor} text-[12px] font-medium font-sans leading-snug`}>
-                  {banner.subtitle}
+                  {t(banner.id === '1' ? 'banner_welcome_sub' : banner.id === '2' ? 'banner_qr_sub' : banner.id === '3' ? 'banner_amenities_sub' : 'banner_billing_sub', banner.subtitle)}
                 </Text>
               </View>
 
               {/* CTA Link Button */}
               <View className="flex-row items-center justify-between pt-1 z-10">
                 <View className={`${banner.ctaBg} px-3 py-1 rounded-full flex-row items-center gap-1.5 border`}>
-                  <Text className="text-white text-[11px] font-bold font-sans">Explore Module</Text>
+                  <Text className="text-white text-[11px] font-bold font-sans">{t('explore_module', 'Explore Module')}</Text>
                   <ArrowRight size={12} color="#ffffff" />
                 </View>
 
-                <Text className="text-white/70 text-[10px] font-medium font-sans">Swipe →</Text>
+                <Text className="text-white/70 text-[10px] font-medium font-sans">{t('swipe', 'Swipe →')}</Text>
               </View>
             </View>
           </TouchableOpacity>

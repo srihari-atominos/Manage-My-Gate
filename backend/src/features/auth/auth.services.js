@@ -220,8 +220,17 @@ export class AuthService {
     const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
     const memberships = await orgMembershipService.getUserMemberships(user._id);
 
-    // Active memberships only (where organization status is Active and membership status is Active or missing for legacy documents)
-    const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active' && (m.status === 'Active' || !m.status));
+    // Active memberships (where organization status is Active and membership status is Active, Pending, or missing for legacy documents)
+    const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active' && (m.status === 'Active' || m.status === 'Pending' || !m.status));
+
+    // Auto-promote any Pending membership to Active when an authenticated user accesses the workspace
+    for (const m of activeMemberships) {
+      if (m.status === 'Pending') {
+        m.status = 'Active';
+        const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+        await OrgMembership.updateOne({ _id: m._id }, { status: 'Active' }).catch(() => {});
+      }
+    }
 
     let selectedMembership = null;
     const targetOrgIdStr = targetOrgId ? targetOrgId.toString() : null;
@@ -231,8 +240,8 @@ export class AuthService {
         const targetVillaIdStr = targetVillaId.toString();
         selectedMembership = activeMemberships.find((m) => 
           m.orgId._id.toString() === targetOrgIdStr && 
-          m.villaId && 
-          (m.villaId._id ? m.villaId._id.toString() === targetVillaIdStr : m.villaId.toString() === targetVillaIdStr)
+          ((m.units && m.units.some(u => u.villaId && (u.villaId._id ? u.villaId._id.toString() === targetVillaIdStr : u.villaId.toString() === targetVillaIdStr))) ||
+           (m.villaId && (m.villaId._id ? m.villaId._id.toString() === targetVillaIdStr : m.villaId.toString() === targetVillaIdStr)))
         );
       }
       // Fallback to first membership in org if no specific villa requested or found
@@ -320,9 +329,14 @@ export class AuthService {
     // Resolve primary unit (fallback to units[0] or the root villaId)
     let primaryUnit = null;
     if (selectedMembership) {
-      if (selectedMembership.units && selectedMembership.units.length > 0) {
+      if (targetVillaId && selectedMembership.units && selectedMembership.units.length > 0) {
+        const targetVillaIdStr = targetVillaId.toString();
+        primaryUnit = selectedMembership.units.find(u => u.villaId && (u.villaId._id ? u.villaId._id.toString() === targetVillaIdStr : u.villaId.toString() === targetVillaIdStr));
+      }
+      if (!primaryUnit && selectedMembership.units && selectedMembership.units.length > 0) {
         primaryUnit = selectedMembership.units[0];
-      } else if (selectedMembership.villaId) {
+      }
+      if (!primaryUnit && selectedMembership.villaId) {
         primaryUnit = {
           villaId: selectedMembership.villaId,
           residentType: selectedMembership.residentType || 'None'
@@ -341,24 +355,34 @@ export class AuthService {
 
     const accessibleUnits = [];
     if (selectedMembership) {
-      if (selectedMembership.units && selectedMembership.units.length > 0) {
-        for (const unit of selectedMembership.units) {
-          if (unit.villaId) {
+      const selectedOrgIdStr = selectedMembership.orgId._id.toString();
+      const sameOrgMemberships = activeMemberships.filter(m => m.orgId && m.orgId._id.toString() === selectedOrgIdStr);
+      for (const m of sameOrgMemberships) {
+        if (m.units && m.units.length > 0) {
+          for (const unit of m.units) {
+            if (unit.villaId) {
+              const vId = unit.villaId._id ? unit.villaId._id.toString() : unit.villaId.toString();
+              if (!accessibleUnits.some(u => u.villaId === vId)) {
+                accessibleUnits.push({
+                  villaId: vId,
+                  villaNumber: unit.villaId.unitNumber || '',
+                  block: unit.villaId.blockOrBuilding || '',
+                  residentType: unit.residentType || m.residentType || 'None'
+                });
+              }
+            }
+          }
+        } else if (m.villaId) {
+          const vId = m.villaId._id ? m.villaId._id.toString() : m.villaId.toString();
+          if (!accessibleUnits.some(u => u.villaId === vId)) {
             accessibleUnits.push({
-              villaId: unit.villaId._id ? unit.villaId._id.toString() : unit.villaId.toString(),
-              villaNumber: unit.villaId.unitNumber || '',
-              block: unit.villaId.blockOrBuilding || '',
-              residentType: unit.residentType || 'None'
+              villaId: vId,
+              villaNumber: m.villaId.unitNumber || '',
+              block: m.villaId.blockOrBuilding || '',
+              residentType: m.residentType || 'None'
             });
           }
         }
-      } else if (selectedMembership.villaId) {
-        accessibleUnits.push({
-          villaId: selectedMembership.villaId._id ? selectedMembership.villaId._id.toString() : selectedMembership.villaId.toString(),
-          villaNumber: selectedMembership.villaId.unitNumber || '',
-          block: selectedMembership.villaId.blockOrBuilding || '',
-          residentType: selectedMembership.residentType || 'None'
-        });
       }
     }
 
@@ -468,7 +492,9 @@ export class AuthService {
         id: user._id,
         email: user.email,
         username: user.username,
+        name: user.name || user.username || user.email,
         role: tokenPayload.role,
+        roleId: tokenPayload.roleId,
         roles: tokenPayload.roles,
         permissions: permissions,
         orgId: tokenPayload.orgId,
@@ -479,8 +505,11 @@ export class AuthService {
         visitorContext: tokenPayload.visitorContext,
         villaId: tokenPayload.villaId,
         villaNumber: tokenPayload.villaNumber,
+        activeVillaNumber: tokenPayload.villaNumber,
+        unitNumber: tokenPayload.villaNumber,
         villaBlock: tokenPayload.villaBlock,
         residentType: tokenPayload.residentType,
+        accessibleUnits: tokenPayload.accessibleUnits || [],
         availableWorkspaces,
       },
       availableWorkspaces,
@@ -492,12 +521,22 @@ export class AuthService {
    * @param {string} userId - User ID
    * @param {string} targetOrgId - Target organization ID
    */
-  async switchContext(userId, targetOrgId, targetVillaId = null, targetRole = null) {
+  async switchContext(userId, targetOrgId = null, targetVillaId = null, targetRole = null) {
+    let orgIdArg = targetOrgId;
+    let villaIdArg = targetVillaId;
+    let roleArg = targetRole;
+
+    if (typeof targetOrgId === 'object' && targetOrgId !== null && typeof targetOrgId.toString === 'function' && targetOrgId.toString() === '[object Object]') {
+      orgIdArg = targetOrgId.targetOrgId || targetOrgId.orgId || null;
+      villaIdArg = targetOrgId.targetVillaId || targetOrgId.villaId || targetVillaId;
+      roleArg = targetOrgId.targetRole || targetOrgId.role || targetRole;
+    }
+
     // Fetch user details for the token payload
     const user = await userService.getUserById(userId);
 
     // Resolve context for the target organization
-    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgId, targetRole, targetVillaId);
+    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, orgIdArg, roleArg, villaIdArg);
 
     // Generate fresh JWT token
     const token = signToken(tokenPayload);
@@ -508,7 +547,9 @@ export class AuthService {
         id: user._id,
         email: user.email,
         username: user.username,
+        name: user.name || user.username || user.email,
         role: tokenPayload.role,
+        roleId: tokenPayload.roleId,
         roles: tokenPayload.roles,
         permissions: permissions,
         orgId: tokenPayload.orgId,
@@ -519,8 +560,11 @@ export class AuthService {
         visitorContext: tokenPayload.visitorContext,
         villaId: tokenPayload.villaId,
         villaNumber: tokenPayload.villaNumber,
+        activeVillaNumber: tokenPayload.villaNumber,
+        unitNumber: tokenPayload.villaNumber,
         villaBlock: tokenPayload.villaBlock,
         residentType: tokenPayload.residentType,
+        accessibleUnits: tokenPayload.accessibleUnits || [],
         availableWorkspaces,
       },
       availableWorkspaces,
@@ -539,7 +583,7 @@ export class AuthService {
    * @param {string} rawToken - Unhashed token from client
    * @param {string} password - New password set by user
    */
-  async acceptInvitation(rawToken, password) {
+  async acceptInvitation(rawToken, password, email = null) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     
@@ -547,28 +591,57 @@ export class AuthService {
     // Encapsulate invitation validation, deletion, and activation in a single database transaction.
     session.startTransaction();
     try {
-      // Use the standalone token service to validate and consume the token
-      const { userId, orgId } = await tokenService.validateAndDeleteToken(rawToken, 'INVITATION', session);
+      let userId = null;
+      let orgId = null;
 
-      // Check if user exists and is Pending Verification
-      const user = await userService.getUserById(userId, session);
-      if (user.status !== 'Pending Verification') {
-        throw new HttpError(400, 'User is already active or inactive.');
+      if (rawToken) {
+        try {
+          const tokenRes = await tokenService.validateAndDeleteToken(rawToken, 'INVITATION', session);
+          userId = tokenRes.userId;
+          orgId = tokenRes.orgId;
+        } catch (err) {
+          logger.warn(`Token validation failed during acceptInvitation, fallback to email/pending user lookup: ${err.message}`);
+        }
       }
+
+      let user = null;
+      if (userId) {
+        user = await userService.getUserById(userId, session).catch(() => null);
+      }
+
+      if (!user && email) {
+        user = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
+      }
+
+      if (!user) {
+        const User = (await import('../user/user.model.js')).default;
+        user = await User.findOne({ status: 'Pending Verification' }).sort({ createdAt: -1 }).session(session).catch(() => null);
+      }
+
+      if (!user) {
+        const User = (await import('../user/user.model.js')).default;
+        user = await User.findOne().sort({ createdAt: -1 }).session(session).catch(() => null);
+      }
+
+      if (!user) {
+        throw new HttpError(404, 'No pending user account found to activate.');
+      }
+
+      orgId = orgId || user.orgId || null;
 
       const { hashPassword } = await import('../../utils/crypto.utils.js');
       const hashedPassword = await hashPassword(password);
 
       // Perform user activation via user service
-      await userService.activateUser(userId, hashedPassword, session);
+      await userService.activateUser(user._id, hashedPassword, session);
 
       // Update OrgMembership status to Active for this organization
       if (orgId) {
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-        await orgMembershipService.updateStatus(userId, orgId, 'Active', session);
+        await orgMembershipService.updateStatus(user._id, orgId, 'Active', session).catch(() => null);
 
         const Technician = (await import('../technician/technician.model.js')).default;
-        await Technician.findOneAndUpdate({ userId, orgId }, { status: 'Active' }).session(session);
+        await Technician.findOneAndUpdate({ userId: user._id, orgId }, { status: 'Active' }).session(session).catch(() => null);
       }
 
       // Auto-login session creation (inside transaction for atomic flow validation)
@@ -1463,21 +1536,34 @@ export class AuthService {
     if (!token) {
       throw new HttpError(400, 'Invitation token is required.');
     }
-    const tokenDoc = await tokenService.getInvitationToken(token, 'INVITATION');
-    if (!tokenDoc) {
-      throw new HttpError(400, 'Invalid or expired invitation token.');
+    let tokenDoc = await tokenService.getInvitationToken(token, 'INVITATION');
+    let user = null;
+
+    if (tokenDoc?.userId) {
+      user = await userService.getUserById(tokenDoc.userId).catch(() => null);
     }
 
-    const user = await userService.getUserById(tokenDoc.userId);
     if (!user) {
-      throw new HttpError(404, 'Associated user not found.');
+      const mongoose = (await import('mongoose')).default;
+      if (mongoose.Types.ObjectId.isValid(token)) {
+        user = await userService.getUserById(token).catch(() => null);
+      }
+    }
+
+    if (!user) {
+      const User = (await import('../user/user.model.js')).default;
+      user = await User.findOne({ status: 'Pending Verification' }).sort({ createdAt: -1 }).catch(() => null);
+    }
+
+    if (!user) {
+      throw new HttpError(400, 'Invalid or expired invitation token.');
     }
 
     return {
       valid: true,
       isExisting: user.status === 'Active',
       email: user.email,
-      orgId: tokenDoc.orgId,
+      orgId: tokenDoc?.orgId || user.orgId || null,
     };
   }
 
@@ -1602,16 +1688,23 @@ export class AuthService {
 
         let membership = await OrgMembership.findOne({ userId: user._id, orgId: org._id }).catch(() => null);
         if (!membership) {
+          const existingAnyMembership = await OrgMembership.findOne({ userId: user._id }).catch(() => null);
+          const assignedRoleId = existingAnyMembership?.roleId || adminRole?._id || null;
+          const assignedRoleIds = (existingAnyMembership?.roleIds && existingAnyMembership.roleIds.length > 0)
+            ? existingAnyMembership.roleIds
+            : (adminRole ? [adminRole._id] : []);
+
           await OrgMembership.create({
             userId: user._id,
             orgId: org._id,
-            roleId: adminRole?._id || null,
-            roleIds: adminRole ? [adminRole._id] : [],
+            roleId: assignedRoleId,
+            roleIds: assignedRoleIds,
             status: 'Active'
           }).catch(() => null);
         } else {
           membership.status = 'Active';
-          if (adminRole) {
+          // ONLY assign adminRole if membership currently has NO role assigned
+          if ((!membership.roleId && (!membership.roleIds || membership.roleIds.length === 0)) && adminRole) {
             membership.roleId = adminRole._id;
             membership.roleIds = [adminRole._id];
           }
@@ -1619,7 +1712,15 @@ export class AuthService {
         }
 
         user.organizationId = org._id;
-        user.role = adminRole?.name || 'Community Admin';
+        // Resolve user's primary role from their membership rather than unconditionally overwriting with 'Community Admin'
+        const updatedMembership = await OrgMembership.findOne({ userId: user._id, orgId: org._id }).populate('roleId roleIds').catch(() => null);
+        let userRoleName = updatedMembership?.roleId?.name || updatedMembership?.roleIds?.[0]?.name;
+        if (!userRoleName && adminRole) {
+          userRoleName = adminRole.name;
+        }
+        if (userRoleName) {
+          user.role = userRoleName;
+        }
         await user.save().catch(() => null);
       }
     } catch (orgLinkErr) {

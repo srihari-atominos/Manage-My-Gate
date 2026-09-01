@@ -5,6 +5,8 @@ import { Sparkles, X, Check } from 'lucide-react-native';
 import CustomiseDeckZone from './CustomiseDeckZone';
 import CustomiseAvailableZone from './CustomiseAvailableZone';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser, getDefaultQuickActionsForUser } from '@/src/utils/rbac';
+import { useTranslation } from '@/src/utils/i18n';
 import {
   ALL_AVAILABLE_FEATURES,
   REAL_APP_FEATURES,
@@ -29,52 +31,35 @@ interface CustomiseSheetModalProps {
 export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   visible,
   onClose,
-  activeFeatureIds = DEFAULT_5_QUICK_ACTIONS,
+  activeFeatureIds,
   availableFeatures,
   onToggleFeature,
   onSave,
 }) => {
   const { user } = useAuth();
-  const userPermissions: string[] = user?.permissions || [];
-  const userRoleName =
-    user?.role ||
-    (user as any)?.activeRole ||
-    (Array.isArray((user as any)?.roles)
-      ? typeof (user as any).roles[0] === 'string'
-        ? (user as any).roles[0]
-        : (user as any).roles[0]?.name
-      : '');
-  const isSuperAdmin = Boolean(
-    !user ||
-    !userPermissions ||
-    userPermissions.length === 0 ||
-    userPermissions.includes('platform:super_admin') ||
-    userRoleName === 'Platform Super Admin' ||
-    userRoleName === 'SuperAdmin' ||
-    userRoleName === 'Super Admin' ||
-    userRoleName === 'Community Admin' ||
-    userRoleName === 'Admin' ||
-    userRoleName === 'Resident' ||
-    user?.isPlatform === true
-  );
+  const { t } = useTranslation();
 
   const availableFeaturesForUser = useMemo(() => {
-    return (availableFeatures || ALL_AVAILABLE_FEATURES).filter((item: any) => {
-      if (item.permission && !isSuperAdmin) {
-        return userPermissions.includes(item.permission);
-      }
-      return true;
-    });
-  }, [availableFeatures, userPermissions, isSuperAdmin]);
+    return (availableFeatures || ALL_AVAILABLE_FEATURES).filter((item: any) =>
+      isFeatureAllowedForUser(item, user)
+    );
+  }, [availableFeatures, user]);
 
-  // Sanitize incoming IDs to ensure only valid current catalog items are retained (max 5)
+  const defaultRoleQuickActions = useMemo(() => {
+    return getDefaultQuickActionsForUser(user);
+  }, [user]);
+
+  // Sanitize incoming IDs to ensure only valid current catalog items allowed for this user are retained (max 5)
   const sanitizedActiveIds = useMemo(() => {
     if (!activeFeatureIds || activeFeatureIds.length === 0) {
-      return DEFAULT_5_QUICK_ACTIONS;
+      return defaultRoleQuickActions;
     }
-    const valid = activeFeatureIds.filter((id) => VALID_CATALOG_IDS.has(id)).slice(0, 5);
-    return valid.length > 0 ? valid : DEFAULT_5_QUICK_ACTIONS;
-  }, [activeFeatureIds]);
+    const valid = activeFeatureIds.filter((id) => {
+      const item = ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
+      return item && isFeatureAllowedForUser(item, user);
+    }).slice(0, 5);
+    return valid.length > 0 ? valid : defaultRoleQuickActions;
+  }, [activeFeatureIds, defaultRoleQuickActions, user]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>(sanitizedActiveIds);
 
@@ -127,13 +112,13 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
           {/* Header Bar */}
           <View className="flex-row justify-between items-center px-5 py-3 border-b border-border bg-card">
             <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="py-1 px-2 rounded-lg active:bg-secondary">
-              <Text className="text-sm font-semibold text-muted-foreground">Cancel</Text>
+              <Text className="text-sm font-semibold text-muted-foreground">{t('cancel', 'Cancel')}</Text>
             </TouchableOpacity>
 
-            <Text className="text-base font-extrabold text-foreground">Customise Dashboard</Text>
+            <Text className="text-base font-extrabold text-foreground">{t('customise_dashboard', 'Customise Dashboard')}</Text>
 
             <TouchableOpacity onPress={handleSave} activeOpacity={0.8} className="bg-primary px-4 py-1.5 rounded-full">
-              <Text className="text-xs font-bold text-primary-foreground">Save</Text>
+              <Text className="text-xs font-bold text-primary-foreground">{t('save', 'Save')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -153,7 +138,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
             {/* Divider Sub-header */}
             <View className="px-5 py-3 bg-muted/30 border-b border-border flex-row items-center justify-between">
               <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Available Actions ({selectedIds.length}/5 Selected)
+                {t('available_actions', 'Available Actions')} ({selectedIds.length}/5 Selected)
               </Text>
               <Sparkles size={14} color="#0284c7" />
             </View>

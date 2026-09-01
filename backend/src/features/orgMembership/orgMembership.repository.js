@@ -181,7 +181,19 @@ export class OrgMembershipRepository {
                   else: { $ifNull: [{ $arrayElemAt: ['$rolePopulatedFallback.name', 0] }, ''] }
                 }
               },
-              status: '$status',
+              status: {
+                $cond: [
+                  {
+                    $or: [
+                      { $eq: ['$user.status', 'Pending Verification'] },
+                      { $eq: ['$user.status', 'Pending'] },
+                      { $eq: ['$status', 'Pending'] },
+                    ],
+                  },
+                  'Pending',
+                  { $ifNull: ['$status', 'Active'] },
+                ],
+              },
               assignedUnits: '$assignedUnits',
             },
           },

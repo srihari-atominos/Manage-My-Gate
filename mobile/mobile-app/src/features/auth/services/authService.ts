@@ -8,8 +8,8 @@ export const register = async (userData: any) => {
   return await apiClient.post('/auth/register', userData);
 };
 
-export const acceptInvite = async ({ token, password }: any) => {
-  return await apiClient.post('/auth/accept-invite', { token, password });
+export const acceptInvite = async ({ token, email, password }: any) => {
+  return await apiClient.post('/auth/accept-invite', { token, email, password });
 };
 
 export const verifyRegistration = async (email: string, code: string) => {

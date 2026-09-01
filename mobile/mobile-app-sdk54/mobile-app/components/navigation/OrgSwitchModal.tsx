@@ -13,6 +13,8 @@ export interface WorkspaceItem {
   name: string;
   roleName?: string;
   isPlatform?: boolean;
+  villaId?: string;
+  villaNumber?: string;
 }
 
 interface OrgSwitchModalProps {
@@ -32,6 +34,9 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   const dispatch = useDispatch<any>();
   const reduxWorkspaces = useSelector((state: any) => state.auth?.user?.availableWorkspaces || state.workspace?.availableWorkspaces);
 
+  const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
+  const activeRole = user?.role || (user as any)?.activeRole;
+
   const workspacesList: WorkspaceItem[] = React.useMemo(() => {
     const list = reduxWorkspaces || (user as any)?.availableWorkspaces;
     if (list && Array.isArray(list) && list.length > 0) {
@@ -40,6 +45,8 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
         name: w.name || w.organizationName || w.orgName || w.communityOrg || (w.isPlatform ? 'System Platform' : 'Community Workspace'),
         roleName: w.roleName || (w.roles ? w.roles.join(', ') : 'Member'),
         isPlatform: w.isPlatform || false,
+        villaId: w.villaId || w.unitId,
+        villaNumber: w.villaNumber || w.unitNumber,
       }));
     }
     // Real active org fallback
@@ -50,10 +57,10 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
       (user as any)?.communityName ||
       (user as any)?.communityOrg;
     const activeName = rawName || 'Community Workspace';
-    const activeOrgId = (user as any)?.orgId || 'org-active';
+    const activeOrgIdVal = (user as any)?.orgId || '';
     const isPlatform = Boolean((user as any)?.isPlatform);
     return [{
-      orgId: activeOrgId,
+      orgId: activeOrgIdVal,
       name: activeName,
       roleName: user?.role || 'Member',
       isPlatform,
@@ -61,7 +68,20 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   }, [reduxWorkspaces, user]);
 
   const handleSelect = (ws: WorkspaceItem) => {
-    dispatch(switchWorkspaceContextThunk({ targetOrgId: ws.orgId }));
+    const targetRole = ws.roleName ? ws.roleName.split(',')[0].trim() : undefined;
+    const payload: any = {};
+    if (ws.orgId && /^[0-9a-fA-F]{24}$/.test(ws.orgId)) {
+      payload.targetOrgId = ws.orgId;
+    }
+    if (targetRole) {
+      payload.targetRole = targetRole;
+    }
+    if (ws.villaId && /^[0-9a-fA-F]{24}$/.test(ws.villaId)) {
+      payload.targetVillaId = ws.villaId;
+    }
+    if (Object.keys(payload).length > 0) {
+      dispatch(switchWorkspaceContextThunk(payload));
+    }
     onSelectCommunity(ws.name, ws.orgId);
     onClose();
   };
@@ -90,11 +110,16 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
           {/* Workspaces List */}
           <ScrollView className="max-h-60" showsVerticalScrollIndicator={false}>
             <View className="gap-2.5">
-              {workspacesList.map((ws) => {
-                const isSelected = ws.name === activeCommunity;
+              {workspacesList.map((ws, index) => {
+                const isOrgMatch = ws.orgId ? ws.orgId === activeOrgId : ws.name === activeCommunity;
+                const isRoleMatch = !ws.roleName || !activeRole || 
+                  ws.roleName.toLowerCase().includes(activeRole.toLowerCase()) || 
+                  activeRole.toLowerCase().includes(ws.roleName.toLowerCase());
+                const isSelected = isOrgMatch && isRoleMatch;
+
                 return (
                   <TouchableOpacity
-                    key={ws.orgId}
+                    key={`${ws.orgId || 'ws'}-${ws.roleName || ''}-${index}`}
                     onPress={() => handleSelect(ws)}
                     activeOpacity={0.8}
                     className={`flex-row items-center justify-between p-3.5 rounded-2xl border shadow-xs ${
@@ -132,7 +157,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                           )}
                         </View>
                         <Text className="text-[10px] text-muted-foreground mt-0.5">
-                          Role: {ws.roleName || 'Member'}
+                          Role: {ws.roleName || 'Member'}{ws.villaNumber ? ` • Unit ${ws.villaNumber}` : ''}
                         </Text>
                       </View>
                     </View>

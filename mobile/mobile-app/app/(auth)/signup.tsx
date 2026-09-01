@@ -35,7 +35,9 @@ import {
   NahomWordmark,
 } from '@/components/auth/NahomBrandLogo';
 import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
+import { PhoneInput } from '@/components/forms/PhoneInput';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import { sessionStore } from '@/src/utils/storage';
 
 const signupSchema = yup.object().shape({
   name: yup
@@ -49,7 +51,34 @@ const signupSchema = yup.object().shape({
   phone: yup
     .string()
     .required('Phone number is required')
-    .matches(/^\+?[1-9]\d{1,14}$/, 'Enter a valid phone number (e.g. +919988776655)'),
+    .test('valid-phone', 'Invalid phone number format', function (value) {
+      if (!value) return false;
+      if (value.startsWith('+91')) {
+        const nationalNumber = value.slice(3);
+        if (nationalNumber.length !== 10) {
+          return this.createError({ message: 'India mobile number must be exactly 10 digits' });
+        }
+        if (!/^[6-9]\d{9}$/.test(nationalNumber)) {
+          return this.createError({ message: 'India mobile number must start with 6, 7, 8, or 9' });
+        }
+        return true;
+      }
+      if (value.startsWith('+966')) {
+        const nationalNumber = value.slice(4);
+        if (nationalNumber.length !== 9) {
+          return this.createError({ message: 'Saudi mobile number must be exactly 9 digits' });
+        }
+        return true;
+      }
+      if (value.startsWith('+971')) {
+        const nationalNumber = value.slice(4);
+        if (nationalNumber.length !== 9) {
+          return this.createError({ message: 'UAE mobile number must be exactly 9 digits' });
+        }
+        return true;
+      }
+      return /^\+[1-9]\d{7,14}$/.test(value);
+    }),
   unitNumber: yup.string().optional(),
   password: yup
     .string()
@@ -71,7 +100,7 @@ interface SignupFormValues {
 }
 
 export default function SignupScreen() {
-  const { loading, error, clearStatus } = useAuth();
+  const { register: performRegister, loading, error, successMsg, clearStatus, logout, isAuthenticated } = useAuth();
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [localLoading, setLocalLoading] = React.useState(false);
@@ -79,7 +108,6 @@ export default function SignupScreen() {
 
   // Input focus refs
   const emailInputRef = React.useRef<TextInput>(null);
-  const phoneInputRef = React.useRef<TextInput>(null);
   const unitInputRef = React.useRef<TextInput>(null);
   const passwordInputRef = React.useRef<TextInput>(null);
   const confirmPasswordInputRef = React.useRef<TextInput>(null);
@@ -164,11 +192,35 @@ export default function SignupScreen() {
     try {
       setLocalLoading(true);
       setLocalError(null);
-      // Route to resident login or request OTP verification
-      router.push({
-        pathname: '/(auth)/otp',
-        params: { phone: data.phone },
+
+      const emailPrefix = data.email
+        .trim()
+        .split('@')[0]
+        .replace(/[^a-zA-Z0-9]/g, '');
+      
+      let derivedUsername = emailPrefix;
+      if (derivedUsername.length < 3) {
+        derivedUsername = 'user' + Math.floor(100 + Math.random() * 900);
+      } else if (derivedUsername.length > 30) {
+        derivedUsername = derivedUsername.substring(0, 30);
+      }
+
+      const formattedPhone = data.phone.trim().startsWith('+') ? data.phone.trim() : `+${data.phone.trim()}`;
+      const action = await performRegister({
+        name: data.name.trim(),
+        username: derivedUsername,
+        email: data.email.trim().toLowerCase(),
+        phone: formattedPhone,
+        password: data.password,
+        unitNumber: data.unitNumber?.trim() || undefined,
       });
+
+      if (action && (action.type?.endsWith('/fulfilled') || (action.meta && action.meta.requestStatus === 'fulfilled'))) {
+        router.push({
+          pathname: '/(auth)/register-otp',
+          params: { email: data.email.trim().toLowerCase() },
+        });
+      }
     } catch (err: any) {
       setLocalError(err.message || 'Registration failed');
     } finally {
@@ -201,8 +253,7 @@ export default function SignupScreen() {
             keyboardDismissMode="on-drag"
             className="px-5 py-6"
           >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-              <View className="max-w-sm mx-auto w-full gap-3.5">
+            <View className="max-w-sm mx-auto w-full gap-3.5">
               {/* Brand Header */}
               <Animated.View
                 style={{
@@ -250,7 +301,10 @@ export default function SignupScreen() {
                           returnKeyType="next"
                           onSubmitEditing={() => emailInputRef.current?.focus()}
                           blurOnSubmit={false}
-                          className="flex-1 text-sm text-foreground font-sans p-0"
+                          className={cnText(
+                            'flex-1 text-sm text-foreground font-sans p-0',
+                            Platform.select({ web: 'outline-none' })
+                          )}
                         />
                       </View>
                     )}
@@ -283,9 +337,12 @@ export default function SignupScreen() {
                           keyboardType="email-address"
                           autoCapitalize="none"
                           returnKeyType="next"
-                          onSubmitEditing={() => phoneInputRef.current?.focus()}
+                          onSubmitEditing={() => unitInputRef.current?.focus()}
                           blurOnSubmit={false}
-                          className="flex-1 text-sm text-foreground font-sans p-0"
+                          className={cnText(
+                            'flex-1 text-sm text-foreground font-sans p-0',
+                            Platform.select({ web: 'outline-none' })
+                          )}
                         />
                       </View>
                     )}
@@ -297,39 +354,20 @@ export default function SignupScreen() {
                   )}
                 </View>
 
-                {/* Phone */}
-                <View>
-                  <Text className="text-xs font-bold text-foreground mb-1.5">
-                    Phone Number
-                  </Text>
-                  <Controller
-                    control={control}
-                    name="phone"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
-                        <Smartphone size={18} color="#94A3B8" className="me-2.5 shrink-0" />
-                        <TextInput
-                          ref={phoneInputRef}
-                          value={value}
-                          onChangeText={onChange}
-                          onBlur={onBlur}
-                          placeholder="+919988776655"
-                          placeholderTextColor="#94A3B8"
-                          keyboardType="phone-pad"
-                          returnKeyType="next"
-                          onSubmitEditing={() => unitInputRef.current?.focus()}
-                          blurOnSubmit={false}
-                          className="flex-1 text-sm text-foreground font-sans p-0"
-                        />
-                      </View>
-                    )}
-                  />
-                  {errors.phone && (
-                    <Text className="text-rose-500 text-[11px] mt-1 ms-1 font-medium">
-                      {errors.phone.message}
-                    </Text>
+                {/* Phone Number with Country Selection */}
+                <Controller
+                  control={control}
+                  name="phone"
+                  render={({ field: { onChange, value } }) => (
+                    <PhoneInput
+                      label="Phone Number"
+                      placeholder="97866 08686"
+                      value={value}
+                      onChangeText={onChange}
+                      error={errors.phone?.message}
+                    />
                   )}
-                </View>
+                />
 
                 {/* Villa / Unit Number */}
                 <View>
@@ -352,7 +390,10 @@ export default function SignupScreen() {
                           returnKeyType="next"
                           onSubmitEditing={() => passwordInputRef.current?.focus()}
                           blurOnSubmit={false}
-                          className="flex-1 text-sm text-foreground font-sans p-0"
+                          className={cnText(
+                            'flex-1 text-sm text-foreground font-sans p-0',
+                            Platform.select({ web: 'outline-none' })
+                          )}
                         />
                       </View>
                     )}
@@ -382,7 +423,10 @@ export default function SignupScreen() {
                           returnKeyType="next"
                           onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
                           blurOnSubmit={false}
-                          className="flex-1 text-sm text-foreground font-sans p-0"
+                          className={cnText(
+                            'flex-1 text-sm text-foreground font-sans p-0',
+                            Platform.select({ web: 'outline-none' })
+                          )}
                         />
                         <TouchableOpacity
                           onPress={() => setShowPassword(!showPassword)}
@@ -427,7 +471,10 @@ export default function SignupScreen() {
                           autoCapitalize="none"
                           returnKeyType="go"
                           onSubmitEditing={handleSubmit(onSubmit)}
-                          className="flex-1 text-sm text-foreground font-sans p-0"
+                          className={cnText(
+                            'flex-1 text-sm text-foreground font-sans p-0',
+                            Platform.select({ web: 'outline-none' })
+                          )}
                         />
                         <TouchableOpacity
                           onPress={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -503,20 +550,10 @@ export default function SignupScreen() {
                 <View className="flex-1 h-px bg-border/80" />
               </View>
 
-              {/* Social Authentication: Google ID & Apple ID */}
+              {/* Social Authentication: Google ID & Microsoft ID */}
               <View className="flex-row items-center gap-3 w-full">
-                <SocialAuthButton
-                  provider="google"
-                  onPress={() => {
-                    // Trigger Google Sign-Up
-                  }}
-                />
-                <SocialAuthButton
-                  provider="apple"
-                  onPress={() => {
-                    // Trigger Apple Sign-Up
-                  }}
-                />
+                <SocialAuthButton provider="google" />
+                <SocialAuthButton provider="microsoft" />
               </View>
 
               {/* Already Have Account */}
@@ -525,7 +562,15 @@ export default function SignupScreen() {
                   Already have an account?{' '}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } })}
+                  onPress={async () => {
+                    if (isAuthenticated) {
+                      try {
+                        await logout();
+                      } catch (e) {}
+                    }
+                    sessionStore.setItem('mobile_auth_intent', 'create-org');
+                    router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
+                  }}
                   activeOpacity={0.8}
                 >
                   <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">
@@ -535,10 +580,14 @@ export default function SignupScreen() {
               </View>
             </Animated.View>
           </View>
-        </TouchableWithoutFeedback>
       </ScrollView>
     </KeyboardAvoidingView>
     </ImageBackground>
     </>
   );
+}
+
+// Utility helper for classnames
+function cnText(...classes: (string | undefined)[]) {
+  return classes.filter(Boolean).join(' ');
 }

@@ -4,10 +4,11 @@ import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Home, Check, X, Building2 } from 'lucide-react-native';
 
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
 
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { useTranslation } from '@/src/utils/i18n';
 
 interface VillaUnit {
   id: string;
@@ -22,6 +23,7 @@ interface VillaSwitchModalProps {
   activeVilla: string;
   onSelectVilla: (villaNumber: string) => void;
   communityName?: string;
+  onOpenOrgModal?: () => void;
 }
 
 // Purely dynamic user units interface
@@ -31,29 +33,82 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   activeVilla,
   onSelectVilla,
   communityName = '',
+  onOpenOrgModal,
 }) => {
   const { user } = useAuth();
   const dispatch = useDispatch<any>();
+  const { t } = useTranslation();
+  const reduxWorkspaces = useSelector((state: any) => state.auth?.user?.availableWorkspaces || state.workspace?.availableWorkspaces);
+
+  const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
+  const activeVillaId = (user as any)?.villaId;
 
   const userUnits: VillaUnit[] = React.useMemo(() => {
     const userAny = user as any;
-    if (userAny?.accessibleUnits && Array.isArray(userAny.accessibleUnits) && userAny.accessibleUnits.length > 0) {
-      return userAny.accessibleUnits.map((u: any, idx: number) => ({
-        id: u.villaId || String(idx + 1),
-        unitNumber: u.villaNumber || `Villa ${idx + 1}`,
-        block: u.block || '',
-        residencyType: u.residentType || 'Resident',
-      }));
+    const unitsMap = new Map<string, VillaUnit>();
+
+    // 1. Extract from accessibleUnits
+    if (userAny?.accessibleUnits && Array.isArray(userAny.accessibleUnits)) {
+      userAny.accessibleUnits.forEach((u: any, idx: number) => {
+        const uId = u.villaId || u.id || String(idx + 1);
+        const uNum = u.villaNumber || u.unitNumber || `Villa ${idx + 1}`;
+        if (uNum) {
+          unitsMap.set(uId, {
+            id: uId,
+            unitNumber: uNum,
+            block: u.block || u.villaBlock || '',
+            residencyType: u.residentType || u.residencyType || 'Resident',
+          });
+        }
+      });
     }
-    if (userAny?.villaNumber || userAny?.activeVillaNumber) {
-      const vNum = userAny?.villaNumber || userAny?.activeVillaNumber;
-      return [{ id: userAny?.villaId || '1', unitNumber: vNum, block: '', residencyType: userAny?.residencyType || 'Owner' }];
+
+    // 2. Extract from availableWorkspaces matching current active organization
+    const workspaces = userAny?.availableWorkspaces || reduxWorkspaces;
+    if (Array.isArray(workspaces)) {
+      workspaces.forEach((w: any, idx: number) => {
+        const matchesOrg = !activeOrgId || w.orgId === activeOrgId || w._id === activeOrgId;
+        if (matchesOrg && (w.villaId || w.unitId || w.villaNumber || w.unitNumber)) {
+          const uId = w.villaId || w.unitId || `ws-unit-${idx}`;
+          const uNum = w.villaNumber || w.unitNumber;
+          if (uNum && !unitsMap.has(uId)) {
+            unitsMap.set(uId, {
+              id: uId,
+              unitNumber: uNum,
+              block: w.block || w.villaBlock || '',
+              residencyType: w.residentType || w.roleName || 'Resident',
+            });
+          }
+        }
+      });
     }
-    return [];
-  }, [user]);
+
+    // 3. Fallback for active single unit
+    const activeVNum = userAny?.villaNumber || userAny?.activeVillaNumber || userAny?.unitNumber;
+    const activeVId = userAny?.villaId || '1';
+    if (activeVNum && unitsMap.size === 0) {
+      unitsMap.set(activeVId, {
+        id: activeVId,
+        unitNumber: activeVNum,
+        block: userAny?.villaBlock || '',
+        residencyType: userAny?.residentType || userAny?.residencyType || 'Owner',
+      });
+    }
+
+    return Array.from(unitsMap.values());
+  }, [user, reduxWorkspaces, activeOrgId]);
 
   const handleSelect = (unit: VillaUnit) => {
-    dispatch(switchWorkspaceContextThunk({ targetVillaId: unit.id }));
+    const payload: any = {};
+    if (unit.id && /^[0-9a-fA-F]{24}$/.test(unit.id)) {
+      payload.targetVillaId = unit.id;
+    }
+    if (activeOrgId && /^[0-9a-fA-F]{24}$/.test(activeOrgId)) {
+      payload.targetOrgId = activeOrgId;
+    }
+    if (Object.keys(payload).length > 0) {
+      dispatch(switchWorkspaceContextThunk(payload));
+    }
     onSelectVilla(unit.unitNumber);
     onClose();
   };
@@ -68,7 +123,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
               <View className="bg-primary/10 p-2 rounded-xl">
                 <Home size={20} color="#03A9F4" />
               </View>
-              <Text className="text-lg font-bold text-foreground">Switch Villa Unit</Text>
+              <Text className="text-lg font-bold text-foreground">{t('switch_unit', 'Switch Villa Unit')}</Text>
             </View>
             <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1.5 rounded-full bg-secondary">
               <X size={16} className="text-muted-foreground" />
@@ -83,8 +138,12 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
           <ScrollView className="max-h-60" showsVerticalScrollIndicator={false}>
             <View className="gap-2.5">
               {userUnits.length > 0 ? (
-                userUnits.map((unit) => {
-                  const isSelected = unit.unitNumber === activeVilla;
+                userUnits.map((unit, index) => {
+                  const isUnitIdMatch = Boolean(activeVillaId && unit.id && activeVillaId === unit.id);
+                  const isUnitNumberMatch = unit.unitNumber === activeVilla;
+                  const isBlockMatch = !unit.block || !(user as any)?.villaBlock || unit.block === (user as any)?.villaBlock;
+                  const isRoleMatch = !unit.residencyType || !(user as any)?.residentType || unit.residencyType === (user as any)?.residentType;
+                  const isSelected = isUnitIdMatch || (isUnitNumberMatch && isBlockMatch && isRoleMatch);
                   return (
                     <TouchableOpacity
                       key={unit.id}
@@ -137,7 +196,24 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
             </View>
           </ScrollView>
 
-          <Button onPress={onClose} variant="secondary" className="mt-2 h-11">
+          {onOpenOrgModal && (
+            <TouchableOpacity
+              onPress={() => {
+                onClose();
+                onOpenOrgModal();
+              }}
+              activeOpacity={0.8}
+              className="flex-row items-center justify-between p-3 rounded-2xl bg-secondary/80 border border-border/80"
+            >
+              <View className="flex-row items-center gap-2">
+                <Building2 size={16} color="#6366f1" />
+                <Text className="text-xs font-bold text-foreground">Switch Community / Workspace</Text>
+              </View>
+              <Text className="text-[11px] font-bold text-primary">Switch</Text>
+            </TouchableOpacity>
+          )}
+
+          <Button onPress={onClose} variant="secondary" className="h-11">
             <Text className="font-bold text-foreground text-sm">Cancel</Text>
           </Button>
         </View>

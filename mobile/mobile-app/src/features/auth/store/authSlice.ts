@@ -44,11 +44,22 @@ export const normalizeUser = (user: any): User | null => {
     (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.id)) ||
     '';
 
+  const orgName = user.organizationName || user.orgName || user.activeOrganizationName || user.organization?.name || '';
+  const vNum = user.villaNumber || user.activeVillaNumber || user.unitNumber || '';
+
   return {
     ...user,
     id: canonicalId,
     _id: canonicalId || user._id,
     orgId: canonicalOrgId,
+    orgName,
+    organizationName: orgName,
+    activeOrganizationName: orgName,
+    villaNumber: vNum,
+    activeVillaNumber: vNum,
+    unitNumber: vNum,
+    accessibleUnits: user.accessibleUnits || [],
+    availableWorkspaces: user.availableWorkspaces || [],
     allowedFeatures: user.allowedFeatures || user.organization?.allowedFeatures || [],
   };
 };
@@ -92,6 +103,28 @@ export const bootstrapAuth = createAsyncThunk(
         } catch (e) {
           console.warn('Corrupted user JSON in storage, clearing key:', e);
           await storage.removeItem('user');
+        }
+      }
+
+      // If token exists, sync latest profile & availableWorkspaces from backend to replace stale cached storage
+      if (token) {
+        try {
+          const response = await authService.switchContext({});
+          const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+          const innerData = body?.data || body;
+          const freshToken = innerData?.token || token;
+          const freshRefreshToken = innerData?.refreshToken || refreshToken;
+          const rawUser = innerData?.user;
+          const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
+          const freshUser = rawUser ? { ...rawUser, availableWorkspaces } : user;
+
+          if (freshToken) await storage.setItem('token', freshToken);
+          if (freshRefreshToken) await storage.setItem('refreshToken', freshRefreshToken);
+          if (freshUser) await storage.setItem('user', JSON.stringify(freshUser));
+
+          return { token: freshToken, refreshToken: freshRefreshToken, user: freshUser };
+        } catch (syncErr) {
+          console.warn('Could not refresh auth session from backend, using cached session:', syncErr);
         }
       }
 
@@ -222,6 +255,33 @@ export const loginWithMicrosoftThunk = createAsyncThunk(
   }
 );
 
+export const acceptInviteThunk = createAsyncThunk(
+  'auth/acceptInvite',
+  async ({ token, password }: { token: string; password: string }, { rejectWithValue }) => {
+    try {
+      const response = await authService.acceptInvite({ token, password });
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      if (body && body.success === false) {
+        return rejectWithValue(body.message || 'Failed to accept invitation');
+      }
+
+      const innerData = body?.data || body;
+      const authToken = innerData?.token;
+      const refreshToken = innerData?.refreshToken;
+      const rawUser = innerData?.user;
+      const user = normalizeUser(rawUser);
+
+      if (authToken) await storage.setItem('token', authToken);
+      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
+      if (user) await storage.setItem('user', JSON.stringify(user));
+
+      return { ...innerData, user } as any;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to accept invitation');
+    }
+  }
+);
+
 
 
 export const requestOtp = createAsyncThunk(
@@ -281,7 +341,18 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
   { rejectValue: string }
 >('auth/switchWorkspaceContext', async (payload, { dispatch, rejectWithValue }) => {
   try {
-    const response = await authService.switchContext(payload);
+    const cleanPayload: { targetOrgId?: string; targetRole?: string; targetVillaId?: string } = {};
+    if (payload?.targetOrgId && typeof payload.targetOrgId === 'string' && /^[0-9a-fA-F]{24}$/.test(payload.targetOrgId.trim())) {
+      cleanPayload.targetOrgId = payload.targetOrgId.trim();
+    }
+    if (payload?.targetVillaId && typeof payload.targetVillaId === 'string' && /^[0-9a-fA-F]{24}$/.test(payload.targetVillaId.trim())) {
+      cleanPayload.targetVillaId = payload.targetVillaId.trim();
+    }
+    if (payload?.targetRole && typeof payload.targetRole === 'string' && payload.targetRole.trim()) {
+      cleanPayload.targetRole = payload.targetRole.trim();
+    }
+
+    const response = await authService.switchContext(cleanPayload);
     const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
     const innerData = body?.data || body;
 
@@ -537,6 +608,25 @@ const authSlice = createSlice({
       .addCase(loginWithMicrosoftThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || 'Microsoft Login failed';
+      })
+      // Accept Invitation
+      .addCase(acceptInviteThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(acceptInviteThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.token = action.payload?.token || action.payload?.data?.token || null;
+        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
+        const rawUser = action.payload?.user || action.payload?.data?.user || null;
+        state.user = normalizeUser(rawUser);
+        state.isAuthenticated = !!(state.token && state.user?.id);
+        state.successMsg = action.payload?.message || 'Invitation accepted and account activated successfully!';
+      })
+      .addCase(acceptInviteThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Failed to accept invitation';
       })
       // Request OTP
       .addCase(requestOtp.pending, (state) => {

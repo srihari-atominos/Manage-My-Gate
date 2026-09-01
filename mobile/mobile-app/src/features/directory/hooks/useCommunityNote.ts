@@ -8,6 +8,7 @@ import {
   deleteCommunityNote,
 } from '../store/communityNoteSlice';
 import { NoteCategory, PRESET_NOTE_OPTIONS, CommunityNote } from '../types/communityNoteTypes';
+import { useCommunityNoteSocket } from './useCommunityNoteSocket';
 
 export const formatExpirationCountdown = (expiresAt?: string): string => {
   if (!expiresAt) return '';
@@ -24,13 +25,21 @@ export const formatExpirationCountdown = (expiresAt?: string): string => {
 
 export const useCommunityNote = () => {
   const dispatch = useDispatch<AppDispatch>();
+  
+  // Real-time socket updates for community notes
+  useCommunityNoteSocket();
+
   const { myActiveNote, activeNotes: rawActiveNotes, loading, error } = useSelector(
     (state: RootState) => (state as any).communityNote || {}
   );
 
   const [composerOpen, setComposerOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<NoteCategory | 'ALL'>('ALL');
+  
+  // Feed filter (defaults to ALL so notes from all categories are visible to all users)
+  const [feedCategoryFilter, setFeedCategoryFilter] = useState<NoteCategory | 'ALL'>('ALL');
+  // Composer category (defaults to GENERAL, updated when selecting presets or editing active note)
+  const [composerCategory, setComposerCategory] = useState<NoteCategory>('GENERAL');
   const [selectedEmoji, setSelectedEmoji] = useState('💬');
   const [noteSearchQuery, setNoteSearchQuery] = useState('');
 
@@ -39,11 +48,16 @@ export const useCommunityNote = () => {
     dispatch(fetchActiveNotes());
   }, [dispatch]);
 
+  // Sync composer state with user's active note WITHOUT altering the feed filter
   useEffect(() => {
     if (myActiveNote?.text) {
       setNoteText(myActiveNote.text);
-      if (myActiveNote.category) setSelectedCategory(myActiveNote.category);
+      if (myActiveNote.category) setComposerCategory(myActiveNote.category);
       if (myActiveNote.emoji) setSelectedEmoji(myActiveNote.emoji);
+    } else if (myActiveNote === null) {
+      setNoteText('');
+      setComposerCategory('GENERAL');
+      setSelectedEmoji('💬');
     }
   }, [myActiveNote]);
 
@@ -58,8 +72,8 @@ export const useCommunityNote = () => {
     });
 
     return validNotes.filter((note) => {
-      // Category filter
-      if (selectedCategory && selectedCategory !== 'ALL' && note.category !== selectedCategory) {
+      // Feed Category Filter (only filter if user explicitly selected a category tab in feed)
+      if (feedCategoryFilter && feedCategoryFilter !== 'ALL' && note.category !== feedCategoryFilter) {
         return false;
       }
       // Search query filter (user name, villa/unit, note text, category)
@@ -75,40 +89,41 @@ export const useCommunityNote = () => {
       }
       return true;
     });
-  }, [rawActiveNotes, selectedCategory, noteSearchQuery]);
+  }, [rawActiveNotes, feedCategoryFilter, noteSearchQuery]);
 
   const handlePublishNote = useCallback(async () => {
     if (!noteText.trim() || noteText.trim().length > 80) return;
-    const cat = selectedCategory === 'ALL' ? 'GENERAL' : selectedCategory;
     const res = await dispatch(
       createCommunityNote({
         text: noteText.trim(),
-        category: cat as NoteCategory,
+        category: composerCategory,
         emoji: selectedEmoji,
       })
     );
 
     if (createCommunityNote.fulfilled.match(res)) {
       setComposerOpen(false);
-      setNoteText('');
       dispatch(fetchActiveNotes());
     }
-  }, [dispatch, noteText, selectedCategory, selectedEmoji]);
+  }, [dispatch, noteText, composerCategory, selectedEmoji]);
 
   const handleDeleteNote = useCallback(async () => {
     if (!myActiveNote) return;
     const noteId = myActiveNote?._id || myActiveNote?.id || '';
     if (!noteId) return;
     await dispatch(deleteCommunityNote(noteId));
+    setNoteText('');
+    setComposerCategory('GENERAL');
+    setSelectedEmoji('💬');
     dispatch(fetchActiveNotes());
   }, [dispatch, myActiveNote]);
 
   const handleSelectPreset = useCallback(
-    (presetId: string) => {
+    (presetId: string, localizedText?: string) => {
       const option = PRESET_NOTE_OPTIONS.find((p) => p.id === presetId);
       if (option) {
-        setNoteText(option.defaultText);
-        setSelectedCategory(option.category);
+        setNoteText(localizedText || option.defaultText);
+        setComposerCategory(option.category);
         setSelectedEmoji(option.emoji);
       }
     },
@@ -125,8 +140,10 @@ export const useCommunityNote = () => {
     setComposerOpen,
     noteText,
     setNoteText,
-    selectedCategory,
-    setSelectedCategory,
+    selectedCategory: feedCategoryFilter,
+    setSelectedCategory: setFeedCategoryFilter,
+    composerCategory,
+    setComposerCategory,
     selectedEmoji,
     setSelectedEmoji,
     noteSearchQuery,

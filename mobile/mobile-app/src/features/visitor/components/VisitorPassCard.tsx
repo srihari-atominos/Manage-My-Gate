@@ -4,6 +4,7 @@ import { ListCard } from '@/components/ui/ListCard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
+import { useTranslation } from '@/src/utils/i18n';
 import { VisitorPass } from '../store/visitorPassSlice';
 import { QrCode, Phone, Car } from 'lucide-react-native';
 
@@ -38,17 +39,18 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
   villaBadge,
   isInside,
 }) => {
+  const { t } = useTranslation();
   const vObj = (pass as any).villaId;
-  const unitNum = vObj?.unitNumber || vObj?.villaNumber || (pass as any).villaNumber || (pass as any).villaName;
+  const unitNum = vObj?.unitNumber || vObj?.villaNumber || (pass as any).villaNumber || (pass as any).villaName || (pass as any).villaId?.name || (pass as any).villaId?.number;
   const block = vObj?.blockOrBuilding || vObj?.block ? ` (${vObj.blockOrBuilding || vObj.block})` : '';
-  const resolvedVilla = unitNum ? `Villa ${unitNum}${block}` : ((pass as any).passType === 'ADMIN_GUEST' || !vObj ? 'Community / Common Area' : '');
+  const resolvedVilla = unitNum ? `${t('villa_label', 'Villa')} ${unitNum}${block}` : ((pass as any).passType === 'ADMIN_GUEST' || !vObj ? t('community_common_area', 'Community / Common Area') : '');
   const displayVilla = villaBadge || resolvedVilla;
 
   const subtitleParts = [];
   if (displayVilla) subtitleParts.push(displayVilla);
   if (pass.phone) subtitleParts.push(`Ph: ${pass.phone}`);
-  else if (pass.purpose) subtitleParts.push(`For: ${pass.purpose}`);
-  else subtitleParts.push(`Code: ${pass.code || pass._id.slice(-6)}`);
+  else if (pass.purpose) subtitleParts.push(`${t('for_purpose', 'For:')} ${pass.purpose}`);
+  else subtitleParts.push(`${t('code_label', 'Code:')} ${pass.code || pass._id.slice(-6)}`);
 
   const subtitle = subtitleParts.join(' • ');
 
@@ -78,7 +80,7 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
           className="flex-row items-center gap-1.5 h-8 px-2.5 rounded-lg border-border"
         >
           <QrCode size={14} className="text-foreground" />
-          <Text className="text-xs font-semibold text-foreground">Pass Code</Text>
+          <Text className="text-xs font-semibold text-foreground">{t('pass_code', 'Pass Code')}</Text>
         </Button>
       }
     />

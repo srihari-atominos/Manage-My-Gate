@@ -8,12 +8,15 @@ import { router } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface WorkspaceItem {
   orgId: string;
   name: string;
   roleName?: string;
   isPlatform?: boolean;
+  villaId?: string;
+  villaNumber?: string;
 }
 
 interface OrgSwitchModalProps {
@@ -31,7 +34,11 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
 }) => {
   const { user } = useAuth();
   const dispatch = useDispatch<any>();
+  const { t, tRole } = useTranslation();
   const reduxWorkspaces = useSelector((state: any) => state.auth?.user?.availableWorkspaces || state.workspace?.availableWorkspaces);
+
+  const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
+  const activeRole = user?.role || (user as any)?.activeRole;
 
   const workspacesList: WorkspaceItem[] = React.useMemo(() => {
     const list = reduxWorkspaces || (user as any)?.availableWorkspaces;
@@ -41,6 +48,8 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
         name: w.name || w.organizationName || w.orgName || w.communityOrg || (w.isPlatform ? 'System Platform' : 'Community Workspace'),
         roleName: w.roleName || (w.roles ? w.roles.join(', ') : 'Member'),
         isPlatform: w.isPlatform || false,
+        villaId: w.villaId || w.unitId,
+        villaNumber: w.villaNumber || w.unitNumber,
       }));
     }
     // Real active org fallback
@@ -51,10 +60,10 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
       (user as any)?.communityName ||
       (user as any)?.communityOrg;
     const activeName = rawName || 'Community Workspace';
-    const activeOrgId = (user as any)?.orgId || 'org-active';
+    const activeOrgIdVal = (user as any)?.orgId || '';
     const isPlatform = Boolean((user as any)?.isPlatform);
     return [{
-      orgId: activeOrgId,
+      orgId: activeOrgIdVal,
       name: activeName,
       roleName: user?.role || 'Member',
       isPlatform,
@@ -62,7 +71,20 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   }, [reduxWorkspaces, user]);
 
   const handleSelect = (ws: WorkspaceItem) => {
-    dispatch(switchWorkspaceContextThunk({ targetOrgId: ws.orgId }));
+    const targetRole = ws.roleName ? ws.roleName.split(',')[0].trim() : undefined;
+    const payload: any = {};
+    if (ws.orgId && /^[0-9a-fA-F]{24}$/.test(ws.orgId)) {
+      payload.targetOrgId = ws.orgId;
+    }
+    if (targetRole) {
+      payload.targetRole = targetRole;
+    }
+    if (ws.villaId && /^[0-9a-fA-F]{24}$/.test(ws.villaId)) {
+      payload.targetVillaId = ws.villaId;
+    }
+    if (Object.keys(payload).length > 0) {
+      dispatch(switchWorkspaceContextThunk(payload));
+    }
     onSelectCommunity(ws.name, ws.orgId);
     onClose();
   };
@@ -77,7 +99,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
               <View className="bg-indigo-500/15 border border-indigo-500/25 p-2 rounded-xl">
                 <Building2 size={19} color="#6366f1" />
               </View>
-              <Text className="text-lg font-bold text-foreground">Switch Community</Text>
+              <Text className="text-lg font-bold text-foreground">{t('switch_community', 'Switch Community')}</Text>
             </View>
             <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1.5 rounded-full bg-secondary">
               <X size={16} className="text-muted-foreground" />
@@ -85,17 +107,22 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
           </View>
 
           <Text className="text-xs text-muted-foreground">
-            Select an active organization / community workspace context:
+            {t('select_community_org_sub', 'Select a community organization to switch your workspace context:')}
           </Text>
 
           {/* Workspaces List */}
           <ScrollView className="max-h-60" showsVerticalScrollIndicator={false}>
             <View className="gap-2.5">
-              {workspacesList.map((ws) => {
-                const isSelected = ws.name === activeCommunity;
+              {workspacesList.map((ws, index) => {
+                const isOrgMatch = ws.orgId ? ws.orgId === activeOrgId : ws.name === activeCommunity;
+                const isRoleMatch = !ws.roleName || !activeRole || 
+                  ws.roleName.toLowerCase().includes(activeRole.toLowerCase()) || 
+                  activeRole.toLowerCase().includes(ws.roleName.toLowerCase());
+                const isSelected = isOrgMatch && isRoleMatch;
+
                 return (
                   <TouchableOpacity
-                    key={ws.orgId}
+                    key={`${ws.orgId || 'ws'}-${ws.roleName || ''}-${index}`}
                     onPress={() => handleSelect(ws)}
                     activeOpacity={0.8}
                     className={`flex-row items-center justify-between p-3.5 rounded-2xl border shadow-xs ${
@@ -133,7 +160,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                           )}
                         </View>
                         <Text className="text-[10px] text-muted-foreground mt-0.5">
-                          Role: {ws.roleName || 'Member'}
+                          {t('role_persona_label', 'Role')}: {tRole(ws.roleName, ws.roleName || 'Member')}{ws.villaNumber ? ` • ${t('unit_label', 'Unit')} ${ws.villaNumber}` : ''}
                         </Text>
                       </View>
                     </View>
@@ -146,7 +173,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
           </ScrollView>
 
           <Button onPress={onClose} variant="secondary" className="mt-1 h-11">
-            <Text className="font-bold text-foreground text-sm">Cancel</Text>
+            <Text className="font-bold text-foreground text-sm">{t('cancel', 'Cancel')}</Text>
           </Button>
         </View>
       </View>

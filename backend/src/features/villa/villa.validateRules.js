@@ -89,21 +89,27 @@ export const batchGenerateRules = [
   body('startNumber')
     .notEmpty()
     .withMessage('Start number is required')
-    .isInt({ min: 1 })
+    .custom((val) => {
+      const num = parseInt(val, 10);
+      return !isNaN(num) && num >= 1;
+    })
     .withMessage('Start number must be a positive integer'),
   body('endNumber')
     .notEmpty()
     .withMessage('End number is required')
-    .isInt({ min: 1 })
+    .custom((val) => {
+      const num = parseInt(val, 10);
+      return !isNaN(num) && num >= 1;
+    })
     .withMessage('End number must be a positive integer'),
   body('prefix')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isString()
     .withMessage('Prefix must be a string')
     .trim()
     .escape(),
   body('config')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isObject()
     .withMessage('Config must be an object'),
 ];
@@ -125,12 +131,12 @@ export const bulkUploadVillasRules = [
     .escape(),
   body('villas.*.type')
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['1BHA', '2BHA', '3BHA', 'Villa', 'Studio', 'Apartment', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', 'Duplex'])
-    .withMessage('Type must be a valid unit type (e.g., 1BHA, 2BHA, 3BHA, Villa)'),
+    .isIn(['1BHA', '2BHA', '3BHA', '4BHA', 'Villa', 'Studio', 'Apartment', 'Penthouse', 'BHK1', 'BHK2', 'BHK3', 'BHK4', '1 BHK', '2 BHK', '3 BHK', '4 BHK', '1BHK', '2BHK', '3BHK', '4BHK', 'Duplex'])
+    .withMessage('Type must be a valid unit type (e.g., Apartment, Villa, Studio, Penthouse, 1 BHK, 2 BHK, 3 BHK, 4 BHK, Duplex)'),
   body('villas.*.status')
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['Occupied', 'Vacant', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent', 'Reserved', 'Inactive'])
-    .withMessage('Status must be Occupied or Vacant'),
+    .isIn(['Occupied', 'Vacant', 'Under Maintenance', 'occupied', 'vacant', 'under maintenance'])
+    .withMessage('Status must be Vacant, Occupied, or Under Maintenance'),
   body('villas.*.floorAreaSqFt')
     .optional({ nullable: true, checkFalsy: true })
     .isNumeric()
@@ -145,16 +151,18 @@ export const bulkUploadVillasRules = [
     .trim(),
   body('villas.*.residentType')
     .optional({ nullable: true, checkFalsy: true })
-    .isIn(['Family Member', 'Resident Owner', 'Tenant'])
-    .withMessage('Resident type must be Family Member, Resident Owner, or Tenant'),
+    .isIn(['Family Member', 'Resident Owner', 'Tenant', 'Owner', 'Family'])
+    .withMessage('Resident type must be Tenant, Resident Owner, or Family Member'),
 ];
 
 export const assignExistingUserRules = [
   body('userId')
     .notEmpty()
     .withMessage('User ID (userId) is required')
-    .isMongoId()
-    .withMessage('User ID must be a valid Mongo ID'),
+    .custom((val) => {
+      return (typeof val === 'string' && val.trim().length > 0) || typeof val === 'object';
+    })
+    .withMessage('User ID must be a valid identifier'),
   body('residencyType')
     .notEmpty()
     .withMessage('Residency type (residencyType) is required')

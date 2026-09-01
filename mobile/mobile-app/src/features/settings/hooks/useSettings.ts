@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useColorScheme } from 'nativewind';
 import { Alert, Platform, useColorScheme as useRNColorScheme } from 'react-native';
 import storage from '../../../utils/storage';
-import i18n, { LanguageCode, LANGUAGE_OPTIONS } from '../../../utils/i18n';
+import i18n, { LanguageCode, LANGUAGE_OPTIONS, useTranslation } from '../../../utils/i18n';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
@@ -18,9 +18,9 @@ export interface AppPreferences {
 export const useSettings = () => {
   const systemRNTheme = useRNColorScheme();
   const { colorScheme, setColorScheme } = useColorScheme();
+  const { t, languageCode, setLanguage } = useTranslation();
 
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
-  const [languageCode, setLanguageCodeState] = useState<LanguageCode>('en');
   const [languageModalOpen, setLanguageModalOpen] = useState(false);
 
   const [preferences, setPreferences] = useState<AppPreferences>({
@@ -50,8 +50,7 @@ export const useSettings = () => {
           setColorScheme(systemRNTheme === 'dark' ? 'dark' : 'light');
         }
 
-        const lang = await i18n.initLanguage();
-        setLanguageCodeState(lang);
+        await i18n.initLanguage();
       } catch (err) {
         console.warn('Failed to restore settings:', err);
       }
@@ -79,9 +78,8 @@ export const useSettings = () => {
   );
 
   const setLanguageCode = useCallback(async (code: LanguageCode) => {
-    setLanguageCodeState(code);
-    await i18n.setLanguage(code);
-  }, []);
+    await setLanguage(code);
+  }, [setLanguage]);
 
   const isDark = colorScheme === 'dark';
 
@@ -100,11 +98,11 @@ export const useSettings = () => {
         await storage.removeItem('community_pulse_mood');
         await storage.removeItem('community_pulse_question');
         if (Platform.OS === 'web') {
-          window.alert(i18n.t('cache_cleared', 'Application cache cleared successfully.'));
+          window.alert(t('cache_cleared', 'Application cache cleared successfully.'));
         } else {
           Alert.alert(
-            i18n.t('success', 'Success'),
-            i18n.t('cache_cleared', 'Application cache cleared successfully.')
+            t('success', 'Success'),
+            t('cache_cleared', 'Application cache cleared successfully.')
           );
         }
       } catch (e) {
@@ -125,19 +123,19 @@ export const useSettings = () => {
       }
     } else {
       Alert.alert(
-        i18n.t('clear_cache', 'Clear Application Cache'),
+        t('clear_cache', 'Clear Application Cache'),
         'Are you sure you want to clear application cache and temporary storage?',
         [
-          { text: i18n.t('cancel', 'Cancel'), style: 'cancel' },
+          { text: t('cancel', 'Cancel'), style: 'cancel' },
           {
-            text: i18n.t('clear_cache', 'Clear Cache'),
+            text: t('clear_cache', 'Clear Cache'),
             style: 'destructive',
             onPress: doClear,
           },
         ]
       );
     }
-  }, []);
+  }, [t]);
 
   const selectedLanguageOption =
     LANGUAGE_OPTIONS.find((opt) => opt.code === languageCode) || LANGUAGE_OPTIONS[0];
@@ -154,7 +152,7 @@ export const useSettings = () => {
     preferences,
     updatePreference,
     handleClearCache,
-    t: i18n.t,
+    t,
   };
 };
 

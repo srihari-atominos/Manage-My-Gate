@@ -10,12 +10,14 @@ import {
   setActiveConversation,
 } from '../store/directoryMessagingSlice';
 import { DirectoryMember } from '../types/directoryTypes';
-import { CONTEXTUAL_QUICK_MESSAGES } from '../types/messagingTypes';
+import { CONTEXTUAL_QUICK_MESSAGES, getLocalizedQuickMessages } from '../types/messagingTypes';
+import { useTranslation } from '@/src/utils/i18n';
 import { useRouter } from 'expo-router';
 
 export const useDirectoryMessaging = () => {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const {
     conversations,
@@ -69,12 +71,13 @@ export const useDirectoryMessaging = () => {
   );
 
   const getQuickOptions = useCallback(() => {
-    if (!selectedMember) return CONTEXTUAL_QUICK_MESSAGES.default;
+    const localized = getLocalizedQuickMessages(t);
+    if (!selectedMember) return localized.default;
     if (selectedMember.role === 'guard' || selectedMember.role === 'security') {
-      return [...CONTEXTUAL_QUICK_MESSAGES.guard, ...CONTEXTUAL_QUICK_MESSAGES.default];
+      return [...localized.guard, ...localized.default];
     }
-    return CONTEXTUAL_QUICK_MESSAGES.default;
-  }, [selectedMember]);
+    return localized.default;
+  }, [selectedMember, t]);
 
   return {
     conversations,

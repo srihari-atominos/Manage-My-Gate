@@ -55,7 +55,7 @@ export class RoleService {
       if (!trimmedName) {
         throw new HttpError(400, 'Role name is required.');
       }
-      const existingRole = await roleRepository.findByName(trimmedName, orgId, currentSession);
+      const existingRole = await roleRepository.findByOrgAndName(trimmedName, orgId, currentSession);
       if (existingRole) {
         throw new HttpError(400, `Role with name '${trimmedName}' already exists.`);
       }
@@ -67,8 +67,25 @@ export class RoleService {
         const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
         
         const allPermissions = await permissionService.getAllPermissions();
-        const matchedPermissions = allPermissions.filter(p => permissions.includes(p.name));
-        const permissionIds = matchedPermissions.map(p => p._id);
+        const matchedPermissions = allPermissions.filter((p) => {
+          const pId = p._id ? p._id.toString() : '';
+          const pName = p.name ? p.name.trim() : '';
+          const pCode = p.code ? p.code.trim() : '';
+          const pNormalized = pName.replace(':', '.');
+
+          return permissions.some((perm) => {
+            if (!perm) return false;
+            const strPerm = String(perm).trim();
+            const permNormalized = strPerm.replace(':', '.');
+            return (
+              strPerm === pId ||
+              strPerm === pName ||
+              strPerm === pCode ||
+              permNormalized === pNormalized
+            );
+          });
+        });
+        const permissionIds = matchedPermissions.map((p) => p._id);
         
         await rolePermissionService.updateRolePermissions(newRole._id.toString(), permissionIds, currentSession);
         populatedPermissions = matchedPermissions.map(p => p.name);
@@ -108,7 +125,7 @@ export class RoleService {
       }
       if (name) {
         const trimmedName = name.trim();
-        const existing = await roleRepository.findByName(trimmedName, orgId, session);
+        const existing = await roleRepository.findByOrgAndName(trimmedName, orgId, session);
         if (existing && existing._id.toString() !== id) {
           throw new HttpError(400, `Role with name '${trimmedName}' already exists.`);
         }
@@ -121,8 +138,25 @@ export class RoleService {
       if (permissions !== undefined) {
         const permissionService = (await import('../permission/permission.services.js')).default;
         const allPermissions = await permissionService.getAllPermissions();
-        const matchedPermissions = allPermissions.filter(p => permissions.includes(p.name));
-        const permissionIds = matchedPermissions.map(p => p._id);
+        const matchedPermissions = allPermissions.filter((p) => {
+          const pId = p._id ? p._id.toString() : '';
+          const pName = p.name ? p.name.trim() : '';
+          const pCode = p.code ? p.code.trim() : '';
+          const pNormalized = pName.replace(':', '.');
+
+          return permissions.some((perm) => {
+            if (!perm) return false;
+            const strPerm = String(perm).trim();
+            const permNormalized = strPerm.replace(':', '.');
+            return (
+              strPerm === pId ||
+              strPerm === pName ||
+              strPerm === pCode ||
+              permNormalized === pNormalized
+            );
+          });
+        });
+        const permissionIds = matchedPermissions.map((p) => p._id);
         
         await rolePermissionService.updateRolePermissions(id, permissionIds, session);
         populatedPermissions = matchedPermissions.map(p => p.name);

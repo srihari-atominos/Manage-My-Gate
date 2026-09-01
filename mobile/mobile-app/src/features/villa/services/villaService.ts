@@ -18,7 +18,11 @@ export interface VillaPayload {
   squareFeetArea?: number | string;
   floorAreaSqFt?: number | string;
   type?: string;
-  status?: 'Vacant' | 'Occupied' | 'Under Maintenance';
+  status?: 'Vacant' | 'Occupied' | 'Under Maintenance' | string;
+  name?: string;
+  email?: string;
+  residentType?: string;
+  phone?: string;
 }
 
 export interface BatchGenerateParams {
@@ -27,7 +31,9 @@ export interface BatchGenerateParams {
   endNumber: number;
   config?: {
     blockOrBuilding?: string;
+    floor?: number | string;
     type?: string;
+    status?: 'Vacant' | 'Occupied' | 'Under Maintenance' | string;
     floorAreaSqFt?: number | null;
   };
 }

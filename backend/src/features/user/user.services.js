@@ -49,6 +49,7 @@ export class UserService {
       // Normalization & Validation
       if (userData.email) userData.email = userData.email.trim().toLowerCase();
       if (userData.username) userData.username = userData.username.trim();
+      if (userData.phone) userData.phone = userData.phone.trim();
 
       // Check uniqueness
       const existingEmail = await userRepository.findByEmail(userData.email, currentSession);
@@ -59,6 +60,13 @@ export class UserService {
       const existingUsername = await userRepository.findByUsername(userData.username, currentSession);
       if (existingUsername) {
         throw new HttpError(400, `User with username '${userData.username}' already exists.`);
+      }
+
+      if (userData.phone) {
+        const existingPhoneUser = await userRepository.findByPhone(userData.phone, currentSession);
+        if (existingPhoneUser) {
+          throw new HttpError(400, `User with phone number '${userData.phone}' already exists.`);
+        }
       }
 
       // Hash the password securely using crypto utilities if provided
@@ -118,6 +126,12 @@ export class UserService {
     const currentSession = session || localSession;
     try {
       await this.getUserById(id, currentSession); // Throws if user doesn't exist
+      if (updateData.phone && updateData.phone.trim()) {
+        const existingPhoneUser = await userRepository.findByPhone(updateData.phone.trim(), currentSession);
+        if (existingPhoneUser && existingPhoneUser._id.toString() !== id.toString()) {
+          throw new HttpError(400, `User with phone number '${updateData.phone}' already exists.`);
+        }
+      }
       const updatedUser = await userRepository.update(id, updateData, currentSession);
       if (localSession) {
         await localSession.commitTransaction();
@@ -215,6 +229,13 @@ export class UserService {
     try {
       const trimmedEmail = email.trim().toLowerCase();
       const existing = await userRepository.findByEmail(trimmedEmail, session);
+
+      if (phone && phone.trim()) {
+        const existingPhoneUser = await userRepository.findByPhone(phone.trim(), session);
+        if (existingPhoneUser && (!existing || existingPhoneUser._id.toString() !== existing._id.toString())) {
+          throw new HttpError(400, `User with phone number '${phone}' already exists.`);
+        }
+      }
       
       let user = existing;
       if (!existing) {
@@ -299,7 +320,7 @@ export class UserService {
       }
 
       if (existingMembership) {
-        // Update the existing membership with new role, villa, and resident type details
+        // Update the existing membership with new role, villa, and resident type details (explicitly Pending status until accepted)
         if (roleIds.length > 0) {
           existingMembership.roleIds = roleIds;
           existingMembership.roleId = roleIds[0] || null;
@@ -307,6 +328,7 @@ export class UserService {
         existingMembership.villaId = rootVillaId;
         existingMembership.residentType = rootResidentType;
         existingMembership.units = membershipUnits;
+        existingMembership.status = 'Pending';
         await existingMembership.save({ session });
       } else {
         // Create membership with villa association and roles (explicitly Pending status)
@@ -494,11 +516,29 @@ export class UserService {
       // Auto-sync technician record if updated to a staff/vendor role
       await this.syncTechnicianForStaffUser(userId, orgId, foundRoleNames, currentSession);
 
+      // Fetch fresh permission array for newly assigned roles
+      const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
+      rolePermissionService.clearCache();
+      
+      let updatedPermissions = [];
+      for (const rId of roleIds) {
+        const perms = await rolePermissionService.getPermissionsByRoleId(rId);
+        updatedPermissions.push(...perms.map((p) => p.name));
+      }
+      updatedPermissions = Array.from(new Set(updatedPermissions));
+
       if (localSession) {
         await localSession.commitTransaction();
       }
-      userEvents.emit('USER_UPDATED', { userId, orgId, action: 'roles_updated' });
-      return { id: userId, roles: foundRoleNames };
+      userEvents.emit('USER_UPDATED', {
+        userId,
+        orgId,
+        action: 'roles_updated',
+        roles: foundRoleNames,
+        roleIds: roleIds.map((r) => r.toString()),
+        permissions: updatedPermissions,
+      });
+      return { id: userId, roles: foundRoleNames, permissions: updatedPermissions };
     } catch (error) {
       if (localSession) {
         await localSession.abortTransaction();
@@ -534,7 +574,12 @@ export class UserService {
         if (phone.trim() === '') {
           payload.$unset.phone = 1;
         } else {
-          payload.$set.phone = phone.trim();
+          const trimmedPhone = phone.trim();
+          const existingPhoneUser = await userRepository.findByPhone(trimmedPhone, session);
+          if (existingPhoneUser && existingPhoneUser._id.toString() !== id.toString()) {
+            throw new HttpError(400, `User with phone number '${phone}' already exists.`);
+          }
+          payload.$set.phone = trimmedPhone;
         }
       }
 
@@ -576,7 +621,7 @@ export class UserService {
     const villaService = (await import('../villa/villa.services.js')).default;
 
     for (const invite of invitations) {
-      const { email, residentType = 'None', roleName, villaNumber } = invite;
+      const { email, residentType = 'None', roleName, villaNumber, villaId: payloadVillaId } = invite;
       const trimmedEmail = email ? email.trim().toLowerCase() : '';
 
       try {
@@ -584,19 +629,15 @@ export class UserService {
           throw new HttpError(400, 'Email address is required.');
         }
 
-        let villaId = null;
+        let villaId = payloadVillaId || null;
 
-        // If villa number is provided, resolve it
-        if (villaNumber && villaNumber.trim()) {
+        // If villa number is provided and villaId not explicit, resolve it
+        if (!villaId && villaNumber && villaNumber.trim()) {
           const trimmedVillaNo = villaNumber.trim();
           const villa = await villaService.getVillaByNumber(trimmedVillaNo, orgId);
-          if (!villa) {
-            throw new HttpError(404, `Villa number '${trimmedVillaNo}' not found in this community.`);
+          if (villa) {
+            villaId = villa._id;
           }
-          villaId = villa._id;
-        } else if (['Owner', 'Tenant', 'Family'].includes(residentType)) {
-          // Residents must have a villa number
-          throw new HttpError(400, `Villa number is required for resident type '${residentType}'.`);
         }
 
         // Call the single inviteUser logic

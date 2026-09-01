@@ -11,6 +11,7 @@ import { Button } from '../../../components/ui/button';
 import { Icon } from '../../../components/ui/icon';
 import { Text } from '../../../components/ui/text';
 import { TextInput } from '../../../components/forms/TextInput';
+import { useTranslation } from '../../../src/utils/i18n';
 import { useRoles } from '../../../src/features/roleBuilder/hooks/useRoles';
 import { useRoleSocket } from '../../../src/features/roleBuilder/hooks/useRoleSocket';
 import { RoleCard } from '../../../src/features/roleBuilder/components/RoleCard';
@@ -18,6 +19,7 @@ import { RoleFormSheetModal } from '../../../src/features/roleBuilder/components
 
 export default function RoleBuilderScreen() {
   useRoleSocket();
+  const { t } = useTranslation();
 
   const {
     roles = [],
@@ -146,8 +148,8 @@ export default function RoleBuilderScreen() {
 
   return (
     <ScreenShell
-      title="Role Builder"
-      subtitle="Configure access roles & RBAC"
+      title={t('feature_admin_role_builder_name', 'Role Builder')}
+      subtitle={t('feature_admin_role_builder_sub', 'Configure access roles & RBAC')}
       iconName="ShieldCheck"
       domainName="Administration & Security"
       sharedSlice="roleSlice.ts"

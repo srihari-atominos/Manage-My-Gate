@@ -108,6 +108,9 @@ export const deleteConnectionAsync = createAsyncThunk(
   'integrationHub/deleteConnection',
   async (id: string, { rejectWithValue }) => {
     try {
+      if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+        return id;
+      }
       await integrationHubApi.deleteConnection(id);
       return id;
     } catch (error: any) {

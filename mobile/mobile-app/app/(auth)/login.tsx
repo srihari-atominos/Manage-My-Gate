@@ -69,7 +69,7 @@ interface PhoneFormValues {
 
 export default function LoginScreen() {
   const { user, login: performLogin, requestOtp, loading, error, isAuthenticated, otpSent, clearStatus } = useAuth();
-  const params = useLocalSearchParams<{ intent?: string }>();
+  const params = useLocalSearchParams<{ intent?: string; email?: string }>();
   const isCreateOrgIntent =
     params.intent === 'create-org' ||
     params.intent === 'create' ||
@@ -206,6 +206,12 @@ export default function LoginScreen() {
       phone: '',
     },
   });
+
+  React.useEffect(() => {
+    if (params.email) {
+      basicForm.setValue('login', params.email);
+    }
+  }, [params.email]);
 
   React.useEffect(() => {
     clearStatus();
@@ -654,20 +660,10 @@ export default function LoginScreen() {
                 <View className="flex-1 h-px bg-border/80" />
               </View>
 
-              {/* Social Authentication: Google ID & Apple ID */}
+              {/* Social Authentication: Google ID & Microsoft ID */}
               <View className="flex-row items-center gap-3 w-full">
-                <SocialAuthButton
-                  provider="google"
-                  onPress={() => {
-                    // Trigger Google Sign-In
-                  }}
-                />
-                <SocialAuthButton
-                  provider="apple"
-                  onPress={() => {
-                    // Trigger Apple Sign-In
-                  }}
-                />
+                <SocialAuthButton provider="google" />
+                <SocialAuthButton provider="microsoft" />
               </View>
 
               {/* Create Account Prompt */}

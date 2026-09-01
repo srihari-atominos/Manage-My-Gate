@@ -21,18 +21,20 @@ export const UserCard: React.FC<UserCardProps> = ({
   onDeleteUser,
 }) => {
   const isSelf = user.id === currentUserId || user._id === currentUserId;
-  const isPending = user.status === 'Pending';
+  const isPending = user.status === 'Pending' || user.status === 'Pending Verification';
+  const displayStatus = isPending ? 'Pending' : user.status || 'Active';
 
   const mapStatusVariant = (status: string): StatusVariant => {
+    if (status === 'Pending' || status === 'Pending Verification') {
+      return 'warning';
+    }
     switch (status) {
       case 'Active':
         return 'success';
-      case 'Pending':
-        return 'warning';
       case 'Inactive':
         return 'danger';
       default:
-        return 'neutral';
+        return 'warning';
     }
   };
 
@@ -56,12 +58,12 @@ export const UserCard: React.FC<UserCardProps> = ({
       title={user.name}
       subtitle={user.email}
       leftAvatarFallback={getInitials(user.name)}
-      status={{ label: user.status || 'Active', variant: mapStatusVariant(user.status) }}
+      status={{ label: displayStatus, variant: mapStatusVariant(user.status) }}
       showChevron={false}
       className="mb-2 p-2.5 bg-card border border-border/70 rounded-xl shadow-xs"
     >
       <View className="mt-0.5">
-        {/* Phone & Role Row (Combined tight row if present) */}
+        {/* Phone & Role Row */}
         <View className="flex-row items-center flex-wrap gap-1 mb-1">
           {user.phone ? (
             <View className="flex-row items-center me-2">
@@ -89,7 +91,7 @@ export const UserCard: React.FC<UserCardProps> = ({
           ) : null}
         </View>
 
-        {/* Assigned Villa Units Box (Ultra compact) */}
+        {/* Assigned Villa Units Box */}
         {user.assignedUnits && user.assignedUnits.length > 0 ? (
           <View className="my-1 border-t border-border/40 pt-1">
             {user.assignedUnits.map((unit, idx) => (

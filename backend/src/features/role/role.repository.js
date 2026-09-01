@@ -11,11 +11,27 @@ export class RoleRepository {
   }
 
   async findByName(name, orgId = null, session = null) {
-    const query = { name };
-    if (orgId !== undefined) {
-      query.orgId = orgId;
+    if (!name) return null;
+    const trimmed = String(name).trim();
+    const regex = new RegExp('^' + trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i');
+
+    if (orgId) {
+      const orgRole = await Role.findOne({ name: regex, orgId }).session(session || null);
+      if (orgRole) return orgRole;
+      const globalRole = await Role.findOne({ name: regex, $or: [{ orgId: null }, { isSystem: true }] }).session(session || null);
+      if (globalRole) return globalRole;
+      return null;
     }
-    return await Role.findOne(query).session(session || null);
+
+    return await Role.findOne({ name: regex, $or: [{ orgId: null }, { isSystem: true }] }).session(session || null);
+  }
+
+  async findByOrgAndName(name, orgId = null, session = null) {
+    if (!name) return null;
+    const trimmed = String(name).trim();
+    const regex = new RegExp('^' + trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i');
+
+    return await Role.findOne({ name: regex, orgId: orgId || null }).session(session || null);
   }
 
   /**

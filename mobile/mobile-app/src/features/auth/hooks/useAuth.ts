@@ -6,6 +6,7 @@ import {
   loginWithMicrosoftThunk,
   registerUserThunk,
   verifyRegistrationThunk,
+  acceptInviteThunk,
   createWorkspaceThunk,
   updateOrganizationFeaturesThunk,
   requestOtp,
@@ -18,8 +19,8 @@ import authService from '../services/authService';
 import { useCallback } from 'react';
 
 export const useAuth = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  const authState = useSelector((state: RootState) => state.auth) || {
+  let dispatch: AppDispatch | null = null;
+  let authState: any = {
     user: null,
     isAuthenticated: false,
     isInitialized: true,
@@ -27,6 +28,16 @@ export const useAuth = () => {
     error: null,
     otpSent: false,
   };
+
+  try {
+    dispatch = useDispatch<AppDispatch>();
+    const storeState = useSelector((state: RootState) => state.auth);
+    if (storeState) {
+      authState = storeState;
+    }
+  } catch (e) {
+    // Redux Provider context not available yet during initial mount
+  }
 
   const handleLogin = useCallback(
     (credentials: any) => {
@@ -59,6 +70,13 @@ export const useAuth = () => {
   const handleVerifyRegistration = useCallback(
     (email: string, code: string) => {
       return dispatch ? dispatch(verifyRegistrationThunk({ email, code })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleAcceptInvite = useCallback(
+    (token: string, password: string) => {
+      return dispatch ? dispatch(acceptInviteThunk({ token, password })) : Promise.resolve();
     },
     [dispatch]
   );
@@ -112,6 +130,7 @@ export const useAuth = () => {
     login: handleLogin,
     register: handleRegister,
     verifyRegistration: handleVerifyRegistration,
+    acceptInvite: handleAcceptInvite,
     createWorkspace: handleCreateWorkspace,
     updateOrganizationFeatures: handleUpdateOrganizationFeatures,
     checkOrganizationName: handleCheckOrganizationName,

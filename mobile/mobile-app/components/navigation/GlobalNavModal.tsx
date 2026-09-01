@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { SearchBar } from '@/components/forms/SearchBar';
+import { useTranslation } from '@/src/utils/i18n';
 import {
   Compass,
   X,
@@ -23,10 +24,12 @@ import {
 } from 'lucide-react-native';
 
 export interface GlobalNavCategory {
-  title: string;
+  titleKey: string;
+  defaultTitle: string;
   items: Array<{
     id: string;
-    label: string;
+    labelKey: string;
+    defaultLabel: string;
     route: string;
     icon: any;
     color: string;
@@ -42,51 +45,58 @@ interface GlobalNavModalProps {
 export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose }) => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const { t } = useTranslation();
 
-  const categories: GlobalNavCategory[] = [
+  const rawCategories: GlobalNavCategory[] = [
     {
-      title: 'DASHBOARD & OVERVIEW',
+      titleKey: 'nav_dashboard_overview',
+      defaultTitle: 'DASHBOARD & OVERVIEW',
       items: [
-        { id: 'dash-main', label: 'Executive Dashboard', route: '/(resident)/amenities/dashboard', icon: Home, color: '#3b82f6' },
-        { id: 'dash-comp', label: 'Complaints Dashboard', route: '/(resident)/complaints/dashboard', icon: Wrench, color: '#f59e0b' },
+        { id: 'dash-main', labelKey: 'executive_dashboard', defaultLabel: 'Executive Dashboard', route: '/(resident)/amenities/dashboard', icon: Home, color: '#3b82f6' },
+        { id: 'dash-comp', labelKey: 'complaints_dashboard', defaultLabel: 'Complaints Dashboard', route: '/(resident)/complaints/dashboard', icon: Wrench, color: '#f59e0b' },
       ],
     },
     {
-      title: 'COMMUNITY & DIRECTORY',
+      titleKey: 'nav_community_directory',
+      defaultTitle: 'COMMUNITY & DIRECTORY',
       items: [
-        { id: 'cd-directory', label: 'Community Directory', route: '/(resident)/directory/index', icon: Users, color: '#10b981' },
-        { id: 'cd-notes', label: 'All Community Notes', route: '/(resident)/notes/index', icon: Sparkles, color: '#ec4899', badge: '24h' },
+        { id: 'cd-directory', labelKey: 'community_directory', defaultLabel: 'Community Directory', route: '/(resident)/directory/index', icon: Users, color: '#10b981' },
+        { id: 'cd-notes', labelKey: 'all_community_notes', defaultLabel: 'All Community Notes', route: '/(resident)/notes/index', icon: Sparkles, color: '#ec4899', badge: '24h' },
       ],
     },
     {
-      title: 'COMPLAINTS & MAINTENANCE',
+      titleKey: 'nav_complaints_maintenance',
+      defaultTitle: 'COMPLAINTS & MAINTENANCE',
       items: [
-        { id: 'c-raise', label: 'Raise Ticket', route: '/(resident)/complaints/raise-ticket', icon: PlusCircle, color: '#3b82f6' },
-        { id: 'c-my', label: 'Track My Tickets', route: '/(resident)/complaints/my-tickets', icon: Search, color: '#f59e0b' },
-        { id: 'c-manage', label: 'Management Board', route: '/(resident)/complaints/manage', icon: Sliders, color: '#6366f1' },
-        { id: 'c-staff', label: 'Staff Directory', route: '/(resident)/complaints/staff', icon: Users, color: '#10b981' },
+        { id: 'c-raise', labelKey: 'feature_complaints_raise_ticket_name', defaultLabel: 'Raise Ticket', route: '/(resident)/complaints/raise-ticket', icon: PlusCircle, color: '#3b82f6' },
+        { id: 'c-my', labelKey: 'feature_complaints_track_requests_name', defaultLabel: 'Track My Tickets', route: '/(resident)/complaints/my-tickets', icon: Search, color: '#f59e0b' },
+        { id: 'c-manage', labelKey: 'feature_complaints_complaint_management_name', defaultLabel: 'Management Board', route: '/(resident)/complaints/manage', icon: Sliders, color: '#6366f1' },
+        { id: 'c-staff', labelKey: 'feature_complaints_staff_name', defaultLabel: 'Staff Directory', route: '/(resident)/complaints/staff', icon: Users, color: '#10b981' },
       ],
     },
     {
-      title: 'AMENITIES & BOOKINGS',
+      titleKey: 'nav_amenities_bookings',
+      defaultTitle: 'AMENITIES & BOOKINGS',
       items: [
-        { id: 'a-discover', label: 'Discover Amenities', route: '/(resident)/amenities/discover', icon: Building2, color: '#14b8a6' },
-        { id: 'a-bookings', label: 'My Booking Passes', route: '/(resident)/amenities/my-bookings', icon: Calendar, color: '#6366f1' },
-        { id: 'a-wallet', label: 'Amenity Wallet', route: '/(resident)/amenities/wallet', icon: Wallet, color: '#06b6d4' },
-        { id: 'a-scanner', label: 'QR Scanner', route: '/(resident)/amenities/scanner', icon: QrCode, color: '#a855f7' },
+        { id: 'a-discover', labelKey: 'feature_amenities_discover_name', defaultLabel: 'Discover Amenities', route: '/(resident)/amenities/discover', icon: Building2, color: '#14b8a6' },
+        { id: 'a-bookings', labelKey: 'feature_amenities_my_booking_name', defaultLabel: 'My Booking Passes', route: '/(resident)/amenities/my-bookings', icon: Calendar, color: '#6366f1' },
+        { id: 'a-wallet', labelKey: 'feature_amenities_wallet_name', defaultLabel: 'Amenity Wallet', route: '/(resident)/amenities/wallet', icon: Wallet, color: '#06b6d4' },
+        { id: 'a-scanner', labelKey: 'feature_amenities_scanner_name', defaultLabel: 'QR Scanner', route: '/(resident)/amenities/scanner', icon: QrCode, color: '#a855f7' },
       ],
     },
     {
-      title: 'BILLING & INVOICES',
+      titleKey: 'nav_billing_invoices',
+      defaultTitle: 'BILLING & INVOICES',
       items: [
-        { id: 'b-main', label: 'Billing Center', route: '/(resident)/billing', icon: Receipt, color: '#10b981' },
-        { id: 'b-dues', label: 'My Outstanding Dues', route: '/(resident)/billing/my-dues', icon: Receipt, color: '#f43f5e' },
+        { id: 'b-main', labelKey: 'feature_billing_dashboard_name', defaultLabel: 'Billing Center', route: '/(resident)/billing', icon: Receipt, color: '#10b981' },
+        { id: 'b-dues', labelKey: 'feature_billing_my_dues_name', defaultLabel: 'My Outstanding Dues', route: '/(resident)/billing/my-dues', icon: Receipt, color: '#f43f5e' },
       ],
     },
     {
-      title: 'VISITORS & SECURITY',
+      titleKey: 'nav_visitors_security',
+      defaultTitle: 'VISITORS & SECURITY',
       items: [
-        { id: 'v-main', label: 'Visitor Pass Hub', route: '/(resident)/visitor', icon: ShieldCheck, color: '#8b5cf6' },
+        { id: 'v-main', labelKey: 'feature_visitor_resident_passes_name', defaultLabel: 'Visitor Pass Hub', route: '/(resident)/visitor', icon: ShieldCheck, color: '#8b5cf6' },
       ],
     },
   ];
@@ -96,13 +106,21 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
     router.push(route as any);
   };
 
-  const filteredCategories = categories
-    .map((cat) => ({
-      ...cat,
-      items: cat.items.filter((item) =>
-        item.label.toLowerCase().includes(searchQuery.toLowerCase().trim())
-      ),
-    }))
+  const filteredCategories = rawCategories
+    .map((cat) => {
+      const localizedTitle = t(cat.titleKey, cat.defaultTitle);
+      const localizedItems = cat.items
+        .map((item) => ({
+          ...item,
+          label: t(item.labelKey, item.defaultLabel),
+        }))
+        .filter((item) => item.label.toLowerCase().includes(searchQuery.toLowerCase().trim()));
+
+      return {
+        title: localizedTitle,
+        items: localizedItems,
+      };
+    })
     .filter((cat) => cat.items.length > 0);
 
   return (
@@ -116,8 +134,8 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
                 <Icon as={Compass} size={20} className="text-primary" />
               </View>
               <View>
-                <Text className="text-base font-bold text-foreground">Global Easy Navigation</Text>
-                <Text className="text-xs text-muted-foreground">Jump to any module or feature instantly</Text>
+                <Text className="text-base font-bold text-foreground">{t('global_navigation', 'Global Easy Navigation')}</Text>
+                <Text className="text-xs text-muted-foreground">{t('jump_to_feature', 'Jump to any module or feature instantly')}</Text>
               </View>
             </View>
 
@@ -131,7 +149,7 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
             <SearchBar
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Filter feature navigation..."
+              placeholder={t('search_placeholder', 'Search features, tools & services...')}
             />
           </View>
 
@@ -173,7 +191,7 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
             ) : (
               <View className="p-8 items-center justify-center bg-card rounded-2xl border border-border mt-4">
                 <Text className="text-xs font-semibold text-muted-foreground">
-                  No matching feature found for "{searchQuery}"
+                  {t('no_matching_feature', 'No matching feature found for')} "{searchQuery}"
                 </Text>
               </View>
             )}

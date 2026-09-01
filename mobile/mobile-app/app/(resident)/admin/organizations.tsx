@@ -1,11 +1,14 @@
 import React from 'react';
 import FeatureDetailScreen from '@/components/dashboard/FeatureDetailScreen';
+import { useTranslation } from '@/src/utils/i18n';
 
 export default function OrganizationManagerScreen() {
+  const { t } = useTranslation();
+
   return (
     <FeatureDetailScreen
-      title="Organization Manager"
-      categoryName="Administration & Security"
+      title={t('feature_admin_organizations_name', 'Org Manager')}
+      categoryName={t('category_administration_security', 'Administration & Security')}
       sharedSlice="organizationSlice.js"
       permission="platform:super_admin"
       iconName="Building"
