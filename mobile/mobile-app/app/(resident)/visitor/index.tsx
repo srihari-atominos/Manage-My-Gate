@@ -27,11 +27,11 @@ export default function VisitorDashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { t } = useTranslation();
 
-  const { dashboard, fetchDashboardData } = useVisitorPass();
+  const { dashboard, fetchDashboardData, activeVisitors, fetchActiveVisitors } = useVisitorPass();
 
   const loadData = useCallback(async () => {
-    await fetchDashboardData();
-  }, [fetchDashboardData]);
+    await Promise.all([fetchDashboardData(), fetchActiveVisitors()]);
+  }, [fetchDashboardData, fetchActiveVisitors]);
 
   useEffect(() => {
     loadData();
@@ -55,6 +55,7 @@ export default function VisitorDashboardScreen() {
 
   const pendingWalkInsCount = dashboard?.pendingWalkIns?.length || 0;
   const activePassesCount = dashboard?.activePassesCount || 0;
+  const insideCount = activeVisitors?.length || 0;
   const isLoading = dashboard?.status === 'loading' && !refreshing && mappedRecentPasses.length === 0;
 
   const visitorKpis: KPICardProps[] = [
@@ -66,10 +67,17 @@ export default function VisitorDashboardScreen() {
       trend: { direction: 'up', value: t('live', 'Live') },
     },
     {
+      title: t('inside_now', 'Inside Now'),
+      value: String(insideCount),
+      iconName: 'Users',
+      variant: insideCount > 0 ? 'info' : 'default',
+      trend: { direction: 'up', value: insideCount > 0 ? t('on_premises', 'On Premises') : t('none', 'None') },
+    },
+    {
       title: t('walkin_waiting', 'Walk-In Waiting'),
       value: String(pendingWalkInsCount),
       iconName: 'Clock',
-      variant: 'warning',
+      variant: pendingWalkInsCount > 0 ? 'warning' : 'default',
       trend: {
         direction: pendingWalkInsCount > 0 ? 'down' : 'up',
         value: pendingWalkInsCount > 0 ? t('needs_action', 'Needs action') : t('clear', 'Clear'),

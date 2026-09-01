@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { User, Phone, UserPlus } from 'lucide-react-native';
+import { User, Phone, UserPlus, Trash2 } from 'lucide-react-native';
 
 export interface GroupGuestItem {
   id: string;
@@ -14,11 +14,13 @@ export interface GroupGuestItem {
 export interface AddGroupGuestsStepProps {
   guests: GroupGuestItem[];
   onAddGuest: (guest: GroupGuestItem) => void;
+  onRemoveGuest?: (id: string) => void;
 }
 
 export const AddGroupGuestsStep: React.FC<AddGroupGuestsStepProps> = ({
   guests,
   onAddGuest,
+  onRemoveGuest,
 }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -88,6 +90,49 @@ export const AddGroupGuestsStep: React.FC<AddGroupGuestsStepProps> = ({
           <Text className="font-bold text-foreground">Add Guest to List</Text>
         </Button>
       </View>
+
+      {guests.length > 0 && (
+        <View className="gap-2 pt-2">
+          <Text className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Added Guests ({guests.length})
+          </Text>
+          {guests.map((item, index) => (
+            <View
+              key={item.id}
+              className="bg-card border border-border rounded-xl p-3 flex-row items-center justify-between"
+            >
+              <View className="flex-row items-center gap-3 flex-1 me-2">
+                <View className="w-7 h-7 rounded-full bg-primary/10 items-center justify-center">
+                  <Text className="text-xs font-bold text-primary">{index + 1}</Text>
+                </View>
+                <View className="gap-0.5 flex-1">
+                  <Text className="font-bold text-foreground text-sm" numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  {item.phone ? (
+                    <Text variant="muted" className="text-xs">
+                      Ph: {item.phone}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+
+              {onRemoveGuest ? (
+                <TouchableOpacity
+                  onPress={() => onRemoveGuest(item.id)}
+                  activeOpacity={0.7}
+                  className="w-8 h-8 rounded-lg bg-destructive/10 items-center justify-center"
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove guest ${item.name}`}
+                >
+                  <Trash2 size={15} className="text-destructive" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 };
+

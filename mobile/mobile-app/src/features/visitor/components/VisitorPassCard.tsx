@@ -13,9 +13,11 @@ interface VisitorPassCardProps {
   onPress: (pass: VisitorPass) => void;
   onShowQR: (pass: VisitorPass) => void;
   villaBadge?: string;
+  isInside?: boolean;
 }
 
-const mapPassStatusVariant = (status: string): StatusVariant => {
+const mapPassStatusVariant = (status: string, isInside?: boolean): StatusVariant => {
+  if (isInside) return 'success';
   switch (status) {
     case 'ACTIVE':
       return 'success';
@@ -35,17 +37,25 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
   onPress,
   onShowQR,
   villaBadge,
+  isInside,
 }) => {
   const { t } = useTranslation();
-  const displayVilla = villaBadge || (pass as any).villaName || (pass as any).villaNumber || (pass as any).villaId?.name || (pass as any).villaId?.number;
+  const vObj = (pass as any).villaId;
+  const unitNum = vObj?.unitNumber || vObj?.villaNumber || (pass as any).villaNumber || (pass as any).villaName || (pass as any).villaId?.name || (pass as any).villaId?.number;
+  const block = vObj?.blockOrBuilding || vObj?.block ? ` (${vObj.blockOrBuilding || vObj.block})` : '';
+  const resolvedVilla = unitNum ? `${t('villa_label', 'Villa')} ${unitNum}${block}` : ((pass as any).passType === 'ADMIN_GUEST' || !vObj ? t('community_common_area', 'Community / Common Area') : '');
+  const displayVilla = villaBadge || resolvedVilla;
 
   const subtitleParts = [];
-  if (displayVilla) subtitleParts.push(`${t('villa_label', 'Villa:')} ${displayVilla}`);
+  if (displayVilla) subtitleParts.push(displayVilla);
   if (pass.phone) subtitleParts.push(`Ph: ${pass.phone}`);
   else if (pass.purpose) subtitleParts.push(`${t('for_purpose', 'For:')} ${pass.purpose}`);
   else subtitleParts.push(`${t('code_label', 'Code:')} ${pass.code || pass._id.slice(-6)}`);
 
   const subtitle = subtitleParts.join(' • ');
+
+  const badgeLabel = isInside ? 'INSIDE' : pass.status;
+  const badgeVariant = mapPassStatusVariant(pass.status, isInside);
 
   return (
     <ListCard
@@ -55,8 +65,8 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
       leftIconBgColor="rgba(23, 43, 112, 0.12)"
       leftIconColor="#172B70"
       status={{
-        label: pass.status,
-        variant: mapPassStatusVariant(pass.status),
+        label: badgeLabel,
+        variant: badgeVariant,
       }}
       onPress={() => onPress(pass)}
       rightContent={

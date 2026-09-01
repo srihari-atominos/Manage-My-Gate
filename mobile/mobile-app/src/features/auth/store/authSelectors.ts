@@ -2,6 +2,24 @@ import { RootState } from '../../../store/store';
 
 export const selectAuthUser = (state: RootState) => (state as any).auth?.user;
 
+export const selectCurrentUserId = (state: RootState): string => {
+  const user = selectAuthUser(state);
+  if (!user) return '';
+
+  const rawId =
+    user.id ||
+    user._id ||
+    user.userId ||
+    user.user?.id ||
+    user.user?._id ||
+    user.sub ||
+    '';
+
+  if (typeof rawId === 'string') return rawId;
+  if (typeof rawId === 'object' && rawId !== null) return rawId._id || rawId.id || '';
+  return '';
+};
+
 export const selectActiveOrgId = (state: RootState): string => {
   const user = selectAuthUser(state);
   if (!user) return '';

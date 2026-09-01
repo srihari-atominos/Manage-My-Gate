@@ -14,6 +14,9 @@ import {
   fetchDashboardSummary,
   fetchPendingWalkIns,
   resolveWalkInRequest,
+  fetchActiveVisitorsThunk,
+  processPreApprovedThunk,
+  checkoutVisitorThunk,
   VisitorPass,
 } from '../store/visitorPassSlice';
 
@@ -24,9 +27,18 @@ export const useVisitorPass = () => {
   useVisitorSocket();
 
   // 1. Selector mapping
-  const { passes, activePass, dashboard, walkIns, pagination, status, actionStatus, error } = useSelector(
-    (state: RootState) => (state as any).visitorPass
-  );
+  const {
+    passes,
+    activePass,
+    activeVisitors,
+    activeVisitorsStatus,
+    dashboard,
+    walkIns,
+    pagination,
+    status,
+    actionStatus,
+    error,
+  } = useSelector((state: RootState) => (state as any).visitorPass);
 
   // Retrieve organization ID using centralized selector
   const activeOrgId = useSelector(selectActiveOrgId);
@@ -121,24 +133,35 @@ export const useVisitorPass = () => {
     async (orgIdParam?: string) => {
       const orgId = orgIdParam || activeOrgId;
       if (!orgId) return [];
-      const res = await visitorService.getActiveVisitors(orgId);
-      const body = res && (res as any).success !== undefined ? res : (res as any)?.data;
-      return Array.isArray(body?.data || body) ? body?.data || body : [];
+      const res = await dispatch(fetchActiveVisitorsThunk(orgId));
+      return (res as any)?.payload || [];
     },
-    [activeOrgId]
+    [dispatch, activeOrgId]
+  );
+
+  const processPreApproved = useCallback(
+    async (payload: any) => {
+      const orgId = payload?.orgId || activeOrgId;
+      const res = await dispatch(processPreApprovedThunk({ ...payload, orgId }));
+      return (res as any)?.payload;
+    },
+    [dispatch, activeOrgId]
   );
 
   const checkoutVisitor = useCallback(
     async (logId: string) => {
-      return await visitorService.checkoutVisitor(logId);
+      const res = await dispatch(checkoutVisitorThunk(logId));
+      return (res as any)?.payload;
     },
-    []
+    [dispatch]
   );
 
   return {
     // State properties
     passes,
     activePass,
+    activeVisitors,
+    activeVisitorsStatus,
     dashboard,
     walkIns,
     pagination,
@@ -158,6 +181,7 @@ export const useVisitorPass = () => {
     selectPass,
     submitWalkIn,
     fetchActiveVisitors,
+    processPreApproved,
     checkoutVisitor,
   };
 };

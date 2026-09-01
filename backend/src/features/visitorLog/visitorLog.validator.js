@@ -2,14 +2,18 @@ import { body } from 'express-validator';
 
 export const preApprovedEntryRules = [
   body('passId')
-    .notEmpty()
-    .withMessage('Pass ID (passId) is required')
+    .optional()
     .isMongoId()
     .withMessage('Pass ID must be a valid Mongo ID'),
 
+  body('code')
+    .optional()
+    .isString()
+    .withMessage('Pass code must be a string')
+    .trim(),
+
   body('guardId')
-    .notEmpty()
-    .withMessage('Guard ID (guardId) is required')
+    .optional()
     .isMongoId()
     .withMessage('Guard ID must be a valid Mongo ID')
 ];

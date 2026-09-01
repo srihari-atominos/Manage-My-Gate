@@ -185,16 +185,21 @@ export class VisitorPassService {
   }
 
   /**
-   * Get paginated active/pending passes in an organization.
+   * Get paginated active/pending passes in an organization with multi-filter support.
    * @param {string} orgId - The organization ID.
-   * @param {number} skip - Skip.
-   * @param {number} limit - Limit.
-   * @param {string[]} statuses - Statuses to query.
+   * @param {Object|number} optionsOrSkip - Query options or skip.
+   * @param {number} [limit=10] - Limit.
+   * @param {string[]} [statuses] - Statuses to query.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<{ data: Object[], totalRecords: number }>}
    */
-  async getActivePasses(orgId, skip, limit, statuses, session = null) {
-    const result = await visitorPassRepository.findActivePassesByOrg(orgId, skip, limit, statuses, session);
+  async getActivePasses(orgId, optionsOrSkip = {}, limit = 10, statuses = ['PENDING', 'ACTIVE', 'REVOKED', 'EXPIRED'], session = null) {
+    const opts =
+      typeof optionsOrSkip === 'object' && !Array.isArray(optionsOrSkip)
+        ? optionsOrSkip
+        : { skip: optionsOrSkip, limit, statuses };
+
+    const result = await visitorPassRepository.findActivePassesByOrg(orgId, opts, session);
     if (result && result.data) {
       const mapped = [];
       for (const pass of result.data) {

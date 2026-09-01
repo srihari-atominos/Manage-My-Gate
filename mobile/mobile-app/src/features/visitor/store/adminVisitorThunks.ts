@@ -1,5 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import visitorAdminService from '../services/visitorAdminService';
+import apiClient from '../../../services/apiClient';
 import { mapBackendWalkInToApprovalItem } from '../utils/mapBackendWalkInToApprovalItem';
 
 export interface BlacklistVisitorItem {
@@ -53,9 +54,35 @@ export const fetchAdminAnalytics = createAsyncThunk(
   'visitorPass/fetchAdminAnalytics',
   async (orgId: string, { rejectWithValue }) => {
     try {
-      const response = await visitorAdminService.getGateAnalytics(orgId);
-      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return (body?.data || body) as VisitorAnalyticsData;
+      const [insideRes, pendingRes, blacklistRes, historyRes] = await Promise.allSettled([
+        visitorAdminService.getGateAnalytics(orgId),
+        visitorAdminService.getAllPendingWalkIns(orgId),
+        visitorAdminService.getBlacklist(orgId),
+        apiClient.get(`/visitor-log/org/${orgId}?limit=1`),
+      ]);
+
+      const insideData = insideRes.status === 'fulfilled' ? (insideRes.value?.data?.data || insideRes.value?.data || []) : [];
+      const pendingData = pendingRes.status === 'fulfilled' ? (pendingRes.value?.data?.data || pendingRes.value?.data || []) : [];
+      const blacklistData = blacklistRes.status === 'fulfilled' ? (blacklistRes.value?.data?.data || blacklistRes.value?.data || []) : [];
+      const historyData = historyRes.status === 'fulfilled' ? (historyRes.value?.data?.data || historyRes.value?.data || {}) : {};
+
+      const activeInsideCount = Array.isArray(insideData) ? insideData.length : 0;
+      const pendingApprovalsCount = Array.isArray(pendingData) ? pendingData.length : 0;
+      const totalBlacklistedCount = Array.isArray(blacklistData) ? blacklistData.length : 0;
+      const totalEntriesToday = typeof historyData?.totalRecords === 'number'
+        ? historyData.totalRecords
+        : (Array.isArray(historyData) ? historyData.length : 0);
+
+      const analyticsData: VisitorAnalyticsData = {
+        totalEntriesToday,
+        activeInsideCount,
+        pendingApprovalsCount,
+        totalBlacklistedCount,
+        peakHour: '10:00 AM',
+        categoryDistribution: [],
+      };
+
+      return analyticsData;
     } catch (error: any) {
       return rejectWithValue(error?.response?.data?.message || error?.message || 'Failed to fetch gate analytics');
     }
@@ -68,8 +95,13 @@ export const fetchBlacklist = createAsyncThunk(
     try {
       const response = await visitorAdminService.getBlacklist(orgId);
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      const data = Array.isArray(body?.data || body) ? body?.data || body : [];
-      return data as BlacklistVisitorItem[];
+      const rawData = body?.data?.data || body?.data || body;
+      const dataArray = Array.isArray(rawData) ? rawData : [];
+      return dataArray.map((item: any) => ({
+        ...item,
+        visitorName: item.name || item.visitorName,
+        plate: item.plate || item.vehicleNumber,
+      })) as BlacklistVisitorItem[];
     } catch (error: any) {
       return rejectWithValue(error?.response?.data?.message || error?.message || 'Failed to fetch blacklist');
     }
@@ -79,13 +111,18 @@ export const fetchBlacklist = createAsyncThunk(
 export const addBlacklistEntry = createAsyncThunk(
   'visitorPass/addBlacklistEntry',
   async (
-    payload: { orgId: string; visitorName: string; phone?: string; idProofNumber?: string; reason: string },
+    payload: { orgId: string; visitorName?: string; name?: string; phone?: string; idProofNumber?: string; plate?: string; vehicleNumber?: string; reason: string },
     { rejectWithValue }
   ) => {
     try {
       const response = await visitorAdminService.addToBlacklist(payload);
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-      return body?.data || body;
+      const rawItem = body?.data?.data || body?.data || body;
+      return {
+        ...rawItem,
+        visitorName: rawItem?.name || rawItem?.visitorName || payload.visitorName || payload.name,
+        plate: rawItem?.plate || rawItem?.vehicleNumber || payload.plate || payload.vehicleNumber,
+      };
     } catch (error: any) {
       return rejectWithValue(error?.response?.data?.message || error?.message || 'Failed to add to blacklist');
     }

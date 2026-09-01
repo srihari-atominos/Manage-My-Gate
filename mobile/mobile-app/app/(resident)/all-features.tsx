@@ -16,9 +16,10 @@ import FeatureIcon from '@/components/ui/FeatureIcon';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import CustomiseSheetModal, { ALL_AVAILABLE_FEATURES } from '@/components/dashboard/CustomiseSheetModal';
+import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
+import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
 
-import { isFeatureAllowedForUser } from '@/src/utils/rbac';
+import { isFeatureAllowedForUser, checkIsAdmin } from '@/src/utils/rbac';
 import { useTranslation } from '@/src/utils/i18n';
 
 export default function AllFeaturesScreen() {
@@ -99,6 +100,14 @@ export default function AllFeaturesScreen() {
     await saveQuickActions(selectedIds);
   };
 
+  const isAdminRole = checkIsAdmin(user);
+
+  const filteredAvailableFeatures = React.useMemo(() => {
+    if (!isAdminRole) return allFeaturesList;
+    return allFeaturesList.filter(
+      (item) => item.id !== 'visitor_resident_passes' && item.id !== 'visitor_passes'
+    );
+  }, [allFeaturesList, isAdminRole]);
   const activeCategory = featureCatalog?.find(cat => cat.categoryKey === selectedCategoryKey);
 
   return (
@@ -228,6 +237,14 @@ export default function AllFeaturesScreen() {
                     return false;
                   }
 
+                  // Hide resident personal passes for Admin roles
+                  if (
+                    isAdminRole &&
+                    (item.id === 'visitor_resident_passes' || item.id === 'visitor_passes')
+                  ) {
+                    return false;
+                  }
+
                   return isFeatureAllowedForUser(item, user);
                 });
 
@@ -299,7 +316,7 @@ export default function AllFeaturesScreen() {
         visible={customiseOpen}
         onClose={() => setCustomiseOpen(false)}
         activeFeatureIds={activeQuickActions}
-        availableFeatures={allFeaturesList}
+        availableFeatures={filteredAvailableFeatures}
         onSave={handleSaveCustomisation}
       />
     </ScreenShell>

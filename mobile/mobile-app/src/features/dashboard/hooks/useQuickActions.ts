@@ -7,7 +7,7 @@ import {
   clearDashboardError,
 } from '../dashboardSlice';
 import { FeatureCategory, FeatureItem } from '../dashboardService';
-import { ALL_AVAILABLE_FEATURES } from '../../../../components/dashboard/CustomiseSheetModal';
+import { ALL_AVAILABLE_FEATURES } from '../dashboardCatalog';
 import { useWorkspace } from '../../workspace/hooks/useWorkspace';
 
 import { useAuth } from '../../auth/hooks/useAuth';
