@@ -7,7 +7,11 @@ export class VisitorPassController {
    */
   async create(req, res, next) {
     try {
-      const data = await visitorPassService.createPass(req.body);
+      const createdById = req.body.createdById || req.user?.id || req.user?._id || req.headers['x-user-id'];
+      const data = await visitorPassService.createPass({
+        ...req.body,
+        createdById,
+      });
       res.success(data, 'Visitor pass created successfully', 201);
     } catch (error) {
       next(error);

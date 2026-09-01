@@ -42,7 +42,8 @@ export const VisitorPassDetailsModal: React.FC<VisitorPassDetailsModalProps> = (
 
   if (!pass) return null;
 
-  const passCode = pass.code || pass._id.slice(-6).toUpperCase();
+  const rawCode = (pass as any).shortKey || pass.code || pass._id.slice(-6);
+  const passCode = String(rawCode).replace(/^PASS-?/i, '').toUpperCase();
 
   const handleCopyCode = () => {
     setCopied(true);

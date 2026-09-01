@@ -176,11 +176,21 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
       return;
     }
     
+    if (selectedPassType === 'CAB' && currentStepIndex === 0 && cabProvider === 'other' && !customCabProvider.trim()) {
+      setSubmitError('Please enter custom cab provider name');
+      return;
+    }
+
     if (selectedPassType === 'CAB' && currentStepIndex === 1) {
       if (!validatePhone(cabVehicle.driverPhone)) {
         setSubmitError('Driver contact number must be exactly 10 digits');
         return;
       }
+    }
+
+    if (selectedPassType === 'DELIVERY' && currentStepIndex === 0 && deliveryPartner === 'other' && !customDeliveryPartner.trim()) {
+      setSubmitError('Please enter custom delivery partner name');
+      return;
     }
 
     if (selectedPassType === 'SERVICE' && currentStepIndex === 0) {
@@ -240,7 +250,7 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
       
       const createdPass = res?.payload?.data || res?.payload || res;
 
-      const code = createdPass?.code || 'PASS-' + Math.floor(100000 + Math.random() * 900000);
+      const code = createdPass?.shortKey || createdPass?.code || String(Math.floor(100000 + Math.random() * 900000));
       setGeneratedPass({
         id: createdPass?._id || 'pass-' + Date.now(),
         code,
@@ -309,7 +319,13 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
           <>
             {currentStepIndex === 0 && <GroupVisitDetailsStep data={groupDetails} onChange={setGroupDetails} />}
             {currentStepIndex === 1 && <GroupScheduleStep data={groupDetails} onChange={setGroupDetails} />}
-            {currentStepIndex === 2 && <AddGroupGuestsStep guests={groupGuests} onAddGuest={(g) => setGroupGuests((prev) => [...prev, g])} />}
+            {currentStepIndex === 2 && (
+              <AddGroupGuestsStep
+                guests={groupGuests}
+                onAddGuest={(g) => setGroupGuests((prev) => [...prev, g])}
+                onRemoveGuest={(id) => setGroupGuests((prev) => prev.filter((g) => g.id !== id))}
+              />
+            )}
             {currentStepIndex === 3 && (
               <GroupPassReviewStep
                 details={groupDetails}

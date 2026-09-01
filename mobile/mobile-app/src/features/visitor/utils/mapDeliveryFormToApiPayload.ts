@@ -89,7 +89,9 @@ export const mapDeliveryFormToApiPayload = (
       }));
     }
   } else {
-    if (validity.validityDuration === 'ONE_HOUR') {
+    if (validity.validityDuration === 'THIRTY_MINS') {
+      endDate = new Date(now.getTime() + 30 * 60 * 1000); // 30 mins
+    } else if (validity.validityDuration === 'ONE_HOUR') {
       endDate = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
     } else if (validity.validityDuration === 'TWO_HOURS') {
       endDate = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours
