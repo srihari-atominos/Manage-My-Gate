@@ -16,13 +16,26 @@ export const initRoleSocket = () => {
       if (!role) return;
 
       const io = getIO();
-      // Emit to the organization's room
-      io.to(`org:${role.orgId.toString()}`).emit('ROLE_UPDATED', {
-        roleId: role._id,
+      const updatedPermissions = payload.permissions || role.permissions || [];
+      const socketPayload = {
+        roleId: role._id.toString(),
         roleName: role.name,
-      });
+        permissions: updatedPermissions,
+        isTenantRole: role.isTenantRole || false,
+      };
+
+      // Emit to organization room if present, otherwise broadcast to active sockets
+      if (role.orgId) {
+        const roomName = `org:${role.orgId.toString()}`;
+        io.to(roomName).emit('ROLE_UPDATED', socketPayload);
+        io.to(roomName).emit('RECORD_UPDATED', { type: 'ROLE', action: 'UPDATE', data: socketPayload });
+      }
       
-      logger.info(`Socket emitted ROLE_UPDATED to org:${role.orgId.toString()} for role: ${role.name}`);
+      // Also broadcast to all connected clients for instant real-time sync
+      io.emit('ROLE_UPDATED', socketPayload);
+      io.emit('RECORD_UPDATED', { type: 'ROLE', action: 'UPDATE', data: socketPayload });
+
+      logger.info(`Socket emitted ROLE_UPDATED for role: ${role.name} with ${updatedPermissions.length} permissions`);
     } catch (error) {
       logger.error('Failed to emit ROLE_UPDATED socket event:', error);
     }

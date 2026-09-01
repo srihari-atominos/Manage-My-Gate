@@ -8,6 +8,7 @@ import { Button } from '@/components/common/Button';
 import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
+import { useTranslation } from '@/src/utils/i18n';
 import { Wallet, CreditCard, Receipt, ChevronRight, CheckCircle2, ShieldAlert, Clock, Landmark, Zap } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
@@ -17,6 +18,7 @@ import { OfflineSettleSheet } from '../components/OfflineSettleSheet';
 
 export function ResidentMyDuesScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const {
     activeDues,
     walletBalance,
@@ -96,8 +98,8 @@ export function ResidentMyDuesScreen() {
 
   return (
     <ScreenShell
-      title="Personal Dues"
-      subtitle="Manage & settle your unit maintenance liabilities"
+      title={t('feature_billing_my_dues_name', 'Personal Dues')}
+      subtitle={t('feature_billing_my_dues_sub', 'Manage & settle your unit maintenance liabilities')}
       iconName="CreditCard"
       loading={loadingStates.fetchDues && duesList.length === 0}
     >

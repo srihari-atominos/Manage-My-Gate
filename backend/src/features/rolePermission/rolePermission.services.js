@@ -6,6 +6,14 @@ export class RolePermissionService {
     this.cache = new Map();
   }
 
+  clearCache(roleId = null) {
+    if (roleId) {
+      this.cache.delete(roleId.toString());
+    } else {
+      this.cache.clear();
+    }
+  }
+
   async getPermissionsByRoleId(roleId) {
     if (!roleId) return [];
     
@@ -27,9 +35,7 @@ export class RolePermissionService {
   async assignPermissionToRole(roleId, permissionId) {
     try {
       const result = await rolePermissionRepository.create(roleId, permissionId);
-      if (roleId) {
-        this.cache.delete(roleId.toString());
-      }
+      this.clearCache(roleId);
       return result;
     } catch (error) {
       if (error.code === 11000) {
@@ -44,25 +50,23 @@ export class RolePermissionService {
     if (!deleted) {
       throw new HttpError(404, 'Permission mapping not found.');
     }
-    if (roleId) {
-      this.cache.delete(roleId.toString());
-    }
+    this.clearCache(roleId);
     return deleted;
   }
 
   async updateRolePermissions(roleId, permissionIds, session = null) {
     // Start transactional behavior (clear existing and map new ones)
     await rolePermissionRepository.deleteByRoleId(roleId, session);
-    if (roleId) {
-      this.cache.delete(roleId.toString());
-    }
+    this.clearCache(roleId);
 
     if (permissionIds && permissionIds.length > 0) {
       const records = permissionIds.map((permissionId) => ({
         roleId,
         permissionId,
       }));
-      return await rolePermissionRepository.bulkCreate(records, session);
+      const result = await rolePermissionRepository.bulkCreate(records, session);
+      this.clearCache(roleId);
+      return result;
     }
     return [];
   }

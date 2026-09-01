@@ -14,24 +14,32 @@ export const communityNoteService = {
       throw new Error('Note text cannot exceed 80 characters');
     }
 
+    // Sanitize category against allowed model enum values
+    const allowedCategories = ['ACTIVITY', 'LOOKING_FOR', 'AVAILABLE', 'SOCIAL', 'HELP', 'INTRODUCTION', 'GENERAL'];
+    const validCategory = allowedCategories.includes(category) ? category : 'GENERAL';
+
     // Deactivate previous active notes for user in org
     await communityNoteRepository.deactivateUserActiveNotes(userId, orgId);
 
     // 24-hour expiration calculation
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    const note = await communityNoteRepository.create({
+    const createdNote = await communityNoteRepository.create({
       userId,
       orgId,
       text: cleanText,
-      category,
-      emoji,
+      category: validCategory,
+      emoji: emoji || '💬',
       expiresAt,
       isActive: true,
     });
 
-    communityNoteEvents.emit('note:created', note);
-    return note;
+    // Fetch fully enriched populated note with memberData and user details
+    const populatedNote = await communityNoteRepository.findActiveByUserId(userId, orgId);
+    const finalNote = populatedNote || createdNote;
+
+    communityNoteEvents.emit('note:created', finalNote);
+    return finalNote;
   },
 
   async getMyActiveNote(userId, orgId) {

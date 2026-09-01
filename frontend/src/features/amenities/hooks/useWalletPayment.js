@@ -28,26 +28,27 @@ export const useWalletPayment = () => {
     async (amountVal, onSuccess, onFailure) => {
       setLoading(true)
       try {
-        const isMock = !config.razorpayKey || config.razorpayKey === 'rzp_test_mockkey'
+        // 1. Create order on backend first
+        const orderRes = await createWalletRechargeOrder(amountVal)
+        if (!orderRes || !orderRes.data) {
+          throw new Error(t('payment.order_creation_failed', 'Failed to create payment order.'))
+        }
 
-        if (isMock) {
-          // 1. Create order on backend (mock order)
-          const orderRes = await createWalletRechargeOrder(amountVal)
-          if (!orderRes || !orderRes.data) {
-            throw new Error(t('payment.order_creation_failed', 'Failed to create payment order.'))
-          }
+        const orderData = orderRes.data
+        const effectiveKey = orderData.key || config.razorpayKey || config.razorpayKeyId
+        const isRealKey = effectiveKey && (effectiveKey.startsWith('rzp_test_') || effectiveKey.startsWith('rzp_live_')) && effectiveKey !== 'rzp_test_mockkey'
+        const isMockOrder = orderData.isMock || orderData.id?.startsWith('order_mock_') || !isRealKey
 
-          // Wait 1.5 seconds to show the loading spinner "Connecting to payment gateway..."
-          await new Promise((resolve) => setTimeout(resolve, 1500))
+        if (isMockOrder) {
+          // Wait 1 second to show gateway connecting state
+          await new Promise((resolve) => setTimeout(resolve, 1000))
 
-          // Show a browser confirm box to simulate the payment action
           const confirmPayment = window.confirm(
-            t('payment.mock_confirm', `[Mock Mode] Confirm payment of ₹${amountVal}?`),
+            t('payment.mock_confirm', `[Mock Gateway Mode] Confirm wallet top-up of ₹${amountVal}?\n\n(Tip: Configure VITE_RAZORPAY_KEY and RAZORPAY_KEY_ID in .env to use official Razorpay modal with GPay / PhonePe / Cards / UPI)`),
           )
           if (confirmPayment) {
-            // Simulate verification call
             const verifyPayload = {
-              razorpay_order_id: orderRes.data.id,
+              razorpay_order_id: orderData.id,
               razorpay_payment_id: `pay_mock_${Date.now()}`,
               razorpay_signature: `sig_mock_${Date.now()}`,
               amount: amountVal,
@@ -67,28 +68,28 @@ export const useWalletPayment = () => {
           return
         }
 
-        // Real Razorpay Flow
+        // 2. Real Razorpay SDK Flow
         const isLoaded = await loadRazorpayScript()
         if (!isLoaded) {
-          toast.error(t('payment.script_failed', 'Failed to load payment gateway SDK.'))
+          toast.error(t('payment.script_failed', 'Failed to load Razorpay payment gateway SDK.'))
           setLoading(false)
           if (onFailure) onFailure(new Error('SDK load failure'))
           return
         }
 
-        const orderRes = await createWalletRechargeOrder(amountVal)
-        if (!orderRes || !orderRes.data) {
-          throw new Error(t('payment.order_creation_failed', 'Failed to create payment order.'))
+        if (!window.Razorpay) {
+          setLoading(false)
+          toast.error(t('payment.gateway_loading', 'Payment gateway is still loading. Please try again in a moment.'))
+          if (onFailure) onFailure(new Error('Payment gateway not ready'))
+          return
         }
 
-        const orderData = orderRes.data
-
         const options = {
-          key: config.razorpayKey,
+          key: effectiveKey,
           amount: orderData.amount,
           currency: orderData.currency || 'INR',
           name: t('payment.org_name', 'Gated Community'),
-          description: t('payment.wallet_recharge', 'Wallet Recharge'),
+          description: t('payment.wallet_recharge', 'Digital Wallet Top-Up'),
           order_id: orderData.id,
           handler: async function (response) {
             try {
@@ -114,9 +115,13 @@ export const useWalletPayment = () => {
             }
           },
           prefill: {
-            name: user?.name || '',
+            name: user?.name || user?.username || '',
             email: user?.email || '',
-            contact: user?.phone || user?.contact || '',
+            contact: user?.phone || user?.contact || user?.mobile || '',
+          },
+          notes: {
+            purpose: 'Digital Wallet Recharge',
+            userId: user?.id || user?._id || '',
           },
           theme: {
             color: '#321fdb',
@@ -128,13 +133,6 @@ export const useWalletPayment = () => {
               if (onFailure) onFailure(new Error('Payment cancelled by user'))
             },
           },
-        }
-
-        if (!window.Razorpay) {
-          setLoading(false)
-          toast.error(t('payment.gateway_loading', 'Payment gateway is still loading. Please try again in a moment.'))
-          if (onFailure) onFailure(new Error('Payment gateway not ready'))
-          return
         }
 
         const rzp = new window.Razorpay(options)

@@ -2,16 +2,20 @@ import React, { useEffect } from 'react';
 import { View, ActivityIndicator, Switch, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { useWorkspace } from '../hooks/useWorkspace';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import FeatureIcon from '@/components/ui/FeatureIcon';
 import { WorkspaceModule } from '../store/workspaceSlice';
 import { ALL_AVAILABLE_FEATURES } from '../../dashboard/dashboardCatalog';
 
 export const WorkspaceModulesForm = () => {
   const { loadWorkspaceModules, toggleModuleStatus, allModules, loading } = useWorkspace();
+  const { isAuthenticated } = useAuth();
   
   useEffect(() => {
-    loadWorkspaceModules('current');
-  }, [loadWorkspaceModules]);
+    if (isAuthenticated) {
+      loadWorkspaceModules('current');
+    }
+  }, [isAuthenticated, loadWorkspaceModules]);
 
   const handleToggle = (module: WorkspaceModule, enabled: boolean) => {
     const targetId = module._id || module.moduleKey;
@@ -91,7 +95,7 @@ export const WorkspaceModulesForm = () => {
                 </View>
               </View>
               
-              <View pointerEvents="none">
+              <View style={{ pointerEvents: 'none' }}>
                 <Switch
                   trackColor={{ false: '#e2e8f0', true: '#bae6fd' }}
                   thumbColor={module.enabled ? '#0284c7' : '#f8fafc'}

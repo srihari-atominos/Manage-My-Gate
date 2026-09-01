@@ -102,3 +102,55 @@ export const PRESET_NOTE_OPTIONS: PresetNoteOption[] = [
     defaultText: 'Just relaxing today.',
   },
 ];
+
+export const getLocalizedPresetNotes = (t: (key: string, fallback?: string) => string): PresetNoteOption[] => [
+  {
+    id: 'preset-badminton',
+    category: 'ACTIVITY',
+    emoji: '🏸',
+    label: t('preset_badminton_label', 'Badminton'),
+    defaultText: t('preset_badminton_text', 'Anyone up for badminton tonight?'),
+  },
+  {
+    id: 'preset-coffee',
+    category: 'SOCIAL',
+    emoji: '☕',
+    label: t('preset_coffee_label', 'Coffee'),
+    defaultText: t('preset_coffee_text', 'Coffee at the clubhouse?'),
+  },
+  {
+    id: 'preset-walk',
+    category: 'ACTIVITY',
+    emoji: '🚶',
+    label: t('preset_walk_label', 'Evening Walk'),
+    defaultText: t('preset_walk_text', 'Going for an evening walk.'),
+  },
+  {
+    id: 'preset-hello',
+    category: 'INTRODUCTION',
+    emoji: '👋',
+    label: t('preset_hello_label', 'Say Hello'),
+    defaultText: t('preset_hello_text', 'New to the community!'),
+  },
+  {
+    id: 'preset-help',
+    category: 'LOOKING_FOR',
+    emoji: '🔧',
+    label: t('preset_help_label', 'Looking for Help'),
+    defaultText: t('preset_help_text', 'Looking for a reliable plumber.'),
+  },
+  {
+    id: 'preset-movie',
+    category: 'SOCIAL',
+    emoji: '🎬',
+    label: t('preset_movie_label', 'Movie Night'),
+    defaultText: t('preset_movie_text', 'Movie night anyone?'),
+  },
+  {
+    id: 'preset-relaxing',
+    category: 'AVAILABLE',
+    emoji: '🏠',
+    label: t('preset_relaxing_label', 'Relaxing'),
+    defaultText: t('preset_relaxing_text', 'Just relaxing today.'),
+  },
+];

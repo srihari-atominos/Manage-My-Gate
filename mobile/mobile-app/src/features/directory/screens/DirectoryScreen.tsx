@@ -13,11 +13,13 @@ import { useDirectory } from '../hooks/useDirectory';
 import { useDirectoryMessaging } from '../hooks/useDirectoryMessaging';
 import { useDirectorySocket } from '../hooks/useDirectorySocket';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { useTranslation } from '@/src/utils/i18n';
 import { DirectoryMember } from '../types/directoryTypes';
 import { Sparkles } from 'lucide-react-native';
 
 export function DirectoryScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Real-time Socket Event Listener for messaging
   useDirectorySocket();
@@ -55,10 +57,10 @@ export function DirectoryScreen() {
         <View className="flex-1 me-2">
           <View className="flex-row items-center gap-1.5">
             <Sparkles size={15} className="text-primary" />
-            <Text className="text-xs font-bold text-foreground">Community Notes</Text>
+            <Text className="text-xs font-bold text-foreground">{t('all_community_notes', 'Community Notes')}</Text>
           </View>
           <Text className="text-[11px] text-muted-foreground mt-0.5" numberOfLines={1}>
-            View 24h status notes or publish your own
+            {t('community_notes_sub', 'View 24h status notes or publish your own')}
           </Text>
         </View>
 
@@ -70,7 +72,7 @@ export function DirectoryScreen() {
           className="rounded-xl px-3.5 h-9"
           textClassName="text-xs font-bold text-primary-foreground"
         >
-          All Notes
+          {t('all_notes', 'All Notes')}
         </Button>
       </View>
 
@@ -78,18 +80,18 @@ export function DirectoryScreen() {
       <DirectorySearch
         value={searchQuery}
         onChangeText={setSearchQuery}
-        placeholder="Search by name, unit, phone, or role..."
+        placeholder={t('search_residents', 'Search by name, unit, phone, or role...')}
       />
 
-      {/* Category Tabs (All, Residents, Staff, Security, Maintenance, Management) */}
+      {/* Category Tabs */}
       <DirectoryCategoryTabs activeTab={activeTab} onTabChange={setActiveTab} />
     </View>
   );
 
   return (
     <ScreenShell
-      title="Community Directory"
-      subtitle="Find and contact residents, security & community staff"
+      title={t('community_directory', 'Community Directory')}
+      subtitle={t('nav_community_directory_sub', 'Find and contact residents, security & community staff')}
       iconName="Users"
       showBackButton={true}
     >
@@ -115,8 +117,8 @@ export function DirectoryScreen() {
           onLoadMore={onLoadMore}
           ListHeaderComponent={renderHeader}
           emptyIcon="Users"
-          emptyTitle="No Directory Members Found"
-          emptySubtitle="No community records match your current search or filter."
+          emptyTitle={t('no_members_found', 'No Directory Members Found')}
+          emptySubtitle={t('no_members_sub', 'No community records match your current search or filter.')}
           contentContainerClassName="px-4 pt-3 pb-28"
         />
       </View>

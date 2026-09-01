@@ -71,16 +71,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     let newValue: string[];
 
     if (checked) {
-      let filteredGroupCodes = [...groupCodes];
-      const visitorCodes = groupCodes.filter((code) =>
-        String(code).toLowerCase().startsWith('visitor:')
-      );
-      if (visitorCodes.length > 1) {
-        filteredGroupCodes = groupCodes.filter(
-          (code) => !String(code).toLowerCase().startsWith('visitor:') || code === visitorCodes[0]
-        );
-      }
-      newValue = Array.from(new Set([...currentPermissions, ...filteredGroupCodes]));
+      newValue = Array.from(new Set([...currentPermissions, ...groupCodes]));
     } else {
       newValue = currentPermissions.filter((code) => !groupCodes.includes(code));
     }
@@ -93,15 +84,7 @@ export const useRoleForm = ({ role, visible, onSave }: UseRoleFormProps) => {
     let newValue: string[];
 
     if (checked) {
-      if (String(permValue).toLowerCase().startsWith('visitor:')) {
-        // Enforce single-choice radio rule for visitor permissions
-        newValue = [
-          ...currentPermissions.filter((p) => !String(p).toLowerCase().startsWith('visitor:')),
-          permValue,
-        ];
-      } else {
-        newValue = [...currentPermissions, permValue];
-      }
+      newValue = Array.from(new Set([...currentPermissions, permValue]));
     } else {
       newValue = currentPermissions.filter((p) => p !== permValue);
     }

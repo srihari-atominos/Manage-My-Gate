@@ -6,8 +6,14 @@ export const initCommunityNoteSockets = () => {
   communityNoteEvents.on('note:created', (note) => {
     try {
       const io = getIO();
-      if (note?.orgId) {
-        io.to(`org:${note.orgId}`).emit('communityNote:created', note);
+      const rawOrgId = note?.orgId;
+      const orgIdStr =
+        typeof rawOrgId === 'object' && rawOrgId !== null
+          ? String(rawOrgId._id || rawOrgId.id || rawOrgId)
+          : String(rawOrgId || '');
+
+      if (orgIdStr && orgIdStr !== '[object Object]') {
+        io.to(`org:${orgIdStr}`).emit('communityNote:created', note);
       }
     } catch (err) {
       logger.error('Failed to emit communityNote:created socket event', err);
@@ -17,8 +23,14 @@ export const initCommunityNoteSockets = () => {
   communityNoteEvents.on('note:expired', (payload) => {
     try {
       const io = getIO();
-      if (payload?.orgId) {
-        io.to(`org:${payload.orgId}`).emit('communityNote:expired', payload);
+      const rawOrgId = payload?.orgId;
+      const orgIdStr =
+        typeof rawOrgId === 'object' && rawOrgId !== null
+          ? String(rawOrgId._id || rawOrgId.id || rawOrgId)
+          : String(rawOrgId || '');
+
+      if (orgIdStr && orgIdStr !== '[object Object]') {
+        io.to(`org:${orgIdStr}`).emit('communityNote:expired', payload);
       }
     } catch (err) {
       logger.error('Failed to emit communityNote:expired socket event', err);

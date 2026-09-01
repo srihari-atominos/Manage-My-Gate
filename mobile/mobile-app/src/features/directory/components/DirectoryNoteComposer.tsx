@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
-import { PRESET_NOTE_OPTIONS } from '../types/communityNoteTypes';
+import { getLocalizedPresetNotes } from '../types/communityNoteTypes';
 import { useCommunityNote, formatExpirationCountdown } from '../hooks/useCommunityNote';
 import { useDirectoryMessaging } from '../hooks/useDirectoryMessaging';
+import { useTranslation } from '@/src/utils/i18n';
 import { Sparkles, Send, Trash2, ThumbsUp, MessageSquare, Phone } from 'lucide-react-native';
 
 export interface DirectoryNoteComposerProps {
@@ -17,47 +18,6 @@ export interface DirectoryNoteComposerProps {
   initialTab?: 'compose' | 'feed';
 }
 
-const ALL_COMMUNITY_NOTES_FEED = [
-  {
-    id: 'note-feed-1',
-    userName: 'Arun Kumar',
-    userUnit: 'Villa 104',
-    role: 'Resident',
-    category: 'ACTIVITY',
-    emoji: '🎾',
-    text: 'Looking for a badminton partner this evening at 6 PM!',
-    expiresAt: new Date(Date.now() + 21 * 60 * 60 * 1000 + 57 * 60 * 1000).toISOString(),
-    memberData: {
-      id: 'dummy-1',
-      userId: 'user-dummy-1',
-      name: 'Arun Kumar',
-      unitNumber: 'Villa 104',
-      role: 'resident',
-      phone: '+919876543210',
-      intercomNumber: '104',
-    },
-  },
-  {
-    id: 'note-feed-2',
-    userName: 'Priya Sharma',
-    userUnit: 'Block B - 202',
-    role: 'Resident',
-    category: 'SOCIAL',
-    emoji: '📚',
-    text: 'Hosting a weekend book club discussion on sci-fi novels!',
-    expiresAt: new Date(Date.now() + 18 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
-    memberData: {
-      id: 'dummy-2',
-      userId: 'user-dummy-2',
-      name: 'Priya Sharma',
-      unitNumber: 'Block B - 202',
-      role: 'resident',
-      phone: '+919876543211',
-      intercomNumber: '202',
-    },
-  },
-];
-
 export const DirectoryNoteComposer = ({
   visible,
   onClose,
@@ -65,6 +25,7 @@ export const DirectoryNoteComposer = ({
 }: DirectoryNoteComposerProps) => {
   const [currentTab, setCurrentTab] = useState<'compose' | 'feed'>(initialTab);
   const { onOpenQuickMessage: onInterestedInNote, onOpenConversation } = useDirectoryMessaging();
+  const { t, tRole } = useTranslation();
 
   const {
     myActiveNote,
@@ -86,6 +47,7 @@ export const DirectoryNoteComposer = ({
 
   const charCount = noteText.length;
   const isOverLimit = charCount > 80;
+  const localizedPresetOptions = getLocalizedPresetNotes(t);
 
   const handlePublish = async () => {
     await onPublish();
@@ -101,14 +63,14 @@ export const DirectoryNoteComposer = ({
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      title={currentTab === 'compose' ? (myActiveNote ? 'Manage Active Note' : "What's happening?") : 'Community Notes Feed'}
+      title={currentTab === 'compose' ? (myActiveNote ? t('manage_active_note', 'Manage Active Note') : t('whats_happening', "What's happening?")) : t('community_notes_feed', 'Community Notes Feed')}
     >
       <View className="px-4 pb-6 gap-4">
         {/* Navigation Segmented Control */}
         <SegmentedControl
           segments={[
-            { key: 'compose', label: myActiveNote ? 'My Note' : 'Add Note' },
-            { key: 'feed', label: `All Notes (${totalActiveNotesCount || activeNotes.length || 0})` },
+            { key: 'compose', label: myActiveNote ? t('my_note_tab', 'My Note') : t('add_note_tab', 'Add Note') },
+            { key: 'feed', label: `${t('all_notes_tab', 'All Notes')} (${totalActiveNotesCount || activeNotes.length || 0})` },
           ]}
           activeSegment={currentTab}
           onChange={(tab) => setCurrentTab(tab as any)}
@@ -121,7 +83,9 @@ export const DirectoryNoteComposer = ({
               <View className="bg-primary/10 border border-primary/20 rounded-2xl p-3 flex-row items-center justify-between">
                 <View className="flex-1 pr-2">
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-[10px] font-bold text-primary uppercase">Active Community Note</Text>
+                    <Text className="text-[10px] font-bold text-primary uppercase">
+                      {t('active_community_note', 'Active Community Note')}
+                    </Text>
                     <Text className="text-[10px] text-muted-foreground font-semibold">
                       {formatExpirationCountdown(myActiveNote.expiresAt)}
                     </Text>
@@ -139,12 +103,12 @@ export const DirectoryNoteComposer = ({
                   className="rounded-xl px-3 h-9 bg-rose-500/15 border border-rose-500/30"
                   textClassName="text-xs font-bold text-rose-500"
                 >
-                  Delete
+                  {t('delete_btn', 'Delete')}
                 </Button>
               </View>
             ) : (
               <Text className="text-xs text-muted-foreground font-medium">
-                Post a temporary 24-hour note to your community. Let neighbors know what you are up to!
+                {t('post_temporary_note_sub', 'Post a temporary 24-hour note to your community. Let neighbors know what you are up to!')}
               </Text>
             )}
 
@@ -153,14 +117,14 @@ export const DirectoryNoteComposer = ({
               <View className="flex-row items-center gap-1.5 mb-1">
                 <Sparkles size={14} className="text-primary" />
                 <Text className="text-xs font-bold text-foreground">
-                  {myActiveNote ? 'Change Note' : 'Quick Ideas'}
+                  {myActiveNote ? t('change_note', 'Change Note') : t('quick_ideas', 'Quick Ideas')}
                 </Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="pe-4 gap-2" className="flex-row">
-                {PRESET_NOTE_OPTIONS.map((preset) => (
+                {localizedPresetOptions.map((preset) => (
                   <TouchableOpacity
                     key={preset.id}
-                    onPress={() => onSelectPreset(preset.id)}
+                    onPress={() => onSelectPreset(preset.id, preset.defaultText)}
                     className="bg-muted/60 border border-border/50 rounded-xl px-3 py-2 flex-row items-center gap-1.5 active:bg-primary/10"
                   >
                     <Text className="text-sm">{preset.emoji}</Text>
@@ -175,7 +139,7 @@ export const DirectoryNoteComposer = ({
               <Input
                 value={noteText}
                 onChangeText={setNoteText}
-                placeholder="Type your note (max 80 chars)..."
+                placeholder={t('custom_note_placeholder', 'Type your note (max 80 chars)...')}
                 multiline
                 numberOfLines={3}
                 className="min-h-[80px] bg-background border-border text-foreground text-sm p-3 rounded-xl"
@@ -203,7 +167,7 @@ export const DirectoryNoteComposer = ({
                   className="flex-1 rounded-xl border-rose-500/30 bg-rose-500/10"
                   textClassName="text-rose-500 font-bold"
                 >
-                  Delete Note
+                  {t('delete_note', 'Delete Note')}
                 </Button>
               ) : null}
 
@@ -216,7 +180,7 @@ export const DirectoryNoteComposer = ({
                 leftIcon={Send}
                 className="flex-1 rounded-xl"
               >
-                {myActiveNote ? 'Update Note' : 'Publish Note (24h)'}
+                {myActiveNote ? t('update_note', 'Update Note') : t('publish_note_24h', 'Publish Note (24h)')}
               </Button>
             </View>
           </View>
@@ -226,13 +190,14 @@ export const DirectoryNoteComposer = ({
             {activeNotes.length > 0 ? (
               <View className="gap-3.5">
                 {activeNotes.map((note) => {
-                  const authorName = note.userName || 'Community Resident';
-                  const authorUnit = note.userUnit || 'Villa Resident';
+                  const authorName = note.userName || t('logged_in_resident', 'Community Resident');
+                  const authorUnit = note.userUnit || t('active_resident', 'Villa Resident');
                   const initial = authorName.charAt(0).toUpperCase();
-                  const roleLabel = (note.role || 'RESIDENT').toUpperCase();
-                  const roleVariant: StatusVariant = roleLabel.includes('GUARD')
+                  const rawRole = note.role || 'RESIDENT';
+                  const roleLabel = tRole(rawRole, rawRole.toUpperCase());
+                  const roleVariant: StatusVariant = String(rawRole).toUpperCase().includes('GUARD')
                     ? 'warning'
-                    : roleLabel.includes('STAFF')
+                    : String(rawRole).toUpperCase().includes('STAFF')
                     ? 'info'
                     : 'success';
 
@@ -240,12 +205,14 @@ export const DirectoryNoteComposer = ({
                   const intercomNum = note.intercomNumber || note.memberData?.intercomNumber;
                   const interests = note.interests || note.memberData?.interests || [];
 
+                  const targetUserId = typeof note.userId === 'string' ? note.userId : note.userId?._id || note._id;
+
                   const targetMember = note.memberData || {
-                    id: note.userId || note._id,
-                    userId: note.userId || note._id,
+                    id: targetUserId,
+                    userId: targetUserId,
                     name: authorName,
                     unitNumber: authorUnit,
-                    role: roleLabel.toLowerCase(),
+                    role: String(rawRole).toLowerCase(),
                     phone: phoneNum,
                     intercomNumber: intercomNum,
                   };
@@ -305,7 +272,7 @@ export const DirectoryNoteComposer = ({
                           className="h-7.5 rounded-xl bg-primary px-2.5"
                           textClassName="text-[11px] font-bold text-primary-foreground"
                         >
-                          Interested
+                          {t('btn_interested', 'Interested')}
                         </Button>
 
                         <Button
@@ -319,7 +286,7 @@ export const DirectoryNoteComposer = ({
                           className="h-7.5 rounded-xl bg-primary/10 border border-primary/20 px-2.5"
                           textClassName="text-[11px] font-bold text-primary"
                         >
-                          Message
+                          {t('btn_message', 'Message')}
                         </Button>
 
                         {phoneNum ? (
@@ -331,7 +298,7 @@ export const DirectoryNoteComposer = ({
                             className="h-7.5 rounded-xl border-border bg-background px-2"
                             textClassName="text-[11px] font-semibold text-foreground"
                           >
-                            Call
+                            {t('btn_call', 'Call')}
                           </Button>
                         ) : null}
 
@@ -358,10 +325,10 @@ export const DirectoryNoteComposer = ({
               <View className="items-center justify-center py-8 px-4 gap-2">
                 <Sparkles size={28} className="text-primary/60 mb-1" />
                 <Text className="text-sm font-bold text-foreground text-center">
-                  No active community notes
+                  {t('no_active_notes_title', 'No active community notes')}
                 </Text>
                 <Text className="text-xs text-muted-foreground text-center max-w-[240px]">
-                  Be the first to share what's happening in your community.
+                  {t('no_active_notes_sub', "Be the first to share what's happening in your community.")}
                 </Text>
                 <Button
                   variant="default"
@@ -370,7 +337,7 @@ export const DirectoryNoteComposer = ({
                   leftIcon={Sparkles}
                   className="rounded-xl mt-2 px-4"
                 >
-                  Add Note
+                  {t('add_note_btn', 'Add Note')}
                 </Button>
               </View>
             )}

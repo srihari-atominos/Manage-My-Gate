@@ -7,6 +7,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/src/utils/i18n';
 import { AmenityBooking } from '../store/amenityBookingSlice';
 
 export interface BookingDetailModalProps {
@@ -23,6 +24,7 @@ export function BookingDetailModal({
   onCancelClick,
 }: BookingDetailModalProps) {
   const { user } = useSelector((state: RootState) => state.auth || {});
+  const { t } = useTranslation();
 
   if (!visible || !booking) return null;
 
@@ -51,7 +53,7 @@ export function BookingDetailModal({
   const bookingIdDisplay = booking.bookingId || booking._id;
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Reservation Details">
+    <BottomSheet visible={visible} onClose={onClose} title={t('reservation_details', 'Reservation Details')}>
       <View className="py-1">
         <View className="flex-row items-center justify-between mb-3 bg-card p-3 rounded-xl border border-border">
           <View>
@@ -66,31 +68,31 @@ export function BookingDetailModal({
         {/* Complete Information Section */}
         <View className="bg-muted/20 p-3.5 rounded-2xl border border-border/40 mb-4">
           <DetailRow
-            label="Resident Name"
+            label={t('resident_name', 'Resident Name')}
             value={residentName}
             iconName="User"
           />
           <DetailRow
-            label="Villa / Flat Number"
+            label={t('villa_flat_number', 'Villa / Flat Number')}
             value={villaNumber}
             iconName="Home"
           />
-          <DetailRow label="Booking Code" value={bookingIdDisplay} copyable={true} iconName="Hash" />
-          <DetailRow label="Reservation Date" value={booking.date || booking.bookingDate || ''} iconName="Calendar" />
-          <DetailRow label="Time Window" value={`${booking.startTime} - ${booking.endTime}`} iconName="Clock" />
+          <DetailRow label={t('booking_code', 'Booking Code')} value={bookingIdDisplay} copyable={true} iconName="Hash" />
+          <DetailRow label={t('reservation_date', 'Reservation Date')} value={booking.date || booking.bookingDate || ''} iconName="Calendar" />
+          <DetailRow label={t('time_window', 'Time Window')} value={`${booking.startTime} - ${booking.endTime}`} iconName="Clock" />
           <DetailRow
-            label="Attendees"
+            label={t('attendees', 'Attendees')}
             value={`${booking.numberOfPersons || booking.guestsCount || 1} Person(s)`}
             iconName="Users"
           />
           <DetailRow
-            label="Total Amount"
+            label={t('total_amount', 'Total Amount')}
             value={booking.totalFee ? `₹${booking.totalFee.toFixed(2)}` : 'Free'}
             iconName="CreditCard"
           />
-          <DetailRow label="Payment Method" value={booking.paymentMethod || 'ONLINE'} iconName="Wallet" />
+          <DetailRow label={t('payment_method', 'Payment Method')} value={booking.paymentMethod || 'ONLINE'} iconName="Wallet" />
           <DetailRow
-            label="Payment Status"
+            label={t('payment_status', 'Payment Status')}
             value={<StatusBadge label={paymentStatusLabel} variant={paymentVariant} size="sm" />}
           />
           {(booking as any).notes ? (
@@ -104,7 +106,7 @@ export function BookingDetailModal({
               isLast={true}
             />
           ) : (
-            <DetailRow label="Pass Code" value={booking.qrCode || bookingIdDisplay} copyable={true} iconName="QrCode" isLast={true} />
+            <DetailRow label={t('pass_code', 'Pass Code')} value={booking.qrCode || bookingIdDisplay} copyable={true} iconName="QrCode" isLast={true} />
           )}
         </View>
 

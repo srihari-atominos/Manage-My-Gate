@@ -141,11 +141,13 @@ export default function SettingsScreen() {
                 {user?.username || user?.name || user?.email || 'Logged In Resident'}
               </Text>
               <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
-                {user?.role || 'Community Admin'}
+                {user?.role || 'Member'}
               </Text>
-              <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
-                {user?.email || 'naveen@atominosconsulting.com'}
-              </Text>
+              {user?.email ? (
+                <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
+                  {user.email}
+                </Text>
+              ) : null}
             </View>
             <ChevronRight size={20} className="text-muted-foreground shrink-0" />
           </View>

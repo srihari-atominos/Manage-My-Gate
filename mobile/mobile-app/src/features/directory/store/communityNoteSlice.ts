@@ -9,19 +9,6 @@ export interface CommunityNoteState {
   error: string | null;
 }
 
-export const DEFAULT_ACTIVE_NOTE: CommunityNote = {
-  _id: 'note-dummy-1',
-  id: 'note-dummy-1',
-  userId: 'user-dummy-1',
-  orgId: 'org-dummy-1',
-  text: 'Looking for a badminton partner this evening at 6 PM!',
-  category: 'ACTIVITY',
-  emoji: '🎾',
-  createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  expiresAt: new Date(Date.now() + 21 * 60 * 60 * 1000 + 57 * 60 * 1000).toISOString(),
-  isActive: true,
-};
-
 const initialState: CommunityNoteState = {
   myActiveNote: null,
   activeNotes: [],
@@ -35,7 +22,7 @@ export const fetchMyActiveNote = createAsyncThunk(
     try {
       return await communityNoteApi.getMyActiveNote();
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch active note');
+      return rejectWithValue(err.response?.data?.message || err.message || 'Failed to fetch active note');
     }
   }
 );
@@ -46,7 +33,7 @@ export const fetchActiveNotes = createAsyncThunk(
     try {
       return await communityNoteApi.getActiveNotes();
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch active notes');
+      return rejectWithValue(err.response?.data?.message || err.message || 'Failed to fetch active notes');
     }
   }
 );
@@ -57,7 +44,7 @@ export const createCommunityNote = createAsyncThunk(
     try {
       return await communityNoteApi.createNote(payload);
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || 'Failed to publish note');
+      return rejectWithValue(err.response?.data?.message || err.message || 'Failed to publish note');
     }
   }
 );
@@ -69,7 +56,7 @@ export const deleteCommunityNote = createAsyncThunk(
       await communityNoteApi.deleteNote(noteId);
       return noteId;
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || 'Failed to delete note');
+      return rejectWithValue(err.response?.data?.message || err.message || 'Failed to delete note');
     }
   }
 );
@@ -80,6 +67,41 @@ const communityNoteSlice = createSlice({
   reducers: {
     setMyActiveNote(state, action: PayloadAction<CommunityNote | null>) {
       state.myActiveNote = action.payload;
+    },
+    noteCreatedRealtime(state, action: PayloadAction<CommunityNote>) {
+      const newNote = action.payload;
+      if (!newNote) return;
+
+      const newNoteId = newNote._id || newNote.id;
+      const newNoteUserId = typeof newNote.userId === 'object' ? (newNote.userId as any)._id : newNote.userId;
+
+      state.activeNotes = [
+        newNote,
+        ...state.activeNotes.filter((n) => {
+          const currentId = n._id || n.id;
+          const currentUserId = typeof n.userId === 'object' ? (n.userId as any)._id : n.userId;
+          if (currentId && currentId === newNoteId) return false;
+          if (currentUserId && newNoteUserId && String(currentUserId) === String(newNoteUserId)) return false;
+          return true;
+        }),
+      ];
+    },
+    noteExpiredRealtime(state, action: PayloadAction<{ noteId: string; userId?: string }>) {
+      const { noteId, userId } = action.payload || {};
+      state.activeNotes = state.activeNotes.filter((n) => {
+        const currentId = n._id || n.id;
+        const currentUserId = typeof n.userId === 'object' ? (n.userId as any)._id : n.userId;
+        if (noteId && currentId === noteId) return false;
+        if (userId && currentUserId && String(currentUserId) === String(userId)) return false;
+        return true;
+      });
+      if (
+        state.myActiveNote &&
+        ((noteId && (state.myActiveNote._id === noteId || state.myActiveNote.id === noteId)) ||
+          (userId && state.myActiveNote.userId === userId))
+      ) {
+        state.myActiveNote = null;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -97,8 +119,21 @@ const communityNoteSlice = createSlice({
       .addCase(createCommunityNote.fulfilled, (state, action) => {
         state.loading = false;
         state.myActiveNote = action.payload;
-        if (action.payload) {
-          state.activeNotes = [action.payload, ...state.activeNotes.filter((n) => n._id !== action.payload._id)];
+        const newNote = action.payload;
+        if (newNote) {
+          const newNoteId = newNote._id || newNote.id;
+          const newNoteUserId = typeof newNote.userId === 'object' ? (newNote.userId as any)._id : newNote.userId;
+
+          state.activeNotes = [
+            newNote,
+            ...state.activeNotes.filter((n) => {
+              const currentId = n._id || n.id;
+              const currentUserId = typeof n.userId === 'object' ? (n.userId as any)._id : n.userId;
+              if (currentId && currentId === newNoteId) return false;
+              if (currentUserId && newNoteUserId && String(currentUserId) === String(newNoteUserId)) return false;
+              return true;
+            }),
+          ];
         }
       })
       .addCase(createCommunityNote.rejected, (state, action) => {
@@ -107,11 +142,13 @@ const communityNoteSlice = createSlice({
       })
       .addCase(deleteCommunityNote.fulfilled, (state, action) => {
         const deletedId = action.payload;
-        state.myActiveNote = null;
+        if (state.myActiveNote && (state.myActiveNote._id === deletedId || state.myActiveNote.id === deletedId)) {
+          state.myActiveNote = null;
+        }
         state.activeNotes = state.activeNotes.filter((n) => (n._id || n.id) !== deletedId);
       });
   },
 });
 
-export const { setMyActiveNote } = communityNoteSlice.actions;
+export const { setMyActiveNote, noteCreatedRealtime, noteExpiredRealtime } = communityNoteSlice.actions;
 export default communityNoteSlice.reducer;

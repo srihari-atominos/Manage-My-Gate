@@ -20,6 +20,10 @@ import {
 } from '@expo-google-fonts/hanken-grotesk';
 import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import storage from '../src/utils/storage';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Prevent splash screen from auto-hiding before asset loading is complete
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export {
   ErrorBoundary,
@@ -31,15 +35,15 @@ function AuthRouteGuard() {
   const { setColorScheme } = useColorScheme();
   const segments = useSegments();
   const router = useRouter();
-  const searchParams = useGlobalSearchParams<{ intent?: string }>();
+  const searchParams = useGlobalSearchParams<{ intent?: string; token?: string }>();
   const rootNavigationState = useRootNavigationState();
 
   const isCreateOrgIntent = searchParams.intent === 'create-org' || searchParams.intent === 'create';
 
-  // Restore saved theme and session restoration on startup (Mount once)
+  // Restore saved theme, language, and session restoration on startup (Mount once)
   useEffect(() => {
     bootstrap();
-    const restoreTheme = async () => {
+    const restorePreferences = async () => {
       try {
         const savedTheme = await storage.getItem('theme_preference');
         if (savedTheme === 'dark' || savedTheme === 'light') {
@@ -48,8 +52,14 @@ function AuthRouteGuard() {
       } catch (e) {
         console.warn('Failed to restore theme on startup:', e);
       }
+      try {
+        const { i18n } = await import('../src/utils/i18n');
+        await i18n.initLanguage();
+      } catch (e) {
+        console.warn('Failed to restore language preference on startup:', e);
+      }
     };
-    restoreTheme();
+    restorePreferences();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -57,10 +67,36 @@ function AuthRouteGuard() {
   useEffect(() => {
     if (!rootNavigationState?.key || !isInitialized) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const firstSegment = segments[0] as string | undefined;
     const currentRoute = segments[1] as string | undefined;
-    const isRoot = !segments[0];
+    const inAuthGroup = firstSegment === '(auth)';
+    const isRoot = !firstSegment;
     const u = user as any;
+
+    const hasTokenParam = !!searchParams?.token;
+    const isWebInviteUrl =
+      typeof window !== 'undefined' &&
+      typeof window.location !== 'undefined' &&
+      window.location?.href &&
+      (window.location.href.includes('invite') || window.location.href.includes('token=') || window.location.hash.includes('invite'));
+
+    const isInviteRoute =
+      hasTokenParam ||
+      isWebInviteUrl ||
+      firstSegment === 'invite' ||
+      firstSegment === 'accept-invite' ||
+      (inAuthGroup && currentRoute === 'accept-invite');
+
+    if (isInviteRoute) {
+      if (firstSegment !== '(auth)' || currentRoute !== 'accept-invite') {
+        router.replace({
+          pathname: '/(auth)/accept-invite',
+          params: searchParams,
+        });
+      }
+      return;
+    }
+
     const hasOrg = !!(
       u && (
         u.orgId ||
@@ -100,6 +136,17 @@ export default function RootLayout() {
     HankenGrotesk_600SemiBold,
     HankenGrotesk_700Bold,
   });
+
+  useEffect(() => {
+    // Unconditionally dismiss native splash overlay on mount so app interface is always visible
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded]);
 
   if (!fontsLoaded) {
     return (

@@ -4,6 +4,7 @@ import { Text } from '@/components/ui/text';
 import { X, Plus } from 'lucide-react-native';
 import FeatureIcon from '@/components/ui/FeatureIcon';
 import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
+import { useTranslation } from '@/src/utils/i18n';
 
 export interface DeckItem {
   id: string;
@@ -24,13 +25,14 @@ export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
   maxCapacity = 5,
   onRemoveItem,
 }) => {
+  const { t, tFeatureName } = useTranslation();
   const emptySlotsCount = Math.max(0, maxCapacity - activeItems.length);
 
   return (
     <View className="bg-secondary/40 p-3.5 border-b border-border/70">
       <View className="flex-row items-center justify-between mb-3">
         <Text className="text-xs font-bold font-sans text-foreground uppercase tracking-wider">
-          Active Quick Actions Deck
+          {t('active_quick_actions_deck', 'Active Quick Actions Deck')}
         </Text>
         <Text className="text-[11px] font-medium font-sans text-muted-foreground">
           {activeItems.length}/{maxCapacity} Selected
@@ -66,7 +68,7 @@ export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
                   className="text-[11px] font-medium font-sans text-foreground text-center px-1 leading-snug"
                   numberOfLines={2}
                 >
-                  {meta?.name || item.name}
+                  {tFeatureName(item.id, meta?.name || item.name)}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -78,7 +80,7 @@ export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
           <View key={`empty_${index}`} className="w-1/3 px-1">
             <View className="w-full h-[74px] border border-dashed border-border/70 rounded-[18px] items-center justify-center bg-muted/10 p-2">
               <Plus size={15} className="text-muted-foreground/50" />
-              <Text className="text-[10px] font-medium font-sans text-muted-foreground/60 mt-1">Empty Slot</Text>
+              <Text className="text-[10px] font-medium font-sans text-muted-foreground/60 mt-1">{t('empty_slot', 'Empty Slot')}</Text>
             </View>
           </View>
         ))}

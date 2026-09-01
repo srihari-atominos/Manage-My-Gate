@@ -2,25 +2,29 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store/store';
 import { useAppSocket } from '../../../hooks/useAppSocket';
+import { useAuth } from '../../auth/hooks/useAuth';
 import {
   fetchNotificationsThunk,
   markAsReadThunk,
   markAllAsReadThunk,
   deleteNotificationThunk,
   addRealTimeNotification,
+  clearLatestNotification,
 } from '../store/notificationSlice';
 
 export const useNotifications = () => {
   const dispatch = useDispatch<AppDispatch>();
   const notificationState = useSelector((state: RootState) => state.notification);
+  const { isAuthenticated } = useAuth();
   const initialFetchedRef = useRef(false);
   const { socket } = useAppSocket();
 
   const fetchNotifications = useCallback(
     (page = 1, limit = 10) => {
+      if (!isAuthenticated) return;
       dispatch(fetchNotificationsThunk({ page, limit }));
     },
-    [dispatch]
+    [dispatch, isAuthenticated]
   );
 
   const markAsRead = useCallback(
@@ -41,18 +45,22 @@ export const useNotifications = () => {
     [dispatch]
   );
 
+  const dismissLatestNotification = useCallback(() => {
+    dispatch(clearLatestNotification());
+  }, [dispatch]);
+
   useEffect(() => {
-    if (!initialFetchedRef.current) {
+    if (isAuthenticated && !initialFetchedRef.current) {
       initialFetchedRef.current = true;
       fetchNotifications(1, 10);
     }
-  }, [fetchNotifications]);
+  }, [isAuthenticated, fetchNotifications]);
 
   useEffect(() => {
     if (!socket) return;
 
     const handleIncomingNotification = (notification: any) => {
-      console.log('[Socket] INCOMING_NOTIFICATION received', notification);
+      console.log('[Socket] INCOMING_NOTIFICATION received:', notification);
       if (notification) {
         dispatch(addRealTimeNotification(notification));
       }
@@ -68,6 +76,7 @@ export const useNotifications = () => {
   return {
     items: notificationState.items,
     unreadCount: notificationState.unreadCount,
+    latestNotification: notificationState.latestNotification,
     pagination: notificationState.pagination,
     loading: notificationState.loading,
     error: notificationState.error,
@@ -75,6 +84,7 @@ export const useNotifications = () => {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    dismissLatestNotification,
   };
 };
 

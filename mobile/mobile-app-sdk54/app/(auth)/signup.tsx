@@ -71,7 +71,7 @@ interface SignupFormValues {
 }
 
 export default function SignupScreen() {
-  const { loading, error, clearStatus } = useAuth();
+  const { loading, error, clearStatus, logout, isAuthenticated } = useAuth();
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [localLoading, setLocalLoading] = React.useState(false);
@@ -201,7 +201,6 @@ export default function SignupScreen() {
             keyboardDismissMode="on-drag"
             className="px-5 py-6"
           >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
               <View className="max-w-sm mx-auto w-full gap-3.5">
               {/* Brand Header */}
               <Animated.View
@@ -250,7 +249,7 @@ export default function SignupScreen() {
                           returnKeyType="next"
                           onSubmitEditing={() => emailInputRef.current?.focus()}
                           blurOnSubmit={false}
-                          className="flex-1 text-sm text-foreground font-sans p-0"
+                          className="flex-1 text-sm text-foreground font-sans p-0 outline-none"
                         />
                       </View>
                     )}
@@ -285,7 +284,7 @@ export default function SignupScreen() {
                           returnKeyType="next"
                           onSubmitEditing={() => phoneInputRef.current?.focus()}
                           blurOnSubmit={false}
-                          className="flex-1 text-sm text-foreground font-sans p-0"
+                          className="flex-1 text-sm text-foreground font-sans p-0 outline-none"
                         />
                       </View>
                     )}
@@ -319,7 +318,7 @@ export default function SignupScreen() {
                           returnKeyType="next"
                           onSubmitEditing={() => unitInputRef.current?.focus()}
                           blurOnSubmit={false}
-                          className="flex-1 text-sm text-foreground font-sans p-0"
+                          className="flex-1 text-sm text-foreground font-sans p-0 outline-none"
                         />
                       </View>
                     )}
@@ -352,7 +351,7 @@ export default function SignupScreen() {
                           returnKeyType="next"
                           onSubmitEditing={() => passwordInputRef.current?.focus()}
                           blurOnSubmit={false}
-                          className="flex-1 text-sm text-foreground font-sans p-0"
+                          className="flex-1 text-sm text-foreground font-sans p-0 outline-none"
                         />
                       </View>
                     )}
@@ -382,7 +381,7 @@ export default function SignupScreen() {
                           returnKeyType="next"
                           onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
                           blurOnSubmit={false}
-                          className="flex-1 text-sm text-foreground font-sans p-0"
+                          className="flex-1 text-sm text-foreground font-sans p-0 outline-none"
                         />
                         <TouchableOpacity
                           onPress={() => setShowPassword(!showPassword)}
@@ -427,7 +426,202 @@ export default function SignupScreen() {
                           autoCapitalize="none"
                           returnKeyType="go"
                           onSubmitEditing={handleSubmit(onSubmit)}
-                          className="flex-1 text-sm text-foreground font-sans p-0"
+                          className="flex-1 text-sm text-foreground font-sans p-0 outline-none"
+                        />
+                        <TouchableOpacity
+                          onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                          hitSlop={8}
+                          activeOpacity={0.7}
+                        >
+                          {showConfirmPassword ? (
+                            <Eye size={18} color="#94A3B8" />
+                          ) : (
+                            <EyeOff size={18} color="#94A3B8" />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  />
+                  {errors.confirmPassword && (
+                    <Text className="text-rose-500 text-[11px] mt-1 ms-1 font-medium">
+                      {errors.confirmPassword.message}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Global Error Banner */}
+                {localError || error ? (
+                  <View className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5">
+                    <Text className="text-rose-500 text-xs text-center font-medium">
+                      {localError || error}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {/* Sign Up CTA Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
+                <TouchableOpacity
+                  onPress={handleSubmit(onSubmit)}
+                  disabled={loading || localLoading}
+                  activeOpacity={0.88}
+                  className="mt-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
+                >
+                  <View className="absolute inset-0">
+                    <Svg width="100%" height="100%" preserveAspectRatio="none">
+                      <Defs>
+                        <LinearGradient id="signUpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <Stop offset="0%" stopColor="#1E232E" />
+                          <Stop offset="45%" stopColor="#2A3342" />
+                          <Stop offset="82%" stopColor="#FF5E00" />
+                          <Stop offset="100%" stopColor="#FF7A00" />
+                        </LinearGradient>
+                      </Defs>
+                      <Rect width="100%" height="100%" rx="16" fill="url(#signUpGrad)" />
+                    </Svg>
+                  </View>
+                  {loading || localLoading ? (
+                    <View className="flex-row items-center gap-2 z-10">
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    </View>
+                  ) : (
+                    <View className="flex-row items-center justify-center gap-2 z-10">
+                      <Text className="font-bold text-white text-base font-sans">
+                        Create Account
+                      </Text>
+                      <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
+                  )}
+                </View>
+
+                {/* Phone */}
+                <View>
+                  <Text className="text-xs font-bold text-foreground mb-1.5">
+                    Phone Number
+                  </Text>
+                  <Controller
+                    control={control}
+                    name="phone"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
+                        <Smartphone size={18} color="#94A3B8" className="me-2.5 shrink-0" />
+                        <TextInput
+                          ref={phoneInputRef}
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          placeholder="+919988776655"
+                          placeholderTextColor="#94A3B8"
+                          keyboardType="phone-pad"
+                          returnKeyType="next"
+                          onSubmitEditing={() => unitInputRef.current?.focus()}
+                          blurOnSubmit={false}
+                          className="flex-1 text-sm text-foreground font-sans p-0 outline-none"
+                        />
+                      </View>
+                    )}
+                  />
+                  {errors.phone && (
+                    <Text className="text-rose-500 text-[11px] mt-1 ms-1 font-medium">
+                      {errors.phone.message}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Villa / Unit Number */}
+                <View>
+                  <Text className="text-xs font-bold text-foreground mb-1.5">
+                    Villa / Unit No. (Optional)
+                  </Text>
+                  <Controller
+                    control={control}
+                    name="unitNumber"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
+                        <Home size={18} color="#94A3B8" className="me-2.5 shrink-0" />
+                        <TextInput
+                          ref={unitInputRef}
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          placeholder="e.g. Villa 104, Block B"
+                          placeholderTextColor="#94A3B8"
+                          returnKeyType="next"
+                          onSubmitEditing={() => passwordInputRef.current?.focus()}
+                          blurOnSubmit={false}
+                          className="flex-1 text-sm text-foreground font-sans p-0 outline-none"
+                        />
+                      </View>
+                    )}
+                  />
+                </View>
+
+                {/* Password */}
+                <View>
+                  <Text className="text-xs font-bold text-foreground mb-1.5">
+                    Password
+                  </Text>
+                  <Controller
+                    control={control}
+                    name="password"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
+                        <Lock size={18} color="#94A3B8" className="me-2.5 shrink-0" />
+                        <TextInput
+                          ref={passwordInputRef}
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          placeholder="Create a password"
+                          placeholderTextColor="#94A3B8"
+                          secureTextEntry={!showPassword}
+                          autoCapitalize="none"
+                          returnKeyType="next"
+                          onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+                          blurOnSubmit={false}
+                          className="flex-1 text-sm text-foreground font-sans p-0 outline-none"
+                        />
+                        <TouchableOpacity
+                          onPress={() => setShowPassword(!showPassword)}
+                          hitSlop={8}
+                          activeOpacity={0.7}
+                        >
+                          {showPassword ? (
+                            <Eye size={18} color="#94A3B8" />
+                          ) : (
+                            <EyeOff size={18} color="#94A3B8" />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  />
+                  {errors.password && (
+                    <Text className="text-rose-500 text-[11px] mt-1 ms-1 font-medium">
+                      {errors.password.message}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Confirm Password */}
+                <View>
+                  <Text className="text-xs font-bold text-foreground mb-1.5">
+                    Confirm Password
+                  </Text>
+                  <Controller
+                    control={control}
+                    name="confirmPassword"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
+                        <Lock size={18} color="#94A3B8" className="me-2.5 shrink-0" />
+                        <TextInput
+                          ref={confirmPasswordInputRef}
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          placeholder="Re-enter password"
+                          placeholderTextColor="#94A3B8"
+                          secureTextEntry={!showConfirmPassword}
+                          autoCapitalize="none"
+                          returnKeyType="go"
+                          onSubmitEditing={handleSubmit(onSubmit)}
+                          className="flex-1 text-sm text-foreground font-sans p-0 outline-none"
                         />
                         <TouchableOpacity
                           onPress={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -515,7 +709,14 @@ export default function SignupScreen() {
                   Already have an account?{' '}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => router.push('/(auth)/login')}
+                  onPress={async () => {
+                    if (isAuthenticated) {
+                      try {
+                        await logout();
+                      } catch (e) {}
+                    }
+                    router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
+                  }}
                   activeOpacity={0.8}
                 >
                   <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">
@@ -525,10 +726,9 @@ export default function SignupScreen() {
               </View>
             </Animated.View>
           </View>
-        </TouchableWithoutFeedback>
-      </ScrollView>
-    </KeyboardAvoidingView>
-    </ImageBackground>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </ImageBackground>
     </>
   );
 }

@@ -33,9 +33,11 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken }) => {
     const subject = template?.subject || 'You are invited to join the Workspace';
     const bodyTemplate = template?.body || DEFAULT_INVITE_BODY;
 
-    // 2. Compile variables (replace {{invite_link}} with actual URL)
+    // 2. Compile variables (replace {{invite_link}} and any legacy domain links with actual URL)
     const compiledSubject = subject.replace(/{{invite_link}}/g, inviteLink);
-    const compiledBody = bodyTemplate.replace(/{{invite_link}}/g, inviteLink);
+    const compiledBody = bodyTemplate
+      .replace(/https?:\/\/[^\s"']+\/#\/invite\?token=[^\s"']*/gi, inviteLink)
+      .replace(/{{invite_link}}/g, inviteLink);
 
     // 3. Send email using sendEmail helper
     const { sendEmail } = await import('../../utils/email.utils.js');

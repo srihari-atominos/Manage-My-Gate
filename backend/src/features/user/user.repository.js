@@ -77,12 +77,19 @@ export class UserRepository {
    * @param {import('mongoose').ClientSession} [session]
    */
   async findByPhone(phone, session) {
+    if (!phone) return null;
     const trimmedPhone = phone.trim();
-    const basePhone = trimmedPhone.replace(/^\+\d+\s*/, '');
+    if (!trimmedPhone) return null;
+
+    const digitsOnly = trimmedPhone.replace(/\D/g, '');
+    const last10 = digitsOnly.slice(-10);
 
     const orConditions = [{ phone: trimmedPhone }];
-    if (basePhone) {
-      orConditions.push({ phone: basePhone });
+    if (digitsOnly) {
+      orConditions.push({ phone: digitsOnly });
+    }
+    if (last10 && last10.length >= 7) {
+      orConditions.push({ phone: new RegExp(`${last10}$`) });
     }
 
     return await User.findOne({ $or: orConditions }).session(session || null);

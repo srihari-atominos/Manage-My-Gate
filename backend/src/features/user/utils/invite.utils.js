@@ -5,7 +5,7 @@
  * @returns {string} The full client-side registration URL
  */
 export const generateInviteLink = (invitationToken) => {
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:8081';
   return `${clientUrl}/#/invite?token=${invitationToken}`;
 };
 
