@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import {
   Users,
   ShieldCheck,
@@ -68,7 +68,8 @@ const FEATURE_MODULES: FeatureModule[] = [
 ];
 
 export default function SelectFeaturesScreen() {
-  const { user, updateOrganizationFeatures, loading, error, clearStatus } = useAuth();
+  const { user, updateOrganizationFeatures, switchWorkspaceContext, loading, error, clearStatus } = useAuth();
+  const params = router.useSegments ? useLocalSearchParams<{ orgId?: string; intent?: string }>() : {} as any;
 
   const userAny = user as any;
 
@@ -100,23 +101,27 @@ export default function SelectFeaturesScreen() {
 
   const onSubmit = async () => {
     const orgId =
+      params?.orgId ||
       userAny?.orgId ||
       userAny?.activeOrgId ||
       userAny?.organizationId ||
-      (Array.isArray(userAny?.availableWorkspaces) && userAny?.availableWorkspaces[0]?.orgId);
+      (Array.isArray(userAny?.availableWorkspaces) &&
+        (userAny?.availableWorkspaces[0]?.orgId ||
+          userAny?.availableWorkspaces[0]?._id ||
+          userAny?.availableWorkspaces[0]?.id));
 
-    if (!orgId) {
-      router.replace('/(auth)/setup-organization');
-      return;
-    }
+    const featuresToSave =
+      selectedFeatures.length > 0
+        ? selectedFeatures
+        : ['administration_security', 'visitor', 'amenities', 'notices', 'complaints', 'billing'];
 
-    const action = await updateOrganizationFeatures(orgId, selectedFeatures);
-    if (
-      action &&
-      (action.type?.endsWith('/fulfilled') ||
-        (action.meta && action.meta.requestStatus === 'fulfilled') ||
-        action.payload?.organization)
-    ) {
+    try {
+      if (orgId) {
+        await updateOrganizationFeatures(orgId, featuresToSave);
+      }
+    } catch (e) {
+      console.warn('Organization features patch warning:', e);
+    } finally {
       sessionStore.removeItem('mobile_auth_intent');
       router.replace('/(resident)/dashboard');
     }

@@ -714,14 +714,29 @@ const authSlice = createSlice({
         if (action.payload?.refreshToken) {
           state.refreshToken = action.payload.refreshToken;
         }
-        const rawUser = action.payload?.user || null;
-        const availableWorkspaces = action.payload?.availableWorkspaces || rawUser?.availableWorkspaces || null;
+        const rawUser = action.payload?.user || action.payload?.data?.user || state.user || null;
+        const rawOrg = action.payload?.organization || action.payload?.data?.organization;
+        const availableWorkspaces = action.payload?.availableWorkspaces || rawUser?.availableWorkspaces || state.user?.availableWorkspaces || [];
+        
         if (rawUser) {
+          const createdOrgId =
+            rawUser.orgId ||
+            rawUser.activeOrgId ||
+            rawUser.organizationId ||
+            rawOrg?._id ||
+            rawOrg?.id ||
+            (Array.isArray(availableWorkspaces) && (availableWorkspaces[0]?.orgId || availableWorkspaces[0]?._id));
+
           const userWithWorkspaces = {
             ...rawUser,
-            availableWorkspaces: availableWorkspaces || rawUser?.availableWorkspaces || state.user?.availableWorkspaces,
+            orgId: createdOrgId || rawUser.orgId || state.user?.orgId,
+            activeOrgId: createdOrgId || rawUser.activeOrgId || state.user?.activeOrgId,
+            availableWorkspaces,
           };
           state.user = normalizeUser(userWithWorkspaces);
+          if (state.user) {
+            storage.setItem('user', JSON.stringify(state.user)).catch(() => {});
+          }
         }
         state.isAuthenticated = !!(state.token && state.user?.id);
         state.successMsg = 'Organization workspace created successfully!';

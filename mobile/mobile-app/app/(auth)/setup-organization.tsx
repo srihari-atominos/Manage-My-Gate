@@ -75,14 +75,35 @@ export default function SetupOrganizationScreen() {
   }, [orgName]);
 
   const onSubmit = async (data: SetupOrgFormValues) => {
-    const action = await createWorkspace({
+    const action: any = await createWorkspace({
       name: data.name.trim(),
       organizationType: 'Residential',
       timezone: 'Asia/Kolkata',
     });
 
-    if (action && (action.type?.endsWith('/fulfilled') || (action.meta && action.meta.requestStatus === 'fulfilled'))) {
-      router.replace({ pathname: '/(auth)/select-features', params: { intent: 'create-org' } });
+    if (
+      action &&
+      (action.type?.endsWith('/fulfilled') ||
+        (action.meta && action.meta.requestStatus === 'fulfilled') ||
+        action.payload?.user ||
+        action.payload?.organization ||
+        action.payload?.data)
+    ) {
+      const innerUser = action.payload?.user || action.payload?.data?.user;
+      const innerOrg = action.payload?.organization || action.payload?.data?.organization;
+      const createdOrgId =
+        innerUser?.orgId ||
+        innerUser?.activeOrgId ||
+        innerUser?.organizationId ||
+        innerOrg?._id ||
+        innerOrg?.id ||
+        (Array.isArray(innerUser?.availableWorkspaces) &&
+          (innerUser.availableWorkspaces[0]?.orgId || innerUser.availableWorkspaces[0]?._id));
+
+      router.replace({
+        pathname: '/(auth)/select-features',
+        params: { orgId: createdOrgId, intent: 'create-org' },
+      });
     }
   };
 
