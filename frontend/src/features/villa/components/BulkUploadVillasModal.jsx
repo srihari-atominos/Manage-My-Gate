@@ -54,31 +54,39 @@ const parseXLSX = (arrayBuffer) => {
       else if (header.includes('floor area') || header.includes('sq ft') || header.includes('area'))
         key = 'floorAreaSqFt'
       else if (header.includes('floor')) key = 'floor'
-      else if (header.includes('occupancy status') || header.includes('status')) key = 'status'
+      else if (header.includes('occupancy') || header.includes('status')) key = 'status'
       else if (header.includes('role')) key = 'roleName'
       else if (header.includes('phone') || header.includes('mobile')) key = 'phone'
       else if (header.includes('name') || header.includes('resident name')) key = 'name'
 
-      row[key] =
-        values[index] !== undefined && values[index] !== null ? values[index].toString().trim() : ''
+      let rawVal = values[index] !== undefined && values[index] !== null ? values[index].toString().trim() : ''
+      if (key === 'phone' && rawVal && /[eE]\+/i.test(rawVal)) {
+        const num = Number(rawVal)
+        if (!isNaN(num)) rawVal = num.toFixed(0)
+      }
+      row[key] = rawVal
     })
 
     row.isValidVilla = !!row.unitNumber
 
     if (row.email) {
       row.isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)
-      row.isValidResidentType = [
-        'Owner',
-        'Tenant',
-        'Family Member',
-        'Resident Owner',
-        'Family',
-      ].some((t) => (row.residentType || '').includes(t))
+      row.isValidResidentType = !row.residentType || [
+        'owner',
+        'tenant',
+        'family',
+        'resident owner',
+        'resident tenant',
+        'family member',
+      ].some((t) => (row.residentType || '').toLowerCase().includes(t))
+
       // Fallback to determine roleName from residentType if not provided
       if (!row.roleName && row.residentType) {
-        if (row.residentType.includes('Owner')) row.roleName = 'Resident Owner'
-        else if (row.residentType.includes('Tenant')) row.roleName = 'Resident Tenant'
-        else if (row.residentType.includes('Family')) row.roleName = 'Family Member'
+        const lowerRes = row.residentType.toLowerCase()
+        if (lowerRes.includes('owner')) row.roleName = 'Resident Owner'
+        else if (lowerRes.includes('tenant') || lowerRes.includes('resident')) row.roleName = 'Resident Tenant'
+        else if (lowerRes.includes('family')) row.roleName = 'Family Member'
+        else row.roleName = 'Resident Tenant'
       }
       row.isValidRole = !!row.roleName
     } else {
@@ -149,29 +157,37 @@ const parseCSV = (csvText) => {
       else if (header.includes('floor area') || header.includes('sq ft') || header.includes('area'))
         key = 'floorAreaSqFt'
       else if (header.includes('floor')) key = 'floor'
-      else if (header.includes('occupancy status') || header.includes('status')) key = 'status'
+      else if (header.includes('occupancy') || header.includes('status')) key = 'status'
       else if (header.includes('role')) key = 'roleName'
       else if (header.includes('phone') || header.includes('mobile')) key = 'phone'
       else if (header.includes('name') || header.includes('resident name')) key = 'name'
 
-      row[key] =
-        values[index] !== undefined && values[index] !== null ? values[index].toString().trim() : ''
+      let rawVal = values[index] !== undefined && values[index] !== null ? values[index].toString().trim() : ''
+      if (key === 'phone' && rawVal && /[eE]\+/i.test(rawVal)) {
+        const num = Number(rawVal)
+        if (!isNaN(num)) rawVal = num.toFixed(0)
+      }
+      row[key] = rawVal
     })
 
     row.isValidVilla = !!row.unitNumber
     if (row.email) {
       row.isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)
-      row.isValidResidentType = [
-        'Owner',
-        'Tenant',
-        'Family Member',
-        'Resident Owner',
-        'Family',
-      ].some((t) => (row.residentType || '').includes(t))
+      row.isValidResidentType = !row.residentType || [
+        'owner',
+        'tenant',
+        'family',
+        'resident owner',
+        'resident tenant',
+        'family member',
+      ].some((t) => (row.residentType || '').toLowerCase().includes(t))
+
       if (!row.roleName && row.residentType) {
-        if (row.residentType.includes('Owner')) row.roleName = 'Resident Owner'
-        else if (row.residentType.includes('Tenant')) row.roleName = 'Resident Tenant'
-        else if (row.residentType.includes('Family')) row.roleName = 'Family Member'
+        const lowerRes = row.residentType.toLowerCase()
+        if (lowerRes.includes('owner')) row.roleName = 'Resident Owner'
+        else if (lowerRes.includes('tenant') || lowerRes.includes('resident')) row.roleName = 'Resident Tenant'
+        else if (lowerRes.includes('family')) row.roleName = 'Family Member'
+        else row.roleName = 'Resident Tenant'
       }
       row.isValidRole = !!row.roleName
     } else {
