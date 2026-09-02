@@ -511,7 +511,7 @@ export default function SignupScreen() {
                   onPress={handleSubmit(onSubmit)}
                   disabled={loading || localLoading}
                   activeOpacity={0.88}
-                  className="mt-1 h-12 rounded-2xl flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
+                  className="mt-1 h-12 rounded-2xl bg-[#1E232E] flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
                 >
                   <View className="absolute inset-0">
                     <Svg width="100%" height="100%" preserveAspectRatio="none">
