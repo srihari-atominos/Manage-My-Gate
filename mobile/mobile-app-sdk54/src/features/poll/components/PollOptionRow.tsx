@@ -1,7 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
+import { CheckCircle2, Circle } from 'lucide-react-native';
 
-interface PollOptionRowProps {
+export interface PollOptionRowProps {
   text: string;
   votesCount: number;
   percentage: number;
@@ -11,60 +14,76 @@ interface PollOptionRowProps {
   disabled?: boolean;
 }
 
-export default function PollOptionRow({
+export function PollOptionRow({
   text,
   votesCount,
   percentage,
   isSelected,
-  showResults,
+  showResults = false,
   onSelect,
-  disabled,
+  disabled = false,
 }: PollOptionRowProps) {
+  const isInteractive = !disabled && !showResults;
+
   return (
-    <TouchableOpacity
-      className={`mb-2 rounded-lg border p-3 ${
-        isSelected ? 'border-primary bg-primary/10' : 'border-border bg-card'
-      } ${disabled && !showResults ? 'opacity-50' : ''}`}
+    <Pressable
       onPress={onSelect}
-      disabled={disabled || showResults}
+      disabled={!isInteractive}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: isSelected, disabled: !isInteractive }}
+      accessibilityLabel={`${text}, ${votesCount} votes, ${percentage} percent`}
+      className={`relative mb-3 overflow-hidden rounded-2xl border p-4 transition-all ${
+        isSelected
+          ? 'border-primary bg-primary/10 shadow-sm'
+          : 'border-border bg-card'
+      } ${disabled && !showResults ? 'opacity-60' : 'active:scale-[0.99]'}`}
     >
-      <View className="flex-row items-center justify-between z-10 relative">
-        <View className="flex-row items-center flex-1">
-          {/* Custom Radio Button */}
+      {/* Background Percentage Progress Fill when displaying results */}
+      {showResults && (
+        <View
+          className={`absolute inset-y-0 start-0 ${
+            isSelected ? 'bg-primary/20' : 'bg-muted/70'
+          }`}
+          style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
+        />
+      )}
+
+      <View className="relative z-10 flex-row items-center justify-between">
+        <View className="flex-1 flex-row items-center me-3">
+          {/* Radio / Selection Indicator */}
           {!showResults && (
-            <View
-              className={`h-5 w-5 rounded-full border-2 mr-3 items-center justify-center ${
-                isSelected ? 'border-primary' : 'border-muted-foreground'
-              }`}
-            >
-              {isSelected && <View className="h-2.5 w-2.5 rounded-full bg-primary" />}
+            <View className="me-3">
+              {isSelected ? (
+                <Icon as={CheckCircle2} size={20} className="text-primary" />
+              ) : (
+                <Icon as={Circle} size={20} className="text-muted-foreground" />
+              )}
             </View>
           )}
+
           <Text
             className={`flex-1 text-base ${
-              isSelected ? 'font-semibold text-primary' : 'text-foreground'
+              isSelected ? 'font-bold text-primary' : 'font-medium text-foreground'
             }`}
           >
             {text}
           </Text>
         </View>
 
-        {showResults && (
-          <Text className="text-sm font-medium text-muted-foreground ml-2">
-            {votesCount} ({percentage}%)
-          </Text>
-        )}
+        {/* Dynamic Vote Count & Percentage Badge */}
+        {showResults ? (
+          <View className="flex-row items-center bg-card/80 px-2.5 py-1 rounded-full border border-border/50">
+            <Text className="text-xs font-bold text-foreground">
+              {percentage}%
+            </Text>
+            <Text className="text-[11px] text-muted-foreground ms-1.5 font-medium">
+              ({votesCount} {votesCount === 1 ? 'vote' : 'votes'})
+            </Text>
+          </View>
+        ) : null}
       </View>
-
-      {/* Progress Bar Background for Results */}
-      {showResults && (
-        <View
-          className={`absolute left-0 top-0 bottom-0 rounded-lg ${
-            isSelected ? 'bg-primary/20' : 'bg-muted'
-          }`}
-          style={{ width: `${percentage}%`, opacity: 0.5 }}
-        />
-      )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
+
+export default PollOptionRow;

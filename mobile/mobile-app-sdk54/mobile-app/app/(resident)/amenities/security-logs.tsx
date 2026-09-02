@@ -4,7 +4,6 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { KPIRow } from '@/components/ui/KPIRow';
 import { KPICardProps } from '@/components/ui/KPICard';
-import { TabBar } from '@/components/ui/TabBar';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { Button } from '@/components/ui/button';
@@ -32,11 +31,11 @@ export default function AmenitySecurityLogsScreen() {
 
   const scanTypeTabs = useMemo(
     () => [
-      { key: '', label: 'All Types' },
-      { key: 'Entry', label: 'Entry' },
-      { key: 'Exit', label: 'Exit' },
-      { key: 'Denied', label: 'Denied' },
-      { key: 'Manual Verification', label: 'Manual' },
+      { value: '', label: 'All Types' },
+      { value: 'Entry', label: 'Entry' },
+      { value: 'Exit', label: 'Exit' },
+      { value: 'Denied', label: 'Denied' },
+      { value: 'Manual Verification', label: 'Manual' },
     ],
     []
   );
@@ -78,21 +77,16 @@ export default function AmenitySecurityLogsScreen() {
       {/* 2x2 Telemetry Header KPI Grid */}
       <KPIRow layout="grid" cards={kpiCards} loading={loading && logs.length === 0} className="px-0" />
 
-      {/* Filter Tabs & Search Hub */}
+      {/* Search & Moveable Slide Status Filter Bar */}
       <View className="gap-2.5">
-        <TabBar
-          tabs={scanTypeTabs}
-          activeTab={filters.scanType || ''}
-          onTabChange={(tabKey) => handleFilterChange('scanType', tabKey)}
-          variant="pill"
-          className="my-1"
-        />
-
         <SearchFilterBar
           searchValue={filters.search || ''}
           onSearchChange={(text) => handleFilterChange('search', text)}
           searchPlaceholder="Search resident, amenity, guard..."
-          variant="bordered"
+          sortOptions={scanTypeTabs}
+          currentSort={filters.scanType || ''}
+          onSortChange={(tabKey) => handleFilterChange('scanType', tabKey)}
+          variant="default"
           className="px-0 py-0 border-0"
         />
 

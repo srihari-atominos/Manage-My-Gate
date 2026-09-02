@@ -95,13 +95,18 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
 
       {/* Action Button */}
       <Button
-        variant="default"
         size="sm"
         onPress={() => onConnect(provider)}
-        className="w-full rounded-xl h-8 px-3"
+        className={`w-full rounded-xl h-8 px-3 ${
+          isMapped
+            ? 'bg-blue-600 active:bg-blue-700'
+            : 'bg-emerald-600 active:bg-emerald-700'
+        }`}
       >
-        <Icon as={Plug} size={14} className="text-primary-foreground me-1" />
-        <Text className="text-xs font-bold text-primary-foreground">Configure Connection</Text>
+        <Icon as={Plug} size={14} className="text-white me-1" />
+        <Text className="text-xs font-bold text-white">
+          {isMapped ? 'Manage Connection' : 'Configure Connection'}
+        </Text>
       </Button>
     </TouchableOpacity>
   );

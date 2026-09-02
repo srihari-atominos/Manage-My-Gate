@@ -1,98 +1,151 @@
 import React from 'react';
-import { View, Pressable } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Camera } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { SafeAreaWrapper } from '@/components/layout/SafeAreaWrapper';
-import { QRScannerOverlay } from '@/components/hardware/QRScannerOverlay';
-import { FlashlightToggle } from '@/components/hardware/FlashlightToggle';
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { Button } from '@/components/ui/button';
-import { useSecurityScanner } from '../../src/features/amenities/hooks/useSecurityScanner';
+import { Camera, KeyRound, ChevronLeft } from 'lucide-react-native';
+import { SafeAreaWrapper } from '@/components/layout';
+import {
+  CameraViewFinder,
+  FlashlightToggle,
+  ScanResultSheet,
+  ManualCodeEntrySheet,
+} from '@/components/hardware';
+import { Button, Text, Icon } from '@/components/ui';
+import { IconButton } from '@/components/common';
+import { useGuardGateScanner } from '../../src/features/visitor/hooks/useGuardGateScanner';
 
 export default function GateSecurityScannerScreen() {
   const router = useRouter();
   const {
     isScanning,
-    flashMode,
-    isResultModalOpen,
-    checkInResult,
+    isFlashlightOn,
+    isResultSheetOpen,
+    isManualEntryOpen,
     checkingIn,
-    setFlashMode,
+    scanResult,
+    toggleFlashlight,
+    openManualEntry,
+    closeManualEntry,
     handleBarCodeScanned,
+    handleManualCodeSubmit,
+    handleConfirmGateEntry,
     resetScanner,
-  } = useSecurityScanner();
+  } = useGuardGateScanner();
 
   const handleSimulateScan = () => {
-    handleBarCodeScanned({ type: 'qr', data: '659c8d32a10e42b890f11122' });
+    handleBarCodeScanned({
+      type: 'SIMULATION',
+      data: JSON.stringify({
+        code: 'VIS-982341',
+        visitorName: 'Alex Mercer',
+        phone: '+966 50 123 4567',
+        passType: 'GUEST',
+        unit: 'Villa 104',
+        hostName: 'Mohammed Al-Saud',
+        validFrom: new Date().toISOString(),
+        validUntil: new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
+      }),
+    });
   };
 
-  const isSuccess = checkInResult?.success && checkInResult?.status === 'SUCCESS';
-
   return (
-    <SafeAreaWrapper backgroundColorClassName="bg-black">
-      <View className="flex-1 relative justify-between">
-        {/* Top Floating Control Bar */}
-        <View className="z-20 flex-row items-center justify-between px-4 pt-3">
-          <Pressable
-            onPress={() => router.back()}
-            className="p-2.5 rounded-full bg-black/60 border border-white/20 active:opacity-70"
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-          >
-            <Icon as={ChevronLeft} size={22} color="#ffffff" />
-          </Pressable>
+    <View className="flex-1 bg-black relative">
+      {/* 1. Fullscreen Live Camera Viewport Base Layer */}
+      <CameraViewFinder
+        isScanning={isScanning}
+        enableTorch={isFlashlightOn}
+        instruction="Align Visitor QR Pass inside frame"
+        onScan={(data) => handleBarCodeScanned({ type: 'CAMERA', data })}
+        fullscreen={true}
+        className="absolute inset-0"
+      />
 
-          <Text className="text-white font-bold text-base tracking-wide">
-            Gate Security Check-In
-          </Text>
+      {/* 2. Floating HUD Controls Layer */}
+      <SafeAreaWrapper
+        backgroundColorClassName="bg-transparent"
+        className="flex-1 justify-between p-4"
+        pointerEvents="box-none"
+      >
+        {/* Top Floating Header Controls */}
+        <View className="flex-row items-center justify-between z-20" pointerEvents="box-none">
+          <IconButton
+            icon={ChevronLeft}
+            variant="secondary"
+            size="md"
+            onPress={() => router.back()}
+            className="bg-black/60 border-white/20"
+            accessibilityLabel="Go back"
+          />
+
+          <View className="bg-black/60 border border-white/20 px-4 py-2 rounded-full">
+            <Text className="text-primary-foreground font-bold text-xs tracking-wider uppercase">
+              Gate Security Scanner
+            </Text>
+          </View>
 
           <View className="w-10" />
         </View>
 
-        {/* QR Scanner Overlay Component */}
-        <QRScannerOverlay instruction="Align Resident Pass QR inside frame" />
+        {/* Bottom Floating Control Bar */}
+        <View className="z-20 gap-3 items-center pb-4 w-full" pointerEvents="box-none">
+          {/* Flashlight Toggle & Manual Entry Trigger */}
+          <View className="flex-row items-center justify-center gap-3 w-full max-w-sm">
+            <FlashlightToggle
+              isOn={isFlashlightOn}
+              onToggle={toggleFlashlight}
+              className="flex-1 bg-black/70 border-white/20"
+            />
 
-        {/* Bottom Control Bar & Test Trigger */}
-        <View className="z-20 px-6 pb-8 items-center gap-4">
-          <FlashlightToggle
-            mode={flashMode}
-            onModeChange={setFlashMode}
-            className="bg-black/70 border-white/20"
-          />
+            <Button
+              variant="outline"
+              onPress={openManualEntry}
+              className="flex-1 h-11 bg-black/70 border-white/20 flex-row items-center justify-center gap-1.5"
+              accessibilityRole="button"
+              accessibilityLabel="Manual pass PIN lookup"
+            >
+              <Icon as={KeyRound} size={16} className="text-primary-foreground" />
+              <Text className="text-xs font-bold text-primary-foreground">Manual PIN</Text>
+            </Button>
+          </View>
 
+          {/* Test Simulation Trigger */}
           <Button
             variant="outline"
             onPress={handleSimulateScan}
             disabled={checkingIn}
-            className="border-primary/50 bg-primary/20 w-full"
+            className="w-full max-w-sm h-11 border-primary/50 bg-primary/20 flex-row items-center justify-center gap-2"
+            accessibilityRole="button"
+            accessibilityLabel="Simulate visitor QR scan"
           >
-            <Icon as={Camera} size={18} color="#ffffff" className="mr-2" />
-            <Text className="text-white font-semibold text-sm">
-              {checkingIn ? 'Verifying Pass...' : 'Simulate QR Scan (Test)'}
+            <Icon as={Camera} size={16} className="text-primary-foreground" />
+            <Text className="text-primary-foreground font-bold text-xs">
+              {checkingIn ? 'Verifying Visitor Pass...' : 'Simulate Visitor Scan (Test)'}
             </Text>
           </Button>
         </View>
+      </SafeAreaWrapper>
 
-        {/* Instant Verification Result Confirmation Modal */}
-        <ConfirmationModal
-          visible={isResultModalOpen}
-          title={isSuccess ? 'Gate Check-In Verified' : 'Check-In Refused'}
-          message={
-            checkInResult?.message ||
-            (isSuccess
-              ? 'Amenity pass is valid and checked in.'
-              : 'Pass is expired, invalid, or already checked in.')
-          }
-          confirmLabel="Scan Next Pass"
-          cancelLabel="Close"
-          variant={isSuccess ? 'info' : 'danger'}
-          onConfirm={resetScanner}
-          onCancel={resetScanner}
-          loading={checkingIn}
-        />
-      </View>
-    </SafeAreaWrapper>
+      {/* 3. Reusable Verification Result Bottom Sheet */}
+      <ScanResultSheet
+        visible={isResultSheetOpen}
+        onClose={resetScanner}
+        result={scanResult}
+        loading={checkingIn}
+        onPrimaryAction={handleConfirmGateEntry}
+        primaryActionLabel="Open Gate Barrier"
+        onSecondaryAction={resetScanner}
+        secondaryActionLabel="Scan Next Pass"
+      />
+
+      {/* 4. Reusable Manual Code Entry Bottom Sheet */}
+      <ManualCodeEntrySheet
+        visible={isManualEntryOpen}
+        onClose={closeManualEntry}
+        onSubmitCode={handleManualCodeSubmit}
+        loading={checkingIn}
+        title="Manual Visitor Pass Verification"
+        description="Enter the 6-digit visitor PIN code or alphanumeric pass reference."
+        placeholder="e.g. 982341 or VIS-982341"
+      />
+    </View>
   );
 }

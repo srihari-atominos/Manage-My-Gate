@@ -1,13 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, TouchableOpacity, ScrollView } from 'react-native';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { Badge } from '@/components/common/Badge';
+import { EmptyState } from '@/components/feedback/EmptyState';
 
 import { useNoticeBoard } from '../hooks/useNoticeBoard';
 import { useNoticeSocket } from '../hooks/useNoticeSocket';
@@ -15,13 +12,10 @@ import {
   MemoizedNoticeCard, 
   ErrorBoundary, 
   NoticeBoardFilters, 
-  NoticeBoardEmptyState,
   NoticeBoardLoadingSkeleton
 } from '../components';
 import { debounce } from '../utils/debounce';
-import { Heart, Share2, AlertTriangle, Bookmark, BarChart2 } from 'lucide-react-native';
-
-
+import { AlertTriangle } from 'lucide-react-native';
 
 export default function ActiveBoardScreen() {
   const router = useRouter();
@@ -32,13 +26,11 @@ export default function ActiveBoardScreen() {
 
   const {
     notices,
-    selectedNotice,
     loading,
     pagination,
     search,
     filters,
     sort,
-    dashboardStats,
     loadNotices,
     loadNoticeStats,
     setSearch,
@@ -52,13 +44,12 @@ export default function ActiveBoardScreen() {
   } = useNoticeBoard();
 
   const [localSearch, setLocalSearch] = useState(search);
-  const [activeTab, setActiveTab] = useState('All');
 
   // Initialize board and apply default Published status filter on mount
   useEffect(() => {
     setFilters({ status: 'Published' });
     loadNotices();
-    loadNoticeStats?.(); // optionally fetch stats for resident
+    loadNoticeStats?.();
   }, []);
 
   // Handle deep-linking to automatically open notice details
@@ -118,7 +109,7 @@ export default function ActiveBoardScreen() {
 
   const handleResetFilters = useCallback(() => {
     resetFilters();
-    setFilters({ status: 'Published' }); // Default active state
+    setFilters({ status: 'Published' });
     setSearch('');
     setSort({ sortBy: 'createdAt', sortOrder: 'desc' });
   }, [resetFilters, setFilters, setSearch, setSort]);
@@ -134,16 +125,6 @@ export default function ActiveBoardScreen() {
     toggleBookmark(id, isBookmarked);
   }, [toggleBookmark]);
 
-  const getCategoryThemeColor = (category) => {
-    switch (category) {
-      case 'Emergency': return 'bg-destructive/10 text-destructive border-destructive/20';
-      case 'Maintenance': return 'bg-orange-500/10 text-orange-600 border-orange-500/20';
-      case 'Events': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
-      case 'Meetings': return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
-      default: return 'bg-muted text-muted-foreground border-border';
-    }
-  };
-
   const renderNoticeItem = useCallback((notice) => (
     <MemoizedNoticeCard
       notice={notice}
@@ -152,16 +133,16 @@ export default function ActiveBoardScreen() {
     />
   ), [handleCardPress, handleBookmarkPress]);
 
-
   return (
     <ErrorBoundary>
       <ScreenShell 
-        title="Notice Board" 
-        loading={loading && notices.length === 0}
+        title="Notice Board"
+        subtitle="Community updates & announcements"
+        iconName="Megaphone"
+        loading={false}
       >
         <View className="flex-1 bg-background">
-          {/* Web-Style Unified Filters */}
-          <View className="px-4 py-3 border-b border-border/40 bg-card z-10" style={{ zIndex: 50 }}>
+          <View className="px-4 pt-3 pb-2 border-b border-border/40 bg-card z-50" style={{ zIndex: 50 }}>
             <NoticeBoardFilters
               search={localSearch || ''}
               filters={filters}
@@ -170,13 +151,12 @@ export default function ActiveBoardScreen() {
               onFiltersChange={handleFiltersChange}
               onSortChange={setSort}
               onReset={handleResetFilters}
-              hideStatusFilter={true} // Active board only shows Published notices
+              hideStatusFilter={true}
               showNoticeTypeFilter={true}
             />
           </View>
 
-          {/* Notice Board List */}
-          <View className="flex-1">
+          <View className="flex-1 z-0">
             {loading && notices.length === 0 ? (
               <NoticeBoardLoadingSkeleton />
             ) : (
@@ -190,11 +170,15 @@ export default function ActiveBoardScreen() {
                 pagination={{
                   currentPage: pagination.currentPage,
                   totalPages: pagination.totalPages,
+                  totalRecords: pagination.totalRecords || notices.length,
+                  limit: pagination.limit || 10,
                 }}
-                emptyComponent={<NoticeBoardEmptyState />}
-                contentContainerClassName="py-4 pb-8"
-              />
-            )}
+                emptyIcon="Megaphone"
+              emptyTitle="No Notices Available"
+              emptySubtitle="Check back later for community updates and announcements."
+              contentContainerClassName="px-4 pt-3 pb-28"
+            />
+          )}
           </View>
         </View>
       </ScreenShell>

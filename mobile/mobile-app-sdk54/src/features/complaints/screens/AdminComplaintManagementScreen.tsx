@@ -4,6 +4,7 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { SearchBar } from '@/components/forms/SearchBar';
+import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
@@ -14,6 +15,7 @@ import { AssignTechnicianSheet } from '../components/AssignTechnicianSheet';
 import { ComplaintDetailSheet } from '../components/ComplaintDetailSheet';
 import { ResidentFeedbackSheet } from '../components/ResidentFeedbackSheet';
 import { Complaint } from '../types';
+import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 
 export function AdminComplaintManagementScreen() {
   const {
@@ -125,60 +127,25 @@ export function AdminComplaintManagementScreen() {
           contentContainerStyle={{ paddingBottom: 40 }}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadData} tintColor="#6366f1" />}
         >
-          {/* ROW 1: HORIZONTAL STATUS FILTER CHIPS */}
+          {/* CANONICAL SEARCH FILTER BAR WITH MOVEABLE STATUS SLIDE PILLS */}
           <View className="px-4 pt-3 pb-1">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 py-1">
-              {filterTabs.map((tab) => {
-                const isActive = selectedStatusTab === tab.value;
-                return (
-                  <TouchableOpacity
-                    key={tab.value}
-                    activeOpacity={0.8}
-                    onPress={() => setSelectedStatusTab(tab.value)}
-                    className={`flex-row items-center px-3.5 py-1.5 rounded-full border me-2 ${
-                      isActive
-                        ? 'bg-primary border-primary'
-                        : 'bg-card border-border active:bg-muted'
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-semibold ${
-                        isActive ? 'text-primary-foreground' : 'text-foreground'
-                      }`}
-                    >
-                      {tab.label}
-                    </Text>
-
-                    {tab.count !== undefined && tab.count > 0 ? (
-                      <View
-                        className={`px-1.5 py-0.5 rounded-full ms-1.5 ${
-                          isActive ? 'bg-primary-foreground/20' : 'bg-muted'
-                        }`}
-                      >
-                        <Text
-                          className={`text-[10px] font-bold ${
-                            isActive ? 'text-primary-foreground' : 'text-muted-foreground'
-                          }`}
-                        >
-                          {tab.count}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            <SearchFilterBar
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              searchPlaceholder="Search by ticket #, flat, or title..."
+              sortOptions={filterTabs.map((t) => ({
+                label: t.count !== undefined && t.count > 0 ? `${t.label} (${t.count})` : t.label,
+                value: t.value,
+              }))}
+              currentSort={selectedStatusTab}
+              onSortChange={(val) => setSelectedStatusTab(val as any)}
+              variant="default"
+              className="px-0 py-0 border-0"
+            />
           </View>
 
-          {/* ROW 2: SEARCH, ADVANCED FILTER & VIEW FEEDBACK BUTTON BAR */}
-          <View className="px-4 py-1.5 flex-row items-center gap-2">
-            <View className="flex-1">
-              <SearchBar
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search by ticket #, flat, or title..."
-              />
-            </View>
+          {/* ADVANCED FILTER & VIEW FEEDBACK BUTTON BAR */}
+          <View className="px-4 py-1 flex-row items-center justify-end gap-2">
 
             <TouchableOpacity
               activeOpacity={0.8}

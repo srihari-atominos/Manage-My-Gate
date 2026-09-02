@@ -24,7 +24,6 @@ export const useAppSocket = () => {
       if (sharedSocket) {
         sharedSocket.disconnect();
         sharedSocket = null;
-        console.log('[Socket] Disconnected due to unauthenticated state');
       }
       return;
     }
@@ -81,7 +80,9 @@ export const useAppSocket = () => {
       });
 
       sharedSocket.on('disconnect', (reason) => {
-        console.log('[Socket] Disconnected:', reason);
+        if (reason !== 'io client disconnect') {
+          console.log('[Socket] Disconnected:', reason);
+        }
       });
     }
   }, [isAuthenticated, userId, token, userRole, orgId]);

@@ -78,7 +78,7 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
     }
   };
 
-  if (!villa) return null;
+  if (!visible || !villa) return null;
 
   // Handle Assign Existing
   const handleAssignExisting = async () => {
@@ -236,26 +236,26 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1"
+                className="flex-1 border-blue-600 bg-blue-500/10"
                 onPress={() => {
                   onClose();
                   onEdit(villa);
                 }}
               >
-                Edit Unit
+                <Text className="text-xs font-bold text-blue-600 dark:text-blue-400">Edit Unit</Text>
               </Button>
             )}
             {onDelete && (
               <Button
                 variant="destructive"
                 size="sm"
-                className="flex-1"
+                className="flex-1 bg-red-600 active:bg-red-700"
                 onPress={() => {
                   onClose();
                   onDelete(villa);
                 }}
               >
-                Delete Unit
+                <Text className="text-xs font-bold text-white">Delete Unit</Text>
               </Button>
             )}
           </View>
@@ -505,12 +505,12 @@ export const VillaDetailsModal: React.FC<VillaDetailsModalProps> = ({
                   />
 
                   <Button
-                    variant="default"
                     size="sm"
+                    className="bg-emerald-600 active:bg-emerald-700"
                     onPress={handleInviteResident}
                     disabled={actionLoading || !inviteEmail.trim()}
                   >
-                    {actionLoading ? <ActivityIndicator color="#fff" /> : 'Send Onboarding Invite'}
+                    {actionLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-xs">Send Onboarding Invite</Text>}
                   </Button>
                 </View>
               )}

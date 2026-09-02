@@ -193,48 +193,24 @@ export function StaffAssigneeQueueScreen() {
             </View>
           )}
 
-          {/* SEARCH BAR */}
+          {/* CANONICAL SEARCH FILTER BAR WITH MOVEABLE STATUS SLIDE PILLS */}
           <View className="px-4 pt-3 pb-1">
             <SearchFilterBar
               searchValue={searchQuery}
               onSearchChange={setSearchQuery}
               searchPlaceholder="Search by ticket #, title, category..."
-            />
-          </View>
-
-          {/* HORIZONTAL STATUS FILTER CHIPS */}
-          <View className="px-4 py-2">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 py-1">
-              {[
+              sortOptions={[
                 { label: `All Tasks (${metrics.all})`, value: 'ALL' },
                 { label: `Pending (${metrics.pending})`, value: 'PENDING' },
                 { label: `In Progress (${metrics.inProgress})`, value: 'IN_PROGRESS' },
                 { label: `On Hold (${metrics.onHold})`, value: 'ON_HOLD' },
-                { label: `Broadcast Pool (${metrics.broadcast})`, value: 'BROADCAST' },
-              ].map((tab) => {
-                const isActive = selectedStatusTab === tab.value;
-                return (
-                  <TouchableOpacity
-                    key={tab.value}
-                    activeOpacity={0.8}
-                    onPress={() => setSelectedStatusTab(tab.value as any)}
-                    style={{
-                      backgroundColor: isActive ? '#2563eb' : '#ffffff',
-                      borderColor: isActive ? '#2563eb' : '#cbd5e1',
-                      borderWidth: 1,
-                      paddingVertical: 6,
-                      paddingHorizontal: 12,
-                      borderRadius: 20,
-                      marginRight: 8,
-                    }}
-                  >
-                    <Text style={{ color: isActive ? '#ffffff' : '#0f172a', fontWeight: 'bold', fontSize: 11 }}>
-                      {tab.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+                { label: `Broadcast (${metrics.broadcast})`, value: 'BROADCAST' },
+              ]}
+              currentSort={selectedStatusTab}
+              onSortChange={(val) => setSelectedStatusTab(val as any)}
+              variant="default"
+              className="px-0 py-0 border-0"
+            />
           </View>
 
           {/* TECHNICIAN TASK LIST FEED */}

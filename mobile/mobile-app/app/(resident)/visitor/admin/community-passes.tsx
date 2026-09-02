@@ -113,12 +113,11 @@ export default function AdminCommunityPassesScreen() {
       headerRight={
         <Button
           size="sm"
-          variant="default"
           onPress={() => router.push('/(resident)/visitor/admin/create-pass' as any)}
-          className="flex-row items-center gap-1.5 rounded-full"
+          className="flex-row items-center gap-1.5 rounded-full bg-emerald-600 active:bg-emerald-700"
         >
-          <UserPlus size={14} className="text-primary-foreground" />
-          <Text className="text-xs font-bold text-primary-foreground">New Pass</Text>
+          <UserPlus size={14} color="#FFFFFF" />
+          <Text className="text-xs font-bold text-white">New Pass</Text>
         </Button>
       }
     >

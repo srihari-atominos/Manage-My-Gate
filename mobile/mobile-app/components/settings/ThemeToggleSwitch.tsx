@@ -38,11 +38,11 @@ export const ThemeToggleSwitch = ({
       <View className="flex-row items-center gap-2.5">
         <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shrink-0">
           {themeMode === 'system' ? (
-            <Smartphone size={18} className="text-primary" />
+            <Smartphone size={18} color="#0284c7" />
           ) : themeMode === 'dark' ? (
-            <Moon size={18} className="text-primary" />
+            <Moon size={18} color="#0284c7" />
           ) : (
-            <Sun size={18} className="text-amber-500" />
+            <Sun size={18} color="#f59e0b" />
           )}
         </View>
         <View className="flex-1 min-w-0">
@@ -67,13 +67,13 @@ export const ThemeToggleSwitch = ({
               className={cn(
                 'flex-1 flex-row items-center justify-center py-2.5 rounded-lg gap-1.5',
                 isSelected
-                  ? 'bg-card border border-border shadow-sm'
+                  ? 'bg-card border border-border shadow-xs'
                   : 'bg-transparent active:bg-muted/60'
               )}
             >
               <IconComp
                 size={14}
-                className={isSelected ? 'text-primary' : 'text-muted-foreground'}
+                color={isSelected ? '#0284c7' : '#94a3b8'}
               />
               <Text
                 className={cn(

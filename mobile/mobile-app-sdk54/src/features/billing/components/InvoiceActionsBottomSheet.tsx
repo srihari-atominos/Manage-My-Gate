@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Share, Alert, TextInput } from 'react-native';
+import { View, Share, Alert } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
-import { Button } from '@/components/common/Button';
-import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
-import { Clock, CheckCircle2, ShieldAlert, FileText, Share2, AlertCircle, XCircle } from 'lucide-react-native';
+import { Button } from '@/components/ui/button';
+import { getStatusVariant } from '@/components/ui/StatusBadge';
+import { Clock } from 'lucide-react-native';
 import { Invoice } from '../types';
-import { generateInvoiceHtml } from '../utils/invoicePdfUtility';
 
 export interface InvoiceActionsBottomSheetProps {
   visible: boolean;
@@ -57,7 +56,6 @@ export function InvoiceActionsBottomSheet({
   const formattedAmount = `₹${(submittedAmount || totalAmount).toLocaleString('en-IN')}`;
 
   const status = invoice.status || 'UNPAID';
-  const statusVariant = getStatusVariant(status);
   const isPendingCheque = status === 'VERIFICATION_PENDING';
   const isUnpaid = status === 'UNPAID' || status === 'OVERDUE';
   const refStr = invoice.offlineReference || '—';
@@ -163,7 +161,6 @@ export function InvoiceActionsBottomSheet({
           <View className="gap-2.5 pt-2">
             {isPendingCheque && onApproveOffline ? (
               <Button
-                variant="default"
                 size="lg"
                 className="w-full bg-emerald-600 active:bg-emerald-700"
                 disabled={isApproving}
@@ -180,7 +177,7 @@ export function InvoiceActionsBottomSheet({
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full"
+                className="w-full border-emerald-500/30 bg-emerald-500/10 active:bg-emerald-500/20"
                 onPress={() => {
                   onClose();
                   onSettleOfflineModal(invoice);
@@ -188,19 +185,23 @@ export function InvoiceActionsBottomSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Record Offline Settlement"
               >
-                Record Offline Settlement
+                <Text className="font-bold text-base text-emerald-600 dark:text-emerald-400">
+                  Record Offline Settlement
+                </Text>
               </Button>
             ) : null}
 
             <Button
-              variant="secondary"
+              variant="outline"
               size="lg"
-              className="w-full"
+              className="w-full border-blue-500/30 bg-blue-500/10 active:bg-blue-500/20"
               onPress={handleShareReceipt}
               accessibilityRole="button"
               accessibilityLabel="Share or Print Receipt"
             >
-              Share / Print Receipt
+              <Text className="font-bold text-base text-blue-600 dark:text-blue-400">
+                Share / Print Receipt
+              </Text>
             </Button>
           </View>
         </View>
@@ -223,3 +224,4 @@ export function InvoiceActionsBottomSheet({
 }
 
 export default InvoiceActionsBottomSheet;
+

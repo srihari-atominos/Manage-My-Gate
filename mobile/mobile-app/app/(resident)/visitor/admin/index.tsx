@@ -8,7 +8,6 @@ import { type KPICardProps } from '@/components/ui/KPICard';
 import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { EmptyState } from '@/components/feedback/EmptyState';
-import { FAB } from '@/components/ui/FAB';
 import { Button } from '@/components/ui/button';
 import { VisitorAnalyticsCard } from '@/src/features/visitor/components/admin/VisitorAnalyticsCard';
 import { VisitorPassCard } from '@/src/features/visitor/components/VisitorPassCard';
@@ -88,8 +87,8 @@ export default function AdminVisitorDashboardScreen() {
       id: 'passes',
       name: 'All Passes',
       iconName: 'Filter',
-      colorBg: 'bg-primary/10',
-      colorIcon: '#6366f1',
+      colorBg: 'bg-blue-500/10',
+      colorIcon: '#3b82f6',
       route: '/(resident)/visitor/admin/community-passes',
     },
     {
@@ -116,8 +115,8 @@ export default function AdminVisitorDashboardScreen() {
       id: 'logs',
       name: 'Audit Logs',
       iconName: 'History',
-      colorBg: 'bg-slate-500/10',
-      colorIcon: '#64748b',
+      colorBg: 'bg-blue-500/10',
+      colorIcon: '#3b82f6',
       route: '/(resident)/visitor/admin-logs',
     },
   ];
@@ -194,13 +193,6 @@ export default function AdminVisitorDashboardScreen() {
         visible={Boolean(selectedPass)}
         pass={selectedPass}
         onClose={() => setSelectedPass(null)}
-      />
-
-      {/* Primary Action: Create Admin Pass FAB */}
-      <FAB
-        iconName="UserPlus"
-        label="Admin Pass"
-        onPress={() => router.push('/(resident)/visitor/admin/create-pass' as any)}
       />
     </ScreenShell>
   );

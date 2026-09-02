@@ -128,14 +128,18 @@ export function BillingLedgerScreen() {
         ) : null}
 
         {/* Unified Filter Pills (Row 1) & Search Input (Row 2) */}
-        <SearchFilterBar
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search resident, unit, or invoice number..."
-          sortOptions={FILTER_PILLS.map((p) => ({ label: p.label, value: p.id }))}
-          currentSort={statusFilter}
-          onSortChange={(val) => setStatusFilter(val as any)}
-        />
+        <View className="px-4 pt-3 pb-1">
+          <SearchFilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search resident, unit, or invoice number..."
+            sortOptions={FILTER_PILLS.map((p) => ({ label: p.label, value: p.id }))}
+            currentSort={statusFilter}
+            onSortChange={(val) => setStatusFilter(val as any)}
+            variant="default"
+            className="px-0 py-0 border-0"
+          />
+        </View>
 
         {/* Paginated Invoice Cards List */}
         <PaginatedList<Invoice>

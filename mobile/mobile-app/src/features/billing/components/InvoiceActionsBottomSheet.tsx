@@ -161,16 +161,15 @@ export function InvoiceActionsBottomSheet({
           <View className="gap-2.5 pt-2">
             {isPendingCheque && onApproveOffline ? (
               <Button
-                variant="default"
                 size="lg"
-                className="w-full bg-status-success active:bg-status-success/90"
+                className="w-full bg-emerald-600 active:bg-emerald-700"
                 disabled={isApproving}
                 loading={isApproving}
                 onPress={() => setShowConfirmModal(true)}
                 accessibilityRole="button"
                 accessibilityLabel="Approve and Clear Offline Payment"
               >
-                <Text className="font-bold text-base text-primary-foreground">Approve & Clear Payment</Text>
+                <Text className="font-bold text-base text-white">Approve & Clear Payment</Text>
               </Button>
             ) : null}
 
@@ -178,7 +177,7 @@ export function InvoiceActionsBottomSheet({
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full"
+                className="w-full border-emerald-500/30 bg-emerald-500/10 active:bg-emerald-500/20"
                 onPress={() => {
                   onClose();
                   onSettleOfflineModal(invoice);
@@ -186,19 +185,23 @@ export function InvoiceActionsBottomSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Record Offline Settlement"
               >
-                Record Offline Settlement
+                <Text className="font-bold text-base text-emerald-600 dark:text-emerald-400">
+                  Record Offline Settlement
+                </Text>
               </Button>
             ) : null}
 
             <Button
-              variant="secondary"
+              variant="outline"
               size="lg"
-              className="w-full"
+              className="w-full border-blue-500/30 bg-blue-500/10 active:bg-blue-500/20"
               onPress={handleShareReceipt}
               accessibilityRole="button"
               accessibilityLabel="Share or Print Receipt"
             >
-              Share / Print Receipt
+              <Text className="font-bold text-base text-blue-600 dark:text-blue-400">
+                Share / Print Receipt
+              </Text>
             </Button>
           </View>
         </View>

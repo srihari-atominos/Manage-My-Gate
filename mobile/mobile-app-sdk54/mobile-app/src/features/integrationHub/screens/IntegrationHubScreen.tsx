@@ -115,13 +115,13 @@ export const IntegrationHubScreen: React.FC = () => {
             className={`flex-row items-center px-3.5 py-2 rounded-lg border ${
               currentPage <= 1 || isLoading
                 ? 'bg-muted/40 border-border/40 opacity-40'
-                : 'bg-primary/10 border-primary/20 active:opacity-70'
+                : 'bg-blue-500/10 border-blue-500/20 active:opacity-70'
             }`}
             accessibilityRole="button"
             accessibilityLabel="Previous page"
           >
-            <ChevronLeft size={16} color={currentPage <= 1 || isLoading ? '#9ca3af' : '#0d9488'} className="me-1" />
-            <Text className={`text-xs font-bold ${currentPage <= 1 || isLoading ? 'text-muted-foreground' : 'text-primary'}`}>
+            <ChevronLeft size={16} color={currentPage <= 1 || isLoading ? '#9ca3af' : '#2563eb'} className="me-1" />
+            <Text className={`text-xs font-bold ${currentPage <= 1 || isLoading ? 'text-muted-foreground' : 'text-blue-600 dark:text-blue-400'}`}>
               Prev
             </Text>
           </TouchableOpacity>
@@ -149,15 +149,15 @@ export const IntegrationHubScreen: React.FC = () => {
             className={`flex-row items-center px-3.5 py-2 rounded-lg border ${
               currentPage >= totalPages || isLoading
                 ? 'bg-muted/40 border-border/40 opacity-40'
-                : 'bg-primary/10 border-primary/20 active:opacity-70'
+                : 'bg-blue-500/10 border-blue-500/20 active:opacity-70'
             }`}
             accessibilityRole="button"
             accessibilityLabel="Next page"
           >
-            <Text className={`text-xs font-bold me-1 ${currentPage >= totalPages || isLoading ? 'text-muted-foreground' : 'text-primary'}`}>
+            <Text className={`text-xs font-bold me-1 ${currentPage >= totalPages || isLoading ? 'text-muted-foreground' : 'text-blue-600 dark:text-blue-400'}`}>
               Next
             </Text>
-            <ChevronRight size={16} color={currentPage >= totalPages || isLoading ? '#9ca3af' : '#0d9488'} />
+            <ChevronRight size={16} color={currentPage >= totalPages || isLoading ? '#9ca3af' : '#2563eb'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -178,16 +178,16 @@ export const IntegrationHubScreen: React.FC = () => {
         <View className="flex-row items-center gap-1.5">
           <TouchableOpacity
             onPress={openBankModal}
-            className="p-2 rounded-xl bg-muted/60 border border-border flex-row items-center"
+            className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/30 flex-row items-center active:bg-blue-500/20"
             accessibilityRole="button"
             accessibilityLabel="Banking Vault"
           >
-            <Icon as={Landmark} size={16} className="text-primary" />
+            <Icon as={Landmark} size={16} className="text-blue-600" />
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => openConnectModal()}
-            className="p-2 rounded-xl bg-primary border border-primary flex-row items-center shadow-xs"
+            className="p-2 rounded-xl bg-emerald-600 border border-emerald-600 flex-row items-center active:bg-emerald-700 shadow-xs"
             accessibilityRole="button"
             accessibilityLabel="Add connection"
           >
@@ -217,7 +217,7 @@ export const IntegrationHubScreen: React.FC = () => {
                     activeOpacity={0.8}
                     className={`px-3.5 py-1.5 rounded-xl border flex-row items-center gap-1.5 ${
                       isActive
-                        ? 'bg-primary border-primary shadow-xs'
+                        ? 'bg-blue-600 border-blue-600 shadow-xs'
                         : 'bg-card border-border/80'
                     }`}
                   >
@@ -310,7 +310,7 @@ export const IntegrationHubScreen: React.FC = () => {
       </View>
 
       {/* Floating Action Button */}
-      <FAB iconName="Plus" onPress={() => openConnectModal()} />
+      <FAB iconName="Plus" onPress={() => openConnectModal()} className="bg-emerald-600 border-emerald-600" />
 
       {/* Connect Sheet Modal */}
       <ConnectModal
@@ -371,7 +371,7 @@ export const IntegrationHubScreen: React.FC = () => {
           <View className="bg-card rounded-2xl p-5 border border-border w-full max-w-xs shadow-lg">
             <View className="flex-row items-center justify-between pb-2 border-b border-border mb-3">
               <View className="flex-row items-center">
-                <Hash size={18} color="#0d9488" className="me-2" />
+                <Hash size={18} color="#2563eb" className="me-2" />
                 <Text className="text-base font-bold text-foreground">Jump to Page</Text>
               </View>
               <TouchableOpacity onPress={() => setShowPageJumpModal(false)}>
@@ -396,7 +396,12 @@ export const IntegrationHubScreen: React.FC = () => {
               <Button variant="outline" size="sm" onPress={() => setShowPageJumpModal(false)}>
                 Cancel
               </Button>
-              <Button variant="default" size="sm" onPress={handleExecutePageJump}>
+              <Button
+                variant="default"
+                size="sm"
+                onPress={handleExecutePageJump}
+                className="bg-blue-600 active:bg-blue-700"
+              >
                 Go to Page
               </Button>
             </View>

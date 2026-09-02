@@ -141,13 +141,13 @@ export const UserCard: React.FC<UserCardProps> = ({
             className={`flex-row items-center px-2 py-0.5 rounded-md border active:opacity-70 ${
               isSelf
                 ? 'bg-muted border-border opacity-40'
-                : 'bg-primary/10 border-primary/20'
+                : 'bg-blue-500/10 border-blue-500/20'
             }`}
             accessibilityRole="button"
             accessibilityLabel={`Manage roles for ${user.name}`}
           >
-            <Key size={10} color={isSelf ? '#9ca3af' : '#6366f1'} className="me-1" />
-            <Text className={`text-[10px] font-bold ${isSelf ? 'text-muted-foreground' : 'text-primary'}`}>
+            <Key size={10} color={isSelf ? '#9ca3af' : '#2563eb'} className="me-1" />
+            <Text className={`text-[10px] font-bold ${isSelf ? 'text-muted-foreground' : 'text-blue-600 dark:text-blue-400'}`}>
               Roles
             </Text>
           </TouchableOpacity>
@@ -158,13 +158,13 @@ export const UserCard: React.FC<UserCardProps> = ({
             className={`flex-row items-center px-2 py-0.5 rounded-md border active:opacity-70 ${
               isSelf
                 ? 'bg-muted border-border opacity-40'
-                : 'bg-destructive/10 border-destructive/20'
+                : 'bg-red-500/10 border-red-500/20'
             }`}
             accessibilityRole="button"
             accessibilityLabel={`Delete user ${user.name}`}
           >
-            <Trash2 size={10} color={isSelf ? '#9ca3af' : '#ef4444'} className="me-1" />
-            <Text className={`text-[10px] font-bold ${isSelf ? 'text-muted-foreground' : 'text-destructive'}`}>
+            <Trash2 size={10} color={isSelf ? '#9ca3af' : '#dc2626'} className="me-1" />
+            <Text className={`text-[10px] font-bold ${isSelf ? 'text-muted-foreground' : 'text-red-600 dark:text-red-400'}`}>
               Delete
             </Text>
           </TouchableOpacity>

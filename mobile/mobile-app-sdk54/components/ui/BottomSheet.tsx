@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Modal, TouchableOpacity, Pressable, ScrollView } from 'react-native';
+import { View, Modal, TouchableOpacity, Pressable, ScrollView, Dimensions } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { X } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
@@ -31,6 +31,10 @@ function BottomSheet({
 }: AppBottomSheetProps) {
   if (!visible) return null;
 
+  const screenHeight = Dimensions.get('window').height;
+  const sheetMaxHeight = Math.round(screenHeight * 0.88);
+  const scrollMaxHeight = sheetMaxHeight - 65;
+
   return (
     <Modal
       visible={visible}
@@ -38,8 +42,18 @@ function BottomSheet({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <Pressable className="flex-1 bg-black/60 justify-end" onPress={onClose}>
-        <Pressable className="bg-card border-t border-border/80 rounded-t-3xl max-h-[85vh] shadow-2xl overflow-hidden" onPress={(e) => e.stopPropagation()}>
+      <View className="flex-1 justify-end">
+        {/* Backdrop */}
+        <Pressable 
+          className="absolute inset-0 bg-black/60" 
+          onPress={onClose} 
+        />
+        
+        {/* Content Box */}
+        <View
+          style={{ maxHeight: sheetMaxHeight }}
+          className="bg-card border-t border-border/80 rounded-t-3xl shadow-2xl overflow-hidden flex-col w-full"
+        >
           {/* Top grab handle */}
           <View className="items-center pt-2.5 pb-1 bg-card">
             <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />
@@ -61,14 +75,18 @@ function BottomSheet({
 
           {/* Scrollable Body Content */}
           <ScrollView
-            className="px-4 pt-2 pb-6 max-h-[75vh]"
-            showsVerticalScrollIndicator={false}
-            bounces={false}
+            style={{ maxHeight: scrollMaxHeight }}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 60 }}
+            showsVerticalScrollIndicator={true}
+            bounces={true}
+            alwaysBounceVertical={false}
+            nestedScrollEnabled={true}
+            keyboardShouldPersistTaps="handled"
           >
             {children}
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

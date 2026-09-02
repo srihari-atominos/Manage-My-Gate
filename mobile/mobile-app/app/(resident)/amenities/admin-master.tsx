@@ -9,8 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
-import { FAB } from '@/components/ui/FAB';
-
 import { AmenityMasterCard } from '@/src/features/amenities/components/AmenityMasterCard';
 import { useAmenityMaster } from '@/src/features/amenities/hooks/useAmenityMaster';
 import { AmenityFormModal } from '@/src/features/amenities/components/AmenityFormModal';
@@ -127,14 +125,13 @@ export default function AdminAmenityMasterScreen() {
             <Text className="text-amber-600 dark:text-amber-400 font-bold text-xs">Maintenance</Text>
           </Button>
           <Button
-            variant="default"
             size="sm"
             onPress={handleOpenCreateModal}
-            className="flex-row items-center gap-1 rounded-full px-2.5 h-8"
+            className="flex-row items-center gap-1 rounded-full px-2.5 h-8 bg-emerald-600 active:bg-emerald-700"
             accessibilityLabel="Add New Amenity Facility"
           >
-            <Plus size={14} className="text-primary-foreground" />
-            <Text className="text-primary-foreground font-bold text-xs">Add</Text>
+            <Plus size={14} color="#FFFFFF" />
+            <Text className="text-white font-bold text-xs">Add</Text>
           </Button>
         </View>
       }
@@ -162,13 +159,6 @@ export default function AdminAmenityMasterScreen() {
           emptyTitle="No Amenity Records Found"
           emptySubtitle="No facility records match your active category filter or search query."
           contentContainerClassName="px-4 pt-3 pb-28"
-        />
-
-        {/* Primary Creation Action: Add Facility FAB */}
-        <FAB
-          iconName="Plus"
-          label="Add Facility"
-          onPress={handleOpenCreateModal}
         />
       </View>
 

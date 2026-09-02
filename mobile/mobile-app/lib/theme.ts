@@ -57,7 +57,6 @@ export const THEME_1_NAHOM_NAVY = {
 };
 
 export const THEME_2_VENTOREX_ORANGE = {
-z
   light: {
 
     // ─────────────────────────────────────────────
@@ -437,7 +436,7 @@ export const THEME_4_SUNSET_AMBER = {
 // export const THEME = THEME_2_EMERALD_LUXURY;
 // export const THEME = THEME_3_ROYAL_SAPPHIRE;
 // export const THEME = THEME_4_SUNSET_AMBER;
-// export const THEME = THEME_2_VENTOREX_ORANGE;
+export const THEME = THEME_2_VENTOREX_ORANGE;
 
 export interface NavThemeColors {
   primary: string;

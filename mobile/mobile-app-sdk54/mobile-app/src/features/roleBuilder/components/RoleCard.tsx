@@ -73,22 +73,22 @@ export const RoleCard: React.FC<RoleCardProps> = ({
           <TouchableOpacity
             onPress={() => onEdit(role)}
             activeOpacity={0.7}
-            className="w-7 h-7 rounded-lg bg-muted/80 items-center justify-center border border-border/60"
+            className="w-7 h-7 rounded-lg bg-blue-500/10 items-center justify-center border border-blue-500/20 active:bg-blue-500/20"
             accessibilityRole="button"
             accessibilityLabel="Edit Role"
           >
-            <Edit2 size={13} color="#6b7280" />
+            <Edit2 size={13} color="#2563eb" />
           </TouchableOpacity>
 
           {!isSuperAdmin ? (
             <TouchableOpacity
               onPress={() => onDelete(role)}
               activeOpacity={0.7}
-              className="w-7 h-7 rounded-lg bg-destructive/10 items-center justify-center border border-destructive/20"
+              className="w-7 h-7 rounded-lg bg-red-500/10 items-center justify-center border border-red-500/20 active:bg-red-500/20"
               accessibilityRole="button"
               accessibilityLabel="Delete Role"
             >
-              <Trash2 size={13} color="#ef4444" />
+              <Trash2 size={13} color="#dc2626" />
             </TouchableOpacity>
           ) : null}
         </View>

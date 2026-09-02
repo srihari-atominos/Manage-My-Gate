@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { cn } from '../../lib/utils';
+import { getStatusUnderlineTabStyle } from '@/components/ui/statusTabColors';
 
 export interface TabItem {
   key: string;
@@ -27,20 +28,21 @@ export const Tabs = ({
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
         {tabs.map((tab) => {
           const isActive = tab.key === activeTab;
+          const statusStyle = getStatusUnderlineTabStyle(tab.key || tab.label, isActive);
           return (
             <Pressable
               key={tab.key}
               onPress={() => onChange(tab.key)}
               className={cn(
                 'mr-6 py-4 border-b-2',
-                isActive ? 'border-primary' : 'border-transparent',
+                statusStyle.borderClass,
                 tabClassName
               )}
             >
               <Text
                 className={cn(
                   'text-sm font-semibold',
-                  isActive ? 'text-primary' : 'text-slate-500 dark:text-slate-400'
+                  statusStyle.textClass
                 )}
               >
                 {tab.label}

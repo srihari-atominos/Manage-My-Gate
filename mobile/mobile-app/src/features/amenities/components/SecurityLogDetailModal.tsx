@@ -102,7 +102,7 @@ export function SecurityLogDetailModal({ visible, onClose, onDelete, log }: Secu
                 onClose();
               }
             }} 
-            className="w-full"
+            className="w-full bg-red-600 active:bg-red-700"
           >
             <Text className="font-semibold text-sm text-white">Delete Log</Text>
           </Button>

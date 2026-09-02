@@ -104,6 +104,9 @@ export const GeneratedPassView: React.FC<GeneratedPassViewProps> = ({
         {/* QR Code Presentation */}
         <VisitorQRCode
           code={passData.code}
+          passId={passData.id}
+          visitorName={passData.visitorName}
+          type={passData.passType}
           validityText={`Valid until ${new Date(passData.validUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
         />
 

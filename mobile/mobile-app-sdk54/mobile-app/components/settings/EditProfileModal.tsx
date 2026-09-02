@@ -156,6 +156,8 @@ export const EditProfileModal = ({
     onClose();
   };
 
+  if (!visible) return null;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -354,24 +356,21 @@ export const EditProfileModal = ({
               {/* Save Button */}
               <Button
                 onPress={handleSave}
-                leftIcon={Check}
-                className="h-12 bg-primary rounded-2xl mt-2"
+                className="h-12 bg-primary rounded-xl flex-row items-center justify-center gap-2 mt-2"
               >
-                {translate('save_changes', 'Save Changes')}
+                <Check size={18} className="text-primary-foreground" />
+                <Text className="text-primary-foreground font-bold">
+                  {translate('save_changes', 'Save Changes')}
+                </Text>
               </Button>
             </View>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
 
-      {/* Android/Web Photo Source Picker Bottom Sheet */}
-      <Modal
-        visible={showPhotoOptions}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPhotoOptions(false)}
-      >
-        <View className="flex-1 justify-end bg-black/50">
+      {/* Photo Source Picker Overlay */}
+      {showPhotoOptions && (
+        <View className="absolute inset-0 bg-black/50 justify-end z-50">
           <Pressable className="absolute inset-0" onPress={() => setShowPhotoOptions(false)} />
           <View className="bg-card rounded-t-3xl overflow-hidden">
             <View className="items-center pt-3 pb-1">
@@ -417,7 +416,7 @@ export const EditProfileModal = ({
             <View style={{ height: Math.max(insets.bottom, 8) }} />
           </View>
         </View>
-      </Modal>
+      )}
     </Modal>
   );
 };

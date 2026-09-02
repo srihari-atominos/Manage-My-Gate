@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle2, Clock, ShieldCheck, Zap } from 'lucide-react-n
 import FeatureIcon from '@/components/ui/FeatureIcon';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenShell } from '@/components/ui/ScreenShell';
 
 interface FeatureDetailScreenProps {
   title: string;
@@ -34,33 +35,14 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
   noticeBadge = 'Active Sub-Feature',
 }) => {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   return (
-    <View className="flex-1 bg-background">
-      {/* Top Header Bar */}
-      <View 
-        style={{ paddingTop: Math.max(insets.top, 16) }}
-        className="bg-card border-b border-border px-4 pb-3.5 flex-row items-center justify-between shadow-xs"
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-          className="flex-row items-center gap-1.5 p-1 bg-muted/50 rounded-full px-2.5 py-1 border border-border"
-        >
-          <ArrowLeft size={16} className="text-muted-foreground" />
-          <Text className="text-xs font-bold text-foreground">Back</Text>
-        </TouchableOpacity>
-
-        <Text numberOfLines={1} className="text-sm font-extrabold text-foreground max-w-[200px]">
-          {title}
-        </Text>
-
-        <View className="size-8 rounded-full bg-primary/10 items-center justify-center border border-primary/20">
-          <FeatureIcon iconName={iconName} color={iconColor} size={16} />
-        </View>
-      </View>
-
+    <ScreenShell
+      title={title}
+      subtitle={categoryName}
+      iconName={iconName as any}
+      showBackButton={true}
+    >
       <ScrollView className="flex-1 px-4 pt-4">
         <View className="gap-4 pb-12 max-w-md mx-auto w-full">
           {/* Main Feature Header Card */}
@@ -155,9 +137,9 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
                 <TouchableOpacity
                   onPress={actionButton.onPress}
                   activeOpacity={0.8}
-                  className="mt-2 bg-primary px-4 py-2.5 rounded-xl items-center justify-center"
+                  className="mt-2 bg-blue-600 active:bg-blue-700 px-4 py-2.5 rounded-xl items-center justify-center"
                 >
-                  <Text className="text-xs font-bold text-primary-foreground">
+                  <Text className="text-xs font-bold text-white">
                     {actionButton.label}
                   </Text>
                 </TouchableOpacity>
@@ -166,7 +148,7 @@ export const FeatureDetailScreen: React.FC<FeatureDetailScreenProps> = ({
           </View>
         </View>
       </ScrollView>
-    </View>
+    </ScreenShell>
   );
 };
 

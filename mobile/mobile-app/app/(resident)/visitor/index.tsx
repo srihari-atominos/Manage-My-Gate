@@ -9,7 +9,6 @@ import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { Button } from '@/components/ui/button';
-import { FAB } from '@/components/ui/FAB';
 import { VisitorPassCard } from '@/src/features/visitor/components/VisitorPassCard';
 import { VisitorInvitationTypeSheet } from '@/src/features/visitor/components/shared/VisitorInvitationTypeSheet';
 import { VisitorLogDetailsModal } from '@/src/features/visitor/components/history/VisitorLogDetailsModal';
@@ -80,16 +79,16 @@ export default function VisitorDashboardScreen() {
       id: 'invite',
       name: 'New Invite',
       iconName: 'UserPlus',
-      colorBg: 'bg-primary/10',
-      colorIcon: '#6366f1',
+      colorBg: 'bg-emerald-500/10',
+      colorIcon: '#10b981',
       onPress: () => setInviteSheetOpen(true),
     },
     {
       id: 'history',
       name: 'History Logs',
       iconName: 'History',
-      colorBg: 'bg-slate-500/10',
-      colorIcon: '#64748b',
+      colorBg: 'bg-blue-500/10',
+      colorIcon: '#3b82f6',
       route: '/(resident)/visitor/history',
     },
     {
@@ -174,13 +173,6 @@ export default function VisitorDashboardScreen() {
         )}
       </ScrollView>
 
-      {/* Floating Action Button */}
-      <FAB
-        iconName="Plus"
-        label="Invite Visitor"
-        onPress={() => setInviteSheetOpen(true)}
-      />
-
       {/* Invitation Type Selector Bottom Sheet */}
       <VisitorInvitationTypeSheet
         visible={inviteSheetOpen}
@@ -196,6 +188,7 @@ export default function VisitorDashboardScreen() {
           setDetailsModalOpen(false);
           setSelectedPass(null);
         }}
+        onRevokeSuccess={loadData}
       />
     </ScreenShell>
   );

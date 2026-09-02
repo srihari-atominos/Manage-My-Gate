@@ -3,9 +3,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import { useVisitorSocket } from './useVisitorSocket';
 import { selectActiveOrgId } from '../../auth/store/authSelectors';
+import visitorService from '../services/visitorService';
 import {
   getPasses,
   getPassDetails,
+  fetchPassByCode,
   createPass,
   updatePassStatus,
   clearPassStatus,
@@ -75,8 +77,24 @@ export const useVisitorPass = () => {
   );
 
   const fetchPassDetails = useCallback(
-    (id: string) => {
-      return dispatch(getPassDetails(id));
+    (codeOrId: string) => {
+      const clean = (codeOrId || '')
+        .trim()
+        .replace(
+          /^MMG[:\-_](GUEST|GROUP|CAB|DELIVERY|SERVICE|STAFF|AUTO|TAXI|VISITOR|RESIDENT|AMENITY|VIS|RES)[:\-_]/i,
+          ''
+        );
+      const parts = clean.split(/[:\-_]/);
+      const targetCode = parts[0] || clean;
+      const targetId = parts[1];
+
+      if (targetId && /^[0-9a-fA-F]{24}$/.test(targetId)) {
+        return dispatch(getPassDetails(targetId));
+      }
+      if (/^[0-9a-fA-F]{24}$/.test(targetCode)) {
+        return dispatch(getPassDetails(targetCode));
+      }
+      return dispatch(fetchPassByCode(targetCode));
     },
     [dispatch]
   );
@@ -108,6 +126,32 @@ export const useVisitorPass = () => {
     [dispatch]
   );
 
+  const submitWalkIn = useCallback(
+    async (payload: any) => {
+      const orgId = payload?.orgId || activeOrgId;
+      return await visitorService.initiateWalkIn({ ...payload, orgId });
+    },
+    [activeOrgId]
+  );
+
+  const fetchActiveVisitors = useCallback(
+    async (orgIdParam?: string) => {
+      const orgId = orgIdParam || activeOrgId;
+      if (!orgId) return [];
+      const res = await visitorService.getActiveVisitors(orgId);
+      const body = res && (res as any).success !== undefined ? res : (res as any)?.data;
+      return Array.isArray(body?.data || body) ? body?.data || body : [];
+    },
+    [activeOrgId]
+  );
+
+  const checkoutVisitor = useCallback(
+    async (logId: string) => {
+      return await visitorService.checkoutVisitor(logId);
+    },
+    []
+  );
+
   return {
     // State properties
     passes,
@@ -129,6 +173,10 @@ export const useVisitorPass = () => {
     revokePass,
     resetPassStatus,
     selectPass,
+    setActivePass: selectPass,
+    submitWalkIn,
+    fetchActiveVisitors,
+    checkoutVisitor,
   };
 };
 

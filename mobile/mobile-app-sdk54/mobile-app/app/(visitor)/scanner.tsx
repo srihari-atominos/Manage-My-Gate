@@ -69,7 +69,7 @@ export default function GateSecurityScannerScreen() {
         <View className="flex-row items-center justify-between z-20" pointerEvents="box-none">
           <IconButton
             icon={ChevronLeft}
-            variant="outline"
+            variant="secondary"
             size="md"
             onPress={() => router.back()}
             className="bg-black/60 border-white/20"

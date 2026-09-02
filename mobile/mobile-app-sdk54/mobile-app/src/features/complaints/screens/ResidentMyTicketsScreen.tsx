@@ -11,6 +11,7 @@ import { useComplaints } from '../hooks/useComplaints';
 import { ComplaintCard } from '../components/ComplaintCard';
 import { ComplaintDetailSheet } from '../components/ComplaintDetailSheet';
 import { Complaint } from '../types';
+import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 
 export function ResidentMyTicketsScreen() {
   const {
@@ -164,21 +165,16 @@ export function ResidentMyTicketsScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 py-1">
               {filterTabs.map((tab) => {
                 const isActive = selectedStatusTab === tab.value;
+                const statusStyle = getStatusTabStyle(tab.value || tab.label, isActive);
                 return (
                   <TouchableOpacity
                     key={tab.value}
                     activeOpacity={0.8}
                     onPress={() => setSelectedStatusTab(tab.value)}
-                    className={`px-3.5 py-1.5 rounded-full border flex-row items-center me-1.5 ${
-                      isActive
-                        ? 'bg-primary border-primary'
-                        : 'bg-card border-border active:bg-muted'
-                    }`}
+                    className={`px-3.5 py-1.5 rounded-full border flex-row items-center me-1.5 ${statusStyle.containerClass}`}
                   >
                     <Text
-                      className={`text-xs font-bold ${
-                        isActive ? 'text-primary-foreground' : 'text-foreground'
-                      }`}
+                      className={`text-xs ${statusStyle.textClass}`}
                     >
                       {tab.label}
                     </Text>

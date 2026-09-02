@@ -71,19 +71,19 @@ export function CancelBookingModal({
         <View className="flex-row gap-3">
           <Button
             variant="outline"
-            className="flex-1"
+            className="flex-1 border-border active:bg-secondary/60"
             onPress={handleClose}
             disabled={loading}
           >
-            <Text>Keep Booking</Text>
+            <Text className="text-foreground">Keep Booking</Text>
           </Button>
           <Button
             variant="destructive"
-            className="flex-1"
+            className="flex-1 bg-red-600 active:bg-red-700"
             onPress={handleConfirm}
             disabled={loading}
           >
-            <Text>{loading ? 'Cancelling...' : 'Cancel Booking'}</Text>
+            <Text className="text-white font-bold">{loading ? 'Cancelling...' : 'Cancel Booking'}</Text>
           </Button>
         </View>
       </View>

@@ -19,9 +19,9 @@ export function WalletTopUpModal({
   onSubmit,
   loading = false,
 }: WalletTopUpModalProps) {
-  const presetAmounts = [10, 25, 50, 100];
-  const [selectedAmount, setSelectedAmount] = useState<number>(25);
-  const [customAmount, setCustomAmount] = useState<string>('25');
+  const presetAmounts = [100, 250, 500, 1000];
+  const [selectedAmount, setSelectedAmount] = useState<number>(250);
+  const [customAmount, setCustomAmount] = useState<string>('250');
 
   if (!visible) return null;
 
@@ -98,16 +98,15 @@ export function WalletTopUpModal({
 
         {/* Action Buttons */}
         <View className="flex-row gap-3 mt-2">
-          <Button variant="outline" onPress={onClose} disabled={loading} className="flex-1">
-            <Text>Cancel</Text>
+          <Button variant="outline" onPress={onClose} disabled={loading} className="flex-1 border-border active:bg-secondary/60">
+            <Text className="text-foreground">Cancel</Text>
           </Button>
           <Button
-            variant="default"
             onPress={handleConfirm}
             disabled={loading || selectedAmount <= 0}
-            className="flex-1 bg-primary"
+            className="flex-1 bg-emerald-600 active:bg-emerald-700"
           >
-            <Text className="text-white font-semibold">
+            <Text className="text-white font-bold">
               {loading ? 'Processing...' : `Add ₹${selectedAmount || 0}`}
             </Text>
           </Button>

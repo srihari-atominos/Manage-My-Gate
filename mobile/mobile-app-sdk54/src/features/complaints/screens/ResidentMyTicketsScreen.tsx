@@ -11,6 +11,7 @@ import { useComplaints } from '../hooks/useComplaints';
 import { ComplaintCard } from '../components/ComplaintCard';
 import { ComplaintDetailSheet } from '../components/ComplaintDetailSheet';
 import { Complaint } from '../types';
+import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 
 export function ResidentMyTicketsScreen() {
   const {
@@ -21,6 +22,7 @@ export function ResidentMyTicketsScreen() {
     addComment,
     confirmCompletion,
     updateStatus,
+    deleteComplaint,
     clearErrors
   } = useComplaints();
 
@@ -28,7 +30,7 @@ export function ResidentMyTicketsScreen() {
   const [selectedStatusTab, setSelectedStatusTab] = useState<string>('ALL');
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
 
-  // Cancellation Confirmation Modal State
+  // Modal States
   const [cancelTicketId, setCancelTicketId] = useState<string | null>(null);
 
   const loadData = useCallback(() => {
@@ -113,6 +115,17 @@ export function ResidentMyTicketsScreen() {
     }
   };
 
+  const handleConfirmDeleteTicket = async (id: string) => {
+    try {
+      await deleteComplaint(id);
+      loadData();
+    } catch (err: any) {
+      console.error('Failed to delete ticket:', err);
+      Alert.alert('Error', err?.message || 'Failed to delete ticket');
+      throw err;
+    }
+  };
+
   const filterTabs = [
     { label: 'All', value: 'ALL', count: metrics.total },
     { label: 'Open', value: 'OPEN' },
@@ -152,21 +165,16 @@ export function ResidentMyTicketsScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 py-1">
               {filterTabs.map((tab) => {
                 const isActive = selectedStatusTab === tab.value;
+                const statusStyle = getStatusTabStyle(tab.value || tab.label, isActive);
                 return (
                   <TouchableOpacity
                     key={tab.value}
                     activeOpacity={0.8}
                     onPress={() => setSelectedStatusTab(tab.value)}
-                    className={`px-3.5 py-1.5 rounded-full border flex-row items-center me-1.5 ${
-                      isActive
-                        ? 'bg-primary border-primary'
-                        : 'bg-card border-border active:bg-muted'
-                    }`}
+                    className={`px-3.5 py-1.5 rounded-full border flex-row items-center me-1.5 ${statusStyle.containerClass}`}
                   >
                     <Text
-                      className={`text-xs font-bold ${
-                        isActive ? 'text-primary-foreground' : 'text-foreground'
-                      }`}
+                      className={`text-xs ${statusStyle.textClass}`}
                     >
                       {tab.label}
                     </Text>
@@ -235,6 +243,9 @@ export function ResidentMyTicketsScreen() {
           }}
           onReopenTicket={async (id, remarks) => {
             await handleReopenTicket(id, remarks);
+          }}
+          onDeleteTicket={async (id) => {
+            await handleConfirmDeleteTicket(id);
           }}
           isResident={true}
         />

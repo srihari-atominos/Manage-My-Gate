@@ -220,6 +220,18 @@ export const fetchDashboardAnalytics = createAsyncThunk(
   }
 );
 
+export const deleteComplaint = createAsyncThunk(
+  'complaints/delete',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await complaintService.delete(id);
+      return { id, response: extractData(response) };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete complaint');
+    }
+  }
+);
+
 // Helper function to update complaint in state list & current complaint
 const updateItemInState = (state: ComplaintState, item: any) => {
   if (!item || !item._id) return;
@@ -337,6 +349,16 @@ export const complaintSlice = createSlice({
       // fetchDashboardAnalytics
       .addCase(fetchDashboardAnalytics.fulfilled, (state, action) => {
         state.dashboardAnalytics = action.payload;
+      })
+      
+      // deleteComplaint
+      .addCase(deleteComplaint.fulfilled, (state, action) => {
+        const id = action.payload.id;
+        state.list = state.list.filter((c) => c._id !== id);
+        if (state.currentComplaint && state.currentComplaint._id === id) {
+          state.currentComplaint = null;
+        }
+        state.pagination.totalRecords = Math.max(0, state.pagination.totalRecords - 1);
       });
   },
 });

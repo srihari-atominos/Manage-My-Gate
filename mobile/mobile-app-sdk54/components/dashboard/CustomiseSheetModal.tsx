@@ -10,6 +10,8 @@ import {
   REAL_APP_FEATURES,
   DEFAULT_5_QUICK_ACTIONS,
   AppFeatureItem,
+  isFeatureAllowedForUser,
+  getRoleDefaultQuickActions,
 } from '@/src/features/dashboard/dashboardCatalog';
 
 export { ALL_AVAILABLE_FEATURES, REAL_APP_FEATURES, AppFeatureItem };
@@ -33,40 +35,36 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   onSave,
 }) => {
   const { user } = useAuth();
-  const userPermissions: string[] = user?.permissions || [];
-  const userRoleName =
-    user?.role ||
-    (user as any)?.activeRole ||
-    (Array.isArray((user as any)?.roles)
-      ? typeof (user as any).roles[0] === 'string'
-        ? (user as any).roles[0]
-        : (user as any).roles[0]?.name
-      : '');
-  const isSuperAdmin = Boolean(
-    userPermissions.includes('platform:super_admin') ||
-    userRoleName === 'Platform Super Admin' ||
-    userRoleName === 'SuperAdmin' ||
-    userRoleName === 'Community Admin' ||
-    user?.isPlatform === true
-  );
 
   const availableFeaturesForUser = useMemo(() => {
-    return ALL_AVAILABLE_FEATURES.filter((item: any) => {
-      if (item.permission && !isSuperAdmin) {
-        return userPermissions.includes(item.permission);
-      }
-      return true;
-    });
-  }, [userPermissions, isSuperAdmin]);
+    return ALL_AVAILABLE_FEATURES.filter((item: any) => isFeatureAllowedForUser(item, user));
+  }, [user]);
 
-  // Sanitize incoming IDs to ensure only valid current catalog items are retained (max 5)
+  // Sanitize incoming IDs to ensure only valid permitted items are retained (max 5)
   const sanitizedActiveIds = useMemo(() => {
-    if (!activeFeatureIds || activeFeatureIds.length === 0) {
-      return DEFAULT_5_QUICK_ACTIONS;
+    const roleDefaults = getRoleDefaultQuickActions(user);
+    const candidate = activeFeatureIds && activeFeatureIds.length > 0 ? activeFeatureIds : roleDefaults;
+    const permitted = candidate
+      .filter((id) => {
+        const item = ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
+        return item ? isFeatureAllowedForUser(item, user) : false;
+      })
+      .slice(0, 5);
+
+    if (permitted.length >= 5) {
+      return permitted;
     }
-    const valid = activeFeatureIds.filter((id) => VALID_CATALOG_IDS.has(id)).slice(0, 5);
-    return valid.length > 0 ? valid : DEFAULT_5_QUICK_ACTIONS;
-  }, [activeFeatureIds]);
+
+    const permittedDefaults = roleDefaults.filter((id) => {
+      const item = ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
+      return item ? isFeatureAllowedForUser(item, user) : false;
+    });
+
+    const combined = Array.from(new Set([...permitted, ...permittedDefaults])).slice(0, 5);
+    if (combined.length > 0) return combined;
+
+    return availableFeaturesForUser.slice(0, 5).map((f) => f.id);
+  }, [activeFeatureIds, user, availableFeaturesForUser]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>(sanitizedActiveIds);
 
@@ -91,10 +89,15 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
     onClose();
   };
 
-  // Active selected items (up to 5)
+  // Active selected items (up to 5, strictly permitted)
   const activeItems = useMemo(() => {
-    return ALL_AVAILABLE_FEATURES.filter((f) => selectedIds.includes(f.id)).slice(0, 5);
-  }, [selectedIds]);
+    return selectedIds
+      .map((id) => ALL_AVAILABLE_FEATURES.find((f) => f.id === id))
+      .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] =>
+        Boolean(item && isFeatureAllowedForUser(item, user))
+      )
+      .slice(0, 5);
+  }, [selectedIds, user]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

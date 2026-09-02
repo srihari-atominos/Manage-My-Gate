@@ -12,6 +12,7 @@ export interface SecurityLogFilterParams {
 
 export interface SecurityLog {
   _id: string;
+  id?: string;
   residentId?: string;
   residentName?: string;
   residentPhoto?: string;
@@ -54,3 +55,7 @@ export const createManualVerification = async (payload: { bookingId: string; rea
   return response?.data || response;
 };
 
+export const deleteSecurityLog = async (id: string) => {
+  const response: any = await apiClient.delete(`/security-logs/${id}`);
+  return response?.data || response;
+};

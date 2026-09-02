@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'expo-router';
 import { Home, LogOut, X, Settings, ShieldCheck, Mail, Building2, ChevronRight } from 'lucide-react-native';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 
@@ -13,6 +14,7 @@ interface ProfileModalProps {
   onOpenOrgModal?: () => void;
   onOpenRoleModal?: () => void;
   onOpenVillaModal?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -23,7 +25,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onOpenOrgModal,
   onOpenRoleModal,
   onOpenVillaModal,
+  onOpenSettings,
 }) => {
+  const router = useRouter();
   const { user, logout } = useAuth();
   const userAny = user as any;
 
@@ -55,6 +59,17 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     if (user?.email) return user.email.charAt(0).toUpperCase();
     return 'U';
   }, [user]);
+
+  const handleOpenSettings = () => {
+    onClose();
+    setTimeout(() => {
+      if (onOpenSettings) {
+        onOpenSettings();
+      } else {
+        router.push('/(resident)/settings' as any);
+      }
+    }, 120);
+  };
 
   const handleLogout = () => {
     onClose();
@@ -180,7 +195,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   Preferences
                 </Text>
 
-                <TouchableOpacity activeOpacity={0.7} className="bg-card border border-border/80 rounded-xl p-3 flex-row items-center justify-between active:bg-secondary/50 shadow-xs">
+                <TouchableOpacity
+                  onPress={handleOpenSettings}
+                  activeOpacity={0.7}
+                  className="bg-card border border-border/80 rounded-xl p-3 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
+                  accessibilityRole="button"
+                  accessibilityLabel="App Settings"
+                >
                   <View className="flex-row items-center gap-3">
                     <Settings size={16} className="text-muted-foreground" />
                     <Text className="text-xs font-medium text-foreground">App Settings</Text>

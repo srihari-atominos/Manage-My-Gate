@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Pressable } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { AmenitySlot } from '../store/amenitySlice';
 import { cn } from '@/lib/utils';
 
@@ -57,14 +58,14 @@ export function TimeSlotSelector({
 
         {/* Top Legend Indicator */}
         <View className="flex-row items-center">
-          <View className="w-2 h-2 rounded-full bg-slate-400 me-1.5" />
-          <Text className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+          <View className="w-2 h-2 rounded-full bg-muted-foreground me-1.5" />
+          <Text className="text-[11px] font-semibold text-muted-foreground">
             Closed
           </Text>
         </View>
       </View>
 
-      {/* Sleek & Compact 2-Column Grid Cards */}
+      {/* 2-Column Grid Cards */}
       <View className="flex-row flex-wrap justify-between gap-y-2">
         {slots.map((slot, index) => {
           const slotId = slot._id || `${slot.startTime}-${slot.endTime}-${index}`;
@@ -97,10 +98,10 @@ export function TimeSlotSelector({
               className={cn(
                 'w-[48.5%] rounded-xl p-2.5 border flex-col justify-between min-h-[78px] active:scale-[0.97] transition-all bg-card',
                 isSelected
-                  ? 'border-2 border-emerald-500 bg-emerald-500/10 dark:bg-emerald-500/20 shadow-xs'
+                  ? 'border-2 border-primary bg-primary/10 dark:bg-primary/20 shadow-xs'
                   : isAvailable
-                  ? 'border-slate-200/90 dark:border-slate-800/90 shadow-2xs hover:border-slate-300'
-                  : 'border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 opacity-50'
+                  ? 'border-border shadow-2xs'
+                  : 'border-dashed border-border/70 bg-muted/40 opacity-50'
               )}
             >
               {/* Top Row: Start Time & Checkmark if selected */}
@@ -109,18 +110,18 @@ export function TimeSlotSelector({
                   className={cn(
                     'text-base font-black tracking-tight text-start leading-5',
                     isSelected
-                      ? 'text-emerald-600 dark:text-emerald-400 font-extrabold'
+                      ? 'text-primary font-extrabold'
                       : !isAvailable
-                      ? 'text-slate-400 dark:text-slate-600 line-through'
-                      : 'text-slate-900 dark:text-white'
+                      ? 'text-muted-foreground line-through'
+                      : 'text-foreground'
                   )}
                 >
                   {slot.startTime}
                 </Text>
 
                 {isSelected && (
-                  <View className="h-4 w-4 items-center justify-center rounded-full bg-emerald-500">
-                    <Check size={10} color="#ffffff" strokeWidth={3} />
+                  <View className="h-4 w-4 items-center justify-center rounded-full bg-primary">
+                    <Check size={10} className="text-primary-foreground" strokeWidth={3} />
                   </View>
                 )}
               </View>
@@ -130,7 +131,7 @@ export function TimeSlotSelector({
                 <Text
                   className={cn(
                     'text-[10px] font-semibold me-1.5',
-                    !isAvailable ? 'text-slate-400/60' : 'text-slate-400 dark:text-slate-400'
+                    !isAvailable ? 'text-muted-foreground/60' : 'text-muted-foreground'
                   )}
                 >
                   {slot.endTime}
@@ -138,52 +139,19 @@ export function TimeSlotSelector({
                 <Text
                   className={cn(
                     'text-[10px] font-medium',
-                    !isAvailable ? 'text-slate-400/40' : 'text-slate-400/80 dark:text-slate-500'
+                    !isAvailable ? 'text-muted-foreground/40' : 'text-muted-foreground'
                   )}
                 >
                   {duration}
                 </Text>
               </View>
 
-              {/* Bottom Row: Ultra-Sleek Status Pill Badge */}
-              <View
-                className={cn(
-                  'flex-row items-center self-start px-2 py-0.5 rounded-full',
-                  isSelected
-                    ? 'bg-emerald-500'
-                    : isAvailable
-                    ? 'bg-emerald-100/90 dark:bg-emerald-950/80'
-                    : 'bg-slate-100 dark:bg-slate-800'
-                )}
-              >
-                {/* Solid Status Dot */}
-                <View
-                  className={cn(
-                    'w-1.5 h-1.5 rounded-full me-1',
-                    isSelected
-                      ? 'bg-white'
-                      : isAvailable
-                      ? 'bg-emerald-500'
-                      : 'bg-slate-400'
-                  )}
-                />
-                <Text
-                  className={cn(
-                    'text-[10px] font-bold tracking-wide',
-                    isSelected
-                      ? 'text-white'
-                      : isAvailable
-                      ? 'text-emerald-700 dark:text-emerald-400'
-                      : 'text-slate-500 dark:text-slate-400'
-                  )}
-                >
-                  {isSelected
-                    ? 'Selected'
-                    : isAvailable
-                    ? 'Available'
-                    : 'Closed'}
-                </Text>
-              </View>
+              {/* Bottom Row: Canonical StatusBadge */}
+              <StatusBadge
+                label={isSelected ? 'Selected' : isAvailable ? 'Available' : 'Closed'}
+                variant={isSelected ? 'success' : isAvailable ? 'info' : 'neutral'}
+                size="sm"
+              />
             </Pressable>
           );
         })}

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { cn } from '../../lib/utils';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { getStatusSemanticType, getStatusTabStyle } from '@/components/ui/statusTabColors';
 
 export interface SegmentItem {
   key: string;
@@ -45,6 +46,10 @@ export const SegmentedControl = ({
       />
       {segments.map((segment) => {
         const isActive = segment.key === activeSegment;
+        const semantic = getStatusSemanticType(segment.key || segment.label);
+        const isStatusSegment = semantic !== 'default';
+        const statusStyle = isStatusSegment ? getStatusTabStyle(segment.key || segment.label, isActive) : null;
+
         return (
           <Pressable
             key={segment.key}
@@ -54,7 +59,11 @@ export const SegmentedControl = ({
             <Text
               className={cn(
                 'text-[13px] font-semibold font-sans',
-                isActive ? 'text-foreground' : 'text-muted-foreground'
+                isActive
+                  ? isStatusSegment && statusStyle
+                    ? statusStyle.textClass
+                    : 'text-foreground'
+                  : 'text-muted-foreground'
               )}
             >
               {segment.label}

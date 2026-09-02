@@ -16,7 +16,11 @@ export interface ScreenShellProps {
   title: string;
   subtitle?: string;
   iconName?: string;             // Lucide icon name for header
+  domainName?: string;
+  sharedSlice?: string;
+  permission?: string;
   showBackButton?: boolean;      // default true
+  onBackPress?: () => void;
   headerRight?: React.ReactNode; // slot for action buttons (filter, add, etc.)
   children?: React.ReactNode;
   loading?: boolean;             // shows skeleton overlay
@@ -85,7 +89,7 @@ export function ScreenShell({
         className="bg-card border-b border-border px-4 pb-3 shadow-xs"
       >
         <View className="flex-row items-center justify-between gap-2 min-h-[44px]">
-          <View className="flex-row items-center flex-1 me-2">
+          <View className="flex-row items-center flex-1 me-2 min-w-0">
             {showBackButton && (
               <Pressable
                 onPress={() => {
@@ -113,14 +117,14 @@ export function ScreenShell({
             {/* Double Tap Gesture Header Area */}
             <Pressable
               onPress={handleHeaderPress}
-              className="flex-1 justify-center active:opacity-80"
+              className="flex-1 justify-center active:opacity-80 min-w-0"
               accessibilityHint="Double tap header title to switch active Role or Villa Unit"
             >
-              <Text variant="large" numberOfLines={1} className="text-foreground font-bold tracking-tight">
+              <Text variant="large" numberOfLines={1} className="text-foreground font-bold tracking-tight shrink">
                 {title}
               </Text>
               {subtitle ? (
-                <Text variant="muted" numberOfLines={1} className="text-xs text-muted-foreground mt-0.5 font-medium">
+                <Text variant="muted" numberOfLines={1} className="text-xs text-muted-foreground mt-0.5 font-medium shrink">
                   {subtitle}
                 </Text>
               ) : null}

@@ -509,7 +509,7 @@ export default function LoginScreen() {
                         <View className="flex-row items-center gap-2 z-10">
                           <ActivityIndicator color="#FFFFFF" size="small" />
                           <Text className="font-bold text-white text-sm font-sans">
-                            {connectingHarmony ? 'Connecting Harmony...' : 'Authenticating...'}
+                            Connecting Harmony...
                           </Text>
                         </View>
                       ) : (
