@@ -49,11 +49,30 @@ export class InvoiceService {
 
     const invoicesToCreate = [];
 
-    // Calculate billing period string (e.g. YYYY-MM based on current UTC calendar)
+    // Calculate billing period string (e.g. YYYY-MM, YYYY-Wxx, or YYYY-Qx)
     const now = new Date();
     const year = now.getUTCFullYear();
     const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-    const defaultPeriodString = `${year}-${month}`;
+    
+    let defaultPeriodString = assessment.billingPeriodString;
+    if (!defaultPeriodString) {
+      if (assessment.billingCycle === 'WEEKLY') {
+        // Calculate standard ISO week string (e.g. 2026-W36)
+        const target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        const dayNr = (target.getUTCDay() + 6) % 7;
+        target.setUTCDate(target.getUTCDate() - dayNr + 3);
+        const firstThursday = target.valueOf();
+        target.setUTCMonth(0, 1);
+        if (target.getUTCDay() !== 4) {
+          target.setUTCMonth(0, 1 + ((4 - target.getUTCDay() + 7) % 7));
+        }
+        const weekNum = 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+        const weekYear = new Date(firstThursday).getUTCFullYear();
+        defaultPeriodString = `${weekYear}-W${String(weekNum).padStart(2, '0')}`;
+      } else {
+        defaultPeriodString = `${year}-${month}`;
+      }
+    }
 
     for (const unit of units) {
       // Find tenant and owner resident assignments
@@ -85,15 +104,24 @@ export class InvoiceService {
       } else if (calc.type === 'PER_SQ_FT') {
         baseAmount = (calc.ratePerSqFt || 0) * (unit.floorAreaSqFt || 0);
       } else if (calc.type === 'TIERED_BHK') {
-        const uType = (unit.type || '').toLowerCase();
-        if (uType === 'studio') baseAmount = calc.tieredRates.studio || 0;
-        else if (uType === 'bhk1') baseAmount = calc.tieredRates.bhk1 || 0;
-        else if (uType === 'bhk2' || uType === 'apartment') baseAmount = calc.tieredRates.bhk2 || 0;
-        else if (uType === 'bhk3') baseAmount = calc.tieredRates.bhk3 || 0;
-        else if (uType === 'bhk4' || uType === 'villa') baseAmount = calc.tieredRates.bhk4 || 0;
-        else if (uType === 'penthouse') baseAmount = calc.tieredRates.penthouse || 0;
-        else if (uType === 'duplex') baseAmount = calc.tieredRates.duplex || 0;
-        else baseAmount = calc.tieredRates.bhk2 || 0; // fallback standard
+        const uType = (unit.type || '').toLowerCase().trim();
+        if (['studio'].includes(uType)) {
+          baseAmount = calc.tieredRates.studio || 0;
+        } else if (['bhk1', '1bhk', '1bha', '1-bhk', '1 bhk'].includes(uType)) {
+          baseAmount = calc.tieredRates.bhk1 || 0;
+        } else if (['bhk2', '2bhk', '2bha', '2-bhk', '2 bhk', 'apartment'].includes(uType)) {
+          baseAmount = calc.tieredRates.bhk2 || 0;
+        } else if (['bhk3', '3bhk', '3bha', '3-bhk', '3 bhk'].includes(uType)) {
+          baseAmount = calc.tieredRates.bhk3 || 0;
+        } else if (['bhk4', '4bhk', '4bha', '4-bhk', '4 bhk', 'villa'].includes(uType)) {
+          baseAmount = calc.tieredRates.bhk4 || 0;
+        } else if (['penthouse'].includes(uType)) {
+          baseAmount = calc.tieredRates.penthouse || 0;
+        } else if (['duplex'].includes(uType)) {
+          baseAmount = calc.tieredRates.duplex || 0;
+        } else {
+          baseAmount = calc.tieredRates.bhk2 || 0; // fallback standard
+        }
       }
 
       baseAmount = Math.round(baseAmount * 100) / 100;

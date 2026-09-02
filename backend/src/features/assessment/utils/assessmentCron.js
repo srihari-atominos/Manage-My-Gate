@@ -45,6 +45,11 @@ class AssessmentCron {
             logger.info('Last day recurring billing execution stats:', lastDayStats);
           }
 
+          // 3. Run weekly recurring assessments matching today's day of week (0 = Sunday ... 6 = Saturday)
+          const currentDayOfWeek = now.getUTCDay();
+          const weeklyStats = await assessmentService.executeScheduledWeeklyAssessments(currentDayOfWeek);
+          logger.info('Weekly recurring billing execution stats:', weeklyStats);
+
           logger.info('Auto-Billing Assessment execution trigger finished successfully.');
         } catch (error) {
           logger.error('CRITICAL: Cron Billing Scheduler execution failed:', {

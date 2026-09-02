@@ -32,12 +32,25 @@ export class AssessmentService {
     // Validate scopeIds based on scope type
     if (targetScope.scopeIds && targetScope.scopeIds.length > 0) {
       for (const scopeId of targetScope.scopeIds) {
-        if (targetScope.type === 'VILLA_BLOCK' || targetScope.type === 'SPECIFIC_UNITS') {
-          // validate unit/villa existence
-          await villaService.getUnitById(scopeId, orgId);
+        if (targetScope.type === 'SPECIFIC_UNITS') {
+          if (/^[0-9a-fA-F]{24}$/.test(scopeId)) {
+            await villaService.getUnitById(scopeId, orgId);
+          }
+        } else if (targetScope.type === 'VILLA_BLOCK') {
+          // Validate block exists in community
+          const matched = await villaService.getUnitsByBlockNames([scopeId], orgId);
+          if (!matched || matched.length === 0) {
+            logger.warn(`No active units found for block '${scopeId}' in community ${orgId}`);
+          }
+        } else if (targetScope.type === 'UNIT_TYPE') {
+          const matched = await villaService.getUnitsByTypes([scopeId], orgId);
+          if (!matched || matched.length === 0) {
+            logger.warn(`No active units found for type '${scopeId}' in community ${orgId}`);
+          }
         } else if (targetScope.type === 'SPECIFIC_USERS') {
-          // validate user existence
-          await userService.getUserById(scopeId);
+          if (/^[0-9a-fA-F]{24}$/.test(scopeId)) {
+            await userService.getUserById(scopeId);
+          }
         }
       }
     }
@@ -45,7 +58,9 @@ export class AssessmentService {
     // Validate targetRoleIds if provided (multi-role capability)
     if (targetScope.targetRoleIds && targetScope.targetRoleIds.length > 0) {
       for (const roleId of targetScope.targetRoleIds) {
-        await roleService.getRoleById(roleId);
+        if (/^[0-9a-fA-F]{24}$/.test(roleId)) {
+          await roleService.getRoleById(roleId);
+        }
       }
     }
   }
@@ -202,6 +217,40 @@ export class AssessmentService {
 
     return {
       dayIndicator,
+      totalMatched: assessments.length,
+      generatedCount,
+      failedCount,
+    };
+  }
+
+  /**
+   * Daily scheduler executor for weekly assessments matching current day of week (0-6).
+   */
+  async executeScheduledWeeklyAssessments(dayOfWeek) {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info('executeScheduledWeeklyAssessments called', { dayOfWeek, correlationId });
+
+    const assessments = await assessmentRepository.findActiveByWeeklyDay(dayOfWeek);
+    logger.info(`Found ${assessments.length} active weekly assessments for day-of-week: ${dayOfWeek}`);
+
+    let generatedCount = 0;
+    let failedCount = 0;
+
+    for (const assessment of assessments) {
+      try {
+        await invoiceService.generateBatchInvoices(assessment);
+        generatedCount++;
+      } catch (err) {
+        logger.error(`Failed to execute weekly auto-billing for assessment: ${assessment._id}. Error: ${err.message}`, {
+          assessmentId: assessment._id,
+          correlationId,
+        });
+        failedCount++;
+      }
+    }
+
+    return {
+      dayOfWeek,
       totalMatched: assessments.length,
       generatedCount,
       failedCount,

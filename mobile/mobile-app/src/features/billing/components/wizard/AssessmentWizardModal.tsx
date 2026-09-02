@@ -86,6 +86,15 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
     scopeRows,
     searchQuery,
     setSearchQuery,
+    rawVillas,
+    units,
+    filteredUnits,
+    availableBlocks,
+    availableUnitTypes,
+    handleToggleBlockPreset,
+    handleToggleTypePreset,
+    isBlockFullySelected,
+    isTypeFullySelected,
     formError,
     setFormError,
     isSubmitting,
@@ -306,15 +315,20 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
                 roles={roles}
                 checkedRoles={checkedRoles}
                 onToggleRole={handleToggleRole}
-                selectedUnitTypes={selectedUnitTypes}
-                onToggleUnitType={handleToggleUnitType}
-                scopeRows={scopeRows}
+                scopeRows={scopeType === 'SPECIFIC_UNITS' ? filteredUnits : scopeRows}
                 selectedIds={selectedIds}
                 onToggleId={handleToggleId}
                 onSelectAll={handleSelectAll}
                 onDeselectAll={handleDeselectAll}
                 searchQuery={searchQuery}
                 onChangeSearchQuery={setSearchQuery}
+                availableBlocks={availableBlocks}
+                availableUnitTypes={availableUnitTypes}
+                onToggleBlockPreset={handleToggleBlockPreset}
+                onToggleTypePreset={handleToggleTypePreset}
+                isBlockFullySelected={isBlockFullySelected}
+                isTypeFullySelected={isTypeFullySelected}
+                totalUnitsCount={units.length}
               />
             )}
 

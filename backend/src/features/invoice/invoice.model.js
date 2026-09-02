@@ -39,11 +39,11 @@ const invoiceSchema = new mongoose.Schema(
       index: true,
       validate: {
         validator: function (value) {
-          // Format validation: YYYY-MM or YYYY-Qx (e.g. 2026-03 or 2026-Q1)
-          return /^\d{4}-(?:[0-1]\d|Q[1-4])$/.test(value);
+          // Format validation: YYYY-MM, YYYY-Qx, or YYYY-Wxx (e.g. 2026-03, 2026-Q1, or 2026-W36)
+          return /^\d{4}-(?:[0-1]\d|Q[1-4]|W(?:0[1-9]|[1-4]\d|5[0-3]))$/.test(value);
         },
         message: (props) =>
-          `${props.value} is not a valid billing period format. Use 'YYYY-MM' or 'YYYY-Qx' (e.g. '2026-07' or '2026-Q3').`,
+          `${props.value} is not a valid billing period format. Use 'YYYY-MM', 'YYYY-Qx', or 'YYYY-Wxx' (e.g. '2026-07', '2026-Q3', or '2026-W36').`,
       },
     },
     // --- Enterprise Invoice Numbering ---

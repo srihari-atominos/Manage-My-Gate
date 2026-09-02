@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, ScrollView, RefreshControl, TextInput, Alert, Pressable, TouchableOpacity } from 'react-native';
+import { View, ScrollView, RefreshControl, Alert, Pressable, TouchableOpacity, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -8,6 +8,7 @@ import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Button } from '@/components/common/Button';
+import { TextInput } from '@/components/forms/TextInput';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
@@ -47,6 +48,10 @@ export function AssessmentManagementScreen() {
   // Search & Type Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
+
+  const isPeriodValid = useMemo(() => {
+    return /^\d{4}-(?:[0-1]\d|Q[1-4]|W(?:0[1-9]|[1-4]\d|5[0-3]))$/.test(billingPeriodString.trim());
+  }, [billingPeriodString]);
 
   const filteredAssessments = useMemo(() => {
     return assessments.filter((rule) => {
@@ -109,6 +114,28 @@ export function AssessmentManagementScreen() {
 
   const handleOpenRunModal = (assessment: any) => {
     setSelectedAssessment(assessment);
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+
+    if (assessment.billingCycle === 'WEEKLY') {
+      const target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const dayNr = (target.getUTCDay() + 6) % 7;
+      target.setUTCDate(target.getUTCDate() - dayNr + 3);
+      const firstThursday = target.valueOf();
+      target.setUTCMonth(0, 1);
+      if (target.getUTCDay() !== 4) {
+        target.setUTCMonth(0, 1 + ((4 - target.getUTCDay() + 7) % 7));
+      }
+      const weekNum = 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+      const weekYear = new Date(firstThursday).getUTCFullYear();
+      setBillingPeriodString(`${weekYear}-W${String(weekNum).padStart(2, '0')}`);
+    } else if (assessment.billingCycle === 'QUARTERLY') {
+      const quarter = Math.floor(now.getUTCMonth() / 3) + 1;
+      setBillingPeriodString(`${year}-Q${quarter}`);
+    } else {
+      setBillingPeriodString(`${year}-${month}`);
+    }
     setShowRunConfirmModal(true);
   };
 
@@ -391,18 +418,105 @@ export function AssessmentManagementScreen() {
         }}
       />
 
-      {/* Confirmation Modal for Billing Run */}
-      <ConfirmationModal
+      {/* Interactive Modal for Manual Billing Run with Smart Pre-fill & Live Validation */}
+      <Modal
         visible={showRunConfirmModal}
-        title="Execute Manual Billing Run?"
-        message={`Are you sure you want to trigger billing generation for '${selectedAssessment?.name || 'Assessment'}' for period '${billingPeriodString.trim()}'? This action will generate maintenance invoices across target units in the community.`}
-        confirmLabel="Execute Billing Run"
-        cancelLabel="Cancel"
-        variant="info"
-        loading={isExecutingRun || loadingStates.triggerRun}
-        onConfirm={handleExecuteRun}
-        onCancel={() => setShowRunConfirmModal(false)}
-      />
+        transparent
+        animationType="fade"
+        onRequestClose={() => !isExecutingRun && setShowRunConfirmModal(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/60 items-center justify-center p-4"
+          onPress={() => !isExecutingRun && setShowRunConfirmModal(false)}
+        >
+          <Pressable
+            className="w-full max-w-md bg-card border border-border rounded-2xl p-5 gap-4 shadow-xl"
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <View className="flex-row items-center justify-between border-b border-border pb-3">
+              <View className="flex-1 me-2">
+                <Text className="text-base font-extrabold text-foreground">
+                  Execute Manual Billing Run
+                </Text>
+                <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
+                  {selectedAssessment?.name || 'Assessment Rule'}
+                </Text>
+              </View>
+              <StatusBadge
+                label={selectedAssessment?.billingCycle || selectedAssessment?.type || 'ACTIVE'}
+                variant="info"
+              />
+            </View>
+
+            {/* Assessment Rule Details */}
+            <View className="bg-primary/5 border border-primary/20 rounded-xl p-3 gap-1.5">
+              <Text className="text-xs font-bold text-primary">
+                📊 Rule: {selectedAssessment?.name}
+              </Text>
+              <Text className="text-xs text-muted-foreground">
+                This action will calculate and generate maintenance invoices for all targeted community units in the specified billing period.
+              </Text>
+            </View>
+
+            {/* Period String Input & Validation */}
+            <View className="gap-1.5">
+              <TextInput
+                label="Billing Period Code *"
+                placeholder={
+                  selectedAssessment?.billingCycle === 'WEEKLY'
+                    ? 'e.g. 2026-W36'
+                    : selectedAssessment?.billingCycle === 'QUARTERLY'
+                    ? 'e.g. 2026-Q3'
+                    : 'e.g. 2026-09'
+                }
+                value={billingPeriodString}
+                onChangeText={setBillingPeriodString}
+                autoCapitalize="characters"
+                error={
+                  !isPeriodValid && billingPeriodString.length > 0
+                    ? 'Format must be YYYY-MM (e.g. 2026-09), YYYY-Qx (e.g. 2026-Q3), or YYYY-Wxx (e.g. 2026-W36).'
+                    : undefined
+                }
+              />
+              <Text className="text-[11px] text-muted-foreground ms-1">
+                {selectedAssessment?.billingCycle === 'WEEKLY'
+                  ? '💡 Tip: ISO Week code format YYYY-Wxx (e.g. 2026-W36)'
+                  : selectedAssessment?.billingCycle === 'QUARTERLY'
+                  ? '💡 Tip: Quarter code format YYYY-Qx (e.g. 2026-Q3)'
+                  : '💡 Tip: Calendar month code format YYYY-MM (e.g. 2026-09)'}
+              </Text>
+            </View>
+
+            {/* Action Buttons */}
+            <View className="flex-row gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1 border-border"
+                onPress={() => setShowRunConfirmModal(false)}
+                disabled={isExecutingRun}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel Billing Run"
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant="default"
+                className="flex-1 bg-primary"
+                onPress={handleExecuteRun}
+                loading={isExecutingRun || loadingStates.triggerRun}
+                disabled={!isPeriodValid || isExecutingRun}
+                accessibilityRole="button"
+                accessibilityLabel="Execute Billing Run"
+              >
+                <Icon as={Play} size={14} className="text-white me-1.5" />
+                <Text className="font-bold text-xs text-white">Execute Run</Text>
+              </Button>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Confirmation Modal for Delete Assessment Rule */}
       <ConfirmationModal
