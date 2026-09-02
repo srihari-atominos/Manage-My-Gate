@@ -124,20 +124,33 @@ export const bootstrapAuth = createAsyncThunk(
             switchPayload.targetRole = savedRole.trim();
           }
 
-          const response = await authService.switchContext(switchPayload);
-          const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
-          const innerData = body?.data || body;
-          const freshToken = innerData?.token || token;
-          const freshRefreshToken = innerData?.refreshToken || refreshToken;
-          const rawUser = innerData?.user;
-          const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || user?.availableWorkspaces || [];
-          const freshUser = rawUser ? { ...rawUser, availableWorkspaces } : user;
+          let response;
+          try {
+            response = await authService.switchContext(switchPayload);
+          } catch (syncErr: any) {
+            console.warn('Target workspace context unavailable or deleted, falling back to default active context:', syncErr?.message);
+            try {
+              response = await authService.switchContext({});
+            } catch (fallbackErr) {
+              console.warn('Fallback switchContext failed:', fallbackErr);
+            }
+          }
 
-          if (freshToken) await storage.setItem('token', freshToken);
-          if (freshRefreshToken) await storage.setItem('refreshToken', freshRefreshToken);
-          if (freshUser) await storage.setItem('user', JSON.stringify(freshUser));
+          if (response) {
+            const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+            const innerData = body?.data || body;
+            const freshToken = innerData?.token || token;
+            const freshRefreshToken = innerData?.refreshToken || refreshToken;
+            const rawUser = innerData?.user;
+            const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
+            const freshUser = rawUser ? { ...rawUser, availableWorkspaces } : user;
 
-          return { token: freshToken, refreshToken: freshRefreshToken, user: freshUser };
+            if (freshToken) await storage.setItem('token', freshToken);
+            if (freshRefreshToken) await storage.setItem('refreshToken', freshRefreshToken);
+            if (freshUser) await storage.setItem('user', JSON.stringify(freshUser));
+
+            return { token: freshToken, refreshToken: freshRefreshToken, user: freshUser };
+          }
         } catch (syncErr) {
           console.warn('Could not refresh auth session from backend, using cached session:', syncErr);
         }
@@ -367,7 +380,18 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
       cleanPayload.targetRole = payload.targetRole.trim();
     }
 
-    const response = await authService.switchContext(cleanPayload);
+    let response;
+    try {
+      response = await authService.switchContext(cleanPayload);
+    } catch (err: any) {
+      if (cleanPayload.targetOrgId) {
+        console.warn(`Target org ${cleanPayload.targetOrgId} unavailable or deleted. Falling back to default workspace context.`);
+        response = await authService.switchContext({});
+      } else {
+        throw err;
+      }
+    }
+
     const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
     const innerData = body?.data || body;
 

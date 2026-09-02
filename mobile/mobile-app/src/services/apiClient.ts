@@ -316,6 +316,23 @@ apiClient.interceptors.response.use(
       console.warn('[ApiClient] Workspace context missing on request. Preserving session.');
     }
 
+    if (
+      (error.response?.status === 403 || error.response?.status === 404) &&
+      error.response?.data?.message &&
+      (
+        error.response.data.message.includes('do not have an active membership') ||
+        error.response.data.message.includes('Organization not found') ||
+        error.response.data.message.includes('Workspace not found')
+      )
+    ) {
+      if (store) {
+        try {
+          const { switchWorkspaceContextThunk } = require('../features/auth/store/authSlice');
+          store.dispatch(switchWorkspaceContextThunk({}));
+        } catch (e) {}
+      }
+    }
+
     if (error.response?.data?.message) {
       error.message = error.response.data.message;
     } else if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout')) {

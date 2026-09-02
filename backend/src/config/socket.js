@@ -9,6 +9,7 @@ import { initAmenitySockets } from '../features/amenity/amenity.socket.js';
 import { initAmenityBookingSockets } from '../features/amenityBooking/amenityBooking.socket.js';
 import { initCommunityNoteSockets } from '../features/communityNote/communityNote.socket.js';
 import { initDirectoryMessageSockets } from '../features/directoryMessage/directoryMessage.socket.js';
+import { initOrganizationSocket } from '../features/organization/organization.socket.js';
 
 let io = null;
 
@@ -82,6 +83,7 @@ export const initSocket = async (httpServer) => {
   // Initialize feature-level socket dispatchers
   initRoleSocket();
   initUserSocket();
+  initOrganizationSocket();
   initComplaintSockets();
   initAmenitySockets();
   initAmenityBookingSockets();

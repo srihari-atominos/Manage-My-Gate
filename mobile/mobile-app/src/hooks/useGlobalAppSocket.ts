@@ -97,11 +97,22 @@ export const useGlobalAppSocket = () => {
       dispatch(fetchNotesThunk({})).catch(() => {});
     };
 
+    // 8. Organization & Workspace Lifecycle Updates
+    const handleOrgUpdate = () => {
+      dispatch(switchWorkspaceContextThunk({})).catch(() => {});
+    };
+
     // Attach Event Listeners
     socket.on('ROLE_UPDATED', handleRoleOrUserUpdate);
     socket.on('USER_UPDATED', handleRoleOrUserUpdate);
     socket.on('USER_ROLE_UPDATED', handleRoleOrUserUpdate);
     socket.on('PERMISSIONS_UPDATED', handleRoleOrUserUpdate);
+
+    socket.on('ORGANIZATION_DELETED', handleOrgUpdate);
+    socket.on('ORGANIZATION_UPDATED', handleOrgUpdate);
+    socket.on('ORGANIZATION_STATUS_CHANGED', handleOrgUpdate);
+    socket.on('WORKSPACE_DELETED', handleOrgUpdate);
+    socket.on('WORKSPACE_UPDATED', handleOrgUpdate);
 
     socket.on('INTEGRATION_UPDATED', handleIntegrationUpdate);
     socket.on('INTEGRATION_CONNECTED', handleIntegrationUpdate);
@@ -128,6 +139,8 @@ export const useGlobalAppSocket = () => {
       const type = String(payload.type || '').toUpperCase();
       if (type === 'ROLE' || type === 'USER') {
         handleRoleOrUserUpdate(payload);
+      } else if (type === 'ORGANIZATION' || type === 'WORKSPACE') {
+        handleOrgUpdate();
       } else if (type === 'INTEGRATION') {
         handleIntegrationUpdate();
       } else if (type === 'VISITOR') {
@@ -146,6 +159,11 @@ export const useGlobalAppSocket = () => {
       socket.off('USER_UPDATED', handleRoleOrUserUpdate);
       socket.off('USER_ROLE_UPDATED', handleRoleOrUserUpdate);
       socket.off('PERMISSIONS_UPDATED', handleRoleOrUserUpdate);
+      socket.off('ORGANIZATION_DELETED', handleOrgUpdate);
+      socket.off('ORGANIZATION_UPDATED', handleOrgUpdate);
+      socket.off('ORGANIZATION_STATUS_CHANGED', handleOrgUpdate);
+      socket.off('WORKSPACE_DELETED', handleOrgUpdate);
+      socket.off('WORKSPACE_UPDATED', handleOrgUpdate);
       socket.off('INTEGRATION_UPDATED', handleIntegrationUpdate);
       socket.off('INTEGRATION_CONNECTED', handleIntegrationUpdate);
       socket.off('INTEGRATION_DISCONNECTED', handleIntegrationUpdate);
