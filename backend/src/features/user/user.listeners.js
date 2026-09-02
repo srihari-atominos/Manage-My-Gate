@@ -40,12 +40,19 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken }) => {
       .replace(/{{invite_link}}/g, inviteLink);
 
     // 3. Send email using sendEmail helper
+    logger.info(`\n================================================================================`);
+    logger.info(`[INVITATION LINK GENERATED] Email: ${email}`);
+    logger.info(`Invitation URL: ${inviteLink}`);
+    logger.info(`================================================================================\n`);
+
     const { sendEmail } = await import('../../utils/email.utils.js');
     const sent = await sendEmail(orgId, email, compiledSubject, compiledBody);
     if (sent) {
-      logger.info(`Invitation email successfully sent to ${email}.`);
+      logger.info(`Invitation email successfully delivered to inbox: ${email}`);
     } else {
-      logger.warn(`SMTP is not configured or failed to send invitation email to ${email}. Link for manual activation: ${inviteLink}`);
+      logger.warn(`SMTP Server is not configured in backend/.env or Integration Hub.`);
+      logger.warn(`To deliver real emails to inbox (${email}), configure SMTP_USER & SMTP_PASS in backend/.env or connect SMTP in Integration Hub.`);
+      logger.warn(`Manual Activation Link for ${email}: ${inviteLink}`);
     }
   } catch (error) {
     logger.error(`Asynchronous invitation email dispatch failed: ${error.message}`);
