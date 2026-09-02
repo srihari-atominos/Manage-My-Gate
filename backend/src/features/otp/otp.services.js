@@ -58,9 +58,23 @@ export class OtpService {
    * @param {object} [session] - Mongoose session
    */
   async verifyOTP(identifier, code, type, session = null, deleteOnSuccess = true) {
-    const otpDoc = await Otp.findOne({ identifier: identifier.toLowerCase(), type })
+    const normId = identifier ? identifier.trim().toLowerCase() : '';
+    let otpDoc = await Otp.findOne({ identifier: normId, type })
       .sort({ createdAt: -1 })
       .session(session);
+
+    if (!otpDoc) {
+      const digitsOnly = normId.replace(/\D/g, '');
+      const last10 = digitsOnly.slice(-10);
+      if (digitsOnly && last10.length >= 7) {
+        otpDoc = await Otp.findOne({
+          type,
+          identifier: new RegExp(`${last10}$`, 'i'),
+        })
+          .sort({ createdAt: -1 })
+          .session(session);
+      }
+    }
 
     if (!otpDoc) {
       throw new HttpError(400, 'Invalid or expired OTP');

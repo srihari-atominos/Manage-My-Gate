@@ -223,15 +223,6 @@ export class AuthService {
     // Active memberships (where organization status is Active and membership status is Active, Pending, or missing for legacy documents)
     const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active' && (m.status === 'Active' || m.status === 'Pending' || !m.status));
 
-    // Auto-promote any Pending membership to Active when an authenticated user accesses the workspace
-    for (const m of activeMemberships) {
-      if (m.status === 'Pending') {
-        m.status = 'Active';
-        const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
-        await OrgMembership.updateOne({ _id: m._id }, { status: 'Active' }).catch(() => {});
-      }
-    }
-
     let selectedMembership = null;
     const targetOrgIdStr = targetOrgId ? targetOrgId.toString() : null;
 

@@ -105,6 +105,7 @@ authEvents.on('OTP_SENT', async ({ identifier, code, type }) => {
       logger.info(`[FALLBACK DEV OTP] Code for ${identifier}: ${code}`);
     }
   } else if (type === 'SMS') {
+    logger.info(`[AUTH OTP DELIVERED - SMS] Phone: ${identifier} | Verification OTP Code: ${code}`);
     try {
       // 1. Check Twilio
       const twilioIntegration = await IntegrationHub.findOne({ provider: 'twilio', status: 'connected' });
