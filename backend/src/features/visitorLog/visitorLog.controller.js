@@ -72,7 +72,7 @@ export class VisitorLogController {
    */
   async getInside(req, res, next) {
     try {
-      const orgId = req.params.orgId || req.user?.orgId || req.user?.organizationId;
+      const orgId = req.params.orgId || req.headers['x-organization-id'] || req.user?.orgId || req.user?.organizationId;
       const data = await visitorLogService.getActiveLogsInside(orgId);
       res.success(data, 'Active logs retrieved successfully');
     } catch (error) {
@@ -88,7 +88,9 @@ export class VisitorLogController {
       const { orgId } = req.params;
       const userId = req.user.id;
       
-      const data = await visitorLogService.getPendingApprovals(orgId, userId);
+      const residentIdFilter = ['GUARD', 'SECURITY', 'ADMIN', 'MANAGER'].includes(req.user.role) ? null : userId;
+      
+      const data = await visitorLogService.getPendingApprovals(orgId, residentIdFilter);
       res.success(data, 'Pending approvals retrieved successfully');
     } catch (error) {
       next(error);

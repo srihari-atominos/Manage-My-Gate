@@ -5,16 +5,22 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Button } from '@/components/common/Button';
 import { TextInput } from '@/components/forms/TextInput';
+import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Text } from '@/components/ui/text';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { Mail, Phone, Clock, Globe, Building2 } from 'lucide-react-native';
 
+import { TIMEZONE_OPTIONS, LANGUAGE_OPTIONS } from '@/src/utils/dropdownConstants';
+
 const workspaceSchema = yup.object({
   workspaceName: yup.string().required('Workspace name is required').min(2, 'Workspace name must be at least 2 characters'),
   contactEmail: yup.string().email('Invalid email address').optional().default(''),
-  contactPhone: yup.string().optional().default(''),
+  contactPhone: yup.string()
+    .matches(/^(?:\d{10})?$/, 'Contact number must be exactly 10 digits')
+    .optional()
+    .default(''),
   timeZone: yup.string().optional().default(''),
   language: yup.string().optional().default(''),
 });
@@ -128,6 +134,7 @@ export const WorkspaceSettingsForm = () => {
             error={errors.contactPhone?.message}
             leftIcon={Phone}
             keyboardType="phone-pad"
+            maxLength={10}
           />
         )}
       />
@@ -135,15 +142,14 @@ export const WorkspaceSettingsForm = () => {
       <Controller
         control={control}
         name="timeZone"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
+        render={({ field: { onChange, value } }) => (
+          <DropdownSelect
             label="Timezone"
-            placeholder="e.g. UTC"
-            onBlur={onBlur}
-            onChangeText={onChange}
-            value={value}
+            placeholder="Select a timezone"
+            options={TIMEZONE_OPTIONS}
+            value={value || ''}
+            onValueChange={onChange}
             error={errors.timeZone?.message}
-            leftIcon={Clock}
           />
         )}
       />
@@ -151,15 +157,14 @@ export const WorkspaceSettingsForm = () => {
       <Controller
         control={control}
         name="language"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
+        render={({ field: { onChange, value } }) => (
+          <DropdownSelect
             label="Primary Language"
-            placeholder="e.g. en-US"
-            onBlur={onBlur}
-            onChangeText={onChange}
-            value={value}
+            placeholder="Select a language"
+            options={LANGUAGE_OPTIONS}
+            value={value || ''}
+            onValueChange={onChange}
             error={errors.language?.message}
-            leftIcon={Globe}
           />
         )}
       />

@@ -313,6 +313,10 @@ export default function GateConsoleScreen() {
       setStatusMessage(`Walk-in gate approval request sent to ${data.residentName || data.villaName || 'Resident'}`);
       setActiveTab('WALK_INS');
       loadData();
+    } catch (err: any) {
+      const details = err?.response?.data?.details;
+      const detailMsg = details && details.length > 0 ? details[0].message : null;
+      setStatusMessage(detailMsg || err?.response?.data?.message || err?.message || 'Failed to send request.');
     } finally {
       setWalkInLoading(false);
     }

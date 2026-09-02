@@ -81,6 +81,16 @@ export class VisitorLogRepository {
   }
 
   /**
+   * Find an active VisitorLog by its associated passId.
+   * @param {string} passId - The ID of the visitor pass.
+   * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
+   * @returns {Promise<Object|null>} The log document, or null if not found.
+   */
+  async findActiveLogByPassId(passId, session = null) {
+    return await VisitorLog.findOne({ passId, logStatus: 'INSIDE' }).session(session || null);
+  }
+
+  /**
    * Update an existing VisitorLog.
    * @param {string} id - The ID of the log.
    * @param {Object} updateData - The update parameters.

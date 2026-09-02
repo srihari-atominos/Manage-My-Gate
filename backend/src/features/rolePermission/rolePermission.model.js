@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import '../permission/permission.model.js';
+import '../role/role.model.js';
 
 const rolePermissionSchema = new mongoose.Schema(
   {

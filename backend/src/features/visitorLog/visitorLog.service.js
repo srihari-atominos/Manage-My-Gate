@@ -118,21 +118,42 @@ export class VisitorLogService {
 
   /**
    * Record checkout for a visitor.
-   * @param {string} logId - The visitor log ID.
+   * @param {string} logIdOrPassId - The visitor log ID or visitor pass ID.
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object>} The checked out log.
    */
-  async checkout(logId, session = null) {
-    const log = await visitorLogRepository.findById(logId, session);
+  async checkout(logIdOrPassId, session = null) {
+    let log = await visitorLogRepository.findById(logIdOrPassId, session);
+    
+    // If log not found by ID, it might be a pass ID from the admin screens, so check for active logs matching this passId
     if (!log) {
-      throw new HttpError(404, `Visitor log with ID ${logId} not found.`);
+      log = await visitorLogRepository.findActiveLogByPassId(logIdOrPassId, session);
+    }
+
+    if (!log) {
+      try {
+        const pass = await visitorPassService.getPassById(logIdOrPassId);
+        if (pass && pass.status === 'ACTIVE') {
+          await visitorPassService.updatePassStatus(pass._id, 'EXPIRED', session);
+          return {
+            _id: pass._id,
+            passId: pass._id,
+            logStatus: 'COMPLETED',
+            isMockLog: true,
+            message: 'Pass was active but visitor never checked in. The pass has been force-expired.'
+          };
+        }
+      } catch (err) {
+        // Ignore pass fetch errors and throw standard log not found error below
+      }
+      throw new HttpError(404, `Visitor log with ID ${logIdOrPassId} not found.`);
     }
 
     if (log.logStatus !== 'INSIDE') {
-      throw new HttpError(400, `Visitor log with ID ${logId} status is not INSIDE.`);
+      throw new HttpError(400, `Visitor log with ID ${log._id} status is not INSIDE.`);
     }
 
-    const updatedLog = await visitorLogRepository.updateLogForCheckout(logId, new Date(), session);
+    const updatedLog = await visitorLogRepository.updateLogForCheckout(log._id, new Date(), session);
     
     // Update pass status to EXPIRED upon check-out if usage limit reached and no other visitors remain inside
     if (updatedLog.passId) {
@@ -142,7 +163,7 @@ export class VisitorLogService {
           const logsInside = await visitorLogRepository.findActiveLogsInside(log.orgId, session);
           const anyoneLeft = logsInside.some(l => 
             l.passId?.toString() === pass._id?.toString() && 
-            l._id?.toString() !== logId.toString()
+            l._id?.toString() !== log._id.toString()
           );
           if (!anyoneLeft && (pass.usageLimit?.currentUses >= pass.usageLimit?.maxUses)) {
             await visitorPassService.updatePassStatus(pass._id, 'EXPIRED', session);

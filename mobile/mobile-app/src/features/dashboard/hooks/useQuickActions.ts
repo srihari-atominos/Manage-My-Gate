@@ -55,6 +55,8 @@ export const useQuickActions = () => {
   );
 
   const { modules, loadWorkspaceModules } = useWorkspace();
+  const authUser = useSelector((state: RootState) => (state as any).auth?.user);
+  const userPermissions = authUser?.permissions || [];
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -114,6 +116,16 @@ export const useQuickActions = () => {
         const filteredItems = category.items.filter(item => {
           if (item.id === 'admin_workspace_settings') return true;
           
+          // 1. RBAC Filtering
+          if (item.permission && userPermissions.length > 0) {
+            const hasAccess = userPermissions.includes('owner:*') || 
+                              userPermissions.includes('admin:*') || 
+                              userPermissions.includes('platform:super_admin') ||
+                              userPermissions.includes(item.permission);
+            if (!hasAccess) return false;
+          }
+
+          // 2. Module Filtering
           const requiredItemModules = itemToModuleMap[item.id];
           if (requiredItemModules) {
             return requiredItemModules.some(m => enabledModuleKeys.includes(m));
@@ -133,7 +145,7 @@ export const useQuickActions = () => {
       ...category,
       items: category.items.filter(item => item.id !== 'admin_organizations' && item.id !== 'admin_audit_logs' && isFeatureAllowedForUser(item, user))
     })).filter(category => category.items.length > 0);
-  }, [rawCatalog, modules, user]);
+  }, [rawCatalog, modules, userPermissions, user]);
 
   // Flattened array of all available items across categories for easy lookup
   const allFeaturesList = useMemo<FeatureItem[]>(() => {
