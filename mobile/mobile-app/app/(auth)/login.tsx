@@ -50,12 +50,12 @@ const basicAuthSchema = yup.object().shape({
     .min(4, 'Password must be at least 4 characters'),
 });
 
-// 2. Phone OTP Validation Schema
-const phoneSchema = yup.object().shape({
-  phone: yup
+// 2. Email OTP Validation Schema
+const emailOtpSchema = yup.object().shape({
+  email: yup
     .string()
-    .required('Phone number is required')
-    .matches(/^\+?[1-9]\d{1,14}$/, 'Enter a valid phone number (e.g. +919988776655)'),
+    .email('Enter a valid email address')
+    .required('Email is required'),
 });
 
 interface BasicAuthFormValues {
@@ -63,8 +63,8 @@ interface BasicAuthFormValues {
   password: string;
 }
 
-interface PhoneFormValues {
-  phone: string;
+interface EmailOtpFormValues {
+  email: string;
 }
 
 export default function LoginScreen() {
@@ -173,6 +173,17 @@ export default function LoginScreen() {
       // Gentle continuous floating breath loop
       Animated.loop(
         Animated.sequence([
+          Animated.timing(emblemRotate, {
+            toValue: 1,
+            duration: 12000,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+
+      Animated.loop(
+        Animated.sequence([
           Animated.timing(emblemFloat, {
             toValue: -5,
             duration: 2000,
@@ -199,11 +210,11 @@ export default function LoginScreen() {
     },
   });
 
-  // Phone Form Hook
-  const phoneForm = useForm<PhoneFormValues>({
-    resolver: yupResolver(phoneSchema),
+  // Email OTP Form Hook
+  const emailForm = useForm<EmailOtpFormValues>({
+    resolver: yupResolver(emailOtpSchema),
     defaultValues: {
-      phone: '',
+      email: '',
     },
   });
 
@@ -252,15 +263,15 @@ export default function LoginScreen() {
     }
   }, [isAuthenticated, user, isCreateOrgIntent]);
 
-  // Reactively route to OTP screen if Phone OTP sent
+  // Reactively route to OTP screen if Email OTP sent
   React.useEffect(() => {
-    if (otpSent && submittedPhone) {
+    if (otpSent && submittedEmail) {
       router.push({
         pathname: '/(auth)/otp',
-        params: { phone: submittedPhone },
+        params: { email: submittedEmail },
       });
     }
-  }, [otpSent, submittedPhone]);
+  }, [otpSent, submittedEmail]);
 
   // Handle Basic Auth Submit
   const onBasicSubmit = async (data: BasicAuthFormValues) => {
@@ -270,10 +281,10 @@ export default function LoginScreen() {
     });
   };
 
-  // Handle Phone OTP Submit
-  const onPhoneSubmit = async (data: PhoneFormValues) => {
-    setSubmittedPhone(data.phone);
-    await requestOtp(data.phone, false);
+  // Handle Email OTP Submit
+  const onEmailSubmit = async (data: EmailOtpFormValues) => {
+    setSubmittedEmail(data.email.trim().toLowerCase());
+    await requestOtp(data.email.trim().toLowerCase(), true);
   };
 
   return (
@@ -375,24 +386,24 @@ export default function LoginScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={() => setAuthMode('phone')}
+                  onPress={() => setAuthMode('email')}
                   activeOpacity={0.85}
                   className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-2 ${
-                    authMode === 'phone'
+                    authMode === 'email'
                       ? 'bg-card border border-border/60 shadow-xs'
                       : ''
                   }`}
                 >
-                  <Smartphone
+                  <Mail
                     size={15}
-                    color={authMode === 'phone' ? '#FF5E00' : '#64748B'}
+                    color={authMode === 'email' ? '#FF5E00' : '#64748B'}
                   />
                   <Text
                     className={`text-xs font-bold ${
-                      authMode === 'phone' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'
+                      authMode === 'email' ? 'text-[#1E232E] dark:text-[#FF7A00]' : 'text-muted-foreground'
                     }`}
                   >
-                    Phone OTP
+                    Email OTP
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -568,28 +579,29 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  /* Phone OTP Form */
+                  /* Email OTP Form */
                   <View className="gap-3.5">
                     <View>
                       <Text className="text-xs font-bold text-foreground mb-1.5">
-                        Mobile Number
+                        Email Address
                       </Text>
                       <Controller
-                        control={phoneForm.control}
-                        name="phone"
+                        control={emailForm.control}
+                        name="email"
                         render={({ field: { onChange, onBlur, value } }) => (
                           <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
-                            <Smartphone size={18} color="#94A3B8" className="me-2.5 shrink-0" />
+                            <Mail size={18} color="#94A3B8" className="me-2.5 shrink-0" />
                             <TextInput
                               value={value}
                               onChangeText={onChange}
                               onBlur={onBlur}
-                              placeholder="+919988776655"
+                              placeholder="user@example.com"
                               placeholderTextColor="#94A3B8"
-                              keyboardType="phone-pad"
-                              autoComplete="tel"
+                              keyboardType="email-address"
+                              autoCapitalize="none"
+                              autoComplete="email"
                               returnKeyType="send"
-                              onSubmitEditing={phoneForm.handleSubmit(onPhoneSubmit)}
+                              onSubmitEditing={emailForm.handleSubmit(onEmailSubmit)}
                               className={cnText(
                                 'flex-1 text-sm text-foreground font-sans p-0',
                                 Platform.select({ web: 'outline-none' })
@@ -598,9 +610,9 @@ export default function LoginScreen() {
                           </View>
                         )}
                       />
-                      {phoneForm.formState.errors.phone && (
+                      {emailForm.formState.errors.email && (
                         <Text className="text-rose-500 text-[11px] mt-1 ms-1 font-medium">
-                          {phoneForm.formState.errors.phone.message}
+                          {emailForm.formState.errors.email.message}
                         </Text>
                       )}
                     </View>
@@ -614,9 +626,9 @@ export default function LoginScreen() {
                       </View>
                     ) : null}
 
-                    {/* Get OTP Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
+                    {/* Get Email OTP Button */}
                     <TouchableOpacity
-                      onPress={phoneForm.handleSubmit(onPhoneSubmit)}
+                      onPress={emailForm.handleSubmit(onEmailSubmit)}
                       disabled={loading || connectingHarmony}
                       activeOpacity={0.88}
                       className="mt-1 h-12 rounded-2xl bg-[#1E232E] flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"

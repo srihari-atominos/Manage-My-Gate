@@ -50,9 +50,9 @@ const signupSchema = yup.object().shape({
     .required('Email is required'),
   phone: yup
     .string()
-    .required('Phone number is required')
+    .optional()
     .test('valid-phone', 'Invalid phone number format', function (value) {
-      if (!value) return false;
+      if (!value || !value.trim()) return true;
       if (value.startsWith('+91')) {
         const nationalNumber = value.slice(3);
         if (nationalNumber.length !== 10) {

@@ -27,8 +27,7 @@ export const registerRules = [
     .matches(passwordRegex)
     .withMessage('Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character'),
   body('phone')
-    .notEmpty()
-    .withMessage('Phone number is required')
+    .optional()
     .isString()
     .withMessage('Phone must be a string')
     .trim(),

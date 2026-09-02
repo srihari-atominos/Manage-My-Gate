@@ -230,10 +230,12 @@ export class UserService {
       const trimmedEmail = email.trim().toLowerCase();
       const existing = await userRepository.findByEmail(trimmedEmail, session);
 
-      if (phone && phone.trim()) {
-        const existingPhoneUser = await userRepository.findByPhone(phone.trim(), session);
+      let phoneToAssign = phone ? phone.trim() : '';
+      if (phoneToAssign) {
+        const existingPhoneUser = await userRepository.findByPhone(phoneToAssign, session);
         if (existingPhoneUser && (!existing || existingPhoneUser._id.toString() !== existing._id.toString())) {
-          throw new HttpError(400, `User with phone number '${phone}' already exists.`);
+          logger.warn(`Phone number '${phoneToAssign}' is already linked to user (${existingPhoneUser.email}). Proceeding with invitation for '${trimmedEmail}' without duplicate phone assignment.`);
+          phoneToAssign = '';
         }
       }
       
@@ -254,12 +256,12 @@ export class UserService {
           username: username,
           name: name || username,
           status: 'Pending Verification',
-          ...(phone ? { phone } : {}),
+          ...(phoneToAssign ? { phone: phoneToAssign } : {}),
         };
         user = await userRepository.create(userData, session);
       } else {
         const updates = {};
-        if (phone && !user.phone) updates.phone = phone;
+        if (phoneToAssign && !user.phone) updates.phone = phoneToAssign;
         if (name && !user.name) updates.name = name;
         if (Object.keys(updates).length > 0) {
           user = await userRepository.update(user._id, updates, session);
