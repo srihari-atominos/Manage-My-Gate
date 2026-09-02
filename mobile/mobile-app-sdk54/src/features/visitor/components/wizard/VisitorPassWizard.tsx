@@ -195,16 +195,38 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
 
       const payload = mapFormToApiPayloadStrategy(selectedPassType, formData, roleContext);
       const res = await onSubmitPass(payload);
-      const createdPass = res?.payload?.data || res?.payload || res;
+      let createdPass: any = res;
+      if (res?.payload) {
+        createdPass = res.payload.data || res.payload;
+      } else if (res?.data) {
+        createdPass = res.data.data || res.data;
+      }
 
-      const code = createdPass?.code || 'PASS-' + Math.floor(100000 + Math.random() * 900000);
+      const code =
+        createdPass?.shortKey ||
+        createdPass?.code ||
+        createdPass?.passCode ||
+        createdPass?.data?.shortKey ||
+        createdPass?.data?.code;
+
+      if (!code) {
+        throw new Error('Pass was created but failed to retrieve pass entry code.');
+      }
+
       setGeneratedPass({
-        id: createdPass?._id || 'pass-' + Date.now(),
+        id: createdPass?._id || createdPass?.id || 'pass-' + Date.now(),
         code,
-        visitorName: createdPass?.visitorDetails?.name || guestDetails.visitorName || 'Visitor',
-        passType: selectedPassType,
-        validFrom: new Date().toISOString(),
-        validUntil: new Date(Date.now() + 86400000).toISOString(),
+        visitorName:
+          createdPass?.visitorDetails?.name ||
+          guestDetails.visitorName ||
+          staffDetails.staffName ||
+          groupDetails.eventTitle ||
+          'Visitor',
+        passType: createdPass?.passType || selectedPassType,
+        validFrom:
+          createdPass?.validity?.startDate || new Date().toISOString(),
+        validUntil:
+          createdPass?.validity?.endDate || new Date(Date.now() + 86400000).toISOString(),
       });
     } catch (err: any) {
       setSubmitError(err?.message || 'Failed to create pass. Please try again.');

@@ -69,7 +69,7 @@ const FEATURE_MODULES: FeatureModule[] = [
 
 export default function SelectFeaturesScreen() {
   const { user, updateOrganizationFeatures, switchWorkspaceContext, loading, error, clearStatus } = useAuth();
-  const params = router.useSegments ? useLocalSearchParams<{ orgId?: string; intent?: string }>() : {} as any;
+  const params = useLocalSearchParams<{ orgId?: string; intent?: string }>();
 
   const userAny = user as any;
 
