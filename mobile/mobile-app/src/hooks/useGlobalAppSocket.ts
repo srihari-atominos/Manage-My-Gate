@@ -4,13 +4,13 @@ import { AppDispatch, RootState } from '../store/store';
 import useAppSocket from './useAppSocket';
 import { updateTokenAndUser, switchWorkspaceContextThunk } from '../features/auth/store/authSlice';
 import { fetchRolesAsync } from '../features/roleBuilder/store/roleSlice';
-import { fetchConnections } from '../features/integrationHub/store/integrationHubSlice';
+import { fetchConnectionsAsync } from '../features/integrationHub/store/integrationHubSlice';
 import { fetchUsersThunk } from '../features/userManagement/store/userSlice';
-import { fetchVisitorPassesThunk, fetchActiveVisitorsThunk } from '../features/visitor/store/adminVisitorThunks';
-import { fetchDuesThunk } from '../features/billing/store/billingSlice';
-import { fetchComplaintsThunk } from '../features/complaints/store/complaintSlice';
-import { fetchNoticesThunk } from '../features/noticeBoard/store/noticeBoardSlice';
-import { fetchNotesThunk } from '../features/directory/store/communityNoteSlice';
+import { getPasses, fetchActiveVisitorsThunk } from '../features/visitor/store/visitorPassSlice';
+import { fetchMyDues, fetchInvoicesGrid } from '../features/billing/store/billingSlice';
+import { fetchComplaints } from '../features/complaints/store/complaintSlice';
+import { fetchNotices } from '../features/noticeBoard/store/noticeBoardSlice';
+import { fetchActiveNotes } from '../features/directory/store/communityNoteSlice';
 import { getUserRoleName } from '../utils/rbac';
 
 /**
@@ -68,33 +68,34 @@ export const useGlobalAppSocket = () => {
 
     // 2. Integration Hub Updates
     const handleIntegrationUpdate = () => {
-      dispatch(fetchConnections()).catch(() => {});
+      dispatch(fetchConnectionsAsync()).catch(() => {});
     };
 
     // 3. Visitor Management Pass & Log Updates
     const handleVisitorUpdate = () => {
-      dispatch(fetchVisitorPassesThunk({})).catch(() => {});
-      dispatch(fetchActiveVisitorsThunk()).catch(() => {});
+      dispatch(getPasses({ orgId: currentUser.orgId || '', params: { page: 1, limit: 20 } })).catch(() => {});
+      dispatch(fetchActiveVisitorsThunk(currentUser.orgId || '')).catch(() => {});
     };
 
     // 4. Billing & Dues Updates
     const handleBillingUpdate = () => {
-      dispatch(fetchDuesThunk()).catch(() => {});
+      dispatch(fetchMyDues()).catch(() => {});
+      dispatch(fetchInvoicesGrid({ page: 1, limit: 20 })).catch(() => {});
     };
 
     // 5. Complaint Updates
     const handleComplaintUpdate = () => {
-      dispatch(fetchComplaintsThunk({})).catch(() => {});
+      dispatch(fetchComplaints({})).catch(() => {});
     };
 
     // 6. Notice Board Updates
     const handleNoticeUpdate = () => {
-      dispatch(fetchNoticesThunk({})).catch(() => {});
+      dispatch(fetchNotices()).catch(() => {});
     };
 
     // 7. Community Pulse Notes Updates
     const handleCommunityNoteUpdate = () => {
-      dispatch(fetchNotesThunk({})).catch(() => {});
+      dispatch(fetchActiveNotes()).catch(() => {});
     };
 
     // 8. Organization & Workspace Lifecycle Updates

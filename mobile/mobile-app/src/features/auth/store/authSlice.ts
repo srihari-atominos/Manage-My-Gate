@@ -12,12 +12,16 @@ export interface User {
   avatar?: string;
   role?: string;
   orgId?: string;
+  activeOrgId?: string;
+  organizationId?: string;
   organizationName?: string;
   activeOrganizationName?: string;
   orgName?: string;
   permissions?: string[];
   isPlatform?: boolean;
   availableWorkspaces?: any[];
+  allowedFeatures?: string[];
+  [key: string]: any;
 }
 
 export const normalizeUser = (user: any): User | null => {
