@@ -374,7 +374,7 @@ export const visitorPassSlice = createSlice({
         }
       }
     },
-    walkInResolvedReceived: (state, action: PayloadAction<{ id: string }>) => {
+    walkInResolvedReceived: (state, action: PayloadAction<{ id: string; rawLog?: any }>) => {
       const targetId = action.payload.id;
 
       // Idempotent removal from pendingList and pendingWalkIns
@@ -385,6 +385,16 @@ export const visitorPassSlice = createSlice({
       state.dashboard.pendingWalkIns = state.dashboard.pendingWalkIns.filter(
         (p) => p._id !== targetId && p.id !== targetId
       );
+
+      // Add to activeVisitors if the action was APPROVE and we have the log
+      const updatedLog = action.payload.rawLog;
+      if (updatedLog && updatedLog.logStatus === 'INSIDE') {
+        const logId = updatedLog._id || updatedLog.id;
+        const exists = state.activeVisitors.some(l => (l._id || l.id) === logId);
+        if (!exists) {
+          state.activeVisitors.unshift(updatedLog);
+        }
+      }
     },
   },
   extraReducers: (builder) => {
@@ -463,6 +473,16 @@ export const visitorPassSlice = createSlice({
         state.dashboard.pendingWalkIns = state.dashboard.pendingWalkIns.filter(
           (p) => p._id !== targetId && p.id !== targetId
         );
+
+        // Add to activeVisitors if approved
+        const updatedLog = action.payload.data;
+        if (updatedLog && updatedLog.logStatus === 'INSIDE') {
+          const logId = updatedLog._id || updatedLog.id;
+          const exists = state.activeVisitors.some(l => (l._id || l.id) === logId);
+          if (!exists) {
+            state.activeVisitors.unshift(updatedLog);
+          }
+        }
       })
       .addCase(resolveWalkInRequest.rejected, (state, action) => {
         state.walkIns.actionStatus = 'failed';

@@ -39,7 +39,7 @@ export const useVisitorSocket = () => {
     const handleGateApprovalResolved = (log: any) => {
       if (!log || !log._id) return;
       console.log(`[Socket] Received GATE_APPROVAL_RESOLVED for log ${log._id}`);
-      dispatch(walkInResolvedReceived({ id: log._id }));
+      dispatch(walkInResolvedReceived({ id: log._id, rawLog: log }));
     };
 
     // 3. Handler for Socket reconnect event -> triggers background REST synchronization

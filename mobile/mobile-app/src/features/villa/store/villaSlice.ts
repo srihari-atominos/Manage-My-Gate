@@ -315,6 +315,10 @@ const villaSlice = createSlice({
       })
       .addCase(getVillas.rejected, (state, action) => {
         state.loading = false;
+        if (state.villas.length === 0) {
+          state.villas = [];
+          state.pagination.totalRecords = 0;
+        }
         state.error = (action.payload as string) || 'Failed to load villas';
       })
 
