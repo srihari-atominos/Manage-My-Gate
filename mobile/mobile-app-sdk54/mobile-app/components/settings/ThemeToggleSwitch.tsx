@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Pressable } from 'react-native';
 import { Moon, Sun, Smartphone } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
 import { cn } from '@/lib/utils';
 import { ThemeMode } from '@/src/features/settings/hooks/useSettings';
 
@@ -38,11 +39,11 @@ export const ThemeToggleSwitch = ({
       <View className="flex-row items-center gap-2.5">
         <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shrink-0">
           {themeMode === 'system' ? (
-            <Smartphone size={18} className="text-primary" />
+            <Icon as={Smartphone} size={18} className="text-primary" />
           ) : themeMode === 'dark' ? (
-            <Moon size={18} className="text-primary" />
+            <Icon as={Moon} size={18} className="text-primary" />
           ) : (
-            <Sun size={18} className="text-amber-500" />
+            <Icon as={Sun} size={18} className="text-amber-500" />
           )}
         </View>
         <View className="flex-1 min-w-0">
@@ -59,7 +60,6 @@ export const ThemeToggleSwitch = ({
       <View className="flex-row bg-muted/40 border border-border p-1 rounded-xl">
         {OPTIONS.map((opt) => {
           const isSelected = themeMode === opt.mode;
-          const IconComp = opt.icon;
           return (
             <Pressable
               key={opt.mode}
@@ -71,7 +71,8 @@ export const ThemeToggleSwitch = ({
                   : 'bg-transparent active:bg-muted/60'
               )}
             >
-              <IconComp
+              <Icon
+                as={opt.icon}
                 size={14}
                 className={isSelected ? 'text-primary' : 'text-muted-foreground'}
               />

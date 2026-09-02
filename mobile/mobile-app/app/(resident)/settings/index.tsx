@@ -3,6 +3,7 @@ import { View, ScrollView, Modal, Pressable, Alert, Image, Platform } from 'reac
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { ThemeToggleSwitch } from '@/components/settings/ThemeToggleSwitch';
 import { LanguageSelector } from '@/components/settings/LanguageSelector';
 import { EditProfileModal } from '@/components/settings/EditProfileModal';
@@ -108,7 +109,7 @@ export default function SettingsScreen() {
             className="p-1 rounded-full active:bg-muted/60 -ms-1 me-2"
             hitSlop={8}
           >
-            <ChevronLeft size={24} className="text-foreground" />
+            <Icon as={ChevronLeft} size={24} className="text-foreground" />
           </Pressable>
           <View className="flex-1">
             <Text className="text-lg font-bold text-foreground">
@@ -133,7 +134,7 @@ export default function SettingsScreen() {
               {user?.avatar ? (
                 <Image source={{ uri: user.avatar }} className="h-full w-full" />
               ) : (
-                <UserIcon size={26} className="text-primary" />
+                <Icon as={UserIcon} size={26} className="text-primary" />
               )}
             </View>
             <View className="flex-1 min-w-0">
@@ -149,7 +150,7 @@ export default function SettingsScreen() {
                 </Text>
               ) : null}
             </View>
-            <ChevronRight size={20} className="text-muted-foreground shrink-0" />
+            <Icon as={ChevronRight} size={20} className="text-muted-foreground shrink-0" />
           </View>
         </Pressable>
 
@@ -176,7 +177,7 @@ export default function SettingsScreen() {
             className="flex-row items-center px-4 py-3.5 active:bg-muted/40"
           >
             <View className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0">
-              <Globe size={18} className="text-primary" />
+              <Icon as={Globe} size={18} className="text-primary" />
             </View>
             <View className="flex-1">
               <Text className="text-sm font-semibold text-foreground">
@@ -184,7 +185,7 @@ export default function SettingsScreen() {
               </Text>
               <Text className="text-xs text-muted-foreground mt-0.5">{currentLanguageLabel}</Text>
             </View>
-            <ChevronRight size={18} className="text-muted-foreground shrink-0" />
+            <Icon as={ChevronRight} size={18} className="text-muted-foreground shrink-0" />
           </Pressable>
         </View>
 
@@ -213,7 +214,7 @@ export default function SettingsScreen() {
             className="flex-row items-center px-4 py-3.5 active:bg-muted/40"
           >
             <View className="h-9 w-9 rounded-xl bg-amber-500/10 border border-amber-500/20 items-center justify-center me-3 shrink-0">
-              <Trash2 size={18} className="text-amber-600" />
+              <Icon as={Trash2} size={18} className="text-amber-600" />
             </View>
             <View className="flex-1">
               <Text className="text-sm font-semibold text-foreground">
@@ -230,7 +231,7 @@ export default function SettingsScreen() {
             className="flex-row items-center px-4 py-3.5 active:bg-destructive/10"
           >
             <View className="h-9 w-9 rounded-xl bg-destructive/10 border border-destructive/20 items-center justify-center me-3 shrink-0">
-              <LogOut size={18} className="text-destructive" />
+              <Icon as={LogOut} size={18} className="text-destructive" />
             </View>
             <View className="flex-1">
               <Text className="text-sm font-semibold text-destructive">
@@ -289,7 +290,7 @@ export default function SettingsScreen() {
                     >
                       {item.label}
                     </Text>
-                    {isSelected && <Check size={18} className="text-primary" />}
+                    {isSelected && <Icon as={Check} size={18} className="text-primary" />}
                   </Pressable>
                 );
               })}

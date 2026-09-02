@@ -3,6 +3,7 @@ import userRepository from './user.repository.js';
 import userEvents from './user.events.js';
 import { hashPassword } from '../../utils/crypto.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
+import logger, { loggerStorage } from '../../utils/logger.utils.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

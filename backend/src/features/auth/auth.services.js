@@ -4,6 +4,7 @@ import rolePermissionService from '../rolePermission/rolePermission.services.js'
 import { comparePassword } from '../../utils/crypto.utils.js';
 import { signToken, verifyToken } from '../../utils/jwt.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
+import logger, { loggerStorage } from '../../utils/logger.utils.js';
 import tokenService from '../token/token.services.js';
 import otpService from '../otp/otp.services.js';
 import sessionService from '../session/session.services.js';
@@ -464,6 +465,11 @@ export class AuthService {
 
     // 3. Resolve context and available workspaces
     const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, targetOrgIdFromInvite);
+    const activeOrgId = tokenPayload.orgId || targetOrgIdFromInvite;
+    if (activeOrgId) {
+      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+      await orgMembershipService.updateStatus(user._id, activeOrgId, 'Active').catch(() => null);
+    }
 
     // 4. Generate JWT token
     const token = signToken(tokenPayload);
@@ -618,7 +624,14 @@ export class AuthService {
         throw new HttpError(404, 'No pending user account found to activate.');
       }
 
-      orgId = orgId || user.orgId || null;
+      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+      if (!orgId) {
+        const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+        const pendingMembership = await OrgMembership.findOne({ userId: user._id, status: 'Pending' }).session(session).catch(() => null);
+        if (pendingMembership) {
+          orgId = pendingMembership.orgId;
+        }
+      }
 
       const { hashPassword } = await import('../../utils/crypto.utils.js');
       const hashedPassword = await hashPassword(password);
@@ -626,11 +639,10 @@ export class AuthService {
       // Perform user activation via user service
       await userService.activateUser(user._id, hashedPassword, session);
 
-      // Update OrgMembership status to Active for this organization
-      if (orgId) {
-        const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-        await orgMembershipService.updateStatus(user._id, orgId, 'Active', session).catch(() => null);
+      // Update OrgMembership status to Active for this organization or user
+      await orgMembershipService.updateStatus(user._id, orgId || null, 'Active', session).catch(() => null);
 
+      if (orgId) {
         const Technician = (await import('../technician/technician.model.js')).default;
         await Technician.findOneAndUpdate({ userId: user._id, orgId }, { status: 'Active' }).session(session).catch(() => null);
       }

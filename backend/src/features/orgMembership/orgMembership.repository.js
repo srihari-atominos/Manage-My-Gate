@@ -231,10 +231,14 @@ export class OrgMembershipRepository {
   }
 
   async updateStatus(userId, orgId, status, session = null) {
-    return await OrgMembership.findOneAndUpdate(
-      { userId, orgId },
+    const query = { userId };
+    if (orgId) {
+      query.orgId = orgId;
+    }
+    return await OrgMembership.updateMany(
+      query,
       { status },
-      { returnDocument: 'after', runValidators: true, session: session || null }
+      session ? { session } : undefined
     );
   }
 
