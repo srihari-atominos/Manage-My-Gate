@@ -409,7 +409,8 @@ export class UserService {
 
       await session.commitTransaction();
       
-      // Dispatch event for real-time frontend syncing
+      // Dispatch events for email delivery and real-time frontend syncing
+      userEvents.emit('USER_INVITED', { email: trimmedEmail, orgId, invitationToken });
       userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'invited' });
 
       return { user, invitationToken };

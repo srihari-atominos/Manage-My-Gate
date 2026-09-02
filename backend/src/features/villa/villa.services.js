@@ -428,19 +428,18 @@ export class VillaService {
 
         if (trimmedEmail) {
           try {
-            if (!['Owner', 'Tenant', 'Family', 'Family Member', 'Resident Owner'].includes(residentType)) {
-              throw new Error(`Invalid resident type '${residentType}' for user invitation.`);
-            }
-            
-            let finalRoleName = roleName;
+            let normalizedResidentType = residentType ? residentType.trim() : 'Resident Tenant';
+            if (normalizedResidentType.toLowerCase().includes('owner')) normalizedResidentType = 'Resident Owner';
+            else if (normalizedResidentType.toLowerCase().includes('tenant') || normalizedResidentType.toLowerCase().includes('resident')) normalizedResidentType = 'Resident Tenant';
+            else if (normalizedResidentType.toLowerCase().includes('family')) normalizedResidentType = 'Family Member';
+            else normalizedResidentType = 'Resident Tenant';
+
+            let finalRoleName = roleName ? roleName.trim() : null;
             if (!finalRoleName) {
-              if (residentType.includes('Owner')) finalRoleName = 'Resident Owner';
-              else if (residentType.includes('Tenant')) finalRoleName = 'Resident Tenant';
-              else if (residentType.includes('Family')) finalRoleName = 'Family Member';
-              else throw new Error('Role name is required to invite user.');
+              finalRoleName = normalizedResidentType;
             }
 
-            await userService.inviteUser(trimmedEmail, orgId, villa._id, residentType, finalRoleName, phone, name);
+            await userService.inviteUser(trimmedEmail, orgId, villa._id, normalizedResidentType, finalRoleName, phone, name);
             userInvited = true;
           } catch (err) {
             inviteError = err.message || 'User invitation failed';
