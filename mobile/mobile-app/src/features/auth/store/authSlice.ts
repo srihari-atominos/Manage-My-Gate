@@ -109,13 +109,28 @@ export const bootstrapAuth = createAsyncThunk(
       // If token exists, sync latest profile & availableWorkspaces from backend to replace stale cached storage
       if (token) {
         try {
-          const response = await authService.switchContext({});
+          const savedOrgId = user?.orgId || user?.activeOrgId || user?.organizationId;
+          const savedVillaId = user?.activeVillaId || user?.villaId || user?.unitNumber;
+          const savedRole = user?.role || user?.activeRole;
+
+          const switchPayload: any = {};
+          if (savedOrgId && typeof savedOrgId === 'string' && /^[0-9a-fA-F]{24}$/.test(savedOrgId.trim())) {
+            switchPayload.targetOrgId = savedOrgId.trim();
+          }
+          if (savedVillaId && typeof savedVillaId === 'string' && /^[0-9a-fA-F]{24}$/.test(savedVillaId.trim())) {
+            switchPayload.targetVillaId = savedVillaId.trim();
+          }
+          if (savedRole && typeof savedRole === 'string' && savedRole.trim()) {
+            switchPayload.targetRole = savedRole.trim();
+          }
+
+          const response = await authService.switchContext(switchPayload);
           const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
           const innerData = body?.data || body;
           const freshToken = innerData?.token || token;
           const freshRefreshToken = innerData?.refreshToken || refreshToken;
           const rawUser = innerData?.user;
-          const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
+          const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || user?.availableWorkspaces || [];
           const freshUser = rawUser ? { ...rawUser, availableWorkspaces } : user;
 
           if (freshToken) await storage.setItem('token', freshToken);

@@ -21,6 +21,7 @@ import {
 import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import storage from '../src/utils/storage';
 import * as SplashScreen from 'expo-splash-screen';
+import useGlobalAppSocket from '../src/hooks/useGlobalAppSocket';
 
 // Prevent splash screen from auto-hiding before asset loading is complete
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -37,6 +38,9 @@ function AuthRouteGuard() {
   const router = useRouter();
   const searchParams = useGlobalSearchParams<{ intent?: string; token?: string }>();
   const rootNavigationState = useRootNavigationState();
+
+  // Initialize global real-time Socket.io engine
+  useGlobalAppSocket();
 
   const isCreateOrgIntent = searchParams.intent === 'create-org' || searchParams.intent === 'create';
 

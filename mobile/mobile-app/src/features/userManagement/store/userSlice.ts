@@ -83,6 +83,8 @@ export const fetchUsersAsync = createAsyncThunk(
   }
 );
 
+export const fetchUsersThunk = fetchUsersAsync;
+
 export const inviteUserAsync = createAsyncThunk(
   'userManagement/inviteUser',
   async (inviteData: InviteUserData, { rejectWithValue }) => {

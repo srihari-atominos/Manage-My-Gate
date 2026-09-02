@@ -64,7 +64,15 @@ export const checkIsAdmin = (user: UserLike | null | undefined): boolean => {
 export const checkIsSecurityRole = (user: UserLike | null | undefined): boolean => {
   if (!user) return false;
   const roleName = getUserRoleName(user).toLowerCase();
-  const securityRoleKeywords = ['security guard', 'security', 'guard', 'security supervisor'];
+  const securityRoleKeywords = [
+    'security guard',
+    'security',
+    'guard',
+    'security supervisor',
+    'gate guard',
+    'security officer',
+    'gatekeeper',
+  ];
   if (securityRoleKeywords.some((keyword) => roleName.includes(keyword))) {
     return true;
   }
@@ -72,8 +80,10 @@ export const checkIsSecurityRole = (user: UserLike | null | undefined): boolean 
   const permissions = user.permissions || [];
   return (
     permissions.includes('visitor:guard') ||
+    permissions.includes('visitor:admin') ||
     permissions.includes('amenities:scanner') ||
-    permissions.includes('amenities:security_logs')
+    permissions.includes('amenities:security_logs') ||
+    permissions.includes('visitor_gate_console')
   );
 };
 
@@ -227,18 +237,17 @@ export const isFeatureAllowedForUser = (
     return true;
   }
 
-  const permissions = Array.isArray(user.permissions) ? user.permissions : [];
-
-  // 2. Strict evaluation of permissions assigned in Role Builder (when permissions array is populated)
-  if (permissions.length > 0) {
-    return matchesUserPermissions(item.permission, item.id, permissions);
-  }
-
-  // 3. Fallback ONLY when user.permissions is completely unpopulated/empty:
+  // 2. Security role check - ensure security personas always get gate and scanner features
   if (checkIsSecurityRole(user)) {
     if (FALLBACK_SECURITY_FEATURE_IDS.has(item.id)) return true;
     if (item.permission && FALLBACK_SECURITY_PERMISSIONS.has(item.permission)) return true;
-    return false;
+  }
+
+  const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+
+  // 3. Strict evaluation of permissions assigned in Role Builder (when permissions array is populated)
+  if (permissions.length > 0) {
+    return matchesUserPermissions(item.permission, item.id, permissions);
   }
 
   const roleName = getUserRoleName(user).toLowerCase();
