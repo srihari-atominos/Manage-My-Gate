@@ -18,8 +18,10 @@ export class VisitorPassTokenRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object|null>} The token mapping document, or null if not found.
    */
-  async findByCode(passCode, session = null) {
-    return await VisitorPassToken.findOne({ passCode }).session(session || null);
+  async findByCode(code, session = null) {
+    return await VisitorPassToken.findOne({
+      $or: [{ passCode: code }, { shortKey: code }],
+    }).session(session || null);
   }
 
   /**
