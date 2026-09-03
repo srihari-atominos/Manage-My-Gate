@@ -1,5 +1,5 @@
 // Pure JS PNG encoder for QR codes in React Native (Zero canvas/DOM/zlib dependencies)
-const QRCode = require('qrcode/lib/core/qrcode');
+const QRCode = require('qrcode');
 
 function crc32(buf: Uint8Array): number {
   let table: number[] = [];
