@@ -136,6 +136,19 @@ const assessmentSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    lastRunAt: {
+      type: Date,
+      default: null,
+    },
+    lastBilledPeriod: {
+      type: String,
+      default: null,
+    },
+    lastRunStats: {
+      created: { type: Number, default: 0 },
+      duplicatesSkipped: { type: Number, default: 0 },
+      totalTargeted: { type: Number, default: 0 },
+    },
   },
   {
     timestamps: true,

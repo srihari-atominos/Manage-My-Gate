@@ -278,10 +278,34 @@ export class InvoiceService {
 
     logger.info(`Batch invoice generation completed. Created: ${created}, Skipped: ${duplicatesSkipped}`);
 
+    // Persist last run metadata on the Assessment model if available
+    const assessmentId = assessment._id || assessment.id;
+    if (assessmentId) {
+      try {
+        const Assessment = (await import('../assessment/assessment.model.js')).default;
+        await Assessment.findByIdAndUpdate(assessmentId, {
+          $set: {
+            lastRunAt: new Date(),
+            lastBilledPeriod: defaultPeriodString,
+            lastRunStats: {
+              created,
+              duplicatesSkipped,
+              totalTargeted: invoicesToCreate.length,
+            },
+          },
+        });
+      } catch (err) {
+        logger.warn(`Failed to update lastRun metadata for assessment ${assessmentId}: ${err.message}`);
+      }
+    }
+
     return {
       totalTargeted: invoicesToCreate.length,
       created,
       duplicatesSkipped,
+      billingPeriodString: defaultPeriodString,
+      lastRunAt: new Date(),
+      lastBilledPeriod: defaultPeriodString,
     };
   }
 
