@@ -10,6 +10,7 @@ import {
   bookmarkNotice as apiBookmarkNotice,
   getNoticeStats as apiGetNoticeStats,
 } from '../services/noticeBoardService';
+import storage from '../../../utils/storage';
 
 // Async Thunks
 export const fetchNotices = createAsyncThunk(
@@ -44,7 +45,6 @@ export const fetchNotices = createAsyncThunk(
 
       const response = await getNotices(params);
       try {
-        const { default: storage } = await import('../../../utils/storage');
         const notices = response.data?.data?.data || response.data?.data || [];
         if (notices && notices.length > 0) {
           await storage.setItem('cached_notices', JSON.stringify(notices));
@@ -166,7 +166,6 @@ export const loadCachedNotices = createAsyncThunk(
   'noticeBoard/loadCachedNotices',
   async (_, { rejectWithValue }) => {
     try {
-      const { default: storage } = await import('../../../utils/storage');
       const cached = await storage.getItem('cached_notices');
       if (cached) {
         return JSON.parse(cached);

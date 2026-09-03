@@ -20,6 +20,7 @@ import {
 } from '@expo-google-fonts/hanken-grotesk';
 import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import storage from '../src/utils/storage';
+import i18n from '../src/utils/i18n';
 import * as SplashScreen from 'expo-splash-screen';
 import useGlobalAppSocket from '../src/hooks/useGlobalAppSocket';
 
@@ -57,7 +58,6 @@ function AuthRouteGuard() {
         console.warn('Failed to restore theme on startup:', e);
       }
       try {
-        const { i18n } = await import('../src/utils/i18n');
         await i18n.initLanguage();
       } catch (e) {
         console.warn('Failed to restore language preference on startup:', e);
