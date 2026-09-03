@@ -17,14 +17,19 @@ export function InvoiceCard({ invoice, onPress, className = '' }: InvoiceCardPro
   const residentStr = invoice.targetUser || 'Resident';
   const subtitle = `${unitStr} • ${residentStr}`;
 
-  const amount =
+  const totalAmount =
+    (invoice as any).totalAmount ??
     invoice.totalDue ??
     invoice.amount ??
-    (invoice as any).totalAmount ??
-    (invoice as any).outstandingAmount ??
-    (invoice as any).currentCharge ??
     0;
-  const formattedAmount = `₹${amount.toLocaleString('en-IN')}`;
+  const outstandingAmount =
+    (invoice as any).outstandingAmount ??
+    invoice.totalDue ??
+    invoice.amount ??
+    0;
+  const isPartial = invoice.status === 'PARTIALLY_PAID';
+  const displayAmount = isPartial ? outstandingAmount : (invoice.totalDue ?? invoice.amount ?? totalAmount);
+  const formattedAmount = `₹${displayAmount.toLocaleString('en-IN')}`;
 
   const status = invoice.status || 'UNPAID';
   const statusVariant = getStatusVariant(status);
@@ -64,9 +69,16 @@ export function InvoiceCard({ invoice, onPress, className = '' }: InvoiceCardPro
       onPress={onPress}
       className={className}
       rightContent={
-        <Text className="text-foreground font-bold text-base ms-2">
-          {formattedAmount}
-        </Text>
+        <View className="items-end ms-2">
+          <Text className="text-foreground font-bold text-base">
+            {formattedAmount}
+          </Text>
+          {isPartial && totalAmount > outstandingAmount ? (
+            <Text className="text-muted-foreground text-[10px]">
+              Due of ₹{totalAmount.toLocaleString('en-IN')}
+            </Text>
+          ) : null}
+        </View>
       }
     />
   );

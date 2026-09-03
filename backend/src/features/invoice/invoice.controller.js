@@ -70,6 +70,21 @@ export class InvoiceController {
   }
 
   /**
+   * Reject a pending invoice offline payment.
+   */
+  async rejectPayment(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body || {};
+      const adminUserId = req.user?.id || req.user?._id;
+      const data = await invoiceService.rejectOfflinePayment(id, reason, adminUserId);
+      res.success(data, 'Offline payment submission rejected successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Fetch aggregated community billing dashboard metrics.
    */
   async getDashboardKPIs(req, res, next) {

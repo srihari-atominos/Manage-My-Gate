@@ -49,3 +49,19 @@ export const approveInvoiceSchema = [
     .withMessage('Invoice ID must be a valid string')
     .trim(),
 ];
+
+export const rejectInvoiceSchema = [
+  param('id')
+    .notEmpty()
+    .withMessage('Invoice ID or Number path parameter is required')
+    .isString()
+    .withMessage('Invoice ID must be a valid string')
+    .trim(),
+
+  body('reason')
+    .optional()
+    .isString()
+    .withMessage('Rejection reason must be a string')
+    .trim(),
+];
+

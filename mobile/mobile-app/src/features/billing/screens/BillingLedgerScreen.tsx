@@ -35,6 +35,7 @@ export function BillingLedgerScreen() {
     error,
     changeTablePage,
     approveOffline,
+    rejectOffline,
     resetBillingError,
   } = useBilling();
 
@@ -163,6 +164,7 @@ export function BillingLedgerScreen() {
           onClose={() => setSelectedInvoice(null)}
           invoice={selectedInvoice}
           onApproveOffline={approveOffline}
+          onRejectOffline={rejectOffline}
           onSettleOfflineModal={(inv) => setSettleInvoice(inv)}
         />
 

@@ -520,14 +520,14 @@ export class InvoiceService {
   /**
    * Approve/verify offline payment (Admin only).
    */
-  async approveOfflinePayment(invoiceId) {
+  async approveOfflinePayment(invoiceId, adminUserId = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    logger.info('approveOfflinePayment called', { invoiceId, correlationId });
+    logger.info('approveOfflinePayment called', { invoiceId, adminUserId, correlationId });
 
     const Invoice = (await import('./invoice.model.js')).default;
     const invoice = await Invoice.findById(invoiceId);
     if (!invoice) {
-      throw new Error('Invoice not found');
+      throw new HttpError(404, 'Invoice not found');
     }
 
     const amountToApply = invoice.offlineAmount || invoice.outstandingAmount || invoice.totalAmount;
@@ -574,6 +574,81 @@ export class InvoiceService {
     const result = populated || (updated.toObject ? updated.toObject() : updated);
 
     invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, result);
+
+    return result;
+  }
+
+  /**
+   * Reject a pending offline payment submission (Admin only).
+   */
+  async rejectOfflinePayment(invoiceId, reason = '', adminUserId = null) {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info('rejectOfflinePayment called', { invoiceId, reason, adminUserId, correlationId });
+
+    const Invoice = (await import('./invoice.model.js')).default;
+    const invoice = await Invoice.findById(invoiceId);
+    if (!invoice) {
+      throw new HttpError(404, 'Invoice not found');
+    }
+
+    if (invoice.status !== 'VERIFICATION_PENDING') {
+      throw new HttpError(400, `Cannot reject offline payment for invoice in '${invoice.status}' status`);
+    }
+
+    const prevRef = invoice.offlineReference || 'N/A';
+    const prevAmount = invoice.offlineAmount || 0;
+    const now = new Date();
+
+    // Determine restored status based on existing paidAmount and dueDate
+    let restoredStatus = 'UNPAID';
+    if ((invoice.paidAmount || 0) > 0 && (invoice.outstandingAmount || 0) > 0) {
+      restoredStatus = (invoice.dueDate && invoice.dueDate < now) ? 'OVERDUE' : 'PARTIALLY_PAID';
+    } else {
+      restoredStatus = (invoice.dueDate && invoice.dueDate < now) ? 'OVERDUE' : 'UNPAID';
+    }
+
+    invoice.status = restoredStatus;
+    invoice.offlineAmount = null;
+    invoice.offlineReference = null;
+
+    if (!invoice.auditHistory) invoice.auditHistory = [];
+    invoice.auditHistory.push({
+      action: 'OFFLINE_PAYMENT_REJECTED',
+      details: `Offline payment submission (Ref: ${prevRef}, Amount: ₹${prevAmount}) was rejected by admin. Reason: ${reason || 'Payment could not be verified'}`,
+      date: now,
+      performedBy: adminUserId || null,
+      userRole: 'ADMIN',
+      reason: reason || null,
+    });
+
+    await invoice.save();
+
+    const populated = await Invoice.findById(invoice._id)
+      .populate('targetUserId', 'name username email')
+      .populate('unitId', 'unitNumber')
+      .lean();
+
+    const result = populated || (invoice.toObject ? invoice.toObject() : invoice);
+
+    invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, result);
+
+    // Send in-app notification to resident
+    try {
+      const notificationService = (await import('../notification/notification.service.js')).default;
+      const targetUserId = invoice.targetUserId?._id || invoice.targetUserId;
+      if (targetUserId) {
+        await notificationService.createNotification({
+          recipientId: targetUserId,
+          senderId: adminUserId || null,
+          title: 'Offline Payment Rejected',
+          body: `Your offline payment submission for invoice #${invoice.invoiceNumber || invoice._id} was rejected${reason ? `: ${reason}` : '.'}`,
+          actionUrl: '/billing',
+          type: 'WARNING',
+        });
+      }
+    } catch (err) {
+      logger.error('Failed to create user notification for rejected offline payment:', err);
+    }
 
     return result;
   }

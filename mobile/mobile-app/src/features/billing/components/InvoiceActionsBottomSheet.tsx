@@ -164,13 +164,28 @@ export function InvoiceActionsBottomSheet({
                 variant="default"
                 size="lg"
                 className="w-full bg-status-success active:bg-status-success/90"
-                disabled={isApproving}
+                disabled={isApproving || isRejecting}
                 loading={isApproving}
                 onPress={() => setShowConfirmModal(true)}
                 accessibilityRole="button"
                 accessibilityLabel="Approve and Clear Offline Payment"
               >
                 <Text className="font-bold text-base text-primary-foreground">Approve & Clear Payment</Text>
+              </Button>
+            ) : null}
+
+            {isPendingCheque && onRejectOffline ? (
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full border-destructive/50 text-destructive active:bg-destructive/10"
+                disabled={isApproving || isRejecting}
+                loading={isRejecting}
+                onPress={() => setShowRejectModal(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Reject Offline Payment Submission"
+              >
+                <Text className="font-bold text-base text-destructive">Reject Submission</Text>
               </Button>
             ) : null}
 
@@ -215,6 +230,19 @@ export function InvoiceActionsBottomSheet({
         loading={isApproving}
         onConfirm={handleConfirmApprove}
         onCancel={() => setShowConfirmModal(false)}
+      />
+
+      {/* Confirmation Modal for Cheque Rejection */}
+      <ConfirmationModal
+        visible={showRejectModal}
+        title="Reject Payment Submission?"
+        message={`Are you sure you want to reject the offline payment submission ref #${refStr} for Invoice #${invNo}? The invoice will revert to its previous unpaid balance status.`}
+        confirmLabel="Reject Submission"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={isRejecting}
+        onConfirm={handleConfirmReject}
+        onCancel={() => setShowRejectModal(false)}
       />
     </>
   );

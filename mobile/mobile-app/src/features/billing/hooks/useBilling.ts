@@ -8,6 +8,7 @@ import {
   executeManualTrigger,
   submitOfflineSettlement,
   clearOfflineSettlement,
+  rejectOfflineSettlement,
   payWithWallet,
   createRazorpayOrder,
   verifyRazorpaySignature,
@@ -108,6 +109,13 @@ export const useBilling = () => {
     [dispatch]
   );
 
+  const rejectOffline = useCallback(
+    (invoiceId: string, reason?: string) => {
+      return dispatch(rejectOfflineSettlement({ invoiceId, reason })).unwrap();
+    },
+    [dispatch]
+  );
+
   const payInvoiceWallet = useCallback(
     (invoiceId: string, amount: number) => {
       return dispatch(payWithWallet({ invoiceId, amount })).unwrap();
@@ -155,6 +163,7 @@ export const useBilling = () => {
     triggerManualRun,
     settleOffline,
     approveOffline,
+    rejectOffline,
     payInvoiceWallet,
     payWithWallet: payInvoiceWallet,
     payInvoiceRazorpay,

@@ -301,7 +301,7 @@ export class InvoiceRepository {
     const take = parseInt(limit, 10);
     const communityObjId = new mongoose.Types.ObjectId(orgId);
 
-    const matchConditions = {};
+    const matchConditions = { isDeleted: false };
     if (status && status !== 'ALL') {
       matchConditions.status = status;
     }
@@ -311,9 +311,16 @@ export class InvoiceRepository {
       const q = search.trim();
       searchMatch.$or = [
         { invoiceNumber: { $regex: q, $options: 'i' } },
+        { offlineReference: { $regex: q, $options: 'i' } },
+        { billingPeriodString: { $regex: q, $options: 'i' } },
+        { 'snapshot.assessmentName': { $regex: q, $options: 'i' } },
+        { 'assessment.name': { $regex: q, $options: 'i' } },
         { 'unitInfo.unitNumber': { $regex: q, $options: 'i' } },
+        { 'unitInfo.blockOrBuilding': { $regex: q, $options: 'i' } },
         { 'userInfo.name': { $regex: q, $options: 'i' } },
-        { 'userInfo.username': { $regex: q, $options: 'i' } }
+        { 'userInfo.username': { $regex: q, $options: 'i' } },
+        { 'userInfo.email': { $regex: q, $options: 'i' } },
+        { 'userInfo.phone': { $regex: q, $options: 'i' } },
       ];
     }
 
@@ -323,7 +330,7 @@ export class InvoiceRepository {
           $or: [
             { communityId: communityObjId, ...matchConditions },
             { orgId: communityObjId, ...matchConditions },
-            { communityId: { $exists: false } }
+            { communityId: { $exists: false }, ...matchConditions }
           ]
         }
       },
@@ -379,13 +386,15 @@ export class InvoiceRepository {
                 billingPeriodString: 1,
                 dueDate: 1,
                 createdAt: 1,
-                assessmentName: { $ifNull: ['$snapshot.assessmentName', 'Maintenance Assessment'] },
+                assessmentName: { $ifNull: ['$snapshot.assessmentName', { $ifNull: ['$assessment.name', 'Maintenance Assessment'] }] },
                 date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
                 unitNumber: '$unitInfo.unitNumber',
                 targetUser: { $ifNull: ['$userInfo.name', '$userInfo.username'] },
                 amount: { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', { $ifNull: ['$outstandingAmount', { $ifNull: ['$currentCharge', 0] }] }] }] },
                 totalDue: { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', { $ifNull: ['$outstandingAmount', { $ifNull: ['$currentCharge', 0] }] }] }] },
+                totalAmount: { $ifNull: ['$totalAmount', { $ifNull: ['$totalDue', 0] }] },
                 outstandingAmount: { $ifNull: ['$outstandingAmount', { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', 0] }] }] },
+                paidAmount: { $ifNull: ['$paidAmount', 0] },
                 currency: { $literal: 'INR' },
                 status: 1,
                 paymentMethod: { $ifNull: ['$paymentMethod', '—'] },

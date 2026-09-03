@@ -93,6 +93,17 @@ export const billingService = {
   },
 
   /**
+   * Reject offline payment submission (Admin only).
+   * @param invoiceId
+   * @param reason
+   */
+  async rejectInvoiceOffline(invoiceId: string, reason?: string): Promise<any> {
+    const response: any = await apiClient.patch(`/invoices/${invoiceId}/reject`, { reason });
+    const body = response?.success !== undefined ? response : response?.data;
+    return body?.data || body;
+  },
+
+  /**
    * Settle invoice payment using resident digital wallet balance.
    * @param invoiceId
    * @param amount

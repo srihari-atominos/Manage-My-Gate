@@ -12,9 +12,14 @@ const performInvoiceSync = (state: BillingState, updatedInvoice: any) => {
       (inv: any) => inv._id === updatedInvoice._id || inv.invoiceNumber === updatedInvoice.invoiceNumber
     );
     if (gridIndex !== -1) {
+      const existing = state.invoicesList[gridIndex];
       state.invoicesList[gridIndex] = {
-        ...state.invoicesList[gridIndex],
+        ...existing,
         ...updatedInvoice,
+        unitNumber: updatedInvoice.unitNumber || updatedInvoice.unitId?.unitNumber || existing.unitNumber,
+        targetUser: updatedInvoice.targetUser || updatedInvoice.targetUserId?.name || updatedInvoice.targetUserId?.username || existing.targetUser,
+        assessmentName: updatedInvoice.assessmentName || updatedInvoice.snapshot?.assessmentName || existing.assessmentName,
+        date: updatedInvoice.date || existing.date,
       };
     }
   }
@@ -190,6 +195,18 @@ export const clearOfflineSettlement = createAsyncThunk(
   }
 );
 
+export const rejectOfflineSettlement = createAsyncThunk(
+  'billing/rejectOfflineSettlement',
+  async ({ invoiceId, reason }: { invoiceId: string; reason?: string }, { rejectWithValue }) => {
+    try {
+      const data = await billingService.rejectInvoiceOffline(invoiceId, reason);
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to reject offline payment');
+    }
+  }
+);
+
 export const payWithWallet = createAsyncThunk(
   'billing/payWithWallet',
   async ({ invoiceId, amount }: { invoiceId: string; amount: number }, { rejectWithValue }) => {
@@ -346,6 +363,20 @@ export const billingSlice = createSlice({
         performInvoiceSync(state, action.payload);
       })
       .addCase(clearOfflineSettlement.rejected, (state, action) => {
+        state.loadingStates.settleInvoice = false;
+        state.error = action.payload as string;
+      })
+
+      // rejectOfflineSettlement
+      .addCase(rejectOfflineSettlement.pending, (state) => {
+        state.loadingStates.settleInvoice = true;
+        state.error = null;
+      })
+      .addCase(rejectOfflineSettlement.fulfilled, (state, action) => {
+        state.loadingStates.settleInvoice = false;
+        performInvoiceSync(state, action.payload);
+      })
+      .addCase(rejectOfflineSettlement.rejected, (state, action) => {
         state.loadingStates.settleInvoice = false;
         state.error = action.payload as string;
       })

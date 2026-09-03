@@ -259,8 +259,11 @@ invoiceSchema.index(
 // Multi-tenant query partitioning indexes
 invoiceSchema.index({ communityId: 1, status: 1 });
 invoiceSchema.index({ communityId: 1, targetUserId: 1 });
-// Dashboard Queries and Carry Forward Lookup Indexes
+// Dashboard Queries, Sorting, and Carry Forward Lookup Indexes
 invoiceSchema.index({ orgId: 1, status: 1 });
+invoiceSchema.index({ orgId: 1, status: 1, createdAt: -1 });
+invoiceSchema.index({ communityId: 1, status: 1, createdAt: -1 });
+invoiceSchema.index({ offlineReference: 1 });
 invoiceSchema.index({ targetUserId: 1, status: 1, isDeleted: 1, carryForwardEnabled: 1 });
 invoiceSchema.index({ dueDate: 1, status: 1 });
 
