@@ -18,6 +18,10 @@ const swaggerOptions = {
     },
     servers: [
       {
+        url: '/api',
+        description: 'Production Relative API Path',
+      },
+      {
         url: `http://${config.host}:${config.port}/api`,
         description: 'Development Server',
       },

@@ -46,6 +46,7 @@ const EnquiryPendingView = React.lazy(() => import('./features/workspace/views/E
 const PrivacyPolicyPage = React.lazy(() => import('./views/pages/privacyPolicy/PrivacyPolicyPage'))
 const TermsPage = React.lazy(() => import('./views/pages/terms/TermsPage'))
 const DeleteAccountPage = React.lazy(() => import('./views/pages/deleteAccount/DeleteAccountPage'))
+const ContactSupportPage = React.lazy(() => import('./views/pages/contact/ContactSupportPage'))
 
 /**
  * Main Application Component
@@ -102,6 +103,24 @@ const App = () => {
               element={<PrivacyPolicyPage />}
             />
             <Route exact path="/terms" name="Terms & Conditions" element={<TermsPage />} />
+            <Route
+              exact
+              path="/terms-and-conditions"
+              name="Terms & Conditions"
+              element={<TermsPage />}
+            />
+            <Route
+              exact
+              path="/contact"
+              name="Contact & Support"
+              element={<ContactSupportPage />}
+            />
+            <Route
+              exact
+              path="/support"
+              name="Contact & Support"
+              element={<ContactSupportPage />}
+            />
             <Route
               exact
               path="/delete-account"

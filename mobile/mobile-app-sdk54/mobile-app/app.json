@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ManageMyGate",
+    "name": "Nahom",
     "slug": "mobile-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,7 +12,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.naveenpvn.managemygate",
+      "bundleIdentifier": "com.atominosconsulting.nahom",
       "buildNumber": "1.0.0",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -25,7 +25,7 @@
       }
     },
     "android": {
-      "package": "com.naveenpvn.managemygate",
+      "package": "com.atominosconsulting.nahom",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"

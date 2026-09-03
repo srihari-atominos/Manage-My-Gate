@@ -17,6 +17,15 @@ const publicLeadLimiter = rateLimit({
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 
+router.get('/health', (req, res) => {
+  res.success({
+    status: 'UP',
+    service: 'ManageMyGate Backend API',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  }, 'API is healthy');
+});
+
 router.post('/register-lead', publicLeadLimiter, validate(validatePublicLead), crmInquiryController.registerPublicLead);
 
 router.get('/checkout/:id', async (req, res, next) => {

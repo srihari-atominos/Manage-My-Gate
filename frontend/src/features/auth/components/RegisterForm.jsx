@@ -563,6 +563,32 @@ export const RegisterForm = () => {
               </div>
             )}
 
+            {!isLoginMode && (
+              <div className="mb-3 text-center">
+                <span className="small text-secondary">
+                  By creating an account, you agree to our{' '}
+                  <a
+                    href="/terms"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary text-decoration-underline fw-semibold"
+                  >
+                    Terms &amp; Conditions
+                  </a>{' '}
+                  and{' '}
+                  <a
+                    href="/privacy-policy"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary text-decoration-underline fw-semibold"
+                  >
+                    Privacy Policy
+                  </a>
+                  .
+                </span>
+              </div>
+            )}
+
             <CRow>
               <CCol xs={12} className="d-grid mb-3">
                 <CButton

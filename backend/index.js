@@ -77,6 +77,20 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api', apiRouter);
 app.use('/api/v1', apiRouter);
 
+// Health check routes
+app.get(['/health', '/api/health'], (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Backend API is healthy',
+    data: {
+      status: 'UP',
+      service: 'ManageMyGate API',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    }
+  });
+});
+
 // Privacy policy public route
 app.get('/privacy-policy', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy-policy.html'));

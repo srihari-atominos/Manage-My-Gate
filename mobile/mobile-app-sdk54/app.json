@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mobile-app",
+    "name": "Nahom",
     "slug": "mobile-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,10 +12,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.managemygate.app"
+      "bundleIdentifier": "com.atominosconsulting.nahom"
     },
     "android": {
-      "package": "com.managemygate.app",
+      "package": "com.atominosconsulting.nahom",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"

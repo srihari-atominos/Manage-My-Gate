@@ -105,12 +105,17 @@ export default function RegisterScreen() {
 
     const handleOpenPrivacyPolicy = async () => {
       try {
-        const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5002/api/v1';
-        const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
-        const privacyUrl = `${baseUrl}/privacy-policy`;
-        await WebBrowser.openBrowserAsync(privacyUrl);
+        await WebBrowser.openBrowserAsync('https://managemygate.e3esg.com/privacy-policy');
       } catch (e) {
         console.warn('Could not open privacy policy in browser:', e);
+      }
+    };
+
+    const handleOpenTerms = async () => {
+      try {
+        await WebBrowser.openBrowserAsync('https://managemygate.e3esg.com/terms');
+      } catch (e) {
+        console.warn('Could not open terms in browser:', e);
       }
     };
 
@@ -275,10 +280,18 @@ export default function RegisterScreen() {
                   </View>
                 ) : null}
 
-                {/* Privacy Policy Consent Notice */}
+                {/* Legal Consent Notice */}
                 <View className="flex-row flex-wrap items-center justify-center px-1 pt-1">
                   <Text className="text-xs text-muted-foreground text-center">
                     By registering, you agree to our{' '}
+                  </Text>
+                  <Pressable onPress={handleOpenTerms} hitSlop={6}>
+                    <Text className="text-xs text-primary font-bold underline">
+                      Terms &amp; Conditions
+                    </Text>
+                  </Pressable>
+                  <Text className="text-xs text-muted-foreground text-center">
+                    {' '}and{' '}
                   </Text>
                   <Pressable onPress={handleOpenPrivacyPolicy} hitSlop={6}>
                     <Text className="text-xs text-primary font-bold underline">

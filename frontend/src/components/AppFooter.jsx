@@ -15,8 +15,11 @@ const AppFooter = () => {
         <Link to="/privacy-policy" className="text-decoration-none text-body-secondary">
           Privacy Policy
         </Link>
-        <Link to="/terms" className="text-decoration-none text-body-secondary">
+        <Link to="/terms-and-conditions" className="text-decoration-none text-body-secondary">
           Terms &amp; Conditions
+        </Link>
+        <Link to="/support" className="text-decoration-none text-body-secondary">
+          Contact &amp; Support
         </Link>
         <Link to="/delete-account" className="text-decoration-none text-body-secondary">
           Account Deletion
