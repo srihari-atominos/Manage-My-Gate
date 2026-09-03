@@ -12,8 +12,8 @@ export const config = {
   googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
   microsoftClientId: import.meta.env.VITE_MICROSOFT_CLIENT_ID || '',
   microsoftTenantId: import.meta.env.VITE_MICROSOFT_TENANT_ID || 'common',
-  razorpayKey: import.meta.env.VITE_RAZORPAY_KEY || 'rzp_test_mockkey',
-  razorpayKeyId: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_YOUR_KEY',
+  razorpayKey: import.meta.env.VITE_RAZORPAY_KEY || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_mockkey',
+  razorpayKeyId: import.meta.env.VITE_RAZORPAY_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY || 'rzp_test_mockkey',
   publicUrl:
     import.meta.env.VITE_PUBLIC_URL ||
     (typeof window !== 'undefined' ? window.location.origin : ''),

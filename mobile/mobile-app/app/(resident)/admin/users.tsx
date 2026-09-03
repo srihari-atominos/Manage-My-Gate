@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/feedback/EmptyState';
 import { SkeletonLoader } from '@/components/feedback/SkeletonLoader';
 import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/common/Button';
+import { useTranslation } from '@/src/utils/i18n';
 import {
   useUserList,
   UserCard,
@@ -24,6 +25,7 @@ import {
 
 export default function UserManagementScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Controller Hook
   const {
@@ -147,9 +149,9 @@ export default function UserManagementScreen() {
             accessibilityRole="button"
             accessibilityLabel="Previous page"
           >
-            <ChevronLeft size={16} color={currentPage <= 1 || isLoading ? '#9ca3af' : '#2563eb'} className="me-1" />
-            <Text className={`text-xs font-bold ${currentPage <= 1 || isLoading ? 'text-muted-foreground' : 'text-blue-600 dark:text-blue-400'}`}>
-              Prev
+            <ChevronLeft size={16} color={currentPage <= 1 || isLoading ? '#9ca3af' : '#6366f1'} className="me-1" />
+            <Text className={`text-xs font-bold ${currentPage <= 1 || isLoading ? 'text-muted-foreground' : 'text-primary'}`}>
+              {t('prev_page', 'Prev')}
             </Text>
           </TouchableOpacity>
 
@@ -167,7 +169,7 @@ export default function UserManagementScreen() {
             accessibilityLabel="Current page"
           >
             <Text className="text-xs font-bold text-foreground">
-              Page {currentPage} of {totalPages}
+              {t('page_label', 'Page')} {currentPage} {t('of_users', 'of')} {totalPages}
             </Text>
           </TouchableOpacity>
 
@@ -187,8 +189,8 @@ export default function UserManagementScreen() {
             accessibilityRole="button"
             accessibilityLabel="Next page"
           >
-            <Text className={`text-xs font-bold me-1 ${currentPage >= totalPages || isLoading ? 'text-muted-foreground' : 'text-blue-600 dark:text-blue-400'}`}>
-              Next
+            <Text className={`text-xs font-bold me-1 ${currentPage >= totalPages || isLoading ? 'text-muted-foreground' : 'text-primary'}`}>
+              {t('next_page', 'Next')}
             </Text>
             <ChevronRight size={16} color={currentPage >= totalPages || isLoading ? '#9ca3af' : '#2563eb'} />
           </TouchableOpacity>
@@ -199,8 +201,8 @@ export default function UserManagementScreen() {
 
   return (
     <ScreenShell
-      title="User Management"
-      subtitle="Manage organization users & role access"
+      title={t('feature_admin_users_name', 'User Management')}
+      subtitle={t('feature_admin_users_sub', 'Manage organization users & role access')}
       iconName="Users"
       domainName="Administration & Security"
       sharedSlice="userSlice.ts"
@@ -228,7 +230,7 @@ export default function UserManagementScreen() {
         <SearchFilterBar
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
-          searchPlaceholder="Search by name, email, or unit..."
+          searchPlaceholder={t('search_users_placeholder', 'Search by name, email, or unit...')}
           onFilterPress={() => setShowFilterSheet(true)}
           activeFilterCount={activeFilterCount}
         />
@@ -241,16 +243,16 @@ export default function UserManagementScreen() {
                 onPress={() => setShowTemplateModal(true)}
                 className="px-2.5 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/30 flex-row items-center shadow-xs active:opacity-70"
               >
-                <Mail size={14} color="#2563eb" className="me-1.5" />
-                <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">Configure Invitation Mail</Text>
+                <Mail size={14} color="#6366f1" className="me-1.5" />
+                <Text className="text-xs font-semibold text-foreground">{t('configure_invitation_mail', 'Configure Invitation Mail')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setShowBulkInviteModal(true)}
                 className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex-row items-center active:opacity-70"
               >
-                <Users2 size={14} color="#d97706" className="me-1.5" />
-                <Text className="text-xs font-bold text-amber-600 dark:text-amber-400">Bulk Invite</Text>
+                <Users2 size={14} color="#6366f1" className="me-1.5" />
+                <Text className="text-xs font-bold text-primary">{t('bulk_invite', 'Bulk Invite')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -258,7 +260,7 @@ export default function UserManagementScreen() {
                 className="px-2.5 py-1.5 rounded-xl bg-emerald-600 border border-emerald-600 flex-row items-center active:opacity-80"
               >
                 <UserPlus size={14} color="#ffffff" className="me-1.5" />
-                <Text className="text-xs font-bold text-white">Invite User</Text>
+                <Text className="text-xs font-bold text-white">{t('invite_user', 'Invite User')}</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -267,13 +269,13 @@ export default function UserManagementScreen() {
         {/* User Summary & Rows-Per-Page Selector Top Toolbar */}
         <View className="px-3 py-1.5 flex-row items-center justify-between border-b border-border/40 bg-muted/20">
           <Text className="text-[11px] font-semibold text-muted-foreground text-start">
-            Showing <Text className="font-bold text-foreground">{startRecord}-{endRecord}</Text> of <Text className="font-bold text-foreground">{totalRecords}</Text> Users
+            {t('showing_users', 'Showing')} <Text className="font-bold text-foreground">{startRecord}-{endRecord}</Text> {t('of_users', 'of')} <Text className="font-bold text-foreground">{totalRecords}</Text> {t('users_label', 'Users')}
           </Text>
 
           {/* Inline Rows Per Page Options (10, 20, 50, 100) */}
           <View className="flex-row items-center gap-1">
             <Text className="text-[10px] font-semibold text-muted-foreground me-0.5">
-              Rows:
+              {t('rows_label', 'Rows:')}
             </Text>
             {[10, 20, 50, 100].map((limit) => (
               <TouchableOpacity
@@ -307,13 +309,13 @@ export default function UserManagementScreen() {
         ) : users.length === 0 ? (
           <EmptyState
             icon={Users}
-            title="No Users Found"
+            title={t('no_users_found', 'No Users Found')}
             description={
               searchQuery || selectedRoles.length > 0
-                ? 'No users match your active search or filter criteria.'
-                : 'No community users registered yet. Tap the button below to invite users.'
+                ? t('no_users_match', 'No users match your active search or filter criteria.')
+                : t('no_users_registered', 'No community users registered yet. Tap the button below to invite users.')
             }
-            actionLabel="Invite User"
+            actionLabel={t('invite_user', 'Invite User')}
             onAction={() => setShowInviteModal(true)}
           />
         ) : (
@@ -346,7 +348,7 @@ export default function UserManagementScreen() {
       {/* Floating Action Button */}
       <FAB
         iconName="UserPlus"
-        label="Invite User"
+        label={t('invite_user', 'Invite User')}
         onPress={() => setShowInviteModal(true)}
         className="bg-emerald-600 border-emerald-600"
       />
@@ -396,8 +398,8 @@ export default function UserManagementScreen() {
           <View className="bg-card rounded-2xl p-5 border border-border w-full max-w-xs shadow-lg">
             <View className="flex-row items-center justify-between pb-2 border-b border-border mb-3">
               <View className="flex-row items-center">
-                <Hash size={18} color="#2563eb" className="me-2" />
-                <Text className="text-base font-bold text-foreground">Jump to Page</Text>
+                <Hash size={18} color="#6366f1" className="me-2" />
+                <Text className="text-base font-bold text-foreground">{t('jump_to_page', 'Jump to Page')}</Text>
               </View>
               <TouchableOpacity onPress={() => setShowPageJumpModal(false)}>
                 <X size={16} color="#6b7280" />
@@ -405,7 +407,7 @@ export default function UserManagementScreen() {
             </View>
 
             <Text className="text-xs text-muted-foreground mb-3 text-start">
-              Enter page number between <Text className="font-bold text-foreground">1</Text> and <Text className="font-bold text-foreground">{totalPages}</Text>:
+              {t('enter_page_number', 'Enter page number between')} <Text className="font-bold text-foreground">1</Text> {t('and_label', 'and')} <Text className="font-bold text-foreground">{totalPages}</Text>:
             </Text>
 
             <TextInput
@@ -419,15 +421,10 @@ export default function UserManagementScreen() {
 
             <View className="flex-row items-center justify-end gap-2">
               <Button variant="outline" size="sm" onPress={() => setShowPageJumpModal(false)}>
-                Cancel
+                {t('cancel', 'Cancel')}
               </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onPress={handleExecutePageJump}
-                className="bg-blue-600 active:bg-blue-700"
-              >
-                Go to Page
+              <Button variant="default" size="sm" onPress={handleExecutePageJump}>
+                {t('go_to_page', 'Go to Page')}
               </Button>
             </View>
           </View>
@@ -437,10 +434,10 @@ export default function UserManagementScreen() {
       {/* Delete User Confirmation Modal */}
       <ConfirmationModal
         visible={!!userToDelete}
-        title="Delete User"
-        message={`Are you sure you want to delete user "${userToDelete?.name}"? This action cannot be undone.`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t('delete_user_title', 'Delete User')}
+        message={`${t('delete_user_confirm', 'Are you sure you want to delete user')} "${userToDelete?.name}"? ${t('action_cannot_be_undone', 'This action cannot be undone.')}`}
+        confirmLabel={t('role_delete', 'Delete')}
+        cancelLabel={t('cancel', 'Cancel')}
         variant="danger"
         onConfirm={confirmDeleteUser}
         onCancel={() => setUserToDelete(null)}

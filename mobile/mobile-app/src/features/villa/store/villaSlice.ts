@@ -58,6 +58,16 @@ export interface VillaState {
   error: string | null;
 }
 
+export const DUMMY_VILLAS: Villa[] = [
+  { _id: '650000000000000000000101', unitNumber: 'Villa 101', blockOrBuilding: 'Phase 1', floor: 1, squareFeetArea: 2400, status: 'Occupied', type: '3BHK Villa' },
+  { _id: '650000000000000000000102', unitNumber: 'Villa 102', blockOrBuilding: 'Phase 1', floor: 1, squareFeetArea: 2400, status: 'Vacant', type: '3BHK Villa' },
+  { _id: '650000000000000000000103', unitNumber: 'Villa 103', blockOrBuilding: 'Phase 1', floor: 1, squareFeetArea: 2800, status: 'Occupied', type: '4BHK Villa' },
+  { _id: '650000000000000000000201', unitNumber: 'Block A-201', blockOrBuilding: 'Block A', floor: 2, squareFeetArea: 1800, status: 'Occupied', type: '2BHK Apartment' },
+  { _id: '650000000000000000000202', unitNumber: 'Block A-202', blockOrBuilding: 'Block A', floor: 2, squareFeetArea: 1800, status: 'Under Maintenance', type: '2BHK Apartment' },
+];
+
+export const DUMMY_BLOCKS = ['Phase 1', 'Block A', 'Block B'];
+
 const initialState: VillaState = {
   villas: [],
   currentVilla: null,
@@ -298,13 +308,17 @@ const villaSlice = createSlice({
           state.pagination = {
             currentPage: pag.page || pag.currentPage || 1,
             totalPages: pag.totalPages || 1,
-            totalRecords: pag.totalDocs || pag.totalRecords || pag.total || list.length,
+            totalRecords: pag.totalDocs || pag.totalRecords || pag.total || state.villas.length,
             rowsPerPage: pag.limit || pag.rowsPerPage || state.pagination.rowsPerPage,
           };
         }
       })
       .addCase(getVillas.rejected, (state, action) => {
         state.loading = false;
+        if (state.villas.length === 0) {
+          state.villas = [];
+          state.pagination.totalRecords = 0;
+        }
         state.error = (action.payload as string) || 'Failed to load villas';
       })
 

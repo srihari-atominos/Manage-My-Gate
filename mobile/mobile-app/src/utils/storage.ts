@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const memoryCache: Record<string, string> = {};
+const sessionMemoryCache: Record<string, string> = {};
 
 export const storage = {
   getItem: async (key: string): Promise<string | null> => {
@@ -76,4 +77,42 @@ export const storage = {
     delete memoryCache[key];
   },
 };
+
+export const sessionStore = {
+  getItem: (key: string): string | null => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
+      try {
+        return window.sessionStorage.getItem(key);
+      } catch (err) {
+        console.warn(`sessionStorage getItem failed for key: ${key}`, err);
+      }
+    }
+    return sessionMemoryCache[key] || null;
+  },
+
+  setItem: (key: string, value: string): void => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
+      try {
+        window.sessionStorage.setItem(key, value);
+        return;
+      } catch (err) {
+        console.warn(`sessionStorage setItem failed for key: ${key}`, err);
+      }
+    }
+    sessionMemoryCache[key] = value;
+  },
+
+  removeItem: (key: string): void => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
+      try {
+        window.sessionStorage.removeItem(key);
+        return;
+      } catch (err) {
+        console.warn(`sessionStorage removeItem failed for key: ${key}`, err);
+      }
+    }
+    delete sessionMemoryCache[key];
+  },
+};
+
 export default storage;

@@ -14,6 +14,7 @@ import { VisitorPassCode } from '../shared/VisitorPassCode';
 import { VisitorQRCode } from '../shared/VisitorQRCode';
 import { ExtendedVisitorPass } from '../../mocks/visitorMocks';
 import { useVisitorPass } from '../../hooks/useVisitorPass';
+import { useTranslation } from '@/src/utils/i18n';
 import { X, ShieldAlert, Share2, QrCode, MessageCircle, Copy, Check } from 'lucide-react-native';
 import { encodeAppBarcode } from '@/src/utils/appBarcodeProtocol';
 import { generateQrPngBytes, bytesToBase64 } from '@/src/utils/qrPngGenerator';
@@ -37,6 +38,7 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
   const [showQR, setShowQR] = useState(false);
   const [sharingImage, setSharingImage] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { t } = useTranslation();
 
   const { revokePass, actionStatus } = useVisitorPass();
 
@@ -179,7 +181,7 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Visitor Pass Details">
+    <BottomSheet visible={visible} onClose={onClose} title={t('visitor_pass_details', 'Visitor Pass Details')}>
       <View className="gap-4 pb-6">
             {/* Status Header */}
             <View className="flex-row items-center justify-between bg-card border border-border p-3.5 rounded-2xl">
@@ -275,16 +277,16 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
             )}
 
             {/* Primary Visitor Info */}
-            <DetailSection title="Visitor Details" iconName="User">
-              <DetailRow label="Visitor / Event" value={pass.visitorName} iconName="User" />
+            <DetailSection title={t('visitor_details', 'Visitor Details')} iconName="User">
+              <DetailRow label={t('visitor_event', 'Visitor / Event')} value={pass.visitorName} iconName="User" />
               <DetailRow
-                label="Phone Number"
+                label={t('phone_number', 'Phone Number')}
                 value={pass.phone || 'Not Provided'}
                 iconName="Phone"
                 copyable={Boolean(pass.phone)}
               />
               {pass.purpose ? (
-                <DetailRow label="Purpose of Visit" value={pass.purpose} iconName="Tag" />
+                <DetailRow label={t('purpose_of_visit', 'Purpose of Visit')} value={pass.purpose} iconName="Tag" />
               ) : null}
               {rawPass.visitorDetails?.idProofType ? (
                 <DetailRow

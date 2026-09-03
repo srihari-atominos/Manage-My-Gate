@@ -40,9 +40,9 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
 
   const toggleRoleSelect = (roleName: string) => {
     if (selectedRoles.includes(roleName)) {
-      setSelectedRoles(selectedRoles.filter((r) => r !== roleName));
+      setSelectedRoles([]);
     } else {
-      setSelectedRoles([...selectedRoles, roleName]);
+      setSelectedRoles([roleName]);
     }
   };
 
@@ -70,7 +70,7 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
               <Key size={20} color="#6366f1" className="me-2" />
               <View>
                 <Text className="text-base font-bold text-foreground text-start">
-                  Manage Access Roles
+                  Manage Access Role
                 </Text>
                 <Text className="text-xs text-muted-foreground text-start">
                   User: {user.name} {unit ? `(Unit ${unit.villaNumber})` : ''}
@@ -83,10 +83,10 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Role Checkbox List */}
+          {/* Single Role Radio List */}
           <ScrollView showsVerticalScrollIndicator={false} className="mb-4">
             <Text className="text-xs font-semibold text-muted-foreground text-start mb-2">
-              Select Organization / Unit Roles:
+              Select single user role persona:
             </Text>
 
             {availableRoles.length === 0 ? (
@@ -105,7 +105,7 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
                         ? 'bg-primary/10 border-primary'
                         : 'bg-muted/30 border-border'
                     }`}
-                    accessibilityRole="checkbox"
+                    accessibilityRole="radio"
                     accessibilityState={{ checked: isSelected }}
                   >
                     <Text
@@ -117,13 +117,13 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
                     </Text>
 
                     <View
-                      className={`w-5 h-5 rounded-md items-center justify-center border ${
+                      className={`w-5 h-5 rounded-full items-center justify-center border ${
                         isSelected
                           ? 'bg-primary border-primary'
                           : 'bg-background border-border'
                       }`}
                     >
-                      {isSelected ? <Check size={12} color="#ffffff" /> : null}
+                      {isSelected ? <View className="w-2 h-2 rounded-full bg-white" /> : null}
                     </View>
                   </TouchableOpacity>
                 );

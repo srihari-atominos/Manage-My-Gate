@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { VisitorPassFlowHeader } from '../shared/VisitorPassFlowHeader';
@@ -8,6 +8,7 @@ import { VisitorInvitationTypeSheet } from '../shared/VisitorInvitationTypeSheet
 import { GeneratedPassView, GeneratedPassData } from '../shared/GeneratedPassView';
 import { PassTypeKey } from '../../mocks/visitorMocks';
 import { mapFormToApiPayloadStrategy, PassPayloadContext } from '../../utils/mapFormToApiPayloadStrategy';
+import { AdminPassSetupStep, AdminPassSetupData } from '../admin/AdminPassSetupStep';
 import { AlertCircle } from 'lucide-react-native';
 
 // Step components
@@ -95,7 +96,21 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [generatedPass, setGeneratedPass] = useState<GeneratedPassData | null>(null);
 
+  const isAdmin = roleContext.role === 'ADMIN';
+
+  const steps = useMemo(() => {
+    const base = STEP_DEFINITIONS[selectedPassType];
+    return isAdmin ? [{ key: 'admin-setup', title: 'Target Scope' }, ...base] : base;
+  }, [selectedPassType, isAdmin]);
+
+  const isLastStep = currentStepIndex === steps.length - 1;
+  const baseStepIndex = isAdmin ? currentStepIndex - 1 : currentStepIndex;
+
   // Form states
+  const [adminScope, setAdminScope] = useState<AdminPassSetupData>({
+    scope: 'COMMUNITY',
+    villaId: roleContext.villaId,
+  });
   const [guestDetails, setGuestDetails] = useState<GuestDetailsData>({ visitorName: '', phone: '', purpose: '' });
   const [guestSchedule, setGuestSchedule] = useState<GuestScheduleData>({
     visitDate: new Date().toISOString().split('T')[0],
@@ -138,64 +153,64 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
     customVisitDate: new Date().toISOString().split('T')[0],
     customStartTime: '02:00 PM',
     customEndTime: '06:00 PM',
-    selectedWeekdays: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'],
-    timeSlots: [{ startTime: '06:00 AM', endTime: '09:00 AM' }],
   });
 
   const [staffDetails, setStaffDetails] = useState<StaffDetailsData>({ staffName: '', phone: '', notes: '' });
-  const [serviceCategory, setServiceCategory] = useState<string>('maid');
-  const [serviceDateRange, setServiceDateRange] = useState<ServiceDateRangeData>({ startDate: new Date().toISOString().split('T')[0], endDate: '' });
-  const [serviceWeekdays, setServiceWeekdays] = useState<string[]>([]);
-  const [serviceTimeWindow, setServiceTimeWindow] = useState<ServiceTimeWindowData>({ preset: 'MORNING', startTime: '08:00 AM', endTime: '01:00 PM' });
-
-  const steps = STEP_DEFINITIONS[selectedPassType];
-  const isLastStep = currentStepIndex === steps.length - 1;
+  const [serviceCategory, setServiceCategory] = useState<string>('cleaning');
+  const [serviceDateRange, setServiceDateRange] = useState<ServiceDateRangeData>({
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+  });
+  const [serviceWeekdays, setServiceWeekdays] = useState<string[]>(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']);
+  const [serviceTimeWindow, setServiceTimeWindow] = useState<ServiceTimeWindowData>({
+    preset: 'FULL_DAY',
+    startTime: '07:00 AM',
+    endTime: '08:00 PM',
+  });
 
   const handleNext = () => {
     setSubmitError(null);
 
-    const validatePhone = (phone?: string) => {
-      if (!phone || !phone.trim()) return true;
-      const digits = phone.replace(/\D/g, '');
-      return digits.length === 10;
-    };
-
-    if (selectedPassType === 'GUEST' && currentStepIndex === 0) {
-      if (!guestDetails.visitorName.trim()) {
-        setSubmitError('Please enter visitor name');
+    // If Admin on Step 0 (Pass Scope Setup)
+    if (isAdmin && currentStepIndex === 0) {
+      if (adminScope.scope === 'VILLA' && !adminScope.villaId) {
+        setSubmitError('Please select a target villa unit and host resident.');
         return;
       }
-      if (!validatePhone(guestDetails.phone)) {
-        setSubmitError('Contact number must be exactly 10 digits');
-        return;
-      }
-    }
-    
-    if (selectedPassType === 'GROUP' && currentStepIndex === 0 && !groupDetails.eventTitle.trim()) {
-      setSubmitError('Please enter event title');
+      setCurrentStepIndex((prev) => prev + 1);
       return;
     }
-    
-    if (selectedPassType === 'CAB' && currentStepIndex === 1) {
-      if (!validatePhone(cabVehicle.driverPhone)) {
-        setSubmitError('Driver contact number must be exactly 10 digits');
+
+    // Pass details Step 0 validation per pass type
+    if (baseStepIndex === 0) {
+      if (selectedPassType === 'GUEST') {
+        if (!guestDetails.visitorName.trim()) {
+          setSubmitError('Please enter the guest name.');
+          return;
+        }
+      } else if (selectedPassType === 'GROUP') {
+        if (!groupDetails.eventTitle.trim()) {
+          setSubmitError('Please enter the event / gathering title.');
+          return;
+        }
+      } else if (selectedPassType === 'SERVICE') {
+        if (!staffDetails.staffName.trim()) {
+          setSubmitError('Please enter the service staff / contractor name.');
+          return;
+        }
+      }
+    }
+
+    // Group Guests Step validation
+    if (selectedPassType === 'GROUP' && baseStepIndex === 2) {
+      if (groupGuests.length === 0) {
+        setSubmitError('Please add at least one guest to the group list.');
         return;
       }
     }
 
-    if (selectedPassType === 'SERVICE' && currentStepIndex === 0) {
-      if (!staffDetails.staffName.trim()) {
-        setSubmitError('Please enter staff name');
-        return;
-      }
-      if (!validatePhone(staffDetails.phone)) {
-        setSubmitError('Staff contact number must be exactly 10 digits');
-        return;
-      }
-    }
-    
-    // BUG-005 Fix: Validate Service Date Range (Step 2)
-    if (selectedPassType === 'SERVICE' && currentStepIndex === 2) {
+    // Service Date Range validation
+    if (selectedPassType === 'SERVICE' && baseStepIndex === 2) {
       if (serviceDateRange.startDate && serviceDateRange.endDate && serviceDateRange.startDate > serviceDateRange.endDate) {
         setSubmitError('Pass start date cannot be after end date.');
         return;
@@ -230,7 +245,12 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
         staffDetails, serviceCategory, serviceDateRange, serviceWeekdays, serviceTimeWindow,
       };
 
-      const payload = mapFormToApiPayloadStrategy(selectedPassType, formData, roleContext);
+      const enrichedRoleContext: PassPayloadContext = {
+        ...roleContext,
+        villaId: adminScope.scope === 'VILLA' ? adminScope.villaId : undefined,
+      };
+
+      const payload = mapFormToApiPayloadStrategy(selectedPassType, formData, enrichedRoleContext);
       const res = await onSubmitPass(payload);
       
       // Check if it's a Redux rejection
@@ -238,18 +258,47 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
         throw new Error(res.payload || 'Backend validation failed');
       }
       
-      const createdPass = res?.payload?.data || res?.payload || res;
+      let createdPass: any = res;
+      if (res?.payload) {
+        createdPass = res.payload.data || res.payload;
+      } else if (res?.data) {
+        createdPass = res.data.data || res.data;
+      }
 
-      const code = createdPass?.code || 'PASS-' + Math.floor(100000 + Math.random() * 900000);
+      const code =
+        createdPass?.shortKey ||
+        createdPass?.code ||
+        createdPass?.passCode ||
+        createdPass?.data?.shortKey ||
+        createdPass?.data?.code;
+
+      if (!code) {
+        throw new Error('Pass was created but failed to retrieve pass entry code.');
+      }
+
       setGeneratedPass({
-        id: createdPass?._id || 'pass-' + Date.now(),
+        id: createdPass?._id || createdPass?.id || 'pass-' + Date.now(),
         code,
-        visitorName: createdPass?.visitorDetails?.name || guestDetails.visitorName || 'Visitor',
-        passType: selectedPassType,
-        provider: createdPass?.vehicleDetails?.vendor || createdPass?.deliveryDetails?.partner,
-        vehicleNo: createdPass?.vehicleDetails?.number,
-        validFrom: createdPass?.validity?.startDate || new Date().toISOString(),
-        validUntil: createdPass?.validity?.endDate || new Date(Date.now() + 86400000).toISOString(),
+        visitorName:
+          createdPass?.visitorDetails?.name ||
+          guestDetails.visitorName ||
+          staffDetails.staffName ||
+          groupDetails.eventTitle ||
+          'Visitor',
+        passType: createdPass?.passType || selectedPassType,
+        provider:
+          createdPass?.vehicleDetails?.vendor ||
+          createdPass?.deliveryDetails?.partner ||
+          cabProvider ||
+          deliveryPartner,
+        vehicleNo:
+          createdPass?.vehicleDetails?.number ||
+          guestOptions.vehicleNo ||
+          cabVehicle.vehicleNo,
+        validFrom:
+          createdPass?.validity?.startDate || new Date().toISOString(),
+        validUntil:
+          createdPass?.validity?.endDate || new Date(Date.now() + 86400000).toISOString(),
       });
     } catch (err: any) {
       setSubmitError(err?.message || 'Failed to create pass. Please try again.');
@@ -290,12 +339,19 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
       )}
 
       <ScrollView className="flex-1" contentContainerClassName="p-4 gap-4 pb-8">
+        {isAdmin && currentStepIndex === 0 && (
+          <AdminPassSetupStep
+            data={adminScope}
+            onChange={setAdminScope}
+          />
+        )}
+
         {selectedPassType === 'GUEST' && (
           <>
-            {currentStepIndex === 0 && <GuestDetailsStep data={guestDetails} onChange={setGuestDetails} />}
-            {currentStepIndex === 1 && <GuestScheduleStep data={guestSchedule} onChange={setGuestSchedule} />}
-            {currentStepIndex === 2 && <GuestPassOptionsStep data={guestOptions} onChange={setGuestOptions} />}
-            {currentStepIndex === 3 && (
+            {baseStepIndex === 0 && <GuestDetailsStep data={guestDetails} onChange={setGuestDetails} />}
+            {baseStepIndex === 1 && <GuestScheduleStep data={guestSchedule} onChange={setGuestSchedule} />}
+            {baseStepIndex === 2 && <GuestPassOptionsStep data={guestOptions} onChange={setGuestOptions} />}
+            {baseStepIndex === 3 && (
               <GuestPassReviewStep
                 details={guestDetails}
                 schedule={guestSchedule}
@@ -307,10 +363,16 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
 
         {selectedPassType === 'GROUP' && (
           <>
-            {currentStepIndex === 0 && <GroupVisitDetailsStep data={groupDetails} onChange={setGroupDetails} />}
-            {currentStepIndex === 1 && <GroupScheduleStep data={groupDetails} onChange={setGroupDetails} />}
-            {currentStepIndex === 2 && <AddGroupGuestsStep guests={groupGuests} onAddGuest={(g) => setGroupGuests((prev) => [...prev, g])} />}
-            {currentStepIndex === 3 && (
+            {baseStepIndex === 0 && <GroupVisitDetailsStep data={groupDetails} onChange={setGroupDetails} />}
+            {baseStepIndex === 1 && <GroupScheduleStep data={groupDetails} onChange={setGroupDetails} />}
+            {baseStepIndex === 2 && (
+              <AddGroupGuestsStep
+                guests={groupGuests}
+                onAddGuest={(g) => setGroupGuests((prev) => [...prev, g])}
+                onRemoveGuest={(id) => setGroupGuests((prev) => prev.filter((g) => g.id !== id))}
+              />
+            )}
+            {baseStepIndex === 3 && (
               <GroupPassReviewStep
                 details={groupDetails}
                 guests={groupGuests}
@@ -321,7 +383,7 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
 
         {selectedPassType === 'CAB' && (
           <>
-            {currentStepIndex === 0 && (
+            {baseStepIndex === 0 && (
               <CabProviderStep
                 selectedProvider={cabProvider}
                 onSelectProvider={setCabProvider}
@@ -329,9 +391,9 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
                 onCustomProviderChange={setCustomCabProvider}
               />
             )}
-            {currentStepIndex === 1 && <CabVehicleStep data={cabVehicle} onChange={setCabVehicle} />}
-            {currentStepIndex === 2 && <CabScheduleStep data={cabSchedule} onChange={setCabSchedule} />}
-            {currentStepIndex === 3 && (
+            {baseStepIndex === 1 && <CabVehicleStep data={cabVehicle} onChange={setCabVehicle} />}
+            {baseStepIndex === 2 && <CabScheduleStep data={cabSchedule} onChange={setCabSchedule} />}
+            {baseStepIndex === 3 && (
               <CabPassReviewStep
                 provider={cabProvider}
                 vehicle={cabVehicle}
@@ -344,7 +406,7 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
 
         {selectedPassType === 'DELIVERY' && (
           <>
-            {currentStepIndex === 0 && (
+            {baseStepIndex === 0 && (
               <DeliveryPartnerStep
                 selectedPartner={deliveryPartner}
                 onSelectPartner={setDeliveryPartner}
@@ -352,9 +414,9 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
                 onCustomPartnerChange={setCustomDeliveryPartner}
               />
             )}
-            {currentStepIndex === 1 && <DeliveryDetailsStep data={deliveryDetails} onChange={setDeliveryDetails} />}
-            {currentStepIndex === 2 && <DeliveryValidityStep data={deliveryValidity} onChange={setDeliveryValidity} />}
-            {currentStepIndex === 3 && (
+            {baseStepIndex === 1 && <DeliveryDetailsStep data={deliveryDetails} onChange={setDeliveryDetails} />}
+            {baseStepIndex === 2 && <DeliveryValidityStep data={deliveryValidity} onChange={setDeliveryValidity} />}
+            {baseStepIndex === 3 && (
               <DeliveryPassReviewStep
                 partner={deliveryPartner}
                 details={deliveryDetails}
@@ -367,10 +429,10 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
 
         {selectedPassType === 'SERVICE' && (
           <>
-            {currentStepIndex === 0 && <StaffDetailsStep data={staffDetails} onChange={setStaffDetails} />}
-            {currentStepIndex === 1 && <ServiceTypeStep selectedService={serviceCategory} onSelectService={setServiceCategory} />}
-            {currentStepIndex === 2 && <ServiceDateRangeStep data={serviceDateRange} onChange={setServiceDateRange} />}
-            {currentStepIndex === 3 && (
+            {baseStepIndex === 0 && <StaffDetailsStep data={staffDetails} onChange={setStaffDetails} />}
+            {baseStepIndex === 1 && <ServiceTypeStep selectedService={serviceCategory} onSelectService={setServiceCategory} />}
+            {baseStepIndex === 2 && <ServiceDateRangeStep data={serviceDateRange} onChange={setServiceDateRange} />}
+            {baseStepIndex === 3 && (
               <ServiceWeekdayStep
                 selectedWeekdays={serviceWeekdays}
                 onToggleWeekday={(dayId: string) =>
@@ -380,8 +442,8 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
                 }
               />
             )}
-            {currentStepIndex === 4 && <ServiceTimeWindowStep data={serviceTimeWindow} onChange={setServiceTimeWindow} />}
-            {currentStepIndex === 5 && (
+            {baseStepIndex === 4 && <ServiceTimeWindowStep data={serviceTimeWindow} onChange={setServiceTimeWindow} />}
+            {baseStepIndex === 5 && (
               <ServicePassReviewStep
                 staff={staffDetails}
                 serviceCategory={serviceCategory}

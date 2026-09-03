@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, TextInput, Pressable } from 'react-native';
+import { View, Text, TextInput, Pressable } from 'react-native';
 import { cn } from '../../lib/utils';
 
 export interface OtpInputFieldProps {
@@ -12,7 +12,7 @@ export interface OtpInputFieldProps {
 
 export const OtpInputField = ({
   length = 6,
-  value,
+  value = '',
   onValueChange,
   error = false,
   className,
@@ -26,10 +26,12 @@ export const OtpInputField = ({
 
   const renderCells = () => {
     const cells = [];
+    const safeValue = value || '';
+
     for (let i = 0; i < length; i++) {
-      const char = value[i] || '';
-      const isCurrentFocus = value.length === i && isFocused;
-      
+      const char = safeValue[i] || '';
+      const isCurrentFocus = safeValue.length === i && isFocused;
+
       cells.push(
         <View
           key={i}
@@ -39,11 +41,9 @@ export const OtpInputField = ({
             error && 'border-destructive bg-destructive/10'
           )}
         >
-          <TextInput
-            value={char}
-            editable={false}
-            className="text-2xl font-bold font-sans text-foreground"
-          />
+          <Text className="text-2xl font-bold font-sans text-foreground text-center leading-none">
+            {char}
+          </Text>
         </View>
       );
     }
@@ -52,11 +52,11 @@ export const OtpInputField = ({
 
   return (
     <Pressable
-      className={cn('flex-row items-center justify-between', className)}
+      className={cn('flex-row items-center justify-between relative w-full', className)}
       onPress={handlePress}
     >
       {renderCells()}
-      
+
       <TextInput
         ref={inputRef}
         value={value}
@@ -64,10 +64,21 @@ export const OtpInputField = ({
         maxLength={length}
         keyboardType="number-pad"
         textContentType="oneTimeCode"
-        className="absolute h-0 w-0 opacity-0"
+        autoComplete="one-time-code"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          opacity: 0,
+          zIndex: 10,
+        }}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
       />
     </Pressable>
   );
 };
+
+export default OtpInputField;

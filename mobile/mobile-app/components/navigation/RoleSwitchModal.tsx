@@ -6,6 +6,7 @@ import { ShieldCheck, Check, X, UserCheck } from 'lucide-react-native';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useDispatch } from 'react-redux';
 import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
+import { useTranslation } from '@/src/utils/i18n';
 
 interface RoleSwitchModalProps {
   visible: boolean;
@@ -16,10 +17,11 @@ interface RoleSwitchModalProps {
 export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClose, onSelectRole }) => {
   const { user } = useAuth();
   const dispatch = useDispatch<any>();
+  const { t, tRole } = useTranslation();
 
   // Extract available roles array from active user session
   const roles: string[] = React.useMemo(() => {
-    if (!user) return ['Resident', 'Community Admin', 'Guard'];
+    if (!user) return ['Member'];
     const userAny = user as any;
     if (userAny.roles && Array.isArray(userAny.roles) && userAny.roles.length > 0) {
       return Array.from(new Set(userAny.roles));
@@ -28,10 +30,10 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
       const split = user.role.split(',').map((r: string) => r.trim()).filter(Boolean);
       return Array.from(new Set(split));
     }
-    return ['Resident', 'Community Admin', 'Guard'];
+    return ['Member'];
   }, [user]);
 
-  const activeRole = user?.role || roles[0] || 'Resident';
+  const activeRole = user?.role || roles[0] || 'Member';
 
   const handleSelectRole = (selectedRole: string) => {
     dispatch(switchWorkspaceContextThunk({ targetRole: selectedRole }));
@@ -51,7 +53,7 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
               <View className="bg-primary/10 p-2 rounded-xl">
                 <ShieldCheck size={20} color="#03A9F4" />
               </View>
-              <Text className="text-lg font-bold text-foreground">Switch Role Context</Text>
+              <Text className="text-lg font-bold text-foreground">{t('switch_role', 'Switch Role Context')}</Text>
             </View>
             <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1">
               <X size={20} color="#888" />
@@ -59,17 +61,18 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
           </View>
 
           <Text className="text-xs text-muted-foreground">
-            Select an active role persona to customize your mobile tools & permissions:
+            {t('select_role_persona_sub', 'Select an active role persona to customize your mobile tools & permissions:')}
           </Text>
 
           {/* Roles List */}
           <ScrollView className="max-h-60">
             <View className="gap-2.5">
-              {roles.map((role) => {
+              {roles.map((role, idx) => {
                 const isSelected = role === activeRole;
+                const localizedRole = tRole(role, role);
                 return (
                   <TouchableOpacity
-                    key={role}
+                    key={`${role}-${idx}`}
                     onPress={() => handleSelectRole(role)}
                     activeOpacity={0.8}
                     className={`flex-row items-center justify-between p-3.5 rounded-2xl border shadow-xs ${
@@ -95,14 +98,10 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
                             isSelected ? 'text-primary' : 'text-foreground'
                           }`}
                         >
-                          {role}
+                          {localizedRole}
                         </Text>
                         <Text className="text-[10px] text-muted-foreground">
-                          {role === 'Resident'
-                            ? 'Villa Owner / Tenant'
-                            : role === 'Guard'
-                            ? 'Security Gate Access'
-                            : 'Community Admin'}
+                          {tRole(role, `${role} Role`)}
                         </Text>
                       </View>
                     </View>
@@ -115,7 +114,7 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
           </ScrollView>
 
           <Button onPress={onClose} variant="secondary" className="mt-2 h-11">
-            <Text className="font-bold text-foreground text-sm">Cancel</Text>
+            <Text className="font-bold text-foreground text-sm">{t('cancel', 'Cancel')}</Text>
           </Button>
         </View>
       </View>

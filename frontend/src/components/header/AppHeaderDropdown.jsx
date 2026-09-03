@@ -198,6 +198,14 @@ const AppHeaderDropdown = () => {
           })
         )}
 
+        <CDropdownItem
+          component="button"
+          onClick={() => navigate('/workspace-setup?intent=create')}
+          className="text-primary fw-semibold py-1 px-3 w-100 text-start"
+        >
+          + Create New Organization
+        </CDropdownItem>
+
         <CDropdownDivider />
 
         {/* Logout */}

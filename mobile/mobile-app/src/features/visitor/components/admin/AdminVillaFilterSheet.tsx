@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Building2, Check, User, ChevronRight } from 'lucide-react-native';
 
 import { useSelector } from 'react-redux';
 import { RootState } from '@/src/store/store';
+import { useVilla } from '../../../villa/hooks/useVilla';
 
 export interface VillaResidentOption {
   id: string; // User ID
@@ -37,55 +38,6 @@ export interface AdminVillaFilterSheetProps {
   ) => void;
 }
 
-const MOCK_VILLAS: VillaOption[] = [
-  {
-    id: '67a5602d1840000000000101',
-    name: 'Villa 101 - Block A',
-    primaryResidentId: '67a5602d1840000000000099',
-    primaryResidentName: 'Rajesh Sharma',
-    residents: [
-      { id: '67a5602d1840000000000099', name: 'Rajesh Sharma', type: 'Primary Resident', phone: '+91 9876543210' },
-      { id: '67a5602d1840000000000098', name: 'Priya Sharma', type: 'Co-Resident', phone: '+91 9876543211' },
-    ],
-  },
-  {
-    id: '67a5602d1840000000000102',
-    name: 'Villa 102 - Block A',
-    primaryResidentId: '67a5602d1840000000000097',
-    primaryResidentName: 'Amitav Ghosh',
-    residents: [
-      { id: '67a5602d1840000000000097', name: 'Amitav Ghosh', type: 'Tenant Resident', phone: '+91 9876543212' },
-    ],
-  },
-  {
-    id: '67a5602d1840000000000103',
-    name: 'Villa 103 - Block B',
-    primaryResidentId: '67a5602d1840000000000096',
-    primaryResidentName: 'Vikramaditya Singh',
-    residents: [
-      { id: '67a5602d1840000000000096', name: 'Vikramaditya Singh', type: 'Owner Resident', phone: '+91 9876543213' },
-    ],
-  },
-  {
-    id: '67a5602d1840000000000104',
-    name: 'Villa 104 - Block B',
-    primaryResidentId: '67a5602d1840000000000095',
-    primaryResidentName: 'Suresh Menon',
-    residents: [
-      { id: '67a5602d1840000000000095', name: 'Suresh Menon', type: 'Primary Resident', phone: '+91 9876543214' },
-    ],
-  },
-  {
-    id: '67a5602d1840000000000105',
-    name: 'Villa 105 - Block C',
-    primaryResidentId: '67a5602d1840000000000094',
-    primaryResidentName: 'Ananya Roy',
-    residents: [
-      { id: '67a5602d1840000000000094', name: 'Ananya Roy', type: 'Primary Resident', phone: '+91 9876543215' },
-    ],
-  },
-];
-
 export const AdminVillaFilterSheet: React.FC<AdminVillaFilterSheetProps> = ({
   visible,
   selectedVillaId,
@@ -96,13 +48,22 @@ export const AdminVillaFilterSheet: React.FC<AdminVillaFilterSheetProps> = ({
   const [search, setSearch] = useState('');
   const [expandedVillaId, setExpandedVillaId] = useState<string | null>(null);
 
+  const { fetchVillas, loading } = useVilla();
   const reduxVillas = useSelector((state: RootState) => (state as any).villa?.villas);
+
+  useEffect(() => {
+    if (visible && (!reduxVillas || reduxVillas.length === 0)) {
+      fetchVillas({ page: 1, limit: 200 });
+    }
+  }, [visible, reduxVillas, fetchVillas]);
 
   const villaOptions: VillaOption[] = React.useMemo(() => {
     if (Array.isArray(reduxVillas) && reduxVillas.length > 0) {
       return reduxVillas.map((v: any) => {
         const villaId = v._id || v.id;
-        const villaName = `Villa ${v.unitNumber || v.name}${v.blockOrBuilding ? ` - Block ${v.blockOrBuilding}` : ''}`;
+        const rawUnit = (v.unitNumber || v.name || '').trim();
+        const formattedUnit = rawUnit.toLowerCase().startsWith('villa') ? rawUnit : `Villa ${rawUnit}`;
+        const villaName = `${formattedUnit}${v.blockOrBuilding ? ` - Block ${v.blockOrBuilding}` : ''}`;
         
         const primaryRes = v.primaryResidentId || (v.residents && v.residents[0]?.userId);
         const primaryResId = typeof primaryRes === 'object' ? (primaryRes._id || primaryRes.id) : primaryRes;
@@ -143,7 +104,7 @@ export const AdminVillaFilterSheet: React.FC<AdminVillaFilterSheetProps> = ({
         };
       });
     }
-    return MOCK_VILLAS;
+    return [];
   }, [reduxVillas]);
 
   const filteredVillas = villaOptions.filter((v) =>
@@ -192,12 +153,12 @@ export const AdminVillaFilterSheet: React.FC<AdminVillaFilterSheetProps> = ({
                 {/* Villa Header Row */}
                 <TouchableOpacity
                   onPress={() => {
-                    setExpandedVillaId(expandedVillaId === villa.id ? null : villa.id);
                     const primaryRes = villa.residents[0] || {
                       id: villa.primaryResidentId || villa.id,
                       name: villa.primaryResidentName || 'Primary Resident',
                     };
                     onSelectVilla(villa.id, villa.name, primaryRes.id, `${primaryRes.name} (${villa.name})`);
+                    onClose();
                   }}
                   className={`p-3.5 flex-row items-center justify-between ${
                     isVillaSelected ? 'bg-primary/5' : ''
@@ -213,10 +174,22 @@ export const AdminVillaFilterSheet: React.FC<AdminVillaFilterSheetProps> = ({
                   </View>
                   <View className="flex-row items-center gap-2">
                     {isVillaSelected && <Check size={16} className="text-primary" />}
-                    <ChevronRight
-                      size={16}
-                      className={`text-muted-foreground ${isExpanded ? 'rotate-90' : ''}`}
-                    />
+                    {villa.residents.length > 0 ? (
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          setExpandedVillaId(expandedVillaId === villa.id ? null : villa.id);
+                        }}
+                        className="p-1 rounded-lg bg-muted/60"
+                        accessibilityRole="button"
+                        accessibilityLabel="Toggle resident hosts"
+                      >
+                        <ChevronRight
+                          size={16}
+                          className={`text-muted-foreground ${isExpanded ? 'rotate-90' : ''}`}
+                        />
+                      </TouchableOpacity>
+                    ) : null}
                   </View>
                 </TouchableOpacity>
 
@@ -224,7 +197,7 @@ export const AdminVillaFilterSheet: React.FC<AdminVillaFilterSheetProps> = ({
                 {isExpanded && villa.residents.length > 0 && (
                   <View className="bg-muted/40 border-t border-border/50 p-2 gap-1.5">
                     <Text className="text-[10px] font-bold text-muted-foreground uppercase px-2 pt-1">
-                      Select Resident Host for Walk-In Notification:
+                      Select Specific Resident Host:
                     </Text>
                     {villa.residents.map((resident) => {
                       const isResSelected = selectedResidentId === resident.id;

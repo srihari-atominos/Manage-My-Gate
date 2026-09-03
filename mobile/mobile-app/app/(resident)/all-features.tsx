@@ -16,12 +16,15 @@ import FeatureIcon from '@/components/ui/FeatureIcon';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import CustomiseSheetModal, { ALL_AVAILABLE_FEATURES } from '@/components/dashboard/CustomiseSheetModal';
-import { isFeatureAllowedForUser } from '@/src/features/dashboard/dashboardCatalog';
+import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
+import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
+import { isFeatureAllowedForUser, checkIsAdmin } from '@/src/utils/rbac';
+import { useTranslation } from '@/src/utils/i18n';
 
 export default function AllFeaturesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ category?: string }>();
+  const { t, tCategoryName, tFeatureName, tFeatureSubtitle } = useTranslation();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [customiseOpen, setCustomiseOpen] = useState(false);
@@ -43,48 +46,52 @@ export default function AllFeaturesScreen() {
     }
     if (router.canGoBack()) {
       router.back();
-    } else {
-      router.replace('/(resident)/dashboard' as any);
+      return true;
     }
+    router.replace('/(resident)/dashboard' as any);
     return true;
   }, [selectedCategoryKey, searchQuery, router]);
 
   // Hardware / Gesture Back Button Listener
   useFocusEffect(
     useCallback(() => {
-      const onHardwareBack = () => {
-        if (selectedCategoryKey !== null) {
-          setSelectedCategoryKey(null);
-          return true;
-        }
-        if (searchQuery) {
-          setSearchQuery('');
-          return true;
-        }
-        return false;
-      };
-
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+      const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
       return () => subscription.remove();
-    }, [selectedCategoryKey, searchQuery])
+    }, [handleBackPress])
   );
 
   const handleTileClick = (tileId: string) => {
     if (tileId === 'visitor_resident_passes') {
-      router.push('/(resident)/visitor' as any);
+      router.navigate('/(resident)/visitor' as any);
       return;
     }
-    const feature = allFeaturesList.find((item) => item.id === tileId);
+    if (tileId === 'billing_dashboard') {
+      router.navigate('/(resident)/billing' as any);
+      return;
+    }
+    if (tileId === 'billing_action_center') {
+      router.navigate('/(resident)/admin/billing/ledger' as any);
+      return;
+    }
+    if (tileId === 'billing_assessment_manager') {
+      router.navigate('/(resident)/admin/billing/assessments' as any);
+      return;
+    }
+    let feature = allFeaturesList.find((item) => item.id === tileId);
+    if (!feature) {
+      feature = (ALL_AVAILABLE_FEATURES as any[]).find((item) => item.id === tileId);
+    }
+    
     if (feature && feature.route) {
       const targetRoute = feature.route.endsWith('/resident-passes') ? '/(resident)/visitor' : feature.route;
       router.push(targetRoute as any);
     }
   };
 
-  const toggleCategoryExpand = (categoryKey: string) => {
+  const toggleCategoryExpand = (catKey: string) => {
     setExpandedCategories((prev) => ({
       ...prev,
-      [categoryKey]: !prev[categoryKey],
+      [catKey]: !prev[catKey],
     }));
   };
 
@@ -92,23 +99,20 @@ export default function AllFeaturesScreen() {
     await saveQuickActions(selectedIds);
   };
 
-  // RBAC Permission Check Helper
-  const userPermissions: string[] = user?.permissions || [];
-  const userRoleName = user?.role || (user as any)?.activeRole || (Array.isArray((user as any)?.roles) ? (typeof (user as any).roles[0] === 'string' ? (user as any).roles[0] : (user as any).roles[0]?.name) : '');
-  const isSuperAdmin = Boolean(
-    userPermissions.includes('platform:super_admin') ||
-    userRoleName === 'Platform Super Admin' ||
-    userRoleName === 'SuperAdmin' ||
-    userRoleName === 'Community Admin' ||
-    user?.isPlatform === true
-  );
+  const isAdminRole = checkIsAdmin(user);
 
+  const filteredAvailableFeatures = React.useMemo(() => {
+    if (!isAdminRole) return allFeaturesList;
+    return allFeaturesList.filter(
+      (item) => item.id !== 'visitor_resident_passes' && item.id !== 'visitor_passes'
+    );
+  }, [allFeaturesList, isAdminRole]);
   const activeCategory = featureCatalog?.find(cat => cat.categoryKey === selectedCategoryKey);
 
   return (
     <ScreenShell
-      title="All Features"
-      subtitle="Explore community quick actions and services"
+      title={t('all_features', 'All Features & Services')}
+      subtitle={t('explore_quick_actions', 'Explore community quick actions and services')}
       iconName="LayoutGrid"
       showBackButton={true}
       onBackPress={handleBackPress}
@@ -119,7 +123,7 @@ export default function AllFeaturesScreen() {
           className="flex-row items-center gap-1 bg-primary/10 border border-primary/30 px-2.5 py-1.5 rounded-full"
         >
           <SlidersHorizontal size={13} className="text-muted-foreground" />
-          <Text className="text-xs font-bold text-foreground font-sans">Customise</Text>
+          <Text className="text-xs font-bold text-foreground font-sans">{t('customise', 'Customise')}</Text>
         </TouchableOpacity>
       }
     >
@@ -129,7 +133,7 @@ export default function AllFeaturesScreen() {
           <View className="flex-row items-center bg-card border border-border rounded-2xl px-3.5 py-3 shadow-xs">
             <Search size={18} color="#172B70" className="mr-2.5 shrink-0" />
             <TextInput
-              placeholder="Search all features..."
+              placeholder={t('search', 'Search all features...')}
               placeholderTextColor="#64748B"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -160,7 +164,7 @@ export default function AllFeaturesScreen() {
                       selectedCategoryKey === null ? 'text-white' : 'text-foreground'
                     }`}
                   >
-                    All Categories
+                    {t('all_categories', 'All Categories')}
                   </Text>
                 </TouchableOpacity>
 
@@ -182,7 +186,7 @@ export default function AllFeaturesScreen() {
                           isActive ? 'text-white' : 'text-muted-foreground'
                         }`}
                       >
-                        {cat.categoryName}
+                        {tCategoryName(cat.categoryKey, cat.categoryName)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -200,7 +204,7 @@ export default function AllFeaturesScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-extrabold text-foreground">
-                    {activeCategory.categoryName}
+                    {tCategoryName(activeCategory.categoryKey, activeCategory.categoryName)}
                   </Text>
                   <Text className="text-xs text-muted-foreground">
                     Showing all {activeCategory.items?.length || 0} features in this module
@@ -214,7 +218,7 @@ export default function AllFeaturesScreen() {
                 className="flex-row items-center gap-1 bg-card border border-border px-2.5 py-1.5 rounded-xl shadow-xs"
               >
                 <RotateCcw size={12} className="text-foreground" />
-                <Text className="text-xs font-bold text-foreground">Show All</Text>
+                <Text className="text-xs font-bold text-foreground">{t('show_all', 'Show All')}</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -232,6 +236,14 @@ export default function AllFeaturesScreen() {
                     return false;
                   }
 
+                  // Hide resident personal passes for Admin roles
+                  if (
+                    isAdminRole &&
+                    (item.id === 'visitor_resident_passes' || item.id === 'visitor_passes')
+                  ) {
+                    return false;
+                  }
+
                   return isFeatureAllowedForUser(item, user);
                 });
 
@@ -245,7 +257,7 @@ export default function AllFeaturesScreen() {
                   <View key={category.categoryKey} className="gap-3">
                     <View className="flex-row items-center justify-between pt-1">
                       <Text className="text-[13.5px] font-bold font-sans text-primary uppercase tracking-wider">
-                        {category.categoryName}
+                        {tCategoryName(category.categoryKey, category.categoryName)}
                       </Text>
 
                       {hasMore && (
@@ -281,9 +293,9 @@ export default function AllFeaturesScreen() {
                             iconBgColor={colorBg}
                             iconShapeClass={iconShapeClass}
                             icon={<FeatureIcon iconName={iconName} color={colorIcon} size={22} />}
-                            label={meta?.name || item.name}
-                            subtitle={meta?.subtitle || item.subtitle}
-                            metaValue={meta?.subtitle || item.subtitle}
+                            label={tFeatureName(item.id, meta?.name || item.name)}
+                            subtitle={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
+                            metaValue={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
                             badge={item.badge}
                             badgeColor={item.badgeColor}
                             onPress={() => handleTileClick(item.id)}
@@ -303,6 +315,7 @@ export default function AllFeaturesScreen() {
         visible={customiseOpen}
         onClose={() => setCustomiseOpen(false)}
         activeFeatureIds={activeQuickActions}
+        availableFeatures={filteredAvailableFeatures}
         onSave={handleSaveCustomisation}
       />
     </ScreenShell>

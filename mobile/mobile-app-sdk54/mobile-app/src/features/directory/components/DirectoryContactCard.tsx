@@ -62,11 +62,16 @@ export const DirectoryContactCard = ({
     }
   };
 
-  const subtitleText = member.unitNumber
-    ? member.designation
-      ? `${member.unitNumber} • ${member.designation}`
+  const hasUnit = Boolean(member.unitNumber && member.unitNumber.trim());
+  const cleanDesignation =
+    member.designation && member.designation.trim().toLowerCase() !== 'none'
+      ? member.designation.trim()
+      : '';
+  const subtitleText = hasUnit
+    ? cleanDesignation
+      ? `${member.unitNumber} • ${cleanDesignation}`
       : member.unitNumber
-    : member.designation || '';
+    : cleanDesignation;
 
   return (
     <ListCard

@@ -45,7 +45,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'x-organization-id', 'x-role', 'x-villa-id', 'Accept', 'Origin']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'x-organization-id', 'x-role', 'x-villa-id', 'X-User-ID', 'x-user-id', 'Accept', 'Origin']
 }));
 
 // Set up Helmet with CSP disabled for frontend integrations and allow popups for Google OAuth

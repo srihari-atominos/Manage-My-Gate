@@ -5,14 +5,14 @@ import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PulseItem } from '@/src/features/communityPulse/types/communityPulseTypes';
-import { formatRelativeTime } from '@/src/features/communityPulse/hooks/useCommunityPulse';
 import { getStatusTabStyle } from '@/components/ui/statusTabColors';
+import { useDirectory } from '@/src/features/directory/hooks/useDirectory';
+import { DirectoryMember } from '@/src/features/directory/types/directoryTypes';
 
 export interface ResidentDirectoryModalProps {
   visible: boolean;
   onClose: () => void;
-  pulses: PulseItem[];
+  pulses?: any[];
 }
 
 export interface ResidentProfileItem {
@@ -22,7 +22,7 @@ export interface ResidentProfileItem {
   role: string;
   phone: string;
   avatar?: string;
-  activePulse?: PulseItem;
+  activePulse?: any;
   interests: Array<{ name: string; emoji: string }>;
 }
 
@@ -83,30 +83,29 @@ export const ResidentDirectoryModal = ({
   pulses,
 }: ResidentDirectoryModalProps) => {
   const insets = useSafeAreaInsets();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'active_pulse' | 'interests'>('all');
+  const { members, searchQuery, setSearchQuery, activeTab, setActiveTab } = useDirectory();
   const [connectNeighbor, setConnectNeighbor] = useState<ResidentProfileItem | null>(null);
   const [messageText, setMessageText] = useState('');
 
-  const neighborList: ResidentProfileItem[] = SAMPLE_NEIGHBORS.map((neighbor) => {
-    const pulse = pulses.find((p) =>
-      p.userName.toLowerCase().includes(neighbor.name.split(' ')[0].toLowerCase())
-    );
-    return { ...neighbor, activePulse: pulse || undefined };
-  });
+  const neighborList: ResidentProfileItem[] = (members || []).map((member: DirectoryMember) => ({
+    id: member.id || member.userId,
+    name: member.name || 'Resident',
+    villa: member.unitNumber || 'Villa',
+    role: member.role || 'Resident',
+    phone: member.phone || '',
+    avatar: member.avatarUrl || undefined,
+    interests: (member.interests || []).map((i: string) => ({ name: i, emoji: '✨' })),
+  }));
 
   const filteredNeighbors = neighborList.filter((item) => {
-    const query = searchQuery.trim().toLowerCase();
-    const matchesSearch =
-      !query ||
-      item.name.toLowerCase().includes(query) ||
-      item.villa.toLowerCase().includes(query) ||
-      (item.activePulse && item.activePulse.text.toLowerCase().includes(query)) ||
-      item.interests.some((i) => i.name.toLowerCase().includes(query));
-
-    if (!matchesSearch) return false;
-    if (activeTab === 'active_pulse') return Boolean(item.activePulse);
-    if (activeTab === 'interests') return item.interests.length > 0;
+    if (activeTab === 'interests' && item.interests.length === 0) return false;
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchName = item.name.toLowerCase().includes(q);
+      const matchVilla = item.villa.toLowerCase().includes(q);
+      const matchInterest = item.interests.some((i) => i.name.toLowerCase().includes(q));
+      return matchName || matchVilla || matchInterest;
+    }
     return true;
   });
 
@@ -196,7 +195,6 @@ export const ResidentDirectoryModal = ({
             <View className="flex-row mx-4 mb-3 bg-muted/40 border border-border p-0.5 rounded-xl gap-0.5">
               {[
                 { key: 'all', label: 'All' },
-                { key: 'active_pulse', label: 'Active Pulses' },
                 { key: 'interests', label: 'Interests' },
               ].map((tab) => {
                 const isActive = activeTab === tab.key;
@@ -262,29 +260,6 @@ export const ResidentDirectoryModal = ({
                       </Pressable>
                     </Pressable>
 
-                    {/* Active Pulse */}
-                    {item.activePulse ? (
-                      <Pressable
-                        onPress={() => setConnectNeighbor(item)}
-                        className="mx-3.5 mb-3 bg-primary/8 border border-primary/15 rounded-xl p-2.5 flex-row items-center active:opacity-80"
-                      >
-                        <Text className="text-base me-2">{item.activePulse.emoji || '💬'}</Text>
-                        <View className="flex-1 min-w-0 me-2">
-                          <Text className="text-xs font-bold text-foreground" numberOfLines={1}>
-                            {item.activePulse.text}
-                          </Text>
-                          {item.activePulse.contextText ? (
-                            <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
-                              {item.activePulse.contextText}
-                            </Text>
-                          ) : null}
-                        </View>
-                        <Text className="text-[10px] font-mono text-muted-foreground shrink-0">
-                          {formatRelativeTime(item.activePulse.createdAt)}
-                        </Text>
-                      </Pressable>
-                    ) : null}
-
                     {/* Interest Chips */}
                     <View className="flex-row flex-wrap gap-1.5 px-3.5 pb-3">
                       {item.interests.map((interest, idx) => (
@@ -348,9 +323,9 @@ export const ResidentDirectoryModal = ({
                   </Pressable>
                 </View>
 
-                {/* Preset Chips */}
-                <View className="gap-2">
-                  <Text className="text-xs font-semibold text-muted-foreground">Quick Messages</Text>
+                {/* Quick Chips */}
+                <View className="gap-1.5">
+                  <Text className="text-[11px] font-semibold text-muted-foreground">Quick Messages</Text>
                   <View className="flex-row flex-wrap gap-1.5">
                     {['Hi neighbor! 👋', 'Up for coffee today? ☕', 'Are you playing badminton? 🏸', 'Quick question! ❓'].map(
                       (chip) => (

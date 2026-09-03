@@ -101,20 +101,11 @@ export const PermissionMatrixGrid: React.FC<PermissionMatrixGridProps> = ({
         const selectedGroupCount = groupCodes.filter((code) => (selectedIds || []).includes(code)).length;
         const isAllGroupSelected = groupCodes.length > 0 && selectedGroupCount === groupCodes.length;
 
-        let firstSelectedVisitorPerm: string | null = null;
-        if (category.toLowerCase() === 'visitor') {
-          const selected = perms.find((p) => (selectedIds || []).includes(p.name || p.code || p._id || ''));
-          if (selected) {
-            firstSelectedVisitorPerm = selected.name || selected.code || selected._id || null;
-          }
-        }
-
-        const isVisitorCategory = category.toLowerCase() === 'visitor';
         const CategoryIcon = getCategoryIcon(category);
 
         return (
           <View key={category} className="gap-2">
-            {/* Category Header (Financial Suite Typography: text-xs font-bold & text-xs font-extrabold) */}
+            {/* Category Header */}
             <View className="flex-row items-center justify-between px-1">
               <View className="flex-row items-center gap-2">
                 <View className="w-6 h-6 rounded-lg bg-primary/10 border border-primary/20 items-center justify-center">
@@ -130,29 +121,22 @@ export const PermissionMatrixGrid: React.FC<PermissionMatrixGridProps> = ({
                 </View>
               </View>
 
-              {!isVisitorCategory && (
-                <TouchableOpacity
-                  onPress={() => onSelectAllGroup(groupCodes, !isAllGroupSelected)}
-                  activeOpacity={0.7}
-                  className="px-2.5 py-1 bg-primary/10 rounded-full border border-primary/20"
-                >
-                  <Text className="text-xs font-bold text-primary">
-                    {isAllGroupSelected ? 'Deselect All' : 'Select All'}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                onPress={() => onSelectAllGroup(groupCodes, !isAllGroupSelected)}
+                activeOpacity={0.7}
+                className="px-2.5 py-1 bg-primary/10 rounded-full border border-primary/20"
+              >
+                <Text className="text-xs font-bold text-primary">
+                  {isAllGroupSelected ? 'Deselect All' : 'Select All'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Permission Group Container */}
             <View className="bg-card border border-border/80 rounded-2xl overflow-hidden shadow-xs">
               {perms.map((perm, idx) => {
                 const permValue = perm.name || perm.code || perm._id || '';
-                let isChecked = (selectedIds || []).includes(permValue);
-
-                if (isVisitorCategory) {
-                  isChecked = permValue === firstSelectedVisitorPerm;
-                }
-
+                const isChecked = (selectedIds || []).includes(permValue);
                 const isLast = idx === perms.length - 1;
 
                 return (
@@ -172,20 +156,10 @@ export const PermissionMatrixGrid: React.FC<PermissionMatrixGridProps> = ({
                       {formatPermissionLabel(perm.name || String(permValue))}
                     </Text>
 
-                    {isVisitorCategory ? (
-                      <View
-                        className={`w-4 h-4 rounded-full border items-center justify-center ${
-                          isChecked ? 'border-primary bg-primary' : 'border-muted-foreground'
-                        }`}
-                      >
-                        {isChecked && <View className="w-1.5 h-1.5 rounded-full bg-white" />}
-                      </View>
-                    ) : (
-                      <Checkbox
-                        checked={isChecked}
-                        onCheckedChange={(val) => onTogglePermission(permValue, !!val)}
-                      />
-                    )}
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={(val) => onTogglePermission(permValue, !!val)}
+                    />
                   </TouchableOpacity>
                 );
               })}

@@ -54,14 +54,9 @@ export const VisitorPassDetailsModal: React.FC<VisitorPassDetailsModalProps> = (
 
   if (!pass) return null;
 
-  const rawId = pass._id || (pass as any).id || '';
-  const passCode =
-    pass.code ||
-    (typeof rawId === 'string' && rawId.length >= 6
-      ? rawId.slice(-6).toUpperCase()
-      : typeof rawId === 'string' && rawId.length > 0
-      ? rawId.toUpperCase()
-      : '849201');
+  const rawId = (pass as any).shortKey || pass.code || pass._id || (pass as any).id || '';
+  const rawCode = (pass as any).shortKey || pass.code || (typeof rawId === 'string' && rawId.length >= 6 ? rawId.slice(-6) : rawId);
+  const passCode = String(rawCode).replace(/^PASS-?/i, '').toUpperCase() || '849201';
   const rawType = ((pass as any).passType || (pass as any).type || 'GUEST').toUpperCase();
   const passTypeMeta = PASS_TYPE_META[rawType] || PASS_TYPE_META.GUEST;
 

@@ -33,12 +33,14 @@ const resources = {
           confirmPasswordPlaceholder: 'Repeat password',
           orgName: 'Organization Name',
           submit: 'Create Account',
-          loginLink: 'Already have an account? Log in',
+          loginLink: 'Already have an account? Sign in',
+          userExistsSignInPrompt: 'Already have an account? Sign in to create another organisation under your account',
         },
         login: {
           promoTitle: 'Enterprise Workspace Platform',
           promoText:
             'Access our industry-leading multi-tenant architecture. Instantly provision your organization, manage granular permissions, and scale your team securely.',
+          noAccount: "Don't have an account? Create an Account",
         },
       },
       header: {

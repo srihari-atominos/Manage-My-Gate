@@ -63,7 +63,7 @@ export const RegisterForm = () => {
     if (isLoginMode) {
       navigate('/register')
     } else {
-      navigate('/login-createOrg')
+      navigate('/login')
     }
   }
 

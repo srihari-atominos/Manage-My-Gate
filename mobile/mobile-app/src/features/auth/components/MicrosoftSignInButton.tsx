@@ -21,10 +21,9 @@ export function MicrosoftSignInButton() {
     path: 'auth-spa'
   });
   
-  // Log this so we can see exactly what Expo generated
-  console.log('--- MICROSOFT REDIRECT URI ---');
-  console.log(redirectUri);
-  console.log('--------------------------------');
+  React.useEffect(() => {
+    console.log('[MicrosoftSignIn] Redirect URI:', redirectUri);
+  }, [redirectUri]);
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
@@ -58,7 +57,6 @@ export function MicrosoftSignInButton() {
             
             if (tokenToUse) {
               loginWithMicrosoft(tokenToUse)
-                .unwrap()
                 .catch((err: any) => {
                   console.error("Backend Error:", err);
                   Alert.alert('Microsoft Login Failed', typeof err === 'string' ? err : (err.message || 'Unknown error. Please check your network connection or try again.'));
@@ -82,12 +80,12 @@ export function MicrosoftSignInButton() {
 
   return (
     <Button
-      className="h-12 w-full rounded-full flex-row items-center justify-center bg-[#2f2f2f] border-0"
+      className="h-12 w-full rounded-xl flex-row items-center justify-center bg-[#2f2f2f] dark:bg-[#1f1f1f] border border-border px-3"
       onPress={() => promptAsync()}
       disabled={!request || loading}
       loading={loading}
     >
-      <Text className="text-white text-lg mr-2">❖</Text>
+      <Text className="text-white text-base me-2 shrink-0">❖</Text>
       <Text className="text-white font-semibold text-sm">Microsoft</Text>
     </Button>
   );

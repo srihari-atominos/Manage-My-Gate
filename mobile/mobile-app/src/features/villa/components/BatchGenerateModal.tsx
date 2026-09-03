@@ -20,11 +20,12 @@ export const BatchGenerateModal: React.FC<BatchGenerateModalProps> = ({
   onSubmit,
   loading = false,
 }) => {
-  const [prefix, setPrefix] = useState('Villa');
   const [startNumber, setStartNumber] = useState('1');
   const [endNumber, setEndNumber] = useState('54');
   const [blockOrBuilding, setBlockOrBuilding] = useState('Block A');
+  const [floor, setFloor] = useState('1');
   const [type, setType] = useState('Apartment');
+  const [status, setStatus] = useState<'Vacant' | 'Occupied' | 'Under Maintenance'>('Vacant');
   const [floorAreaSqFt, setFloorAreaSqFt] = useState('1500');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -48,12 +49,14 @@ export const BatchGenerateModal: React.FC<BatchGenerateModalProps> = ({
     setErrorMsg(null);
     try {
       await onSubmit({
-        prefix: prefix.trim() || 'Villa',
+        prefix: '',
         startNumber: startNum,
         endNumber: endNum,
         config: {
           blockOrBuilding: blockOrBuilding.trim() || 'Block A',
+          floor: floor.trim() || undefined,
           type: type || 'Apartment',
+          status: status || 'Vacant',
           floorAreaSqFt: floorAreaSqFt ? Number(floorAreaSqFt) : undefined,
         },
       });
@@ -69,19 +72,12 @@ export const BatchGenerateModal: React.FC<BatchGenerateModalProps> = ({
     <BottomSheet visible={visible} onClose={onClose} title="Batch Generate Community Units">
       <View className="space-y-3 py-2">
         <Text variant="muted" className="text-xs">
-          Automatically create multiple units across a range (e.g. Villa 01 to Villa 54) with block and unit type metadata.
+          Automatically create multiple units across a range (e.g. 01 to 54) with block and unit type metadata.
         </Text>
 
         {errorMsg && (
           <Text className="text-xs font-semibold text-destructive">{errorMsg}</Text>
         )}
-
-        <TextInput
-          label="Unit Prefix"
-          placeholder="e.g. Villa or Block-A"
-          value={prefix}
-          onChangeText={setPrefix}
-        />
 
         <View className="flex-row gap-2">
           <View className="flex-1">
@@ -104,13 +100,21 @@ export const BatchGenerateModal: React.FC<BatchGenerateModalProps> = ({
           </View>
         </View>
 
+        <TextInput
+          label="Block / Building"
+          placeholder="e.g. Block A"
+          value={blockOrBuilding}
+          onChangeText={setBlockOrBuilding}
+        />
+
         <View className="flex-row gap-2">
           <View className="flex-1">
             <TextInput
-              label="Block / Building"
-              placeholder="e.g. Block A"
-              value={blockOrBuilding}
-              onChangeText={setBlockOrBuilding}
+              label="Floor Level"
+              placeholder="e.g. 1"
+              keyboardType="numeric"
+              value={floor}
+              onChangeText={setFloor}
             />
           </View>
           <View className="flex-1">
@@ -141,9 +145,20 @@ export const BatchGenerateModal: React.FC<BatchGenerateModalProps> = ({
           onValueChange={(val: string) => setType(val)}
         />
 
+        <DropdownSelect
+          label="Unit Status"
+          options={[
+            { label: 'Vacant', value: 'Vacant' },
+            { label: 'Occupied', value: 'Occupied' },
+            { label: 'Under Maintenance', value: 'Under Maintenance' },
+          ]}
+          value={status}
+          onValueChange={(val: string) => setStatus(val as any)}
+        />
+
         <View className="bg-primary/10 p-3 rounded-xl border border-primary/20 items-center my-1">
           <Text className="text-sm font-bold text-primary">
-            Will generate {totalCalculated} units ({prefix} {startNumber.padStart(2, '0')} to {prefix} {endNumber.padStart(2, '0')})
+            Will generate {totalCalculated} units ({startNumber.padStart(2, '0')} to {endNumber.padStart(2, '0')})
           </Text>
         </View>
 

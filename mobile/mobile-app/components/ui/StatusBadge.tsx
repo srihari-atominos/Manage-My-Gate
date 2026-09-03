@@ -4,6 +4,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
 import { View } from 'react-native';
+import { useTranslation } from '@/src/utils/i18n';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -151,9 +152,14 @@ const StatusBadge = React.forwardRef<View, StatusBadgeProps>(
   ({ label, variant = 'neutral', size = 'md', dot = false, className, style, ...props }, ref) => {
     const { colorScheme } = useColorScheme();
     const isDark = colorScheme === 'dark';
+    const { t } = useTranslation();
 
     const validVariant = STATUS_COLORS[variant] ? variant : 'neutral';
     const colorConfig = isDark ? STATUS_COLORS[validVariant].dark : STATUS_COLORS[validVariant].light;
+
+    const rawLabel = String(label || '').trim();
+    const normalizedKey = `status_${rawLabel.toLowerCase().replace(/[\s\/-]+/g, '_')}`;
+    const displayLabel = t(normalizedKey, t(rawLabel.toLowerCase(), rawLabel));
 
     return (
       <View
@@ -167,7 +173,7 @@ const StatusBadge = React.forwardRef<View, StatusBadgeProps>(
           className={cn(statusBadgeTextVariants({ size }))}
           style={{ color: colorConfig.text }}
         >
-          {label}
+          {displayLabel}
         </Text>
       </View>
     );

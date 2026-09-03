@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { ShieldCheck, Building2, Edit2, Trash2, Lock, Plug } from 'lucide-react-native';
 import { ListCard } from '@/components/ui/ListCard';
 import { StatusVariant } from '@/components/ui/StatusBadge';
+import { useTranslation, i18n } from '@/src/utils/i18n';
 import { RoleData } from '../services/roleService';
 
 interface RoleCardProps {
@@ -18,6 +19,7 @@ export const RoleCard: React.FC<RoleCardProps> = ({
   onDelete,
   className = '',
 }) => {
+  const { t } = useTranslation();
   const isSuperAdmin = role?.name === 'Super Admin' || role?.name === 'Platform Super Admin';
   const permissionsCount = Array.isArray(role?.permissions) ? role.permissions.length : 0;
   const isTenant = !!role?.isTenantRole;
@@ -38,11 +40,11 @@ export const RoleCard: React.FC<RoleCardProps> = ({
 
   return (
     <ListCard
-      title={role?.name || 'Unnamed Role'}
+      title={i18n.tRole(role?.name, role?.name || 'Unnamed Role')}
       subtitle={role?.description || 'No description provided.'}
       leftAvatarFallback={getInitials(role?.name)}
       status={{
-        label: isTenant ? 'UNIT SCOPE' : 'GLOBAL ROLE',
+        label: isTenant ? t('unit_scope', 'UNIT SCOPE') : t('global_role', 'GLOBAL ROLE'),
         variant: getStatusVariant(),
       }}
       showChevron={false}

@@ -5,11 +5,16 @@ import { Bell, Home, Building2, ChevronDown } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useSelector } from 'react-redux';
+import { useRouter } from 'expo-router';
 import { RoleSwitchModal } from './RoleSwitchModal';
 import { VillaSwitchModal } from './VillaSwitchModal';
 import { OrgSwitchModal } from './OrgSwitchModal';
 import { ProfileModal } from './ProfileModal';
 import { NotificationSheetModal } from './NotificationSheetModal';
+import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
+import { RealtimeNotificationToast } from '@/components/feedback/RealtimeNotificationToast';
+import { mapActionUrlToMobileRoute } from '@/src/features/notification/utils/notificationNavigation';
+import { useTranslation } from '@/src/utils/i18n';
 
 interface MobileHeaderProps {
   unitName?: string | null;
@@ -27,12 +32,21 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   onNotificationPress,
 }) => {
   const { user } = useAuth();
+  const router = useRouter();
+  const { t } = useTranslation();
   
-  // Real-time notification count from Redux store if available
-  const storeUnreadCount = useSelector((state: any) => state.notification?.unreadCount);
+  // Real-time notification hook initialization to ensure WebSockets & state remain active
+  const {
+    unreadCount: hookUnreadCount,
+    latestNotification,
+    dismissLatestNotification,
+    markAsRead,
+  } = useNotifications();
+
+  // Real-time notification count from Redux store or prop override
   const liveUnreadCount = unreadNotificationCount !== undefined 
     ? unreadNotificationCount 
-    : (typeof storeUnreadCount === 'number' ? storeUnreadCount : 0);
+    : (typeof hookUnreadCount === 'number' ? hookUnreadCount : 0);
 
   const reduxWorkspaces = useSelector((state: any) => state.auth?.user?.availableWorkspaces || state.workspace?.availableWorkspaces || EMPTY_ARRAY);
 
@@ -53,14 +67,23 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
     if (userOrg) return userOrg;
 
-    // 2. Fall back to availableWorkspaces list in Redux
-    const workspaces = (user as any)?.availableWorkspaces || [];
-    if (Array.isArray(workspaces) && workspaces.length > 0 && workspaces[0]?.name) {
-      return workspaces[0].name;
+    // 2. Fall back to availableWorkspaces list matching active workspace orgId
+    const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
+    const workspaces = (user as any)?.availableWorkspaces || reduxWorkspaces || [];
+    if (Array.isArray(workspaces) && workspaces.length > 0) {
+      if (activeOrgId) {
+        const activeWs = workspaces.find(
+          (w: any) => w.orgId === activeOrgId || w._id === activeOrgId || w.id === activeOrgId,
+        );
+        if (activeWs?.name) return activeWs.name;
+      }
+      if (workspaces[0]?.name) {
+        return workspaces[0].name;
+      }
     }
 
     return 'Community Workspace';
-  }, [communityName, user]);
+  }, [communityName, user, reduxWorkspaces]);
 
   const [activeVilla, setActiveVilla] = useState<string | null>(dynamicVilla);
   const [activeCommunity, setActiveCommunity] = useState<string>(dynamicCommunity);
@@ -107,6 +130,19 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const handleBellPress = () => {
     if (onNotificationPress) {
       onNotificationPress();
+    } else {
+      setNotifModalVisible(true);
+    }
+  };
+
+  const handleToastPress = (notification: any) => {
+    const notifId = notification?.id || notification?._id;
+    if (notifId && !notification.isRead) {
+      markAsRead(notifId);
+    }
+    if (notification.actionUrl) {
+      const route = mapActionUrlToMobileRoute(notification.actionUrl, notification.type);
+      router.push(route as any);
     } else {
       setNotifModalVisible(true);
     }
@@ -188,6 +224,13 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         </View>
       </View>
 
+      {/* Real-time Notification Banner Toast */}
+      <RealtimeNotificationToast
+        notification={latestNotification}
+        onDismiss={dismissLatestNotification}
+        onPressBanner={handleToastPress}
+      />
+
       {/* Interactive Villa Switcher Modal */}
       <VillaSwitchModal
         visible={villaModalVisible}
@@ -195,6 +238,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         activeVilla={activeVilla || ''}
         onSelectVilla={(villaNum) => setActiveVilla(villaNum)}
         communityName={activeCommunity}
+        onOpenOrgModal={() => setOrgModalVisible(true)}
       />
 
       {/* Interactive Organization / Community Switcher Modal */}

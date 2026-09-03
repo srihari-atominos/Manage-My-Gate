@@ -17,7 +17,19 @@ import { VisitorPassStepIndicator } from '@/src/features/visitor/components/shar
 import { VisitorPassCode } from '@/src/features/visitor/components/shared/VisitorPassCode';
 import { VisitorQRCode } from '@/src/features/visitor/components/shared/VisitorQRCode';
 import { WalkInApprovalCard } from '@/src/features/visitor/components/walkin/WalkInApprovalCard';
-import { MOCK_WALK_IN_APPROVALS } from '@/src/features/visitor/mocks/visitorMocks';
+import { WalkInApprovalItem } from '@/src/features/visitor/mocks/visitorMocks';
+
+const SHOWCASE_WALK_IN: WalkInApprovalItem = {
+  id: 'showcase-walkin-1',
+  visitorName: 'Sample Visitor',
+  phone: '+91 98989 12345',
+  purpose: 'Visiting Unit #101',
+  passType: 'GUEST',
+  gateName: 'Main Gate 1',
+  waitingDurationMinutes: 3,
+  requestTimestamp: new Date().toISOString(),
+  status: 'PENDING',
+};
 
 import { Mail, Search, Sparkles, Shield, User, Heart } from 'lucide-react-native';
 
@@ -231,7 +243,7 @@ export default function ComponentShowcaseScreen() {
                   Walk-In Gate Approval Card
                 </Text>
                 <WalkInApprovalCard
-                  item={MOCK_WALK_IN_APPROVALS[0]}
+                  item={SHOWCASE_WALK_IN}
                   onApprove={() => {}}
                   onReject={() => {}}
                   onPressDetails={() => {}}

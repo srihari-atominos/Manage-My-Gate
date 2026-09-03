@@ -26,6 +26,23 @@ export interface VisitorPass {
   code?: string;
 }
 
+export interface ActiveVisitorLog {
+  _id: string;
+  id?: string;
+  passId?: any;
+  visitorName?: string;
+  entryType?: string;
+  checkInTime?: string;
+  logStatus?: string;
+  residentId?: any;
+  guardId?: any;
+  snapshot?: {
+    visitorName?: string;
+    vehicleNumber?: string;
+    idProofNumber?: string;
+  };
+}
+
 export interface DashboardSummary {
   recentPasses: VisitorPass[];
   activePassesCount: number;
@@ -59,6 +76,8 @@ export interface AdminVisitorState {
 interface VisitorPassState {
   passes: VisitorPass[];
   activePass: VisitorPass | null;
+  activeVisitors: ActiveVisitorLog[];
+  activeVisitorsStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
   dashboard: DashboardSummary;
   walkIns: WalkInState;
   admin: AdminVisitorState;
@@ -76,6 +95,8 @@ interface VisitorPassState {
 const initialState: VisitorPassState = {
   passes: [],
   activePass: null,
+  activeVisitors: [],
+  activeVisitorsStatus: 'idle',
   dashboard: {
     recentPasses: [],
     activePassesCount: 0,
@@ -129,9 +150,19 @@ export const createPass = createAsyncThunk(
 
 export const getPassDetails = createAsyncThunk(
   'visitorPass/getPassDetails',
-  async (id: string, { rejectWithValue }) => {
+  async (idOrCode: string, { rejectWithValue }) => {
     try {
-      const response = await visitorService.getPassDetails(id);
+      const clean = idOrCode?.trim();
+      let response: any;
+      if (clean && clean.length < 24) {
+        try {
+          response = await visitorService.getPassByCode(clean);
+        } catch {
+          response = await visitorService.getPassDetails(clean);
+        }
+      } else {
+        response = await visitorService.getPassDetails(clean);
+      }
       const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
       return (body?.data || body) as any;
     } catch (error: any) {
@@ -270,6 +301,48 @@ export const resolveWalkInRequest = createAsyncThunk(
   }
 );
 
+export const fetchActiveVisitorsThunk = createAsyncThunk(
+  'visitorPass/fetchActiveVisitors',
+  async (orgId: string, { rejectWithValue }) => {
+    try {
+      const response = await visitorService.getActiveVisitors(orgId);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const list = Array.isArray(body?.data || body) ? body?.data || body : [];
+      return list as ActiveVisitorLog[];
+    } catch (error: any) {
+      return rejectWithValue(error?.response?.data?.message || error?.message || 'Failed to fetch active visitors');
+    }
+  }
+);
+
+export const processPreApprovedThunk = createAsyncThunk(
+  'visitorPass/processPreApproved',
+  async (payload: any, { rejectWithValue }) => {
+    try {
+      const response = await visitorService.processPreApproved(payload);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const data = body?.data || body;
+      return data as ActiveVisitorLog;
+    } catch (error: any) {
+      return rejectWithValue(error?.response?.data?.message || error?.message || 'Failed to check in visitor');
+    }
+  }
+);
+
+export const checkoutVisitorThunk = createAsyncThunk(
+  'visitorPass/checkoutVisitor',
+  async (logId: string, { rejectWithValue }) => {
+    try {
+      const response = await visitorService.checkoutVisitor(logId);
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      const data = body?.data || body;
+      return { logId, data };
+    } catch (error: any) {
+      return rejectWithValue(error?.response?.data?.message || error?.message || 'Failed to checkout visitor');
+    }
+  }
+);
+
 export const visitorPassSlice = createSlice({
   name: 'visitorPass',
   initialState,
@@ -313,7 +386,7 @@ export const visitorPassSlice = createSlice({
         }
       }
     },
-    walkInResolvedReceived: (state, action: PayloadAction<{ id: string }>) => {
+    walkInResolvedReceived: (state, action: PayloadAction<{ id: string; rawLog?: any }>) => {
       const targetId = action.payload.id;
 
       // Idempotent removal from pendingList and pendingWalkIns
@@ -324,6 +397,16 @@ export const visitorPassSlice = createSlice({
       state.dashboard.pendingWalkIns = state.dashboard.pendingWalkIns.filter(
         (p) => p._id !== targetId && p.id !== targetId
       );
+
+      // Add to activeVisitors if the action was APPROVE and we have the log
+      const updatedLog = action.payload.rawLog;
+      if (updatedLog && updatedLog.logStatus === 'INSIDE') {
+        const logId = updatedLog._id || updatedLog.id;
+        const exists = state.activeVisitors.some(l => (l._id || l.id) === logId);
+        if (!exists) {
+          state.activeVisitors.unshift(updatedLog);
+        }
+      }
     },
   },
   extraReducers: (builder) => {
@@ -402,6 +485,16 @@ export const visitorPassSlice = createSlice({
         state.dashboard.pendingWalkIns = state.dashboard.pendingWalkIns.filter(
           (p) => p._id !== targetId && p.id !== targetId
         );
+
+        // Add to activeVisitors if approved
+        const updatedLog = action.payload.data;
+        if (updatedLog && updatedLog.logStatus === 'INSIDE') {
+          const logId = updatedLog._id || updatedLog.id;
+          const exists = state.activeVisitors.some(l => (l._id || l.id) === logId);
+          if (!exists) {
+            state.activeVisitors.unshift(updatedLog);
+          }
+        }
       })
       .addCase(resolveWalkInRequest.rejected, (state, action) => {
         state.walkIns.actionStatus = 'failed';
@@ -574,6 +667,36 @@ export const visitorPassSlice = createSlice({
         if (idx !== -1) {
           state.admin.communityPasses[idx].status = 'REVOKED';
         }
+      })
+
+      // fetchActiveVisitorsThunk
+      .addCase(fetchActiveVisitorsThunk.pending, (state) => {
+        state.activeVisitorsStatus = 'loading';
+      })
+      .addCase(fetchActiveVisitorsThunk.fulfilled, (state, action) => {
+        state.activeVisitorsStatus = 'succeeded';
+        state.activeVisitors = action.payload || [];
+      })
+      .addCase(fetchActiveVisitorsThunk.rejected, (state) => {
+        state.activeVisitorsStatus = 'failed';
+      })
+
+      // processPreApprovedThunk
+      .addCase(processPreApprovedThunk.fulfilled, (state, action) => {
+        const newLog = action.payload;
+        if (newLog) {
+          const logId = newLog._id || newLog.id;
+          const exists = state.activeVisitors.some((l) => (l._id || l.id) === logId);
+          if (!exists) {
+            state.activeVisitors.unshift(newLog);
+          }
+        }
+      })
+
+      // checkoutVisitorThunk
+      .addCase(checkoutVisitorThunk.fulfilled, (state, action) => {
+        const logId = action.payload.logId;
+        state.activeVisitors = state.activeVisitors.filter((l) => (l._id || l.id) !== logId);
       });
   },
 });

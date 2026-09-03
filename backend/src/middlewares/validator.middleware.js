@@ -32,6 +32,15 @@ export const validate = (validationRules) => {
       value: err.value,
     }));
 
+    console.error('*** EXPRESS VALIDATOR ERROR ***');
+    console.error('Req Body:', JSON.stringify(req.body, null, 2));
+    console.error('Errors:', JSON.stringify(extractedErrors, null, 2));
+    console.error('*********************************');
+
+    try {
+      fs.appendFileSync('validation_errors.log', new Date().toISOString() + '\\nReq Body: ' + JSON.stringify(req.body) + '\\nErrors: ' + JSON.stringify(extractedErrors, null, 2) + '\\n\\n');
+    } catch(e) {}
+    
     logger.error('Validation errors: ' + JSON.stringify(extractedErrors, null, 2));
 
     // 4. Pass error to global error handler

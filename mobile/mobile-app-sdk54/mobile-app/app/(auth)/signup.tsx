@@ -201,8 +201,7 @@ export default function SignupScreen() {
             keyboardDismissMode="on-drag"
             className="px-5 py-6"
           >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-              <View className="max-w-sm mx-auto w-full gap-3.5">
+            <View className="max-w-sm mx-auto w-full gap-3.5">
               {/* Brand Header */}
               <Animated.View
                 style={{
@@ -515,7 +514,7 @@ export default function SignupScreen() {
                   Already have an account?{' '}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => router.push('/(auth)/login')}
+                  onPress={() => router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } })}
                   activeOpacity={0.8}
                 >
                   <Text className="text-xs font-extrabold text-[#FF5E00] dark:text-[#FF7A00] underline">
@@ -525,9 +524,8 @@ export default function SignupScreen() {
               </View>
             </Animated.View>
           </View>
-        </TouchableWithoutFeedback>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </ImageBackground>
     </>
   );

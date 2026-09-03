@@ -6,12 +6,16 @@ import {
   loginWithMicrosoftThunk,
   registerUserThunk,
   verifyRegistrationThunk,
+  acceptInviteThunk,
+  createWorkspaceThunk,
+  updateOrganizationFeaturesThunk,
   requestOtp,
   verifyOtpLogin,
   performLogout,
   clearStatus,
   bootstrapAuth,
 } from '../store/authSlice';
+import authService from '../services/authService';
 import { useCallback } from 'react';
 
 export const useAuth = () => {
@@ -26,12 +30,13 @@ export const useAuth = () => {
   };
 
   try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     dispatch = useDispatch<AppDispatch>();
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    authState = useSelector((state: RootState) => state.auth) || authState;
-  } catch (err) {
-    // Return safe initial fallback state if Redux Provider is not yet in tree
+    const storeState = useSelector((state: RootState) => state.auth);
+    if (storeState) {
+      authState = storeState;
+    }
+  } catch (e) {
+    // Redux Provider context not available yet during initial mount
   }
 
   const handleLogin = useCallback(
@@ -69,6 +74,31 @@ export const useAuth = () => {
     [dispatch]
   );
 
+  const handleAcceptInvite = useCallback(
+    (token: string, password: string) => {
+      return dispatch ? dispatch(acceptInviteThunk({ token, password })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleCreateWorkspace = useCallback(
+    (workspaceData: any) => {
+      return dispatch ? dispatch(createWorkspaceThunk(workspaceData)) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleUpdateOrganizationFeatures = useCallback(
+    (orgId: string, features: string[]) => {
+      return dispatch ? dispatch(updateOrganizationFeaturesThunk({ orgId, features })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleCheckOrganizationName = useCallback((name: string) => {
+    return authService.checkOrganizationName(name);
+  }, []);
+
   const handleRequestOtp = useCallback(
     (identifier: string, isEmail: boolean = false) => {
       return dispatch ? dispatch(requestOtp({ identifier, isEmail })) : Promise.resolve();
@@ -100,6 +130,10 @@ export const useAuth = () => {
     login: handleLogin,
     register: handleRegister,
     verifyRegistration: handleVerifyRegistration,
+    acceptInvite: handleAcceptInvite,
+    createWorkspace: handleCreateWorkspace,
+    updateOrganizationFeatures: handleUpdateOrganizationFeatures,
+    checkOrganizationName: handleCheckOrganizationName,
     loginWithGoogle: handleLoginWithGoogle,
     loginWithMicrosoft: handleLoginWithMicrosoft,
     requestOtp: handleRequestOtp,

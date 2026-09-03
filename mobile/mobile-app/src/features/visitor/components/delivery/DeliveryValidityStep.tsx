@@ -12,7 +12,7 @@ export interface TimeSlotWindow {
 
 export interface DeliveryValidityData {
   usageType?: 'ONE_TIME' | 'MULTI_USE';
-  validityDuration: 'ONE_HOUR' | 'TWO_HOURS' | 'END_OF_DAY' | 'CUSTOM';
+  validityDuration: 'THIRTY_MINS' | 'ONE_HOUR' | 'TWO_HOURS' | 'END_OF_DAY' | 'CUSTOM';
   customVisitDate?: string;
   customStartTime?: string;
   customEndTime?: string;
@@ -26,8 +26,9 @@ export interface DeliveryValidityStepProps {
 }
 
 const DELIVERY_VALIDITY_OPTIONS = [
-  { id: 'ONE_HOUR', label: '1 Hour Pass', subtitle: 'Quick food delivery (Swiggy / Zomato / Blinkit)' },
-  { id: 'TWO_HOURS', label: '2 Hours Pass', subtitle: 'Standard e-commerce courier delivery' },
+  { id: 'THIRTY_MINS', label: '30 Minutes Quick Pass', subtitle: 'Instant delivery (Blinkit / Zepto / Swiggy Instamart)' },
+  { id: 'ONE_HOUR', label: '1 Hour Pass', subtitle: 'Standard food delivery (Swiggy / Zomato / Talabat)' },
+  { id: 'TWO_HOURS', label: '2 Hours Pass', subtitle: 'Standard e-commerce courier & parcel delivery' },
   { id: 'END_OF_DAY', label: 'Valid Until Midnight Today', subtitle: 'Flexible full-day delivery window' },
   { id: 'CUSTOM', label: 'Custom Timing', subtitle: 'Specify custom date & arrival time window' },
 ];

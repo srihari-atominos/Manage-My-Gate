@@ -93,10 +93,12 @@ export const useWorkspaceDetails = () => {
   }, [activeWorkspaceDetails, resetEdit])
 
   const handleGeneralInfoSubmit = async (formData) => {
-    if (activeRole === 'Resident') {
+    const isManager = ['Platform Super Admin', 'Super Admin', 'Community Admin'].includes(activeRole)
+    if (!isManager) {
       toast.error(t('workspace.details.restrictedAction', 'Residents cannot modify settings.'))
       return
     }
+
     try {
       await dispatch(editWorkspaceDetails({ id: workspaceId, data: formData })).unwrap()
       toast.success(t('workspace.details.saveSuccess', 'Workspace settings updated successfully.'))

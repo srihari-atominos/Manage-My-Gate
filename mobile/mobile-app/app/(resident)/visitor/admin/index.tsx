@@ -9,7 +9,7 @@ import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { Button } from '@/components/ui/button';
-import { VisitorAnalyticsCard } from '@/src/features/visitor/components/admin/VisitorAnalyticsCard';
+import { FAB } from '@/components/ui/FAB';
 import { VisitorPassCard } from '@/src/features/visitor/components/VisitorPassCard';
 import { VisitorLogDetailsModal } from '@/src/features/visitor/components/history/VisitorLogDetailsModal';
 import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
@@ -148,9 +148,6 @@ export default function AdminVisitorDashboardScreen() {
         contentContainerClassName="p-4 gap-4 pb-28"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
-        {/* Analytics Card */}
-        <VisitorAnalyticsCard analytics={analytics} />
-
         {/* Universal Admin KPIs 2x2 Grid */}
         <KPIDashboardStrip cards={adminKpis} />
 
@@ -193,6 +190,12 @@ export default function AdminVisitorDashboardScreen() {
         visible={Boolean(selectedPass)}
         pass={selectedPass}
         onClose={() => setSelectedPass(null)}
+      />
+      {/* Primary Action: Create Pass FAB */}
+      <FAB
+        iconName="UserPlus"
+        label="Create Pass"
+        onPress={() => router.push('/(resident)/visitor/admin/create-pass' as any)}
       />
     </ScreenShell>
   );

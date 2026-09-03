@@ -25,11 +25,11 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
   const dispatch = useDispatch()
 
   // Local form state
-  const [prefix, setPrefix] = useState('Villa')
   const [startNumber, setStartNumber] = useState(1)
   const [endNumber, setEndNumber] = useState(54)
   const [blockOrBuilding, setBlockOrBuilding] = useState('Block A')
   const [type, setType] = useState('Apartment')
+  const [status, setStatus] = useState('Vacant')
   const [floorAreaSqFt, setFloorAreaSqFt] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -51,10 +51,11 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
         batchGenerateVillasAsync({
           startNumber,
           endNumber,
-          prefix,
+          prefix: '',
           config: {
             blockOrBuilding,
             type,
+            status,
             floorAreaSqFt: floorAreaSqFt ? parseFloat(floorAreaSqFt) : null,
           },
         }),
@@ -95,25 +96,6 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
               {error}
             </CAlert>
           )}
-
-          <div className="mb-3">
-            <CFormLabel htmlFor="batch-prefix" className="small fw-semibold">
-              {t('villas.batch.prefix', 'Unit Prefix')}
-            </CFormLabel>
-            <CFormInput
-              id="batch-prefix"
-              value={prefix}
-              onChange={(e) => setPrefix(e.target.value)}
-              placeholder="e.g. Villa"
-              size="sm"
-            />
-            <div className="text-muted small-text mt-1 bulk-text-xxs">
-              {t(
-                'villas.batch.prefixDesc',
-                'Suffix numbers will be appended automatically, e.g. "Villa 01".',
-              )}
-            </div>
-          </div>
 
           <CRow className="mb-3">
             <CCol>
@@ -181,6 +163,25 @@ export const BatchGenerateModal = ({ visible, onClose }) => {
               </CFormSelect>
             </CCol>
           </CRow>
+
+          <div className="mb-3">
+            <CFormLabel htmlFor="batch-status" className="small fw-semibold">
+              {t('villas.batch.status', 'Unit Status')}
+            </CFormLabel>
+            <CFormSelect
+              id="batch-status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              size="sm"
+            >
+              <option value="Vacant">Vacant</option>
+              <option value="Occupied">Occupied</option>
+              <option value="Under Maintenance">Under Maintenance</option>
+              <option value="Under Renovation">Under Renovation</option>
+              <option value="For Sale">For Sale</option>
+              <option value="For Rent">For Rent</option>
+            </CFormSelect>
+          </div>
 
           <div className="mb-3">
             <CFormLabel htmlFor="batch-floor-area" className="small fw-semibold">

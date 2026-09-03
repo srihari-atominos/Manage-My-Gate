@@ -48,17 +48,27 @@ export class WorkspaceRepository {
       updateSet[`modules.$.${key}`] = value;
     }
 
+    const isMongoId = mongoose.Types.ObjectId.isValid(moduleId);
+    const query = isMongoId
+      ? { _id: workspaceId, 'modules._id': new mongoose.Types.ObjectId(moduleId) }
+      : { _id: workspaceId, 'modules.moduleKey': moduleId };
+
     return await Workspace.findOneAndUpdate(
-      { _id: workspaceId, 'modules._id': new mongoose.Types.ObjectId(moduleId) },
+      query,
       { $set: updateSet },
-      { returnDocument: 'after', runValidators: true, new: true, ...(session ? { session } : {}) }
+      { returnDocument: 'after', runValidators: false, new: true, ...(session ? { session } : {}) }
     );
   }
 
   async deleteModule(workspaceId, moduleId, session = null) {
+    const isMongoId = mongoose.Types.ObjectId.isValid(moduleId);
+    const pullCondition = isMongoId
+      ? { _id: new mongoose.Types.ObjectId(moduleId) }
+      : { moduleKey: moduleId };
+
     return await Workspace.findByIdAndUpdate(
       workspaceId,
-      { $pull: { modules: { _id: new mongoose.Types.ObjectId(moduleId) } } },
+      { $pull: { modules: pullCondition } },
       { returnDocument: 'after', new: true, ...(session ? { session } : {}) }
     );
   }

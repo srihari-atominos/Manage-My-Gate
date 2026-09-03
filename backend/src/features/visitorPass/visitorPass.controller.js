@@ -7,7 +7,11 @@ export class VisitorPassController {
    */
   async create(req, res, next) {
     try {
-      const data = await visitorPassService.createPass(req.body);
+      const createdById = req.body.createdById || req.user?.id || req.user?._id || req.headers['x-user-id'];
+      const data = await visitorPassService.createPass({
+        ...req.body,
+        createdById,
+      });
       res.success(data, 'Visitor pass created successfully', 201);
     } catch (error) {
       next(error);
@@ -49,20 +53,32 @@ export class VisitorPassController {
   }
 
   /**
-   * Retrieve paginated passes for an organization.
+   * Retrieve paginated passes for an organization with full multi-filtering.
    */
   async getByOrgPaginated(req, res, next) {
     try {
       const { orgId } = req.params;
       const skip = parseInt(req.query.skip, 10) || 0;
       const limit = parseInt(req.query.limit, 10) || 10;
+      const search = req.query.search;
+      const villaId = req.query.villaId;
+      const scope = req.query.scope; // 'COMMUNITY' or 'ALL'
       
-      let statuses = ['PENDING', 'ACTIVE'];
+      let statuses = ['PENDING', 'ACTIVE', 'REVOKED', 'EXPIRED'];
       if (req.query.statuses) {
         statuses = req.query.statuses.split(',').map(s => s.trim().toUpperCase());
+      } else if (req.query.status && req.query.status.toUpperCase() !== 'ALL') {
+        statuses = [req.query.status.toUpperCase()];
       }
 
-      const data = await visitorPassService.getActivePasses(orgId, skip, limit, statuses);
+      const data = await visitorPassService.getActivePasses(orgId, {
+        skip,
+        limit,
+        statuses,
+        search,
+        villaId,
+        scope,
+      });
       res.success(data, 'Visitor passes retrieved successfully');
     } catch (error) {
       next(error);

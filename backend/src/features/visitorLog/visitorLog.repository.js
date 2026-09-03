@@ -40,20 +40,30 @@ export class VisitorLogRepository {
    * @returns {Promise<Object[]>} List of active visitor log documents.
    */
   async findActiveLogsInside(orgId, session = null) {
+    if (!orgId) return [];
+    const isMongoId = mongoose.isValidObjectId(orgId);
+    const orgQuery = isMongoId
+      ? { $or: [{ orgId: new mongoose.Types.ObjectId(orgId) }, { orgId: String(orgId) }] }
+      : { orgId: String(orgId) };
+
     return await VisitorLog.find({
-      orgId: new mongoose.Types.ObjectId(orgId),
+      ...orgQuery,
       logStatus: 'INSIDE'
     })
     .sort({ checkInTime: -1 })
     .populate({
       path: 'residentId',
-      select: 'username name'
+      select: 'username name phone email villaId',
+      populate: {
+        path: 'villaId',
+        select: 'unitNumber blockOrBuilding villaNumber block'
+      }
     })
     .populate({
       path: 'passId',
       populate: {
         path: 'villaId',
-        select: 'villaNumber block'
+        select: 'unitNumber blockOrBuilding villaNumber block'
       }
     })
     .session(session || null)
@@ -68,6 +78,16 @@ export class VisitorLogRepository {
    */
   async findById(id, session = null) {
     return await VisitorLog.findById(id).session(session || null);
+  }
+
+  /**
+   * Find an active VisitorLog by its associated passId.
+   * @param {string} passId - The ID of the visitor pass.
+   * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
+   * @returns {Promise<Object|null>} The log document, or null if not found.
+   */
+  async findActiveLogByPassId(passId, session = null) {
+    return await VisitorLog.findOne({ passId, logStatus: 'INSIDE' }).session(session || null);
   }
 
   /**

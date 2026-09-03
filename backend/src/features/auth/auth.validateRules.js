@@ -69,8 +69,11 @@ export const loginRules = [
  */
 export const acceptInviteRules = [
   body('token')
-    .notEmpty()
-    .withMessage('Invitation token is required')
+    .optional({ nullable: true, checkFalsy: true })
+    .trim(),
+  body('email')
+    .optional({ nullable: true, checkFalsy: true })
+    .isEmail()
     .trim(),
   body('password')
     .notEmpty()
@@ -86,8 +89,7 @@ export const acceptInviteRules = [
  */
 export const switchContextRules = [
   body('targetOrgId')
-    .notEmpty()
-    .withMessage('targetOrgId is required')
+    .optional({ nullable: true, checkFalsy: true })
     .isMongoId()
     .withMessage('targetOrgId must be a valid Mongo ID')
     .trim(),

@@ -13,16 +13,11 @@ const generateUUID = (): string => {
 import { Platform } from 'react-native';
 
 const getApiBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+  let url = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:5002/api/v1' : 'http://localhost:5002/api/v1');
+  if (Platform.OS === 'android' && url.includes('localhost')) {
+    url = url.replace('localhost', '10.0.2.2');
   }
-  if (__DEV__) {
-    if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:5002/api/v1';
-    }
-    return 'http://localhost:5002/api/v1';
-  }
-  return 'https://managemygate.e3esg.com/api/v1';
+  return url;
 };
 
 const apiClient = axios.create({
@@ -30,7 +25,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 8000,
   withCredentials: true,
 });
 
@@ -144,13 +139,42 @@ apiClient.interceptors.request.use(
           jwtData?.activeOrgId;
       }
 
+      // Extract target orgId from URL if requesting an organization-scoped endpoint (e.g., /organizations/:id/features)
+      const urlOrgMatch = config.url ? config.url.match(/\/organizations\/([a-fA-F0-9]{24})/) : null;
+      const targetUrlOrgId = urlOrgMatch ? urlOrgMatch[1] : null;
+
       const activeOrgId =
-        typeof rawOrgId === 'object' && rawOrgId !== null
+        targetUrlOrgId ||
+        (typeof rawOrgId === 'object' && rawOrgId !== null
           ? rawOrgId._id || rawOrgId.id || String(rawOrgId)
-          : rawOrgId;
+          : rawOrgId);
 
       if (activeOrgId && activeOrgId !== '[object Object]') {
         config.headers['x-organization-id'] = activeOrgId;
+      }
+
+      let rawUserId =
+        state?.auth?.user?.id ||
+        state?.auth?.user?._id ||
+        state?.auth?.user?.userId;
+
+      if (!rawUserId) {
+        const userStr = await storage.getItem('user');
+        if (userStr) {
+          try {
+            const parsedUser = JSON.parse(userStr);
+            rawUserId = parsedUser?.id || parsedUser?._id || parsedUser?.userId;
+          } catch (e) {}
+        }
+      }
+
+      if (!rawUserId && token) {
+        const jwtData = decodeJwtPayload(token);
+        rawUserId = jwtData?.id || jwtData?._id || jwtData?.userId || jwtData?.sub;
+      }
+
+      if (rawUserId && typeof rawUserId === 'string' && rawUserId !== '[object Object]') {
+        config.headers['X-User-ID'] = rawUserId;
       }
     } catch (err) {
       console.error('Failed to inject headers in mobile request interceptor:', err);
@@ -290,6 +314,23 @@ apiClient.interceptors.response.use(
 
     if (error.response?.status === 400 && error.response?.data?.message === 'Workspace context is required.') {
       console.warn('[ApiClient] Workspace context missing on request. Preserving session.');
+    }
+
+    if (
+      (error.response?.status === 403 || error.response?.status === 404) &&
+      error.response?.data?.message &&
+      (
+        error.response.data.message.includes('do not have an active membership') ||
+        error.response.data.message.includes('Organization not found') ||
+        error.response.data.message.includes('Workspace not found')
+      )
+    ) {
+      if (store) {
+        try {
+          const { switchWorkspaceContextThunk } = require('../features/auth/store/authSlice');
+          store.dispatch(switchWorkspaceContextThunk({}));
+        } catch (e) {}
+      }
     }
 
     if (error.response?.data?.message) {

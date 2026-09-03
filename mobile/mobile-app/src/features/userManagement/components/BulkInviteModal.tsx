@@ -3,7 +3,6 @@ import { View, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform,
 import { X, Users, Upload, Plus, Trash2, CheckCircle2, AlertTriangle, FileSpreadsheet, Download, FileText } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/common/Button';
@@ -55,16 +54,6 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
       setErrorMsg('');
       setSuccessResults(null);
       setSelectedFileName(null);
-      setRows([
-        {
-          id: String(Date.now()),
-          email: '',
-          roleName: '',
-          villaId: '',
-          residentType: 'None',
-          isValid: false,
-        },
-      ]);
       setActiveTab('upload');
 
       setLoadingOptions(true);
@@ -75,29 +64,38 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
         .then(([rolesRes, villasRes]: any[]) => {
           const fetchedRoles = rolesRes.data?.data || rolesRes.data || [];
           const fetchedVillas = villasRes.data?.data || villasRes.data || [];
-          setRoles(Array.isArray(fetchedRoles) ? fetchedRoles : []);
-          setVillas(Array.isArray(fetchedVillas) ? fetchedVillas : []);
+          const loadedRoles = Array.isArray(fetchedRoles) ? fetchedRoles : [];
+          const loadedVillas = Array.isArray(fetchedVillas) ? fetchedVillas : [];
+          setRoles(loadedRoles);
+          setVillas(loadedVillas);
+
+          const defaultRole = loadedRoles[0]?.name || '';
+          setRows([
+            {
+              id: String(Date.now()),
+              email: '',
+              roleName: defaultRole,
+              villaId: '',
+              residentType: 'None',
+              isValid: false,
+            },
+          ]);
         })
         .finally(() => setLoadingOptions(false));
     }
   }, [visible]);
 
   // Validate a row item
-  const validateRow = (row: InviteRowItem, currentRoles = roles, currentVillas = villas): InviteRowItem => {
+  const validateRow = (row: InviteRowItem, currentRoles = roles): InviteRowItem => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!row.email.trim()) {
       return { ...row, isValid: false, error: 'Email is required' };
     }
     if (!emailRegex.test(row.email.trim())) {
-      return { ...row, isValid: false, error: 'Invalid email address format' };
+      return { ...row, isValid: false, error: 'Invalid email format' };
     }
     if (!row.roleName) {
       return { ...row, isValid: false, error: 'Role is required' };
-    }
-
-    const selectedRole = currentRoles.find((r) => r.name?.toLowerCase() === row.roleName?.toLowerCase() || r.name === row.roleName);
-    if (selectedRole?.isTenantRole && !row.villaId) {
-      return { ...row, isValid: false, error: 'Villa/Unit is required for unit roles' };
     }
 
     return { ...row, isValid: true, error: undefined };
@@ -186,10 +184,11 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
 
   // Add new empty row for manual tab
   const handleAddRow = () => {
+    const defaultRole = roles[0]?.name || '';
     const newRow: InviteRowItem = {
       id: String(Date.now() + Math.random()),
       email: '',
-      roleName: roles[0]?.name || '',
+      roleName: defaultRole,
       villaId: '',
       residentType: 'None',
       isValid: false,
@@ -236,7 +235,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
 
     const validRows = validatedRows.filter((r) => r.isValid);
     if (validRows.length === 0) {
-      setErrorMsg('No valid invitation entries found. Please correct highlighted errors before sending.');
+      setErrorMsg('No valid invitation entries found. Please enter email and select role.');
       return;
     }
 
@@ -399,11 +398,11 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                       return (
                         <View
                           key={row.id}
-                          className="p-3 bg-muted/20 border border-border/60 rounded-2xl mb-2.5"
+                          className="p-3.5 bg-card border border-border/80 rounded-2xl mb-3 shadow-xs"
                         >
                           <View className="flex-row items-center justify-between mb-2">
-                            <View className="flex-row items-center">
-                              <Text className="text-xs font-bold text-foreground me-2">
+                            <View className="flex-row items-center gap-2">
+                              <Text className="text-xs font-bold text-foreground">
                                 Entry #{index + 1}
                               </Text>
                               {row.isValid ? (
@@ -416,7 +415,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                             {rows.length > 1 && (
                               <TouchableOpacity
                                 onPress={() => handleRemoveRow(row.id)}
-                                className="p-1 rounded-lg bg-destructive/10"
+                                className="p-1.5 rounded-xl bg-destructive/10 border border-destructive/20 active:opacity-70"
                               >
                                 <Trash2 size={14} color="#ef4444" />
                               </TouchableOpacity>
@@ -424,9 +423,10 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                           </View>
 
                           {/* Email Field */}
-                          <View className="mb-2">
+                          <View className="mb-2.5">
+                            <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Email Address *</Text>
                             <TextInput
-                              placeholder="Email address (user@domain.com)"
+                              placeholder="user@domain.com"
                               value={row.email}
                               onChangeText={(val) => handleRowChange(row.id, 'email', val)}
                               keyboardType="email-address"
@@ -435,7 +435,8 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                           </View>
 
                           {/* Role Selection */}
-                          <View className="mb-2">
+                          <View className="mb-2.5">
+                            <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Assigned Role *</Text>
                             <DropdownSelect
                               options={roleOptions}
                               value={row.roleName}
@@ -447,11 +448,12 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                           {/* Unit Selection if Tenant/Unit role */}
                           {isTenantRole && (
                             <View className="mb-1">
+                              <Text className="text-[11px] font-semibold text-muted-foreground mb-1 text-start">Villa Unit (Optional)</Text>
                               <DropdownSelect
                                 options={villaOptions}
                                 value={row.villaId}
                                 onValueChange={(val) => handleRowChange(row.id, 'villaId', val)}
-                                placeholder="-- Choose Villa Unit --"
+                                placeholder="-- Choose Villa Unit (Optional) --"
                               />
                             </View>
                           )}
@@ -459,8 +461,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
                       );
                     })}
 
-                    <Button variant="outline" size="sm" onPress={handleAddRow} className="mt-1">
-                      <Plus size={14} color="#6366f1" className="me-1.5" />
+                    <Button variant="outline" size="sm" leftIcon={Plus} onPress={handleAddRow} className="mt-1">
                       Add Another User Entry
                     </Button>
                   </View>

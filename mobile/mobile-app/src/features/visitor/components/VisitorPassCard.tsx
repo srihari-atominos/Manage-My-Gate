@@ -4,6 +4,7 @@ import { ListCard } from '@/components/ui/ListCard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
+import { useTranslation } from '@/src/utils/i18n';
 import { VisitorPass } from '../store/visitorPassSlice';
 import { QrCode, Phone, Car } from 'lucide-react-native';
 
@@ -12,9 +13,11 @@ interface VisitorPassCardProps {
   onPress: (pass: VisitorPass) => void;
   onShowQR: (pass: VisitorPass) => void;
   villaBadge?: string;
+  isInside?: boolean;
 }
 
-const mapPassStatusVariant = (status: string): StatusVariant => {
+const mapPassStatusVariant = (status: string, isInside?: boolean): StatusVariant => {
+  if (isInside) return 'success';
   switch (status) {
     case 'ACTIVE':
       return 'success';
@@ -34,16 +37,25 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
   onPress,
   onShowQR,
   villaBadge,
+  isInside,
 }) => {
-  const displayVilla = villaBadge || (pass as any).villaName || (pass as any).villaNumber || (pass as any).villaId?.name || (pass as any).villaId?.number;
+  const { t } = useTranslation();
+  const vObj = (pass as any).villaId;
+  const unitNum = vObj?.unitNumber || vObj?.villaNumber || (pass as any).villaNumber || (pass as any).villaName || (pass as any).villaId?.name || (pass as any).villaId?.number;
+  const block = vObj?.blockOrBuilding || vObj?.block ? ` (${vObj.blockOrBuilding || vObj.block})` : '';
+  const resolvedVilla = unitNum ? `${t('villa_label', 'Villa')} ${unitNum}${block}` : ((pass as any).passType === 'ADMIN_GUEST' || !vObj ? t('community_common_area', 'Community / Common Area') : '');
+  const displayVilla = villaBadge || resolvedVilla;
 
   const subtitleParts = [];
-  if (displayVilla) subtitleParts.push(`Villa: ${displayVilla}`);
+  if (displayVilla) subtitleParts.push(displayVilla);
   if (pass.phone) subtitleParts.push(`Ph: ${pass.phone}`);
-  else if (pass.purpose) subtitleParts.push(`For: ${pass.purpose}`);
-  else subtitleParts.push(`Code: ${pass.code || (typeof pass._id === 'string' ? pass._id.slice(-6) : 'PASS')}`);
+  else if (pass.purpose) subtitleParts.push(`${t('for_purpose', 'For:')} ${pass.purpose}`);
+  else subtitleParts.push(`${t('code_label', 'Code:')} ${pass.code || (typeof pass._id === 'string' ? pass._id.slice(-6) : 'PASS')}`);
 
   const subtitle = subtitleParts.join(' • ');
+
+  const badgeLabel = isInside ? 'INSIDE' : pass.status;
+  const badgeVariant = mapPassStatusVariant(pass.status, isInside);
 
   return (
     <ListCard
@@ -53,8 +65,8 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
       leftIconBgColor="rgba(23, 43, 112, 0.12)"
       leftIconColor="#172B70"
       status={{
-        label: pass.status,
-        variant: mapPassStatusVariant(pass.status),
+        label: badgeLabel,
+        variant: badgeVariant,
       }}
       onPress={() => onPress(pass)}
       rightContent={
@@ -68,7 +80,7 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
           className="flex-row items-center gap-1.5 h-8 px-2.5 rounded-lg border-blue-500/30 bg-blue-500/10 active:bg-blue-500/20"
         >
           <QrCode size={14} className="text-blue-600 dark:text-blue-400" />
-          <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">Pass Code</Text>
+          <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">{t('pass_code', 'Pass Code')}</Text>
         </Button>
       }
     />

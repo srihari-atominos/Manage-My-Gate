@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import storage from './storage';
 
 export type LanguageCode = 'en' | 'ta' | 'hi' | 'ml' | 'te' | 'kn';
@@ -832,6 +833,14 @@ export const i18n = {
     return dict[key] || fallback || TRANSLATIONS.en[key] || key;
   },
 
+  tRole: (role?: string, fallback?: string): string => {
+    if (!role) return fallback || 'Resident';
+    const roleKey = `role_${String(role).toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
+    const direct = i18n.t(roleKey);
+    if (direct !== roleKey) return direct;
+    return fallback || String(role);
+  },
+
   /**
    * Translates text dynamically to active language while strictly preserving:
    * 1. Numbers (e.g. 104, 24, 7, 02/09/2026, 18:00)
@@ -872,6 +881,34 @@ export const i18n = {
       return match;
     });
   },
+};
+
+export const useTranslation = () => {
+  const [lang, setLang] = useState<LanguageCode>(i18n.getCurrentLanguage());
+
+  useEffect(() => {
+    return i18n.subscribe((newLang) => {
+      setLang(newLang);
+    });
+  }, []);
+
+  const t = (key: string, fallback?: string): string => i18n.t(key, fallback);
+  const tRole = (role?: string, fallback?: string): string => i18n.tRole(role, fallback);
+  const tFeatureName = (id?: string, fallback?: string): string => i18n.translateText(fallback || id || '');
+  const tFeatureSubtitle = (id?: string, fallback?: string): string => i18n.translateText(fallback || '');
+  const tCategoryName = (key?: string, fallback?: string): string => i18n.translateText(fallback || key || '');
+
+  return {
+    t,
+    tRole,
+    tFeatureName,
+    tFeatureSubtitle,
+    tCategoryName,
+    language: lang,
+    languageCode: lang,
+    setLanguage: i18n.setLanguage,
+    translateText: i18n.translateText,
+  };
 };
 
 export default i18n;

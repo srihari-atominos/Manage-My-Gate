@@ -1,11 +1,12 @@
 import * as React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, BackHandler } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MobileHeader from '@/components/navigation/MobileHeader';
 import HeroBanner from '@/components/dashboard/HeroBanner';
 import QuickActionsGrid from '@/components/dashboard/QuickActionsGrid';
 import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
+import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 
 export default function DashboardScreen() {
@@ -21,38 +22,52 @@ export default function DashboardScreen() {
 
   const insets = useSafeAreaInsets();
 
+  // Hardware Back Button Handler for Dashboard
+  React.useEffect(() => {
+    const onHardwareBack = () => {
+      if (customiseOpen) {
+        setCustomiseOpen(false);
+        return true;
+      }
+      if (router.canGoBack()) {
+        router.back();
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+    return () => subscription.remove();
+  }, [customiseOpen, router]);
+
   const handleSaveCustomisation = async (selectedIds: string[]) => {
     await saveQuickActions(selectedIds);
   };
 
   const handleTilePress = (tileId: string) => {
     if (tileId === 'visitor_resident_passes') {
-      router.push('/(resident)/visitor' as any);
+      router.navigate('/(resident)/visitor' as any);
       return;
     }
     if (tileId === 'billing_dashboard') {
-      router.push('/(resident)/billing' as any);
+      router.navigate('/(resident)/billing' as any);
       return;
     }
     if (tileId === 'billing_action_center') {
-      router.push('/(resident)/admin/billing/ledger' as any);
+      router.navigate('/(resident)/admin/billing/ledger' as any);
       return;
     }
     if (tileId === 'billing_assessment_manager') {
-      router.push('/(resident)/admin/billing/assessments' as any);
+      router.navigate('/(resident)/admin/billing/assessments' as any);
       return;
     }
-    const feature = allFeaturesList.find((item) => item.id === tileId);
+    let feature = allFeaturesList.find((item) => item.id === tileId);
+    if (!feature) {
+      feature = (ALL_AVAILABLE_FEATURES as any[]).find((item) => item.id === tileId);
+    }
+    
     if (feature && feature.route) {
-      let targetRoute = feature.route;
-      
-      // Fallback routing mappings for dynamically loaded backend routes
-      if (targetRoute.endsWith('/resident-passes')) {
-        targetRoute = '/(resident)/visitor';
-      } else if (targetRoute.endsWith('/notices/active-board')) {
-        targetRoute = '/(resident)/notices';
-      }
-      
+      const targetRoute = feature.route.endsWith('/resident-passes') ? '/(resident)/visitor' : feature.route;
       router.push(targetRoute as any);
     }
   };
@@ -108,6 +123,7 @@ export default function DashboardScreen() {
         visible={customiseOpen}
         onClose={() => setCustomiseOpen(false)}
         activeFeatureIds={activeQuickActions}
+        availableFeatures={allFeaturesList}
         onSave={handleSaveCustomisation}
       />
     </View>

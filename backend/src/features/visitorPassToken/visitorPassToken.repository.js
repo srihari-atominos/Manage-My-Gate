@@ -18,9 +18,18 @@ export class VisitorPassTokenRepository {
    * @param {import('mongoose').ClientSession} [session] - Optional Mongoose session.
    * @returns {Promise<Object|null>} The token mapping document, or null if not found.
    */
-  async findByCode(code, session = null) {
+  async findByCode(passCode, session = null) {
+    if (!passCode) return null;
+    const raw = String(passCode).trim();
+    const clean = raw.replace(/^PASS-?/i, '').replace(/[\s-]/g, '').trim();
     return await VisitorPassToken.findOne({
-      $or: [{ passCode: code }, { shortKey: code }],
+      $or: [
+        { passCode: raw },
+        { passCode: clean },
+        { shortKey: raw },
+        { shortKey: clean },
+        { passCode: { $regex: new RegExp(`_${clean}$`, 'i') } },
+      ],
     }).session(session || null);
   }
 

@@ -9,6 +9,7 @@ import { VisitorLogDetailsModal } from './VisitorLogDetailsModal';
 import { ExtendedVisitorPass } from '../../mocks/visitorMocks';
 import { useVisitorPass } from '../../hooks/useVisitorPass';
 import { mapBackendPassToHistoryItem } from '../../utils/mapBackendPassToHistoryItem';
+import { useTranslation } from '@/src/utils/i18n';
 
 export const VisitorHistoryView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('ACTIVE');
@@ -17,17 +18,18 @@ export const VisitorHistoryView: React.FC = () => {
   const [detailsModalOpen, setDetailsModalOpen] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const { t } = useTranslation();
 
   const { passes, pagination, status, error, fetchPasses } = useVisitorPass();
 
   const tabs = useMemo(
     () => [
-      { key: 'ACTIVE', label: 'Active' },
-      { key: 'PENDING', label: 'Upcoming' },
-      { key: 'EXPIRED', label: 'Completed' },
-      { key: 'REVOKED', label: 'Rejected' },
+      { key: 'ACTIVE', label: t('active', 'Active') },
+      { key: 'PENDING', label: t('upcoming', 'Upcoming') },
+      { key: 'EXPIRED', label: t('expired', 'Completed') },
+      { key: 'REVOKED', label: t('cancelled', 'Rejected') },
     ],
-    []
+    [t]
   );
 
   const mappedHistoryPasses = useMemo(() => {
@@ -106,7 +108,7 @@ export const VisitorHistoryView: React.FC = () => {
       <SearchFilterBar
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search loaded history by name, phone, or code..."
+        searchPlaceholder={t('search_visitor_passes', 'Search loaded history by name, phone, or code...')}
         variant="bordered"
         className="px-0 py-0 border-0"
       />
@@ -139,8 +141,8 @@ export const VisitorHistoryView: React.FC = () => {
         loading={isLoadingInitial}
         ListHeaderComponent={renderHeader()}
         emptyIcon="History"
-        emptyTitle="No History Passes Found"
-        emptySubtitle={`No ${activeTab.toLowerCase()} visitor passes found.`}
+        emptyTitle={t('no_recent_visitor_activity', 'No History Passes Found')}
+        emptySubtitle={`${t('no_recent_visitor_sub', 'No visitor passes found.')}`}
         contentContainerClassName="px-4 pt-3 pb-28"
         renderItem={(pass) => {
           if (!pass) return null;

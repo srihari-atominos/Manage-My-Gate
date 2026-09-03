@@ -93,6 +93,20 @@ export const LoginForm = () => {
   const inviteTokenParam = searchParams.get('invite_token')
   const emailParam = searchParams.get('email') || location.state?.email || ''
   const passwordParam = searchParams.get('password') || location.state?.password || ''
+  const intentParam =
+    searchParams.get('intent') ||
+    location.state?.intent ||
+    (window.location.href.includes('intent=create-org')
+      ? 'create-org'
+      : window.location.href.includes('intent=create')
+      ? 'create'
+      : null)
+
+  useEffect(() => {
+    if (intentParam) {
+      sessionStorage.setItem('auth_intent', intentParam)
+    }
+  }, [intentParam])
 
   const [expectedPhoneLength, setExpectedPhoneLength] = useState(12) // Default for India (91 + 10 digits)
 
@@ -626,7 +640,7 @@ export const LoginForm = () => {
 
         <div className="text-center mt-3">
           <CButton color="link" onClick={() => navigate('/register')} style={styles.toggleLink} className="p-0">
-            {t('auth.login.noAccount', 'Don\'t have an account? Sign up')}
+            {t('auth.login.noAccount', "Don't have an account? Create an Account")}
           </CButton>
         </div>
       </CCardBody>

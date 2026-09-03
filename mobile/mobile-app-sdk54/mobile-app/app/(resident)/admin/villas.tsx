@@ -119,7 +119,7 @@ export default function VillaManagementScreen() {
     return count;
   }, [filters]);
 
-  const availableStatuses = ['Vacant', 'Occupied', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent'];
+  const availableStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
 
   return (
     <ScreenShell

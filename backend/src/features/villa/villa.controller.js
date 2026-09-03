@@ -212,36 +212,31 @@ export class VillaController {
   async downloadBulkUploadTemplate(req, res, next) {
     try {
       const headers = [
-        'UnitNumber(101,102,103)',
-        'BlockOrBuilding',
+        'Unit Number',
+        'Block/Building',
         'Floor',
-        'Unit Type(1BHA,2BHA,3BHA,Villa)',
+        'Unit Type',
         'Floor Area (Sq Ft)',
-        'Occupancy Status(Occupied,Vacant)',
-        'Name',
-        'Email',
-        'ResidentType(Family Member,Resident Owner,Tenant)',
-        'Phone No'
+        'Occupancy Status',
+        'Resident Name',
+        'Resident Email',
+        'Resident Type',
+        'Phone Number'
       ];
 
-      const exampleRow = [
-        '101',
-        'Block A',
-        '1st Floor',
-        '3BHA',
-        '1500',
-        'Occupied',
-        'John Doe',
-        'resident@example.com',
-        'Resident Owner',
-        '1234567890'
+      const sampleRows = [
+        ['101', 'Block A', '1', 'Apartment', '1200', 'Vacant', '', '', '', ''],
+        ['102', 'Block A', '1', '2 BHK', '1350', 'Occupied', 'John Doe', 'john@example.com', 'Resident Owner', '9876543210'],
+        ['103', 'Block A', '2', '3 BHK', '1600', 'Occupied', 'Jane Smith', 'jane@example.com', 'Tenant', '9876543211'],
+        ['201', 'Block B', '1', 'Villa', '2400', 'Under Maintenance', '', '', '', ''],
+        ['202', 'Block B', '2', 'Penthouse', '3200', 'Occupied', 'Alice Johnson', 'alice@example.com', 'Family Member', '9876543212']
       ];
 
       const escapeCSV = (arr) => arr.map(val => `"${val}"`).join(',');
 
       const csvContent = [
         escapeCSV(headers),
-        escapeCSV(exampleRow)
+        ...sampleRows.map(row => escapeCSV(row))
       ].join('\n');
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');

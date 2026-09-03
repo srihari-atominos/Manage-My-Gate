@@ -4,34 +4,32 @@ import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { ListCard } from '@/components/ui/ListCard';
 import { StatusVariant } from '@/components/ui/StatusBadge';
-import { Phone, MessageSquare } from 'lucide-react-native';
+import { useTranslation, i18n } from '@/src/utils/i18n';
+import { DirectoryMember } from '../types/directoryTypes';
+import { Phone, MessageSquare, Send, Mail } from 'lucide-react-native';
 import { cn } from '@/lib/utils';
-
-export interface DirectoryMember {
-  id: string;
-  name: string;
-  role: 'resident' | 'guard' | 'staff' | 'admin' | string;
-  designation?: string;
-  unitNumber?: string;
-  phone?: string;
-  intercomNumber?: string;
-  avatarUrl?: string | null;
-  isOnline?: boolean;
-}
 
 export interface DirectoryContactCardProps {
   member: DirectoryMember;
+  currentUserId?: string;
   onCall?: (phone: string) => void;
   onIntercom?: (intercom: string) => void;
+  onQuickMessage?: (member: DirectoryMember) => void;
+  onOpenConversation?: (member: DirectoryMember) => void;
   className?: string;
 }
 
 export const DirectoryContactCard = ({
   member,
+  currentUserId,
   onCall,
   onIntercom,
+  onQuickMessage,
+  onOpenConversation,
   className,
 }: DirectoryContactCardProps) => {
+  const { t } = useTranslation();
+
   const getRoleVariant = (role: string): StatusVariant => {
     switch (role?.toLowerCase()) {
       case 'guard':
@@ -41,6 +39,7 @@ export const DirectoryContactCard = ({
       case 'maintenance':
         return 'info';
       case 'admin':
+      case 'management':
         return 'critical';
       case 'resident':
       default:
@@ -62,50 +61,103 @@ export const DirectoryContactCard = ({
     }
   };
 
-  const subtitleText = member.unitNumber
-    ? member.designation
-      ? `${member.unitNumber} • ${member.designation}`
+  const hasUnit = Boolean(member.unitNumber && member.unitNumber.trim());
+  const cleanDesignation =
+    member.designation && member.designation.trim().toLowerCase() !== 'none'
+      ? member.designation.trim()
+      : '';
+  const subtitleText = hasUnit
+    ? cleanDesignation
+      ? `${member.unitNumber} • ${cleanDesignation}`
       : member.unitNumber
-    : member.designation || '';
+    : cleanDesignation;
+
+  const canMessage = member.allowDirectoryMessages !== false;
+  const canCall = Boolean(member.phone);
+  const intercomUnit = member.intercomNumber || (hasUnit ? member.unitNumber!.replace(/[^0-9]/g, '') : '');
+  const canIntercom = Boolean(intercomUnit);
 
   return (
     <ListCard
       title={member.name}
       subtitle={subtitleText}
       leftAvatar={member.avatarUrl || undefined}
-      leftAvatarFallback={!member.avatarUrl ? (member.name ? member.name.charAt(0).toUpperCase() : 'M') : undefined}
+      leftAvatarFallback={
+        !member.avatarUrl ? (member.name ? member.name.charAt(0).toUpperCase() : 'M') : undefined
+      }
       status={{
-        label: member.role.toUpperCase(),
+        label: i18n.tRole(member.role, member.role ? member.role.toUpperCase() : 'RESIDENT'),
         variant: getRoleVariant(member.role),
       }}
       showChevron={false}
-      className={cn('mb-3', className)}
+      onPress={() => (onOpenConversation && canMessage ? onOpenConversation(member) : undefined)}
+      className={cn('mb-3.5 p-4 rounded-2xl border border-border/80 shadow-xs', className)}
     >
-      {(member.phone || member.intercomNumber) && (
-        <View className="flex-row items-center gap-2 pt-2.5 border-t border-border/40 w-full">
+      {/* Contact Details Section */}
+      {(member.phone || member.email) && (
+        <View className="gap-1.5 pt-2.5 mt-2.5 border-t border-border/30">
           {member.phone ? (
+            <View className="flex-row items-center gap-2">
+              <Phone size={13} className="text-muted-foreground shrink-0" />
+              <Text className="text-xs font-semibold text-foreground tracking-wide">{member.phone}</Text>
+            </View>
+          ) : null}
+
+          {member.email ? (
+            <View className="flex-row items-center gap-2">
+              <Mail size={13} className="text-muted-foreground shrink-0" />
+              <Text className="text-xs font-medium text-muted-foreground flex-1" numberOfLines={1}>
+                {member.email}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      )}
+
+      {/* Action Row */}
+      {(canMessage || canCall || canIntercom) && (
+        <View className="flex-row items-center gap-2 pt-3 mt-2.5 border-t border-border/40 w-full">
+          {/* Quick Message CTA */}
+          {canMessage ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onPress={() => onQuickMessage && onQuickMessage(member)}
+              leftIcon={Send}
+              className="flex-1 h-9.5 rounded-xl bg-primary/10 border border-primary/20"
+              textClassName="text-xs font-bold text-primary"
+            >
+              {t('action_message', 'Message')}
+            </Button>
+          ) : null}
+
+          {/* Call CTA */}
+          {canCall && (
             <Button
               variant="outline"
               size="sm"
               onPress={handlePhonePress}
-              className="flex-1 h-9 rounded-xl border-border bg-muted/40 flex-row items-center justify-center gap-1.5"
+              leftIcon={Phone}
+              className="flex-1 h-9.5 rounded-xl border-border bg-muted/30 px-2"
+              textClassName="text-xs font-semibold text-foreground"
             >
-              <Phone size={14} className="text-foreground" />
-              <Text className="text-xs font-semibold text-foreground">Call</Text>
+              {t('action_call', 'Call')}
             </Button>
-          ) : null}
+          )}
 
-          {member.intercomNumber ? (
+          {/* Intercom CTA */}
+          {canIntercom && (
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
-              onPress={handleIntercomPress}
-              className="flex-1 h-9 rounded-xl bg-primary/10 border border-primary/20 flex-row items-center justify-center gap-1.5"
+              onPress={() => (onIntercom ? onIntercom(intercomUnit) : handleIntercomPress())}
+              leftIcon={MessageSquare}
+              className="flex-1 h-9.5 rounded-xl border-border bg-muted/30 px-2"
+              textClassName="text-xs font-semibold text-foreground"
             >
-              <MessageSquare size={14} className="text-primary" />
-              <Text className="text-xs font-semibold text-primary">Intercom #{member.intercomNumber}</Text>
+              #{intercomUnit}
             </Button>
-          ) : null}
+          )}
         </View>
       )}
     </ListCard>

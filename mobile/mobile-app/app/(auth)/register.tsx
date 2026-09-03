@@ -5,7 +5,7 @@ import { PhoneInput } from '@/components/forms/PhoneInput';
 import { Stack, router, useSegments, useLocalSearchParams } from 'expo-router';
 import { ShieldCheck, Mail, Lock, Phone, User } from 'lucide-react-native';
 import * as React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Platform } from 'react-native';
 import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { useForm, Controller } from 'react-hook-form';
@@ -14,6 +14,8 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
 import { MicrosoftSignInButton } from '../../src/features/auth/components/MicrosoftSignInButton';
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
+import { sessionStore } from '@/src/utils/storage';
 
 // Registration Validation Schema
 const registerSchema = yup.object().shape({
@@ -53,7 +55,7 @@ const registerSchema = yup.object().shape({
 type RegisterFormValues = yup.InferType<typeof registerSchema>;
 
 export default function RegisterScreen() {
-  const { register: performRegister, loading, error, successMsg, clearStatus } = useAuth();
+  const { register: performRegister, loading, error, successMsg, clearStatus, logout, isAuthenticated } = useAuth();
   const params = useLocalSearchParams<{ email?: string; name?: string; isGoogleSso?: string }>();
   
   const segments = useSegments();
@@ -81,7 +83,12 @@ export default function RegisterScreen() {
 
   React.useEffect(() => {
     clearStatus();
-    return () => clearStatus();
+    return () => {
+      clearStatus();
+      if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    };
   }, []);
 
   // Reactively route to OTP verification screen if registration succeeds (successMsg implies OTP was sent)
@@ -121,24 +128,24 @@ export default function RegisterScreen() {
     <>
       <Stack.Screen options={{ title: 'Create Account', headerBackVisible: true }} />
       <KeyboardAvoidingShell className="bg-background">
-        <ScrollView contentContainerStyle={{ padding: 24, flexGrow: 1, justifyContent: 'center' }}>
-          <View className="gap-6 flex-1 justify-center max-w-sm mx-auto w-full py-4">
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 24, flexGrow: 1, justifyContent: 'center' }}>
+          <View className="gap-5 flex-1 justify-center max-w-sm sm:max-w-md mx-auto w-full py-2 sm:py-4">
             {/* Brand Header */}
-            <View className="items-center mb-2">
-              <View className="bg-primary/10 p-4 rounded-3xl mb-3">
-                <ShieldCheck className="size-10 text-primary" size={36} />
+            <View className="items-center mb-1">
+              <View className="bg-primary/10 p-3.5 rounded-2xl mb-2.5 items-center justify-center">
+                <ShieldCheck className="size-9 text-primary" size={34} />
               </View>
               <Text className="text-2xl font-extrabold text-foreground tracking-tight text-center">
                 Register
               </Text>
-              <Text className="text-muted-foreground text-sm text-center mt-1.5 px-2">
+              <Text className="text-muted-foreground text-sm text-center mt-1 px-2">
                 Create your enterprise account to manage your workspace
               </Text>
             </View>
 
             {/* Form Container */}
-            <View className="bg-card border border-border rounded-2xl p-5 gap-4 shadow-sm">
-              <View className="gap-4">
+            <View className="bg-card border border-border rounded-2xl p-4 sm:p-6 gap-4 shadow-xs">
+              <View className="gap-3.5">
                 <Controller
                   control={form.control}
                   name="name"
@@ -146,7 +153,7 @@ export default function RegisterScreen() {
                     <Input
                       label="Full Name"
                       placeholder="John Doe"
-                      leftIcon={<User size={18} className="text-muted-foreground" />}
+                      leftIcon={<User size={18} className="text-muted-foreground me-1" />}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -163,7 +170,7 @@ export default function RegisterScreen() {
                     <Input
                       label="Email"
                       placeholder="admin@example.com"
-                      leftIcon={<Mail size={18} className="text-muted-foreground" />}
+                      leftIcon={<Mail size={18} className="text-muted-foreground me-1" />}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -193,18 +200,21 @@ export default function RegisterScreen() {
                   control={form.control}
                   name="password"
                   render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="Password"
-                      placeholder="••••••••"
-                      isPassword
-                      leftIcon={<Lock size={18} className="text-muted-foreground" />}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
-                      autoCapitalize="none"
-                      autoComplete="new-password"
-                      error={form.formState.errors.password?.message}
-                    />
+                    <View>
+                      <Input
+                        label="Password"
+                        placeholder="••••••••"
+                        isPassword
+                        leftIcon={<Lock size={18} className="text-muted-foreground me-1" />}
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        value={value}
+                        autoCapitalize="none"
+                        autoComplete="new-password"
+                        error={form.formState.errors.password?.message}
+                      />
+                      <PasswordStrengthIndicator password={value} />
+                    </View>
                   )}
                 />
 
@@ -216,7 +226,7 @@ export default function RegisterScreen() {
                       label="Repeat Password"
                       placeholder="••••••••"
                       isPassword
-                      leftIcon={<Lock size={18} className="text-muted-foreground" />}
+                      leftIcon={<Lock size={18} className="text-muted-foreground me-1" />}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -228,26 +238,49 @@ export default function RegisterScreen() {
                 />
 
                 {/* Global Error Banner */}
-                {error ? <ErrorBanner message={error} /> : null}
+                {error ? (
+                  <View className="gap-2 mt-1">
+                    <ErrorBanner message={error} />
+                    {error.toLowerCase().includes('already exists') ? (
+                      <Button
+                        variant="link"
+                        onPress={async () => {
+                          if (isAuthenticated) {
+                            try {
+                              await logout();
+                            } catch (e) {}
+                          }
+                          sessionStore.setItem('mobile_auth_intent', 'create-org');
+                          router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
+                        }}
+                      >
+                        <Text className="text-primary font-bold text-xs text-center underline">
+                          Already have an account? Sign in to create another organization under your account
+                        </Text>
+                      </Button>
+                    ) : null}
+                  </View>
+                ) : null}
 
                 <Button
                   onPress={form.handleSubmit(onSubmit)}
                   loading={loading}
                   textClassName="font-bold text-base"
-                  className="mt-2 h-12 bg-primary rounded-xl"
+                  className="mt-2 h-12 bg-primary rounded-xl w-full items-center justify-center"
                 >
                   Create Account
                 </Button>
               </View>
 
               {/* SSO Separator */}
-              <View className="flex-row items-center mt-2 mb-1">
+              <View className="flex-row items-center my-2">
                 <View className="flex-1 h-px bg-border" />
-                <Text className="mx-4 text-muted-foreground font-medium text-xs uppercase tracking-wider">OR CONTINUE WITH</Text>
+                <Text className="px-3 text-muted-foreground font-semibold text-[11px] uppercase tracking-wider">OR CONTINUE WITH</Text>
                 <View className="flex-1 h-px bg-border" />
               </View>
 
-              <View className="flex-row gap-3 mt-2">
+              {/* SSO Buttons */}
+              <View className="flex-col gap-2.5 sm:flex-row sm:gap-3">
                 <View className="flex-1">
                   <GoogleSignInButton />
                 </View>
@@ -257,8 +290,19 @@ export default function RegisterScreen() {
               </View>
 
               {/* Login Link */}
-              <View className="items-center mt-4">
-                <Button variant="link" onPress={() => router.push('/(auth)/login')}>
+              <View className="items-center mt-2">
+                <Button
+                  variant="link"
+                  onPress={async () => {
+                    if (isAuthenticated) {
+                      try {
+                        await logout();
+                      } catch (e) {}
+                    }
+                    sessionStore.setItem('mobile_auth_intent', 'create-org');
+                    router.push({ pathname: '/(auth)/login', params: { intent: 'create-org' } });
+                  }}
+                >
                   <Text className="text-primary font-medium text-sm">
                     Already have an account? Sign In
                   </Text>

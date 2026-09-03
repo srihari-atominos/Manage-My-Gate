@@ -296,7 +296,17 @@ export const workspaceSlice = createSlice({
       })
       .addCase(editWorkspaceDetails.fulfilled, (state, action) => {
         state.loading = false
-        state.activeWorkspaceDetails = action.payload?.data
+        const updatedWorkspace = action.payload?.data
+        state.activeWorkspaceDetails = updatedWorkspace
+        
+        // Also update the workspace name in availableWorkspaces
+        if (updatedWorkspace && state.availableWorkspaces) {
+          const index = state.availableWorkspaces.findIndex(w => w.orgId === updatedWorkspace.organizationId)
+          if (index !== -1) {
+            state.availableWorkspaces[index].name = updatedWorkspace.workspaceName
+            localStorage.setItem('availableWorkspaces', JSON.stringify(state.availableWorkspaces))
+          }
+        }
       })
       .addCase(editWorkspaceDetails.rejected, (state, action) => {
         state.loading = false

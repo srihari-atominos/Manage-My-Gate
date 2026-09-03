@@ -5,12 +5,13 @@ import { Sparkles, X, Check } from 'lucide-react-native';
 import CustomiseDeckZone from './CustomiseDeckZone';
 import CustomiseAvailableZone from './CustomiseAvailableZone';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser, getDefaultQuickActionsForUser } from '@/src/utils/rbac';
+import { useTranslation } from '@/src/utils/i18n';
 import {
   ALL_AVAILABLE_FEATURES,
   REAL_APP_FEATURES,
   DEFAULT_5_QUICK_ACTIONS,
   AppFeatureItem,
-  isFeatureAllowedForUser,
   getRoleDefaultQuickActions,
 } from '@/src/features/dashboard/dashboardCatalog';
 
@@ -23,6 +24,7 @@ interface CustomiseSheetModalProps {
   visible: boolean;
   onClose: () => void;
   activeFeatureIds?: string[];
+  availableFeatures?: any[];
   onToggleFeature?: (featureId: string) => void;
   onSave?: (selectedIds: string[]) => void;
 }
@@ -30,41 +32,35 @@ interface CustomiseSheetModalProps {
 export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   visible,
   onClose,
-  activeFeatureIds = DEFAULT_5_QUICK_ACTIONS,
+  activeFeatureIds,
+  availableFeatures,
   onToggleFeature,
   onSave,
 }) => {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const availableFeaturesForUser = useMemo(() => {
-    return ALL_AVAILABLE_FEATURES.filter((item: any) => isFeatureAllowedForUser(item, user));
+    return (availableFeatures || ALL_AVAILABLE_FEATURES).filter((item: any) =>
+      isFeatureAllowedForUser(item, user)
+    );
+  }, [availableFeatures, user]);
+
+  const defaultRoleQuickActions = useMemo(() => {
+    return getDefaultQuickActionsForUser(user);
   }, [user]);
 
-  // Sanitize incoming IDs to ensure only valid permitted items are retained (max 5)
+  // Sanitize incoming IDs to ensure only valid current catalog items allowed for this user are retained (max 5)
   const sanitizedActiveIds = useMemo(() => {
-    const roleDefaults = getRoleDefaultQuickActions(user);
-    const candidate = activeFeatureIds && activeFeatureIds.length > 0 ? activeFeatureIds : roleDefaults;
-    const permitted = candidate
-      .filter((id) => {
-        const item = ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
-        return item ? isFeatureAllowedForUser(item, user) : false;
-      })
-      .slice(0, 5);
-
-    if (permitted.length >= 5) {
-      return permitted;
+    if (!activeFeatureIds || activeFeatureIds.length === 0) {
+      return defaultRoleQuickActions;
     }
-
-    const permittedDefaults = roleDefaults.filter((id) => {
+    const valid = activeFeatureIds.filter((id) => {
       const item = ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
-      return item ? isFeatureAllowedForUser(item, user) : false;
-    });
-
-    const combined = Array.from(new Set([...permitted, ...permittedDefaults])).slice(0, 5);
-    if (combined.length > 0) return combined;
-
-    return availableFeaturesForUser.slice(0, 5).map((f) => f.id);
-  }, [activeFeatureIds, user, availableFeaturesForUser]);
+      return item && isFeatureAllowedForUser(item, user);
+    }).slice(0, 5);
+    return valid.length > 0 ? valid : defaultRoleQuickActions;
+  }, [activeFeatureIds, defaultRoleQuickActions, user]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>(sanitizedActiveIds);
 
@@ -122,13 +118,13 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
           {/* Header Bar */}
           <View className="flex-row justify-between items-center px-5 py-3 border-b border-border bg-card">
             <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="py-1 px-2 rounded-lg active:bg-secondary">
-              <Text className="text-sm font-semibold text-muted-foreground">Cancel</Text>
+              <Text className="text-sm font-semibold text-muted-foreground">{t('cancel', 'Cancel')}</Text>
             </TouchableOpacity>
 
-            <Text className="text-base font-extrabold text-foreground">Customise Dashboard</Text>
+            <Text className="text-base font-extrabold text-foreground">{t('customise_dashboard', 'Customise Dashboard')}</Text>
 
             <TouchableOpacity onPress={handleSave} activeOpacity={0.8} className="bg-primary px-4 py-1.5 rounded-full">
-              <Text className="text-xs font-bold text-primary-foreground">Save</Text>
+              <Text className="text-xs font-bold text-primary-foreground">{t('save', 'Save')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -148,7 +144,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
             {/* Divider Sub-header */}
             <View className="px-5 py-3 bg-muted/30 border-b border-border flex-row items-center justify-between">
               <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Available Actions ({selectedIds.length}/5 Selected)
+                {t('available_actions', 'Available Actions')} ({selectedIds.length}/5 Selected)
               </Text>
               <Sparkles size={14} color="#0284c7" />
             </View>

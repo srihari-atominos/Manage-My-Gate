@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store/store';
 import {
@@ -68,11 +69,20 @@ export const useRoles = () => {
   };
 
   const handleSaveRole = async (data: RoleData) => {
-    if (selectedRole?.id || selectedRole?._id) {
-      const roleId = selectedRole.id || selectedRole._id || '';
-      return await dispatch(updateRoleAsync({ roleId, roleData: data })).unwrap();
-    } else {
-      return await dispatch(createRoleAsync(data)).unwrap();
+    try {
+      if (selectedRole?.id || selectedRole?._id) {
+        const roleId = selectedRole.id || selectedRole._id || '';
+        await dispatch(updateRoleAsync({ roleId, roleData: data })).unwrap();
+        Alert.alert('Success', `Role "${data.name}" updated successfully!`);
+      } else {
+        await dispatch(createRoleAsync(data)).unwrap();
+        Alert.alert('Success', `Role "${data.name}" created successfully!`);
+      }
+      closeFormModal();
+      dispatch(fetchRolesAsync({ page: currentPage, limit: rowsPerPage, search: searchQuery }));
+    } catch (err: any) {
+      Alert.alert('Error', typeof err === 'string' ? err : err?.message || 'Failed to save role permissions');
+      throw err;
     }
   };
 

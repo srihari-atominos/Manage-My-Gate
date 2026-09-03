@@ -141,35 +141,17 @@ export default function SettingsScreen() {
                 {user?.username || user?.name || user?.email || 'Logged In Resident'}
               </Text>
               <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
-                {user?.role || 'Community Admin'}
+                {user?.role || 'Member'}
               </Text>
-              <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
-                {user?.email || 'naveen@atominosconsulting.com'}
-              </Text>
+              {user?.email ? (
+                <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
+                  {user.email}
+                </Text>
+              ) : null}
             </View>
             <ChevronRight size={20} className="text-muted-foreground shrink-0" />
           </View>
         </Pressable>
-
-        {/* ─── Community ─── */}
-        <Text className="text-xs font-bold text-muted-foreground uppercase px-5 mt-5 mb-2">
-          Community
-        </Text>
-        <View className="mx-4 bg-card rounded-2xl border border-border overflow-hidden">
-          <Pressable
-            onPress={() => setDirectoryOpen(true)}
-            className="flex-row items-center px-4 py-3.5 active:bg-muted/40"
-          >
-            <View className="h-9 w-9 rounded-xl bg-blue-500/10 border border-blue-500/20 items-center justify-center me-3 shrink-0">
-              <Users size={18} className="text-blue-500" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-foreground">Community Directory</Text>
-              <Text className="text-xs text-muted-foreground mt-0.5">Neighbor pulses & shared interests</Text>
-            </View>
-            <ChevronRight size={18} className="text-muted-foreground shrink-0" />
-          </Pressable>
-        </View>
 
         {/* ─── Appearance ─── */}
         <Text className="text-xs font-bold text-muted-foreground uppercase px-5 mt-5 mb-2">

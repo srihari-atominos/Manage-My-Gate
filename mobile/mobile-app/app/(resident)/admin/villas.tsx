@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { KPICard } from '@/components/ui/KPICard';
@@ -19,8 +19,10 @@ import { BulkUploadVillasModal } from '@/src/features/villa/components/BulkUploa
 import { Villa } from '@/src/features/villa/store/villaSlice';
 import { VillaPayload, BatchGenerateParams } from '@/src/features/villa/services/villaService';
 import { getStatusTabStyle } from '@/components/ui/statusTabColors';
+import { useTranslation } from '@/src/utils/i18n';
 
 export default function VillaManagementScreen() {
+  const { t } = useTranslation();
   const {
     villas,
     blocks,
@@ -100,15 +102,25 @@ export default function VillaManagementScreen() {
   };
 
   const handleFormSubmit = async (data: VillaPayload) => {
-    if (editingVilla) {
-      await updateUnit(editingVilla._id, data);
-    } else {
-      await createUnit(data);
+    try {
+      if (editingVilla) {
+        await updateUnit(editingVilla._id, data);
+      } else {
+        await createUnit(data);
+      }
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to save unit';
+      Alert.alert('Unit Save Error', msg);
     }
   };
 
   const handleDeleteUnit = async (villa: Villa) => {
-    await deleteUnit(villa._id);
+    try {
+      await deleteUnit(villa._id);
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Cannot delete unit';
+      Alert.alert('Cannot Delete Unit', msg);
+    }
   };
 
   const activeFilterCount = useMemo(() => {
@@ -119,7 +131,7 @@ export default function VillaManagementScreen() {
     return count;
   }, [filters]);
 
-  const availableStatuses = ['Vacant', 'Occupied', 'Under Maintenance', 'Under Renovation', 'For Sale', 'For Rent'];
+  const availableStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
 
   return (
     <ScreenShell
@@ -141,10 +153,10 @@ export default function VillaManagementScreen() {
             showsHorizontalScrollIndicator={false}
           >
             <View className="flex-row items-center gap-2">
-              <KPICard title="TOTAL UNITS" value={stats.total || 0} iconName="Building2" iconColor="#0d9488" />
-              <KPICard title="OCCUPIED" value={stats.occupied || 0} iconName="UserCheck" iconColor="#16a34a" />
-              <KPICard title="VACANT" value={stats.vacant || 0} iconName="DoorOpen" iconColor="#6b7280" />
-              <KPICard title="MAINTENANCE" value={stats.maintenance || 0} iconName="Wrench" iconColor="#eab308" />
+              <KPICard title={t('total_units', 'TOTAL UNITS')} value={stats.total || 0} iconName="Building2" iconColor="#0d9488" />
+              <KPICard title={t('occupied_units', 'OCCUPIED UNITS')} value={stats.occupied || 0} iconName="UserCheck" iconColor="#16a34a" />
+              <KPICard title={t('vacant_units', 'VACANT UNITS')} value={stats.vacant || 0} iconName="DoorOpen" iconColor="#6b7280" />
+              <KPICard title={t('under_maintenance', 'UNDER MAINTENANCE')} value={stats.maintenance || 0} iconName="Wrench" iconColor="#eab308" />
             </View>
           </ScrollView>
         </View>
@@ -161,7 +173,7 @@ export default function VillaManagementScreen() {
                 className="px-3 py-2 rounded-xl bg-emerald-600 border border-emerald-600 flex-row items-center gap-1.5 active:bg-emerald-700 shadow-xs"
               >
                 <Icon as={PlusCircle} size={15} color="#ffffff" className="text-white" />
-                <Text className="text-xs font-bold text-white">Create Unit</Text>
+                <Text className="text-xs font-bold text-white">{t('create_unit', 'Create Unit')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -169,7 +181,7 @@ export default function VillaManagementScreen() {
                 className="px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/30 flex-row items-center gap-1.5 active:bg-blue-500/20"
               >
                 <Icon as={FileSpreadsheet} size={15} color="#2563eb" className="text-blue-600" />
-                <Text className="text-xs font-bold text-blue-600 dark:text-blue-400">Bulk Upload</Text>
+                <Text className="text-xs font-bold text-blue-600 dark:text-blue-400">{t('bulk_upload', 'Bulk Upload')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -177,7 +189,7 @@ export default function VillaManagementScreen() {
                 className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex-row items-center gap-1.5 active:bg-amber-500/20"
               >
                 <Icon as={Zap} size={15} color="#d97706" className="text-amber-600" />
-                <Text className="text-xs font-bold text-amber-600 dark:text-amber-400">Batch Generate</Text>
+                <Text className="text-xs font-bold text-amber-600 dark:text-amber-400">{t('batch_generate', 'Batch Generate')}</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -328,29 +340,35 @@ export default function VillaManagementScreen() {
       ) : null}
 
       {/* Batch Generate Modal */}
-      {batchModalVisible ? (
-        <BatchGenerateModal
-          visible={batchModalVisible}
-          onClose={() => setBatchModalVisible(false)}
-          onSubmit={async (batchData: BatchGenerateParams) => {
+      <BatchGenerateModal
+        visible={batchModalVisible}
+        onClose={() => setBatchModalVisible(false)}
+        onSubmit={async (batchData: BatchGenerateParams) => {
+          try {
             await batchGenerate(batchData);
-          }}
-          loading={actionLoading}
-        />
-      ) : null}
+          } catch (err: any) {
+            const msg = typeof err === 'string' ? err : err?.message || 'Batch generation failed';
+            Alert.alert('Batch Generate Error', msg);
+          }
+        }}
+        loading={actionLoading}
+      />
 
       {/* Bulk Upload Modal */}
-      {bulkUploadModalVisible ? (
-        <BulkUploadVillasModal
-          visible={bulkUploadModalVisible}
-          onClose={() => setBulkUploadModalVisible(false)}
-          onBulkUpload={async (units) => {
+      <BulkUploadVillasModal
+        visible={bulkUploadModalVisible}
+        onClose={() => setBulkUploadModalVisible(false)}
+        onBulkUpload={async (units) => {
+          try {
             await bulkUpload(units);
-          }}
-          onDownloadTemplate={downloadTemplate}
-          loading={actionLoading}
-        />
-      ) : null}
+          } catch (err: any) {
+            const msg = typeof err === 'string' ? err : err?.message || 'Bulk upload failed';
+            Alert.alert('Bulk Upload Error', msg);
+          }
+        }}
+        onDownloadTemplate={downloadTemplate}
+        loading={actionLoading}
+      />
     </ScreenShell>
   );
 }

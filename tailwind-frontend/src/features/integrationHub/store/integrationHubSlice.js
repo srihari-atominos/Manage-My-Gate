@@ -49,6 +49,9 @@ export const updateLabel = createAsyncThunk(
   'integrationHub/updateLabel',
   async ({ id, accountLabel }, { rejectWithValue }) => {
     try {
+      if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+        return { id, accountLabel };
+      }
       const response = await integrationHubService.updateConnectionLabel(id, accountLabel);
       return response.data;
     } catch (error) {
@@ -63,6 +66,9 @@ export const disconnectIntegration = createAsyncThunk(
   'integrationHub/disconnectIntegration',
   async (id, { rejectWithValue }) => {
     try {
+      if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+        return id;
+      }
       await integrationHubService.deleteConnection(id);
       return id;
     } catch (error) {

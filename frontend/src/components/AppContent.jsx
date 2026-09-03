@@ -68,14 +68,13 @@ const AppContent = () => {
               return <Route key={idx} path={route.path} element={<Page403 />} />
             }
 
-            const isProtected = [
-              '/users',
-              '/roles',
-              '/role-builder',
-              '/villas',
-              '/super-admin/organizations',
-              '/super-admin/audit-logs',
-            ].includes(route.path)
+            const isProtected =
+              [
+                '/users',
+                '/roles',
+                '/role-builder',
+                '/villas',
+              ].includes(route.path) || route.path.startsWith('/super-admin/')
             const routeElement = isProtected ? (
               <AuthGuard>
                 <route.element />

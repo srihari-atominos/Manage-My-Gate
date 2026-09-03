@@ -99,8 +99,8 @@ async function seed() {
   // --- 4. Create Users ---
   console.log('Creating Users (Hashing Passwords)...');
   const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash('Password@123', salt);
-  const adminHashedPassword = await bcrypt.hash('password', salt);
+  const hashedPassword = await bcrypt.hash('Test@1234', salt);
+  const adminHashedPassword = await bcrypt.hash('Test@1234', salt);
 
   const adminUser = await User.create({
     email: 'admin@mygate.com',
@@ -364,7 +364,7 @@ async function seed() {
       'Name': 'Community Admin',
       'Username': 'admin',
       'Email': 'admin@mygate.com',
-      'Password': 'password',
+      'Password': 'Test@1234',
       'Assigned Unit': 'N/A',
       'Residency Type': 'None',
       'Testing Context': 'Manage assessments, view ledger, verify offline cheque payments.'
@@ -374,7 +374,7 @@ async function seed() {
       'Name': 'Rajesh Kumar (Owner 1)',
       'Username': 'owner1',
       'Email': 'owner1@mygate.com',
-      'Password': 'Password@123',
+      'Password': 'Test@1234',
       'Assigned Unit': 'Villa A-101',
       'Residency Type': 'Resident Owner',
       'Testing Context': 'View ₹5,000 outstanding security fund invoice. View Tenant Arrears (Tenant 2 clearing Cheque ₹7,000).'
@@ -384,7 +384,7 @@ async function seed() {
       'Name': 'Vikram Singh (Owner 2)',
       'Username': 'owner2',
       'Email': 'owner2@mygate.com',
-      'Password': 'Password@123',
+      'Password': 'Test@1234',
       'Assigned Unit': 'Villa A-102 (Leased)',
       'Residency Type': 'Non-Resident Owner',
       'Testing Context': 'View Tenant Arrears (Tenant 1 outstanding Maintenance ₹7,000).'
@@ -394,7 +394,7 @@ async function seed() {
       'Name': 'Rahul Mehta (Tenant 1)',
       'Username': 'tenant1',
       'Email': 'tenant1@mygate.com',
-      'Password': 'Password@123',
+      'Password': 'Test@1234',
       'Assigned Unit': 'Villa A-102',
       'Residency Type': 'Tenant',
       'Testing Context': 'View ₹7,000 outstanding maintenance invoice. Submit offline NEFT/Cheque pay ref.'
@@ -404,7 +404,7 @@ async function seed() {
       'Name': 'Aisha Khan (Tenant 2)',
       'Username': 'tenant2',
       'Email': 'tenant2@mygate.com',
-      'Password': 'Password@123',
+      'Password': 'Test@1234',
       'Assigned Unit': 'Villa B-201',
       'Residency Type': 'Tenant',
       'Testing Context': 'View ₹7,000 invoice currently in VERIFICATION_PENDING status.'
@@ -414,7 +414,7 @@ async function seed() {
       'Name': 'Bahadur Singh (Guard 1)',
       'Username': 'guard1',
       'Email': 'guard1@mygate.com',
-      'Password': 'Password@123',
+      'Password': 'Test@1234',
       'Assigned Unit': 'Gate Entrance',
       'Residency Type': 'None',
       'Testing Context': 'Gate checkpoint control (visitor scanner, log book).'

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View } from 'react-native';
+import { View, Alert } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
@@ -10,6 +10,7 @@ import { AdminForceCheckoutModal } from '@/src/features/visitor/components/admin
 import { VisitorLogDetailsModal } from '@/src/features/visitor/components/history/VisitorLogDetailsModal';
 import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
 import { mapBackendPassToHistoryItem } from '@/src/features/visitor/utils/mapBackendPassToHistoryItem';
+import { downloadCSVFile } from '@/src/utils/downloadHelper';
 
 export default function AdminGateLogsScreen() {
   const {
@@ -30,6 +31,7 @@ export default function AdminGateLogsScreen() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const loadData = useCallback(
     (page: number, append: boolean = false) => {
@@ -129,13 +131,69 @@ export default function AdminGateLogsScreen() {
     }
   };
 
-  const handleExportCSV = () => {
-    console.log('[Admin Gate Logs] Exporting CSV Report...');
+  const generateGateLogsCSV = (logs: AdminGateLogItem[]) => {
+    const headers = [
+      'Log ID',
+      'Visitor Name',
+      'Phone',
+      'Pass Category',
+      'Pass Code',
+      'Vehicle Plate',
+      'Destination Unit',
+      'Status',
+      'Check-In Time',
+      'Check-Out Time',
+      'Security Guard',
+      'Gate Used',
+      'Purpose',
+    ];
+
+    const escapeCSV = (val: any) => {
+      if (val === undefined || val === null) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const rows = logs.map((log) => [
+      escapeCSV(log._id),
+      escapeCSV(log.visitorName),
+      escapeCSV(log.phone || 'N/A'),
+      escapeCSV(log.passType || log.category || 'GUEST'),
+      escapeCSV(log.shortKey || log.code || 'N/A'),
+      escapeCSV(log.vehicleNo || 'N/A'),
+      escapeCSV(log.villaNumber || 'Community'),
+      escapeCSV(log.status || 'ACTIVE'),
+      escapeCSV(log.entryTime ? new Date(log.entryTime).toLocaleString() : 'N/A'),
+      escapeCSV(log.exitTime ? new Date(log.exitTime).toLocaleString() : 'Active Inside'),
+      escapeCSV(log.guardName || 'Gate Security'),
+      escapeCSV(log.gateName || 'Main Security Gate'),
+      escapeCSV(log.purpose || 'Visitor Entry'),
+    ]);
+
+    return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+  };
+
+  const handleExportCSV = async () => {
+    if (!filteredLogs || filteredLogs.length === 0) {
+      Alert.alert('No Logs to Export', 'There are no gate audit logs matching the current filter.');
+      return;
+    }
+    try {
+      setExporting(true);
+      const csvContent = generateGateLogsCSV(filteredLogs);
+      const dateStr = new Date().toISOString().split('T')[0];
+      const fileName = `gate_audit_logs_${dateStr}.csv`;
+      await downloadCSVFile(csvContent, fileName);
+    } catch (err) {
+      console.error('Export CSV error:', err);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const renderHeader = () => (
     <View className="gap-3 mb-3">
-      {/* Real-Time Keyword Search Bar & Moveable Slide Status Filter */}
+      {/* Search & Filter Bar with Uniform Horizontal Status Pills */}
       <SearchFilterBar
         searchValue={search}
         onSearchChange={setSearch}
@@ -172,7 +230,7 @@ export default function AdminGateLogsScreen() {
       subtitle="Complete community entry/exit logs & timestamp security audit"
       iconName="ShieldCheck"
       headerRight={
-        <ExportReportButton onExport={handleExportCSV} />
+        <ExportReportButton onExport={handleExportCSV} loading={exporting} />
       }
     >
       <View className="flex-1 bg-background">

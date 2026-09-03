@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Avatar } from '@/components/common/Avatar';
+import { useTranslation } from '@/src/utils/i18n';
 import { Mail, Phone, Sparkles } from 'lucide-react-native';
 import { cn } from '@/lib/utils';
 
@@ -31,7 +32,10 @@ export const ProfileHeaderCard = ({
   status = 'Active',
   className,
 }: ProfileHeaderCardProps) => {
+  const { t, tRole } = useTranslation();
   const initialLetter = avatarFallback || (name ? name.charAt(0).toUpperCase() : 'U');
+  const localizedRole = tRole(roleName, roleName);
+  const localizedStatus = t(`status_${status.toLowerCase().replace(/[\s\/-]+/g, '_')}`, t(status.toLowerCase(), status));
 
   return (
     <View
@@ -94,13 +98,13 @@ export const ProfileHeaderCard = ({
         ) : null}
 
         <StatusBadge
-          label={roleName}
+          label={localizedRole}
           variant="success"
           size="sm"
         />
 
         <StatusBadge
-          label={status}
+          label={localizedStatus}
           variant="neutral"
           dot
           size="sm"

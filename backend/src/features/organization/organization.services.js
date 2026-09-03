@@ -20,7 +20,17 @@ export class OrganizationService {
 
   async updateFeatures(orgId, requestingOrgId, featuresArray, userId = null, isPlatformUser = false, session = null) {
     if (orgId !== requestingOrgId && !isPlatformUser) {
-      throw new HttpError(403, 'Forbidden. You do not have permission to access another organization.');
+      let isAuthorizedMember = false;
+      if (userId) {
+        const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+        const membership = await OrgMembership.findOne({ userId, orgId, status: 'Active' }).lean();
+        if (membership) {
+          isAuthorizedMember = true;
+        }
+      }
+      if (!isAuthorizedMember) {
+        throw new HttpError(403, 'Forbidden. You do not have permission to access another organization.');
+      }
     }
 
     let localSession = null;
@@ -43,10 +53,18 @@ export class OrganizationService {
       const rolePermissionService = (await import('../rolePermission/rolePermission.services.js')).default;
       const permissionService = (await import('../permission/permission.services.js')).default;
 
-      // 4. Fetch the 'Community Admin' role for this orgId
-      const adminRole = await roleService.getRoleByName('Community Admin', orgId, currentSession);
+      // 4. Fetch the admin role for this orgId (try 'Community Admin', fallback to 'Admin' or any Admin role)
+      let adminRole = await roleService.getRoleByName('Community Admin', orgId, currentSession);
       if (!adminRole) {
-        throw new HttpError(404, 'Community Admin role not found for this organization.');
+        adminRole = await roleService.getRoleByName('Admin', orgId, currentSession);
+      }
+      if (!adminRole) {
+        const rolesResult = await roleService.getAllRoles(orgId, 1, 50);
+        const roles = rolesResult?.data || [];
+        adminRole = roles.find((r) => r.name && r.name.toLowerCase().includes('admin'));
+      }
+      if (!adminRole) {
+        throw new HttpError(404, 'Admin role not found for this organization.');
       }
 
       // 5. Get all system permissions and filter them by features in the featuresArray
@@ -80,7 +98,7 @@ export class OrganizationService {
       if (userId) {
         const authService = (await import('../auth/auth.services.js')).default;
         const user = await authService.getUserById(userId);
-        const { tokenPayload, permissions } = await authService.getScopedTokenPayload(user, orgId);
+        const { tokenPayload, permissions, availableWorkspaces } = await authService.getScopedTokenPayload(user, orgId);
         const { signToken } = await import('../../utils/jwt.utils.js');
         token = signToken(tokenPayload);
         userPayload = {
@@ -90,7 +108,11 @@ export class OrganizationService {
           role: tokenPayload.role,
           permissions: permissions,
           orgId: tokenPayload.orgId,
+          orgName: updatedOrg.name,
+          organizationName: updatedOrg.name,
+          activeOrganizationName: updatedOrg.name,
           isPlatform: tokenPayload.isPlatform,
+          availableWorkspaces,
         };
       }
 
@@ -295,7 +317,11 @@ export class OrganizationService {
           role: tokenPayload.role,
           permissions: tokenPayload.permissions,
           orgId: tokenPayload.orgId,
+          orgName: newOrg.name,
+          organizationName: newOrg.name,
+          activeOrganizationName: newOrg.name,
           isPlatform: tokenPayload.isPlatform,
+          availableWorkspaces,
         },
         availableWorkspaces,
       };
@@ -315,6 +341,29 @@ export class OrganizationService {
     }
     return await organizationRepository.updateName(id, trimmedName, session);
   }
+
+  async getOrganizationDetails(orgId) {
+    const result = await organizationRepository.findDetailsAndSummary(orgId);
+    if (!result) {
+      throw new HttpError(404, `Organization with ID ${orgId} not found.`);
+    }
+    return result;
+  }
+
+  async getOrganizationUsers(orgId, { page = 1, limit = 10, search = '', role = '', status = '' }) {
+    await this.getOrganizationById(orgId);
+    return await organizationRepository.findOrgUsersPaginated(orgId, { page, limit, search, role, status });
+  }
+
+  async getOrganizationUserDetails(orgId, userId) {
+    await this.getOrganizationById(orgId);
+    const userDetail = await organizationRepository.findOrgUserDetails(orgId, userId);
+    if (!userDetail) {
+      throw new HttpError(404, `User ${userId} not found in Organization ${orgId}.`);
+    }
+    return userDetail;
+  }
 }
 
 export default new OrganizationService();
+

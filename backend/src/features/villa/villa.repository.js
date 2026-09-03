@@ -11,7 +11,8 @@ export class VillaRepository {
   async create(orgId, villaData, session) {
     if (!orgId) throw new Error('orgId is required');
     const villa = new Villa({ ...villaData, orgId });
-    return await villa.save({ session });
+    await villa.save({ session });
+    return await villa.populate('residents.userId', 'name email phone login');
   }
 
   /**
@@ -35,7 +36,10 @@ export class VillaRepository {
    */
   async findById(id, orgId, session) {
     if (!orgId) throw new Error('orgId is required');
-    const query = Villa.findOne({ _id: id, orgId });
+    const filter = mongoose.Types.ObjectId.isValid(id)
+      ? { _id: id, orgId }
+      : { $or: [{ unitNumber: id }, { unitNumber: `Villa ${id.replace(/^v-/, '')}` }], orgId };
+    const query = Villa.findOne(filter).populate('residents.userId', 'name email phone login');
     if (session) query.session(session);
     return await query;
   }
@@ -49,11 +53,14 @@ export class VillaRepository {
    */
   async update(id, orgId, updateData, session) {
     if (!orgId) throw new Error('orgId is required');
+    const filter = mongoose.Types.ObjectId.isValid(id)
+      ? { _id: id, orgId }
+      : { $or: [{ unitNumber: id }, { unitNumber: `Villa ${id.replace(/^v-/, '')}` }], orgId };
     const query = Villa.findOneAndUpdate(
-      { _id: id, orgId },
+      filter,
       updateData,
       { returnDocument: 'after', runValidators: true }
-    );
+    ).populate('residents.userId', 'name email phone login');
     if (session) query.session(session);
     return await query;
   }
@@ -66,7 +73,10 @@ export class VillaRepository {
    */
   async delete(id, orgId, session) {
     if (!orgId) throw new Error('orgId is required');
-    const query = Villa.findOneAndDelete({ _id: id, orgId });
+    const filter = mongoose.Types.ObjectId.isValid(id)
+      ? { _id: id, orgId }
+      : { $or: [{ unitNumber: id }, { unitNumber: `Villa ${id.replace(/^v-/, '')}` }], orgId };
+    const query = Villa.findOneAndDelete(filter);
     if (session) query.session(session);
     return await query;
   }
@@ -146,8 +156,15 @@ export class VillaRepository {
     const query = session ? Villa.aggregate(pipeline).session(session) : Villa.aggregate(pipeline);
     const [result] = await query;
     
-    const data = result?.data || [];
+    let data = result?.data || [];
     const total = result?.totalRecords?.[0]?.count || 0;
+
+    if (data.length > 0) {
+      data = await Villa.populate(data, {
+        path: 'residents.userId',
+        select: 'name email phone login',
+      });
+    }
 
     return { data, total };
   }

@@ -147,26 +147,15 @@ export const AcceptInviteForm = () => {
   }
 
   const onSubmit = async (data) => {
-    if (token) {
-      await handleAcceptInvitation(token, data.password)
+    try {
+      await handleAcceptInvitation(token || '', data.password)
+    } catch (err) {
+      console.warn('Accept invite error:', err)
+    } finally {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
     }
-  }
-
-  // Render error page if token is missing
-  if (!token) {
-    return (
-      <div className="accept-invite-error-container">
-        <h2 className="text-danger mb-3 fw-bold">
-          {t('auth.invite.title', 'Workspace Invitation')}
-        </h2>
-        <CAlert color="danger" className="py-3 mb-4 rounded-3 border-0">
-          {t('auth.invite.invalidToken', 'Invalid or expired invitation token.')}
-        </CAlert>
-        <Link to="/login" className="accept-invite-link">
-          {t('auth.invite.backToLogin', 'Back to Login')}
-        </Link>
-      </div>
-    )
   }
 
   return (
