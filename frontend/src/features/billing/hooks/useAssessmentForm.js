@@ -63,6 +63,7 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
   // Populate form fields if editing an existing assessment template
   useEffect(() => {
     if (assessment) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(assessment.name || '')
       setType(assessment.type || 'RECURRING')
       setBillingCycle(assessment.billingCycle || 'MONTHLY')
@@ -97,8 +98,15 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
       )
 
       const scope = assessment.targetScope || {}
-      setScopeType(scope.type || 'ALL_COMMUNITY')
-      setSelectedIds(scope.scopeIds || [])
+      const rawScopeType = scope.type || 'ALL_COMMUNITY'
+      setScopeType(rawScopeType)
+      if (rawScopeType === 'UNIT_TYPE') {
+        setSelectedUnitTypes(Array.isArray(scope.scopeIds) ? scope.scopeIds : [])
+        setSelectedIds([])
+      } else {
+        setSelectedIds(Array.isArray(scope.scopeIds) ? scope.scopeIds : [])
+        setSelectedUnitTypes([])
+      }
       setCheckedRoles(scope.targetRoleIds || [])
     }
   }, [assessment])
@@ -282,6 +290,19 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
     }
     if (isOneTime && triggerMode === 'SCHEDULED' && !scheduledDateTime) e.scheduledDateTime = true
 
+    if (checkedRoles.length === 0) {
+      e.checkedRoles = 'Please select at least one role.'
+    }
+    if (
+      ['VILLA_BLOCK', 'SPECIFIC_UNITS', 'SPECIFIC_USERS'].includes(scopeType) &&
+      selectedIds.length === 0
+    ) {
+      e.selectedIds = 'Please select at least one item from the list.'
+    }
+    if (scopeType === 'UNIT_TYPE' && selectedUnitTypes.length === 0) {
+      e.selectedUnitTypes = 'Please select at least one unit type.'
+    }
+
     return e
   }, [
     name,
@@ -294,6 +315,10 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
     scheduledDateTime,
     collectionMethod,
     totalInstallments,
+    checkedRoles,
+    scopeType,
+    selectedIds,
+    selectedUnitTypes,
   ])
 
   const handleSave = useCallback(async () => {
@@ -323,7 +348,12 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
           collectionMethod === 'INSTALLMENT' ? Number(totalInstallments || 0) : undefined,
         targetScope: {
           type: scopeType,
-          scopeIds: scopeType === 'ALL_COMMUNITY' ? [] : selectedIds,
+          scopeIds:
+            scopeType === 'ALL_COMMUNITY'
+              ? []
+              : scopeType === 'UNIT_TYPE'
+                ? selectedUnitTypes
+                : selectedIds,
           targetRoleIds: checkedRoles,
         },
         calculationMethod: {
@@ -362,14 +392,18 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
     billingCycle,
     genDayOption,
     customDay,
+    triggerMode,
+    scheduledDateTime,
     scopeType,
     selectedIds,
+    selectedUnitTypes,
     checkedRoles,
     calcMethod,
     flatAmount,
     ratePerSqFt,
     tieredRates,
     collectionMethod,
+    totalInstallments,
     activeOrgId,
     assessment,
     saveAssessment,

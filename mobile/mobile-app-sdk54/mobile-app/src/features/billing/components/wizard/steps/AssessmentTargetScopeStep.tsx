@@ -47,7 +47,11 @@ interface AssessmentTargetScopeStepProps {
   onToggleBlockPreset?: (blockName: string) => void;
   onToggleTypePreset?: (unitType: string) => void;
   isBlockFullySelected?: (blockName: string) => boolean;
+  isBlockPartiallySelected?: (blockName: string) => boolean;
   isTypeFullySelected?: (unitType: string) => boolean;
+  isTypePartiallySelected?: (unitType: string) => boolean;
+  getBlockSelectionState?: (blockName: string) => { total: number; selected: number; isFull: boolean; isPartial: boolean; hasSelection: boolean };
+  getTypeSelectionState?: (unitType: string) => { total: number; selected: number; isFull: boolean; isPartial: boolean; hasSelection: boolean };
   totalUnitsCount?: number;
 }
 
@@ -69,7 +73,11 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
   onToggleBlockPreset,
   onToggleTypePreset,
   isBlockFullySelected,
+  isBlockPartiallySelected,
   isTypeFullySelected,
+  isTypePartiallySelected,
+  getBlockSelectionState,
+  getTypeSelectionState,
   totalUnitsCount,
 }) => {
   const isSpecificUnits = scopeType === 'SPECIFIC_UNITS' || scopeType === 'VILLA_BLOCK' || scopeType === 'UNIT_TYPE';
@@ -205,12 +213,38 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
               </View>
               <View className="flex-row flex-wrap gap-1.5">
                 {availableBlocks.map((blockName) => {
-                  const isSelected = isBlockFullySelected ? isBlockFullySelected(blockName) : false;
+                  const state = getBlockSelectionState
+                    ? getBlockSelectionState(blockName)
+                    : {
+                        isFull: isBlockFullySelected ? isBlockFullySelected(blockName) : false,
+                        isPartial: isBlockPartiallySelected ? isBlockPartiallySelected(blockName) : false,
+                        total: 0,
+                        selected: 0,
+                        hasSelection: false,
+                      };
+
+                  let label = blockName;
+                  if (state.isPartial) {
+                    label = `${blockName} (${state.selected}/${state.total})`;
+                  } else if (state.isFull && state.total > 1) {
+                    label = `${blockName} (${state.total})`;
+                  }
+
                   return (
                     <Chip
                       key={blockName}
-                      label={blockName}
-                      selected={isSelected}
+                      label={label}
+                      selected={state.isFull}
+                      className={
+                        state.isPartial
+                          ? 'border-primary bg-primary/15'
+                          : undefined
+                      }
+                      labelClassName={
+                        state.isPartial
+                          ? 'text-primary font-bold'
+                          : undefined
+                      }
                       onPress={() => onToggleBlockPreset && onToggleBlockPreset(blockName)}
                     />
                   );
@@ -230,12 +264,38 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
               </View>
               <View className="flex-row flex-wrap gap-1.5">
                 {availableUnitTypes.map((uType) => {
-                  const isSelected = isTypeFullySelected ? isTypeFullySelected(uType) : false;
+                  const state = getTypeSelectionState
+                    ? getTypeSelectionState(uType)
+                    : {
+                        isFull: isTypeFullySelected ? isTypeFullySelected(uType) : false,
+                        isPartial: isTypePartiallySelected ? isTypePartiallySelected(uType) : false,
+                        total: 0,
+                        selected: 0,
+                        hasSelection: false,
+                      };
+
+                  let label = uType;
+                  if (state.isPartial) {
+                    label = `${uType} (${state.selected}/${state.total})`;
+                  } else if (state.isFull && state.total > 1) {
+                    label = `${uType} (${state.total})`;
+                  }
+
                   return (
                     <Chip
                       key={uType}
-                      label={uType}
-                      selected={isSelected}
+                      label={label}
+                      selected={state.isFull}
+                      className={
+                        state.isPartial
+                          ? 'border-primary bg-primary/15'
+                          : undefined
+                      }
+                      labelClassName={
+                        state.isPartial
+                          ? 'text-primary font-bold'
+                          : undefined
+                      }
                       onPress={() => onToggleTypePreset && onToggleTypePreset(uType)}
                     />
                   );

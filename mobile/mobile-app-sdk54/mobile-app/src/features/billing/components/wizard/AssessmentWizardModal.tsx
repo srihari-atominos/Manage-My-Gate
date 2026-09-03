@@ -93,8 +93,12 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
     availableUnitTypes,
     handleToggleBlockPreset,
     handleToggleTypePreset,
+    getBlockSelectionState,
+    getTypeSelectionState,
     isBlockFullySelected,
+    isBlockPartiallySelected,
     isTypeFullySelected,
+    isTypePartiallySelected,
     formError,
     setFormError,
     isSubmitting,
@@ -327,7 +331,11 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
                 onToggleBlockPreset={handleToggleBlockPreset}
                 onToggleTypePreset={handleToggleTypePreset}
                 isBlockFullySelected={isBlockFullySelected}
+                isBlockPartiallySelected={isBlockPartiallySelected}
                 isTypeFullySelected={isTypeFullySelected}
+                isTypePartiallySelected={isTypePartiallySelected}
+                getBlockSelectionState={getBlockSelectionState}
+                getTypeSelectionState={getTypeSelectionState}
                 totalUnitsCount={units.length}
               />
             )}
