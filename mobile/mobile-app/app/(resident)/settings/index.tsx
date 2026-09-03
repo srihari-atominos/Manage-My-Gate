@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { View, ScrollView, Modal, Pressable, Alert, Image, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { ThemeToggleSwitch } from '@/components/settings/ThemeToggleSwitch';
 import { LanguageSelector } from '@/components/settings/LanguageSelector';
 import { EditProfileModal } from '@/components/settings/EditProfileModal';
@@ -28,16 +30,55 @@ import {
   ChevronRight,
   Globe,
   Settings,
+  Shield,
+  UserX,
+  ExternalLink,
 } from 'lucide-react-native';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [createPulseOpen, setCreatePulseOpen] = useState(false);
   const [interestsOpen, setInterestsOpen] = useState(false);
   const [directoryOpen, setDirectoryOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleOpenPrivacyPolicy = async () => {
+    try {
+      await WebBrowser.openBrowserAsync('https://managemygate.e3esg.com/privacy-policy');
+    } catch (e) {
+      console.warn('Could not open privacy policy in browser:', e);
+    }
+  };
+
+  const handleOpenTerms = async () => {
+    try {
+      await WebBrowser.openBrowserAsync('https://managemygate.e3esg.com/terms');
+    } catch (e) {
+      console.warn('Could not open terms in browser:', e);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeleting(true);
+      await deleteAccount();
+      setDeleteModalOpen(false);
+      router.replace('/(auth)/login');
+    } catch (e: any) {
+      const msg = e?.message || 'Failed to delete account. Please try again.';
+      if (Platform.OS === 'web') {
+        window.alert(msg);
+      } else {
+        Alert.alert('Error', msg);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const {
     themeMode,
@@ -204,6 +245,50 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* ─── Legal & Privacy ─── */}
+        <Text className="text-xs font-bold text-muted-foreground uppercase px-5 mt-5 mb-2">
+          {t('legal_and_privacy', 'Legal & Privacy')}
+        </Text>
+        <View className="mx-4 bg-card rounded-2xl border border-border overflow-hidden">
+          <Pressable
+            onPress={handleOpenPrivacyPolicy}
+            className="flex-row items-center px-4 py-3.5 active:bg-muted/40"
+          >
+            <View className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0">
+              <Icon as={Shield} size={18} className="text-primary" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-foreground">
+                {t('privacy_policy', 'Privacy Policy')}
+              </Text>
+              <Text className="text-xs text-muted-foreground mt-0.5">
+                {t('privacy_policy_desc', 'View data collection & protection policy')}
+              </Text>
+            </View>
+            <Icon as={ExternalLink} size={16} className="text-muted-foreground shrink-0" />
+          </Pressable>
+
+          <View className="h-px bg-border mx-4" />
+
+          <Pressable
+            onPress={handleOpenTerms}
+            className="flex-row items-center px-4 py-3.5 active:bg-muted/40"
+          >
+            <View className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 items-center justify-center me-3 shrink-0">
+              <Icon as={Shield} size={18} className="text-primary" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-foreground">
+                {t('terms_conditions', 'Terms & Conditions')}
+              </Text>
+              <Text className="text-xs text-muted-foreground mt-0.5">
+                {t('terms_conditions_desc', 'View terms of service & user agreement')}
+              </Text>
+            </View>
+            <Icon as={ExternalLink} size={16} className="text-muted-foreground shrink-0" />
+          </Pressable>
+        </View>
+
         {/* ─── Account ─── */}
         <Text className="text-xs font-bold text-muted-foreground uppercase px-5 mt-5 mb-2">
           {t('account_actions', 'Account')}
@@ -238,6 +323,25 @@ export default function SettingsScreen() {
                 {t('sign_out', 'Sign Out')}
               </Text>
               <Text className="text-xs text-muted-foreground mt-0.5">Log out of your account</Text>
+            </View>
+          </Pressable>
+
+          <View className="h-px bg-border mx-4" />
+
+          <Pressable
+            onPress={() => setDeleteModalOpen(true)}
+            className="flex-row items-center px-4 py-3.5 active:bg-destructive/10"
+          >
+            <View className="h-9 w-9 rounded-xl bg-destructive/10 border border-destructive/20 items-center justify-center me-3 shrink-0">
+              <Icon as={UserX} size={18} className="text-destructive" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-destructive">
+                {t('delete_account', 'Delete Account')}
+              </Text>
+              <Text className="text-xs text-muted-foreground mt-0.5">
+                {t('delete_account_desc', 'Permanently delete your account & data')}
+              </Text>
             </View>
           </Pressable>
         </View>
@@ -340,6 +444,22 @@ export default function SettingsScreen() {
         onSubmit={(text, emoji, category, contextText) =>
           createPulse(text, emoji, category, contextText)
         }
+      />
+
+      {/* ─── Account Deletion Confirmation Modal ─── */}
+      <ConfirmationModal
+        visible={deleteModalOpen}
+        variant="danger"
+        title={t('confirm_delete_account_title', 'Delete Account?')}
+        message={t(
+          'confirm_delete_account_message',
+          'Are you sure you want to delete your account? This will permanently remove your profile, memberships, and personal data from Nahom. This action cannot be undone.'
+        )}
+        confirmLabel={t('confirm_delete_account_action', 'Delete Permanently')}
+        cancelLabel={t('cancel', 'Cancel')}
+        loading={isDeleting}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setDeleteModalOpen(false)}
       />
     </View>
   );

@@ -7,6 +7,10 @@ import {
   executeManualTrigger,
   submitOfflineSettlement,
   clearOfflineSettlement,
+  rejectOfflineSettlement,
+  recordCashPaymentThunk,
+  fetchCashCollectionsThunk,
+  searchCashEligibleThunk,
   payWithWallet,
   createRazorpayOrder,
   verifyRazorpaySignature,
@@ -82,9 +86,13 @@ export const useBilling = () => {
       return dispatch(
         submitOfflineSettlement({
           invoiceId,
-          offlineReference: referenceData.offlineReference,
-          offlineAmount: referenceData.offlineAmount,
-          paymentMethod: referenceData.paymentMethod,
+          paymentReference: referenceData.paymentReference || referenceData.offlineReference,
+          offlineReference: referenceData.paymentReference || referenceData.offlineReference,
+          amountPaid: referenceData.amountPaid || referenceData.offlineAmount || referenceData.amount,
+          amount: referenceData.amountPaid || referenceData.offlineAmount || referenceData.amount,
+          paymentMethod: referenceData.paymentMethod || 'BANK_TRANSFER',
+          paymentDate: referenceData.paymentDate,
+          paymentScreenshot: referenceData.paymentScreenshot,
         }),
       ).unwrap()
     },
@@ -94,6 +102,31 @@ export const useBilling = () => {
   const approveOffline = useCallback(
     (invoiceId) => {
       return dispatch(clearOfflineSettlement(invoiceId)).unwrap()
+    },
+    [dispatch],
+  )
+
+  const rejectOffline = useCallback(
+    (invoiceId, rejectionReason) => {
+      return dispatch(rejectOfflineSettlement({ invoiceId, rejectionReason })).unwrap()
+    },
+    [dispatch],
+  )
+
+  const recordCash = useCallback(
+    (invoiceId, amount) => {
+      return dispatch(recordCashPaymentThunk({ invoiceId, amount })).unwrap()
+    },
+    [dispatch],
+  )
+
+  const fetchCollections = useCallback(() => {
+    return dispatch(fetchCashCollectionsThunk()).unwrap()
+  }, [dispatch])
+
+  const searchCashEligibleInvoices = useCallback(
+    (query) => {
+      return dispatch(searchCashEligibleThunk(query)).unwrap()
     },
     [dispatch],
   )
@@ -142,6 +175,10 @@ export const useBilling = () => {
     triggerManualRun,
     settleOffline,
     approveOffline,
+    rejectOffline,
+    recordCash,
+    fetchCollections,
+    searchCashEligibleInvoices,
     payInvoiceWallet,
     payInvoiceRazorpay,
     verifyRazorpay,

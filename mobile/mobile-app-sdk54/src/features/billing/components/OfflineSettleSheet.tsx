@@ -25,7 +25,7 @@ export function OfflineSettleSheet({
 }: OfflineSettleSheetProps) {
   const { settleOffline, loadResidentDues, loadingStates, error, resetBillingError } = useBilling();
 
-  const [paymentMethod, setPaymentMethod] = useState<'CHEQUE' | 'NEFT'>('CHEQUE');
+  const [paymentMethod, setPaymentMethod] = useState<'BANK_TRANSFER' | 'CASH'>('BANK_TRANSFER');
   const [offlineReference, setOfflineReference] = useState<string>('');
   const [amountStr, setAmountStr] = useState<string>('');
   const [bankName, setBankName] = useState<string>('');
@@ -54,7 +54,7 @@ export function OfflineSettleSheet({
 
   useEffect(() => {
     if (visible && invoice) {
-      setPaymentMethod('CHEQUE');
+      setPaymentMethod('BANK_TRANSFER');
       setOfflineReference('');
       setAmountStr(remainingDue > 0 ? remainingDue.toString() : '');
       setBankName('');
@@ -153,20 +153,22 @@ export function OfflineSettleSheet({
               1. Select Offline Payment Type
             </Text>
             <View className="flex-row gap-2.5">
-              {(['CHEQUE', 'NEFT'] as const).map((method) => {
-                const isSelected = paymentMethod === method;
+              {[
+                { key: 'BANK_TRANSFER', label: 'Bank Transfer' },
+                { key: 'CASH', label: 'Cash' },
+              ].map((item) => {
+                const isSelected = paymentMethod === (item.key as any);
                 return (
-                  <Pressable
-                    key={method}
-                    onPress={() => setPaymentMethod(method)}
-                    className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                      isSelected ? 'bg-primary/10 border-primary' : 'bg-card border-border'
-                    }`}
+                  <Button
+                    key={item.key}
+                    variant={isSelected ? 'default' : 'outline'}
+                    onPress={() => setPaymentMethod(item.key as any)}
+                    className="flex-1 h-12 rounded-xl"
                   >
-                    <Text className={`font-extrabold text-sm ${isSelected ? 'text-primary' : 'text-foreground'}`}>
-                      {method}
+                    <Text className={`font-extrabold text-sm ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
+                      {item.label}
                     </Text>
-                  </Pressable>
+                  </Button>
                 );
               })}
             </View>
@@ -198,14 +200,14 @@ export function OfflineSettleSheet({
           {/* Section 3: Reference Number (Cheque # / UTR #) */}
           <View className="mb-4">
             <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-              3. {paymentMethod === 'CHEQUE' ? 'Cheque Number' : 'NEFT / UTR Transaction ID'} (Optional)
+              3. Payment Reference / UTR Number (Optional)
             </Text>
             <View className="flex-row items-center bg-background border border-border rounded-xl px-3 py-2">
               <Icon as={FileText} size={18} className="text-muted-foreground me-2" />
               <TextInput
                 value={offlineReference}
                 onChangeText={setOfflineReference}
-                placeholder={paymentMethod === 'CHEQUE' ? 'e.g. 000124 (Optional)' : 'e.g. N123456789 (Optional)'}
+                placeholder="e.g. UTR12345678 or IMPS-98124"
                 placeholderTextColor="#94a3b8"
                 className="flex-1 text-foreground font-bold text-base py-1"
               />

@@ -11,7 +11,7 @@ import { ListCard } from '@/components/ui/ListCard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { type StatusVariant } from '@/components/ui/StatusBadge';
-import { Plus, Wrench } from 'lucide-react-native';
+import { Plus } from 'lucide-react-native';
 
 import { useAdminCalendar } from '../../../src/features/amenities/hooks/useAdminCalendar';
 import { ScheduleDateNavigator } from '../../../src/features/amenities/components/ScheduleDateNavigator';
@@ -199,30 +199,6 @@ export default function AdminAmenityCalendarScreen() {
       loading={loading && adminBookings.length === 0}
       error={error}
       onRetry={loadData}
-      headerRight={
-        <View className="flex-row items-center gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onPress={() => router.push('/(resident)/amenities/maintenance' as any)}
-            className="flex-row items-center gap-1 rounded-full px-2 py-1 h-7 bg-amber-500/10 border-amber-500/30"
-            accessibilityLabel="Maintenance Schedule"
-          >
-            <Wrench size={12} className="text-amber-600 dark:text-amber-400" />
-            <Text className="text-amber-600 dark:text-amber-400 font-bold text-[11px]">Maintenance</Text>
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onPress={handleOpenManualModal}
-            className="flex-row items-center gap-1 rounded-full px-2 py-1 h-7"
-            accessibilityLabel="Reserve manual slot"
-          >
-            <Plus size={13} className="text-primary-foreground" />
-            <Text className="text-primary-foreground font-bold text-[11px]">Reserve</Text>
-          </Button>
-        </View>
-      }
     >
       <View className="flex-1 bg-background">
         <PaginatedList<AmenityBooking>

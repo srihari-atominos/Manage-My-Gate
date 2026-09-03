@@ -488,6 +488,22 @@ export const performLogout = createAsyncThunk(
   }
 );
 
+export const deleteAccountThunk = createAsyncThunk(
+  'auth/deleteAccount',
+  async (_, { dispatch, rejectWithValue }) => {
+    try {
+      await authService.deleteAccount();
+      await storage.removeItem('token');
+      await storage.removeItem('refreshToken');
+      await storage.removeItem('user');
+      dispatch(logout());
+      return true;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to delete account');
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -807,6 +823,22 @@ const authSlice = createSlice({
       .addCase(updateOrganizationFeaturesThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to update organization features';
+      })
+      .addCase(deleteAccountThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteAccountThunk.fulfilled, (state) => {
+        state.loading = false;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
+        state.refreshToken = null;
+        state.successMsg = 'Account deleted successfully';
+      })
+      .addCase(deleteAccountThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Failed to delete account';
       });
   },
 });

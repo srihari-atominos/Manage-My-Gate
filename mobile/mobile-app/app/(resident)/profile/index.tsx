@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Linking } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { RoleSwitchModal } from '@/components/navigation/RoleSwitchModal';
 import { ProfileHeaderCard } from '@/src/features/profile/components/ProfileHeaderCard';
 import { useProfile } from '@/src/features/profile/hooks/useProfile';
 import { useTranslation } from '@/src/utils/i18n';
-import { LogOut, Save, Building2, Home, ShieldCheck } from 'lucide-react-native';
+import { LogOut, Save, Building2, Home, ShieldCheck, Shield, FileText, UserX } from 'lucide-react-native';
 
 export default function ProfileScreen() {
   const { t, tRole } = useTranslation();
@@ -156,6 +156,43 @@ export default function ProfileScreen() {
             >
               {t('save_emergency_contact_btn', 'Save Emergency Contact')}
             </Button>
+          </View>
+        </View>
+
+        {/* Privacy & Security Section */}
+        <View className="gap-2">
+          <Text className="text-xs font-bold text-muted-foreground uppercase px-1">
+            {t('privacy_security_header', 'Privacy & Security')}
+          </Text>
+
+          <View className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+            <ListCard
+              variant="row"
+              title={t('privacy_policy_title', 'Privacy Policy')}
+              subtitle="https://managemygate.e3esg.com/privacy-policy"
+              leftIcon={Shield}
+              showChevron={true}
+              onPress={() => Linking.openURL('https://managemygate.e3esg.com/privacy-policy')}
+            />
+
+            <ListCard
+              variant="row"
+              title={t('terms_conditions_title', 'Terms & Conditions')}
+              subtitle="https://managemygate.e3esg.com/terms"
+              leftIcon={FileText}
+              showChevron={true}
+              onPress={() => Linking.openURL('https://managemygate.e3esg.com/terms')}
+            />
+
+            <ListCard
+              variant="row"
+              title={t('delete_account_title', 'Delete Account')}
+              subtitle="https://managemygate.e3esg.com/delete-account"
+              leftIcon={UserX}
+              showChevron={true}
+              isLastItem={true}
+              onPress={() => Linking.openURL('https://managemygate.e3esg.com/delete-account')}
+            />
           </View>
         </View>
 

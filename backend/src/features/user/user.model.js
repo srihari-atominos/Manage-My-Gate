@@ -27,8 +27,16 @@ const userSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Pending Verification', 'Active', 'Suspended', 'Blocked'],
+      enum: ['Pending Verification', 'Active', 'Suspended', 'Blocked', 'Deleted'],
       default: 'Pending Verification',
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    privacyPolicyAcceptedAt: {
+      type: Date,
+      default: null,
     },
     name: {
       type: String,

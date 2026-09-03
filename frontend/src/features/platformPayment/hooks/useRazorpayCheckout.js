@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../services/apiClient.js';
 import { toast } from 'react-hot-toast';
 import { useSocket } from '../../../hooks/useSocket.js';
+import config, { isMockRazorpayKey } from '../../../config/config.js';
 
 export const useRazorpayCheckout = () => {
   const [isInitializing, setIsInitializing] = useState(false);
@@ -50,14 +51,6 @@ export const useRazorpayCheckout = () => {
   const handleCheckout = useCallback(async (checkoutPayload) => {
     try {
       setIsInitializing(true);
-      
-      // Step 2: Load the Razorpay Checkout script dynamically
-      const isLoaded = await loadRazorpayScript();
-      if (!isLoaded) {
-        toast.error('Razorpay SDK failed to load. Are you online?');
-        setIsInitializing(false);
-        return;
-      }
 
       // Step 1: Call our backend POST /platform-payments/create-order to generate a Razorpay order_id
       const response = await apiClient.post('/platform-payments/create-order', checkoutPayload);
@@ -67,7 +60,43 @@ export const useRazorpayCheckout = () => {
       const orderId = order?.id || order?.orderId || `order_${Date.now()}`;
       const amountInPaise = order?.amount || Math.round((checkoutPayload?.amount || 186300) * 100);
       const currency = order?.currency || checkoutPayload?.currency || 'INR';
-      const keyId = order?.key || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_mockkey';
+      const keyId = order?.key || config.razorpayKeyId || 'rzp_test_mockkey';
+      const isMock = isMockRazorpayKey(keyId);
+
+      if (isMock) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const confirmPayment = window.confirm(`[Mock Mode] Confirm subscription payment of ₹${checkoutPayload?.amount || 1863}?`);
+        if (confirmPayment) {
+          try {
+            await apiClient.post('/platform-payments/reconcile-offline', {
+              inquiryId: checkoutPayload?.inquiryId,
+              amount: checkoutPayload?.amount,
+              gateway: 'RAZORPAY',
+              transactionId: `TXN_MOCK_${Date.now()}`,
+              email: checkoutPayload?.userEmail,
+            });
+            toast.success('Payment Verified! Your organization workspace is provisioned.');
+            setIsInitializing(false);
+            if (typeof checkoutPayload?.onSuccess === 'function') {
+              checkoutPayload.onSuccess({ razorpay_payment_id: `pay_mock_${Date.now()}` });
+            }
+          } catch (err) {
+            toast.error('Mock payment error: ' + (err.response?.data?.message || err.message));
+            setIsInitializing(false);
+          }
+        } else {
+          setIsInitializing(false);
+        }
+        return;
+      }
+
+      // Step 2: Load the Razorpay Checkout script dynamically
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        toast.error('Razorpay SDK failed to load. Are you online?');
+        setIsInitializing(false);
+        return;
+      }
 
       setActiveOrderId(orderId);
 

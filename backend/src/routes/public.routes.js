@@ -1,8 +1,13 @@
 import { Router } from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import rateLimit from 'express-rate-limit';
 import crmInquiryController from '../features/crmInquiry/crmInquiry.controller.js';
 import { validate } from '../middlewares/validator.middleware.js';
 import { validatePublicLead } from '../features/crmInquiry/crmInquiry.validator.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = Router();
 
@@ -210,6 +215,10 @@ router.get('/invoice/:id/download', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+router.get('/privacy-policy', (req, res) => {
+  res.sendFile(path.resolve(__dirname, '../../public/privacy-policy.html'));
 });
 
 export default router;

@@ -77,6 +77,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api', apiRouter);
 app.use('/api/v1', apiRouter);
 
+// Privacy policy public route
+app.get('/privacy-policy', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'privacy-policy.html'));
+});
+
 // Mount Swagger UI at root
 app.use('/', swaggerRouter);
 

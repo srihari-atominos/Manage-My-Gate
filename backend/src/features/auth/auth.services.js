@@ -85,7 +85,15 @@ export class AuthService {
 
       // Create the User (passing session for transactional execution)
       const newUser = await userService.createUser(
-        { email, username: uniqueUsername, password, phone, name: nameToUse || undefined, status: 'Pending Verification' },
+        { 
+          email, 
+          username: uniqueUsername, 
+          password, 
+          phone, 
+          name: nameToUse || undefined, 
+          status: 'Pending Verification',
+          privacyPolicyAcceptedAt: new Date()
+        },
         session
       );
       

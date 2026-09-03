@@ -166,7 +166,7 @@ apiClient.interceptors.response.use(
         if (store) {
           store.dispatch({ type: 'auth/logout' })
         }
-        window.location.href = '/#/login'
+        window.location.href = '/login'
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false
@@ -183,7 +183,7 @@ apiClient.interceptors.response.use(
           console.error('Failed to trigger auto-logout on 400 Bad Request', dispatchErr);
         }
       }
-      window.location.href = '/#/login';
+      window.location.href = '/login';
     }
 
     if (error.response && error.response.data && error.response.data.message) {
@@ -200,7 +200,7 @@ apiClient.interceptors.response.use(
         store.dispatch({ type: 'auth/setLockedOut', payload: true })
       }
       // Force redirect strictly to renewal page
-      window.location.href = '/#/tenant/subscription-renewal'
+      window.location.href = '/tenant/subscription-renewal'
       return Promise.reject(error)
     }
 

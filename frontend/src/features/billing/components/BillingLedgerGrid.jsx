@@ -165,7 +165,7 @@ const BillingLedgerGrid = memo(
       try {
         const res = await onSettleOffline(settleInvoiceId, {
           offlineReference: settleRef,
-          paymentMethod: 'CHEQUE',
+          paymentMethod: 'BANK_TRANSFER',
           amount: Number(settleAmount),
         })
         if (res && typeof res.unwrap === 'function') {

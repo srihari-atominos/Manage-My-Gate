@@ -185,7 +185,7 @@ const TenantOnboardingWizard = () => {
             Your data has been successfully imported. Your workspace is fully configured and ready for action.
           </p>
           <a 
-            href="/#/dashboard" 
+            href="/dashboard" 
             className="px-12 py-4 bg-blue-600 text-white rounded-xl font-bold text-xl hover:bg-blue-700 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all inline-block"
           >
             Go to Dashboard

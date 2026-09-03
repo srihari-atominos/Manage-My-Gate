@@ -8,7 +8,7 @@ import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Button } from '@/components/ui/button';
 import { TextInput } from '@/components/forms/TextInput';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { Wallet, CreditCard, AlertCircle, ChevronRight, Check } from 'lucide-react-native';
+import { Wallet, CreditCard, AlertCircle, ChevronRight, Check, Landmark } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useMobilePayment, PaymentMethod } from '../hooks/useMobilePayment';
 import { Invoice } from '../types';
@@ -18,6 +18,7 @@ export interface PaymentCheckoutSheetProps {
   visible: boolean;
   onClose: () => void;
   invoice: Invoice | null;
+  onOpenOfflineSheet?: (invoice: Invoice, amountToPay: number) => void;
   onPaymentSuccess?: (result: any) => void;
 }
 
@@ -25,6 +26,7 @@ export function PaymentCheckoutSheet({
   visible,
   onClose,
   invoice,
+  onOpenOfflineSheet,
   onPaymentSuccess,
 }: PaymentCheckoutSheetProps) {
   const router = useRouter();
@@ -49,7 +51,9 @@ export function PaymentCheckoutSheet({
   // Derived figures
   const totalDue = invoice?.totalDue ?? invoice?.amount ?? 0;
   const paidAmount = invoice?.paidAmount ?? 0;
-  const remainingDue = Math.max(0, totalDue - paidAmount);
+  const remainingDue = (invoice as any)?.outstandingAmount !== undefined
+    ? (invoice as any).outstandingAmount
+    : Math.max(0, totalDue - paidAmount);
 
   // Parse amount to pay
   const amountToPay = useMemo(() => {
@@ -95,6 +99,14 @@ export function PaymentCheckoutSheet({
   const handleInitiatePayment = () => {
     if (isPaymentDisabled || isAmountInvalid) return;
 
+    if (selectedMethod === 'OFFLINE') {
+      onClose();
+      if (onOpenOfflineSheet && invoice) {
+        onOpenOfflineSheet(invoice, amountToPay);
+      }
+      return;
+    }
+
     if (selectedMethod === 'WALLET') {
       if (isWalletInsufficient) {
         Alert.alert('Insufficient Wallet Balance', `Insufficient wallet balance. Please recharge your wallet or choose Razorpay.`);
@@ -114,6 +126,7 @@ export function PaymentCheckoutSheet({
       await loadResidentDues();
       if (onPaymentSuccess) onPaymentSuccess(result);
       onClose();
+      router.push(`/(resident)/billing/invoice/${invoice._id}` as any);
       Alert.alert('Payment Successful!', `Settled ₹${amountToPay.toLocaleString('en-IN')} via Digital Wallet for Invoice #${invNo}.`);
     } catch (err: any) {
       setShowWalletConfirmModal(false);
@@ -156,6 +169,7 @@ export function PaymentCheckoutSheet({
       await loadResidentDues();
       if (onPaymentSuccess) onPaymentSuccess(verifyResult);
       onClose();
+      router.push(`/(resident)/billing/invoice/${invoice._id}` as any);
       Alert.alert('Razorpay Payment Confirmed!', `Verified & settled ₹${amountToPay.toLocaleString('en-IN')} for Invoice #${invNo}.`);
     } catch (err: any) {
       if (err?.code === 'NETWORK_ERROR' || err?.message?.includes('network')) {
@@ -333,6 +347,31 @@ export function PaymentCheckoutSheet({
                 {selectedMethod === 'RAZORPAY' ? <Check size={12} className="text-primary-foreground" /> : null}
               </View>
             </TouchableOpacity>
+
+            {/* Pay Offline Option */}
+            <TouchableOpacity
+              onPress={() => setSelectedMethod('OFFLINE')}
+              activeOpacity={0.8}
+              className={`p-4 rounded-xl border flex-row items-center justify-between ${
+                selectedMethod === 'OFFLINE' ? 'bg-amber-500/10 border-amber-500' : 'bg-card border-border'
+              }`}
+            >
+              <View className="flex-row items-center gap-3">
+                <View className="w-10 h-10 rounded-xl bg-amber-500/10 items-center justify-center">
+                  <Icon as={Landmark} size={20} className="text-amber-600 dark:text-amber-400" />
+                </View>
+                <View>
+                  <Text className="font-bold text-sm text-foreground">Pay Offline</Text>
+                  <Text className="text-xs text-muted-foreground">Bank Transfer (NEFT/IMPS/UPI) or Cash</Text>
+                </View>
+              </View>
+
+              <View className={`w-5 h-5 rounded-full border items-center justify-center ${
+                selectedMethod === 'OFFLINE' ? 'border-amber-500 bg-amber-500' : 'border-muted-foreground'
+              }`}>
+                {selectedMethod === 'OFFLINE' ? <Check size={12} className="text-primary-foreground" /> : null}
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Primary Action Button */}
@@ -347,7 +386,11 @@ export function PaymentCheckoutSheet({
             accessibilityLabel={`Confirm and Pay ₹${amountToPay.toLocaleString('en-IN')}`}
           >
             <Text className="font-bold text-base text-primary-foreground me-1">
-              {selectedMethod === 'WALLET' ? `Pay ₹${amountToPay.toLocaleString('en-IN')} via Wallet` : `Proceed to Razorpay (₹${amountToPay.toLocaleString('en-IN')})`}
+              {selectedMethod === 'WALLET'
+                ? `Pay ₹${amountToPay.toLocaleString('en-IN')} via Wallet`
+                : selectedMethod === 'OFFLINE'
+                ? `Proceed to Pay Offline (₹${amountToPay.toLocaleString('en-IN')})`
+                : `Proceed to Razorpay (₹${amountToPay.toLocaleString('en-IN')})`}
             </Text>
             <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
           </Button>

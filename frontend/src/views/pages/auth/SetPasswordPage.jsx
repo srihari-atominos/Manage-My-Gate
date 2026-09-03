@@ -104,7 +104,7 @@ const SetPasswordPage = () => {
         toast.success('Password configured & workspace activated! Redirecting to Dashboard...', { id: 'set-pass' });
 
         setTimeout(() => {
-          window.location.href = '/#/dashboard';
+          window.location.href = '/dashboard';
         }, 1000);
       } else {
         localStorage.removeItem('token');
@@ -347,7 +347,7 @@ const SetPasswordPage = () => {
                 </CForm>
 
                 <div className="text-center mt-3">
-                  <a href="/#/login" className="text-decoration-none small text-muted">
+                  <a href="/login" className="text-decoration-none small text-muted">
                     Back to Login
                   </a>
                 </div>

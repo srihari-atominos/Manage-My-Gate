@@ -44,7 +44,7 @@ const HeroLiabilityBanner = memo(
     const [payOfflineInvoice, setPayOfflineInvoice] = useState(null)
     const [offlineRef, setOfflineRef] = useState('')
     const [offlineAmount, setOfflineAmount] = useState('')
-    const [paymentMethod, setPaymentMethod] = useState('CHEQUE')
+    const [paymentMethod, setPaymentMethod] = useState('BANK_TRANSFER')
     const [submitting, setSubmitting] = useState(false)
 
     const handlePayNow = () => {
@@ -68,7 +68,7 @@ const HeroLiabilityBanner = memo(
       }
       setPayOfflineInvoice(firstUnpaid)
       setOfflineRef('')
-      setPaymentMethod('CHEQUE')
+      setPaymentMethod('BANK_TRANSFER')
       setOfflineAmount(firstUnpaid.outstandingAmount ?? firstUnpaid.totalDue ?? 0)
     }
 
@@ -182,7 +182,7 @@ const HeroLiabilityBanner = memo(
               className="btn btn-outline-light btn-sm"
               onClick={handleOpenOfflineModal}
             >
-              Offline Cheque
+              Pay Offline
             </button>
           )}
         </div>
@@ -228,84 +228,116 @@ const HeroLiabilityBanner = memo(
           totalPortfolioDue={totalOutstanding}
         />
 
-        {/* ── Pay Offline / Record Settlement Modal ─────────────────────────── */}
+        {/* ── Pay Offline Modal (Bank Transfer & Cash) ─────────────────────────── */}
         <CModal
           visible={!!payOfflineInvoice}
           onClose={() => setPayOfflineInvoice(null)}
           alignment="center"
         >
           <CModalHeader>
-            <CModalTitle className="fw-semibold">Submit Offline Payment Confirmation</CModalTitle>
+            <CModalTitle className="fw-semibold">Pay Offline</CModalTitle>
           </CModalHeader>
           <CForm
             onSubmit={(e) => {
               e.preventDefault()
-              handleConfirmOfflinePay()
+              if (paymentMethod === 'BANK_TRANSFER') {
+                handleConfirmOfflinePay()
+              }
             }}
           >
             <CModalBody>
               <div className="alert alert-info py-2 px-3 small mb-3">
-                You are clearing Invoice <strong>{payOfflineInvoice?.invoiceNumber}</strong> of{' '}
+                You are paying Invoice <strong>{payOfflineInvoice?.invoiceNumber}</strong> of{' '}
                 <strong>₹{(payOfflineInvoice?.outstandingAmount ?? payOfflineInvoice?.totalDue)?.toLocaleString('en-IN')}</strong>.
               </div>
 
               <div className="mb-3">
-                <CFormLabel htmlFor="pay-method" className="small fw-semibold">
-                  Payment Method
+                <CFormLabel className="small fw-semibold d-block mb-2">
+                  How did you pay?
                 </CFormLabel>
-                <CFormSelect
-                  id="pay-method"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  size="sm"
-                >
-                  <option value="CHEQUE">Cheque</option>
-                  <option value="NEFT">Bank Transfer (NEFT/IMPS/UPI)</option>
-                </CFormSelect>
+                <div className="btn-group w-full" role="group">
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${paymentMethod === 'BANK_TRANSFER' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    onClick={() => setPaymentMethod('BANK_TRANSFER')}
+                  >
+                    Bank Transfer
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${paymentMethod === 'CASH' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    onClick={() => setPaymentMethod('CASH')}
+                  >
+                    Cash
+                  </button>
+                </div>
               </div>
 
-              <div className="mb-3">
-                <CFormLabel htmlFor="pay-amount" className="small fw-semibold">
-                  Payment Amount (₹) *
-                </CFormLabel>
-                <CFormInput
-                  id="pay-amount"
-                  type="number"
-                  value={offlineAmount}
-                  onChange={(e) => {
-                    const rawVal = e.target.value
-                    if (rawVal === '') {
-                      setOfflineAmount('')
-                      return
-                    }
-                    let val = Number(rawVal)
-                    const max = payOfflineInvoice?.outstandingAmount ?? payOfflineInvoice?.totalDue ?? 0
-                    if (val > max) val = max
-                    if (val < 0) val = 0
-                    setOfflineAmount(val.toString())
-                  }}
-                  required
-                  min="1"
-                  max={payOfflineInvoice?.outstandingAmount ?? payOfflineInvoice?.totalDue ?? 0}
-                  size="sm"
-                />
-              </div>
+              {paymentMethod === 'BANK_TRANSFER' ? (
+                <>
+                  <div className="mb-3">
+                    <CFormLabel htmlFor="pay-amount" className="small fw-semibold">
+                      Amount Paid (₹) *
+                    </CFormLabel>
+                    <CFormInput
+                      id="pay-amount"
+                      type="number"
+                      value={offlineAmount}
+                      onChange={(e) => {
+                        const rawVal = e.target.value
+                        if (rawVal === '') {
+                          setOfflineAmount('')
+                          return
+                        }
+                        let val = Number(rawVal)
+                        const max = payOfflineInvoice?.outstandingAmount ?? payOfflineInvoice?.totalDue ?? 0
+                        if (val > max) val = max
+                        if (val < 0) val = 0
+                        setOfflineAmount(val.toString())
+                      }}
+                      required
+                      min="1"
+                      max={payOfflineInvoice?.outstandingAmount ?? payOfflineInvoice?.totalDue ?? 0}
+                      size="sm"
+                    />
+                  </div>
 
-              <div className="mb-3">
-                <CFormLabel htmlFor="pay-ref" className="small fw-semibold">
-                  Transaction ID / Reference ID *
-                </CFormLabel>
-                <CFormInput
-                  id="pay-ref"
-                  type="text"
-                  placeholder="e.g. UTR-932842 or CHQ-48192"
-                  value={offlineRef}
-                  onChange={(e) => setOfflineRef(e.target.value)}
-                  required
-                  autoFocus
-                  size="sm"
-                />
-              </div>
+                  <div className="mb-3">
+                    <CFormLabel htmlFor="pay-date" className="small fw-semibold">
+                      When did you pay? (Payment Date) *
+                    </CFormLabel>
+                    <CFormInput
+                      id="pay-date"
+                      type="date"
+                      value={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setOfflineRef(offlineRef)} // placeholder
+                      required
+                      size="sm"
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <CFormLabel htmlFor="pay-ref" className="small fw-semibold">
+                      Payment Reference / UTR Number *
+                    </CFormLabel>
+                    <CFormInput
+                      id="pay-ref"
+                      type="text"
+                      placeholder="e.g. UTR192847194 or IMPS-98124"
+                      value={offlineRef}
+                      onChange={(e) => setOfflineRef(e.target.value)}
+                      required
+                      autoFocus
+                      size="sm"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="alert alert-warning py-3 px-3 small mb-0">
+                  <div className="fw-bold mb-1">Cash Payment Instructions</div>
+                  Please pay the amount to the community office or authorized facility staff. You will receive a digital receipt after your payment is recorded.
+                </div>
+              )}
             </CModalBody>
             <CModalFooter>
               <CButton
@@ -315,16 +347,18 @@ const HeroLiabilityBanner = memo(
                 onClick={() => setPayOfflineInvoice(null)}
                 disabled={submitting}
               >
-                Cancel
+                Close
               </CButton>
-              <CButton
-                type="submit"
-                color="primary"
-                size="sm"
-                disabled={submitting || !offlineRef.trim()}
-              >
-                {submitting ? 'Submitting...' : 'Submit Confirmation'}
-              </CButton>
+              {paymentMethod === 'BANK_TRANSFER' && (
+                <CButton
+                  type="submit"
+                  color="primary"
+                  size="sm"
+                  disabled={submitting || !offlineRef.trim() || !offlineAmount || Number(offlineAmount) <= 0}
+                >
+                  {submitting ? 'Submitting...' : 'Submit Payment'}
+                </CButton>
+              )}
             </CModalFooter>
           </CForm>
         </CModal>

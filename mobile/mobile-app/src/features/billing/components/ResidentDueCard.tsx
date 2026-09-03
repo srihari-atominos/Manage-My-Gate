@@ -23,8 +23,12 @@ export function ResidentDueCard({
   const invNo = item.invoiceNumber || invoiceId || '—';
   const unitStr = item.unitNumber ? `Villa ${item.unitNumber}` : 'Villa Unit';
   const periodStr = item.billingPeriodString || 'Current Month';
-  const dueAmount = item.totalDue || 0;
-  const formattedDue = `₹${dueAmount.toLocaleString('en-IN')}`;
+  const totalDue = item.totalDue || 0;
+  const paidAmount = item.paidAmount || 0;
+  const remainingDue = item.outstandingAmount !== undefined
+    ? item.outstandingAmount
+    : Math.max(0, totalDue - paidAmount);
+  const formattedDue = `₹${remainingDue.toLocaleString('en-IN')}`;
 
   const statusVariant = getStatusVariant(item.status);
   const statusLabel = item.status ? item.status.replace(/_/g, ' ') : 'UNPAID';
@@ -35,7 +39,9 @@ export function ResidentDueCard({
     invoiceNumber: invNo,
     unitNumber: item.unitNumber,
     billingPeriodString: periodStr,
-    totalDue: dueAmount,
+    totalDue,
+    paidAmount,
+    outstandingAmount: remainingDue,
     status: item.status,
   } as Invoice;
 

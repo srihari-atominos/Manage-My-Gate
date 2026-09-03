@@ -3,6 +3,17 @@ import { View, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform,
 import { X, Users, Upload, Plus, Trash2, CheckCircle2, AlertTriangle, FileSpreadsheet, Download, FileText } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
+
+let LegacyFileSystem: any = null;
+try {
+  LegacyFileSystem = require('expo-file-system/legacy');
+} catch (e) {
+  try {
+    LegacyFileSystem = require('expo-file-system');
+  } catch (err) {
+    LegacyFileSystem = null;
+  }
+}
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/common/Button';
@@ -162,7 +173,10 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
         if (Platform.OS === 'web' && (asset as any).file) {
           text = await (asset as any).file.text();
         } else if (asset.uri) {
-          text = await FileSystem.readAsStringAsync(asset.uri);
+          const fs = LegacyFileSystem || FileSystem;
+          if (fs.readAsStringAsync) {
+            text = await fs.readAsStringAsync(asset.uri);
+          }
         }
 
         if (text) {

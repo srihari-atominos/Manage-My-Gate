@@ -139,6 +139,32 @@ export class UserController {
       next(error);
     }
   }
+
+  /**
+   * Self-service account deletion for the currently authenticated user.
+   */
+  async deleteMyAccount(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const result = await userService.deleteOwnAccount(userId);
+      res.success(result, 'Account deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Public unauthenticated account deletion request.
+   */
+  async requestAccountDeletion(req, res, next) {
+    try {
+      const { email, mobile, reason } = req.body;
+      const result = await userService.requestAccountDeletion({ email, mobile, reason });
+      res.success(result, 'Deletion request processed successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new UserController()

@@ -103,6 +103,7 @@ apiClient.interceptors.request.use(
       let rawOrgId =
         state?.workspace?.activeOrganizationId ||
         state?.auth?.user?.orgId ||
+        state?.auth?.user?.communityId ||
         state?.auth?.user?.organizationId ||
         state?.auth?.user?.org?._id ||
         state?.auth?.user?.org ||
@@ -118,6 +119,7 @@ apiClient.interceptors.request.use(
             const user = JSON.parse(userStr);
             rawOrgId =
               user?.orgId ||
+              user?.communityId ||
               user?.organizationId ||
               user?.org?._id ||
               user?.org ||

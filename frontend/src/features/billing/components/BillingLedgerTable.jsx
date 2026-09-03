@@ -83,7 +83,7 @@ const BillingLedgerTable = memo(
         const res = await onSettleOffline(settleInvoiceId, {
           offlineReference: settleRef,
           offlineAmount: Number(settleAmount),
-          paymentMethod: 'CHEQUE',
+          paymentMethod: 'BANK_TRANSFER',
         })
         if (res && typeof res.unwrap === 'function') {
           await res.unwrap()

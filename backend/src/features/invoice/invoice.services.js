@@ -430,15 +430,49 @@ export class InvoiceService {
   }
 
   /**
-   * Settle payment with offline cheque / NEFT / cash.
+   * Settle payment with offline Bank Transfer.
    */
-  async logOfflinePayment(invoiceId, offlineReference, amount) {
+  async logOfflinePayment(invoiceId, offlineReference, amount, paymentMethod = 'BANK_TRANSFER', paymentDate = null, paymentScreenshot = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    logger.info('logOfflinePayment called', { invoiceId, offlineReference, amount, correlationId });
+    logger.info('logOfflinePayment called', { invoiceId, offlineReference, amount, paymentMethod, correlationId });
 
-    const updatePayload = { offlineReference };
+    const Invoice = (await import('./invoice.model.js')).default;
+    const Payment = (await import('../payment/payment.model.js')).default;
+
+    const existingInvoice = await Invoice.findById(invoiceId);
+    if (!existingInvoice) {
+      throw new Error('Invoice not found');
+    }
+
+    if (existingInvoice.status === 'PAID') {
+      throw new Error('Invoice is already fully settled.');
+    }
+
+    if (existingInvoice.status === 'VERIFICATION_PENDING') {
+      throw new Error('An offline payment for this invoice is already pending verification.');
+    }
+
+    // Check duplicate payment reference if reference is provided
+    const effectiveRef = offlineReference || `BANK-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    if (offlineReference) {
+      const duplicateRef = await Payment.findOne({ paymentReference: offlineReference, status: { $ne: 'REJECTED' } });
+      if (duplicateRef) {
+        throw new Error('This payment reference number has already been submitted.');
+      }
+    }
+
+    const updatePayload = {
+      offlineReference: effectiveRef,
+      paymentMethod: paymentMethod === 'NEFT' ? 'BANK_TRANSFER' : paymentMethod,
+    };
     if (amount) {
       updatePayload.offlineAmount = amount;
+    }
+    if (paymentDate) {
+      updatePayload.paymentDate = new Date(paymentDate);
+    }
+    if (paymentScreenshot) {
+      updatePayload.paymentScreenshot = paymentScreenshot;
     }
 
     const updated = await invoiceRepository.updateStatusWithLock(
@@ -447,43 +481,77 @@ export class InvoiceService {
       updatePayload
     );
 
-    const Invoice = (await import('./invoice.model.js')).default;
     const populated = await Invoice.findById(updated._id)
-      .populate('targetUserId', 'name username email')
+      .populate('targetUserId', 'name username email firstName lastName')
       .populate('unitId', 'unitNumber')
       .lean();
 
     const result = populated || (updated.toObject ? updated.toObject() : updated);
 
+    // Create a pending Payment record
+    try {
+      await Payment.create({
+        orgId: result.communityId || result.orgId,
+        userId: (result.targetUserId && result.targetUserId._id) ? result.targetUserId._id : (result.targetUserId || result.orgId),
+        invoiceId: result._id,
+        residentId: (result.targetUserId && result.targetUserId._id) ? result.targetUserId._id : (result.targetUserId || result.orgId),
+        villaId: (result.unitId && result.unitId._id) ? result.unitId._id : result.unitId,
+        referenceId: result._id,
+        referenceType: 'Invoice',
+        amount: amount || result.totalAmount,
+        status: 'VERIFICATION_PENDING',
+        paymentCategory: 'OFFLINE',
+        paymentMethod: paymentMethod === 'NEFT' ? 'BANK_TRANSFER' : paymentMethod,
+        paymentReference: effectiveRef,
+        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+        proofDocument: paymentScreenshot || null,
+        gateway: 'offline',
+        gatewayTransactionId: effectiveRef,
+      });
+    } catch (err) {
+      logger.error('Failed to log pending Payment record:', err);
+    }
+
     invoiceEventEmitter.emit('OFFLINE_PAYMENT_SUBMITTED', {
       invoice: result,
-      communityId: result.orgId,
-      residentName: result.targetUserId?.username || 'Unknown',
-      reference: offlineReference
+      communityId: result.orgId || result.communityId,
+      residentName: result.targetUserId ? `${result.targetUserId.firstName || ''} ${result.targetUserId.lastName || result.targetUserId.username || ''}`.trim() : 'Resident',
+      reference: effectiveRef
     });
 
     return result;
   }
 
   /**
-   * Approve/verify offline payment (Admin only).
+   * Approve/verify offline Bank Transfer payment (Admin only).
    */
-  async approveOfflinePayment(invoiceId) {
+  async approveOfflinePayment(invoiceId, adminUserId = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    logger.info('approveOfflinePayment called', { invoiceId, correlationId });
+    logger.info('approveOfflinePayment called', { invoiceId, adminUserId, correlationId });
 
     const Invoice = (await import('./invoice.model.js')).default;
+    const Payment = (await import('../payment/payment.model.js')).default;
+
     const invoice = await Invoice.findById(invoiceId);
     if (!invoice) {
       throw new Error('Invoice not found');
     }
 
+    if (invoice.status === 'PAID') {
+      throw new Error('Invoice is already marked as PAID.');
+    }
+
     const amountToApply = invoice.offlineAmount || invoice.outstandingAmount || invoice.totalAmount;
-    const offlineReference = invoice.offlineReference || 'UNKNOWN';
-    const paymentMethod = invoice.paymentMethod || 'CHEQUE';
+    const offlineReference = invoice.offlineReference || `BANK-${Date.now()}`;
+    const paymentMethod = invoice.paymentMethod || 'BANK_TRANSFER';
     
-    const newOutstanding = (invoice.outstandingAmount || invoice.totalAmount) - amountToApply;
+    const newOutstanding = Math.max(0, (invoice.outstandingAmount || invoice.totalAmount) - amountToApply);
     const finalStatus = newOutstanding > 0 ? 'PARTIALLY_PAID' : 'PAID';
+
+    // Generate unique receipt number
+    const yearStr = new Date().getFullYear();
+    const randSeq = Math.floor(100000 + Math.random() * 900000);
+    const receiptNumber = `BANK-${yearStr}-${randSeq}`;
 
     const updated = await invoiceRepository.updateStatusWithLock(
       invoiceId,
@@ -496,34 +564,299 @@ export class InvoiceService {
     );
 
     try {
-      const Payment = (await import('../payment/payment.model.js')).default;
-      await Payment.create({
-        orgId: invoice.communityId || invoice.orgId,
-        userId: invoice.targetUserId,
-        referenceId: invoice._id,
-        referenceType: 'Invoice',
-        amount: amountToApply,
-        status: 'success',
-        paymentMethod: paymentMethod,
-        gatewayTransactionId: offlineReference,
-        verifiedBy: adminUserId || null,
-        verifiedAt: new Date(),
-        approvalStatus: 'APPROVED'
-      });
+      // Find existing pending payment or create new PAID payment
+      let payment = await Payment.findOne({ invoiceId: invoice._id, status: 'VERIFICATION_PENDING' });
+      if (payment) {
+        payment.status = 'PAID';
+        payment.verifiedBy = adminUserId || null;
+        payment.verifiedAt = new Date();
+        payment.processedBy = adminUserId || null;
+        payment.receiptNumber = receiptNumber;
+        await payment.save();
+      } else {
+        await Payment.create({
+          orgId: invoice.communityId || invoice.orgId,
+          userId: invoice.targetUserId,
+          invoiceId: invoice._id,
+          residentId: invoice.targetUserId,
+          villaId: invoice.unitId,
+          referenceId: invoice._id,
+          referenceType: 'Invoice',
+          amount: amountToApply,
+          status: 'PAID',
+          paymentCategory: 'OFFLINE',
+          paymentMethod: paymentMethod,
+          paymentReference: offlineReference,
+          gatewayTransactionId: offlineReference,
+          receiptNumber: receiptNumber,
+          verifiedBy: adminUserId || null,
+          verifiedAt: new Date(),
+          processedBy: adminUserId || null,
+          gateway: 'offline'
+        });
+      }
     } catch (err) {
-      logger.error('Failed to create Payment ledger record during offline settlement approval', err);
+      logger.error('Failed to create/update Payment record during approval:', err);
     }
 
     const populated = await Invoice.findById(updated._id)
-      .populate('targetUserId', 'name username email')
+      .populate('targetUserId', 'name username email firstName lastName')
       .populate('unitId', 'unitNumber')
       .lean();
 
     const result = populated || (updated.toObject ? updated.toObject() : updated);
+    result.receiptNumber = receiptNumber;
 
     invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, result);
 
     return result;
+  }
+
+  /**
+   * Reject offline Bank Transfer payment (Admin only).
+   */
+  async rejectOfflinePayment(invoiceId, adminUserId = null, rejectionReason = '') {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info('rejectOfflinePayment called', { invoiceId, adminUserId, rejectionReason, correlationId });
+
+    const Invoice = (await import('./invoice.model.js')).default;
+    const Payment = (await import('../payment/payment.model.js')).default;
+
+    const invoice = await Invoice.findById(invoiceId);
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
+
+    if (invoice.status !== 'VERIFICATION_PENDING') {
+      throw new Error('Invoice is not in VERIFICATION_PENDING status.');
+    }
+
+    // Determine status reset (OVERDUE if past due date, else UNPAID)
+    const now = new Date();
+    const resetStatus = (invoice.dueDate && invoice.dueDate < now) ? 'OVERDUE' : 'UNPAID';
+
+    invoice.status = resetStatus;
+    invoice.rejectionReason = rejectionReason;
+    invoice.offlineAmount = 0;
+    invoice.offlineReference = null;
+    await invoice.save();
+
+    try {
+      const payment = await Payment.findOne({ invoiceId: invoice._id, status: 'VERIFICATION_PENDING' });
+      if (payment) {
+        payment.status = 'REJECTED';
+        payment.rejectionReason = rejectionReason;
+        payment.verifiedBy = adminUserId || null;
+        payment.verifiedAt = new Date();
+        await payment.save();
+      }
+    } catch (err) {
+      logger.error('Failed to update Payment status to REJECTED:', err);
+    }
+
+    const populated = await Invoice.findById(invoice._id)
+      .populate('targetUserId', 'name username email firstName lastName')
+      .populate('unitId', 'unitNumber')
+      .lean();
+
+    const result = populated || invoice.toObject();
+    result.rejectionReason = rejectionReason;
+
+    invoiceEventEmitter.emit('BANK_TRANSFER_REJECTED', result);
+
+    return result;
+  }
+
+  /**
+   * Record Cash Payment directly by Facility In-Charge / Admin.
+   */
+  async recordCashPayment(invoiceId, amount, facilityUserId) {
+    const correlationId = loggerStorage.getStore() || 'N/A';
+    logger.info('recordCashPayment called', { invoiceId, amount, facilityUserId, correlationId });
+
+    const Invoice = (await import('./invoice.model.js')).default;
+    const Payment = (await import('../payment/payment.model.js')).default;
+
+    const invoice = await Invoice.findById(invoiceId);
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
+
+    if (invoice.status === 'PAID') {
+      throw new Error('Invoice is already fully paid.');
+    }
+
+    const amountToApply = amount || invoice.outstandingAmount || invoice.totalAmount;
+    if (amountToApply <= 0) {
+      throw new Error('Invalid cash payment amount.');
+    }
+
+    const newOutstanding = Math.max(0, (invoice.outstandingAmount || invoice.totalAmount) - amountToApply);
+    const finalStatus = newOutstanding > 0 ? 'PARTIALLY_PAID' : 'PAID';
+
+    // Generate unique receipt number (CASH-YYYY-XXXXXX)
+    const yearStr = new Date().getFullYear();
+    const randSeq = Math.floor(100000 + Math.random() * 900000);
+    const receiptNumber = `CASH-${yearStr}-${randSeq}`;
+
+    // Update invoice
+    invoice.status = finalStatus;
+    invoice.paidAmount = (invoice.paidAmount || 0) + amountToApply;
+    invoice.outstandingAmount = newOutstanding;
+    invoice.paymentMethod = 'CASH';
+    invoice.paid_at = new Date();
+    invoice.settled_at = new Date();
+    invoice.paymentCompletionDate = new Date();
+    invoice.auditHistory.push({
+      action: 'CASH_PAYMENT_RECORDED',
+      details: `Cash payment of ₹${amountToApply} recorded. Receipt #${receiptNumber}`,
+      performedBy: facilityUserId,
+      source: 'ADMIN_PANEL',
+      date: new Date()
+    });
+    await invoice.save();
+
+    // Create canonical Payment record
+    let payment;
+    try {
+      payment = await Payment.create({
+        orgId: invoice.communityId || invoice.orgId,
+        userId: invoice.targetUserId,
+        invoiceId: invoice._id,
+        residentId: invoice.targetUserId,
+        villaId: invoice.unitId,
+        referenceId: invoice._id,
+        referenceType: 'Invoice',
+        amount: amountToApply,
+        status: 'PAID',
+        paymentCategory: 'OFFLINE',
+        paymentMethod: 'CASH',
+        paymentDate: new Date(),
+        receivedBy: facilityUserId,
+        processedBy: facilityUserId,
+        receiptNumber: receiptNumber,
+        gateway: 'offline',
+        gatewayTransactionId: receiptNumber
+      });
+    } catch (err) {
+      logger.error('Failed to create Payment record for Cash payment:', err);
+    }
+
+    const populated = await Invoice.findById(invoice._id)
+      .populate('targetUserId', 'name username email firstName lastName')
+      .populate('unitId', 'unitNumber')
+      .lean();
+
+    const result = populated || invoice.toObject();
+    result.receiptNumber = receiptNumber;
+    result.payment = payment;
+
+    invoiceEventEmitter.emit('CASH_PAYMENT_RECORDED', result);
+    invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, result);
+
+    return result;
+  }
+
+  /**
+   * Search eligible unpaid/outstanding invoices for Cash collection universal search.
+   */
+  async searchCashEligible(searchQuery, orgId) {
+    const Invoice = (await import('./invoice.model.js')).default;
+    const Villa = (await import('../villa/villa.model.js')).default;
+    const User = (await import('../user/user.model.js')).default;
+
+    if (!searchQuery || !searchQuery.trim()) {
+      return [];
+    }
+
+    const q = searchQuery.trim();
+    const regex = new RegExp(q, 'i');
+
+    // Find matching villas
+    const matchingVillas = await Villa.find({
+      $or: [{ unitNumber: regex }, { number: regex }, { block: regex }]
+    }).select('_id');
+    const villaIds = matchingVillas.map(v => v._id);
+
+    // Find matching users
+    const matchingUsers = await User.find({
+      $or: [{ name: regex }, { firstName: regex }, { lastName: regex }, { username: regex }, { email: regex }, { phone: regex }, { phoneNumber: regex }]
+    }).select('_id');
+    const userIds = matchingUsers.map(u => u._id);
+
+    const invoices = await Invoice.find({
+      orgId: orgId,
+      status: { $in: ['UNPAID', 'OVERDUE', 'PARTIALLY_PAID'] },
+      $or: [
+        { invoiceNumber: regex },
+        { unitId: { $in: villaIds } },
+        { targetUserId: { $in: userIds } }
+      ]
+    })
+      .populate('targetUserId', 'name username email firstName lastName phone phoneNumber')
+      .populate('unitId', 'unitNumber block type')
+      .populate('assessmentId', 'title name')
+      .lean();
+
+    return invoices;
+  }
+
+  /**
+   * Fetch cash collections history for facility staff.
+   */
+  async getCashCollections(facilityUserId, orgId, query = {}) {
+    const Payment = (await import('../payment/payment.model.js')).default;
+    
+    const filter = {
+      paymentMethod: 'CASH',
+      status: 'PAID',
+    };
+
+    if (orgId) {
+      filter.orgId = orgId;
+    }
+
+    // If specific facilityUserId provided and not requesting all
+    if (facilityUserId && !query.allStaff) {
+      filter.receivedBy = facilityUserId;
+    }
+
+    const payments = await Payment.find(filter)
+      .populate('residentId', 'name username email firstName lastName phone')
+      .populate('villaId', 'unitNumber block')
+      .populate('invoiceId', 'invoiceNumber snapshot billingPeriodString')
+      .populate('receivedBy', 'name username email')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Calculate today's collection summary
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let todayCount = 0;
+    let todayAmount = 0;
+    let totalCount = payments.length;
+    let totalAmount = 0;
+
+    for (const p of payments) {
+      const amt = p.amount || 0;
+      totalAmount += amt;
+      const pDate = new Date(p.createdAt || p.paymentDate);
+      if (pDate >= today) {
+        todayCount++;
+        todayAmount += amt;
+      }
+    }
+
+    return {
+      collections: payments,
+      summary: {
+        todayCashReceived: todayAmount,
+        todayTransactions: todayCount,
+        totalCashReceived: totalAmount,
+        totalTransactions: totalCount
+      }
+    };
   }
 
   /**

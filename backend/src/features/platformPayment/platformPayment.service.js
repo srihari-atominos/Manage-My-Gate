@@ -23,7 +23,7 @@ export class PlatformPaymentService {
    * Record Offline Payment Transaction.
    */
   async createOfflinePaymentTransaction(payload) {
-    const { invoiceId, orderId, organizationId, gateway = 'OFFLINE_CHEQUE', amount, currency = 'INR', paymentMethod = 'CHEQUE', actorId } = payload;
+    const { invoiceId, orderId, organizationId, gateway = 'OFFLINE_BANK_TRANSFER', amount, currency = 'INR', paymentMethod = 'BANK_TRANSFER', actorId } = payload;
 
     const invoice = invoiceId ? await platformInvoiceService.getInvoiceById(invoiceId) : null;
     const correlationId = `CORR-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;

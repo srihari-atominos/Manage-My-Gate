@@ -25,6 +25,17 @@ const prepareInvoicePayload = async (payload) => {
   return payload;
 };
 
+const safeEmit = (room, event, payload) => {
+  try {
+    const io = getIO();
+    if (io) {
+      io.to(room).emit(event, payload);
+    }
+  } catch (e) {
+    // Socket.io not initialized in test/CLI mode
+  }
+};
+
 /**
  * Listen to native invoice EventEmitter events and dispatch them via Socket.io.
  */
@@ -45,12 +56,12 @@ export const setupInvoiceSocketListeners = async () => {
       
       const userRoom = `user:${targetUserId}`;
       logger.info(`Broadcasting invoice_generated to room: ${userRoom}`);
-      getIO().to(userRoom).emit('invoice_generated', populatedPayload);
+      safeEmit(userRoom, 'invoice_generated', populatedPayload);
 
       if (populatedPayload.communityId) {
         const orgRoom = `org:${populatedPayload.communityId}`;
         logger.info(`Broadcasting invoice_generated to room: ${orgRoom}`);
-        getIO().to(orgRoom).emit('invoice_generated', populatedPayload);
+        safeEmit(orgRoom, 'invoice_generated', populatedPayload);
       }
 
       // Create persistent database notification for the user
@@ -85,12 +96,12 @@ export const setupInvoiceSocketListeners = async () => {
 
       const userRoom = `user:${targetUserId}`;
       logger.info(`Broadcasting invoice_status_updated to room: ${userRoom}`);
-      getIO().to(userRoom).emit('invoice_status_updated', populatedPayload);
+      safeEmit(userRoom, 'invoice_status_updated', populatedPayload);
 
       if (populatedPayload.communityId) {
         const orgRoom = `org:${populatedPayload.communityId}`;
         logger.info(`Broadcasting invoice_status_updated to room: ${orgRoom}`);
-        getIO().to(orgRoom).emit('invoice_status_updated', populatedPayload);
+        safeEmit(orgRoom, 'invoice_status_updated', populatedPayload);
       }
 
       if (populatedPayload.status === 'PAID') {
@@ -122,14 +133,33 @@ export const setupInvoiceSocketListeners = async () => {
 
       const orgRoom = `org:${payload.communityId}`;
       logger.info(`Broadcasting offline_payment_submitted to room: ${orgRoom}`);
-      getIO().to(orgRoom).emit('offline_payment_submitted', payload);
+      try {
+        const io = getIO();
+        if (io) io.to(orgRoom).emit('offline_payment_submitted', payload);
+      } catch (e) {
+        // Socket.io not initialized in test/CLI mode
+      }
 
       try {
         const notificationService = (await import('../notification/notification.service.js')).default;
         const Role = (await import('../role/role.model.js')).default;
         const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
         
-        // Check for common admin role names
+        // Notify resident
+        if (payload.invoice?.targetUserId) {
+          const resUserId = payload.invoice.targetUserId._id || payload.invoice.targetUserId;
+          const amtStr = (payload.invoice?.offlineAmount || payload.invoice?.totalAmount || 0).toLocaleString('en-IN');
+          await notificationService.createNotification({
+            recipientId: resUserId,
+            senderId: null,
+            title: 'Payment Submitted',
+            body: `Your ₹${amtStr} bank transfer has been submitted for verification.`,
+            actionUrl: '/billing?tab=action-center',
+            type: 'INFO',
+          });
+        }
+
+        // Check for admin roles to notify admins
         const adminRoles = await Role.find({ 
           name: { $in: ['Admin', 'Community Admin', 'Super Admin'] }, 
           $or: [{ orgId: payload.communityId }, { orgId: null }] 
@@ -143,22 +173,66 @@ export const setupInvoiceSocketListeners = async () => {
           });
 
           for (const member of memberships) {
-              const amtStr = (payload.invoice?.offlineAmount || payload.invoice?.amount || payload.invoice?.totalAmount || 0).toLocaleString('en-IN');
-              await notificationService.createNotification({
-                recipientId: member.userId,
-                senderId: null,
-                title: 'Offline Payment Submitted',
-                body: `Resident ${payload.residentName} submitted offline payment ${payload.reference} (₹${amtStr}) for verification.`,
-                actionUrl: '/billing?tab=action-center',
+            const amtStr = (payload.invoice?.offlineAmount || payload.invoice?.totalAmount || 0).toLocaleString('en-IN');
+            await notificationService.createNotification({
+              recipientId: member.userId,
+              senderId: null,
+              title: 'New Bank Transfer',
+              body: `${payload.residentName || 'Resident'} submitted a ₹${amtStr} payment for verification.`,
+              actionUrl: '/billing?tab=action-center',
               type: 'INFO',
             });
           }
         }
       } catch (err) {
-        logger.error('Failed to create notification for offline payment:', err);
+        logger.error('Failed to create notification for bank transfer submission:', err);
       }
     } catch (error) {
       logger.error('Failed to emit offline_payment_submitted socket event:', error);
+    }
+  });
+
+  invoiceEventEmitter.on('BANK_TRANSFER_REJECTED', async (payload) => {
+    try {
+      if (!payload || !payload.targetUserId) return;
+      const targetUserId = payload.targetUserId._id || payload.targetUserId;
+      const userRoom = `user:${targetUserId}`;
+      getIO().to(userRoom).emit('bank_transfer_rejected', payload);
+
+      const notificationService = (await import('../notification/notification.service.js')).default;
+      const amtStr = (payload.totalAmount || payload.totalDue || 0).toLocaleString('en-IN');
+      await notificationService.createNotification({
+        recipientId: targetUserId,
+        senderId: null,
+        title: 'Payment Could Not Be Verified',
+        body: `Your ₹${amtStr} payment could not be verified. Reason: ${payload.rejectionReason || 'Verification failed.'}`,
+        actionUrl: '/billing?tab=action-center',
+        type: 'WARNING',
+      });
+    } catch (error) {
+      logger.error('Failed to emit BANK_TRANSFER_REJECTED socket event:', error);
+    }
+  });
+
+  invoiceEventEmitter.on('CASH_PAYMENT_RECORDED', async (payload) => {
+    try {
+      if (!payload || !payload.targetUserId) return;
+      const targetUserId = payload.targetUserId._id || payload.targetUserId;
+      const userRoom = `user:${targetUserId}`;
+      getIO().to(userRoom).emit('cash_payment_recorded', payload);
+
+      const notificationService = (await import('../notification/notification.service.js')).default;
+      const amtStr = (payload.paidAmount || payload.totalAmount || 0).toLocaleString('en-IN');
+      await notificationService.createNotification({
+        recipientId: targetUserId,
+        senderId: null,
+        title: 'Cash Payment Received',
+        body: `₹${amtStr} cash payment has been recorded. Invoice: ${payload.snapshot?.assessmentName || 'Maintenance'}, Receipt: ${payload.receiptNumber || 'N/A'}`,
+        actionUrl: '/billing?tab=action-center',
+        type: 'SUCCESS',
+      });
+    } catch (error) {
+      logger.error('Failed to emit CASH_PAYMENT_RECORDED socket event:', error);
     }
   });
 };

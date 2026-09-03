@@ -76,17 +76,22 @@ export const triggerInvoiceGenerationThunk = createAsyncThunk(
 
 export const submitOfflineSettlement = createAsyncThunk(
   'billing/submitOfflineSettlement',
-  async ({ invoiceId, offlineReference, paymentMethod, amount }, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const { invoiceId, paymentReference, offlineReference, amountPaid, amount, paymentMethod, paymentDate, paymentScreenshot } = payload
       const response = await billingService.settleInvoiceOffline(invoiceId, {
-        offlineReference,
-        paymentMethod,
-        amount,
+        paymentReference: paymentReference || offlineReference,
+        offlineReference: paymentReference || offlineReference,
+        amountPaid: amountPaid || amount,
+        amount: amountPaid || amount,
+        paymentMethod: paymentMethod || 'BANK_TRANSFER',
+        paymentDate,
+        paymentScreenshot,
       })
       const body = response?.success !== undefined ? response : response?.data
       return body?.data || body
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to record offline payment')
+      return rejectWithValue(error.message || 'Failed to submit bank transfer payment')
     }
   },
 )
@@ -99,7 +104,59 @@ export const clearOfflineSettlement = createAsyncThunk(
       const body = response?.success !== undefined ? response : response?.data
       return body?.data || body
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to approve offline payment')
+      return rejectWithValue(error.message || 'Failed to approve bank transfer payment')
+    }
+  },
+)
+
+export const rejectOfflineSettlement = createAsyncThunk(
+  'billing/rejectOfflineSettlement',
+  async ({ invoiceId, rejectionReason }, { rejectWithValue }) => {
+    try {
+      const response = await billingService.rejectInvoiceOffline(invoiceId, rejectionReason)
+      const body = response?.success !== undefined ? response : response?.data
+      return body?.data || body
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to reject bank transfer payment')
+    }
+  },
+)
+
+export const recordCashPaymentThunk = createAsyncThunk(
+  'billing/recordCashPaymentThunk',
+  async ({ invoiceId, amount }, { rejectWithValue }) => {
+    try {
+      const response = await billingService.recordCashPayment(invoiceId, amount)
+      const body = response?.success !== undefined ? response : response?.data
+      return body?.data || body
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to record cash payment')
+    }
+  },
+)
+
+export const fetchCashCollectionsThunk = createAsyncThunk(
+  'billing/fetchCashCollectionsThunk',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await billingService.getCashCollections()
+      const body = response?.success !== undefined ? response : response?.data
+      return body?.data || body
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch cash collections')
+    }
+  },
+)
+
+export const searchCashEligibleThunk = createAsyncThunk(
+  'billing/searchCashEligibleThunk',
+  async (query, { rejectWithValue }) => {
+    try {
+      const response = await billingService.searchCashEligible(query)
+      const body = response?.success !== undefined ? response : response?.data
+      return body?.data || body
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to search cash eligible invoices')
     }
   },
 )
@@ -423,6 +480,34 @@ export const billingSlice = createSlice({
         performInvoiceSync(state, action.payload)
       })
       .addCase(clearOfflineSettlement.rejected, (state, action) => {
+        state.loadingStates.settleInvoice = false
+        state.error = action.payload
+      })
+
+      // rejectOfflineSettlement
+      .addCase(rejectOfflineSettlement.pending, (state) => {
+        state.loadingStates.settleInvoice = true
+        state.error = null
+      })
+      .addCase(rejectOfflineSettlement.fulfilled, (state, action) => {
+        state.loadingStates.settleInvoice = false
+        performInvoiceSync(state, action.payload)
+      })
+      .addCase(rejectOfflineSettlement.rejected, (state, action) => {
+        state.loadingStates.settleInvoice = false
+        state.error = action.payload
+      })
+
+      // recordCashPaymentThunk
+      .addCase(recordCashPaymentThunk.pending, (state) => {
+        state.loadingStates.settleInvoice = true
+        state.error = null
+      })
+      .addCase(recordCashPaymentThunk.fulfilled, (state, action) => {
+        state.loadingStates.settleInvoice = false
+        performInvoiceSync(state, action.payload)
+      })
+      .addCase(recordCashPaymentThunk.rejected, (state, action) => {
         state.loadingStates.settleInvoice = false
         state.error = action.payload
       })

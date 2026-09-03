@@ -14,7 +14,8 @@ import {
   CBadge,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilWallet, cilCreditCard, cilCheckCircle, cilWarning } from '@coreui/icons'
+import { cilWallet, cilCreditCard, cilCheckCircle, cilWarning, cilInstitution } from '@coreui/icons'
+import config, { isMockRazorpayKey } from '../../../config/config.js'
 import '../styles/_billing.scss'
 
 /**
@@ -46,6 +47,7 @@ export const PaymentCheckoutModal = ({
   onPayWithWallet,
   onPayWithRazorpay,
   onVerifyRazorpay,
+  onPayOffline,
   isLoading,
   actionError,
   totalPortfolioDue,
@@ -55,7 +57,11 @@ export const PaymentCheckoutModal = ({
   const [scriptLoading, setScriptLoading] = useState(false)
   const [localError, setLocalError] = useState(null)
 
-  const invoiceOutstanding = invoice?.outstandingAmount ?? invoice?.totalDue ?? invoice?.amount ?? 0
+  const totalDue = invoice?.totalDue ?? invoice?.amount ?? 0
+  const paidAmount = invoice?.paidAmount ?? 0
+  const invoiceOutstanding = invoice?.outstandingAmount !== undefined
+    ? invoice.outstandingAmount
+    : Math.max(0, totalDue - paidAmount)
   const maxAmount = totalPortfolioDue && totalPortfolioDue > invoiceOutstanding ? totalPortfolioDue : invoiceOutstanding
   const [customAmount, setCustomAmount] = useState(maxAmount)
 
@@ -71,6 +77,14 @@ export const PaymentCheckoutModal = ({
 
   const handleCheckoutSubmit = async () => {
     setLocalError(null)
+
+    if (paymentMethod === 'OFFLINE') {
+      if (onPayOffline) {
+        onPayOffline(invoice, customAmount)
+      }
+      onClose(false)
+      return
+    }
 
     if (paymentMethod === 'WALLET') {
       if (isWalletInsufficient) {
@@ -100,8 +114,8 @@ export const PaymentCheckoutModal = ({
         }
 
         const orderData = orderResult?.data || orderResult?.payload || orderResult
-        const keyId = orderData.keyId || orderData.razorpayKeyId
-        const isMock = !keyId || keyId.includes('dummy') || keyId === 'rzp_test_12345'
+        const keyId = orderData.keyId || orderData.razorpayKeyId || config.razorpayKeyId
+        const isMock = isMockRazorpayKey(keyId)
 
         if (isMock) {
           // Mock Payment Flow
@@ -296,7 +310,7 @@ export const PaymentCheckoutModal = ({
 
         {/* Option 2: Razorpay Online */}
         <div
-          className={`p-3 border rounded cursor-pointer text-start transition-all ${
+          className={`p-3 border rounded mb-3 cursor-pointer text-start transition-all ${
             paymentMethod === 'RAZORPAY' ? 'border-primary bg-primary bg-opacity-10' : ''
           }`}
           onClick={() => setPaymentMethod('RAZORPAY')}
@@ -319,6 +333,38 @@ export const PaymentCheckoutModal = ({
                   {t(
                     'billing.checkout.razorpayOptionSub',
                     'Instant online payment via official Razorpay SDK',
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Option 3: Pay Offline */}
+        <div
+          className={`p-3 border rounded cursor-pointer text-start transition-all ${
+            paymentMethod === 'OFFLINE' ? 'border-warning bg-warning bg-opacity-10' : ''
+          }`}
+          onClick={() => setPaymentMethod('OFFLINE')}
+        >
+          <div className="d-flex align-items-center gap-3">
+            <CFormCheck
+              type="radio"
+              name="paymentMethod"
+              id="method-offline"
+              checked={paymentMethod === 'OFFLINE'}
+              onChange={() => setPaymentMethod('OFFLINE')}
+            />
+            <div className="d-flex align-items-center gap-2">
+              <CIcon icon={cilInstitution} size="lg" className="text-warning" />
+              <div>
+                <div className="fw-semibold">
+                  {t('billing.checkout.offlineOptionTitle', 'Pay Offline')}
+                </div>
+                <div className="text-muted small">
+                  {t(
+                    'billing.checkout.offlineOptionSub',
+                    'Bank Transfer (NEFT/IMPS/UPI) or Facility Cash',
                   )}
                 </div>
               </div>

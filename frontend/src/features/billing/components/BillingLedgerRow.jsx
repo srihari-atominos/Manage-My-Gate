@@ -23,7 +23,7 @@ const StatusBadge = memo(({ status, paymentMethod }) => {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.UNPAID
   const tooltipText =
     status === 'VERIFICATION_PENDING'
-      ? `${paymentMethod || 'Cheque/NEFT'} currently clearing T+3`
+      ? `${paymentMethod || 'Bank Transfer'} verification pending`
       : undefined
 
   return (

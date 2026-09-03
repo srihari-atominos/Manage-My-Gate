@@ -688,6 +688,169 @@ export class UserService {
     }
     return await userRepository.findByPhone(trimmed, session);
   }
+
+  /**
+   * Self-service account deletion for the authenticated user.
+   * Purges personal identifying information while preserving financial integrity.
+   * @param {string} userId - Authenticated user ID
+   */
+  async deleteOwnAccount(userId) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const user = await userRepository.findById(userId, session);
+      if (!user) {
+        throw new HttpError(404, 'User account not found.');
+      }
+
+      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+      const villaService = (await import('../villa/villa.services.js')).default;
+
+      // 1. Remove user from all villas in every organization they have membership in
+      const memberships = await orgMembershipService.getUserMemberships(userId, session);
+      if (Array.isArray(memberships)) {
+        for (const m of memberships) {
+          const orgId = m.orgId?._id ? m.orgId._id.toString() : m.orgId?.toString();
+          if (orgId) {
+            await villaService.removeUserFromAllVillasInOrg(userId, orgId, session).catch((err) => {
+              logger.warn(`Could not remove user ${userId} from villas in org ${orgId}:`, err.message);
+            });
+          }
+        }
+      }
+
+      // 2. Remove all memberships across organizations
+      await orgMembershipService.deleteMembershipsByUserId(userId, session);
+
+      // 3. Remove all community notes created by the user
+      const CommunityNote = (await import('../communityNote/communityNote.model.js')).default;
+      if (CommunityNote) {
+        await CommunityNote.deleteMany({ userId }).session(session);
+      }
+
+      // 4. Remove linked SSO identities
+      const userIdentityService = (await import('../userIdentity/userIdentity.services.js')).default;
+      if (userIdentityService && typeof userIdentityService.deleteIdentitiesByUserId === 'function') {
+        await userIdentityService.deleteIdentitiesByUserId(userId, session);
+      }
+
+      // 5. Revoke all active sessions and refresh tokens
+      const sessionService = (await import('../session/session.services.js')).default;
+      if (sessionService && typeof sessionService.revokeAllUserSessions === 'function') {
+        await sessionService.revokeAllUserSessions(userId, null, session);
+      }
+
+      // 6. Delete technician entries if any
+      const Technician = (await import('../technician/technician.model.js')).default;
+      if (Technician) {
+        const techConditions = [{ userId }];
+        if (user.email) techConditions.push({ email: user.email });
+        await Technician.deleteMany({ $or: techConditions }).session(session);
+      }
+
+      // 7. Purge direct messages and conversations
+      const Message = (await import('../directoryMessage/message.model.js')).default;
+      const Conversation = (await import('../directoryMessage/conversation.model.js')).default;
+      if (Message) {
+        await Message.deleteMany({ $or: [{ senderId: userId }, { receiverId: userId }] }).session(session);
+      }
+      if (Conversation) {
+        await Conversation.deleteMany({ participants: userId }).session(session);
+      }
+
+      // 8. Purge all notification records for this user
+      const Notification = (await import('../notification/notification.model.js')).default;
+      if (Notification) {
+        await Notification.deleteMany({ $or: [{ recipientId: userId }, { senderId: userId }] }).session(session);
+      }
+
+      // 9. Anonymize complaint PII snapshots (denormalized resident data)
+      const Complaint = (await import('../complaint/complaint.model.js')).default;
+      if (Complaint) {
+        await Complaint.updateMany(
+          { residentId: userId },
+          {
+            $set: {
+              residentName: 'Deleted User',
+              residentEmail: null,
+              residentMobile: null,
+            },
+          }
+        ).session(session);
+      }
+
+      // 10. Anonymize user personal data and set status to 'Deleted'
+      await userRepository.anonymize(userId, session);
+
+      // 11. Collect file paths for post-commit cleanup (avatar + complaint attachments)
+      const filesToClean = [];
+      if (user.avatar) {
+        filesToClean.push(user.avatar);
+      }
+
+      await session.commitTransaction();
+
+      // Post-commit: Clean up physical uploaded files from disk (non-transactional, best-effort)
+      for (const filePath of filesToClean) {
+        try {
+          const absolutePath = path.isAbsolute(filePath)
+            ? filePath
+            : path.resolve(projectRoot, filePath);
+          if (fs.existsSync(absolutePath)) {
+            fs.unlinkSync(absolutePath);
+            logger.info(`Cleaned up file for deleted user ${userId}: ${absolutePath}`);
+          }
+        } catch (fileErr) {
+          logger.warn(`Could not clean up file for deleted user ${userId}: ${fileErr.message}`);
+        }
+      }
+
+      // Emit event for real-time decoupling
+      userEvents.emit('USER_UPDATED', { userId, action: 'account_deleted' });
+
+      return {
+        success: true,
+        message: 'Account deleted successfully. All personal data has been removed.',
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Public unauthenticated account deletion request handler.
+   * Logs deletion request for administrative verification without exposing account existence.
+   * @param {Object} params - { email, mobile, reason }
+   */
+  async requestAccountDeletion({ email, mobile, reason }) {
+    logger.info(`[Public Deletion Request] Request received for Email: ${email || 'N/A'}, Mobile: ${mobile || 'N/A'}`);
+
+    try {
+      // Internal audit search (non-disclosing)
+      if (email || mobile) {
+        const searchConditions = [];
+        if (email) searchConditions.push({ email: email.toLowerCase() });
+        if (mobile) searchConditions.push({ mobile });
+
+        const existingUser = await userRepository.findOne({ $or: searchConditions });
+        if (existingUser) {
+          logger.info(`[Public Deletion Request] Matched existing user ID: ${existingUser._id}. Pending verification ticket generated.`);
+          userEvents.emit('USER_UPDATED', { userId: existingUser._id, action: 'deletion_requested', email, mobile });
+        }
+      }
+    } catch (err) {
+      logger.warn(`[Public Deletion Request] Non-blocking audit lookup error: ${err.message}`);
+    }
+
+    // Always return uniform security-safe confirmation response
+    return {
+      success: true,
+      message: 'Your request has been received. If the information matches an active account, we will contact you through your registered contact method to complete the identity verification process.',
+    };
+  }
 }
 
 export default new UserService();

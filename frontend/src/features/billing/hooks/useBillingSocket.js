@@ -67,7 +67,16 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
       dispatch(fetchMyDues())
     }
 
+    // Reconnect handler to ensure room re-subscription and state sync after network restoration
+    const handleReconnect = () => {
+      logger.info(`Socket reconnected. Re-subscribing to rooms: ${rooms.join(', ')}`)
+      rooms.forEach(room => emit('join_room', room))
+      dispatch(fetchMyDues())
+      dispatch(fetchWalletBalance())
+    }
+
     // Register event listeners
+    socket.on('reconnect', handleReconnect)
     socket.on('invoice_generated', handleInvoiceGenerated)
     socket.on('invoice_status_updated', handleInvoiceStatusUpdated)
     socket.on('INVOICE_UPDATED', handleInvoiceStatusUpdated)
@@ -87,6 +96,7 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
     // Lifecycle Cleanup
     return () => {
       logger.info(`Cleaning up billing & wallet real-time listeners for rooms: ${rooms.join(', ')}`)
+      socket.off('reconnect', handleReconnect)
       socket.off('invoice_generated', handleInvoiceGenerated)
       socket.off('invoice_status_updated', handleInvoiceStatusUpdated)
       socket.off('INVOICE_UPDATED', handleInvoiceStatusUpdated)
@@ -96,7 +106,7 @@ export const useBillingSocket = (userId, communityOrOrgId) => {
       socket.off('walletUpdated', handleWalletUpdated)
       socket.off('offline_payment_submitted')
     }
-  }, [socket, dispatch, rooms])
+  }, [socket, isConnected, emit, dispatch, rooms])
 }
 
 export default useBillingSocket

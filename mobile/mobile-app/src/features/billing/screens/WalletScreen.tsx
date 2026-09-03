@@ -26,8 +26,8 @@ export function WalletScreen() {
 
   const walletState = useSelector((state: RootState) => state.wallet);
   const balance = walletState?.balance || 0;
-  const history: any[] = walletState?.transactionHistory || walletState?.transactions || [];
-  const isLoading = walletState?.isLoading || walletState?.loading || false;
+  const history: any[] = walletState?.transactionHistory || (walletState as any)?.transactions || [];
+  const isLoading = walletState?.isLoading || (walletState as any)?.loading || false;
   const error = walletState?.error || null;
 
   // Real-time socket listener
@@ -74,7 +74,7 @@ export function WalletScreen() {
       // 1. Create Razorpay Top-Up Order on Backend
       const orderData: any = await dispatch(createWalletRazorpayOrder({ amount: topUpAmount })).unwrap();
 
-      const keyId = orderData?.razorpayKeyId || process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || '';
+      const keyId = orderData?.razorpayKeyId || orderData?.keyId || orderData?.key || process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID || '';
       const orderId = orderData?.orderId || orderData?.id || '';
       const paymentId = orderData?.paymentId || '';
 
@@ -97,7 +97,10 @@ export function WalletScreen() {
     setRazorpayOptions(null);
     setIsProcessingTopUp(true);
     try {
-      await dispatch(verifyWalletPayment(payload)).unwrap();
+      await dispatch(verifyWalletPayment({
+        ...payload,
+        amount: topUpAmount,
+      })).unwrap();
       setIsProcessingTopUp(false);
       setShowTopUpSheet(false);
       dispatch(fetchWalletBalance());

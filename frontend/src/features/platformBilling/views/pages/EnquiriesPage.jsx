@@ -117,7 +117,7 @@ const EnquiriesPage = () => {
           hasGeneratedOrder={hasGeneratedOrder}
           currentStatus={selectedLead?.status || '14-Day Free Trial'} 
           trialExpiryDate={selectedLead?.trialExpiryDate || '14 Days After Activation'} 
-          paymentLink={`${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3004'}/#/pay/${leadKey}`} 
+          paymentLink={`${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3004'}/pay/${leadKey}`} 
         />
       );
       case 'Provisioning': return <ProvisioningTab key={leadKey} lead={selectedLead} currentStepIndex={selectedLead?.provisioningStepIndex ?? mockProvStep} />;

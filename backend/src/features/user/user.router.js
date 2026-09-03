@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import userController from './user.controller.js'
 import { validate } from '../../middlewares/validator.middleware.js'
-import { inviteUserRules, bulkInviteUserRules, updateUserRolesRules, updateProfileRules } from './user.validateRules.js'
+import { inviteUserRules, bulkInviteUserRules, updateUserRolesRules, updateProfileRules, requestDeletionRules } from './user.validateRules.js'
 import isAuthenticated from '../../middlewares/auth.middleware.js'
 import { authorizePermission, authorizeAnyPermission } from '../../middlewares/rbac.middleware.js'
 import { upload, imageSignatureValidator } from './middlewares/upload.middleware.js'
@@ -11,10 +11,39 @@ import userPreferenceRouter from '../userPreference/userPreference.router.js'
 
 const router = Router()
 
+// Public unauthenticated account deletion request route
+/**
+ * @swagger
+ * /users/request-deletion:
+ *   post:
+ *     summary: Public account deletion request submission
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               mobile:
+ *                 type: string
+ *               reason:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Deletion request received.
+ */
+router.post(
+  '/request-deletion',
+  validate(requestDeletionRules),
+  userController.requestAccountDeletion
+)
+
 // Mount user preferences sub-router
 router.use('/preferences', userPreferenceRouter)
 
-// Protect all user routes
+// Protect all remaining user routes
 router.use(isAuthenticated)
 
 /**
@@ -131,6 +160,22 @@ router.put(
   imageSignatureValidator,
   validate(updateProfileRules),
   userController.updateProfile
+)
+
+/**
+ * @swagger
+ * /users/me:
+ *   delete:
+ *     summary: Self-service account deletion for the authenticated user
+ *     responses:
+ *       200:
+ *         description: Account deleted successfully.
+ *       401:
+ *         description: Unauthorized.
+ */
+router.delete(
+  '/me',
+  userController.deleteMyAccount
 )
 
 /**

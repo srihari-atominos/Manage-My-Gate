@@ -5,7 +5,8 @@ import { PhoneInput } from '@/components/forms/PhoneInput';
 import { Stack, router, useSegments, useLocalSearchParams } from 'expo-router';
 import { ShieldCheck, Mail, Lock, Phone, User } from 'lucide-react-native';
 import * as React from 'react';
-import { View, ScrollView, Platform } from 'react-native';
+import { View, ScrollView, Platform, Pressable } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { KeyboardAvoidingShell } from '@/components/layout/KeyboardAvoidingShell';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { useForm, Controller } from 'react-hook-form';
@@ -102,27 +103,39 @@ export default function RegisterScreen() {
     }
   }, [successMsg, isFocused]);
 
-  const onSubmit = async (data: RegisterFormValues) => {
-    const emailPrefix = data.email
-      .trim()
-      .split('@')[0]
-      .replace(/[^a-zA-Z0-9]/g, '');
-    
-    let derivedUsername = emailPrefix;
-    if (derivedUsername.length < 3) {
-      derivedUsername = 'user' + Math.floor(100 + Math.random() * 900);
-    } else if (derivedUsername.length > 30) {
-      derivedUsername = derivedUsername.substring(0, 30);
-    }
+    const handleOpenPrivacyPolicy = async () => {
+      try {
+        const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5002/api/v1';
+        const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
+        const privacyUrl = `${baseUrl}/privacy-policy`;
+        await WebBrowser.openBrowserAsync(privacyUrl);
+      } catch (e) {
+        console.warn('Could not open privacy policy in browser:', e);
+      }
+    };
 
-    await performRegister({
-      name: data.name.trim(),
-      username: derivedUsername,
-      email: data.email.trim().toLowerCase(),
-      phone: data.phone.trim().startsWith('+') ? data.phone.trim() : `+${data.phone.trim()}`,
-      password: data.password,
-    });
-  };
+    const onSubmit = async (data: RegisterFormValues) => {
+      const emailPrefix = data.email
+        .trim()
+        .split('@')[0]
+        .replace(/[^a-zA-Z0-9]/g, '');
+      
+      let derivedUsername = emailPrefix;
+      if (derivedUsername.length < 3) {
+        derivedUsername = 'user' + Math.floor(100 + Math.random() * 900);
+      } else if (derivedUsername.length > 30) {
+        derivedUsername = derivedUsername.substring(0, 30);
+      }
+
+      await performRegister({
+        name: data.name.trim(),
+        username: derivedUsername,
+        email: data.email.trim().toLowerCase(),
+        phone: data.phone.trim().startsWith('+') ? data.phone.trim() : `+${data.phone.trim()}`,
+        password: data.password,
+        privacyPolicyAccepted: true,
+      });
+    };
 
   return (
     <>
@@ -261,6 +274,18 @@ export default function RegisterScreen() {
                     ) : null}
                   </View>
                 ) : null}
+
+                {/* Privacy Policy Consent Notice */}
+                <View className="flex-row flex-wrap items-center justify-center px-1 pt-1">
+                  <Text className="text-xs text-muted-foreground text-center">
+                    By registering, you agree to our{' '}
+                  </Text>
+                  <Pressable onPress={handleOpenPrivacyPolicy} hitSlop={6}>
+                    <Text className="text-xs text-primary font-bold underline">
+                      Privacy Policy
+                    </Text>
+                  </Pressable>
+                </View>
 
                 <Button
                   onPress={form.handleSubmit(onSubmit)}
