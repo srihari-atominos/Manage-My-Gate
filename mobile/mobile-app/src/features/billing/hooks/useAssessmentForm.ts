@@ -59,6 +59,7 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
   // Search & Dynamic List State
   const [searchQuery, setSearchQuery] = useState('');
   const [roles, setRoles] = useState<any[]>([]);
+  const [rawVillas, setRawVillas] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
   const [blocks, setBlocks] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -66,6 +67,53 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
   // Submission UI States
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Helper to map template scopeIds (which might be block names, BHK types, or unit IDs) to valid unit ObjectIds
+  const resolveUnitIdsFromScope = useCallback((rawScopeType: string, rawScopeIds: any[], villaList: any[]) => {
+    if (!Array.isArray(rawScopeIds) || rawScopeIds.length === 0 || !Array.isArray(villaList) || villaList.length === 0) {
+      return Array.isArray(rawScopeIds) ? rawScopeIds.map((id) => String(id)) : [];
+    }
+
+    if (rawScopeType === 'VILLA_BLOCK') {
+      const blockNames = rawScopeIds.map((s) => String(s).trim().toLowerCase());
+      return villaList
+        .filter((v) => blockNames.includes(String(v.block || v.blockOrBuilding || '').trim().toLowerCase()))
+        .map((v) => String(v._id || v.id));
+    }
+
+    if (rawScopeType === 'UNIT_TYPE') {
+      const types = rawScopeIds.map((s) => String(s).trim().toLowerCase());
+      return villaList
+        .filter((v) => types.includes(String(v.type || '').trim().toLowerCase()))
+        .map((v) => String(v._id || v.id));
+    }
+
+    if (rawScopeType === 'SPECIFIC_UNITS') {
+      const hasStringNames = rawScopeIds.some((id) => !/^[0-9a-fA-F]{24}$/.test(String(id)));
+      if (hasStringNames) {
+        const resolvedIds = new Set<string>();
+        rawScopeIds.forEach((item) => {
+          const str = String(item).trim();
+          if (/^[0-9a-fA-F]{24}$/.test(str)) {
+            resolvedIds.add(str);
+          } else {
+            villaList.forEach((v) => {
+              if (
+                String(v.block || v.blockOrBuilding || '').trim().toLowerCase() === str.toLowerCase() ||
+                String(v.type || '').trim().toLowerCase() === str.toLowerCase()
+              ) {
+                resolvedIds.add(String(v._id || v.id));
+              }
+            });
+          }
+        });
+        return Array.from(resolvedIds);
+      }
+      return rawScopeIds.map((id) => String(id));
+    }
+
+    return rawScopeIds.map((id) => String(id));
+  }, []);
 
   // Auto-fill form if editing existing assessment
   useEffect(() => {
@@ -103,13 +151,25 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
       );
 
       const scope = assessment.targetScope || {};
-      setScopeType(scope.type || 'ALL_COMMUNITY');
-      setSelectedIds(scope.scopeIds || []);
+      const rawScopeType = scope.type || 'ALL_COMMUNITY';
+      const rawScopeIds = scope.scopeIds || [];
+
+      if (rawScopeType === 'VILLA_BLOCK' || rawScopeType === 'UNIT_TYPE') {
+        setScopeType('SPECIFIC_UNITS');
+        if (rawVillas.length > 0) {
+          setSelectedIds(resolveUnitIdsFromScope(rawScopeType, rawScopeIds, rawVillas));
+        } else {
+          setSelectedIds(rawScopeIds.map((id: any) => String(id)));
+        }
+      } else {
+        setScopeType(rawScopeType);
+        setSelectedIds(rawScopeIds.map((id: any) => String(id)));
+      }
       setCheckedRoles(scope.targetRoleIds || []);
     }
-  }, [assessment]);
+  }, [assessment, rawVillas.length, resolveUnitIdsFromScope]);
 
-  // Load static or initial roles and blocks on mount
+  // Load static or initial roles and villas on mount
   useEffect(() => {
     let active = true;
     const loadStaticData = async () => {
@@ -125,19 +185,24 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
           : [];
 
         if (active) {
-          let tenantRoles = rolesList.filter((r: any) => r.isTenantRole === true);
-          if (tenantRoles.length === 0 && rolesList.length > 0) {
-            tenantRoles = rolesList.filter((r: any) =>
-              ['Resident Owner', 'Resident Tenant', 'Family Member', 'Resident'].some((name) =>
-                (r.name || '').toLowerCase().includes(name.toLowerCase())
-              )
+          let billableRoles = rolesList.filter((r: any) =>
+            ['Resident Owner', 'Resident Tenant', 'Non-Resident Owner', 'Owner', 'Tenant'].some((name) =>
+              (r.name || '').toLowerCase().trim() === name.toLowerCase()
+            )
+          );
+          if (billableRoles.length === 0) {
+            billableRoles = rolesList.filter(
+              (r: any) =>
+                !(r.name || '').toLowerCase().includes('family') &&
+                !(r.name || '').toLowerCase().includes('guard') &&
+                !(r.name || '').toLowerCase().includes('admin')
             );
-            if (tenantRoles.length === 0) {
-              tenantRoles = rolesList;
-            }
+          }
+          if (billableRoles.length === 0) {
+            billableRoles = rolesList;
           }
 
-          const normalizedRoles = tenantRoles.map((r: any) => ({
+          const normalizedRoles = billableRoles.map((r: any) => ({
             ...r,
             _id: String(r._id || r.id),
           }));
@@ -154,9 +219,37 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
       }
 
       try {
-        const villasRes: any = await fetchVillas({ page: 1, limit: 200 });
-        const villaList = Array.isArray(villasRes) ? villasRes : villasRes?.data || [];
-        if (active && Array.isArray(villaList)) {
+        const villasRes: any = await fetchVillas({ page: 1, limit: 300 });
+        const rawVillaData = villasRes?.data || villasRes;
+        const villaList = Array.isArray(rawVillaData)
+          ? rawVillaData
+          : Array.isArray(rawVillaData?.data)
+          ? rawVillaData.data
+          : Array.isArray(villasRes?.villas)
+          ? villasRes.villas
+          : [];
+
+        if (active && Array.isArray(villaList) && villaList.length > 0) {
+          setRawVillas(villaList);
+
+          const formattedUnits = villaList.map((v: any) => {
+            const uId = String(v._id || v.id);
+            const uNum = v.villaNumber || v.unitNumber || '—';
+            const bName = v.block || v.blockOrBuilding || '';
+            const uType = v.type || 'Unit';
+            const area = v.floorAreaSqFt ? `${v.floorAreaSqFt} sq.ft` : '';
+            return {
+              _id: uId,
+              unitNumber: uNum,
+              block: bName,
+              type: uType,
+              floorAreaSqFt: v.floorAreaSqFt,
+              label: bName ? `Unit ${uNum} (${bName})` : `Unit ${uNum}`,
+              sub: [uType, area].filter(Boolean).join(' • '),
+            };
+          });
+          setUnits(formattedUnits);
+
           const blockNames = [
             ...new Set(villaList.map((v: any) => v.block || v.blockOrBuilding).filter(Boolean)),
           ];
@@ -169,9 +262,21 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
             };
           });
           setBlocks(formattedBlocks);
+
+          // Re-resolve selectedIds if editing assessment
+          if (assessment?.targetScope) {
+            const sType = assessment.targetScope.type;
+            const sIds = assessment.targetScope.scopeIds || [];
+            if (sType === 'VILLA_BLOCK' || sType === 'UNIT_TYPE' || sType === 'SPECIFIC_UNITS') {
+              const mapped = resolveUnitIdsFromScope(sType, sIds, villaList);
+              if (mapped.length > 0) {
+                setSelectedIds(mapped);
+              }
+            }
+          }
         }
       } catch (err) {
-        console.warn('Failed to fetch dynamic blocks in mobile form:', err);
+        console.warn('Failed to fetch dynamic villas in mobile form:', err);
       }
     };
 
@@ -179,30 +284,116 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
     return () => {
       active = false;
     };
-  }, [assessment]);
+  }, [assessment, resolveUnitIdsFromScope]);
 
-  // Debounced User Search
+  // Available unique blocks and unit types for quick filter chips
+  const availableBlocks = useMemo(() => {
+    return Array.from(
+      new Set(rawVillas.map((v) => v.block || v.blockOrBuilding).filter(Boolean))
+    ) as string[];
+  }, [rawVillas]);
+
+  const availableUnitTypes = useMemo(() => {
+    return Array.from(
+      new Set(rawVillas.map((v) => v.type).filter(Boolean))
+    ) as string[];
+  }, [rawVillas]);
+
+  // Helper to check preset selection state
+  const getBlockSelectionState = useCallback(
+    (blockName: string) => {
+      const matchingIds = rawVillas
+        .filter((v) => (v.block || v.blockOrBuilding) === blockName)
+        .map((v) => String(v._id || v.id));
+      const total = matchingIds.length;
+      const selected = matchingIds.filter((id) => selectedIds.includes(id)).length;
+      return {
+        total,
+        selected,
+        isFull: total > 0 && selected === total,
+        isPartial: selected > 0 && selected < total,
+        hasSelection: selected > 0,
+      };
+    },
+    [rawVillas, selectedIds]
+  );
+
+  const getTypeSelectionState = useCallback(
+    (unitType: string) => {
+      const matchingIds = rawVillas
+        .filter((v) => (v.type || '').toLowerCase() === unitType.toLowerCase())
+        .map((v) => String(v._id || v.id));
+      const total = matchingIds.length;
+      const selected = matchingIds.filter((id) => selectedIds.includes(id)).length;
+      return {
+        total,
+        selected,
+        isFull: total > 0 && selected === total,
+        isPartial: selected > 0 && selected < total,
+        hasSelection: selected > 0,
+      };
+    },
+    [rawVillas, selectedIds]
+  );
+
+  const isBlockFullySelected = useCallback(
+    (blockName: string) => getBlockSelectionState(blockName).isFull,
+    [getBlockSelectionState]
+  );
+
+  const isBlockPartiallySelected = useCallback(
+    (blockName: string) => getBlockSelectionState(blockName).isPartial,
+    [getBlockSelectionState]
+  );
+
+  const isTypeFullySelected = useCallback(
+    (unitType: string) => getTypeSelectionState(unitType).isFull,
+    [getTypeSelectionState]
+  );
+
+  const isTypePartiallySelected = useCallback(
+    (unitType: string) => getTypeSelectionState(unitType).isPartial,
+    [getTypeSelectionState]
+  );
+
+  // Debounced User Search & Initial Load for SPECIFIC_USERS
   useEffect(() => {
     if (scopeType !== 'SPECIFIC_USERS') return;
     let active = true;
     const timer = setTimeout(async () => {
       try {
         const res: any = await apiClient.get('/users', {
-          params: { page: 1, limit: 150, search: searchQuery },
+          params: { page: 1, limit: 200, search: searchQuery.trim() },
         });
-        const userList = Array.isArray(res) ? res : res?.data || [];
-        if (active && Array.isArray(userList)) {
-          const formatted = userList.map((u: any) => ({
-            _id: u._id || u.id,
-            label: u.name || u.username,
-            sub: u.email || 'Resident',
-          }));
+        const rawPayload = res?.data !== undefined ? res.data : res;
+        const rawUsers = Array.isArray(rawPayload)
+          ? rawPayload
+          : Array.isArray(rawPayload?.data)
+          ? rawPayload.data
+          : Array.isArray(rawPayload?.users)
+          ? rawPayload.users
+          : Array.isArray(res?.data?.data)
+          ? res.data.data
+          : [];
+
+        if (active && Array.isArray(rawUsers)) {
+          const formatted = rawUsers.map((u: any) => {
+            const uId = String(u._id || u.id);
+            const uName = u.name || u.username || 'Resident';
+            const uRole = u.role ? `Role: ${u.role}` : '';
+            const uSub = [u.email, uRole, u.phone].filter(Boolean).join(' • ');
+            return {
+              _id: uId,
+              label: uName,
+              sub: uSub || 'Resident',
+            };
+          });
           setUsers(formatted);
         }
       } catch (err) {
         console.warn('Failed to search users in mobile form:', err);
       }
-    }, 300);
+    }, 200);
 
     return () => {
       active = false;
@@ -210,32 +401,78 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
     };
   }, [searchQuery, scopeType]);
 
-  // Debounced Unit Search
-  useEffect(() => {
-    if (scopeType !== 'SPECIFIC_UNITS') return;
-    let active = true;
-    const timer = setTimeout(async () => {
-      try {
-        const villasRes: any = await fetchVillas({ page: 1, limit: 200, search: searchQuery });
-        const villaList = Array.isArray(villasRes) ? villasRes : villasRes?.data || [];
-        if (active && Array.isArray(villaList)) {
-          const formatted = villaList.map((v: any) => ({
-            _id: v._id || v.id,
-            label: `${v.villaNumber || v.unitNumber || '—'} - ${v.block || v.blockOrBuilding || ''}`,
-            sub: v.type || 'Unit',
-          }));
-          setUnits(formatted);
+  // Filtered unit list based on search query in Step 4
+  const filteredUnits = useMemo(() => {
+    if (!searchQuery.trim()) return units;
+    const q = searchQuery.toLowerCase().trim();
+    return units.filter(
+      (u) =>
+        (u.unitNumber || '').toLowerCase().includes(q) ||
+        (u.block || '').toLowerCase().includes(q) ||
+        (u.type || '').toLowerCase().includes(q) ||
+        (u.label || '').toLowerCase().includes(q)
+    );
+  }, [units, searchQuery]);
+
+  // Filtered user list based on search query in Step 4
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const q = searchQuery.toLowerCase().trim();
+    return users.filter(
+      (u) =>
+        (u.label || '').toLowerCase().includes(q) ||
+        (u.sub || '').toLowerCase().includes(q)
+    );
+  }, [users, searchQuery]);
+
+  // Smart preset handlers: Auto-check all units matching block or BHK type with search boundary respect
+  const handleToggleBlockPreset = useCallback(
+    (blockName: string) => {
+      const hasSearch = searchQuery.trim().length > 0;
+      const targetVillas = hasSearch
+        ? filteredUnits.filter((v) => (v.block || v.blockOrBuilding) === blockName)
+        : rawVillas.filter((v) => (v.block || v.blockOrBuilding) === blockName);
+
+      const matchingIds = targetVillas.map((v) => String(v._id || v.id));
+      if (matchingIds.length === 0) return;
+
+      setSelectedIds((prev) => {
+        const someAlreadySelected = matchingIds.some((id) => prev.includes(id));
+        if (someAlreadySelected) {
+          // If any matching units are selected, deselect them
+          return prev.filter((id) => !matchingIds.includes(id));
+        } else {
+          // If none are selected, select all matching units
+          return Array.from(new Set([...prev, ...matchingIds]));
         }
-      } catch (err) {
-        console.warn('Failed to search units in mobile form:', err);
-      }
-    }, 300);
+      });
+    },
+    [rawVillas, filteredUnits, searchQuery]
+  );
 
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [searchQuery, scopeType]);
+  const handleToggleTypePreset = useCallback(
+    (unitType: string) => {
+      const hasSearch = searchQuery.trim().length > 0;
+      const targetVillas = hasSearch
+        ? filteredUnits.filter((v) => (v.type || '').toLowerCase() === unitType.toLowerCase())
+        : rawVillas.filter((v) => (v.type || '').toLowerCase() === unitType.toLowerCase());
+
+      const matchingIds = targetVillas.map((v) => String(v._id || v.id));
+      if (matchingIds.length === 0) return;
+
+      setSelectedIds((prev) => {
+        const someAlreadySelected = matchingIds.some((id) => prev.includes(id));
+        if (someAlreadySelected) {
+          // If any matching units are selected, deselect them
+          return prev.filter((id) => !matchingIds.includes(id));
+        } else {
+          // If none are selected, select all matching units
+          return Array.from(new Set([...prev, ...matchingIds]));
+        }
+      });
+    },
+    [rawVillas, filteredUnits, searchQuery]
+  );
 
   // Role Names Map
   const roleNamesMap = useMemo(() => {
@@ -283,11 +520,19 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
     setTieredRates((prev) => ({ ...prev, [key]: val }));
   }, []);
 
+  const handleScopeTypeChange = useCallback((val: string) => {
+    setScopeType(val);
+    setSelectedIds([]);
+    setSelectedUnitTypes([]);
+    setSearchQuery('');
+    setFormError(null);
+  }, []);
+
   const scopeRows = useMemo(() => {
-    if (scopeType === 'SPECIFIC_USERS') return users;
+    if (scopeType === 'SPECIFIC_USERS') return filteredUsers;
     if (scopeType === 'VILLA_BLOCK') return blocks;
-    return units;
-  }, [scopeType, users, blocks, units]);
+    return filteredUnits;
+  }, [scopeType, filteredUsers, blocks, filteredUnits]);
 
   const resetForm = useCallback(() => {
     setName('');
@@ -353,11 +598,14 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
         billingCycle: isOneTime ? 'AD_HOC' : billingCycle,
         generationDay: isOneTime
           ? 'LAST_DAY_OF_MONTH'
+          : billingCycle === 'WEEKLY'
+          ? (selectedDays.length > 0 ? selectedDays[0] : 1)
           : genDayOption === 'LAST'
           ? 'LAST_DAY_OF_MONTH'
           : genDayOption === 'FIRST'
           ? 1
           : Number(customDay || 1),
+        selectedDays: billingCycle === 'WEEKLY' ? (selectedDays.length > 0 ? selectedDays : [1]) : [],
         triggerMode,
         scheduledDateTime: combinedScheduledDateTime,
         collectionMethod,
@@ -365,7 +613,10 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
           collectionMethod === 'INSTALLMENT' ? Number(totalInstallments || 0) : undefined,
         targetScope: {
           type: scopeType,
-          scopeIds: scopeType === 'ALL_COMMUNITY' ? [] : selectedIds,
+          scopeIds:
+            scopeType === 'ALL_COMMUNITY'
+              ? []
+              : selectedIds.filter((id) => /^[0-9a-fA-F]{24}$/.test(id)),
           targetRoleIds: validTargetRoleIds,
         },
         calculationMethod: {
@@ -455,6 +706,7 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
     handleTieredRate,
     scopeType,
     setScopeType,
+    handleScopeTypeChange,
     checkedRoles,
     handleToggleRole,
     roles,
@@ -468,6 +720,21 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
     scopeRows,
     searchQuery,
     setSearchQuery,
+    rawVillas,
+    units,
+    filteredUnits,
+    users,
+    filteredUsers,
+    availableBlocks,
+    availableUnitTypes,
+    handleToggleBlockPreset,
+    handleToggleTypePreset,
+    getBlockSelectionState,
+    getTypeSelectionState,
+    isBlockFullySelected,
+    isBlockPartiallySelected,
+    isTypeFullySelected,
+    isTypePartiallySelected,
     formError,
     setFormError,
     isSubmitting,

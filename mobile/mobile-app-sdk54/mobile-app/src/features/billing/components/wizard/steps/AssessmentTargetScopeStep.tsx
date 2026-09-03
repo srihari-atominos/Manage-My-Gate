@@ -3,25 +3,23 @@ import { View, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { DropdownSelect, DropdownOption } from '@/components/forms/DropdownSelect';
 import { SearchBar } from '@/components/forms/SearchBar';
-import { Checkbox } from '@/components/forms/Checkbox';
 import { Chip } from '@/components/common/Chip';
 import { Icon } from '@/components/ui/icon';
-import { Users, Building, Check, CheckSquare, Square } from 'lucide-react-native';
+import { Check, CheckSquare, Square, Filter, Home, Layers } from 'lucide-react-native';
 
 const SCOPE_OPTIONS: DropdownOption[] = [
   { label: '🌐 Entire Community (All Active Residents)', value: 'ALL_COMMUNITY' },
-  { label: '🏢 Specific Villa / Block', value: 'VILLA_BLOCK' },
-  { label: '🏠 Specific Unit Type (BHK)', value: 'UNIT_TYPE' },
-  { label: '📍 Specific Villa Units', value: 'SPECIFIC_UNITS' },
+  { label: '📍 Filter & Select Villa Units (By Block or BHK)', value: 'SPECIFIC_UNITS' },
   { label: '👤 Specific Resident Users', value: 'SPECIFIC_USERS' },
 ];
-
-const UNIT_TYPES = ['Studio', '1BHK', '2BHK', '3BHK', '4BHK', 'Penthouse', 'Duplex'];
 
 interface ScopeRowItem {
   _id: string;
   label: string;
   sub?: string;
+  unitNumber?: string;
+  block?: string;
+  type?: string;
 }
 
 interface RoleItem {
@@ -37,8 +35,6 @@ interface AssessmentTargetScopeStepProps {
   roles: RoleItem[];
   checkedRoles: string[];
   onToggleRole: (roleId: string) => void;
-  selectedUnitTypes: string[];
-  onToggleUnitType: (uType: string) => void;
   scopeRows: ScopeRowItem[];
   selectedIds: string[];
   onToggleId: (id: string) => void;
@@ -46,6 +42,17 @@ interface AssessmentTargetScopeStepProps {
   onDeselectAll: (ids: string[]) => void;
   searchQuery: string;
   onChangeSearchQuery: (text: string) => void;
+  availableBlocks?: string[];
+  availableUnitTypes?: string[];
+  onToggleBlockPreset?: (blockName: string) => void;
+  onToggleTypePreset?: (unitType: string) => void;
+  isBlockFullySelected?: (blockName: string) => boolean;
+  isBlockPartiallySelected?: (blockName: string) => boolean;
+  isTypeFullySelected?: (unitType: string) => boolean;
+  isTypePartiallySelected?: (unitType: string) => boolean;
+  getBlockSelectionState?: (blockName: string) => { total: number; selected: number; isFull: boolean; isPartial: boolean; hasSelection: boolean };
+  getTypeSelectionState?: (unitType: string) => { total: number; selected: number; isFull: boolean; isPartial: boolean; hasSelection: boolean };
+  totalUnitsCount?: number;
 }
 
 export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps> = ({
@@ -54,8 +61,6 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
   roles,
   checkedRoles,
   onToggleRole,
-  selectedUnitTypes,
-  onToggleUnitType,
   scopeRows,
   selectedIds,
   onToggleId,
@@ -63,9 +68,21 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
   onDeselectAll,
   searchQuery,
   onChangeSearchQuery,
+  availableBlocks = [],
+  availableUnitTypes = [],
+  onToggleBlockPreset,
+  onToggleTypePreset,
+  isBlockFullySelected,
+  isBlockPartiallySelected,
+  isTypeFullySelected,
+  isTypePartiallySelected,
+  getBlockSelectionState,
+  getTypeSelectionState,
+  totalUnitsCount,
 }) => {
-  const showScopeTable = ['VILLA_BLOCK', 'SPECIFIC_UNITS', 'SPECIFIC_USERS'].includes(scopeType);
-  const showUnitTypeChips = scopeType === 'UNIT_TYPE';
+  const isSpecificUnits = scopeType === 'SPECIFIC_UNITS' || scopeType === 'VILLA_BLOCK' || scopeType === 'UNIT_TYPE';
+  const isSpecificUsers = scopeType === 'SPECIFIC_USERS';
+  const showScopeTable = isSpecificUnits || isSpecificUsers;
 
   const allSelected = scopeRows.length > 0 && scopeRows.every((r) => selectedIds.includes(r._id));
 
@@ -112,7 +129,7 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
         </View>
 
         <Text className="text-xs text-muted-foreground">
-          Select which resident role types will receive invoices.
+          Select which resident role types will receive invoices (e.g. Owner vs Tenant).
         </Text>
 
         <View className="flex-row flex-wrap gap-2 mt-1">
@@ -159,30 +176,133 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
         <View className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3.5 flex-row items-center gap-2.5">
           <Icon as={Check} size={18} className="text-emerald-600 shrink-0" />
           <Text className="text-xs text-emerald-800 font-bold flex-1">
-            Applies to all active residents in the community matching the selected roles.
+            Applies to all active homes across the community matching the selected roles.
           </Text>
         </View>
       )}
 
-      {/* ── UNIT TYPE CHIPS ──────────────────────────────────────────── */}
-      {showUnitTypeChips && (
-        <View className="bg-card border border-border rounded-xl p-4 gap-2.5">
-          <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-            Select Unit Types (BHK Floorplans)
-          </Text>
-          <View className="flex-row flex-wrap gap-2 mt-1">
-            {UNIT_TYPES.map((t) => {
-              const isSelected = selectedUnitTypes.includes(t);
-              return (
-                <Chip
-                  key={t}
-                  label={t}
-                  selected={isSelected}
-                  onPress={() => onToggleUnitType(t)}
-                />
-              );
-            })}
+      {/* ── SPECIFIC UNITS QUICK FILTER PRESETS & CHECKLIST ─────────────── */}
+      {isSpecificUnits && (
+        <View className="bg-card border border-border rounded-xl p-4 gap-3.5">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-1.5">
+              <Icon as={Filter} size={16} className="text-primary" />
+              <Text className="text-xs font-bold text-foreground uppercase tracking-wider">
+                Quick Select Presets
+              </Text>
+            </View>
+            <View className="bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+              <Text className="text-xs font-bold text-primary">
+                {selectedIds.length} {totalUnitsCount ? `of ${totalUnitsCount}` : ''} Units Selected
+              </Text>
+            </View>
           </View>
+
+          <Text className="text-xs text-muted-foreground">
+            Tap a Block or Floorplan chip to instantly select all matching homes, then uncheck any specific exemptions below.
+          </Text>
+
+          {/* Block Filter Chips */}
+          {availableBlocks.length > 0 && (
+            <View className="gap-1.5">
+              <View className="flex-row items-center gap-1">
+                <Icon as={Layers} size={13} className="text-muted-foreground" />
+                <Text className="text-[11px] font-bold text-muted-foreground uppercase">
+                  Select by Block / Tower:
+                </Text>
+              </View>
+              <View className="flex-row flex-wrap gap-1.5">
+                {availableBlocks.map((blockName) => {
+                  const state = getBlockSelectionState
+                    ? getBlockSelectionState(blockName)
+                    : {
+                        isFull: isBlockFullySelected ? isBlockFullySelected(blockName) : false,
+                        isPartial: isBlockPartiallySelected ? isBlockPartiallySelected(blockName) : false,
+                        total: 0,
+                        selected: 0,
+                        hasSelection: false,
+                      };
+
+                  let label = blockName;
+                  if (state.isPartial) {
+                    label = `${blockName} (${state.selected}/${state.total})`;
+                  } else if (state.isFull && state.total > 1) {
+                    label = `${blockName} (${state.total})`;
+                  }
+
+                  return (
+                    <Chip
+                      key={blockName}
+                      label={label}
+                      selected={state.isFull}
+                      className={
+                        state.isPartial
+                          ? 'border-primary bg-primary/15'
+                          : undefined
+                      }
+                      labelClassName={
+                        state.isPartial
+                          ? 'text-primary font-bold'
+                          : undefined
+                      }
+                      onPress={() => onToggleBlockPreset && onToggleBlockPreset(blockName)}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Unit Type (BHK) Filter Chips */}
+          {availableUnitTypes.length > 0 && (
+            <View className="gap-1.5">
+              <View className="flex-row items-center gap-1">
+                <Icon as={Home} size={13} className="text-muted-foreground" />
+                <Text className="text-[11px] font-bold text-muted-foreground uppercase">
+                  Select by Floorplan (BHK):
+                </Text>
+              </View>
+              <View className="flex-row flex-wrap gap-1.5">
+                {availableUnitTypes.map((uType) => {
+                  const state = getTypeSelectionState
+                    ? getTypeSelectionState(uType)
+                    : {
+                        isFull: isTypeFullySelected ? isTypeFullySelected(uType) : false,
+                        isPartial: isTypePartiallySelected ? isTypePartiallySelected(uType) : false,
+                        total: 0,
+                        selected: 0,
+                        hasSelection: false,
+                      };
+
+                  let label = uType;
+                  if (state.isPartial) {
+                    label = `${uType} (${state.selected}/${state.total})`;
+                  } else if (state.isFull && state.total > 1) {
+                    label = `${uType} (${state.total})`;
+                  }
+
+                  return (
+                    <Chip
+                      key={uType}
+                      label={label}
+                      selected={state.isFull}
+                      className={
+                        state.isPartial
+                          ? 'border-primary bg-primary/15'
+                          : undefined
+                      }
+                      labelClassName={
+                        state.isPartial
+                          ? 'text-primary font-bold'
+                          : undefined
+                      }
+                      onPress={() => onToggleTypePreset && onToggleTypePreset(uType)}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -191,7 +311,7 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
         <View className="bg-card border border-border rounded-xl p-4 gap-3">
           <View className="flex-row items-center justify-between">
             <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Select {scopeType === 'VILLA_BLOCK' ? 'Blocks' : scopeType === 'SPECIFIC_USERS' ? 'Residents' : 'Villa Units'} ({selectedIds.length} selected)
+              {isSpecificUsers ? 'Select Residents' : 'Granular Unit Exclusion'} ({selectedIds.length} active)
             </Text>
             {scopeRows.length > 0 && (
               <TouchableOpacity
@@ -213,19 +333,19 @@ export const AssessmentTargetScopeStep: React.FC<AssessmentTargetScopeStepProps>
             value={searchQuery}
             onChangeText={onChangeSearchQuery}
             placeholder={
-              scopeType === 'SPECIFIC_USERS'
+              isSpecificUsers
                 ? 'Search resident name or email...'
-                : 'Search block or unit number...'
+                : 'Search unit number, block, or BHK...'
             }
           />
 
           {/* List Rows */}
-          <View className="max-h-60 rounded-xl border border-border overflow-hidden">
+          <View className="max-h-64 rounded-xl border border-border overflow-hidden">
             <ScrollView nestedScrollEnabled showsVerticalScrollIndicator>
               {scopeRows.length === 0 ? (
                 <View className="p-4 items-center">
                   <Text className="text-xs text-muted-foreground font-semibold">
-                    No items found.
+                    No matching items found.
                   </Text>
                 </View>
               ) : (

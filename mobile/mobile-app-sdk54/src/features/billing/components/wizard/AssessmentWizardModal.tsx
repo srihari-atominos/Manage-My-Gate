@@ -73,6 +73,7 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
     handleTieredRate,
     scopeType,
     setScopeType,
+    handleScopeTypeChange,
     checkedRoles,
     handleToggleRole,
     roles,
@@ -86,6 +87,21 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
     scopeRows,
     searchQuery,
     setSearchQuery,
+    rawVillas,
+    units,
+    filteredUnits,
+    users,
+    filteredUsers,
+    availableBlocks,
+    availableUnitTypes,
+    handleToggleBlockPreset,
+    handleToggleTypePreset,
+    getBlockSelectionState,
+    getTypeSelectionState,
+    isBlockFullySelected,
+    isBlockPartiallySelected,
+    isTypeFullySelected,
+    isTypePartiallySelected,
     formError,
     setFormError,
     isSubmitting,
@@ -302,19 +318,34 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
             {currentStepIndex === 3 && (
               <AssessmentTargetScopeStep
                 scopeType={scopeType}
-                onChangeScopeType={setScopeType}
+                onChangeScopeType={handleScopeTypeChange}
                 roles={roles}
                 checkedRoles={checkedRoles}
                 onToggleRole={handleToggleRole}
-                selectedUnitTypes={selectedUnitTypes}
-                onToggleUnitType={handleToggleUnitType}
-                scopeRows={scopeRows}
+                scopeRows={
+                  scopeType === 'SPECIFIC_UNITS'
+                    ? filteredUnits
+                    : scopeType === 'SPECIFIC_USERS'
+                    ? filteredUsers
+                    : scopeRows
+                }
                 selectedIds={selectedIds}
                 onToggleId={handleToggleId}
                 onSelectAll={handleSelectAll}
                 onDeselectAll={handleDeselectAll}
                 searchQuery={searchQuery}
                 onChangeSearchQuery={setSearchQuery}
+                availableBlocks={availableBlocks}
+                availableUnitTypes={availableUnitTypes}
+                onToggleBlockPreset={handleToggleBlockPreset}
+                onToggleTypePreset={handleToggleTypePreset}
+                isBlockFullySelected={isBlockFullySelected}
+                isBlockPartiallySelected={isBlockPartiallySelected}
+                isTypeFullySelected={isTypeFullySelected}
+                isTypePartiallySelected={isTypePartiallySelected}
+                getBlockSelectionState={getBlockSelectionState}
+                getTypeSelectionState={getTypeSelectionState}
+                totalUnitsCount={units.length}
               />
             )}
 

@@ -6,17 +6,27 @@ import { DropdownSelect, DropdownOption } from '@/components/forms/DropdownSelec
 import { DayOfMonthPicker } from '@/components/forms/DayOfMonthPicker';
 import { DatePicker } from '@/components/common/DatePicker';
 import { TimePicker } from '@/components/common/TimePicker';
+import { Chip } from '@/components/common/Chip';
 import { Icon } from '@/components/ui/icon';
-import { Calendar, Clock, Layers, AlertCircle } from 'lucide-react-native';
+import { Calendar, Clock, Layers, AlertCircle, CheckCircle2 } from 'lucide-react-native';
 
 const CYCLE_OPTIONS: DropdownOption[] = [
   { label: 'Monthly Billing', value: 'MONTHLY' },
+  { label: 'Weekly Billing', value: 'WEEKLY' },
   { label: 'Quarterly Billing', value: 'QUARTERLY' },
   { label: 'Annual Billing', value: 'ANNUALLY' },
   { label: 'Ad-Hoc (One-Time)', value: 'AD_HOC' },
 ];
 
-
+const DAYS_OF_WEEK = [
+  { label: 'Sun', fullLabel: 'Sunday', value: 0 },
+  { label: 'Mon', fullLabel: 'Monday', value: 1 },
+  { label: 'Tue', fullLabel: 'Tuesday', value: 2 },
+  { label: 'Wed', fullLabel: 'Wednesday', value: 3 },
+  { label: 'Thu', fullLabel: 'Thursday', value: 4 },
+  { label: 'Fri', fullLabel: 'Friday', value: 5 },
+  { label: 'Sat', fullLabel: 'Saturday', value: 6 },
+];
 
 interface AssessmentScheduleStepProps {
   type: string;
@@ -64,6 +74,12 @@ export const AssessmentScheduleStep: React.FC<AssessmentScheduleStepProps> = ({
   const isCapitalRepair = type === 'CAPITAL_REPAIR';
   const isOneTime = type === 'ONE_TIME' || (isCapitalRepair && collectionMethod === 'LUMP_SUM');
   const isRecurring = type === 'RECURRING' || (isCapitalRepair && collectionMethod === 'INSTALLMENT');
+  const isWeekly = isRecurring && billingCycle === 'WEEKLY';
+
+  const selectedDayLabels = selectedDays
+    .map((d) => DAYS_OF_WEEK.find((w) => w.value === d)?.fullLabel)
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <View className="gap-4">
@@ -141,9 +157,66 @@ export const AssessmentScheduleStep: React.FC<AssessmentScheduleStepProps> = ({
             placeholder="Select Billing Cycle"
           />
 
-          <View className="bg-card border border-border rounded-xl p-4 gap-3">
+          {/* ── WEEKLY DAY-OF-THE-WEEK SELECTOR ───────────────────────── */}
+          {isWeekly ? (
+            <View className="bg-card border border-border rounded-xl p-4 gap-3">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  Weekly Generation Day *
+                </Text>
+                <Text className="text-xs font-bold text-primary">
+                  {selectedDays.length} Selected
+                </Text>
+              </View>
+
+              <Text className="text-xs text-muted-foreground">
+                Choose the day of the week when recurring invoices should generate automatically.
+              </Text>
+
+              <View className="flex-row flex-wrap gap-2 mt-1">
+                {DAYS_OF_WEEK.map((d) => {
+                  const isSelected = selectedDays.includes(d.value);
+                  return (
+                    <TouchableOpacity
+                      key={d.value}
+                      onPress={() => onToggleDay(d.value)}
+                      activeOpacity={0.7}
+                      className={`flex-1 min-w-[42px] py-2.5 rounded-xl border items-center justify-center ${
+                        isSelected
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border bg-background'
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-extrabold ${
+                          isSelected ? 'text-primary' : 'text-foreground'
+                        }`}
+                      >
+                        {d.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {selectedDays.length > 0 ? (
+                <View className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex-row items-center gap-2 mt-1">
+                  <Icon as={CheckCircle2} size={16} className="text-primary shrink-0" />
+                  <Text className="text-xs text-primary font-bold flex-1">
+                    Invoices will automatically generate every {selectedDayLabels} at 00:00 UTC.
+                  </Text>
+                </View>
+              ) : (
+                <Text className="text-xs font-bold text-destructive mt-1">
+                  ⚠️ Please select at least one day of the week.
+                </Text>
+              )}
+            </View>
+          ) : (
+            /* ── MONTHLY / QUARTERLY / ANNUAL GENERATION DAY PICKER ─────── */
+            <View className="bg-card border border-border rounded-xl p-4 gap-3">
               <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Monthly Generation Day
+                {billingCycle === 'QUARTERLY' ? 'Quarterly' : billingCycle === 'ANNUALLY' ? 'Annual' : 'Monthly'} Generation Day
               </Text>
 
               <TouchableOpacity
@@ -155,7 +228,7 @@ export const AssessmentScheduleStep: React.FC<AssessmentScheduleStepProps> = ({
                     : 'border-border bg-background'
                 }`}
               >
-                <Text className="text-xs font-bold text-foreground">First Day of Month (1st)</Text>
+                <Text className="text-xs font-bold text-foreground">First Day of Cycle (1st)</Text>
                 {genDayOption === 'FIRST' && <View className="w-2.5 h-2.5 rounded-full bg-primary" />}
               </TouchableOpacity>
 
@@ -168,7 +241,7 @@ export const AssessmentScheduleStep: React.FC<AssessmentScheduleStepProps> = ({
                     : 'border-border bg-background'
                 }`}
               >
-                <Text className="text-xs font-bold text-foreground">Last Day of Month</Text>
+                <Text className="text-xs font-bold text-foreground">Last Day of Month / Cycle</Text>
                 {genDayOption === 'LAST' && <View className="w-2.5 h-2.5 rounded-full bg-primary" />}
               </TouchableOpacity>
 
@@ -196,6 +269,7 @@ export const AssessmentScheduleStep: React.FC<AssessmentScheduleStepProps> = ({
                 </View>
               )}
             </View>
+          )}
         </View>
       )}
 
@@ -221,7 +295,7 @@ export const AssessmentScheduleStep: React.FC<AssessmentScheduleStepProps> = ({
                   triggerMode === 'IMMEDIATE' ? 'text-primary' : 'text-foreground'
                 }`}
               >
-                ⚡ Immediate
+                ⚡ Immediate Run
               </Text>
               <Text className="text-[10px] text-muted-foreground mt-0.5">Generate right away</Text>
             </TouchableOpacity>
@@ -240,52 +314,41 @@ export const AssessmentScheduleStep: React.FC<AssessmentScheduleStepProps> = ({
                   triggerMode === 'SCHEDULED' ? 'text-primary' : 'text-foreground'
                 }`}
               >
-                📅 Scheduled Date
+                📅 Specific Schedule
               </Text>
-              <Text className="text-[10px] text-muted-foreground mt-0.5">Set date & time</Text>
+              <Text className="text-[10px] text-muted-foreground mt-0.5">Pick future date/time</Text>
             </TouchableOpacity>
           </View>
 
           {triggerMode === 'SCHEDULED' && (
             <View className="gap-3 mt-2">
               <DatePicker
-                label="Scheduled Date *"
-                value={(() => {
-                  if (!scheduledDate) return null;
-                  const parts = scheduledDate.split('-');
-                  if (parts.length === 3) {
-                    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-                    return isNaN(d.getTime()) ? null : d;
-                  }
-                  const dObj = new Date(scheduledDate);
-                  return isNaN(dObj.getTime()) ? null : dObj;
-                })()}
-                onChange={(d: Date) => {
-                  const y = d.getFullYear();
-                  const m = String(d.getMonth() + 1).padStart(2, '0');
-                  const day = String(d.getDate()).padStart(2, '0');
-                  onChangeScheduledDate(`${y}-${m}-${day}`);
+                label="Scheduled Generation Date *"
+                value={scheduledDate ? new Date(scheduledDate) : null}
+                onChange={(date: Date) => {
+                  const y = date.getFullYear();
+                  const m = String(date.getMonth() + 1).padStart(2, '0');
+                  const d = String(date.getDate()).padStart(2, '0');
+                  onChangeScheduledDate(`${y}-${m}-${d}`);
                 }}
-                placeholder="Select Date"
               />
               <TimePicker
-                label="Scheduled Time *"
-                value={(() => {
-                  if (!scheduledTime) return null;
-                  const match = scheduledTime.match(/(\d{1,2}):(\d{2})/);
-                  if (match) {
-                    const d = new Date();
-                    d.setHours(Number(match[1]), Number(match[2]), 0, 0);
-                    return d;
-                  }
-                  return null;
-                })()}
-                onChange={(d: Date) => {
-                  const h = String(d.getHours()).padStart(2, '0');
-                  const m = String(d.getMinutes()).padStart(2, '0');
-                  onChangeScheduledTime(`${h}:${m}:00`);
+                label="Scheduled Execution Time"
+                value={
+                  scheduledTime
+                    ? (() => {
+                        const parts = scheduledTime.split(':');
+                        const d = new Date();
+                        d.setHours(Number(parts[0]) || 0, Number(parts[1]) || 0, 0, 0);
+                        return d;
+                      })()
+                    : null
+                }
+                onChange={(date: Date) => {
+                  const h = String(date.getHours()).padStart(2, '0');
+                  const m = String(date.getMinutes()).padStart(2, '0');
+                  onChangeScheduledTime(`${h}:${m}`);
                 }}
-                placeholder="Select Time"
               />
             </View>
           )}

@@ -628,36 +628,46 @@ export const AssessmentFormModalInner = memo(({ onClose, onSuccess, assessment =
                   selected
                 </div>
               )}
+              {activeErrors.selectedUnitTypes && (
+                <FieldError msg={activeErrors.selectedUnitTypes} />
+              )}
             </div>
           )}
 
           {showScopeTable && (
-            <ScopeSelectorTable
-              rows={scopeRows}
-              selectedIds={selectedIds}
-              onToggle={handleToggleId}
-              onSelectAll={handleSelectAll}
-              onDeselectAll={handleDeselectAll}
-              searchPlaceholder={
-                scopeType === 'SPECIFIC_USERS'
-                  ? 'Search residents by name...'
-                  : 'Search units or villas...'
-              }
-              search={
-                scopeType === 'SPECIFIC_USERS'
-                  ? userSearch
-                  : scopeType === 'SPECIFIC_UNITS'
-                    ? unitSearch
-                    : undefined
-              }
-              onSearchChange={
-                scopeType === 'SPECIFIC_USERS'
-                  ? setUserSearch
-                  : scopeType === 'SPECIFIC_UNITS'
-                    ? setUnitSearch
-                    : undefined
-              }
-            />
+            <div>
+              <ScopeSelectorTable
+                rows={scopeRows}
+                selectedIds={selectedIds}
+                onToggle={handleToggleId}
+                onSelectAll={handleSelectAll}
+                onDeselectAll={handleDeselectAll}
+                searchPlaceholder={
+                  scopeType === 'SPECIFIC_USERS'
+                    ? 'Search residents by name...'
+                    : 'Search units or villas...'
+                }
+                search={
+                  scopeType === 'SPECIFIC_USERS'
+                    ? userSearch
+                    : scopeType === 'SPECIFIC_UNITS'
+                      ? unitSearch
+                      : undefined
+                }
+                onSearchChange={
+                  scopeType === 'SPECIFIC_USERS'
+                    ? setUserSearch
+                    : scopeType === 'SPECIFIC_UNITS'
+                      ? setUnitSearch
+                      : undefined
+                }
+              />
+              {activeErrors.selectedIds && (
+                <div className="mt-2">
+                  <FieldError msg={activeErrors.selectedIds} />
+                </div>
+              )}
+            </div>
           )}
         </div>
         {/* end body */}

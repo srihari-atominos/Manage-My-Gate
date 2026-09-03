@@ -100,7 +100,17 @@ export const AssessmentReviewStep: React.FC<AssessmentReviewStepProps> = ({
             <>
               <DetailRow label="Billing Cycle" value={billingCycle} />
               {billingCycle === 'WEEKLY' ? (
-                <DetailRow label="Generation Days" value={`${selectedDays.length} Days Selected`} />
+                <DetailRow
+                  label="Generation Days"
+                  value={
+                    selectedDays.length > 0
+                      ? `Every ${selectedDays
+                          .map((d) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d])
+                          .filter(Boolean)
+                          .join(', ')}`
+                      : 'Every Monday'
+                  }
+                />
               ) : (
                 <DetailRow label="Generation Day" value={generationDayDisplay} />
               )}

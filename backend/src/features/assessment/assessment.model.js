@@ -31,8 +31,8 @@ const assessmentSchema = new mongoose.Schema(
     billingCycle: {
       type: String,
       enum: {
-        values: ['MONTHLY', 'QUARTERLY', 'ANNUALLY', 'AD_HOC'],
-        message: 'Billing cycle must be MONTHLY, QUARTERLY, ANNUALLY, or AD_HOC',
+        values: ['MONTHLY', 'QUARTERLY', 'ANNUALLY', 'WEEKLY', 'AD_HOC'],
+        message: 'Billing cycle must be MONTHLY, QUARTERLY, ANNUALLY, WEEKLY, or AD_HOC',
       },
       required: [true, 'Billing cycle is required'],
     },
@@ -42,12 +42,34 @@ const assessmentSchema = new mongoose.Schema(
       validate: {
         validator: function (value) {
           if (value === 'LAST_DAY_OF_MONTH') return true;
-          if (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 28) return true;
+          if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 28) return true;
           return false;
         },
         message: (props) =>
-          `${props.value} is not a valid generation day. It must be an integer between 1 and 28 or the exact string 'LAST_DAY_OF_MONTH'.`,
+          `${props.value} is not a valid generation day. It must be an integer between 0 and 28 or the exact string 'LAST_DAY_OF_MONTH'.`,
       },
+    },
+    selectedDays: {
+      type: [Number],
+      default: [],
+    },
+    triggerMode: {
+      type: String,
+      enum: ['IMMEDIATE', 'SCHEDULED'],
+      default: 'IMMEDIATE',
+    },
+    scheduledDateTime: {
+      type: Date,
+      default: null,
+    },
+    collectionMethod: {
+      type: String,
+      enum: ['LUMP_SUM', 'INSTALLMENT'],
+      default: 'LUMP_SUM',
+    },
+    totalInstallments: {
+      type: Number,
+      default: 1,
     },
     targetScope: {
       type: {
@@ -60,7 +82,7 @@ const assessmentSchema = new mongoose.Schema(
       },
       scopeIds: {
         type: [{
-          type: mongoose.Schema.Types.ObjectId,
+          type: mongoose.Schema.Types.Mixed,
           index: true,
         }],
         default: [],
@@ -113,6 +135,19 @@ const assessmentSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
       index: true,
+    },
+    lastRunAt: {
+      type: Date,
+      default: null,
+    },
+    lastBilledPeriod: {
+      type: String,
+      default: null,
+    },
+    lastRunStats: {
+      created: { type: Number, default: 0 },
+      duplicatesSkipped: { type: Number, default: 0 },
+      totalTargeted: { type: Number, default: 0 },
     },
   },
   {

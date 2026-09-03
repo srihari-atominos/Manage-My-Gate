@@ -10,8 +10,8 @@ export const manualTriggerSchema = [
   body('billingPeriodString')
     .notEmpty()
     .withMessage('Billing period string is required')
-    .matches(/^\d{4}-(?:0[1-9]|1[0-2]|Q[1-4])$/)
-    .withMessage('Billing period string must match format YYYY-MM or YYYY-Qx (e.g. 2026-07 or 2026-Q3)'),
+    .matches(/^\d{4}-(?:0[1-9]|1[0-2]|Q[1-4]|W(?:0[1-9]|[1-4][0-9]|5[0-3]))$/)
+    .withMessage('Billing period string must match format YYYY-MM, YYYY-Qx, or YYYY-Wxx (e.g. 2026-07, 2026-Q3, or 2026-W36)'),
 ];
 
 export const offlineSettleSchema = [

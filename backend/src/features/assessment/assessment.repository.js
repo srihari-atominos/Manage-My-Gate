@@ -28,8 +28,24 @@ export class AssessmentRepository {
   async findActiveByGenerationDay(dayIndicator) {
     return await Assessment.find({
       isActive: true,
-      type: 'RECURRING',
+      billingCycle: { $ne: 'WEEKLY' },
       generationDay: dayIndicator,
+    });
+  }
+
+  /**
+   * Query active weekly assessments matching today's day-of-week integer (0-6).
+   * @param {number} dayOfWeek - 0 (Sunday) to 6 (Saturday)
+   * @returns {Promise<Array<import('mongoose').Document>>}
+   */
+  async findActiveByWeeklyDay(dayOfWeek) {
+    return await Assessment.find({
+      isActive: true,
+      billingCycle: 'WEEKLY',
+      $or: [
+        { selectedDays: dayOfWeek },
+        { generationDay: dayOfWeek },
+      ],
     });
   }
 

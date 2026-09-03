@@ -63,6 +63,7 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
   // Populate form fields if editing an existing assessment template
   useEffect(() => {
     if (assessment) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(assessment.name || '')
       setType(assessment.type || 'RECURRING')
       setBillingCycle(assessment.billingCycle || 'MONTHLY')
@@ -97,8 +98,15 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
       )
 
       const scope = assessment.targetScope || {}
-      setScopeType(scope.type || 'ALL_COMMUNITY')
-      setSelectedIds(scope.scopeIds || [])
+      const rawScopeType = scope.type || 'ALL_COMMUNITY'
+      setScopeType(rawScopeType)
+      if (rawScopeType === 'UNIT_TYPE') {
+        setSelectedUnitTypes(Array.isArray(scope.scopeIds) ? scope.scopeIds : [])
+        setSelectedIds([])
+      } else {
+        setSelectedIds(Array.isArray(scope.scopeIds) ? scope.scopeIds : [])
+        setSelectedUnitTypes([])
+      }
       setCheckedRoles(scope.targetRoleIds || [])
     }
   }, [assessment])
@@ -151,30 +159,44 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
     }
   }, [assessment])
 
-  // Debounced User Search
+  // Debounced User Search & Initial Load for SPECIFIC_USERS
   useEffect(() => {
     let active = true
     const delayDebounceFn = setTimeout(async () => {
       try {
-        const usersRes = await fetchUsers({ page: 1, limit: 150, search: userSearch })
-        if (active && usersRes?.data) {
-          const userList = usersRes.data.map((u) => ({
-            _id: u._id || u.id,
-            label: u.name || u.username,
-            sub: u.email || 'Resident',
+        const usersRes = await fetchUsers({ page: 1, limit: 150, search: userSearch.trim() })
+        const rawPayload = usersRes?.data !== undefined ? usersRes.data : usersRes
+        const rawUsers = Array.isArray(rawPayload)
+          ? rawPayload
+          : Array.isArray(rawPayload?.data)
+            ? rawPayload.data
+            : Array.isArray(rawPayload?.users)
+              ? rawPayload.users
+              : Array.isArray(usersRes?.data?.data)
+                ? usersRes.data.data
+                : []
+
+        if (active && Array.isArray(rawUsers)) {
+          const userList = rawUsers.map((u) => ({
+            _id: String(u._id || u.id),
+            id: String(u._id || u.id),
+            label: u.name || u.username || 'Resident',
+            sub:
+              [u.email, u.role ? `Role: ${u.role}` : '', u.phone].filter(Boolean).join(' • ') ||
+              'Resident',
           }))
           setUsers(userList)
         }
       } catch (err) {
         console.error('Failed to fetch dynamic users on search:', err)
       }
-    }, 300)
+    }, 200)
 
     return () => {
       active = false
       clearTimeout(delayDebounceFn)
     }
-  }, [userSearch])
+  }, [userSearch, scopeType])
 
   // Debounced Unit Search
   useEffect(() => {
@@ -282,6 +304,19 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
     }
     if (isOneTime && triggerMode === 'SCHEDULED' && !scheduledDateTime) e.scheduledDateTime = true
 
+    if (checkedRoles.length === 0) {
+      e.checkedRoles = 'Please select at least one role.'
+    }
+    if (
+      ['VILLA_BLOCK', 'SPECIFIC_UNITS', 'SPECIFIC_USERS'].includes(scopeType) &&
+      selectedIds.length === 0
+    ) {
+      e.selectedIds = 'Please select at least one item from the list.'
+    }
+    if (scopeType === 'UNIT_TYPE' && selectedUnitTypes.length === 0) {
+      e.selectedUnitTypes = 'Please select at least one unit type.'
+    }
+
     return e
   }, [
     name,
@@ -294,6 +329,10 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
     scheduledDateTime,
     collectionMethod,
     totalInstallments,
+    checkedRoles,
+    scopeType,
+    selectedIds,
+    selectedUnitTypes,
   ])
 
   const handleSave = useCallback(async () => {
@@ -323,7 +362,12 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
           collectionMethod === 'INSTALLMENT' ? Number(totalInstallments || 0) : undefined,
         targetScope: {
           type: scopeType,
-          scopeIds: scopeType === 'ALL_COMMUNITY' ? [] : selectedIds,
+          scopeIds:
+            scopeType === 'ALL_COMMUNITY'
+              ? []
+              : scopeType === 'UNIT_TYPE'
+                ? selectedUnitTypes
+                : selectedIds,
           targetRoleIds: checkedRoles,
         },
         calculationMethod: {
@@ -362,14 +406,18 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
     billingCycle,
     genDayOption,
     customDay,
+    triggerMode,
+    scheduledDateTime,
     scopeType,
     selectedIds,
+    selectedUnitTypes,
     checkedRoles,
     calcMethod,
     flatAmount,
     ratePerSqFt,
     tieredRates,
     collectionMethod,
+    totalInstallments,
     activeOrgId,
     assessment,
     saveAssessment,
