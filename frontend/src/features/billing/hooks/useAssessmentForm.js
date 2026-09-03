@@ -159,30 +159,44 @@ export const useAssessmentForm = ({ onClose, onSuccess, assessment = null }) => 
     }
   }, [assessment])
 
-  // Debounced User Search
+  // Debounced User Search & Initial Load for SPECIFIC_USERS
   useEffect(() => {
     let active = true
     const delayDebounceFn = setTimeout(async () => {
       try {
-        const usersRes = await fetchUsers({ page: 1, limit: 150, search: userSearch })
-        if (active && usersRes?.data) {
-          const userList = usersRes.data.map((u) => ({
-            _id: u._id || u.id,
-            label: u.name || u.username,
-            sub: u.email || 'Resident',
+        const usersRes = await fetchUsers({ page: 1, limit: 150, search: userSearch.trim() })
+        const rawPayload = usersRes?.data !== undefined ? usersRes.data : usersRes
+        const rawUsers = Array.isArray(rawPayload)
+          ? rawPayload
+          : Array.isArray(rawPayload?.data)
+            ? rawPayload.data
+            : Array.isArray(rawPayload?.users)
+              ? rawPayload.users
+              : Array.isArray(usersRes?.data?.data)
+                ? usersRes.data.data
+                : []
+
+        if (active && Array.isArray(rawUsers)) {
+          const userList = rawUsers.map((u) => ({
+            _id: String(u._id || u.id),
+            id: String(u._id || u.id),
+            label: u.name || u.username || 'Resident',
+            sub:
+              [u.email, u.role ? `Role: ${u.role}` : '', u.phone].filter(Boolean).join(' • ') ||
+              'Resident',
           }))
           setUsers(userList)
         }
       } catch (err) {
         console.error('Failed to fetch dynamic users on search:', err)
       }
-    }, 300)
+    }, 200)
 
     return () => {
       active = false
       clearTimeout(delayDebounceFn)
     }
-  }, [userSearch])
+  }, [userSearch, scopeType])
 
   // Debounced Unit Search
   useEffect(() => {

@@ -804,7 +804,11 @@ export class VillaService {
 
   async getUnitsByResidentUserIds(userIds, session = null) {
     return await Villa.find({
-      'residents.userId': { $in: userIds }
+      $or: [
+        { 'residents.userId': { $in: userIds } },
+        { ownerId: { $in: userIds } },
+        { primaryResidentId: { $in: userIds } },
+      ],
     }).session(session);
   }
 

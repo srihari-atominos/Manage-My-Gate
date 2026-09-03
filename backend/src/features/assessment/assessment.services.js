@@ -49,7 +49,10 @@ export class AssessmentService {
           }
         } else if (targetScope.type === 'SPECIFIC_USERS') {
           if (/^[0-9a-fA-F]{24}$/.test(scopeId)) {
-            await userService.getUserById(scopeId);
+            const user = await userService.getUserById(scopeId).catch(() => null);
+            if (!user) {
+              throw new HttpError(400, `Selected resident user '${scopeId}' was not found. Please select valid residents.`);
+            }
           }
         }
       }

@@ -73,6 +73,7 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
     handleTieredRate,
     scopeType,
     setScopeType,
+    handleScopeTypeChange,
     checkedRoles,
     handleToggleRole,
     roles,
@@ -89,6 +90,8 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
     rawVillas,
     units,
     filteredUnits,
+    users,
+    filteredUsers,
     availableBlocks,
     availableUnitTypes,
     handleToggleBlockPreset,
@@ -315,11 +318,17 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
             {currentStepIndex === 3 && (
               <AssessmentTargetScopeStep
                 scopeType={scopeType}
-                onChangeScopeType={setScopeType}
+                onChangeScopeType={handleScopeTypeChange}
                 roles={roles}
                 checkedRoles={checkedRoles}
                 onToggleRole={handleToggleRole}
-                scopeRows={scopeType === 'SPECIFIC_UNITS' ? filteredUnits : scopeRows}
+                scopeRows={
+                  scopeType === 'SPECIFIC_UNITS'
+                    ? filteredUnits
+                    : scopeType === 'SPECIFIC_USERS'
+                    ? filteredUsers
+                    : scopeRows
+                }
                 selectedIds={selectedIds}
                 onToggleId={handleToggleId}
                 onSelectAll={handleSelectAll}

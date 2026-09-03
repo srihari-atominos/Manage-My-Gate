@@ -25,7 +25,8 @@ export class UserController {
       const { data: users, pagination } = await userService.getAllUsersInOrg(orgId, page, limit, { search, roles, status });
 
       const formatted = users.map((u) => ({
-        id: u.id,
+        id: u.id || u._id,
+        _id: u._id || u.id,
         username: u.username,
         name: u.name || u.username,
         phone: u.phone || '',

@@ -356,28 +356,44 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
     [getTypeSelectionState]
   );
 
-  // Debounced User Search
+  // Debounced User Search & Initial Load for SPECIFIC_USERS
   useEffect(() => {
     if (scopeType !== 'SPECIFIC_USERS') return;
     let active = true;
     const timer = setTimeout(async () => {
       try {
         const res: any = await apiClient.get('/users', {
-          params: { page: 1, limit: 150, search: searchQuery },
+          params: { page: 1, limit: 200, search: searchQuery.trim() },
         });
-        const userList = Array.isArray(res) ? res : res?.data || [];
-        if (active && Array.isArray(userList)) {
-          const formatted = userList.map((u: any) => ({
-            _id: u._id || u.id,
-            label: u.name || u.username,
-            sub: u.email || 'Resident',
-          }));
+        const rawPayload = res?.data !== undefined ? res.data : res;
+        const rawUsers = Array.isArray(rawPayload)
+          ? rawPayload
+          : Array.isArray(rawPayload?.data)
+          ? rawPayload.data
+          : Array.isArray(rawPayload?.users)
+          ? rawPayload.users
+          : Array.isArray(res?.data?.data)
+          ? res.data.data
+          : [];
+
+        if (active && Array.isArray(rawUsers)) {
+          const formatted = rawUsers.map((u: any) => {
+            const uId = String(u._id || u.id);
+            const uName = u.name || u.username || 'Resident';
+            const uRole = u.role ? `Role: ${u.role}` : '';
+            const uSub = [u.email, uRole, u.phone].filter(Boolean).join(' • ');
+            return {
+              _id: uId,
+              label: uName,
+              sub: uSub || 'Resident',
+            };
+          });
           setUsers(formatted);
         }
       } catch (err) {
         console.warn('Failed to search users in mobile form:', err);
       }
-    }, 300);
+    }, 200);
 
     return () => {
       active = false;
@@ -397,6 +413,17 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
         (u.label || '').toLowerCase().includes(q)
     );
   }, [units, searchQuery]);
+
+  // Filtered user list based on search query in Step 4
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const q = searchQuery.toLowerCase().trim();
+    return users.filter(
+      (u) =>
+        (u.label || '').toLowerCase().includes(q) ||
+        (u.sub || '').toLowerCase().includes(q)
+    );
+  }, [users, searchQuery]);
 
   // Smart preset handlers: Auto-check all units matching block or BHK type with search boundary respect
   const handleToggleBlockPreset = useCallback(
@@ -493,11 +520,19 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
     setTieredRates((prev) => ({ ...prev, [key]: val }));
   }, []);
 
+  const handleScopeTypeChange = useCallback((val: string) => {
+    setScopeType(val);
+    setSelectedIds([]);
+    setSelectedUnitTypes([]);
+    setSearchQuery('');
+    setFormError(null);
+  }, []);
+
   const scopeRows = useMemo(() => {
-    if (scopeType === 'SPECIFIC_USERS') return users;
+    if (scopeType === 'SPECIFIC_USERS') return filteredUsers;
     if (scopeType === 'VILLA_BLOCK') return blocks;
-    return units;
-  }, [scopeType, users, blocks, units]);
+    return filteredUnits;
+  }, [scopeType, filteredUsers, blocks, filteredUnits]);
 
   const resetForm = useCallback(() => {
     setName('');
@@ -671,6 +706,7 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
     handleTieredRate,
     scopeType,
     setScopeType,
+    handleScopeTypeChange,
     checkedRoles,
     handleToggleRole,
     roles,
@@ -687,6 +723,8 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
     rawVillas,
     units,
     filteredUnits,
+    users,
+    filteredUsers,
     availableBlocks,
     availableUnitTypes,
     handleToggleBlockPreset,
