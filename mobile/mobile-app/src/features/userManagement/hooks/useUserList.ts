@@ -47,7 +47,9 @@ export const useUserList = () => {
   useEffect(() => {
     if (!activeOrgId) return;
 
-    const socketUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5002';
+    const socketUrl =
+      process.env.EXPO_PUBLIC_SOCKET_URL ||
+      (process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api.*$/, '') : 'http://localhost:5002');
     const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
     });

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Nahom",
-    "slug": "mobile-app",
+    "slug": "atominos",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -30,7 +30,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -67,9 +71,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "20145594-5bc2-4f26-be5b-75a575444e78"
+        "projectId": "94a573d9-5e93-4827-8fbd-605e0ef3a50a"
       }
     },
-    "owner": "naveenpvn"
+    "owner": "atominos-consulting-private-limited"
   }
 }
