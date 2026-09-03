@@ -3,9 +3,10 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "dev": "expo start -c",
-    "android": "expo start -c --android",
-    "ios": "expo start -c --ios",
+    "start": "expo start --go -c",
+    "dev": "expo start --go -c",
+    "android": "expo start --go -c --android",
+    "ios": "expo start --go -c --ios",
     "web": "expo start -c --web",
     "clean": "rm -rf .expo node_modules",
     "test": "jest",
