@@ -26,7 +26,7 @@ export const useBilling = () => {
   const dispatch = useDispatch<AppDispatch>();
 
   // 1. Selector mapping
-  const { kpis, activeDues, invoicesList, pagination, loadingStates, error } = useSelector(
+  const { kpis, activeDues, invoicesList, statusCounts, pagination, loadingStates, error } = useSelector(
     (state: RootState) => state.billing
   );
   const walletBalance = useSelector((state: RootState) => state.wallet?.balance || 0);
@@ -148,6 +148,7 @@ export const useBilling = () => {
     activeDues,
     invoicesList,
     invoices: invoicesList,
+    statusCounts,
     pagination,
     loadingStates,
     error,

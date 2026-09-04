@@ -13,23 +13,21 @@ import { ShieldAlert } from 'lucide-react-native';
 import { InvoiceCard } from '../components/InvoiceCard';
 import { InvoiceActionsBottomSheet } from '../components/InvoiceActionsBottomSheet';
 import { OfflineSettleSheet } from '../components/OfflineSettleSheet';
+import { LedgerQRScannerModal } from '../components/LedgerQRScannerModal';
+import { LedgerFilterDrawer, LedgerFilterValues } from '../components/LedgerFilterDrawer';
+import { LedgerGroupingToggle, LedgerGroupingMode } from '../components/LedgerGroupingToggle';
+import { UnitLedgerGroupCard } from '../components/grouping/UnitLedgerGroupCard';
+import { ResidentLedgerGroupCard } from '../components/grouping/ResidentLedgerGroupCard';
+import { CycleLedgerGroupCard } from '../components/grouping/CycleLedgerGroupCard';
 import { Invoice } from '../types';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
-
-const FILTER_PILLS = [
-  { id: 'ALL', label: 'All' },
-  { id: 'VERIFICATION_PENDING', label: 'Pending Clearance' },
-  { id: 'UNPAID', label: 'Unpaid' },
-  { id: 'PARTIALLY_PAID', label: 'Partial' },
-  { id: 'OVERDUE', label: 'Overdue' },
-  { id: 'PAID', label: 'Paid' },
-];
 
 export function BillingLedgerScreen() {
   const router = useRouter();
   const {
     invoicesList,
+    statusCounts,
     pagination,
     loadingStates,
     error,
@@ -50,34 +48,76 @@ export function BillingLedgerScreen() {
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [groupMode, setGroupMode] = useState<LedgerGroupingMode>('flat');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [settleInvoice, setSettleInvoice] = useState<Invoice | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
 
-  // Trigger server-side query when status filter changes
+  // Advanced filters state
+  const [activeFilters, setActiveFilters] = useState<LedgerFilterValues>({
+    startDate: '',
+    endDate: '',
+    datePreset: 'ALL_TIME',
+    block: 'ALL',
+    paymentMethod: 'ALL',
+  });
+
+  // Calculate active filter count for badge
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (activeFilters.startDate || activeFilters.endDate) count++;
+    if (activeFilters.block && activeFilters.block !== 'ALL') count++;
+    if (activeFilters.paymentMethod && activeFilters.paymentMethod !== 'ALL') count++;
+    return count;
+  }, [activeFilters]);
+
+  // Combined query params object
+  const currentQueryParams = useMemo(() => ({
+    search,
+    status: statusFilter,
+    startDate: activeFilters.startDate || undefined,
+    endDate: activeFilters.endDate || undefined,
+    block: activeFilters.block !== 'ALL' ? activeFilters.block : undefined,
+    paymentMethod: activeFilters.paymentMethod !== 'ALL' ? activeFilters.paymentMethod : undefined,
+    groupBy: groupMode === 'flat' ? 'none' : groupMode,
+  }), [search, statusFilter, activeFilters, groupMode]);
+
+  // Dynamic status pill options with live count badges
+  const statusSortOptions = useMemo(() => [
+    { label: `All (${statusCounts?.ALL ?? 0})`, value: 'ALL' },
+    { label: `⚠️ Pending (${statusCounts?.VERIFICATION_PENDING ?? 0})`, value: 'VERIFICATION_PENDING' },
+    { label: `❌ Overdue (${statusCounts?.OVERDUE ?? 0})`, value: 'OVERDUE' },
+    { label: `Unpaid (${statusCounts?.UNPAID ?? 0})`, value: 'UNPAID' },
+    { label: `Partial (${statusCounts?.PARTIALLY_PAID ?? 0})`, value: 'PARTIALLY_PAID' },
+    { label: `✅ Paid (${statusCounts?.PAID ?? 0})`, value: 'PAID' },
+  ], [statusCounts]);
+
+  // Trigger server-side query when status filter, advanced filters, or grouping mode changes
   useEffect(() => {
     if (hasLedgerPermission) {
-      changeTablePage(1, { search, status: statusFilter });
+      changeTablePage(1, currentQueryParams);
     }
-  }, [statusFilter, hasLedgerPermission]);
+  }, [statusFilter, activeFilters, groupMode, hasLedgerPermission]);
 
   // Debounced search trigger (300ms)
   useEffect(() => {
     if (!hasLedgerPermission) return;
     const timer = setTimeout(() => {
-      changeTablePage(1, { search, status: statusFilter });
+      changeTablePage(1, currentQueryParams);
     }, 300);
     return () => clearTimeout(timer);
   }, [search, hasLedgerPermission]);
 
   const handleRefresh = useCallback(() => {
-    changeTablePage(1, { search, status: statusFilter });
-  }, [changeTablePage, search, statusFilter]);
+    changeTablePage(1, currentQueryParams);
+  }, [changeTablePage, currentQueryParams]);
 
   const handleLoadMore = useCallback(() => {
     if (pagination.currentPage < pagination.totalPages && !loadingStates.fetchGrid) {
-      changeTablePage(pagination.currentPage + 1, { search, status: statusFilter });
+      changeTablePage(pagination.currentPage + 1, currentQueryParams);
     }
-  }, [changeTablePage, pagination, search, statusFilter, loadingStates.fetchGrid]);
+  }, [changeTablePage, pagination, currentQueryParams, loadingStates.fetchGrid]);
 
   // Permission Denied View
   if (!hasLedgerPermission) {
@@ -128,34 +168,100 @@ export function BillingLedgerScreen() {
           </View>
         ) : null}
 
-        {/* Unified Filter Pills (Row 1) & Search Input (Row 2) */}
+        {/* Unified Filter Pills (Row 2) & Search Input with Scanner & Filter Drawer trigger (Row 1) */}
         <SearchFilterBar
           searchValue={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search resident, unit, or invoice number..."
-          sortOptions={FILTER_PILLS.map((p) => ({ label: p.label, value: p.id }))}
+          searchPlaceholder="Search unit 'Villa 104', Chq #, or resident..."
+          sortOptions={statusSortOptions}
           currentSort={statusFilter}
           onSortChange={(val) => setStatusFilter(val as any)}
+          onScanPress={() => setShowScanner(true)}
+          onFilterPress={() => setShowFilterDrawer(true)}
+          activeFilterCount={activeFilterCount}
         />
 
-        {/* Paginated Invoice Cards List */}
-        <PaginatedList<Invoice>
+
+        {/* Multi-Mode Grouping Toggle (Row 4) */}
+        <LedgerGroupingToggle
+          mode={groupMode}
+          onModeChange={setGroupMode}
+        />
+
+        {/* Paginated Cards List (Flat or Grouped View) */}
+        <PaginatedList<any>
           data={invoicesList}
-          renderItem={(inv) => (
-            <InvoiceCard
-              key={inv._id || inv.invoiceNumber}
-              invoice={inv}
-              onPress={() => setSelectedInvoice(inv)}
-            />
-          )}
+          renderItem={(item) => {
+            if (groupMode === 'unit') {
+              return (
+                <UnitLedgerGroupCard
+                  key={item._id || item.unitNumber}
+                  unitGroup={item}
+                  onSelectInvoice={(inv) => setSelectedInvoice(inv)}
+                />
+              );
+            }
+            if (groupMode === 'resident') {
+              return (
+                <ResidentLedgerGroupCard
+                  key={item._id || item.residentName}
+                  residentGroup={item}
+                  onSelectInvoice={(inv) => setSelectedInvoice(inv)}
+                />
+              );
+            }
+            if (groupMode === 'cycle') {
+              return (
+                <CycleLedgerGroupCard
+                  key={`${item.billingPeriodString}_${item.assessmentName}`}
+                  cycleGroup={item}
+                  onSelectInvoice={(inv) => setSelectedInvoice(inv)}
+                />
+              );
+            }
+            return (
+              <InvoiceCard
+                key={item._id || item.invoiceNumber}
+                invoice={item}
+                onPress={() => setSelectedInvoice(item)}
+              />
+            );
+          }}
           pagination={pagination}
           onLoadMore={handleLoadMore}
           onRefresh={handleRefresh}
           loading={loadingStates.fetchGrid}
           emptyIcon="Receipt"
-          emptyTitle="No Invoices Found"
+          emptyTitle="No Records Found"
           emptySubtitle={emptySubtitle}
           contentContainerClassName="px-4 py-2"
+        />
+
+        {/* Advanced Filter Drawer */}
+        <LedgerFilterDrawer
+          visible={showFilterDrawer}
+          onClose={() => setShowFilterDrawer(false)}
+          filters={activeFilters}
+          onApply={(newFilters) => setActiveFilters(newFilters)}
+          onReset={() =>
+            setActiveFilters({
+              startDate: '',
+              endDate: '',
+              datePreset: 'ALL_TIME',
+              block: 'ALL',
+              paymentMethod: 'ALL',
+            })
+          }
+        />
+
+        {/* Hardware QR / Barcode Scanner Modal */}
+        <LedgerQRScannerModal
+          visible={showScanner}
+          onClose={() => setShowScanner(false)}
+          onScanCode={(scannedCode) => {
+            setSearch(scannedCode);
+            setShowScanner(false);
+          }}
         />
 
         {/* Quick Actions / Review Details BottomSheet */}

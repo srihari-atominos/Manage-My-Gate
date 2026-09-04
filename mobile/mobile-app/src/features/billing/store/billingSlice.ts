@@ -79,6 +79,14 @@ const initialState: BillingState = {
     recentInvoices: [],
   },
   invoicesList: [],
+  statusCounts: {
+    ALL: 0,
+    VERIFICATION_PENDING: 0,
+    UNPAID: 0,
+    PARTIALLY_PAID: 0,
+    OVERDUE: 0,
+    PAID: 0,
+  },
   pagination: {
     currentPage: 1,
     totalPages: 1,
@@ -127,6 +135,8 @@ export const fetchInvoicesGrid = createAsyncThunk(
       const innerData = await billingService.getInvoicesTable(page, limit, filters);
       return {
         data: Array.isArray(innerData) ? innerData : innerData?.data || [],
+        statusCounts: innerData?.statusCounts,
+        pagination: innerData?.pagination,
         totalRecords: innerData?.pagination?.totalRecords || innerData?.totalRecords || 0,
         currentPage: innerData?.pagination?.currentPage || page || 1,
         limit: innerData?.pagination?.limit || limit || 10,
@@ -307,19 +317,29 @@ export const billingSlice = createSlice({
       .addCase(fetchInvoicesGrid.fulfilled, (state, action) => {
         state.loadingStates.fetchGrid = false;
         const page = action.meta.arg?.page || 1;
+        const data = action.payload?.data || [];
         if (page > 1) {
           const existingIds = new Set(state.invoicesList.map((inv: any) => inv._id));
-          const newItems = (action.payload.data || []).filter((inv: any) => !existingIds.has(inv._id));
+          const newItems = data.filter((inv: any) => !existingIds.has(inv._id));
           state.invoicesList = [...state.invoicesList, ...newItems];
         } else {
-          state.invoicesList = action.payload.data || [];
+          state.invoicesList = data;
         }
-        state.pagination = {
-          currentPage: action.payload.currentPage,
-          totalPages: action.payload.totalPages,
-          totalRecords: action.payload.totalRecords,
-          limit: action.payload.limit,
-        };
+
+        if (action.payload?.statusCounts) {
+          state.statusCounts = action.payload.statusCounts;
+        }
+
+        if (action.payload?.pagination) {
+          state.pagination = action.payload.pagination;
+        } else {
+          state.pagination = {
+            currentPage: action.payload?.currentPage || page,
+            totalPages: action.payload?.totalPages || 1,
+            totalRecords: action.payload?.totalRecords || data.length,
+            limit: action.payload?.limit || 10,
+          };
+        }
       })
       .addCase(fetchInvoicesGrid.rejected, (state, action) => {
         state.loadingStates.fetchGrid = false;

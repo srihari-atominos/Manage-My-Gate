@@ -298,16 +298,46 @@ export class InvoiceRepository {
    * Fetch all community invoices.
    */
   async getInvoices(orgId, query) {
-    const { page = 1, limit = 10, status, search } = query;
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      search,
+      startDate,
+      endDate,
+      block,
+      paymentMethod,
+      groupBy = 'none',
+    } = query;
+
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const take = parseInt(limit, 10);
     const communityObjId = new mongoose.Types.ObjectId(orgId);
 
     const matchConditions = { isDeleted: false };
-    if (status && status !== 'ALL') {
-      matchConditions.status = status;
+
+    // 1. Date Range filtering (on createdAt)
+    if (startDate || endDate) {
+      const dateFilter = {};
+      if (startDate) {
+        dateFilter.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        if (endDate.length === 10) {
+          end.setHours(23, 59, 59, 999);
+        }
+        dateFilter.$lte = end;
+      }
+      matchConditions.createdAt = dateFilter;
     }
 
+    // 2. Payment Method filtering
+    if (paymentMethod && paymentMethod !== 'ALL') {
+      matchConditions.paymentMethod = paymentMethod;
+    }
+
+    // 3. Omnisearch matching
     const searchMatch = {};
     if (search && search.trim()) {
       const q = search.trim();
@@ -326,15 +356,22 @@ export class InvoiceRepository {
       ];
     }
 
-    const result = await Invoice.aggregate([
+    // 4. Block filtering
+    const blockMatch = {};
+    if (block && block !== 'ALL') {
+      blockMatch['unitInfo.blockOrBuilding'] = block;
+    }
+
+    // Base pipeline stages up to lookups and filter matches
+    const basePipeline = [
       {
         $match: {
           $or: [
             { communityId: communityObjId, ...matchConditions },
             { orgId: communityObjId, ...matchConditions },
-            { communityId: { $exists: false }, ...matchConditions }
-          ]
-        }
+            { communityId: { $exists: false }, ...matchConditions },
+          ],
+        },
       },
       {
         $lookup: {
@@ -350,12 +387,11 @@ export class InvoiceRepository {
           $or: [
             { communityId: communityObjId },
             { orgId: communityObjId },
-            { 'assessment.communityId': communityObjId }
+            { 'assessment.communityId': communityObjId },
           ],
           ...matchConditions,
         },
       },
-
       {
         $lookup: {
           from: 'users',
@@ -375,10 +411,216 @@ export class InvoiceRepository {
       },
       { $unwind: { path: '$unitInfo', preserveNullAndEmptyArrays: true } },
       { $match: searchMatch },
+      { $match: blockMatch },
+    ];
+
+    // Compute live status counts across all statuses for the active tenant, block, and date filter
+    const statusCountsFacet = [
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
+      },
+    ];
+
+    const statusMatch = status && status !== 'ALL' ? [{ $match: { status } }] : [];
+
+    // --- GROUP BY: UNIT / VILLA ---
+    if (groupBy === 'unit') {
+      const unitPipeline = [
+        ...basePipeline,
+        {
+          $facet: {
+            data: [
+              ...statusMatch,
+              {
+                $group: {
+                  _id: { $ifNull: ['$unitId', 'unassigned'] },
+                  unitId: { $first: '$unitId' },
+                  unitNumber: { $first: { $ifNull: ['$unitInfo.unitNumber', 'Unassigned'] } },
+                  blockOrBuilding: { $first: { $ifNull: ['$unitInfo.blockOrBuilding', '—'] } },
+                  unitType: { $first: { $ifNull: ['$unitInfo.type', 'Apartment'] } },
+                  primaryResident: { $first: { $ifNull: ['$userInfo.name', { $ifNull: ['$userInfo.username', '—'] }] } },
+                  primaryResidentPhone: { $first: { $ifNull: ['$userInfo.phone', ''] } },
+                  totalBilled: { $sum: { $ifNull: ['$totalAmount', { $ifNull: ['$totalDue', 0] }] } },
+                  totalPaid: { $sum: { $ifNull: ['$paidAmount', 0] } },
+                  outstandingBalance: { $sum: { $ifNull: ['$outstandingAmount', 0] } },
+                  invoiceCount: { $sum: 1 },
+                  pendingCount: { $sum: { $cond: [{ $eq: ['$status', 'VERIFICATION_PENDING'] }, 1, 0] } },
+                  overdueCount: { $sum: { $cond: [{ $eq: ['$status', 'OVERDUE'] }, 1, 0] } },
+                  invoices: {
+                    $push: {
+                      _id: '$_id',
+                      invoiceNumber: '$invoiceNumber',
+                      billingPeriodString: '$billingPeriodString',
+                      assessmentName: { $ifNull: ['$snapshot.assessmentName', { $ifNull: ['$assessment.name', 'Assessment'] }] },
+                      totalAmount: { $ifNull: ['$totalAmount', { $ifNull: ['$totalDue', 0] }] },
+                      paidAmount: { $ifNull: ['$paidAmount', 0] },
+                      outstandingAmount: { $ifNull: ['$outstandingAmount', 0] },
+                      status: '$status',
+                      dueDate: '$dueDate',
+                      createdAt: '$createdAt',
+                      paymentMethod: '$paymentMethod',
+                      offlineReference: '$offlineReference',
+                    },
+                  },
+                },
+              },
+              { $sort: { outstandingBalance: -1, unitNumber: 1 } },
+              { $skip: skip },
+              { $limit: take },
+            ],
+            metadata: [
+              ...statusMatch,
+              {
+                $group: {
+                  _id: { $ifNull: ['$unitId', 'unassigned'] },
+                },
+              },
+              { $count: 'totalRecords' },
+            ],
+            statusCounts: statusCountsFacet,
+          },
+        },
+      ];
+
+      const result = await Invoice.aggregate(unitPipeline);
+      return this._formatInvoicesResult(result, page, take);
+    }
+
+    // --- GROUP BY: RESIDENT ---
+    if (groupBy === 'resident') {
+      const residentPipeline = [
+        ...basePipeline,
+        {
+          $facet: {
+            data: [
+              ...statusMatch,
+              {
+                $group: {
+                  _id: { $ifNull: ['$targetUserId', 'unassigned'] },
+                  residentId: { $first: '$targetUserId' },
+                  residentName: { $first: { $ifNull: ['$userInfo.name', { $ifNull: ['$userInfo.username', 'Unknown Resident'] }] } },
+                  phone: { $first: { $ifNull: ['$userInfo.phone', '—'] } },
+                  email: { $first: { $ifNull: ['$userInfo.email', '—'] } },
+                  units: { $addToSet: { $ifNull: ['$unitInfo.unitNumber', 'Unassigned'] } },
+                  totalPortfolioDue: { $sum: { $ifNull: ['$outstandingAmount', 0] } },
+                  totalPaid: { $sum: { $ifNull: ['$paidAmount', 0] } },
+                  totalBilled: { $sum: { $ifNull: ['$totalAmount', { $ifNull: ['$totalDue', 0] }] } },
+                  invoiceCount: { $sum: 1 },
+                  pendingCount: { $sum: { $cond: [{ $eq: ['$status', 'VERIFICATION_PENDING'] }, 1, 0] } },
+                  overdueCount: { $sum: { $cond: [{ $eq: ['$status', 'OVERDUE'] }, 1, 0] } },
+                  invoices: {
+                    $push: {
+                      _id: '$_id',
+                      invoiceNumber: '$invoiceNumber',
+                      unitNumber: '$unitInfo.unitNumber',
+                      billingPeriodString: '$billingPeriodString',
+                      assessmentName: { $ifNull: ['$snapshot.assessmentName', { $ifNull: ['$assessment.name', 'Assessment'] }] },
+                      totalAmount: { $ifNull: ['$totalAmount', { $ifNull: ['$totalDue', 0] }] },
+                      paidAmount: { $ifNull: ['$paidAmount', 0] },
+                      outstandingAmount: { $ifNull: ['$outstandingAmount', 0] },
+                      status: '$status',
+                      dueDate: '$dueDate',
+                      createdAt: '$createdAt',
+                    },
+                  },
+                },
+              },
+              { $sort: { totalPortfolioDue: -1, residentName: 1 } },
+              { $skip: skip },
+              { $limit: take },
+            ],
+            metadata: [
+              ...statusMatch,
+              {
+                $group: {
+                  _id: { $ifNull: ['$targetUserId', 'unassigned'] },
+                },
+              },
+              { $count: 'totalRecords' },
+            ],
+            statusCounts: statusCountsFacet,
+          },
+        },
+      ];
+
+      const result = await Invoice.aggregate(residentPipeline);
+      return this._formatInvoicesResult(result, page, take);
+    }
+
+    // --- GROUP BY: BILLING CYCLE / ASSESSMENT ---
+    if (groupBy === 'cycle') {
+      const cyclePipeline = [
+        ...basePipeline,
+        {
+          $facet: {
+            data: [
+              ...statusMatch,
+              {
+                $group: {
+                  _id: {
+                    period: '$billingPeriodString',
+                    assessmentId: { $ifNull: ['$assessmentId', 'general'] },
+                  },
+                  billingPeriodString: { $first: '$billingPeriodString' },
+                  assessmentName: { $first: { $ifNull: ['$snapshot.assessmentName', { $ifNull: ['$assessment.name', 'General Assessment'] }] } },
+                  totalTargeted: { $sum: 1 },
+                  grossDemand: { $sum: { $ifNull: ['$totalAmount', { $ifNull: ['$totalDue', 0] }] } },
+                  totalCollected: { $sum: { $ifNull: ['$paidAmount', 0] } },
+                  totalOutstanding: { $sum: { $ifNull: ['$outstandingAmount', 0] } },
+                  paidCount: { $sum: { $cond: [{ $eq: ['$status', 'PAID'] }, 1, 0] } },
+                  pendingCount: { $sum: { $cond: [{ $eq: ['$status', 'VERIFICATION_PENDING'] }, 1, 0] } },
+                  unpaidCount: { $sum: { $cond: [{ $in: ['$status', ['UNPAID', 'OVERDUE']] }, 1, 0] } },
+                  invoices: {
+                    $push: {
+                      _id: '$_id',
+                      invoiceNumber: '$invoiceNumber',
+                      unitNumber: '$unitInfo.unitNumber',
+                      targetUser: { $ifNull: ['$userInfo.name', '$userInfo.username'] },
+                      totalAmount: { $ifNull: ['$totalAmount', { $ifNull: ['$totalDue', 0] }] },
+                      paidAmount: { $ifNull: ['$paidAmount', 0] },
+                      outstandingAmount: { $ifNull: ['$outstandingAmount', 0] },
+                      status: '$status',
+                      offlineReference: '$offlineReference',
+                    },
+                  },
+                },
+              },
+              { $sort: { billingPeriodString: -1 } },
+              { $skip: skip },
+              { $limit: take },
+            ],
+            metadata: [
+              ...statusMatch,
+              {
+                $group: {
+                  _id: {
+                    period: '$billingPeriodString',
+                    assessmentId: { $ifNull: ['$assessmentId', 'general'] },
+                  },
+                },
+              },
+              { $count: 'totalRecords' },
+            ],
+            statusCounts: statusCountsFacet,
+          },
+        },
+      ];
+
+      const result = await Invoice.aggregate(cyclePipeline);
+      return this._formatInvoicesResult(result, page, take);
+    }
+
+    // --- DEFAULT: FLAT INVOICES LIST (groupBy === 'none') ---
+    const result = await Invoice.aggregate([
+      ...basePipeline,
       { $sort: { createdAt: -1 } },
       {
         $facet: {
           data: [
+            ...statusMatch,
             { $skip: skip },
             { $limit: take },
             {
@@ -391,6 +633,7 @@ export class InvoiceRepository {
                 assessmentName: { $ifNull: ['$snapshot.assessmentName', { $ifNull: ['$assessment.name', 'Maintenance Assessment'] }] },
                 date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
                 unitNumber: '$unitInfo.unitNumber',
+                blockOrBuilding: '$unitInfo.blockOrBuilding',
                 targetUser: { $ifNull: ['$userInfo.name', '$userInfo.username'] },
                 amount: { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', { $ifNull: ['$outstandingAmount', { $ifNull: ['$currentCharge', 0] }] }] }] },
                 totalDue: { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', { $ifNull: ['$outstandingAmount', { $ifNull: ['$currentCharge', 0] }] }] }] },
@@ -408,17 +651,48 @@ export class InvoiceRepository {
               },
             },
           ],
-          metadata: [{ $count: 'totalRecords' }],
+          metadata: [
+            ...statusMatch,
+            { $count: 'totalRecords' },
+          ],
+          statusCounts: statusCountsFacet,
         },
       },
     ]);
 
+    return this._formatInvoicesResult(result, page, take);
+  }
+
+  /**
+   * Helper to format pagination and status count metadata.
+   */
+  _formatInvoicesResult(result, page, take) {
     const data = result[0]?.data || [];
     const totalRecords = result[0]?.metadata[0]?.totalRecords || 0;
     const totalPages = Math.ceil(totalRecords / take) || 1;
 
+    const rawStatusCounts = result[0]?.statusCounts || [];
+    const statusCounts = {
+      ALL: 0,
+      VERIFICATION_PENDING: 0,
+      UNPAID: 0,
+      PARTIALLY_PAID: 0,
+      OVERDUE: 0,
+      PAID: 0,
+    };
+
+    let totalAll = 0;
+    rawStatusCounts.forEach((item) => {
+      if (item._id && statusCounts[item._id] !== undefined) {
+        statusCounts[item._id] = item.count;
+      }
+      totalAll += item.count;
+    });
+    statusCounts.ALL = totalAll;
+
     return {
       data,
+      statusCounts,
       pagination: {
         totalRecords,
         currentPage: parseInt(page, 10),

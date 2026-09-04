@@ -77,11 +77,13 @@ export interface InvoicesGridPagination {
 }
 
 export interface InvoicesGridResponse {
-  data: Invoice[];
-  currentPage: number;
-  totalPages: number;
-  totalRecords: number;
-  limit: number;
+  data: any[];
+  statusCounts?: Record<string, number>;
+  currentPage?: number;
+  totalPages?: number;
+  totalRecords?: number;
+  limit?: number;
+  pagination?: InvoicesGridPagination;
 }
 
 export interface OfflineSettlementPayload {
@@ -122,7 +124,8 @@ export interface WalletState {
 export interface BillingState {
   kpis: BillingKPIs;
   activeDues: ActiveDues;
-  invoicesList: Invoice[];
+  invoicesList: any[];
+  statusCounts: Record<string, number>;
   pagination: InvoicesGridPagination;
   loadingStates: {
     fetchKPIs: boolean;

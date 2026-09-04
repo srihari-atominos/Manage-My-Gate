@@ -7,7 +7,7 @@ import {
   Platform,
 } from 'react-native';
 import { useColorScheme } from 'nativewind';
-import { Search, X, SlidersHorizontal } from 'lucide-react-native';
+import { Search, X, SlidersHorizontal, QrCode } from 'lucide-react-native';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
@@ -51,6 +51,7 @@ export interface SearchFilterBarProps
   searchValue: string;
   onSearchChange: (text: string) => void;
   searchPlaceholder?: string; // default: 'Search...'
+  onScanPress?: () => void; // opens hardware QR / barcode camera scanner
   onFilterPress?: () => void; // opens filter bottom sheet
   activeFilterCount?: number; // badge count on filter button
   sortOptions?: SortOption[];
@@ -65,6 +66,7 @@ export const SearchFilterBar = React.forwardRef<View, SearchFilterBarProps>(
       searchValue,
       onSearchChange,
       searchPlaceholder = 'Search...',
+      onScanPress,
       onFilterPress,
       activeFilterCount = 0,
       sortOptions,
@@ -158,6 +160,18 @@ export const SearchFilterBar = React.forwardRef<View, SearchFilterBarProps>(
                 accessibilityLabel="Clear search text"
               >
                 <Icon as={X} size={16} className="text-muted-foreground" />
+              </Pressable>
+            )}
+
+            {onScanPress && (
+              <Pressable
+                onPress={onScanPress}
+                hitSlop={8}
+                className="p-1.5 rounded-full active:bg-primary/10 ms-1 shrink-0"
+                accessibilityRole="button"
+                accessibilityLabel="Scan QR or Barcode"
+              >
+                <Icon as={QrCode} size={18} className="text-primary" />
               </Pressable>
             )}
           </View>
