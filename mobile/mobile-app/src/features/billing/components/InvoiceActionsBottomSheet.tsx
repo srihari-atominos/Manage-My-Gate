@@ -174,7 +174,7 @@ export function InvoiceActionsBottomSheet({
               </Button>
             ) : null}
 
-            {isPendingCheque && onRejectOffline ? (
+            {isPendingVerification && onRejectOffline ? (
               <Button
                 variant="outline"
                 size="lg"

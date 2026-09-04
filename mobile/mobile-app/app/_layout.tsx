@@ -71,8 +71,8 @@ function AuthRouteGuard() {
   useEffect(() => {
     if (!rootNavigationState?.key || !isInitialized) return;
 
-    const firstSegment = segments[0] as string | undefined;
-    const currentRoute = segments[1] as string | undefined;
+    const firstSegment = (segments as any)?.[0] as string | undefined;
+    const currentRoute = (segments as any)?.[1] as string | undefined;
     const inAuthGroup = firstSegment === '(auth)';
     const isRoot = !firstSegment;
     const u = user as any;
