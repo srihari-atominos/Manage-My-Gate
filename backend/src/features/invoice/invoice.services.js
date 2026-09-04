@@ -8,6 +8,7 @@ import Invoice from './invoice.model.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger, { loggerStorage } from '../../utils/logger.utils.js';
 import paymentService from '../payment/payment.service.js';
+import notificationService from '../notification/notification.service.js';
 
 export class InvoiceService {
   /**
@@ -1073,6 +1074,108 @@ export class InvoiceService {
       throw new HttpError(404, 'Invoice not found');
     }
     return invoice;
+  }
+
+  /**
+   * Send an in-app reminder notification to the resident for an individual invoice.
+   * @param {string} invoiceId - Invoice ID
+   * @param {string} adminUserId - Admin user ID
+   * @param {string} orgId - Community / Organization ID
+   * @returns {Promise<object>}
+   */
+  async sendInvoiceReminder(invoiceId, adminUserId, orgId) {
+    const invoice = await this.getInvoiceById(invoiceId);
+
+    // Tenant isolation check
+    if (orgId && invoice.communityId?.toString() !== orgId.toString()) {
+      throw new HttpError(403, 'Unauthorized access to this invoice');
+    }
+
+    if (invoice.status === 'PAID') {
+      throw new HttpError(400, 'Invoice is already marked as PAID');
+    }
+
+    if (!invoice.targetUserId) {
+      throw new HttpError(400, 'No resident user assigned to this invoice');
+    }
+
+    // Determine unit number representation
+    let unitStr = 'your unit';
+    if (invoice.snapshot?.unitDetails?.unitNumber) {
+      unitStr = `Unit ${invoice.snapshot.unitDetails.unitNumber}`;
+    } else if (invoice.unitId && invoice.communityId) {
+      try {
+        const unit = await villaService.getUnitById(invoice.unitId, invoice.communityId);
+        if (unit?.unitNumber) {
+          unitStr = `Unit ${unit.unitNumber}`;
+        }
+      } catch (e) {
+        // Continue with default unit string
+      }
+    }
+
+    const dueAmount = invoice.outstandingAmount ?? invoice.totalDue ?? invoice.totalAmount ?? 0;
+    const formattedAmount = Number(dueAmount).toLocaleString('en-IN');
+    const invoiceNo = invoice.invoiceNumber || invoice._id;
+
+    const title = `Payment Reminder: Invoice #${invoiceNo}`;
+    const body = `A maintenance payment of ₹${formattedAmount} is pending for ${unitStr}. Tap to view invoice and pay now.`;
+    const actionUrl = `/(resident)/billing/invoice/${invoice._id}`;
+
+    const notification = await notificationService.createNotification({
+      recipientId: invoice.targetUserId,
+      senderId: adminUserId,
+      title,
+      body,
+      actionUrl,
+      type: 'WARNING',
+    });
+
+    invoice.reminderCount = (invoice.reminderCount || 0) + 1;
+    invoice.lastReminderSentAt = new Date();
+    await invoice.save();
+
+    return {
+      success: true,
+      message: 'Reminder notification sent successfully',
+      notificationId: notification._id,
+    };
+  }
+
+  /**
+   * Send an in-app reminder notification to a resident for their overall dues portfolio.
+   * @param {object} payload - { residentUserId, residentName, totalDue, units }
+   * @param {string} adminUserId - Admin user ID
+   * @param {string} orgId - Community / Organization ID
+   * @returns {Promise<object>}
+   */
+  async notifyResidentPortfolio(payload, adminUserId, orgId) {
+    const { residentUserId, totalDue, units = [] } = payload || {};
+    if (!residentUserId || residentUserId === 'unassigned') {
+      throw new HttpError(400, 'Valid resident user ID is required to send notification');
+    }
+
+    const unitsStr = Array.isArray(units) && units.length > 0 ? units.join(', ') : 'your units';
+    const formattedAmount = Number(totalDue || 0).toLocaleString('en-IN');
+
+    const title = 'Maintenance Dues Reminder';
+    const body = `Your outstanding maintenance balance across units (${unitsStr}) is ₹${formattedAmount}. Tap to view details and settle your dues.`;
+    const actionUrl = '/(resident)/billing/my-dues';
+
+    const notification = await notificationService.createNotification({
+      recipientId: residentUserId,
+      senderId: adminUserId,
+      title,
+      body,
+      actionUrl,
+      type: 'WARNING',
+    });
+
+    return {
+      success: true,
+      message: 'Portfolio reminder notification sent successfully',
+      notificationId: notification._id,
+    };
   }
 }
 

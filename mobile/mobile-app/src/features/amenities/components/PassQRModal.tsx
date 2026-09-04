@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Image } from 'react-native';
+import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
+import { QRCodeView } from '@/components/ui/QRCodeView';
 import { AmenityBooking } from '../store/amenityBookingSlice';
 
 export interface PassQRModalProps {
@@ -38,24 +39,16 @@ export function PassQRModal({ visible, onClose, booking }: PassQRModalProps) {
   const bookingIdDisplay = booking.bookingId || (booking._id ? String(booking._id).substring(0, 8).toUpperCase() : 'PASS');
 
   const qrString = booking.qrCode || booking.passCode || booking.bookingId || (booking._id ? String(booking._id) : 'PASS');
-  const qrUri = (qrString.startsWith('data:image') || qrString.startsWith('http'))
-    ? qrString
-    : `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrString)}`;
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Digital Access Pass">
       <View className="py-1 items-center">
-        {/* Pass QR Visual Frame */}
-        <View className="my-2 p-3 bg-white rounded-2xl border-2 border-primary/20 items-center justify-center shadow-md w-44 h-44">
-          <Image
-            source={{ uri: qrUri }}
-            style={{ width: 140, height: 140 }}
-            resizeMode="contain"
-          />
-        </View>
-        <Text className="text-[11px] text-muted-foreground mb-2 text-center font-semibold">
-          Present QR Code at Gate Scanner
-        </Text>
+        {/* Canonical Vector SVG QR Code Presentation */}
+        <QRCodeView
+          value={qrString}
+          size={160}
+          caption="Present QR Code at Gate Scanner"
+        />
 
         {/* Complete Pass Detail Rows */}
         <View className="w-full bg-muted/20 p-3.5 rounded-2xl border border-border/40 mb-4">

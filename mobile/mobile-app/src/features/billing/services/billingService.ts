@@ -230,6 +230,31 @@ export const billingService = {
     const body = response?.success !== undefined ? response : response?.data;
     return body?.data || body;
   },
+
+  /**
+   * Send an in-app reminder notification to the resident for an individual invoice.
+   * @param invoiceId
+   */
+  async sendInvoiceReminder(invoiceId: string): Promise<any> {
+    const response: any = await apiClient.post(`/invoices/${invoiceId}/send-reminder`);
+    const body = response?.success !== undefined ? response : response?.data;
+    return body?.data || body;
+  },
+
+  /**
+   * Send an in-app reminder notification to a resident for their overall dues portfolio.
+   * @param payload
+   */
+  async notifyResidentPortfolio(payload: {
+    residentUserId: string;
+    residentName?: string;
+    totalDue: number;
+    units?: string[];
+  }): Promise<any> {
+    const response: any = await apiClient.post('/invoices/notify-resident', payload);
+    const body = response?.success !== undefined ? response : response?.data;
+    return body?.data || body;
+  },
 };
 
 export default billingService;

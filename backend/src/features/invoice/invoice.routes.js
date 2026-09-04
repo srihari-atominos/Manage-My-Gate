@@ -64,6 +64,20 @@ router.post(
   invoiceController.triggerWhatsApp
 );
 
+router.post(
+  '/notify-resident',
+  tenantContext,
+  authorizePermission('billing', ['dashboard', 'action_center', 'assessment_manager']),
+  invoiceController.notifyResidentPortfolio
+);
+
+router.post(
+  '/:id/send-reminder',
+  tenantContext,
+  authorizePermission('billing', ['dashboard', 'action_center', 'assessment_manager']),
+  invoiceController.sendInvoiceReminder
+);
+
 router.patch(
   '/:id/settle-offline',
   tenantContext,

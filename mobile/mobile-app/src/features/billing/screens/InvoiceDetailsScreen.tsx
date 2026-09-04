@@ -23,6 +23,7 @@ import {
   Download,
   Share2,
   FileText,
+  QrCode,
 } from 'lucide-react-native';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useBilling } from '../hooks/useBilling';
@@ -30,6 +31,7 @@ import { useBillingSocket } from '../hooks/useBillingSocket';
 import { billingService } from '../services/billingService';
 import { InvoiceStatus, Invoice } from '../types';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
+import { InvoiceQRModal } from '../components/InvoiceQRModal';
 import { generateInvoiceHtml, exportInvoiceHtmlDocument } from '../utils/invoicePdfUtility';
 
 export function InvoiceDetailsScreen() {
@@ -38,6 +40,7 @@ export function InvoiceDetailsScreen() {
   const invoiceId = params?.id || '';
 
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [fallbackInvoice, setFallbackInvoice] = useState<Invoice | null>(null);
   const [fallbackLoading, setFallbackLoading] = useState(false);
@@ -240,20 +243,33 @@ export function InvoiceDetailsScreen() {
       iconName="Receipt"
       headerRight={
         invoice ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onPress={() => handleExportPdf('download')}
-            disabled={isExporting}
-            className="flex-row items-center gap-1.5 border-border bg-card"
-            accessibilityRole="button"
-            accessibilityLabel="Export or Download PDF Invoice"
-          >
-            <Icon as={isExporting ? FileText : Download} size={14} className="text-foreground" />
-            <Text className="text-xs font-bold text-foreground">
-              {isExporting ? 'Exporting...' : 'PDF'}
-            </Text>
-          </Button>
+          <View className="flex-row items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onPress={() => setShowQR(true)}
+              className="flex-row items-center gap-1 border-border bg-card px-2.5"
+              accessibilityRole="button"
+              accessibilityLabel="Show Invoice QR Pass"
+            >
+              <Icon as={QrCode} size={14} className="text-primary" />
+              <Text className="text-xs font-bold text-primary">QR</Text>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onPress={() => handleExportPdf('download')}
+              disabled={isExporting}
+              className="flex-row items-center gap-1 border-border bg-card px-2.5"
+              accessibilityRole="button"
+              accessibilityLabel="Export or Download PDF Invoice"
+            >
+              <Icon as={isExporting ? FileText : Download} size={14} className="text-foreground" />
+              <Text className="text-xs font-bold text-foreground">
+                {isExporting ? 'Exporting...' : 'PDF'}
+              </Text>
+            </Button>
+          </View>
         ) : null
       }
     >
@@ -458,6 +474,13 @@ export function InvoiceDetailsScreen() {
               billingService.getInvoiceById(invoiceId).then(setFallbackInvoice).catch(() => {});
             }
           }}
+        />
+
+        {/* Invoice QR Pass Modal */}
+        <InvoiceQRModal
+          visible={showQR}
+          invoice={invoice}
+          onClose={() => setShowQR(false)}
         />
       </View>
     </ScreenShell>

@@ -20,7 +20,7 @@ import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { ScanResultSheet, ScanResultData } from '@/components/hardware/ScanResultSheet';
 import { ManualCodeEntrySheet } from '@/components/hardware/ManualCodeEntrySheet';
-import { GuardQRScannerModal } from '@/src/features/visitor/components/guard/GuardQRScannerModal';
+import { QRScannerModal } from '@/components/hardware/QRScannerModal';
 import { AmenitySecurityLogCard } from '@/src/features/amenities/components/AmenitySecurityLogCard';
 import { SecurityLogDetailModal } from '@/src/features/amenities/components/SecurityLogDetailModal';
 import { SecurityLog } from '@/src/features/amenities/services/securityLogApi';
@@ -351,7 +351,7 @@ export default function AmenitySecurityGateScannerScreen() {
       </View>
 
       {/* Hardware Camera QR Scanner Modal */}
-      <GuardQRScannerModal
+      <QRScannerModal
         visible={qrScannerOpen}
         title="Amenity QR Scanner"
         instruction="Align Amenity QR Code inside Frame"

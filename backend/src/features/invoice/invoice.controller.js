@@ -244,6 +244,35 @@ export class InvoiceController {
     }
   }
 
+  /**
+   * Send an in-app reminder to resident for an individual invoice.
+   */
+  async sendInvoiceReminder(req, res, next) {
+    try {
+      const { id } = req.params;
+      const adminUserId = req.user?._id;
+      const orgId = req.tenant?.orgId;
+      const result = await invoiceService.sendInvoiceReminder(id, adminUserId, orgId);
+      res.success(result, 'Invoice reminder sent successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Send an in-app portfolio reminder to resident for their total dues.
+   */
+  async notifyResidentPortfolio(req, res, next) {
+    try {
+      const adminUserId = req.user?._id;
+      const orgId = req.tenant?.orgId;
+      const result = await invoiceService.notifyResidentPortfolio(req.body, adminUserId, orgId);
+      res.success(result, 'Resident reminder sent successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
 }
 
 export default new InvoiceController();

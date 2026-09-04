@@ -8,8 +8,9 @@ import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
 import { Button } from '@/components/ui/button';
 import { getStatusVariant } from '@/components/ui/StatusBadge';
-import { Clock } from 'lucide-react-native';
+import { Clock, Bell } from 'lucide-react-native';
 import { Invoice } from '../types';
+import billingService from '../services/billingService';
 
 export interface InvoiceActionsBottomSheetProps {
   visible: boolean;
@@ -33,6 +34,7 @@ export function InvoiceActionsBottomSheet({
   const [rejectReason, setRejectReason] = useState('');
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -41,6 +43,7 @@ export function InvoiceActionsBottomSheet({
       setRejectReason('');
       setIsApproving(false);
       setIsRejecting(false);
+      setIsSendingReminder(false);
     }
   }, [visible]);
 
@@ -112,6 +115,22 @@ export function InvoiceActionsBottomSheet({
       setIsRejecting(false);
       setShowRejectModal(false);
       Alert.alert('Rejection Failed', err?.message || err || 'Could not reject payment submission.');
+    }
+  };
+
+  const handleSendInAppReminder = async () => {
+    if (!invoice._id || isSendingReminder) return;
+    setIsSendingReminder(true);
+    try {
+      await billingService.sendInvoiceReminder(invoice._id);
+      setIsSendingReminder(false);
+      Alert.alert(
+        'Reminder Sent',
+        `In-app notification reminder sent to ${residentStr} for Invoice #${invNo}.`
+      );
+    } catch (err: any) {
+      setIsSendingReminder(false);
+      Alert.alert('Reminder Failed', err?.message || err || 'Could not send reminder notification.');
     }
   };
 
@@ -202,6 +221,24 @@ export function InvoiceActionsBottomSheet({
                 accessibilityLabel="Record Offline Settlement"
               >
                 Record Offline Settlement
+              </Button>
+            ) : null}
+
+            {status !== 'PAID' ? (
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full border-primary/50 text-primary active:bg-primary/10"
+                disabled={isApproving || isRejecting || isSendingReminder}
+                loading={isSendingReminder}
+                onPress={handleSendInAppReminder}
+                accessibilityRole="button"
+                accessibilityLabel="Send in-app reminder to resident"
+              >
+                <View className="flex-row items-center justify-center gap-2">
+                  <Icon as={Bell} size={18} className="text-primary" />
+                  <Text className="font-bold text-base text-primary">Send In-App Reminder</Text>
+                </View>
               </Button>
             ) : null}
 

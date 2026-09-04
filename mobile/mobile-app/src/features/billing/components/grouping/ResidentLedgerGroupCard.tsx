@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Pressable, Linking } from 'react-native';
+import { View, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
-import { User, Phone, Mail, ChevronDown, ChevronUp, MessageCircle, AlertCircle, CheckCircle2 } from 'lucide-react-native';
+import { User, Phone, Mail, ChevronDown, ChevronUp, Bell, AlertCircle, CheckCircle2 } from 'lucide-react-native';
+import billingService from '../../services/billingService';
 
 interface ResidentInvoiceItem {
   _id: string;
@@ -90,14 +91,28 @@ export const ResidentLedgerGroupCard: React.FC<ResidentLedgerGroupCardProps> = (
     ? [residentGroup as any]
     : [];
 
-  const handleWhatsAppReminder = () => {
-    if (!phone || phone === '—') return;
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
-    const unitStr = units.length > 0 ? units.join(', ') : 'your unit';
-    const message = encodeURIComponent(
-      `Dear ${residentName},\nThis is a friendly reminder from Community Management. Your outstanding maintenance balance across units (${unitStr}) is ₹${totalPortfolioDue.toLocaleString('en-IN')}.\nPlease clear your dues at your earliest convenience.`
-    );
-    Linking.openURL(`whatsapp://send?phone=${cleanPhone}&text=${message}`).catch(() => {});
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const residentUserId = residentGroup?.residentId || (residentGroup?._id && residentGroup._id !== 'unassigned' ? residentGroup._id : undefined);
+
+  const handleSendInAppReminder = async () => {
+    if (!residentUserId || isSendingReminder) return;
+    setIsSendingReminder(true);
+    try {
+      await billingService.notifyResidentPortfolio({
+        residentUserId,
+        residentName,
+        totalDue: totalPortfolioDue,
+        units,
+      });
+      setIsSendingReminder(false);
+      Alert.alert(
+        'Reminder Sent',
+        `In-app notification reminder sent to ${residentName} for outstanding portfolio balance of ₹${totalPortfolioDue.toLocaleString('en-IN')}.`
+      );
+    } catch (err: any) {
+      setIsSendingReminder(false);
+      Alert.alert('Reminder Failed', err?.message || err || 'Could not send reminder notification.');
+    }
   };
 
   return (
@@ -172,13 +187,22 @@ export const ResidentLedgerGroupCard: React.FC<ResidentLedgerGroupCardProps> = (
           {expanded ? <ChevronUp size={16} className="text-primary" /> : <ChevronDown size={16} className="text-primary" />}
         </Pressable>
 
-        {hasDues && phone && phone !== '—' ? (
+        {hasDues && residentUserId ? (
           <Pressable
-            onPress={handleWhatsAppReminder}
-            className="flex-row items-center bg-emerald-600/10 border border-emerald-600/20 px-3 py-1.5 rounded-full active:bg-emerald-600/20"
+            onPress={handleSendInAppReminder}
+            disabled={isSendingReminder}
+            className="flex-row items-center bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-full active:bg-primary/20"
+            accessibilityRole="button"
+            accessibilityLabel="Send in-app reminder to resident"
           >
-            <MessageCircle size={13} className="text-emerald-600 me-1.5" />
-            <Text className="text-xs font-bold text-emerald-600">WhatsApp Reminder</Text>
+            {isSendingReminder ? (
+              <ActivityIndicator size="small" color="#2563eb" className="me-1.5" />
+            ) : (
+              <Bell size={13} className="text-primary me-1.5" />
+            )}
+            <Text className="text-xs font-bold text-primary">
+              {isSendingReminder ? 'Sending...' : 'In-App Reminder'}
+            </Text>
           </Pressable>
         ) : null}
       </View>
