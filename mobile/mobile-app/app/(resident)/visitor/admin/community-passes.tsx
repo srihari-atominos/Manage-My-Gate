@@ -16,7 +16,7 @@ import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
 import { VisitorPass } from '@/src/features/visitor/store/visitorPassSlice';
 import { PassTypeKey } from '@/src/features/visitor/mocks/visitorMocks';
 import { Button } from '@/components/ui/button';
-import { Building2, Home, UserPlus, Filter, ShieldAlert, ChevronDown } from 'lucide-react-native';
+import { Building2, Home, UserPlus, Filter, ShieldAlert, ChevronDown, Plus } from 'lucide-react-native';
 
 export default function AdminCommunityPassesScreen() {
   const router = useRouter();
@@ -207,13 +207,15 @@ export default function AdminCommunityPassesScreen() {
       subtitle="Master pass registry & villa-level security filters"
       headerRight={
         <Button
-          size="sm"
           variant="default"
+          size="sm"
           onPress={() => setTypeSheetOpen(true)}
-          className="flex-row items-center gap-1.5 rounded-full"
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          accessibilityRole="button"
+          accessibilityLabel="Create New Community Pass"
         >
-          <UserPlus size={14} color="#FFFFFF" />
-          <Text className="text-xs font-bold text-white">New Pass</Text>
+          <Plus size={15} color="#ffffff" />
+          <Text className="text-xs font-bold text-primary-foreground">New Pass</Text>
         </Button>
       }
     >
@@ -258,13 +260,6 @@ export default function AdminCommunityPassesScreen() {
               />
             );
           }}
-        />
-
-        {/* Floating Action Button */}
-        <FAB
-          iconName="Plus"
-          label="New Pass"
-          onPress={() => setTypeSheetOpen(true)}
         />
 
         {/* Invitation Type Selector Bottom Sheet */}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, RefreshControl, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Filter, Users, ChevronLeft, ChevronRight, Mail, UserPlus, Users2, Hash, X } from 'lucide-react-native';
+import { Filter, Users, ChevronLeft, ChevronRight, Mail, UserPlus, Users2, Hash, X, Plus } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { FAB } from '@/components/ui/FAB';
@@ -210,19 +210,30 @@ export default function UserManagementScreen() {
       error={error}
       onRetry={refreshUsers}
       headerRight={
-        <TouchableOpacity
-          onPress={() => setShowFilterSheet(true)}
-          className="p-2 rounded-xl bg-secondary border border-border flex-row items-center"
-          accessibilityRole="button"
-          accessibilityLabel="Filter users"
-        >
-          <Filter size={16} className="text-foreground me-1" />
-          {activeFilterCount > 0 ? (
-            <View className="bg-blue-600 px-1.5 py-0.5 rounded-full ms-1">
-              <Text className="text-[10px] font-bold text-white">{activeFilterCount}</Text>
-            </View>
-          ) : null}
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-1.5">
+          <TouchableOpacity
+            onPress={() => setShowFilterSheet(true)}
+            className="p-2 rounded-xl bg-secondary border border-border flex-row items-center"
+            accessibilityRole="button"
+            accessibilityLabel="Filter users"
+          >
+            <Filter size={16} className="text-foreground me-1" />
+            {activeFilterCount > 0 ? (
+              <View className="bg-primary px-1.5 py-0.5 rounded-full ms-1">
+                <Text className="text-[10px] font-bold text-primary-foreground">{activeFilterCount}</Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowInviteModal(true)}
+            className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full active:opacity-80"
+            accessibilityRole="button"
+            accessibilityLabel="Invite User"
+          >
+            <Plus size={14} color="#ffffff" />
+            <Text className="text-xs font-bold text-primary-foreground">{t('invite_user', 'Invite')}</Text>
+          </TouchableOpacity>
+        </View>
       }
     >
       <View className="flex-1">
@@ -344,14 +355,6 @@ export default function UserManagementScreen() {
           />
         )}
       </View>
-
-      {/* Floating Action Button */}
-      <FAB
-        iconName="UserPlus"
-        label={t('invite_user', 'Invite User')}
-        onPress={() => setShowInviteModal(true)}
-        className="bg-emerald-600 border-emerald-600"
-      />
 
       {/* Modals & Bottom Sheets */}
       <InviteUserModal

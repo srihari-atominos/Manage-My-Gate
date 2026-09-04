@@ -4,8 +4,9 @@ import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { FAB } from '@/components/ui/FAB';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { CalendarCheck } from 'lucide-react-native';
 
 import { useResidentDiscover } from '../../../src/features/amenities/hooks/useResidentDiscover';
 import { ResidentAmenityDetailSheet } from '../../../src/features/amenities/components/ResidentAmenityDetailSheet';
@@ -90,6 +91,19 @@ export default function DiscoverAmenitiesScreen() {
       loading={false}
       error={error}
       onRetry={handleRetry}
+      headerRight={
+        <Button
+          variant="outline"
+          size="sm"
+          onPress={() => router.push('/(resident)/amenities/my-bookings' as any)}
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          accessibilityRole="button"
+          accessibilityLabel="View My Bookings"
+        >
+          <CalendarCheck size={14} className="text-foreground" />
+          <Text className="text-xs font-semibold text-foreground">My Bookings</Text>
+        </Button>
+      }
     >
       <View className="flex-1 bg-background">
         {/* Catalog Paginated List */}
@@ -105,13 +119,6 @@ export default function DiscoverAmenitiesScreen() {
           emptyTitle="No Amenities Found"
           emptySubtitle="Try adjusting your search query or category filter."
           contentContainerClassName="px-4 pt-3 pb-28"
-        />
-
-        {/* Resident View Navigation FAB */}
-        <FAB
-          iconName="CalendarCheck"
-          label="My Bookings"
-          onPress={() => router.push('/(resident)/amenities/my-bookings' as any)}
         />
       </View>
 

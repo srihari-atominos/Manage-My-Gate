@@ -83,18 +83,19 @@ export const WalkInApprovalCard: React.FC<WalkInApprovalCardProps> = ({
         <Button
           variant="destructive"
           onPress={() => onReject(item)}
-          className="flex-1 h-11 rounded-xl bg-red-600 active:bg-red-700 flex-row items-center justify-center gap-1.5"
+          className="flex-1 h-11 rounded-xl flex-row items-center justify-center gap-1.5"
         >
           <X size={18} color="#fff" />
-          <Text className="text-[14px] font-semibold font-sans text-white">Deny</Text>
+          <Text>Deny</Text>
         </Button>
 
         <Button
+          variant="success"
           onPress={() => onApprove(item)}
-          className="flex-1 h-11 rounded-xl bg-emerald-600 active:bg-emerald-700 flex-row items-center justify-center gap-1.5"
+          className="flex-1 h-11 rounded-xl flex-row items-center justify-center gap-1.5"
         >
           <Check size={18} color="#fff" />
-          <Text className="text-[14px] font-semibold font-sans text-white">Approve</Text>
+          <Text>Approve</Text>
         </Button>
       </View>
     </View>

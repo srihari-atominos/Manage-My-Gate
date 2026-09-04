@@ -19,21 +19,20 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
   const dispatch = useDispatch<any>();
   const { t, tRole } = useTranslation();
 
-  // Extract available roles array from active user session
+  // The 3 standard canonical roles: Admin, Tenant/Owner, Security
+  const canonicalRoles = ['Admin', 'Tenant/Owner', 'Security'];
+
   const roles: string[] = React.useMemo(() => {
-    if (!user) return ['Member'];
+    if (!user) return canonicalRoles;
     const userAny = user as any;
     if (userAny.roles && Array.isArray(userAny.roles) && userAny.roles.length > 0) {
-      return Array.from(new Set(userAny.roles));
+      const merged = Array.from(new Set([...userAny.roles, ...canonicalRoles]));
+      return merged;
     }
-    if (user.role) {
-      const split = user.role.split(',').map((r: string) => r.trim()).filter(Boolean);
-      return Array.from(new Set(split));
-    }
-    return ['Member'];
+    return canonicalRoles;
   }, [user]);
 
-  const activeRole = user?.role || roles[0] || 'Member';
+  const activeRole = user?.role || roles[0] || 'Admin';
 
   const handleSelectRole = (selectedRole: string) => {
     dispatch(switchWorkspaceContextThunk({ targetRole: selectedRole }));

@@ -135,13 +135,21 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
                 <Text className="text-foreground">{cancelLabel}</Text>
               </Button>
               <Button
-                variant={validVariant === 'danger' ? 'destructive' : 'default'}
+                variant={
+                  validVariant === 'danger'
+                    ? 'destructive'
+                    : validVariant === 'success'
+                    ? 'success'
+                    : validVariant === 'warning'
+                    ? 'warning-solid'
+                    : 'info-solid'
+                }
                 disabled={loading}
                 loading={loading}
                 onPress={onConfirm}
-                className={cn('flex-1', config.buttonClass)}
+                className="flex-1"
               >
-                <Text className={config.textClass}>{confirmLabel}</Text>
+                <Text>{confirmLabel}</Text>
               </Button>
             </View>
           </View>

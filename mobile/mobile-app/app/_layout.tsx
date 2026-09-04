@@ -53,6 +53,9 @@ function AuthRouteGuard() {
         const savedTheme = await storage.getItem('theme_preference');
         if (savedTheme === 'dark' || savedTheme === 'light') {
           setColorScheme(savedTheme);
+        } else {
+          setColorScheme('light');
+          await storage.setItem('theme_preference', 'light');
         }
       } catch (e) {
         console.warn('Failed to restore theme on startup:', e);

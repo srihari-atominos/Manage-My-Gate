@@ -13,9 +13,11 @@ import { RoleSwitchModal } from '@/components/navigation/RoleSwitchModal';
 import { ProfileHeaderCard } from '@/src/features/profile/components/ProfileHeaderCard';
 import { useProfile } from '@/src/features/profile/hooks/useProfile';
 import { useTranslation } from '@/src/utils/i18n';
-import { LogOut, Save, Building2, Home, ShieldCheck } from 'lucide-react-native';
+import { LogOut, Save, Building2, Home, ShieldCheck, Settings } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { t, tRole } = useTranslation();
   const {
     user,
@@ -115,8 +117,17 @@ export default function ProfileScreen() {
               subtitle={tRole(dynamicRole, dynamicRole)}
               leftIcon={ShieldCheck}
               showChevron={true}
-              isLastItem={true}
               onPress={() => setRoleModalOpen(true)}
+            />
+
+            <ListCard
+              variant="row"
+              title={t('app_settings', 'Settings & Preferences')}
+              subtitle={t('settings_subtitle', 'Appearance, themes & notifications')}
+              leftIcon={Settings}
+              showChevron={true}
+              isLastItem={true}
+              onPress={() => router.push('/(resident)/settings' as any)}
             />
           </View>
         </View>

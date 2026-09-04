@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Layers,
 } from 'lucide-react-native';
+import { SectionHeader } from '@/components/common/SectionHeader';
 import ActionTile from '@/components/dashboard/ActionTile';
 import FeatureIcon from '@/components/ui/FeatureIcon';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
@@ -146,83 +147,6 @@ export default function AllFeaturesScreen() {
             ) : null}
           </View>
 
-          {/* Module Category Filter Chips Bar */}
-          {featureCatalog && featureCatalog.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1 py-1">
-              <View className="flex-row items-center gap-2 px-1">
-                <TouchableOpacity
-                  onPress={() => setSelectedCategoryKey(null)}
-                  activeOpacity={0.7}
-                  className={`px-3 py-1.5 rounded-full border ${
-                    selectedCategoryKey === null
-                      ? 'bg-primary border-primary'
-                      : 'bg-card border-border'
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-bold ${
-                      selectedCategoryKey === null ? 'text-white' : 'text-foreground'
-                    }`}
-                  >
-                    {t('all_categories', 'All Categories')}
-                  </Text>
-                </TouchableOpacity>
-
-                {featureCatalog.map((cat) => {
-                  const isActive = selectedCategoryKey === cat.categoryKey;
-                  return (
-                    <TouchableOpacity
-                      key={cat.categoryKey}
-                      onPress={() => setSelectedCategoryKey(isActive ? null : cat.categoryKey)}
-                      activeOpacity={0.7}
-                      className={`px-3 py-1.5 rounded-full border ${
-                        isActive
-                          ? 'bg-primary border-primary'
-                          : 'bg-card border-border'
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-semibold ${
-                          isActive ? 'text-white' : 'text-muted-foreground'
-                        }`}
-                      >
-                        {tCategoryName(cat.categoryKey, cat.categoryName)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </ScrollView>
-          ) : null}
-
-          {/* Active Category Banner Header */}
-          {selectedCategoryKey && activeCategory ? (
-            <View className="flex-row items-center justify-between bg-primary/10 border border-primary/20 p-3.5 rounded-2xl shadow-xs">
-              <View className="flex-row items-center gap-2.5 flex-1 me-2">
-                <View className="p-2 rounded-xl bg-primary/20">
-                  <Layers size={18} className="text-primary" color="#03A9F4" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-extrabold text-foreground">
-                    {tCategoryName(activeCategory.categoryKey, activeCategory.categoryName)}
-                  </Text>
-                  <Text className="text-xs text-muted-foreground">
-                    Showing all {activeCategory.items?.length || 0} features in this module
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => setSelectedCategoryKey(null)}
-                activeOpacity={0.7}
-                className="flex-row items-center gap-1 bg-card border border-border px-2.5 py-1.5 rounded-xl shadow-xs"
-              >
-                <RotateCcw size={12} className="text-foreground" />
-                <Text className="text-xs font-bold text-foreground">{t('show_all', 'Show All')}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-
           {/* DYNAMIC CATEGORY SECTIONS FROM BACKEND */}
           {featureCatalog && featureCatalog.length > 0 ? (
             featureCatalog
@@ -253,30 +177,34 @@ export default function AllFeaturesScreen() {
                 const hasMore = filteredItems.length > 6;
                 const displayedItems = isExpanded ? filteredItems : filteredItems.slice(0, 6);
 
-                return (
-                  <View key={category.categoryKey} className="gap-3">
-                    <View className="flex-row items-center justify-between pt-1">
-                      <Text className="text-[13.5px] font-bold font-sans text-primary uppercase tracking-wider">
-                        {tCategoryName(category.categoryKey, category.categoryName)}
-                      </Text>
+                const categoryMeta: Record<string, { icon: string; subtitle: string; color: string }> = {
+                  visitor_management: { icon: 'ShieldCheck', subtitle: 'Security & Gate Access', color: '#2563EB' },
+                  amenities_facilities: { icon: 'Sparkles', subtitle: 'Facilities & Reservations', color: '#16A34A' },
+                  complaints_helpdesk: { icon: 'ListTodo', subtitle: 'Issues & SLA Helpdesk', color: '#7C3AED' },
+                  notice_board_polls: { icon: 'Megaphone', subtitle: 'Broadcasts & Resident Polls', color: '#DB2777' },
+                  financial_billing: { icon: 'CreditCard', subtitle: 'Dues, Invoices & Accounts', color: '#0D9488' },
+                  administration_security: { icon: 'UserRoundCog', subtitle: 'Staff, RBAC & Settings', color: '#D97706' },
+                };
 
-                      {hasMore && (
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          onPress={() => toggleCategoryExpand(category.categoryKey)}
-                          className="flex-row items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20 shadow-xs"
-                        >
-                          <Text className="text-xs font-bold text-primary font-sans">
-                            {isExpanded ? 'Show less' : `View all (${filteredItems.length})`}
-                          </Text>
-                          <ChevronRight
-                            size={13}
-                            color="#245FA8"
-                            style={{ transform: [{ rotate: isExpanded ? '90deg' : '0deg' }] }}
-                          />
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                const currentMeta = categoryMeta[category.categoryKey] || {
+                  icon: 'Layers',
+                  subtitle: 'Module Features',
+                  color: '#FF6A00',
+                };
+
+                return (
+                  <View key={category.categoryKey} className="gap-2.5">
+                    <SectionHeader
+                      title={tCategoryName(category.categoryKey, category.categoryName)}
+                      subtitle={currentMeta.subtitle}
+                      count={filteredItems.length}
+                      icon={currentMeta.icon}
+                      iconColor={currentMeta.color}
+                      actionLabel={hasMore ? (isExpanded ? 'Show less' : `View all (${filteredItems.length})`) : undefined}
+                      isExpanded={isExpanded}
+                      onAction={hasMore ? () => toggleCategoryExpand(category.categoryKey) : undefined}
+                      className="px-0 py-1"
+                    />
 
                     <View className="flex-row flex-wrap gap-y-2.5 -mx-1">
                       {displayedItems.map((item) => {
@@ -292,12 +220,10 @@ export default function AllFeaturesScreen() {
                             containerClassName="w-1/3 px-1"
                             iconBgColor={colorBg}
                             iconShapeClass={iconShapeClass}
-                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={22} />}
+                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={28} />}
                             label={tFeatureName(item.id, meta?.name || item.name)}
                             subtitle={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
                             metaValue={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
-                            badge={item.badge}
-                            badgeColor={item.badgeColor}
                             onPress={() => handleTileClick(item.id)}
                           />
                         );

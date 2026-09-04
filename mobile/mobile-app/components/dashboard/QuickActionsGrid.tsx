@@ -7,8 +7,6 @@ import ActionTile from './ActionTile';
 import { FeatureItem } from '@/src/features/dashboard/dashboardService';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { ALL_AVAILABLE_FEATURES, DEFAULT_5_QUICK_ACTIONS } from '@/src/features/dashboard/dashboardCatalog';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/src/store/store';
 import { isFeatureAllowedForUser, getDefaultQuickActionsForUser } from '@/src/utils/rbac';
 import { useTranslation } from '@/src/utils/i18n';
 
@@ -29,54 +27,6 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
 }) => {
   const { user } = useAuth();
   const { t, tFeatureName, tFeatureSubtitle } = useTranslation();
-
-  // Redux Selectors for Real-Time App-Wide Feature Badges
-  const visitorPassState = useSelector((state: RootState) => (state as any).visitorPass);
-  const billingState = useSelector((state: RootState) => (state as any).billing);
-  const complaintState = useSelector((state: RootState) => (state as any).complaints);
-  const noticeState = useSelector((state: RootState) => (state as any).noticeBoard);
-  const pollState = useSelector((state: RootState) => (state as any).poll);
-  const directoryState = useSelector((state: RootState) => (state as any).directory);
-  const amenityState = useSelector((state: RootState) => (state as any).amenityBookings);
-
-  // Dynamic Badge Resolver
-  const getFeatureBadge = (featureId: string): string | undefined => {
-    switch (featureId) {
-      case 'visitor_resident_passes':
-      case 'visitor_management': {
-        const count = visitorPassState?.passes?.length || visitorPassState?.pendingWalkInsCount || 0;
-        return count > 0 ? String(count) : undefined;
-      }
-      case 'amenities': {
-        const count = amenityState?.dashboardStats?.amenityKpis?.activeAmenities ?? amenityState?.dashboardStats?.kpis?.totalAmenities ?? 0;
-        return count > 0 ? String(count) : undefined;
-      }
-      case 'billing':
-      case 'billing_dashboard': {
-        const count = billingState?.invoices?.length || billingState?.unpaidCount || 0;
-        return count > 0 ? String(count) : undefined;
-      }
-      case 'complaints': {
-        const count = complaintState?.complaints?.length || complaintState?.openCount || 0;
-        return count > 0 ? String(count) : undefined;
-      }
-      case 'notices':
-      case 'notices_active_board': {
-        const count = noticeState?.stats?.activeNotices || noticeState?.notices?.length || 0;
-        return count > 0 ? String(count) : undefined;
-      }
-      case 'polls': {
-        const count = pollState?.polls?.length || 0;
-        return count > 0 ? String(count) : undefined;
-      }
-      case 'directory': {
-        const count = directoryState?.pagination?.totalRecords || directoryState?.members?.length || 0;
-        return count > 0 ? String(count) : undefined;
-      }
-      default:
-        return undefined;
-    }
-  };
 
   // Exactly 5 customizable feature items for slots 1 through 5 (filtered by user role & permissions)
   const displayFeatures = React.useMemo(() => {
@@ -111,9 +61,9 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           <TouchableOpacity
             onPress={onOpenViewMore}
             activeOpacity={0.7}
-            className="flex-row items-center gap-1 bg-[#245FA8]/10 border border-[#245FA8]/30 px-2.5 py-1 rounded-full shadow-xs"
+            className="flex-row items-center gap-1 bg-primary/10 border border-primary/25 px-2.5 py-1 rounded-full shadow-xs"
           >
-            <Text className="text-[11px] font-bold font-sans text-[#245FA8]">{t('view_all', 'View all')}</Text>
+            <Text className="text-[11px] font-bold font-sans text-primary">{t('view_all', 'View all')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -133,8 +83,8 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
         {displayFeatures.map((tile) => {
           const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === tile.id);
           const iconName = meta?.iconName || tile.iconName;
-          const colorIcon = meta?.colorIcon || tile.colorIcon || '#245FA8';
-          const colorBg = meta?.colorBg || tile.colorBg || 'bg-secondary';
+          const colorIcon = meta?.colorIcon || tile.colorIcon || '#2563EB';
+          const colorBg = meta?.colorBg || tile.colorBg || 'bg-blue-50 dark:bg-blue-950/40';
           const iconShapeClass = meta?.iconShapeClass;
 
           return (
@@ -143,12 +93,10 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
               containerClassName="w-1/3 px-1"
               iconBgColor={colorBg}
               iconShapeClass={iconShapeClass}
-              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={22} />}
+              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={28} />}
               label={tFeatureName(tile.id, meta?.name || tile.name)}
               subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
               metaValue={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
-              badge={getFeatureBadge(tile.id) ?? tile.badge}
-              badgeColor={tile.badgeColor}
               onPress={() => onTilePress && onTilePress(tile.id)}
             />
           );
@@ -157,9 +105,9 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
         {/* 6th Card: "View all" */}
         <ActionTile
           containerClassName="w-1/3 px-1"
-          iconBgColor="bg-[#EBF2FC]"
-          iconShapeClass="rounded-full"
-          icon={<LayoutGrid size={22} color="#245FA8" />}
+          iconBgColor="bg-blue-50 dark:bg-blue-950/40"
+          iconShapeClass="rounded-[19px]"
+          icon={<LayoutGrid size={28} color="#2563EB" strokeWidth={2.2} />}
           label={t('view_all', 'View all')}
           subtitle={t('all_features', 'All features')}
           metaValue={t('explore_module', 'Explore Module')}

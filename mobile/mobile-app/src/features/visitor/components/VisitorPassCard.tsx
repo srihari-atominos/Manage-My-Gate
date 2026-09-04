@@ -71,16 +71,16 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
       onPress={() => onPress(pass)}
       rightContent={
         <Button
-          variant="outline"
+          variant="info"
           size="sm"
           onPress={(e: any) => {
             e?.stopPropagation?.();
             onShowQR(pass);
           }}
-          className="flex-row items-center gap-1.5 h-8 px-2.5 rounded-lg border-blue-500/30 bg-blue-500/10 active:bg-blue-500/20"
+          className="flex-row items-center gap-1.5 h-8 px-2.5 rounded-lg"
         >
-          <QrCode size={14} className="text-blue-600 dark:text-blue-400" />
-          <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">{t('pass_code', 'Pass Code')}</Text>
+          <QrCode size={14} color="#245fa8" />
+          <Text>{t('pass_code', 'Pass Code')}</Text>
         </Button>
       }
     />

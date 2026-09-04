@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import visitorService from '../services/visitorService';
-import { WalkInApprovalItem } from '../mocks/visitorMocks';
+import { WalkInApprovalItem, DEFAULT_MOCK_VISITOR_PASSES } from '../mocks/visitorMocks';
 import { mapBackendWalkInToApprovalItem } from '../utils/mapBackendWalkInToApprovalItem';
 
 import {
@@ -93,13 +93,13 @@ interface VisitorPassState {
 }
 
 const initialState: VisitorPassState = {
-  passes: [],
+  passes: DEFAULT_MOCK_VISITOR_PASSES,
   activePass: null,
   activeVisitors: [],
   activeVisitorsStatus: 'idle',
   dashboard: {
-    recentPasses: [],
-    activePassesCount: 0,
+    recentPasses: DEFAULT_MOCK_VISITOR_PASSES,
+    activePassesCount: DEFAULT_MOCK_VISITOR_PASSES.length,
     pendingWalkIns: [],
     status: 'idle',
     error: null,
@@ -111,13 +111,13 @@ const initialState: VisitorPassState = {
     error: null,
   },
   admin: {
-    communityPasses: [],
+    communityPasses: DEFAULT_MOCK_VISITOR_PASSES,
     blacklist: [],
     analytics: null,
     pagination: {
       currentPage: 1,
       totalPages: 1,
-      totalRecords: 0,
+      totalRecords: DEFAULT_MOCK_VISITOR_PASSES.length,
       limit: 10,
     },
     status: 'idle',

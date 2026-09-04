@@ -187,11 +187,12 @@ export const IntegrationHubScreen: React.FC = () => {
 
           <TouchableOpacity
             onPress={() => openConnectModal()}
-            className="p-2 rounded-xl bg-emerald-600 border border-emerald-600 flex-row items-center active:bg-emerald-700 shadow-xs"
+            className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full active:opacity-80"
             accessibilityRole="button"
             accessibilityLabel="Add connection"
           >
-            <Plus size={16} color="#ffffff" />
+            <Plus size={14} color="#ffffff" />
+            <Text className="text-xs font-bold text-primary-foreground">Connect</Text>
           </TouchableOpacity>
         </View>
       }
@@ -308,9 +309,6 @@ export const IntegrationHubScreen: React.FC = () => {
           />
         )}
       </View>
-
-      {/* Floating Action Button */}
-      <FAB iconName="Plus" onPress={() => openConnectModal()} className="bg-emerald-600 border-emerald-600" />
 
       {/* Connect Sheet Modal */}
       <ConnectModal

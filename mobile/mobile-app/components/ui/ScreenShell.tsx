@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { RoleSwitchModal } from '../navigation/RoleSwitchModal';
 import { VillaSwitchModal } from '../navigation/VillaSwitchModal';
 import { GlobalNavModal } from '../navigation/GlobalNavModal';
+import { BottomNavigationBar } from '../navigation/BottomNavigationBar';
 
 export interface ScreenShellProps {
   title: string;
@@ -29,6 +30,8 @@ export interface ScreenShellProps {
   className?: string;
   enableHeaderDoubleTap?: boolean; // Mobile gesture: double-tap header to switch role/villa
   scrollable?: boolean;          // Wrap children in a ScrollView
+  showBottomNav?: boolean;       // Render bottom navigation bar
+  hideBottomNav?: boolean;       // Explicitly hide bottom navigation bar
 }
 
 export function ScreenShell({
@@ -45,6 +48,8 @@ export function ScreenShell({
   className,
   enableHeaderDoubleTap = true,
   scrollable = false,
+  showBottomNav = false,
+  hideBottomNav = false,
 }: ScreenShellProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -237,6 +242,9 @@ export function ScreenShell({
           setShowVillaModal(false);
         }}
       />
+
+      {/* Down Bar Navigation */}
+      {showBottomNav && !hideBottomNav && <BottomNavigationBar />}
     </View>
   );
 }

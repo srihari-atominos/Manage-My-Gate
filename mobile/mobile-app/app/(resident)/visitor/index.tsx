@@ -17,7 +17,7 @@ import { ExtendedVisitorPass, PassTypeKey } from '@/src/features/visitor/mocks/v
 import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
 import { mapBackendPassToHistoryItem } from '@/src/features/visitor/utils/mapBackendPassToHistoryItem';
 import { useTranslation } from '@/src/utils/i18n';
-import { UserPlus, History, ShieldAlert, ShieldCheck } from 'lucide-react-native';
+import { UserPlus, History, ShieldAlert, ShieldCheck, Plus } from 'lucide-react-native';
 
 export default function VisitorDashboardScreen() {
   const router = useRouter();
@@ -108,8 +108,6 @@ export default function VisitorDashboardScreen() {
       iconName: 'ShieldAlert',
       colorBg: 'bg-amber-500/10',
       colorIcon: '#f59e0b',
-      badge: pendingWalkInsCount > 0 ? pendingWalkInsCount : undefined,
-      badgeColor: 'bg-amber-500',
       route: '/(resident)/visitor/walk-ins',
     },
   ];
@@ -124,21 +122,22 @@ export default function VisitorDashboardScreen() {
       onRetry={loadData}
       headerRight={
         <Button
-          variant="outline"
+          variant="default"
           size="sm"
-          onPress={() => router.push('/(resident)/visitor/history' as any)}
+          onPress={() => setInviteSheetOpen(true)}
           className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
           accessibilityRole="button"
-          accessibilityLabel="View Pass History"
+          accessibilityLabel="Invite Visitor"
         >
-          <History size={14} className="text-foreground" />
-          <Text className="text-xs font-semibold text-foreground">{t('history_logs', 'History')}</Text>
+          <Plus size={15} color="#ffffff" />
+          <Text className="text-xs font-bold text-primary-foreground">{t('new_invite', 'Invite')}</Text>
         </Button>
       }
     >
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerClassName="p-4 pb-28 gap-4"
+        contentContainerClassName="p-4 pb-36 gap-4"
+        showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         {/* Universal KPI Statistics Strip */}
@@ -184,12 +183,6 @@ export default function VisitorDashboardScreen() {
         )}
       </ScrollView>
 
-      {/* Floating Action Button */}
-      <FAB
-        iconName="Plus"
-        label={t('new_invite', 'Invite Visitor')}
-        onPress={() => setInviteSheetOpen(true)}
-      />
       {/* Invitation Type Selector Bottom Sheet */}
       <VisitorInvitationTypeSheet
         visible={inviteSheetOpen}

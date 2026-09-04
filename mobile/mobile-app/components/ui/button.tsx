@@ -23,10 +23,50 @@ const buttonVariants = cva(
           Platform.OS === 'web' ? 'hover:opacity-90' : ''
         ),
         destructive: cn(
-          'bg-destructive active:opacity-90 shadow-xs',
+          'bg-rose-600 active:bg-rose-700 shadow-xs',
           Platform.OS === 'web'
             ? 'hover:opacity-90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40'
             : ''
+        ),
+        'destructive-outline': cn(
+          'border border-rose-500/40 bg-rose-50 dark:bg-rose-950/40 active:bg-rose-100 dark:active:bg-rose-900/60 shadow-xs',
+          Platform.OS === 'web' ? 'hover:bg-rose-100' : ''
+        ),
+        stop: cn(
+          'bg-rose-600 active:bg-rose-700 shadow-xs',
+          Platform.OS === 'web' ? 'hover:bg-rose-700' : ''
+        ),
+        'stop-outline': cn(
+          'border border-rose-500/40 bg-rose-50 dark:bg-rose-950/40 active:bg-rose-100 dark:active:bg-rose-900/60 shadow-xs',
+          Platform.OS === 'web' ? 'hover:bg-rose-100' : ''
+        ),
+        success: cn(
+          'bg-emerald-600 active:bg-emerald-700 shadow-xs',
+          Platform.OS === 'web' ? 'hover:bg-emerald-700' : ''
+        ),
+        edit: cn(
+          'border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 active:bg-emerald-100 dark:active:bg-emerald-900/60 shadow-xs',
+          Platform.OS === 'web' ? 'hover:bg-emerald-100' : ''
+        ),
+        warning: cn(
+          'border border-amber-500/40 bg-amber-50 dark:bg-amber-950/40 active:bg-amber-100 dark:active:bg-amber-900/60 shadow-xs',
+          Platform.OS === 'web' ? 'hover:bg-amber-100' : ''
+        ),
+        'warning-solid': cn(
+          'bg-amber-600 active:bg-amber-700 shadow-xs',
+          Platform.OS === 'web' ? 'hover:bg-amber-700' : ''
+        ),
+        info: cn(
+          'border border-blue-500/40 bg-blue-50 dark:bg-blue-950/40 active:bg-blue-100 dark:active:bg-blue-900/60 shadow-xs',
+          Platform.OS === 'web' ? 'hover:bg-blue-100' : ''
+        ),
+        'info-solid': cn(
+          'bg-blue-600 active:bg-blue-700 shadow-xs',
+          Platform.OS === 'web' ? 'hover:bg-blue-700' : ''
+        ),
+        purple: cn(
+          'border border-purple-500/40 bg-purple-50 dark:bg-purple-950/40 active:bg-purple-100 dark:active:bg-purple-900/60 shadow-xs',
+          Platform.OS === 'web' ? 'hover:bg-purple-100' : ''
         ),
         outline: cn(
           'border border-border/80 bg-card active:bg-secondary/60 shadow-xs',
@@ -66,7 +106,17 @@ const buttonTextVariants = cva(
       variant: {
         default: 'text-primary-foreground',
         primary: 'text-primary-foreground',
-        destructive: 'text-destructive-foreground',
+        destructive: 'text-white font-bold',
+        'destructive-outline': 'text-rose-600 dark:text-rose-400 font-bold',
+        stop: 'text-white font-bold',
+        'stop-outline': 'text-rose-600 dark:text-rose-400 font-bold',
+        success: 'text-white font-bold',
+        edit: 'text-emerald-700 dark:text-emerald-400 font-bold',
+        warning: 'text-amber-700 dark:text-amber-400 font-bold',
+        'warning-solid': 'text-white font-bold',
+        info: 'text-blue-700 dark:text-blue-400 font-bold',
+        'info-solid': 'text-white font-bold',
+        purple: 'text-purple-700 dark:text-purple-400 font-bold',
         outline: 'text-foreground group-active:text-foreground',
         secondary: 'text-secondary-foreground',
         ghost: 'text-foreground group-active:text-foreground',
@@ -91,7 +141,24 @@ const buttonTextVariants = cva(
 
 export interface ButtonProps
   extends React.ComponentPropsWithoutRef<typeof Pressable> {
-  variant?: 'default' | 'primary' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  variant?: 
+    | 'default' 
+    | 'primary' 
+    | 'destructive' 
+    | 'destructive-outline'
+    | 'stop'
+    | 'stop-outline'
+    | 'success'
+    | 'edit'
+    | 'warning'
+    | 'warning-solid'
+    | 'info'
+    | 'info-solid'
+    | 'purple'
+    | 'outline' 
+    | 'secondary' 
+    | 'ghost' 
+    | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   leftIcon?: React.ComponentType<{ size?: number; className?: string; color?: string }>;
   rightIcon?: React.ComponentType<{ size?: number; className?: string; color?: string }>;

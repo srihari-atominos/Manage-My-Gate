@@ -4,7 +4,9 @@ import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
-import { FAB } from '@/components/ui/FAB';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { Plus } from 'lucide-react-native';
 import { useMyBookings } from '@/src/features/amenities/hooks/useMyBookings';
 import { AmenityBookingCard } from '@/src/features/amenities/components/AmenityBookingCard';
 import { PassQRModal } from '@/src/features/amenities/components/PassQRModal';
@@ -91,6 +93,19 @@ export default function MyBookingsScreen() {
       loading={loading && myBookings.length === 0}
       error={error}
       onRetry={handleRefresh}
+      headerRight={
+        <Button
+          variant="default"
+          size="sm"
+          onPress={() => router.push('/(resident)/amenities/discover' as any)}
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          accessibilityRole="button"
+          accessibilityLabel="Book Amenity"
+        >
+          <Plus size={15} color="#ffffff" />
+          <Text className="text-xs font-bold text-primary-foreground">Book Amenity</Text>
+        </Button>
+      }
     >
       <View className="flex-1 bg-background">
         {/* Paginated List of Bookings */}
@@ -106,13 +121,6 @@ export default function MyBookingsScreen() {
           emptyTitle="No Bookings Found"
           emptySubtitle="You have no reservations matching this filter."
           contentContainerClassName="px-4 pt-3 pb-28"
-        />
-
-        {/* Resident Action Trigger: FAB */}
-        <FAB
-          iconName="Plus"
-          label="Book Amenity"
-          onPress={() => router.push('/(resident)/amenities/discover' as any)}
         />
       </View>
 

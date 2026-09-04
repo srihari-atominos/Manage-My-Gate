@@ -177,9 +177,51 @@ export const loadCachedNotices = createAsyncThunk(
   }
 );
 
+export const DEFAULT_MOCK_NOTICES = [
+  {
+    _id: 'notice_mock_01',
+    title: 'Annual General Body Meeting (AGM) 2026',
+    content: 'All residents and owners are invited to attend the Annual General Meeting at the Grand Ballroom.',
+    category: 'General',
+    priority: 'High',
+    status: 'Published',
+    isPinned: true,
+    isBookmarked: false,
+    author: 'Management Committee',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString(),
+  },
+  {
+    _id: 'notice_mock_02',
+    title: 'Overhead Water Tank Deep Cleaning Schedule',
+    content: 'Water supply will be temporarily paused between 10:00 AM to 02:00 PM on Wednesday for mandatory tank sterilization.',
+    category: 'Maintenance',
+    priority: 'Medium',
+    status: 'Published',
+    isPinned: false,
+    isBookmarked: true,
+    author: 'Facility Operations',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(),
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3).toISOString(),
+  },
+  {
+    _id: 'notice_mock_03',
+    title: 'Festival of Lights — Grand Community Celebration',
+    content: 'Join us with family and friends for cultural performances, food stalls, and games at the Central Lawn from 6:30 PM.',
+    category: 'Event',
+    priority: 'Low',
+    status: 'Published',
+    isPinned: false,
+    isBookmarked: false,
+    author: 'Cultural Committee',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(),
+  },
+];
+
 // Initial Redux State
 const initialState = {
-  notices: [],
+  notices: DEFAULT_MOCK_NOTICES,
   selectedNotice: null,
   loading: false,
   error: null,
@@ -187,7 +229,7 @@ const initialState = {
   pagination: {
     currentPage: 1,
     totalPages: 1,
-    totalRecords: 0,
+    totalRecords: DEFAULT_MOCK_NOTICES.length,
     limit: 10,
   },
   search: '',
@@ -206,17 +248,18 @@ const initialState = {
   },
   dashboardStats: {
     kpis: {
-      activeNotices: 0,
+      activeNotices: DEFAULT_MOCK_NOTICES.length,
       draftNotices: 0,
+      highPriorityNotices: 1,
       expiredNotices: 0,
       scheduledNotices: 0,
       archivedNotices: 0,
       urgentNotices: 0,
     },
     categories: {
-      General: 0,
-      Maintenance: 0,
-      Events: 0,
+      General: 1,
+      Maintenance: 1,
+      Events: 1,
       Emergency: 0,
       Meetings: 0,
     },

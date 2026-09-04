@@ -8,7 +8,7 @@ import { FAB } from '@/components/ui/FAB';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/ui/icon';
 import { EmptyState } from '@/components/feedback/EmptyState';
-import { FileSpreadsheet, PlusCircle, Zap, FilterX, Building2 } from 'lucide-react-native';
+import { FileSpreadsheet, PlusCircle, Zap, FilterX, Building2, Plus } from 'lucide-react-native';
 import { useVilla } from '@/src/features/villa/hooks/useVilla';
 import { useVillaSocket } from '@/src/features/villa/hooks/useVillaSocket';
 import { VillaCard } from '@/src/features/villa/components/VillaCard';
@@ -144,6 +144,17 @@ export default function VillaManagementScreen() {
         fetchVillas();
         fetchStats();
       }}
+      headerRight={
+        <TouchableOpacity
+          onPress={handleOpenCreateForm}
+          className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full active:opacity-80"
+          accessibilityRole="button"
+          accessibilityLabel="Add Unit"
+        >
+          <Plus size={14} color="#ffffff" />
+          <Text className="text-xs font-bold text-primary-foreground">{t('create_unit', 'Add Unit')}</Text>
+        </TouchableOpacity>
+      }
     >
       <View className="flex-1 bg-background relative">
         {/* KPI Stats Horizontal Row */}
@@ -307,14 +318,6 @@ export default function VillaManagementScreen() {
             ))}
           </ScrollView>
         )}
-
-        {/* Floating Action Button */}
-        <FAB
-          iconName="Plus"
-          label="Add Unit"
-          onPress={handleOpenCreateForm}
-          variant="primary"
-        />
       </View>
 
       {/* Details Bottom Sheet Modal */}

@@ -142,7 +142,8 @@ export function AdminBillingDashboardScreen() {
     >
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerStyle={{ paddingVertical: 16 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingVertical: 16, paddingBottom: 110 }}
         refreshControl={
           <RefreshControl
             refreshing={loadingStates.fetchKPIs}
