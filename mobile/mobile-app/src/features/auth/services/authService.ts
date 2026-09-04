@@ -86,6 +86,10 @@ export const updateOrganizationFeatures = async (orgId: string, features: string
   return await apiClient.patch(`/organizations/${orgId}/features`, { features });
 };
 
+export const deleteAccount = async () => {
+  return await apiClient.delete('/users/me');
+};
+
 export default {
   login,
   register,
@@ -101,6 +105,7 @@ export default {
   verifyResetPasswordOtp,
   resetPassword,
   logoutApi,
+  deleteAccount,
   fetchSessions,
   revokeSession,
   revokeAllSessions,

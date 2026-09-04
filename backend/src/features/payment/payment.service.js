@@ -20,17 +20,39 @@ export class PaymentService {
         throw new HttpError(400, 'orgId, userId, referenceId, and amount are required.');
       }
 
-      let activeGateway = (gateway || process.env.PAYMENT_PROVIDER || 'mock').toLowerCase();
-      
-      if (process.env.PAYMENT_PROVIDER === 'mock') {
+      // Backend Amount & Eligibility Validation for Invoices
+      if (referenceType === 'Invoice') {
+        const Invoice = (await import('../invoice/invoice.model.js')).default;
+        const invoice = await Invoice.findById(referenceId);
+        if (!invoice) {
+          throw new HttpError(404, 'Invoice not found.');
+        }
+        if (invoice.status === 'PAID') {
+          throw new HttpError(400, 'Invoice has already been fully paid.');
+        }
+        if (invoice.status === 'CANCELLED') {
+          throw new HttpError(400, 'Invoice is cancelled and cannot accept payments.');
+        }
+        
+        const remainingDue = Math.max(0, invoice.totalDue - (invoice.paidAmount || 0));
+        if (amount > remainingDue + 0.01) {
+          throw new HttpError(400, `Payment amount (₹${amount}) exceeds remaining invoice due of ₹${remainingDue}.`);
+        }
+      }
+
+      const configuredProvider = (process.env.PAYMENT_PROVIDER || 'mock').toLowerCase();
+      let activeGateway = (gateway || configuredProvider).toLowerCase();
+
+      if (configuredProvider === 'mock') {
         activeGateway = 'mock';
+      } else if (configuredProvider === 'razorpay') {
+        activeGateway = 'razorpay';
       }
 
       logger.info(`Initiating payment order via '${activeGateway}' strategy`, { orgId, userId, amount, currency });
 
-      // Fetch System Platform Organization Razorpay credentials via integrationHubService
       let credentials = {};
-      if (activeGateway !== 'mock') {
+      if (activeGateway === 'razorpay') {
         try {
           const platformOrgId = process.env.PLATFORM_ORG_ID;
           if (platformOrgId) {
@@ -47,10 +69,11 @@ export class PaymentService {
           logger.warn(`Failed to fetch credentials for ${activeGateway}`, { error: error.message });
         }
 
-        // Fallback to mock if no credentials exist and we're not in production
-        if (!credentials?.keyId && !credentials?.key_id && !process.env.RAZORPAY_KEY_ID && process.env.NODE_ENV !== 'production') {
-          activeGateway = 'mock';
-          logger.info(`Fallback to 'mock' strategy due to missing Razorpay credentials`);
+        const keyId = credentials?.keyId || credentials?.key_id || process.env.RAZORPAY_KEY_ID;
+        const keySecret = credentials?.keySecret || credentials?.key_secret || process.env.RAZORPAY_KEY_SECRET;
+
+        if (!keyId || !keySecret || keyId === 'test_key' || keyId === 'rzp_test_YOUR_KEY_ID_HERE') {
+          throw new HttpError(400, 'PAYMENT_PROVIDER is set to "razorpay", but valid Razorpay Key ID and Key Secret are not configured in backend/.env or IntegrationHub.');
         }
       }
 
@@ -64,18 +87,9 @@ export class PaymentService {
           credentials
         );
       } catch (err) {
-        if (activeGateway !== 'mock' && process.env.NODE_ENV !== 'production') {
-          logger.warn(`Razorpay order creation failed (${err.message}). Falling back to mock gateway.`, { error: err.message });
-          activeGateway = 'mock';
-          const mockProvider = getPaymentProvider('mock');
-          orderPayload = await mockProvider.createOrder(
-            { amount, currency, receipt, notes: { orgId, userId, referenceId, referenceType } },
-            credentials
-          );
-        } else {
-          const statusCode = err.statusCode === 401 ? 400 : (err.statusCode || 500);
-          throw new HttpError(statusCode, `Payment gateway error: ${err.message}`);
-        }
+        logger.error(`Payment order creation failed for gateway '${activeGateway}': ${err.message}`);
+        const statusCode = err.statusCode === 401 ? 400 : (err.statusCode || 500);
+        throw new HttpError(statusCode, `Payment gateway error: ${err.message}`);
       }
 
       // Save payment record in DB (persisting amount in Rupees)
@@ -104,7 +118,7 @@ export class PaymentService {
         currency: payment.currency,
         status: payment.status,
         gateway: payment.gateway,
-        razorpayKeyId: credentials?.keyId || credentials?.key_id || process.env.RAZORPAY_KEY_ID,
+        razorpayKeyId: activeGateway === 'mock' ? 'rzp_test_mockkey' : (credentials?.keyId || credentials?.key_id || process.env.RAZORPAY_KEY_ID),
         rawOrder: orderPayload.rawOrder,
       };
     } catch (error) {

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useSelector } from 'react-redux'
-import config from '../../../config/config.js'
+import config, { isMockRazorpayKey } from '../../../config/config.js'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { createWalletRechargeOrder, verifyWalletRechargePayment } from '../services/walletApi.js'
@@ -36,8 +36,7 @@ export const useWalletPayment = () => {
 
         const orderData = orderRes.data
         const effectiveKey = orderData.key || config.razorpayKey || config.razorpayKeyId
-        const isRealKey = effectiveKey && (effectiveKey.startsWith('rzp_test_') || effectiveKey.startsWith('rzp_live_')) && effectiveKey !== 'rzp_test_mockkey'
-        const isMockOrder = orderData.isMock || orderData.id?.startsWith('order_mock_') || !isRealKey
+        const isMockOrder = orderData.isMock || orderData.id?.startsWith('order_mock_') || isMockRazorpayKey(effectiveKey)
 
         if (isMockOrder) {
           // Wait 1 second to show gateway connecting state

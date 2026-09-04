@@ -332,7 +332,7 @@ async function seed() {
     status: 'UNPAID'
   });
 
-  // Invoice 4: Tenant 2 (Villa B-201) - PENDING Cheque Clearing (Owner 1 sees under Tenant Arrears)
+  // Invoice 4: Tenant 2 (Villa B-201) - PENDING Bank Transfer Verification
   const invoice4 = await Invoice.create({
     communityId: org._id,
     orgId: org._id,
@@ -349,8 +349,8 @@ async function seed() {
     totalDue: 7000,
     dueDate: new Date('2026-07-31'),
     status: 'VERIFICATION_PENDING',
-    paymentMethod: 'CHEQUE',
-    offlineReference: 'CHQ-118274'
+    paymentMethod: 'BANK_TRANSFER',
+    offlineReference: 'BANK-118274'
   });
 
   console.log('Invoices successfully generated and linked.');

@@ -24,12 +24,13 @@ import {
   Share2,
   FileText,
 } from 'lucide-react-native';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import { billingService } from '../services/billingService';
 import { InvoiceStatus, Invoice } from '../types';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
-import { generateInvoiceHtml } from '../utils/invoicePdfUtility';
+import { generateInvoiceHtml, exportInvoiceHtmlDocument } from '../utils/invoicePdfUtility';
 
 export function InvoiceDetailsScreen() {
   const router = useRouter();
@@ -86,12 +87,17 @@ export function InvoiceDetailsScreen() {
         String(inv.invoiceNumber || '') === String(invoiceId)
     );
     if (inBreakdown) {
+      const totalDue = inBreakdown.totalDue || 0;
+      const paidAmount = inBreakdown.paidAmount || 0;
+      const outstandingAmount = inBreakdown.outstandingAmount ?? Math.max(0, totalDue - paidAmount);
       return {
         _id: inBreakdown.invoiceId,
         invoiceNumber: inBreakdown.invoiceNumber,
         unitNumber: inBreakdown.unitNumber,
-        totalDue: inBreakdown.totalDue,
-        amount: inBreakdown.totalDue,
+        totalDue,
+        paidAmount,
+        outstandingAmount,
+        amount: totalDue,
         billingPeriodString: inBreakdown.billingPeriodString,
         status: inBreakdown.status,
         dueDate: inBreakdown.dueDate,
@@ -122,6 +128,23 @@ export function InvoiceDetailsScreen() {
   }, [invoiceId, reduxInvoice, fallbackInvoice]);
 
   const invoice = reduxInvoice || fallbackInvoice;
+  const { user } = useAuth();
+
+  const dynamicCommunityName = useMemo(() => {
+    return (
+      (invoice as any)?.communityName ||
+      (invoice as any)?.orgName ||
+      (invoice as any)?.organizationName ||
+      (invoice as any)?.organization?.name ||
+      (user as any)?.organizationName ||
+      (user as any)?.activeOrganizationName ||
+      (user as any)?.orgName ||
+      (user as any)?.communityName ||
+      (user as any)?.communityOrg ||
+      (user as any)?.organization?.name ||
+      'Community Workspace'
+    );
+  }, [invoice, user]);
 
   const handleRefresh = useCallback(() => {
     loadResidentDues();
@@ -131,35 +154,22 @@ export function InvoiceDetailsScreen() {
   }, [loadResidentDues, invoiceId]);
 
   // Export / Download PDF HTML statement
-  const handleExportPdf = async () => {
+  const handleExportPdf = async (action: 'download' | 'print' = 'download') => {
     if (!invoice) return;
     try {
       setIsExporting(true);
       const invNum = invoice.invoiceNumber || invoice._id || 'INVOICE';
       const html = generateInvoiceHtml(invoice, {
-        communityName: 'Manage-My-Gate Community',
-        residentName: invoice.targetUser || 'Resident Owner',
+        communityName: dynamicCommunityName,
+        residentName: invoice.targetUser || (user as any)?.name || (user as any)?.fullName || 'Resident Owner',
       });
 
-      const filename = `Invoice_${invNum}.html`;
-      const docDir = (FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || '';
-      const fileUri = `${docDir}${filename}`;
-      await FileSystem.writeAsStringAsync(fileUri, html, {
-        encoding: (FileSystem as any).EncodingType?.UTF8 || 'utf8',
-      });
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/html',
-          dialogTitle: `Invoice #${invNum}`,
-          UTI: 'public.html',
-        });
-      } else {
-        await Share.share({
-          title: `Invoice #${invNum}`,
-          message: `Manage-My-Gate Maintenance Invoice #${invNum}\nUnit: ${invoice.unitNumber || 'Villa'}\nAmount: ₹${invoice.totalDue || invoice.amount || 0}\nStatus: ${invoice.status || 'UNPAID'}`,
-        });
-      }
+      await exportInvoiceHtmlDocument(
+        html,
+        `Invoice_${invNum}.html`,
+        `Invoice Statement #${invNum}`,
+        { action }
+      );
     } catch (err) {
       console.error('Failed to export invoice document', err);
     } finally {
@@ -233,7 +243,7 @@ export function InvoiceDetailsScreen() {
           <Button
             variant="outline"
             size="sm"
-            onPress={handleExportPdf}
+            onPress={() => handleExportPdf('download')}
             disabled={isExporting}
             className="flex-row items-center gap-1.5 border-border bg-card"
             accessibilityRole="button"
@@ -324,7 +334,7 @@ export function InvoiceDetailsScreen() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onPress={handleExportPdf}
+                  onPress={() => handleExportPdf('print')}
                   className="flex-1 flex-row items-center justify-center gap-1.5"
                 >
                   <Icon as={Share2} size={14} className="text-foreground" />
@@ -333,7 +343,7 @@ export function InvoiceDetailsScreen() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onPress={handleExportPdf}
+                  onPress={() => handleExportPdf('download')}
                   className="flex-1 flex-row items-center justify-center gap-1.5"
                 >
                   <Icon as={Download} size={14} className="text-foreground" />

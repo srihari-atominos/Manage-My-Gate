@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useBilling } from './useBilling';
 
-export type PaymentMethod = 'WALLET' | 'RAZORPAY';
+export type PaymentMethod = 'WALLET' | 'RAZORPAY' | 'OFFLINE';
 
 export interface MobilePaymentState {
   isProcessing: boolean;

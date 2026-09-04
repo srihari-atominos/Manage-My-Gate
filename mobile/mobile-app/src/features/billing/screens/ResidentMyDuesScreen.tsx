@@ -78,6 +78,8 @@ export function ResidentMyDuesScreen() {
       unitNumber: firstDue.unitNumber,
       billingPeriodString: firstDue.billingPeriodString,
       totalDue: firstDue.totalDue,
+      paidAmount: firstDue.paidAmount ?? 0,
+      outstandingAmount: firstDue.outstandingAmount ?? Math.max(0, firstDue.totalDue - (firstDue.paidAmount ?? 0)),
       status: firstDue.status,
     } as Invoice;
   };
@@ -89,7 +91,7 @@ export function ResidentMyDuesScreen() {
     }
   };
 
-  const handleOfflineChequePrimary = () => {
+  const handlePayOfflinePrimary = () => {
     const targetInv = findFirstUnpaidInvoice();
     if (targetInv) {
       setOfflineInvoice(targetInv);
@@ -118,7 +120,7 @@ export function ResidentMyDuesScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingBottom: totalPortfolioDue > 0 ? 110 : 32 }}
+          contentContainerStyle={{ paddingBottom: 32 }}
           refreshControl={
             <RefreshControl
               refreshing={loadingStates.fetchDues}
@@ -228,8 +230,12 @@ export function ResidentMyDuesScreen() {
                   const invNo = item.invoiceNumber || invoiceId || '—';
                   const unitStr = item.unitNumber ? `Villa ${item.unitNumber}` : 'Villa Unit';
                   const periodStr = item.billingPeriodString || 'Current Month';
-                  const dueAmount = item.totalDue || 0;
-                  const formattedDue = `₹${dueAmount.toLocaleString('en-IN')}`;
+                  const totalDue = item.totalDue || 0;
+                  const paidAmount = item.paidAmount || 0;
+                  const remainingDue = item.outstandingAmount !== undefined
+                    ? item.outstandingAmount
+                    : Math.max(0, totalDue - paidAmount);
+                  const formattedDue = `₹${remainingDue.toLocaleString('en-IN')}`;
 
                   const statusVariant = getStatusVariant(item.status);
                   const statusLabel = item.status ? item.status.replace(/_/g, ' ') : 'UNPAID';
@@ -240,7 +246,9 @@ export function ResidentMyDuesScreen() {
                     invoiceNumber: invNo,
                     unitNumber: item.unitNumber,
                     billingPeriodString: periodStr,
-                    totalDue: dueAmount,
+                    totalDue,
+                    paidAmount,
+                    outstandingAmount: remainingDue,
                     status: item.status,
                   } as Invoice;
 
@@ -355,43 +363,19 @@ export function ResidentMyDuesScreen() {
           ) : null}
         </ScrollView>
 
-        {/* Sticky Action Bar for Global Payment Triggers */}
-        {totalPortfolioDue > 0 ? (
-          <View className="absolute bottom-0 left-0 right-0 bg-background/95 border-t border-border p-4 flex-row gap-2">
-            <Button
-              variant="default"
-              size="lg"
-              className="flex-1 flex-row items-center justify-center"
-              disabled={isClearing}
-              onPress={handlePayNowPrimary}
-              accessibilityRole="button"
-              accessibilityLabel={`Pay Now ₹${totalPortfolioDue.toLocaleString('en-IN')}`}
-            >
-              <Icon as={Zap} size={18} className="text-primary-foreground me-1.5" />
-              <Text className="font-bold text-sm text-primary-foreground">
-                {isClearing ? 'Clearing…' : `Pay Now — ₹${totalPortfolioDue.toLocaleString('en-IN')}`}
-              </Text>
-            </Button>
-
-            {!isClearing ? (
-              <Button
-                variant="outline"
-                size="lg"
-                onPress={handleOfflineChequePrimary}
-                accessibilityRole="button"
-                accessibilityLabel="Record Offline Cheque Payment"
-              >
-                Offline Cheque
-              </Button>
-            ) : null}
-          </View>
-        ) : null}
-
         {/* Payment Checkout Sheet */}
         <PaymentCheckoutSheet
           visible={!!checkoutInvoice}
           invoice={checkoutInvoice}
           onClose={() => setCheckoutInvoice(null)}
+          onOpenOfflineSheet={(inv, amount) => {
+            setCheckoutInvoice(null);
+            setOfflineInvoice({
+              ...inv,
+              totalDue: amount || inv.totalDue || inv.amount || 0,
+              outstandingAmount: amount || inv.outstandingAmount || inv.totalDue || 0,
+            });
+          }}
           onPaymentSuccess={() => {
             loadResidentDues();
           }}

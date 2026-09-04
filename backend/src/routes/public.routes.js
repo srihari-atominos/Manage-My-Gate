@@ -1,8 +1,13 @@
 import { Router } from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import rateLimit from 'express-rate-limit';
 import crmInquiryController from '../features/crmInquiry/crmInquiry.controller.js';
 import { validate } from '../middlewares/validator.middleware.js';
 import { validatePublicLead } from '../features/crmInquiry/crmInquiry.validator.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = Router();
 
@@ -10,6 +15,15 @@ const publicLeadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: { success: false, message: 'Too many requests, please try again later.' }
+});
+
+router.get('/health', (req, res) => {
+  res.success({
+    status: 'UP',
+    service: 'ManageMyGate Backend API',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  }, 'API is healthy');
 });
 
 router.post('/register-lead', publicLeadLimiter, validate(validatePublicLead), crmInquiryController.registerPublicLead);
@@ -210,6 +224,10 @@ router.get('/invoice/:id/download', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+router.get('/privacy-policy', (req, res) => {
+  res.sendFile(path.resolve(__dirname, '../../public/privacy-policy.html'));
 });
 
 export default router;

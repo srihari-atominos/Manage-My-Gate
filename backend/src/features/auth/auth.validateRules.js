@@ -32,6 +32,10 @@ export const registerRules = [
     .isString()
     .withMessage('Phone must be a string')
     .trim(),
+  body('privacyPolicyAccepted')
+    .optional()
+    .isBoolean()
+    .withMessage('privacyPolicyAccepted must be a boolean'),
 ];
 
 export const setupAccountPasswordRules = [

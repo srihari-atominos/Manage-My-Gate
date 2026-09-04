@@ -175,7 +175,17 @@ export const billingService = {
    * @param paymentData
    */
   async verifyWalletPayment(paymentData: any): Promise<any> {
-    const response: any = await apiClient.post('/wallet/verify-payment', paymentData);
+    const formattedPayload = {
+      ...paymentData,
+      amount: paymentData?.amount,
+      razorpay_order_id: paymentData?.razorpay_order_id || paymentData?.razorpayOrderId || paymentData?.orderId,
+      razorpay_payment_id: paymentData?.razorpay_payment_id || paymentData?.razorpayPaymentId || paymentData?.paymentId,
+      razorpay_signature: paymentData?.razorpay_signature || paymentData?.razorpaySignature,
+      razorpayOrderId: paymentData?.razorpay_order_id || paymentData?.razorpayOrderId || paymentData?.orderId,
+      razorpayPaymentId: paymentData?.razorpay_payment_id || paymentData?.razorpayPaymentId || paymentData?.paymentId,
+      razorpaySignature: paymentData?.razorpay_signature || paymentData?.razorpaySignature,
+    };
+    const response: any = await apiClient.post('/wallet/verify-payment', formattedPayload);
     const body = response?.success !== undefined ? response : response?.data;
     return body?.data || body;
   },

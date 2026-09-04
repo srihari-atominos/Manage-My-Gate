@@ -29,17 +29,23 @@ export const useGlobalAppSocket = () => {
   useEffect(() => {
     if (!socket || !isAuthenticated || !currentUser) return;
 
+    const permissions: string[] = currentUser?.permissions || [];
+    const userRole = getUserRoleName(currentUser);
+    const isSuperAdmin = userRole === 'SuperAdmin' || userRole === 'Admin';
+    const canReadRoles = isSuperAdmin || permissions.includes('role:read') || permissions.includes('roles:read') || permissions.includes('*');
+    const canReadUsers = isSuperAdmin || permissions.includes('user:read') || permissions.includes('users:read') || permissions.includes('*');
+    const canReadInvoices = isSuperAdmin || permissions.includes('billing:dashboard') || permissions.includes('*');
+
     // 1. Role & Permission Updates
     const handleRoleOrUserUpdate = (payload: any) => {
-      // Refetch roles & users
-      dispatch(fetchRolesAsync({ page: 1, limit: 100 })).catch(() => {});
-      dispatch(fetchUsersThunk({ page: 1, limit: 100 })).catch(() => {});
+      // Refetch roles & users only if user has permission
+      if (canReadRoles) dispatch(fetchRolesAsync({ page: 1, limit: 100 })).catch(() => {});
+      if (canReadUsers) dispatch(fetchUsersThunk({ page: 1, limit: 100 })).catch(() => {});
 
       if (!payload) return;
 
       const currentId = currentUser.id || currentUser._id;
       const targetUserId = payload.userId || payload.data?.userId || payload.id;
-      const userRole = getUserRoleName(currentUser);
       const updatedRoleName = payload.roleName || payload.data?.roleName || payload.role;
       const updatedRoleId = payload.roleId || payload.data?.roleId;
       const updatedPermissions = payload.permissions || payload.data?.permissions;
@@ -80,7 +86,7 @@ export const useGlobalAppSocket = () => {
     // 4. Billing & Dues Updates
     const handleBillingUpdate = () => {
       dispatch(fetchMyDues()).catch(() => {});
-      dispatch(fetchInvoicesGrid({ page: 1, limit: 20 })).catch(() => {});
+      if (canReadInvoices) dispatch(fetchInvoicesGrid({ page: 1, limit: 20 })).catch(() => {});
     };
 
     // 5. Complaint Updates

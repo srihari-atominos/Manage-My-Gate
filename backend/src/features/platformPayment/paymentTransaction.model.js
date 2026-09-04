@@ -37,7 +37,7 @@ const paymentTransactionSchema = new Schema(
     },
     gateway: {
       type: String,
-      enum: ['RAZORPAY', 'STRIPE', 'TAP', 'HYPERPAY', 'OFFLINE_CHEQUE', 'OFFLINE_NEFT', 'BANK_TRANSFER'],
+      enum: ['RAZORPAY', 'STRIPE', 'TAP', 'HYPERPAY', 'OFFLINE_BANK_TRANSFER', 'OFFLINE_NEFT', 'BANK_TRANSFER'],
       required: true,
     },
     gatewayTransactionId: {

@@ -56,10 +56,10 @@ export function InvoiceActionsBottomSheet({
   const formattedAmount = `₹${(submittedAmount || totalAmount).toLocaleString('en-IN')}`;
 
   const status = invoice.status || 'UNPAID';
-  const isPendingCheque = status === 'VERIFICATION_PENDING';
+  const isPendingVerification = status === 'VERIFICATION_PENDING';
   const isUnpaid = status === 'UNPAID' || status === 'OVERDUE';
   const refStr = invoice.offlineReference || '—';
-  const methodStr = invoice.paymentMethod || 'CHEQUE / NEFT';
+  const methodStr = invoice.paymentMethod || 'BANK_TRANSFER';
 
   const handleShareReceipt = async () => {
     try {
@@ -121,12 +121,12 @@ export function InvoiceActionsBottomSheet({
         <View className="py-2 gap-4">
 
           {/* Pending Verification Alert Notice */}
-          {isPendingCheque ? (
+          {isPendingVerification ? (
             <View className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex-row items-start">
               <Icon as={Clock} size={20} className="text-amber-600 dark:text-amber-400 me-3 mt-0.5" />
               <View className="flex-1">
                 <Text className="text-sm font-bold text-amber-900 dark:text-amber-200">
-                  Offline Payment Awaiting Clearance
+                  Payment Verification Pending
                 </Text>
                 <Text className="text-xs text-amber-700 dark:text-amber-300 mt-1">
                   Resident submitted payment reference #{refStr} for verification. Review details below before clearing.
@@ -159,7 +159,7 @@ export function InvoiceActionsBottomSheet({
 
           {/* Action CTAs */}
           <View className="gap-2.5 pt-2">
-            {isPendingCheque && onApproveOffline ? (
+            {isPendingVerification && onApproveOffline ? (
               <Button
                 variant="default"
                 size="lg"

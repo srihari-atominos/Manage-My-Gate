@@ -4,18 +4,25 @@ import { v4 as uuidv4 } from 'uuid';
 
 class WalletRepository {
   async getWallet(userId, orgId, session = null) {
-    const options = { new: true, upsert: true, setDefaultsOnInsert: true };
+    const options = { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true };
     if (session) options.session = session;
+
+    if (!orgId) {
+      const existing = await Wallet.findOne({ userId }).session(session || null);
+      if (existing) return existing;
+    }
     
     return await Wallet.findOneAndUpdate(
-      { userId, orgId },
-      { $setOnInsert: { balance: 0 } },
+      { userId, ...(orgId ? { orgId } : {}) },
+      { $setOnInsert: { balance: 0, ...(orgId ? { orgId } : {}) } },
       options
     );
   }
 
   async getTransactions(userId, orgId) {
-    return await WalletTransaction.find({ userId, orgId })
+    const query = { userId };
+    if (orgId) query.orgId = orgId;
+    return await WalletTransaction.find(query)
       .populate({ path: 'referenceId', select: 'qrCode qrStatus status bookingDate startTime endTime' })
       .sort({ createdAt: -1 });
   }

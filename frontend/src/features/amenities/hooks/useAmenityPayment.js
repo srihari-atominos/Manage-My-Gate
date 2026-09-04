@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useSelector } from 'react-redux'
-import config from '../../../config/config.js'
+import config, { isMockRazorpayKey } from '../../../config/config.js'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { verifyRazorpaySignature } from '../services/paymentApi.js'
@@ -28,7 +28,8 @@ export const useAmenityPayment = () => {
     async ({ paymentIntent, onSuccess, onFailure }) => {
       setLoading(true)
       try {
-        const isMock = !config.razorpayKey || config.razorpayKey === 'rzp_test_mockkey'
+        const keyId = paymentIntent?.razorpayKeyId || paymentIntent?.keyId || config.razorpayKey
+        const isMock = isMockRazorpayKey(keyId)
 
         if (isMock) {
           // Wait 1.5 seconds to show the loading spinner "Connecting to payment gateway..."

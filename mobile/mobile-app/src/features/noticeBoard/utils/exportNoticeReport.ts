@@ -1,6 +1,17 @@
-import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
+
+let LegacyFileSystem: any = null;
+try {
+  LegacyFileSystem = require('expo-file-system/legacy');
+} catch (e) {
+  try {
+    LegacyFileSystem = require('expo-file-system');
+  } catch (err) {
+    LegacyFileSystem = null;
+  }
+}
 
 export const exportNoticeReport = async (dashboardStats: any): Promise<void> => {
   try {
@@ -54,29 +65,34 @@ export const exportNoticeReport = async (dashboardStats: any): Promise<void> => 
       XLSX.utils.book_append_sheet(wb, activityWs, 'Recent Notices');
     }
 
+    if (Platform.OS === 'web') {
+      XLSX.writeFile(wb, 'notice_board_report.xlsx');
+      return;
+    }
+
     // Generate Base64 string for Excel file
     const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
     // Define temporary local file path
-    const fileUri = (FileSystem as any).documentDirectory + 'notice_board_report.xlsx';
+    const fs = LegacyFileSystem || {};
+    const docDir = fs.documentDirectory || fs.cacheDirectory || '';
+    const fileUri = docDir + 'notice_board_report.xlsx';
 
-    // Write file to filesystem
-    await FileSystem.writeAsStringAsync(fileUri, wbout, {
-      encoding: 'base64' as any,
-    });
-
-    // Check if sharing is available
-    if (!(await Sharing.isAvailableAsync())) {
-      throw new Error('Sharing is not available on this device');
+    if (fs.writeAsStringAsync) {
+      await fs.writeAsStringAsync(fileUri, wbout, {
+        encoding: 'base64',
+      });
     }
 
-    // Open native share sheet
-    await Sharing.shareAsync(fileUri, {
-      mimeType:
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      dialogTitle: 'Export Notice Board Report',
-      UTI: 'com.microsoft.excel.xlsx',
-    });
+    // Check if sharing is available
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(fileUri, {
+        mimeType:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dialogTitle: 'Export Notice Board Report',
+        UTI: 'com.microsoft.excel.xlsx',
+      });
+    }
   } catch (error) {
     console.error('Failed to export report:', error);
     throw error;

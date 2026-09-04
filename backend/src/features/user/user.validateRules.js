@@ -91,3 +91,26 @@ export const bulkInviteUserRules = [
     .withMessage('Villa Number must be a string')
     .trim(),
 ];
+
+/**
+ * Validation rules for public unauthenticated account deletion requests.
+ */
+export const requestDeletionRules = [
+  body('email')
+    .optional({ nullable: true, checkFalsy: true })
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .trim(),
+  body('mobile')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('Mobile number must be a string')
+    .trim()
+    .escape(),
+  body('reason')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('Reason must be text')
+    .trim()
+    .escape(),
+];

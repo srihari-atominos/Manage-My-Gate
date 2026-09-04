@@ -1,7 +1,21 @@
-/**
- * Frontend Application Configuration
- * Centralizes all parsed environment variables and configurations with clean fallbacks.
- */
+export const isMockRazorpayKey = (key) => {
+  if (!key) return true;
+  const str = String(key).trim();
+  if (
+    !str ||
+    str.includes('mock') ||
+    str.includes('dummy') ||
+    str.includes('TG9RGkcF') ||
+    str === 'rzp_test_12345' ||
+    str === 'rzp_test_mockkey' ||
+    str === 'test_key' ||
+    str.length < 15
+  ) {
+    return true;
+  }
+  return false;
+};
+
 export const config = {
   isDev: import.meta.env.DEV || import.meta.env.MODE === 'development',
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '/api',

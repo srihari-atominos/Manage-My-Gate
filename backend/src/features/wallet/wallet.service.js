@@ -253,12 +253,17 @@ class WalletService {
 
     if (isMock) {
       logger.info('Creating Mock Razorpay Recharge Order', { userId, amount });
+      const mockId = `order_mock_${Math.random().toString(36).substring(2, 15)}`;
+      const activeKey = keyId || 'rzp_test_mockkey';
       return {
-        id: `order_mock_${Math.random().toString(36).substring(2, 15)}`,
+        id: mockId,
+        orderId: mockId,
         amount: amount * 100, // Razorpay works in paise
         currency: "INR",
         status: "created",
-        key: keyId || 'rzp_test_mockkey',
+        key: activeKey,
+        keyId: activeKey,
+        razorpayKeyId: activeKey,
         isMock: true
       };
     }
@@ -276,9 +281,13 @@ class WalletService {
 
     try {
       const order = await instance.orders.create(options);
+      const activeKey = process.env.RAZORPAY_KEY_ID;
       return {
         ...order,
-        key: process.env.RAZORPAY_KEY_ID,
+        orderId: order.id,
+        key: activeKey,
+        keyId: activeKey,
+        razorpayKeyId: activeKey,
         isMock: false
       };
     } catch (error) {
@@ -288,19 +297,23 @@ class WalletService {
   }
 
   async verifyPaymentSignature(userId, orgId, paymentData) {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = paymentData;
+    const razorpay_order_id = paymentData?.razorpay_order_id || paymentData?.razorpayOrderId || paymentData?.orderId;
+    const razorpay_payment_id = paymentData?.razorpay_payment_id || paymentData?.razorpayPaymentId || paymentData?.paymentId;
+    const razorpay_signature = paymentData?.razorpay_signature || paymentData?.razorpaySignature;
+    const numericAmount = Number(amount) || 0;
+    if (numericAmount <= 0) {
+      throw new HttpError(400, 'Invalid recharge amount');
+    }
 
     const keyId = process.env.RAZORPAY_KEY_ID;
     const isRealKey = keyId && (keyId.startsWith('rzp_test_') || keyId.startsWith('rzp_live_'));
-    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !isRealKey || razorpay_order_id?.startsWith('order_mock_');
+    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !isRealKey || razorpay_order_id?.startsWith('order_mock_') || razorpay_signature?.startsWith('sig_mock_');
 
     if (isMock) {
       logger.info('Verifying Mock Razorpay Signature', { userId, orgId, paymentData });
       if (razorpay_signature === 'invalid_mock_signature') {
         throw new HttpError(400, 'Invalid payment signature');
       }
-
-      const numericAmount = Number(amount);
 
       // Update wallet balance
       const updatedWallet = await walletRepository.updateBalance(userId, orgId, numericAmount);
@@ -330,10 +343,14 @@ class WalletService {
       .digest('hex');
 
     if (expectedSignature !== razorpay_signature) {
+      logger.error('Wallet payment signature verification failed', {
+        razorpay_order_id,
+        razorpay_payment_id,
+        received: razorpay_signature,
+        expected: expectedSignature,
+      });
       throw new HttpError(400, 'Invalid payment signature');
     }
-
-    const numericAmount = Number(amount);
 
     // Update wallet balance
     const updatedWallet = await walletRepository.updateBalance(userId, orgId, numericAmount);

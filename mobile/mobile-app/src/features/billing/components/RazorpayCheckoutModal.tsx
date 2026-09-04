@@ -4,7 +4,23 @@ import { WebView } from 'react-native-webview';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
-import { X, ShieldCheck } from 'lucide-react-native';
+import { X, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react-native';
+
+export const isMockRazorpayKey = (key?: string, orderId?: string): boolean => {
+  if (!key) return true;
+  if (orderId && orderId.startsWith('order_mock_')) return true;
+  const trimmed = String(key).trim();
+  return (
+    !trimmed ||
+    trimmed.includes('mock') ||
+    trimmed.includes('dummy') ||
+    trimmed.includes('TG9RGkcF') ||
+    trimmed === 'rzp_test_12345' ||
+    trimmed === 'rzp_test_mockkey' ||
+    trimmed === 'test_key' ||
+    trimmed.length < 15
+  );
+};
 
 export interface RazorpayCheckoutOptions {
   razorpayKeyId: string;
@@ -56,6 +72,24 @@ export function RazorpayCheckoutModal({
       isHandledRef.current = false;
     }
   }, [visible]);
+
+  const isMock = useMemo(() => {
+    return isMockRazorpayKey(options?.razorpayKeyId, options?.orderId);
+  }, [options]);
+
+  const handleSimulateMockSuccess = useCallback(() => {
+    if (isHandledRef.current || !options) return;
+    isHandledRef.current = true;
+    const mockPaymentId = `pay_mock_${Date.now()}`;
+    const mockOrderId = options.orderId || `order_mock_${Date.now()}`;
+    const mockSig = `sig_mock_${Date.now()}`;
+    onSuccess({
+      paymentId: options.paymentId || '',
+      razorpayPaymentId: mockPaymentId,
+      razorpayOrderId: mockOrderId,
+      razorpaySignature: mockSig,
+    });
+  }, [options, onSuccess]);
 
   // Construct HTML wrapper for Razorpay Checkout
   const htmlContent = useMemo(() => {
@@ -272,9 +306,67 @@ export function RazorpayCheckoutModal({
           </Button>
         </View>
 
-        {/* WebView Gateway Container */}
+        {/* Gateway Container */}
         <View className="flex-1 bg-background">
-          {Platform.OS === 'web' ? (
+          {isMock ? (
+            <View className="flex-1 items-center justify-center p-6">
+              <View className="w-16 h-16 rounded-full bg-primary/10 items-center justify-center mb-4">
+                <Icon as={ShieldCheck} size={36} className="text-primary" />
+              </View>
+              <Text className="text-xl font-bold text-foreground mb-1 text-center">
+                Razorpay Gateway (Test Mode)
+              </Text>
+              <Text className="text-xs text-muted-foreground mb-6 text-center">
+                Development Test Key Detected ({options.razorpayKeyId || 'Mock Mode'})
+              </Text>
+
+              <View className="w-full bg-card border border-border rounded-2xl p-4 mb-6 gap-2.5">
+                <View className="flex-row justify-between items-center">
+                  <Text className="text-xs text-muted-foreground">Order ID</Text>
+                  <Text className="text-xs font-mono font-bold text-foreground">#{options.orderId}</Text>
+                </View>
+                <View className="flex-row justify-between items-center">
+                  <Text className="text-xs text-muted-foreground">Settlement Amount</Text>
+                  <Text className="text-base font-extrabold text-primary">₹{options.amount.toLocaleString('en-IN')}</Text>
+                </View>
+                <View className="flex-row justify-between items-center">
+                  <Text className="text-xs text-muted-foreground">Status</Text>
+                  <Text className="text-xs font-bold text-amber-500">Ready for Simulation</Text>
+                </View>
+              </View>
+
+              <View className="w-full bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 mb-6 flex-row items-center">
+                <Icon as={AlertCircle} size={18} className="text-amber-500 me-2.5" />
+                <Text className="text-xs text-amber-900 dark:text-amber-200 flex-1">
+                  Using test environment key. Tap below to simulate successful payment capture and signature verification.
+                </Text>
+              </View>
+
+              <Button
+                variant="default"
+                size="lg"
+                className="w-full flex-row items-center justify-center mb-3 bg-status-success"
+                onPress={handleSimulateMockSuccess}
+              >
+                <Icon as={CheckCircle2} size={18} className="text-white me-2" />
+                <Text className="font-bold text-white">Simulate Payment Success</Text>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full"
+                onPress={() => {
+                  if (!isHandledRef.current) {
+                    isHandledRef.current = true;
+                    onDismiss('User cancelled test payment');
+                  }
+                }}
+              >
+                <Text>Cancel Checkout</Text>
+              </Button>
+            </View>
+          ) : Platform.OS === 'web' ? (
             <iframe
               srcDoc={htmlContent}
               style={{ width: '100%', height: '100%', border: 'none' }}

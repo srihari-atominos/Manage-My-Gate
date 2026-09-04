@@ -223,8 +223,8 @@ const invoiceSchema = new mongoose.Schema(
     paymentMethod: {
       type: String,
       enum: {
-        values: ['UPI', 'CARD', 'NETBANKING', 'CHEQUE', 'NEFT', 'CASH', 'WALLET', 'RAZORPAY'],
-        message: 'Payment method must be UPI, CARD, NETBANKING, CHEQUE, NEFT, CASH, WALLET, or RAZORPAY',
+        values: ['UPI', 'CARD', 'NETBANKING', 'BANK_TRANSFER', 'NEFT', 'CASH', 'WALLET', 'RAZORPAY'],
+        message: 'Payment method must be UPI, CARD, NETBANKING, BANK_TRANSFER, NEFT, CASH, WALLET, or RAZORPAY',
       },
       default: null,
     },
@@ -240,6 +240,18 @@ const invoiceSchema = new mongoose.Schema(
     },
     offlineAmount: {
       type: Number,
+      default: null,
+    },
+    paymentScreenshot: {
+      type: String,
+      default: null,
+    },
+    paymentDate: {
+      type: Date,
+      default: null,
+    },
+    rejectionReason: {
+      type: String,
       default: null,
     },
   },

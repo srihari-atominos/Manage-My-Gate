@@ -111,6 +111,39 @@ export class UserRepository {
       ]
     }).session(session || null);
   }
+
+  /**
+   * Anonymize a user for privacy/store compliance upon self-service account deletion.
+   * @param {string} id - User ID
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async anonymize(id, session) {
+    const timestamp = Date.now();
+    return await User.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          name: 'Deleted User',
+          phone: null,
+          email: `deleted_${id}_${timestamp}@deleted.nahom.local`,
+          username: `deleted_${id}_${timestamp}`,
+          password: `DELETED_${id}_${timestamp}`,
+          avatar: null,
+          status: 'Deleted',
+          deletedAt: new Date(),
+          interests: [],
+          hideFromDirectory: true,
+          allowDirectoryMessages: false,
+          allowIntercomCalls: false,
+          showPhoneInDirectory: false,
+          villaId: null,
+          residencyType: 'None',
+          roles: [],
+        },
+      },
+      { returnDocument: 'after', session: session || null }
+    );
+  }
 }
 
 export default new UserRepository();

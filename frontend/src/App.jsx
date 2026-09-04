@@ -15,7 +15,7 @@
  */
 
 import React, { Suspense, useEffect } from 'react'
-import { HashRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { Toaster } from 'react-hot-toast'
 import AuthGuard from './features/auth/components/AuthGuard'
@@ -43,15 +43,20 @@ const FeatureConfigWizard = React.lazy(
 const PublicCheckoutPage = React.lazy(() => import('./views/pages/pay/PublicCheckoutPage'))
 const SetPasswordPage = React.lazy(() => import('./views/pages/auth/SetPasswordPage'))
 const EnquiryPendingView = React.lazy(() => import('./features/workspace/views/EnquiryPendingView'))
+const PrivacyPolicyPage = React.lazy(() => import('./views/pages/privacyPolicy/PrivacyPolicyPage'))
+const TermsPage = React.lazy(() => import('./views/pages/terms/TermsPage'))
+const DeleteAccountPage = React.lazy(() => import('./views/pages/deleteAccount/DeleteAccountPage'))
+const ContactSupportPage = React.lazy(() => import('./views/pages/contact/ContactSupportPage'))
 
 /**
  * Main Application Component
  *
  * Manages application-wide concerns:
  * - Theme initialization and persistence
- * - Client-side routing configuration
+ * - Client-side routing configuration with BrowserRouter
  * - Lazy loading with suspense fallbacks
- * - Theme detection from URL query parameters
+ * - Public legal pages (Privacy Policy, Terms, Delete Account)
+ * - Protected routes wrapped in DefaultLayout
  *
  * Theme priority:
  * 1. URL parameter (?theme=dark)
@@ -60,11 +65,6 @@ const EnquiryPendingView = React.lazy(() => import('./features/workspace/views/E
  *
  * @component
  * @returns {React.ReactElement} Application root with routing
- *
- * @example
- * // Standard usage in index.js
- * import App from './App'
- * ReactDOM.render(<App />, document.getElementById('root'))
  */
 const App = () => {
   const { isColorModeSet, setColorMode } = useColorModes('coreui-free-react-admin-template-theme')
@@ -87,7 +87,7 @@ const App = () => {
   return (
     <>
       <Toaster position="top-right" reverseOrder={false} />
-      <HashRouter>
+      <BrowserRouter>
         <Suspense
           fallback={
             <div className="pt-3 text-center">
@@ -96,6 +96,37 @@ const App = () => {
           }
         >
           <Routes>
+            <Route
+              exact
+              path="/privacy-policy"
+              name="Privacy Policy"
+              element={<PrivacyPolicyPage />}
+            />
+            <Route exact path="/terms" name="Terms & Conditions" element={<TermsPage />} />
+            <Route
+              exact
+              path="/terms-and-conditions"
+              name="Terms & Conditions"
+              element={<TermsPage />}
+            />
+            <Route
+              exact
+              path="/contact"
+              name="Contact & Support"
+              element={<ContactSupportPage />}
+            />
+            <Route
+              exact
+              path="/support"
+              name="Contact & Support"
+              element={<ContactSupportPage />}
+            />
+            <Route
+              exact
+              path="/delete-account"
+              name="Account Deletion"
+              element={<DeleteAccountPage />}
+            />
             <Route exact path="/login" name="Login Page" element={<Login />} />
             <Route exact path="/register" name="Register Page" element={<Register />} />
             <Route
@@ -120,7 +151,12 @@ const App = () => {
             <Route exact path="/invite" name="Invite Handler" element={<InviteHandler />} />
             <Route exact path="/pay/:id" name="Payment Checkout" element={<PublicCheckoutPage />} />
             <Route exact path="/pay" name="Payment Checkout" element={<PublicCheckoutPage />} />
-            <Route exact path="/set-password" name="Set Password Page" element={<SetPasswordPage />} />
+            <Route
+              exact
+              path="/set-password"
+              name="Set Password Page"
+              element={<SetPasswordPage />}
+            />
             <Route exact path="/404" name="Page 404" element={<Page404 />} />
             <Route exact path="/500" name="Page 500" element={<Page500 />} />
             <Route
@@ -146,7 +182,7 @@ const App = () => {
             <Route path="*" name="Home" element={<DefaultLayout />} />
           </Routes>
         </Suspense>
-      </HashRouter>
+      </BrowserRouter>
     </>
   )
 }

@@ -41,8 +41,15 @@ export const useRoleSocket = () => {
     });
 
     const handleRoleUpdate = (payload: any) => {
-      // 1. Refetch Role Builder list
-      dispatch(fetchRolesAsync({ page: 1, limit: 100 }));
+      // 1. Refetch Role Builder list only if user has role:read permission
+      const permissions: string[] = currentUser?.permissions || [];
+      const userRoleName = getUserRoleName(currentUser);
+      const isSuperAdmin = userRoleName === 'SuperAdmin' || userRoleName === 'Admin';
+      const canReadRoles = isSuperAdmin || permissions.includes('role:read') || permissions.includes('roles:read') || permissions.includes('*');
+
+      if (canReadRoles) {
+        dispatch(fetchRolesAsync({ page: 1, limit: 100 }));
+      }
 
       // 2. Real-time live update for active user permissions if their role was updated
       if (payload && currentUser) {

@@ -273,9 +273,11 @@ export class InvoiceRepository {
         applyAmount = invoice.outstandingAmount || invoice.totalAmount;
       }
 
+      const remainingDue = Math.max(0, (invoice.totalAmount || 0) - (invoice.paidAmount || 0));
+      applyAmount = Math.min(applyAmount, remainingDue > 0 ? remainingDue : applyAmount);
+
       invoice.paidAmount = (invoice.paidAmount || 0) + applyAmount;
-      invoice.outstandingAmount = (invoice.outstandingAmount || invoice.totalAmount) - applyAmount;
-      if (invoice.outstandingAmount < 0) invoice.outstandingAmount = 0;
+      invoice.outstandingAmount = Math.max(0, Math.round(((invoice.totalAmount || 0) - invoice.paidAmount) * 100) / 100);
       
       // Reset offline amount since it has been processed
       invoice.offlineAmount = 0;
@@ -400,6 +402,9 @@ export class InvoiceRepository {
                 paymentMethod: { $ifNull: ['$paymentMethod', '—'] },
                 offlineReference: 1,
                 offlineAmount: 1,
+                paymentDate: 1,
+                paymentScreenshot: 1,
+                rejectionReason: 1,
               },
             },
           ],

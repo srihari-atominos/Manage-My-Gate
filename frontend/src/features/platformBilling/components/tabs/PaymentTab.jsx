@@ -129,7 +129,7 @@ const PaymentTab = ({ lead, postTrialTotal, currentStatus, trialExpiryDate, paym
                   <input 
                     id="payLink" 
                     className="input" 
-                    value={`${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3004'}/#/pay/${lead?._id || lead?.id || ''}`} 
+                    value={`${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3004'}/pay/${lead?._id || lead?.id || ''}`} 
                     readOnly 
                   />
                 </div>

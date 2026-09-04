@@ -12,6 +12,7 @@ import {
   requestOtp,
   verifyOtpLogin,
   performLogout,
+  deleteAccountThunk,
   clearStatus,
   bootstrapAuth,
 } from '../store/authSlice';
@@ -117,6 +118,10 @@ export const useAuth = () => {
     return dispatch ? dispatch(performLogout()) : Promise.resolve();
   }, [dispatch]);
 
+  const handleDeleteAccount = useCallback(() => {
+    return dispatch ? dispatch(deleteAccountThunk()) : Promise.resolve();
+  }, [dispatch]);
+
   const handleClearStatus = useCallback(() => {
     if (dispatch) dispatch(clearStatus());
   }, [dispatch]);
@@ -139,6 +144,7 @@ export const useAuth = () => {
     requestOtp: handleRequestOtp,
     verifyOtp: handleVerifyOtp,
     logout: handleLogout,
+    deleteAccount: handleDeleteAccount,
     clearStatus: handleClearStatus,
     bootstrap: handleBootstrap,
   };

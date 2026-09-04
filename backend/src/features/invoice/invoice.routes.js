@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import invoiceController from './invoice.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
-import { manualTriggerSchema, offlineSettleSchema, approveInvoiceSchema, rejectInvoiceSchema } from './invoice.validator.js';
+import { manualTriggerSchema, offlineSettleSchema, approveInvoiceSchema, rejectOfflineSchema, rejectInvoiceSchema, recordCashPaymentSchema } from './invoice.validator.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import './invoice.listeners.js';
 import { authorizePermission } from '../../middlewares/rbac.middleware.js';
@@ -17,6 +17,20 @@ router.get(
   '/my-dues',
   authorizePermission('billing', 'action_center'),
   invoiceController.getMyDues
+);
+
+router.get(
+  '/cash-collections',
+  tenantContext,
+  authorizePermission('billing', ['dashboard', 'assessment_manager', 'action_center']),
+  invoiceController.getCashCollections
+);
+
+router.get(
+  '/search-cash-eligible',
+  tenantContext,
+  authorizePermission('billing', ['dashboard', 'assessment_manager', 'action_center']),
+  invoiceController.searchCashEligible
 );
 
 // Features requiring tenant organization context and permissions
@@ -58,6 +72,14 @@ router.patch(
   invoiceController.settleOffline
 );
 
+router.post(
+  '/:id/record-cash',
+  tenantContext,
+  authorizePermission('billing', ['dashboard', 'assessment_manager', 'action_center']),
+  validate(recordCashPaymentSchema),
+  invoiceController.recordCashPayment
+);
+
 router.get(
   '/:id',
   authorizePermission('billing', ['action_center', 'dashboard', 'assessment_manager']),
@@ -76,7 +98,7 @@ router.patch(
   '/:id/reject',
   tenantContext,
   authorizePermission('billing', ['dashboard', 'assessment_manager']),
-  validate(rejectInvoiceSchema),
+  validate(rejectOfflineSchema),
   invoiceController.rejectPayment
 );
 

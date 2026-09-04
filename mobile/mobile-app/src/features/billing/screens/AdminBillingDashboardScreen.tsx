@@ -202,8 +202,8 @@ export function AdminBillingDashboardScreen() {
                 </Text>
                 <Text className="text-xs text-amber-700 dark:text-amber-300 mt-1">
                   {pendingOffline > 0
-                    ? `₹${pendingOffline.toLocaleString('en-IN')} in cheque/NEFT submissions awaiting admin clearance.`
-                    : 'Review pending cheque & NEFT submissions from residents.'}
+                    ? `₹${pendingOffline.toLocaleString('en-IN')} in bank transfer submissions awaiting admin clearance.`
+                    : 'Review pending bank transfer submissions from residents.'}
                 </Text>
               </View>
             </View>

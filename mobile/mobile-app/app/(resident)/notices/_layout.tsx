@@ -6,7 +6,7 @@ export default function NoticesLayout() {
       <Stack.Screen name="dashboard" />
       <Stack.Screen name="active-board" />
       <Stack.Screen name="manage" />
-      <Stack.Screen name="polls" />
+      <Stack.Screen name="polls/index" />
     </Stack>
   );
 }

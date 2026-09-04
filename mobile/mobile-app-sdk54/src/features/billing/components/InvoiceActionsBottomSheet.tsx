@@ -61,7 +61,7 @@ export function InvoiceActionsBottomSheet({
   const isPendingCheque = status === 'VERIFICATION_PENDING';
   const isUnpaid = status === 'UNPAID' || status === 'OVERDUE';
   const refStr = invoice.offlineReference || '—';
-  const methodStr = invoice.paymentMethod || 'CHEQUE / NEFT';
+  const methodStr = invoice.paymentMethod || 'BANK_TRANSFER';
 
   const handleShareReceipt = async () => {
     try {

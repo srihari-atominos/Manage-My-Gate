@@ -27,6 +27,7 @@ export interface Invoice {
   dueDate?: string;
   totalDue?: number;
   paidAmount?: number;
+  outstandingAmount?: number;
   amount?: number;
   currency?: string;
   status: InvoiceStatus;
@@ -112,6 +113,8 @@ export interface WalletState {
   balance: number;
   activePasses?: any[];
   transactionHistory?: any[];
+  transactions?: any[];
+  loading?: boolean;
   isLoading: boolean;
   error: string | null;
 }

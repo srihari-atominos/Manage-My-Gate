@@ -1,19 +1,45 @@
-import React, { useState } from 'react';
-import { View } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Camera, KeyRound, History, ChevronLeft } from 'lucide-react-native';
-import { SafeAreaWrapper } from '@/components/layout';
 import {
-  CameraViewFinder,
-  FlashlightToggle,
-  ScanResultSheet,
-  type ScanResultData,
-  ManualCodeEntrySheet,
-} from '@/components/hardware';
-import { BottomSheet, Button, ListCard, Text, Icon } from '@/components/ui';
-import { IconButton } from '@/components/common';
-import { EmptyState } from '@/components/feedback';
+  QrCode,
+  ScanLine,
+  Search,
+  CheckCircle2,
+  DoorOpen,
+  DoorClosed,
+  ShieldAlert,
+} from 'lucide-react-native';
+import { ScreenShell } from '@/components/ui/ScreenShell';
+import { TabBar } from '@/components/ui/TabBar';
+import { KPIRow } from '@/components/ui/KPIRow';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { TextInput } from '@/components/forms/TextInput';
+import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
+import { PaginatedList } from '@/components/ui/PaginatedList';
+import { ScanResultSheet, ScanResultData } from '@/components/hardware/ScanResultSheet';
+import { ManualCodeEntrySheet } from '@/components/hardware/ManualCodeEntrySheet';
+import { GuardQRScannerModal } from '@/src/features/visitor/components/guard/GuardQRScannerModal';
+import { AmenitySecurityLogCard } from '@/src/features/amenities/components/AmenitySecurityLogCard';
+import { SecurityLogDetailModal } from '@/src/features/amenities/components/SecurityLogDetailModal';
+import { SecurityLog } from '@/src/features/amenities/services/securityLogApi';
+import { EmptyState } from '@/components/feedback/EmptyState';
 import { useSecurityScanner } from '../../../src/features/amenities/hooks/useSecurityScanner';
+import { useSecurityLogs } from '../../../src/features/amenities/hooks/useSecurityLogs';
+
+const AMENITY_TABS = [
+  { key: 'CONSOLE', label: 'Console' },
+  { key: 'LOGS', label: 'Security Logs' },
+];
+
+const SCAN_TYPE_TABS = [
+  { key: '', label: 'All Types' },
+  { key: 'Entry', label: 'Entry' },
+  { key: 'Exit', label: 'Exit' },
+  { key: 'Denied', label: 'Denied' },
+  { key: 'Manual Verification', label: 'Manual' },
+];
 
 export default function AmenitySecurityGateScannerScreen() {
   const router = useRouter();
@@ -23,32 +49,70 @@ export default function AmenitySecurityGateScannerScreen() {
     isResultModalOpen,
     checkInResult,
     checkingIn,
-    recentScans,
     toggleFlashlight,
     handleBarCodeScanned,
     resetScanner,
   } = useSecurityScanner();
 
-  const [isManualSheetOpen, setIsManualSheetOpen] = useState(false);
-  const [isHistorySheetOpen, setIsHistorySheetOpen] = useState(false);
+  // Full Security Logs Hook integration for real-time backend data
+  const {
+    logs: auditLogs,
+    dashboard: logDashboard,
+    pagination: logPagination,
+    filters: logFilters,
+    loading: logsLoading,
+    error: logsError,
+    loadData: refreshSecurityLogs,
+    handleFilterChange: onLogFilterChange,
+    handlePageChange: onLogPageChange,
+    handleClearFilters: onClearLogFilters,
+    handleDeleteLog: onDeleteLog,
+  } = useSecurityLogs();
 
-  const handleManualSubmit = (token: string) => {
-    setIsManualSheetOpen(false);
-    handleBarCodeScanned({ type: 'MANUAL', data: token });
+  const [passCode, setPassCode] = useState('');
+  const [activeTab, setActiveTab] = useState<'CONSOLE' | 'LOGS'>('CONSOLE');
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [manualSheetOpen, setManualSheetOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [selectedAuditLog, setSelectedAuditLog] = useState<SecurityLog | null>(null);
+
+  const loadData = useCallback(async () => {
+    setRefreshing(true);
+    refreshSecurityLogs();
+    setRefreshing(false);
+  }, [refreshSecurityLogs]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Clean raw scanned text
+  const extractCodeFromRaw = (raw: string): string => {
+    let text = (raw || '').trim();
+    if (text.startsWith('{') && text.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(text);
+        text = parsed.bookingId || parsed._id || parsed.id || parsed.code || text;
+      } catch {}
+    }
+    return text.trim();
   };
 
-  const handleSimulateScan = () => {
-    handleBarCodeScanned({
-      type: 'SIMULATION',
-      data: JSON.stringify({
-        bookingId: 'BK-778899',
-        amenityName: 'Tennis Court 1',
-        residentName: 'Sarah Jenkins',
-        unitNumber: 'Villa 202',
-        startTime: '04:00 PM',
-        endTime: '05:30 PM',
-      }),
-    });
+  const handleVerifyPass = async (codeToVerify?: string) => {
+    const raw = (codeToVerify || passCode).trim();
+    if (!raw) return;
+    const cleanCode = extractCodeFromRaw(raw);
+    if (!cleanCode) return;
+
+    setStatusMessage(null);
+    await handleBarCodeScanned({ type: 'MANUAL', data: cleanCode });
+    refreshSecurityLogs();
+  };
+
+  const handleManualSubmit = (token: string) => {
+    setManualSheetOpen(false);
+    handleVerifyPass(token);
   };
 
   // Standardize check-in result for ScanResultSheet
@@ -57,12 +121,12 @@ export default function AmenitySecurityGateScannerScreen() {
         success: Boolean(checkInResult.success),
         status: checkInResult.success ? 'VERIFIED' : 'REJECTED',
         title: checkInResult.success
-          ? 'Amenity Ticket Verified'
-          : 'Amenity Access Refused',
+          ? 'Amenity Pass Verified'
+          : 'Amenity Access Denied',
         message:
           checkInResult.message ||
           (checkInResult.success
-            ? 'Reservation pass is active and verified for entry.'
+            ? 'Reservation pass is active and verified for facility entry.'
             : 'Pass is expired, invalid, or already checked in.'),
         visitorName: checkInResult.booking?.residentName || 'Resident Member',
         passType: 'AMENITY ACCESS',
@@ -70,11 +134,12 @@ export default function AmenitySecurityGateScannerScreen() {
         unitOrVilla:
           (checkInResult.booking as any)?.unitNumber ||
           (checkInResult.booking as any)?.villaNumber ||
-          (checkInResult.booking as any)?.unit,
+          (checkInResult.booking as any)?.unit ||
+          'Estate',
         validityWindow:
           checkInResult.booking?.startTime && checkInResult.booking?.endTime
             ? `${checkInResult.booking.startTime} - ${checkInResult.booking.endTime}`
-            : undefined,
+            : 'Today',
         bookingReference:
           checkInResult.booking?.bookingId ||
           (checkInResult.booking as any)?.bookingReference ||
@@ -85,90 +150,220 @@ export default function AmenitySecurityGateScannerScreen() {
     : null;
 
   return (
-    <View className="flex-1 bg-black relative">
-      {/* 1. Fullscreen Live Camera Viewport Base Layer */}
-      <CameraViewFinder
-        isScanning={isScanning}
-        enableTorch={isFlashlightOn}
-        instruction="Align Amenity Reservation QR inside frame"
-        onScan={(data) => handleBarCodeScanned({ type: 'CAMERA', data })}
-        fullscreen={true}
-        className="absolute inset-0"
+    <ScreenShell
+      title="Amenity Security Console"
+      subtitle="Facility entry verification & QR pass scanner"
+      iconName="ShieldCheck"
+    >
+      <View className="flex-1 bg-background">
+        {/* Top KPI Box: Today's Entries, Today's Exits, Denied Access */}
+        <View className="py-2.5 bg-background border-b border-border/40">
+          <KPIRow
+            cards={[
+              {
+                title: "Today's Entries",
+                value: String(logDashboard?.entries || 0),
+                subtitle: 'Verified In',
+                iconName: 'DoorOpen',
+                variant: 'success',
+                onPress: () => {
+                  setActiveTab('LOGS');
+                  onLogFilterChange('scanType', 'Entry');
+                },
+              },
+              {
+                title: "Today's Exits",
+                value: String(logDashboard?.exits || 0),
+                subtitle: 'Checked Out',
+                iconName: 'DoorClosed',
+                variant: 'info',
+                onPress: () => {
+                  setActiveTab('LOGS');
+                  onLogFilterChange('scanType', 'Exit');
+                },
+              },
+              {
+                title: 'Denied Access',
+                value: String(logDashboard?.denied || 0),
+                subtitle: 'Refused Scans',
+                iconName: 'ShieldAlert',
+                variant: 'destructive',
+                onPress: () => {
+                  setActiveTab('LOGS');
+                  onLogFilterChange('scanType', 'Denied');
+                },
+              },
+            ]}
+          />
+        </View>
+
+        {/* TabBar Navigation: Console vs Security Logs */}
+        <TabBar
+          tabs={AMENITY_TABS}
+          activeTab={activeTab}
+          onTabChange={(key) => setActiveTab(key as any)}
+          variant="pill"
+          className="mx-4 mt-3 mb-2"
+        />
+
+        {activeTab === 'LOGS' ? (
+          <View className="flex-1 px-4 pt-1">
+            {/* Scan Type Filter Pills & Search Filter */}
+            <View className="gap-2 mb-2">
+              <TabBar
+                tabs={SCAN_TYPE_TABS}
+                activeTab={logFilters.scanType || ''}
+                onTabChange={(tabKey) => onLogFilterChange('scanType', tabKey)}
+                variant="pill"
+              />
+
+              <SearchFilterBar
+                searchValue={logFilters.search || ''}
+                onSearchChange={(text) => onLogFilterChange('search', text)}
+                searchPlaceholder="Search resident, amenity, pass code..."
+                variant="bordered"
+                className="px-0 py-0 border-0"
+              />
+
+              {Boolean(logFilters.search || logFilters.scanType) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onPress={onClearLogFilters}
+                  className="self-end py-1 h-7 px-2.5"
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </View>
+
+            {/* Paginated Embedded Security Log List */}
+            <PaginatedList<SecurityLog>
+              data={auditLogs}
+              renderItem={(item) => (
+                <AmenitySecurityLogCard
+                  key={item._id}
+                  log={item}
+                  onPress={setSelectedAuditLog}
+                />
+              )}
+              pagination={{
+                currentPage: (logPagination as any).currentPage || logPagination.page || 1,
+                totalPages: logPagination.totalPages || 1,
+                totalRecords: (logPagination as any).totalRecords || logPagination.total || auditLogs.length,
+                limit: logPagination.limit || 20,
+              }}
+              onLoadMore={() => {
+                const current = (logPagination as any).currentPage || logPagination.page || 1;
+                if (current < logPagination.totalPages) {
+                  onLogPageChange(current + 1);
+                }
+              }}
+              onRefresh={loadData}
+              loading={logsLoading}
+              emptyIcon="ClipboardList"
+              emptyTitle="No Security Logs Found"
+              emptySubtitle="Security verification logs will stream here as passes are scanned."
+              contentContainerClassName="pb-28 gap-2"
+            />
+          </View>
+        ) : (
+          <ScrollView
+            className="flex-1"
+            contentContainerClassName="px-4 gap-4 pb-28 pt-2"
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadData} />}
+          >
+            {statusMessage && (
+              <View className="p-3 bg-primary/10 border border-primary/20 rounded-xl flex-row items-center gap-2">
+                <CheckCircle2 size={16} className="text-primary shrink-0" />
+                <Text className="text-xs font-semibold text-primary flex-1">{statusMessage}</Text>
+              </View>
+            )}
+
+            {/* Verification Input Card */}
+            <View className="bg-card border border-border rounded-2xl p-4 gap-3 shadow-xs">
+              <View className="flex-row items-center gap-2 border-b border-border/40 pb-2.5">
+                <ScanLine size={18} color="#ea580c" />
+                <Text className="text-sm font-bold text-foreground">Verify Pass Code / QR / Token</Text>
+              </View>
+
+              <View className="flex-row items-center gap-2">
+                <View className="flex-1">
+                  <TextInput
+                    value={passCode}
+                    onChangeText={setPassCode}
+                    placeholder="Enter 6-digit PIN, Code, or Name..."
+                    keyboardType="default"
+                    inputClassName="font-mono text-sm tracking-wider"
+                    onSubmitEditing={() => handleVerifyPass()}
+                  />
+                </View>
+                <Button
+                  size="sm"
+                  onPress={() => handleVerifyPass()}
+                  disabled={checkingIn || !passCode.trim()}
+                  loading={checkingIn}
+                  className="h-12 w-12 rounded-2xl items-center justify-center p-0"
+                  accessibilityLabel="Search Pass Code"
+                >
+                  <Search size={18} className="text-primary-foreground" />
+                </Button>
+              </View>
+
+              <Button
+                variant="outline"
+                className="flex-row items-center justify-center gap-2 h-11 rounded-xl border-amber-500/40 bg-amber-500/10"
+                onPress={() => setQrScannerOpen(true)}
+                accessibilityLabel="Open Camera QR Scanner"
+              >
+                <QrCode size={18} color="#ea580c" />
+                <Text className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                  Open Camera QR Scanner
+                </Text>
+              </Button>
+            </View>
+
+            {/* Live Attendance Stream Section */}
+            <View className="gap-2.5">
+              <View className="flex-row items-center justify-between px-1">
+                <Text className="text-sm font-bold text-foreground">Recent Check-In Stream</Text>
+                <Text className="text-xs text-muted-foreground font-semibold">Today</Text>
+              </View>
+
+              {auditLogs && auditLogs.length > 0 ? (
+                auditLogs.slice(0, 5).map((log: any, idx: number) => (
+                  <AmenitySecurityLogCard
+                    key={log._id || idx}
+                    log={log}
+                    onPress={setSelectedAuditLog}
+                  />
+                ))
+              ) : (
+                <EmptyState
+                  title="No Live Activity"
+                  description="Recent check-in scans will stream live here as residents access facilities."
+                />
+              )}
+            </View>
+          </ScrollView>
+        )}
+      </View>
+
+      {/* Hardware Camera QR Scanner Modal */}
+      <GuardQRScannerModal
+        visible={qrScannerOpen}
+        title="Amenity QR Scanner"
+        instruction="Align Amenity QR Code inside Frame"
+        onClose={() => setQrScannerOpen(false)}
+        onScanCode={async (code) => {
+          setPassCode(code);
+          await handleVerifyPass(code);
+          refreshSecurityLogs();
+        }}
       />
 
-      {/* 2. Floating HUD Controls Layer */}
-      <SafeAreaWrapper
-        backgroundColorClassName="bg-transparent"
-        className="flex-1 justify-between p-4"
-        pointerEvents="box-none"
-      >
-        {/* Top Floating Header Controls */}
-        <View className="flex-row items-center justify-between z-20" pointerEvents="box-none">
-          <IconButton
-            icon={ChevronLeft}
-            variant="outline"
-            size="md"
-            onPress={() => router.back()}
-            className="bg-black/60 border-white/20"
-            accessibilityLabel="Go back"
-          />
-
-          <View className="bg-black/60 border border-white/20 px-4 py-2 rounded-full">
-            <Text className="text-primary-foreground font-bold text-xs tracking-wider uppercase">
-              Amenity Ticket Scanner
-            </Text>
-          </View>
-
-          <IconButton
-            icon={History}
-            variant="outline"
-            size="md"
-            onPress={() => setIsHistorySheetOpen(true)}
-            className="bg-black/60 border-white/20"
-            accessibilityLabel="Scan History Logs"
-          />
-        </View>
-
-        {/* Bottom Floating Control Bar */}
-        <View className="z-20 gap-3 items-center pb-4 w-full" pointerEvents="box-none">
-          {/* Flashlight Toggle & Manual Entry Trigger */}
-          <View className="flex-row items-center justify-center gap-3 w-full max-w-sm">
-            <FlashlightToggle
-              isOn={isFlashlightOn}
-              onToggle={toggleFlashlight}
-              className="flex-1 bg-black/70 border-white/20"
-            />
-
-            <Button
-              variant="outline"
-              onPress={() => setIsManualSheetOpen(true)}
-              className="flex-1 h-11 bg-black/70 border-white/20 flex-row items-center justify-center gap-1.5"
-              accessibilityRole="button"
-              accessibilityLabel="Manual token lookup"
-            >
-              <Icon as={KeyRound} size={16} className="text-primary-foreground" />
-              <Text className="text-xs font-bold text-primary-foreground">Manual Token</Text>
-            </Button>
-          </View>
-
-          {/* Simulation Test Trigger */}
-          <Button
-            variant="outline"
-            onPress={handleSimulateScan}
-            disabled={checkingIn}
-            className="w-full max-w-sm h-11 border-primary/50 bg-primary/20 flex-row items-center justify-center gap-2"
-            accessibilityRole="button"
-            accessibilityLabel="Simulate amenity QR scan"
-          >
-            <Icon as={Camera} size={16} className="text-primary-foreground" />
-            <Text className="text-primary-foreground font-bold text-xs">
-              {checkingIn ? 'Verifying Amenity Pass...' : 'Simulate Amenity Scan (Test)'}
-            </Text>
-          </Button>
-        </View>
-      </SafeAreaWrapper>
-
-      {/* 3. Reusable Verification Result Bottom Sheet */}
+      {/* Verification Result Sheet */}
       <ScanResultSheet
         visible={isResultModalOpen}
         onClose={resetScanner}
@@ -177,59 +372,28 @@ export default function AmenitySecurityGateScannerScreen() {
         onPrimaryAction={resetScanner}
         primaryActionLabel="Confirm Facility Entry"
         onSecondaryAction={resetScanner}
-        secondaryActionLabel="Scan Next Ticket"
+        secondaryActionLabel="Dismiss"
       />
 
-      {/* 4. Reusable Manual Token Entry Bottom Sheet */}
+      {/* Manual Token Lookup Fallback Sheet */}
       <ManualCodeEntrySheet
-        visible={isManualSheetOpen}
-        onClose={() => setIsManualSheetOpen(false)}
+        visible={manualSheetOpen}
+        onClose={() => setManualSheetOpen(false)}
         onSubmitCode={handleManualSubmit}
         loading={checkingIn}
         title="Manual Booking Token Lookup"
-        description="Enter the resident reservation reference token if camera optical scanning fails."
-        placeholder="e.g. BK-982341"
+        description="Enter the resident reservation reference token if optical QR scan is unavailable."
+        placeholder="e.g. BK-778899"
         label="Booking Reference Token"
       />
 
-      {/* 5. Reusable Today's Scan History Bottom Sheet */}
-      <BottomSheet
-        visible={isHistorySheetOpen}
-        onClose={() => setIsHistorySheetOpen(false)}
-        title="Today's Amenity Check-In Logs"
-      >
-        <View className="gap-3 pb-4">
-          {recentScans && recentScans.length > 0 ? (
-            recentScans.slice(0, 10).map((scan: any, idx: number) => {
-              const isExit = scan.scanType === 'Exit';
-              const scanTimeFormatted = scan.scanTime
-                ? new Date(scan.scanTime).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })
-                : '-';
-
-              return (
-                <ListCard
-                  key={scan._id || idx}
-                  title={scan.amenityName || 'Amenity Access'}
-                  subtitle={`${scan.residentName || 'Resident'} • ${scanTimeFormatted}`}
-                  leftIcon={isExit ? 'DoorClosed' : 'DoorOpen'}
-                  status={{
-                    label: scan.scanType || 'ENTRY',
-                    variant: isExit ? 'info' : 'success',
-                  }}
-                />
-              );
-            })
-          ) : (
-            <EmptyState
-              title="No Scan History Recorded"
-              description="Amenity attendance logs for today will appear here after passes are verified."
-            />
-          )}
-        </View>
-      </BottomSheet>
-    </View>
+      {/* Security Log Details Inspection Modal */}
+      <SecurityLogDetailModal
+        visible={!!selectedAuditLog}
+        onClose={() => setSelectedAuditLog(null)}
+        onDelete={onDeleteLog}
+        log={selectedAuditLog}
+      />
+    </ScreenShell>
   );
 }

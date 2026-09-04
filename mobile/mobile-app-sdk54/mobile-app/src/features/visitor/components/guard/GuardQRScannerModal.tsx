@@ -10,12 +10,16 @@ interface GuardQRScannerModalProps {
   visible: boolean;
   onClose: () => void;
   onScanCode: (code: string) => void;
+  title?: string;
+  instruction?: string;
 }
 
 export const GuardQRScannerModal: React.FC<GuardQRScannerModalProps> = ({
   visible,
   onClose,
   onScanCode,
+  title = 'Guard Gate QR Scanner',
+  instruction = 'Align Visitor QR Code inside Frame',
 }) => {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
@@ -54,7 +58,7 @@ export const GuardQRScannerModal: React.FC<GuardQRScannerModalProps> = ({
           <View className="flex-row items-center justify-between border-b border-border pb-3">
             <View className="flex-row items-center gap-2">
               <ScanLine size={20} color="#0284c7" />
-              <Text className="text-base font-extrabold text-foreground">Guard Gate QR Scanner</Text>
+              <Text className="text-base font-extrabold text-foreground">{title}</Text>
             </View>
             <TouchableOpacity onPress={onClose} className="p-1 rounded-full bg-secondary">
               <X size={16} className="text-muted-foreground" />
@@ -98,7 +102,7 @@ export const GuardQRScannerModal: React.FC<GuardQRScannerModalProps> = ({
                   onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
                   style={{ width: '100%', height: '100%' }}
                 />
-                <QRScannerOverlay instruction="Align Visitor QR Code inside Frame" />
+                <QRScannerOverlay instruction={instruction} />
 
                 {/* Compact Flashlight Torch Toggle Overlay */}
                 <TouchableOpacity

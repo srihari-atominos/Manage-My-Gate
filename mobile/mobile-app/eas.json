@@ -17,7 +17,8 @@
       "channel": "preview",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://managemygate.e3esg.com/api/v1",
-        "EXPO_PUBLIC_SOCKET_URL": "https://managemygate.e3esg.com"
+        "EXPO_PUBLIC_SOCKET_URL": "https://managemygate.e3esg.com",
+        "EXPO_PUBLIC_RAZORPAY_KEY_ID": "rzp_test_TXAJ0OalVys0pH"
       }
     },
     "production": {
@@ -25,7 +26,8 @@
       "channel": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://managemygate.e3esg.com/api/v1",
-        "EXPO_PUBLIC_SOCKET_URL": "https://managemygate.e3esg.com"
+        "EXPO_PUBLIC_SOCKET_URL": "https://managemygate.e3esg.com",
+        "EXPO_PUBLIC_RAZORPAY_KEY_ID": "rzp_test_TXAJ0OalVys0pH"
       }
     }
   },

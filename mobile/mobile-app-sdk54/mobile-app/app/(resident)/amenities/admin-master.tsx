@@ -16,7 +16,7 @@ import { useAmenityMaster } from '@/src/features/amenities/hooks/useAmenityMaste
 import { AmenityFormModal } from '@/src/features/amenities/components/AmenityFormModal';
 import { AmenityDetailSheet } from '@/src/features/amenities/components/AmenityDetailSheet';
 import { Amenity } from '@/src/features/amenities/store/amenitySlice';
-import { Plus, Wrench } from 'lucide-react-native';
+import { Plus } from 'lucide-react-native';
 
 const CATEGORY_CHIPS = ['All', 'Sports', 'Fitness', 'Event Space', 'Clubhouse', 'Wellness', 'Workspace'];
 
@@ -115,28 +115,16 @@ export default function AdminAmenityMasterScreen() {
       error={error}
       onRetry={loadData}
       headerRight={
-        <View className="flex-row items-center gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onPress={() => router.push('/(resident)/amenities/maintenance' as any)}
-            className="flex-row items-center gap-1 rounded-full px-2.5 h-8 bg-amber-500/10 border-amber-500/30"
-            accessibilityLabel="Maintenance Schedule"
-          >
-            <Wrench size={13} className="text-amber-600 dark:text-amber-400" />
-            <Text className="text-amber-600 dark:text-amber-400 font-bold text-xs">Maintenance</Text>
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onPress={handleOpenCreateModal}
-            className="flex-row items-center gap-1 rounded-full px-2.5 h-8"
-            accessibilityLabel="Add New Amenity Facility"
-          >
-            <Plus size={14} className="text-primary-foreground" />
-            <Text className="text-primary-foreground font-bold text-xs">Add</Text>
-          </Button>
-        </View>
+        <Button
+          variant="default"
+          size="sm"
+          onPress={handleOpenCreateModal}
+          className="flex-row items-center gap-1 rounded-full px-2.5 h-8"
+          accessibilityLabel="Add New Amenity Facility"
+        >
+          <Plus size={14} className="text-primary-foreground" />
+          <Text className="text-primary-foreground font-bold text-xs">Add</Text>
+        </Button>
       }
     >
       <View className="flex-1 bg-background">

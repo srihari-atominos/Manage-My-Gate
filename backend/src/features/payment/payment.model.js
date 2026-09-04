@@ -46,12 +46,66 @@ const paymentSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'processing', 'success', 'failed', 'refunded', 'cancelled'],
+    enum: ['pending', 'processing', 'success', 'failed', 'refunded', 'cancelled', 'VERIFICATION_PENDING', 'PAID', 'REJECTED'],
     default: 'pending'
+  },
+  paymentCategory: {
+    type: String,
+    enum: ['ONLINE', 'OFFLINE'],
+    default: 'ONLINE'
+  },
+  invoiceId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Invoice',
+    default: null,
+    index: true
+  },
+  residentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+    index: true
+  },
+  villaId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Villa',
+    default: null,
+    index: true
+  },
+  paymentDate: {
+    type: Date,
+    default: Date.now
+  },
+  paymentReference: {
+    type: String,
+    default: null
+  },
+  proofDocument: {
+    type: String,
+    default: null
+  },
+  receivedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  processedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  receiptNumber: {
+    type: String,
+    default: null,
+    index: { unique: true, sparse: true }
+  },
+  rejectionReason: {
+    type: String,
+    default: null
   },
   gateway: {
     type: String,
-    enum: ['mock', 'stripe', 'razorpay'],
+    enum: ['mock', 'stripe', 'razorpay', 'offline'],
     default: 'mock'
   },
   gatewayTransactionId: {

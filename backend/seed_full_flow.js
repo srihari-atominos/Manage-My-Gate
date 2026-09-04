@@ -457,7 +457,7 @@ async function seed() {
   // ─── PHASE 9: INVOICES ────────────────────────────────────
   console.log('⏳  Phase 8: Creating Invoices for all residents…');
   const STATUSES  = ['UNPAID', 'UNPAID', 'UNPAID', 'VERIFICATION_PENDING', 'PAID', 'PAID', 'CANCELLED'];
-  const PAY_METHS = ['UPI', 'NETBANKING', 'CHEQUE', 'NEFT', 'CASH', 'CARD'];
+  const PAY_METHS = ['UPI', 'NETBANKING', 'BANK_TRANSFER', 'NEFT', 'CASH', 'CARD'];
   const invoiceDocs = [];
   const allResidents = [...usersCreated.owners, ...usersCreated.tenants];
 

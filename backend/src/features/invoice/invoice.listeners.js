@@ -15,7 +15,7 @@ export const registerInvoiceListeners = () => {
         const invoice = await Invoice.findById(payment.referenceId);
         if (invoice && invoice.status !== 'PAID') {
            let methodToUse = payment.paymentMethod;
-           const validMethods = ['UPI', 'CARD', 'NETBANKING', 'CHEQUE', 'NEFT', 'CASH', 'WALLET', 'RAZORPAY'];
+           const validMethods = ['UPI', 'CARD', 'NETBANKING', 'BANK_TRANSFER', 'NEFT', 'CASH', 'WALLET', 'RAZORPAY'];
            if (!methodToUse || methodToUse === 'credit_card' || !validMethods.includes(methodToUse)) {
              methodToUse = 'RAZORPAY';
            }

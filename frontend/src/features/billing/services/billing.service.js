@@ -47,20 +47,53 @@ export const billingService = {
 
 
   /**
-   * Record an offline payment for verification.
+   * Record an offline payment for verification (Bank Transfer).
    * @param {string} invoiceId
-   * @param {Object} payload - { offlineReference, paymentMethod }
+   * @param {Object} payload - { paymentReference, offlineReference, amountPaid, paymentMethod, paymentDate, paymentScreenshot }
    */
   async settleInvoiceOffline(invoiceId, payload) {
     return await apiClient.patch(`/invoices/${invoiceId}/settle-offline`, payload)
   },
 
   /**
-   * Clear/approve offline payment (Admin only).
+   * Clear/approve offline Bank Transfer payment (Admin only).
    * @param {string} invoiceId
    */
   async approveInvoiceOffline(invoiceId) {
     return await apiClient.patch(`/invoices/${invoiceId}/approve`)
+  },
+
+  /**
+   * Reject offline Bank Transfer payment (Admin only).
+   * @param {string} invoiceId
+   * @param {string} rejectionReason
+   */
+  async rejectInvoiceOffline(invoiceId, rejectionReason) {
+    return await apiClient.patch(`/invoices/${invoiceId}/reject`, { rejectionReason })
+  },
+
+  /**
+   * Record direct Cash payment (Facility In-Charge / Admin).
+   * @param {string} invoiceId
+   * @param {number} amount
+   */
+  async recordCashPayment(invoiceId, amount) {
+    return await apiClient.post(`/invoices/${invoiceId}/record-cash`, { amount })
+  },
+
+  /**
+   * Universal search box for eligible unpaid invoices for Cash collection.
+   * @param {string} searchQuery
+   */
+  async searchCashEligible(searchQuery) {
+    return await apiClient.get('/invoices/search-cash-eligible', { params: { q: searchQuery } })
+  },
+
+  /**
+   * Fetch cash collections history for facility staff.
+   */
+  async getCashCollections() {
+    return await apiClient.get('/invoices/cash-collections')
   },
 
   /**

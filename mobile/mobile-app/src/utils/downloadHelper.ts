@@ -1,6 +1,16 @@
 import { Platform, Alert } from 'react-native';
-import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+
+let LegacyFileSystem: any = null;
+try {
+  LegacyFileSystem = require('expo-file-system/legacy');
+} catch (e) {
+  try {
+    LegacyFileSystem = require('expo-file-system');
+  } catch (err) {
+    LegacyFileSystem = null;
+  }
+}
 
 export const downloadCSVFile = async (content: string | Blob, fileName: string) => {
   try {
@@ -24,11 +34,14 @@ export const downloadCSVFile = async (content: string | Blob, fileName: string) 
       document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } else {
-      const docDir = (FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || '';
+      const fs = LegacyFileSystem || {};
+      const docDir = fs.documentDirectory || fs.cacheDirectory || '';
       const fileUri = `${docDir}${fileName}`;
-      await FileSystem.writeAsStringAsync(fileUri, textContent, {
-        encoding: 'utf8' as any,
-      });
+      if (fs.writeAsStringAsync) {
+        await fs.writeAsStringAsync(fileUri, textContent, {
+          encoding: 'utf8',
+        });
+      }
 
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {

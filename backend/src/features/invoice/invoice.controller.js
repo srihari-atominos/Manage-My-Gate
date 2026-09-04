@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import invoiceService from './invoice.services.js';
 
 export class InvoiceController {
@@ -41,44 +42,88 @@ export class InvoiceController {
   }
 
   /**
-   * Mark invoice as verification pending with offline payment cheque/NEFT ref.
+   * Submit Bank Transfer payment for verification (Resident).
    */
   async settleOffline(req, res, next) {
     try {
       const { id } = req.params;
-      const { offlineReference, amount, offlineAmount } = req.body;
-      const amountToUse = offlineAmount !== undefined ? offlineAmount : amount;
-      const data = await invoiceService.logOfflinePayment(id, offlineReference, amountToUse);
-      res.success(data, 'Offline payment recorded and pending clearance verification');
+      const { paymentReference, offlineReference, amountPaid, amount, offlineAmount, paymentMethod, paymentDate, paymentScreenshot } = req.body;
+      const refToUse = paymentReference || offlineReference;
+      const amountToUse = amountPaid !== undefined ? amountPaid : (offlineAmount !== undefined ? offlineAmount : amount);
+      const data = await invoiceService.logOfflinePayment(id, refToUse, amountToUse, paymentMethod || 'BANK_TRANSFER', paymentDate, paymentScreenshot);
+      res.success(data, 'Bank transfer payment details submitted successfully and pending verification.');
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Approve a pending invoice offline payment.
+   * Approve a pending Bank Transfer payment (Admin only).
    */
   async approvePayment(req, res, next) {
     try {
       const { id } = req.params;
       const adminUserId = req.user?.id || req.user?._id;
       const data = await invoiceService.approveOfflinePayment(id, adminUserId);
-      res.success(data, 'Offline payment cleared and verified successfully');
+      res.success(data, 'Bank transfer payment verified and confirmed successfully.');
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Reject a pending invoice offline payment.
+   * Reject a pending Bank Transfer payment (Admin only).
    */
   async rejectPayment(req, res, next) {
     try {
       const { id } = req.params;
-      const { reason } = req.body || {};
       const adminUserId = req.user?.id || req.user?._id;
-      const data = await invoiceService.rejectOfflinePayment(id, reason, adminUserId);
-      res.success(data, 'Offline payment submission rejected successfully');
+      const rejectionReason = req.body?.rejectionReason || req.body?.reason || '';
+      const data = await invoiceService.rejectOfflinePayment(id, adminUserId, rejectionReason);
+      res.success(data, 'Bank transfer payment rejected.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Record Cash payment directly (Facility In-Charge / Admin).
+   */
+  async recordCashPayment(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { amount } = req.body;
+      const facilityUserId = req.user?.id || req.user?._id;
+      const data = await invoiceService.recordCashPayment(id, amount, facilityUserId);
+      res.success(data, 'Cash payment recorded and receipt generated successfully.', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Universal search box for eligible unpaid invoices for Cash collection.
+   */
+  async searchCashEligible(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const { q } = req.query;
+      const data = await invoiceService.searchCashEligible(q, orgId);
+      res.success(data, 'Eligible invoices for cash collection retrieved successfully.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get Cash collection history for facility in-charge.
+   */
+  async getCashCollections(req, res, next) {
+    try {
+      const orgId = req.tenant?.orgId;
+      const facilityUserId = req.user?.id || req.user?._id;
+      const data = await invoiceService.getCashCollections(facilityUserId, orgId, req.query);
+      res.success(data, 'Cash collections history retrieved successfully.');
     } catch (error) {
       next(error);
     }
@@ -109,8 +154,9 @@ export class InvoiceController {
       next(error);
     }
   }
+
   /**
-   * Handle Razorpay Webhooks
+   * Handle Razorpay Webhooks using raw body for accurate HMAC signature verification
    */
   async handleRazorpayWebhook(req, res, next) {
     try {
@@ -121,16 +167,18 @@ export class InvoiceController {
         return res.status(400).json({ error: 'Missing signature or secret' });
       }
 
-      const expectedSignature = import('crypto').then(crypto => 
-        crypto.createHmac('sha256', secret)
-          .update(JSON.stringify(req.body))
-          .digest('hex')
-      );
-      
-      const crypto = await import('crypto');
-      const expected = crypto.createHmac('sha256', secret).update(JSON.stringify(req.body)).digest('hex');
+      const rawPayload = req.rawBody || (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
+      const expectedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(rawPayload)
+        .digest('hex');
 
-      if (expected !== signature) {
+      const sigBuffer = Buffer.from(signature);
+      const expectedBuffer = Buffer.from(expectedSignature);
+
+      const isValid = sigBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(sigBuffer, expectedBuffer);
+
+      if (!isValid) {
         return res.status(400).json({ error: 'Invalid signature' });
       }
 
@@ -138,7 +186,7 @@ export class InvoiceController {
         const reference_id = req.body.payload.payment_link.entity.reference_id;
         const payment_id = req.body.payload.payment?.entity?.id || req.body.payload.payment_link?.entity?.payment_id;
         
-        // Razorpay amounts are in paise (cents), divide by 100
+        // Razorpay amounts are in paise, divide by 100
         const amount_paid_paise = req.body.payload.payment?.entity?.amount || req.body.payload.payment_link?.entity?.amount_paid || 0;
         const amount_paid = amount_paid_paise / 100;
         

@@ -1,17 +1,21 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, ScrollView, Share, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
-import { Share2 } from 'lucide-react-native';
+import { Share2, Download, FileText } from 'lucide-react-native';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import { PaymentResultHeroCard } from '../components/PaymentResultHeroCard';
 import { InvoiceStatus, Invoice } from '../types';
+import { generateInvoiceHtml, exportInvoiceHtmlDocument } from '../utils/invoicePdfUtility';
 
 export function PaymentResultScreen() {
   const router = useRouter();
@@ -92,6 +96,8 @@ export function PaymentResultScreen() {
   const isPaid = status === 'PAID';
   const isPartial = status === 'PARTIALLY_PAID' || (paidAmount > 0 && remainingDue > 0);
 
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
   // Native Receipt Share Handler
   const handleShareReceipt = async () => {
     try {
@@ -102,6 +108,58 @@ export function PaymentResultScreen() {
       });
     } catch (err: any) {
       Alert.alert('Share Failed', err.message || 'Unable to share receipt.');
+    }
+  };
+
+  const { user } = useAuth();
+  const dynamicCommunityName = useMemo(() => {
+    return (
+      (invoice as any)?.communityName ||
+      (invoice as any)?.orgName ||
+      (invoice as any)?.organizationName ||
+      (invoice as any)?.organization?.name ||
+      (user as any)?.organizationName ||
+      (user as any)?.activeOrganizationName ||
+      (user as any)?.orgName ||
+      (user as any)?.communityName ||
+      (user as any)?.communityOrg ||
+      (user as any)?.organization?.name ||
+      'Community Workspace'
+    );
+  }, [invoice, user]);
+
+  // Export / Download PDF HTML statement
+  const handleDownloadInvoicePdf = async () => {
+    try {
+      setIsExportingPdf(true);
+      const targetData = invoice || {
+        _id: invoiceId,
+        invoiceNumber: invNo,
+        unitNumber: unitStr,
+        totalDue,
+        paidAmount: isPaid ? totalDue : paidAmount,
+        outstandingAmount: remainingDue,
+        status,
+        paymentMethod: methodStr,
+        offlineReference: refStr,
+        billingPeriodString: periodStr,
+      };
+
+      const html = generateInvoiceHtml(targetData, {
+        communityName: dynamicCommunityName,
+        residentName: (invoice as any)?.targetUser || (user as any)?.name || (user as any)?.fullName || 'Resident Owner',
+      });
+
+      await exportInvoiceHtmlDocument(
+        html,
+        `Invoice_${invNo}.html`,
+        `Invoice Statement #${invNo}`,
+        { action: 'download' }
+      );
+    } catch (err: any) {
+      Alert.alert('Export Failed', err.message || 'Unable to generate invoice PDF.');
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -149,17 +207,34 @@ export function PaymentResultScreen() {
         {/* Sticky Bottom Completion CTAs */}
         <View className="gap-2.5 p-4 pt-2 pb-6 border-t border-border bg-background">
           {(isPaid || isPartial) ? (
-            <Button
-              variant="default"
-              size="lg"
-              className="w-full flex-row items-center justify-center"
-              onPress={handleShareReceipt}
-              accessibilityRole="button"
-              accessibilityLabel="Share Digital Receipt"
-            >
-              <Icon as={Share2} size={18} className="text-primary-foreground me-2" />
-              <Text className="font-bold text-base text-primary-foreground">Share Digital Receipt</Text>
-            </Button>
+            <>
+              <Button
+                variant="default"
+                size="lg"
+                className="w-full flex-row items-center justify-center"
+                onPress={handleDownloadInvoicePdf}
+                disabled={isExportingPdf}
+                accessibilityRole="button"
+                accessibilityLabel="Download Official Invoice PDF"
+              >
+                <Icon as={Download} size={18} className="text-primary-foreground me-2" />
+                <Text className="font-bold text-base text-primary-foreground">
+                  {isExportingPdf ? 'Generating Invoice...' : 'Download Invoice Receipt PDF'}
+                </Text>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full flex-row items-center justify-center"
+                onPress={handleShareReceipt}
+                accessibilityRole="button"
+                accessibilityLabel="Share Digital Receipt"
+              >
+                <Icon as={Share2} size={18} className="text-foreground me-2" />
+                <Text className="font-bold text-base text-foreground">Share Digital Summary</Text>
+              </Button>
+            </>
           ) : null}
 
           {invoiceId ? (

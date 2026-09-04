@@ -34,9 +34,20 @@ const ResidentActionCenterView = memo(() => {
       loadResidentDues()
     }
 
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadResidentDues()
+      }
+    }
+
     window.addEventListener('billing:refreshDues', handleRefresh)
+    window.addEventListener('focus', handleVisibilityOrFocus)
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus)
+
     return () => {
       window.removeEventListener('billing:refreshDues', handleRefresh)
+      window.removeEventListener('focus', handleVisibilityOrFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus)
     }
   }, [loadResidentDues])
 

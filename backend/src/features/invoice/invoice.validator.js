@@ -22,23 +22,42 @@ export const offlineSettleSchema = [
     .withMessage('Invoice ID must be a valid string')
     .trim(),
 
+  body('paymentReference')
+    .optional()
+    .isString()
+    .withMessage('Payment reference must be a string')
+    .trim(),
+
   body('offlineReference')
-    .notEmpty()
-    .withMessage('Offline reference (cheque # / NEFT UTR) is required')
+    .optional()
     .isString()
     .withMessage('Offline reference must be a string')
     .trim(),
 
   body('paymentMethod')
-    .notEmpty()
-    .withMessage('Payment method is required')
-    .isIn(['CHEQUE', 'NEFT', 'CASH'])
-    .withMessage('Payment method must be one of CHEQUE, NEFT, or CASH'),
+    .optional()
+    .isIn(['BANK_TRANSFER', 'NEFT', 'CASH'])
+    .withMessage('Payment method must be BANK_TRANSFER, NEFT, or CASH'),
+
+  body('amountPaid')
+    .optional()
+    .isFloat({ gt: 0 })
+    .withMessage('Amount paid must be a number strictly greater than 0'),
 
   body('amount')
     .optional()
     .isFloat({ gt: 0 })
     .withMessage('Amount must be a number strictly greater than 0'),
+
+  body('paymentDate')
+    .optional()
+    .isString()
+    .withMessage('Payment date must be a valid date string'),
+
+  body('paymentScreenshot')
+    .optional()
+    .isString()
+    .withMessage('Payment screenshot must be a valid file reference or string'),
 ];
 
 export const approveInvoiceSchema = [
@@ -50,12 +69,18 @@ export const approveInvoiceSchema = [
     .trim(),
 ];
 
-export const rejectInvoiceSchema = [
+export const rejectOfflineSchema = [
   param('id')
     .notEmpty()
     .withMessage('Invoice ID or Number path parameter is required')
     .isString()
     .withMessage('Invoice ID must be a valid string')
+    .trim(),
+
+  body('rejectionReason')
+    .optional()
+    .isString()
+    .withMessage('Rejection reason must be a string')
     .trim(),
 
   body('reason')
@@ -65,3 +90,19 @@ export const rejectInvoiceSchema = [
     .trim(),
 ];
 
+export const rejectInvoiceSchema = rejectOfflineSchema;
+
+export const recordCashPaymentSchema = [
+  param('id')
+    .notEmpty()
+    .withMessage('Invoice ID or Number path parameter is required')
+    .isString()
+    .withMessage('Invoice ID must be a valid string')
+    .trim(),
+
+  body('amount')
+    .notEmpty()
+    .withMessage('Cash amount is required')
+    .isFloat({ gt: 0 })
+    .withMessage('Cash amount must be a number strictly greater than 0'),
+];
