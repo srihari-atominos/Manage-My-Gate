@@ -12,15 +12,40 @@ const generateUUID = (): string => {
 
 import { Platform } from 'react-native';
 
-const getDefaultBaseUrl = () => {
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5002/api';
+export const getApiBaseUrl = () => {
+  let url = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:5002/api/v1' : 'http://localhost:5002/api/v1');
+  if (Platform.OS === 'android' && url.includes('localhost')) {
+    url = url.replace('localhost', '10.0.2.2');
   }
-  return 'http://localhost:5002/api';
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isPrivateIpUrl = /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(url);
+    if (isLocalHost && isPrivateIpUrl) {
+      url = url.replace(/^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i, `${window.location.protocol}//localhost`);
+    }
+  }
+  return url;
+};
+
+export const getSocketBaseUrl = () => {
+  let socketUrl =
+    process.env.EXPO_PUBLIC_SOCKET_URL ||
+    (process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api.*$/, '') : 'http://localhost:5002');
+  if (Platform.OS === 'android' && socketUrl.includes('localhost')) {
+    socketUrl = socketUrl.replace('localhost', '10.0.2.2');
+  }
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isPrivateIpUrl = /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(socketUrl);
+    if (isLocalHost && isPrivateIpUrl) {
+      socketUrl = socketUrl.replace(/^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i, `${window.location.protocol}//localhost`);
+    }
+  }
+  return socketUrl;
 };
 
 const apiClient = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL || getDefaultBaseUrl(),
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

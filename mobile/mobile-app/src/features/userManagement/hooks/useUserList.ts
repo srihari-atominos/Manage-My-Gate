@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { io } from 'socket.io-client';
+import { getSocketBaseUrl } from '../../../services/apiClient';
 import { AppDispatch, RootState } from '../../../store/store';
 import {
   setSearchQuery,
@@ -47,10 +48,7 @@ export const useUserList = () => {
   useEffect(() => {
     if (!activeOrgId) return;
 
-    const socketUrl =
-      process.env.EXPO_PUBLIC_SOCKET_URL ||
-      (process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api.*$/, '') : 'http://localhost:5002');
-    const socket = io(socketUrl, {
+    const socket = io(getSocketBaseUrl(), {
       transports: ['websocket', 'polling'],
     });
 

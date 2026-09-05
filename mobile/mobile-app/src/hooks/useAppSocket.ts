@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../features/auth/hooks/useAuth';
+import { getSocketBaseUrl } from '../services/apiClient';
 
 // Module-level singleton socket instance
 let sharedSocket: Socket | null = null;
@@ -32,13 +33,7 @@ export const useAppSocket = () => {
       return;
     }
 
-    let socketUrl =
-      process.env.EXPO_PUBLIC_SOCKET_URL ||
-      (process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api.*$/, '') : 'http://localhost:5002');
-
-    if (Platform.OS === 'android' && socketUrl.includes('localhost')) {
-      socketUrl = socketUrl.replace('localhost', '10.0.2.2');
-    }
+    const socketUrl = getSocketBaseUrl();
 
     // Helper to join rooms
     const joinUserRooms = (sock: Socket) => {
