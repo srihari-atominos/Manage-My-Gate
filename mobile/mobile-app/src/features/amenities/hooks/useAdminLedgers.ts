@@ -77,11 +77,20 @@ export function useAdminLedgers() {
     let completedCount = 0;
     let cancelledCount = 0;
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const dNow = new Date();
+    const todayStr = `${dNow.getFullYear()}-${String(dNow.getMonth() + 1).padStart(2, '0')}-${String(dNow.getDate()).padStart(2, '0')}`;
 
     adminBookings.forEach((b) => {
-      if (b.status !== 'CANCELLED') {
-        const fee = b.totalFee || (b as any).totalPrice || (b as any).pricingDetails?.totalAmount || 0;
+      const statusUpper = (b.status || '').toUpperCase();
+      if (statusUpper !== 'CANCELLED' && statusUpper !== 'REJECTED') {
+        const fee = Number(
+          b.totalFee ??
+          (b as any).totalPrice ??
+          (b as any).pricingDetails?.totalAmount ??
+          (b as any).totalAmount ??
+          (b as any).amount ??
+          0
+        );
         totalMasterRevenue += fee;
         completedCount++;
 

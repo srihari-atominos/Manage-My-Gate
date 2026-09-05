@@ -123,11 +123,14 @@ export function AssessmentManagementScreen() {
 
   useBillingSocket();
 
-  // Permission check from auth state
-  const permissions: string[] = useSelector((state: any) => state.auth?.user?.permissions || []);
-  const userRole: string = useSelector((state: any) => state.auth?.user?.role || '');
-  const isSuperAdmin = userRole === 'SuperAdmin' || userRole === 'Admin';
-  const hasAssessmentPermission = isSuperAdmin || permissions.includes('billing:assessment_manager') || permissions.includes('*');
+  // Permission check from auth state (memoized boolean selector to avoid new reference warnings)
+  const hasAssessmentPermission = useSelector((state: any) => {
+    const role = state.auth?.user?.role || '';
+    if (role === 'SuperAdmin' || role === 'Admin') return true;
+    const permissions = state.auth?.user?.permissions;
+    if (!Array.isArray(permissions)) return false;
+    return permissions.includes('billing:assessment_manager') || permissions.includes('*');
+  });
 
   const [assessments, setAssessments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -185,32 +188,6 @@ export function AssessmentManagementScreen() {
   useEffect(() => {
     fetchAssessments();
   }, [fetchAssessments]);
-
-  // Permission Denied View
-  if (!hasAssessmentPermission) {
-    return (
-      <ScreenShell title="Assessment Management" subtitle="Access Restricted" iconName="Sliders">
-        <View className="flex-1 bg-background p-6 items-center justify-center">
-          <View className="w-16 h-16 rounded-full bg-destructive/10 items-center justify-center mb-4">
-            <Icon as={ShieldAlert} size={32} className="text-destructive" />
-          </View>
-          <Text className="text-xl font-bold text-foreground text-center mb-2">Access Denied</Text>
-          <Text className="text-sm text-muted-foreground text-center mb-6 px-4">
-            You do not have the required administrative permission (<Text className="font-mono text-xs font-bold">billing:assessment_manager</Text>) to manage assessment rules or execute billing runs.
-          </Text>
-          <Button
-            variant="default"
-            size="lg"
-            onPress={() => router.push('/(resident)/billing/my-dues' as any)}
-            accessibilityRole="button"
-            accessibilityLabel="Return to My Dues"
-          >
-            Return to My Dues
-          </Button>
-        </View>
-      </ScreenShell>
-    );
-  }
 
   const handleOpenRunModal = (assessment: any) => {
     setSelectedAssessment(assessment);
@@ -339,28 +316,51 @@ export function AssessmentManagementScreen() {
     <>
       <ScreenShell
         title="Assessment Management"
-        subtitle="Maintenance calculation formulas & billing runs"
+        subtitle={!hasAssessmentPermission ? 'Access Restricted' : 'Maintenance calculation formulas & billing runs'}
         iconName="SlidersHorizontal"
-        loading={isLoading && assessments.length === 0}
+        loading={hasAssessmentPermission && isLoading && assessments.length === 0}
         headerRight={
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => {
-              setAssessmentToEdit(null);
-              setShowCreateModal(true);
-            }}
-            className="h-9 px-3 rounded-xl bg-emerald-600 active:bg-emerald-700 flex-row items-center justify-center gap-1.5 shadow-sm"
-            accessibilityRole="button"
-            accessibilityLabel="Create New Assessment Rule"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Plus size={15} color="#ffffff" strokeWidth={2.5} />
-            <Text className="text-xs font-bold text-white">Create Rule</Text>
-          </TouchableOpacity>
+          !hasAssessmentPermission ? undefined : (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                setAssessmentToEdit(null);
+                setShowCreateModal(true);
+              }}
+              className="h-9 px-3 rounded-xl bg-emerald-600 active:bg-emerald-700 flex-row items-center justify-center gap-1.5 shadow-sm"
+              accessibilityRole="button"
+              accessibilityLabel="Create New Assessment Rule"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Plus size={15} color="#ffffff" strokeWidth={2.5} />
+              <Text className="text-xs font-bold text-white">Create Rule</Text>
+            </TouchableOpacity>
+          )
         }
       >
-        {/* CANONICAL SEARCH FILTER BAR WITH MOVEABLE STATUS SLIDE PILLS */}
-        <View className="px-4 pt-3 pb-1">
+        {!hasAssessmentPermission ? (
+          <View className="flex-1 bg-background p-6 items-center justify-center">
+            <View className="w-16 h-16 rounded-full bg-destructive/10 items-center justify-center mb-4">
+              <Icon as={ShieldAlert} size={32} className="text-destructive" />
+            </View>
+            <Text className="text-xl font-bold text-foreground text-center mb-2">Access Denied</Text>
+            <Text className="text-sm text-muted-foreground text-center mb-6 px-4">
+              You do not have the required administrative permission (<Text className="font-mono text-xs font-bold">billing:assessment_manager</Text>) to manage assessment rules or execute billing runs.
+            </Text>
+            <Button
+              variant="default"
+              size="lg"
+              onPress={() => router.push('/(resident)/billing/my-dues' as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Return to My Dues"
+            >
+              Return to My Dues
+            </Button>
+          </View>
+        ) : (
+          <>
+            {/* CANONICAL SEARCH FILTER BAR WITH MOVEABLE STATUS SLIDE PILLS */}
+            <View className="px-4 pt-3 pb-1">
           <SearchFilterBar
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
@@ -478,6 +478,8 @@ export function AssessmentManagementScreen() {
             })
           )}
         </ScrollView>
+          </>
+        )}
       </ScreenShell>
 
       {/* Assessment Rule Detail Bottom Sheet */}

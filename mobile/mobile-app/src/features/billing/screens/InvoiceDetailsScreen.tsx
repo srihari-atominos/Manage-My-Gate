@@ -288,8 +288,10 @@ export function InvoiceDetailsScreen() {
                     <Icon as={Receipt} size={20} className="text-primary" />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-foreground font-bold text-base">{unitStr}</Text>
-                    <Text className="text-muted-foreground text-xs">{periodStr}</Text>
+                    <Text className="text-foreground font-bold text-base truncate">
+                      {snapshot.assessmentName || (invoice as any)?.assessmentName || 'Maintenance Assessment'}
+                    </Text>
+                    <Text className="text-muted-foreground text-xs">{unitStr} • {periodStr}</Text>
                   </View>
                 </View>
 
@@ -318,36 +320,43 @@ export function InvoiceDetailsScreen() {
 
               {/* Payment Settlement Progress Bar */}
               {isPartial || paidAmount > 0 ? (
-                <View className="mt-1">
+                <View className="mb-4">
                   <View className="flex-row items-center justify-between mb-1.5">
-                    <Text className="text-xs text-muted-foreground font-medium">
-                      Payment Settlement Progress
-                    </Text>
-                    <Text className="text-xs font-bold text-primary">{paidPercentage}% Paid</Text>
+                    <Text className="text-xs font-semibold text-muted-foreground">Settlement Progress</Text>
+                    <Text className="text-xs font-extrabold text-primary">{paidPercentage}%</Text>
                   </View>
-                  <ProgressBar progress={paidPercentage} className="h-2 rounded-full" />
+                  <View className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                    <View
+                      className="h-full bg-primary rounded-full"
+                      style={{ width: `${paidPercentage}%` }}
+                    />
+                  </View>
                 </View>
               ) : null}
 
-              {/* Action Buttons inside Card */}
-              <View className="flex-row gap-2 mt-4 pt-3 border-t border-border">
+              {/* Action Buttons: View PDF & Download PDF */}
+              <View className="flex-row items-center gap-2 pt-1 border-t border-border/40">
                 <Button
                   variant="outline"
                   size="sm"
                   onPress={() => handleExportPdf('print')}
-                  className="flex-1 flex-row items-center justify-center gap-1.5"
+                  className="flex-1 flex-row items-center justify-center gap-1.5 border-primary/40 bg-primary/10"
+                  accessibilityRole="button"
+                  accessibilityLabel="View PDF Statement"
                 >
-                  <Icon as={Share2} size={14} className="text-foreground" />
-                  <Text className="text-xs font-semibold text-foreground">Share Statement</Text>
+                  <Icon as={FileText} size={14} className="text-primary" />
+                  <Text className="text-xs font-bold text-primary">View PDF</Text>
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
                   onPress={() => handleExportPdf('download')}
-                  className="flex-1 flex-row items-center justify-center gap-1.5"
+                  className="flex-1 flex-row items-center justify-center gap-1.5 bg-primary"
+                  accessibilityRole="button"
+                  accessibilityLabel="Download PDF Statement"
                 >
-                  <Icon as={Download} size={14} className="text-foreground" />
-                  <Text className="text-xs font-semibold text-foreground">Download PDF</Text>
+                  <Icon as={Download} size={14} className="text-primary-foreground" />
+                  <Text className="text-xs font-bold text-primary-foreground">Download PDF</Text>
                 </Button>
               </View>
             </View>

@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
+import { fetchQuickActionsThunk, resetQuickActionsForContext } from '../../src/features/dashboard/dashboardSlice';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
 
@@ -88,6 +89,9 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   }, [reduxWorkspaces, user]);
 
   const handleSelect = (ws: WorkspaceItem) => {
+    // 1. Immediately reset quick actions in Redux so previous org actions do not persist
+    dispatch(resetQuickActionsForContext());
+
     const targetRole = ws.roleName ? ws.roleName.split(',')[0].trim() : undefined;
     const payload: any = {};
     if (ws.orgId && /^[0-9a-fA-F]{24}$/.test(ws.orgId)) {
@@ -102,6 +106,15 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
     if (Object.keys(payload).length > 0) {
       dispatch(switchWorkspaceContextThunk(payload));
     }
+
+    // 2. Fetch the quick actions specifically scoped to this org and villa
+    dispatch(
+      fetchQuickActionsThunk({
+        orgId: ws.orgId,
+        villaId: ws.villaId || ws.villaNumber,
+      })
+    );
+
     onSelectCommunity(ws.name, ws.orgId);
     onClose();
   };

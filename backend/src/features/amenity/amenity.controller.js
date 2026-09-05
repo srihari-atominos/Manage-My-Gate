@@ -76,7 +76,7 @@ export class AmenityController {
     try {
       const { id } = req.params;
       const orgId = req.tenant.orgId;
-      const force = req.query.force === 'true';
+      const force = req.query.force === 'true' || req.body?.force === true;
       const deleted = await amenityService.deleteAmenity(id, orgId, force);
       res.success(deleted, 'Amenity deleted successfully');
     } catch (error) {

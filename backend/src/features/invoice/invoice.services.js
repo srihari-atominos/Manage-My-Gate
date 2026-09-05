@@ -625,9 +625,9 @@ export class InvoiceService {
       amountToApply = remainingDue;
     }
 
-    const offlineReference = invoice.offlineReference || `OFFLINE-${Date.now()}`;
-    const paymentMethod = (invoice.paymentMethod || 'BANK_TRANSFER').toUpperCase();
+    const paymentMethod = (options?.paymentMethod || invoice.paymentMethod || 'BANK_TRANSFER').toUpperCase();
     const isCash = paymentMethod === 'CASH';
+    const offlineReference = options?.paymentReference || options?.reference || invoice.offlineReference || (isCash ? `CASH-${Date.now()}` : `BANK-${Date.now()}`);
 
     const newOutstanding = Math.max(0, Math.round((remainingDue - amountToApply) * 100) / 100);
     const finalStatus = newOutstanding > 0 ? 'PARTIALLY_PAID' : 'PAID';
@@ -715,6 +715,9 @@ export class InvoiceService {
 
     invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, result);
     invoiceEventEmitter.emit('OFFLINE_PAYMENT_APPROVED', result);
+    if (isCash) {
+      invoiceEventEmitter.emit('CASH_PAYMENT_RECORDED', result);
+    }
 
     return result;
   }
@@ -1020,7 +1023,6 @@ export class InvoiceService {
   }
 
   /**
->>>>>>> upstream/test/develop
    * Fetch portfolio dues and compliance info for a persona.
    */
   async getUserDuesOverview(userContext) {

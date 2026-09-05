@@ -137,9 +137,21 @@ export const walletSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(verifyWalletPayment.fulfilled, (state) => {
+      .addCase(verifyWalletPayment.fulfilled, (state, action) => {
         state.isLoading = false;
         state.loading = false;
+        const payload = action.payload?.data || action.payload;
+        const updatedBalance = payload?.balance ?? payload?.walletBalance;
+        if (updatedBalance !== undefined && typeof updatedBalance === 'number') {
+          state.balance = updatedBalance;
+        }
+        if (payload) {
+          const newTxn = payload.transaction || payload;
+          if (newTxn && (newTxn._id || newTxn.transactionId)) {
+            state.transactionHistory = [newTxn, ...(state.transactionHistory || [])];
+            state.transactions = state.transactionHistory;
+          }
+        }
       })
       .addCase(verifyWalletPayment.rejected, (state, action) => {
         state.isLoading = false;
@@ -152,9 +164,21 @@ export const walletSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(topUpWalletDirect.fulfilled, (state) => {
+      .addCase(topUpWalletDirect.fulfilled, (state, action) => {
         state.isLoading = false;
         state.loading = false;
+        const payload = action.payload?.data || action.payload;
+        const updatedBalance = payload?.balance ?? payload?.walletBalance;
+        if (updatedBalance !== undefined && typeof updatedBalance === 'number') {
+          state.balance = updatedBalance;
+        }
+        if (payload) {
+          const newTxn = payload.transaction || payload;
+          if (newTxn && (newTxn._id || newTxn.transactionId)) {
+            state.transactionHistory = [newTxn, ...(state.transactionHistory || [])];
+            state.transactions = state.transactionHistory;
+          }
+        }
       })
       .addCase(topUpWalletDirect.rejected, (state, action) => {
         state.isLoading = false;

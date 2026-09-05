@@ -4,16 +4,44 @@ import dashboardService, {
   UserPreferencesResponse,
 } from './dashboardService';
 import storage from '../../utils/storage';
+import type { RootState } from '../../store/store';
 
 export const DEFAULT_QUICK_ACTIONS = [
-  'visitor_resident_passes',
+  'visitor_passes',
   'billing_dashboard',
   'complaints_track_requests',
   'amenities_discover',
   'notices_active_board',
 ];
 
-const STORAGE_KEY = 'user_quick_actions';
+/**
+ * Returns a user-scoped and context-scoped storage key so dashboard customizations are never
+ * shared across multiple accounts or multiple villas/organizations.
+ */
+export const getUserQuickActionsStorageKey = (
+  userId?: string | null,
+  orgId?: string | null,
+  villaId?: string | null
+) => {
+  if (userId && typeof userId === 'string' && userId.trim()) {
+    const cleanUser = userId.trim();
+    const cleanOrg = orgId && typeof orgId === 'string' && orgId.trim() ? orgId.trim() : 'default';
+    const cleanVilla = villaId && typeof villaId === 'string' && villaId.trim() ? villaId.trim() : 'default';
+    return `user_quick_actions_${cleanUser}_${cleanOrg}_${cleanVilla}`;
+  }
+  return null;
+};
+
+export interface FetchQuickActionsPayload {
+  orgId?: string | null;
+  villaId?: string | null;
+}
+
+export interface UpdateQuickActionsPayload {
+  activeQuickActions: string[];
+  orgId?: string | null;
+  villaId?: string | null;
+}
 
 export interface DashboardState {
   activeQuickActions: string[];
@@ -24,7 +52,7 @@ export interface DashboardState {
 }
 
 const initialState: DashboardState = {
-  activeQuickActions: DEFAULT_QUICK_ACTIONS,
+  activeQuickActions: [],
   featureCatalog: [],
   loading: false,
   updating: false,
@@ -32,64 +60,109 @@ const initialState: DashboardState = {
 };
 
 /**
- * Async Thunk to fetch user quick actions preferences and dynamic feature catalog
+ * Async Thunk to fetch user quick actions preferences and dynamic feature catalog.
+ * The currently authenticated user's remote preferences for the active workspace & villa
+ * are the primary source of truth, with isolated fallback to their context-specific local cache.
  */
 export const fetchQuickActionsThunk = createAsyncThunk<
   UserPreferencesResponse,
-  void,
-  { rejectValue: string }
->('dashboard/fetchQuickActions', async (_, { rejectWithValue }) => {
+  FetchQuickActionsPayload | void,
+  { rejectValue: string; state: RootState }
+>('dashboard/fetchQuickActions', async (contextPayload, { getState, rejectWithValue }) => {
   try {
-    let localSavedActions: string[] | null = null;
-    try {
-      const savedStr = await storage.getItem(STORAGE_KEY);
-      if (savedStr) {
-        localSavedActions = JSON.parse(savedStr);
+    const state = getState();
+    const authUser = (state as any).auth?.user;
+    const userId = authUser?._id || authUser?.id;
+    const orgId = contextPayload?.orgId || authUser?.activeOrgId || authUser?.orgId || authUser?.organizationId;
+    const villaId = contextPayload?.villaId || authUser?.villaId || authUser?.activeVillaNumber || authUser?.unitNumber || authUser?.villaNumber;
+
+    const userStorageKey = getUserQuickActionsStorageKey(userId, orgId, villaId);
+
+    // Clean up any stale un-scoped device storage key from previous legacy versions
+    storage.removeItem('user_quick_actions').catch(() => {});
+
+    // 1. Fetch preferences from backend for the currently authenticated user & context
+    const data = await dashboardService
+      .fetchQuickActions({
+        orgId: orgId ? String(orgId) : undefined,
+        villaId: villaId ? String(villaId) : undefined,
+      })
+      .catch(() => null);
+
+    if (data && data.isCustomized && Array.isArray(data.activeQuickActions) && data.activeQuickActions.length > 0) {
+      if (userStorageKey) {
+        await storage.setItem(userStorageKey, JSON.stringify(data.activeQuickActions)).catch(() => {});
       }
-    } catch (e) {}
-
-    const data = await dashboardService.fetchQuickActions().catch(() => null);
-
-    if (!data || !data.activeQuickActions || data.activeQuickActions.length === 0) {
-      return {
-        activeQuickActions: localSavedActions && localSavedActions.length > 0 ? localSavedActions : DEFAULT_QUICK_ACTIONS,
-        featureCatalog: data?.featureCatalog || [],
-      };
+      return data;
     }
 
-    if (localSavedActions && localSavedActions.length > 0) {
-      return {
-        ...data,
-        activeQuickActions: localSavedActions,
-      };
+    // 2. If backend request returned uncustomized or offline:
+    // Check if this specific context was saved in local storage
+    if (userStorageKey && (!data || data.isCustomized !== false)) {
+      try {
+        const savedStr = await storage.getItem(userStorageKey);
+        if (savedStr) {
+          const localSavedActions = JSON.parse(savedStr);
+          if (Array.isArray(localSavedActions) && localSavedActions.length > 0) {
+            return {
+              activeQuickActions: localSavedActions,
+              isCustomized: true,
+              featureCatalog: data?.featureCatalog || [],
+            };
+          }
+        }
+      } catch (e) {}
     }
 
-    return data;
+    // 3. Return empty array so role-appropriate defaults are calculated per-user for THIS context
+    return {
+      activeQuickActions: [],
+      isCustomized: false,
+      featureCatalog: data?.featureCatalog || [],
+    };
   } catch (error: any) {
     return rejectWithValue(error?.message || 'Failed to fetch user preferences');
   }
 });
 
 /**
- * Async Thunk to update customized quick actions (up to 7 items) with optimistic local persistence
+ * Async Thunk to update customized quick actions (up to 7 items) with context-scoped persistence
  */
 export const updateQuickActionsThunk = createAsyncThunk<
   UserPreferencesResponse,
-  string[],
-  { rejectValue: string }
->('dashboard/updateQuickActions', async (activeQuickActions: string[], { rejectWithValue }) => {
+  UpdateQuickActionsPayload | string[],
+  { rejectValue: string; state: RootState }
+>('dashboard/updateQuickActions', async (arg, { getState, rejectWithValue }) => {
   try {
-    // 1. Persist locally to storage immediately
-    await storage.setItem(STORAGE_KEY, JSON.stringify(activeQuickActions)).catch(() => {});
+    const state = getState();
+    const authUser = (state as any).auth?.user;
+    const userId = authUser?._id || authUser?.id;
 
-    // 2. Sync to backend API (non-blocking if backend is offline)
-    const data = await dashboardService.updateQuickActions(activeQuickActions).catch((err) => {
-      console.warn('[Dashboard] Backend quick action sync non-critical warning:', err.message);
-      return null;
-    });
+    const activeQuickActions = Array.isArray(arg) ? arg : arg.activeQuickActions;
+    const orgId = !Array.isArray(arg) && arg.orgId ? arg.orgId : (authUser?.activeOrgId || authUser?.orgId || authUser?.organizationId);
+    const villaId = !Array.isArray(arg) && arg.villaId ? arg.villaId : (authUser?.villaId || authUser?.activeVillaNumber || authUser?.unitNumber || authUser?.villaNumber);
+
+    const userStorageKey = getUserQuickActionsStorageKey(userId, orgId, villaId);
+
+    // 1. Persist locally under THIS user's scoped context key
+    if (userStorageKey) {
+      await storage.setItem(userStorageKey, JSON.stringify(activeQuickActions)).catch(() => {});
+    }
+
+    // 2. Sync to backend API with context
+    const data = await dashboardService
+      .updateQuickActions(activeQuickActions, {
+        orgId: orgId ? String(orgId) : undefined,
+        villaId: villaId ? String(villaId) : undefined,
+      })
+      .catch((err) => {
+        console.warn('[Dashboard] Backend quick action sync non-critical warning:', err?.message);
+        return null;
+      });
 
     return {
       activeQuickActions,
+      isCustomized: true,
       featureCatalog: data?.featureCatalog || [],
     };
   } catch (error: any) {
@@ -104,9 +177,29 @@ export const dashboardSlice = createSlice({
     clearDashboardError: (state) => {
       state.error = null;
     },
-    setActiveQuickActionsLocal: (state, action: PayloadAction<string[]>) => {
-      state.activeQuickActions = action.payload;
-      storage.setItem(STORAGE_KEY, JSON.stringify(action.payload)).catch(() => {});
+    resetDashboard: (state) => {
+      state.activeQuickActions = [];
+      state.featureCatalog = [];
+      state.loading = false;
+      state.updating = false;
+      state.error = null;
+    },
+    resetQuickActionsForContext: (state) => {
+      state.activeQuickActions = [];
+      state.loading = true;
+      state.error = null;
+    },
+    setActiveQuickActionsLocal: (
+      state,
+      action: PayloadAction<{ actions: string[]; userId?: string } | string[]>
+    ) => {
+      const actions = Array.isArray(action.payload) ? action.payload : action.payload.actions;
+      const userId = Array.isArray(action.payload) ? undefined : action.payload.userId;
+      state.activeQuickActions = actions;
+      const userKey = getUserQuickActionsStorageKey(userId);
+      if (userKey) {
+        storage.setItem(userKey, JSON.stringify(actions)).catch(() => {});
+      }
     },
   },
   extraReducers: (builder) => {
@@ -118,7 +211,7 @@ export const dashboardSlice = createSlice({
       })
       .addCase(fetchQuickActionsThunk.fulfilled, (state, action) => {
         state.loading = false;
-        if (action.payload?.activeQuickActions && action.payload.activeQuickActions.length > 0) {
+        if (action.payload?.activeQuickActions) {
           state.activeQuickActions = action.payload.activeQuickActions;
         }
         if (action.payload?.featureCatalog) {
@@ -135,8 +228,11 @@ export const dashboardSlice = createSlice({
         state.updating = true;
         state.error = null;
         // Optimistic update
-        if (action.meta.arg && action.meta.arg.length > 0) {
-          state.activeQuickActions = action.meta.arg;
+        const optimisticActions = Array.isArray(action.meta.arg)
+          ? action.meta.arg
+          : (action.meta.arg as any)?.activeQuickActions;
+        if (optimisticActions && optimisticActions.length > 0) {
+          state.activeQuickActions = optimisticActions;
         }
       })
       .addCase(updateQuickActionsThunk.fulfilled, (state, action) => {
@@ -148,12 +244,39 @@ export const dashboardSlice = createSlice({
           state.featureCatalog = action.payload.featureCatalog;
         }
       })
-      .addCase(updateQuickActionsThunk.rejected, (state, action) => {
+      .addCase(updateQuickActionsThunk.rejected, (state) => {
         state.updating = false;
         // Keep optimistic activeQuickActions state even if remote endpoint rejects
+      })
+
+      // Reset dashboard state when logging out or switching accounts
+      .addCase('auth/logout', (state) => {
+        state.activeQuickActions = [];
+        state.featureCatalog = [];
+        state.loading = false;
+        state.updating = false;
+        state.error = null;
+      })
+      .addCase('auth/performLogout/fulfilled', (state) => {
+        state.activeQuickActions = [];
+        state.featureCatalog = [];
+        state.loading = false;
+        state.updating = false;
+        state.error = null;
+      })
+      .addCase('auth/switchWorkspaceContext/fulfilled', (state) => {
+        state.activeQuickActions = [];
+        state.loading = false;
+        state.updating = false;
+        state.error = null;
       });
   },
 });
 
-export const { clearDashboardError, setActiveQuickActionsLocal } = dashboardSlice.actions;
+export const {
+  clearDashboardError,
+  resetDashboard,
+  resetQuickActionsForContext,
+  setActiveQuickActionsLocal,
+} = dashboardSlice.actions;
 export default dashboardSlice.reducer;

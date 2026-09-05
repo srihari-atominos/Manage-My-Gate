@@ -46,12 +46,14 @@ export function AdminBillingDashboardScreen() {
   // Socket sync for real-time KPI & ledger updates
   useBillingSocket();
 
-  // Permission check from auth state
-  const permissions: string[] = useSelector((state: any) => state.auth?.user?.permissions || []);
-  const userRole: string = useSelector((state: any) => state.auth?.user?.role || '');
-  const isSuperAdmin = userRole === 'SuperAdmin' || userRole === 'Admin';
-  const hasDashboardPermission =
-    isSuperAdmin || permissions.includes('billing:dashboard') || permissions.includes('*');
+  // Permission check from auth state (memoized boolean selector to avoid new reference warnings)
+  const hasDashboardPermission = useSelector((state: any) => {
+    const role = state.auth?.user?.role || '';
+    if (role === 'SuperAdmin' || role === 'Admin') return true;
+    const permissions = state.auth?.user?.permissions;
+    if (!Array.isArray(permissions)) return false;
+    return permissions.includes('billing:dashboard') || permissions.includes('*');
+  });
 
   const fetchDashboardData = useCallback(() => {
     if (activeOrgId) {
@@ -64,34 +66,6 @@ export function AdminBillingDashboardScreen() {
       fetchDashboardData();
     }
   }, [hasDashboardPermission, fetchDashboardData]);
-
-  // Permission Denied View
-  if (!hasDashboardPermission) {
-    return (
-      <ScreenShell title="Financial Overview" subtitle="Access Restricted" iconName="BarChart3">
-        <View className="flex-1 bg-background p-6 items-center justify-center">
-          <View className="w-16 h-16 rounded-full bg-destructive/10 items-center justify-center mb-4">
-            <Icon as={ShieldAlert} size={32} className="text-destructive" />
-          </View>
-          <Text className="text-xl font-bold text-foreground text-center mb-2">Access Denied</Text>
-          <Text className="text-sm text-muted-foreground text-center mb-6 px-4">
-            You do not have the required administrative permission (
-            <Text className="font-mono text-xs font-bold">billing:dashboard</Text>) to view community
-            financial KPIs.
-          </Text>
-          <Button
-            variant="default"
-            size="lg"
-            onPress={() => router.push('/(resident)/billing/my-dues' as any)}
-            accessibilityRole="button"
-            accessibilityLabel="Return to My Dues"
-          >
-            Return to My Dues
-          </Button>
-        </View>
-      </ScreenShell>
-    );
-  }
 
   // Authoritative metrics from backend
   const grossDemand = kpis?.grossDemand || 0;
@@ -190,25 +164,49 @@ export function AdminBillingDashboardScreen() {
   return (
     <ScreenShell
       title="Billing Overview"
-      subtitle="Community Collection & Dues Snapshot"
+      subtitle={!hasDashboardPermission ? 'Access Restricted' : 'Community Collection & Dues Snapshot'}
       iconName="BarChart3"
-      loading={loadingStates.fetchKPIs && !kpis}
+      loading={hasDashboardPermission && loadingStates.fetchKPIs && !kpis}
       headerRight={
-        <Button
-          variant="outline"
-          size="sm"
-          onPress={() => router.push('/(resident)/billing/my-dues' as any)}
-          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
-          accessibilityRole="button"
-          accessibilityLabel="View Personal Dues"
-        >
-          <CreditCard size={14} className="text-foreground" />
-          <Text className="text-xs font-semibold text-foreground">My Dues</Text>
-        </Button>
+        !hasDashboardPermission ? undefined : (
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={() => router.push('/(resident)/billing/my-dues' as any)}
+            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+            accessibilityRole="button"
+            accessibilityLabel="View Personal Dues"
+          >
+            <CreditCard size={14} className="text-foreground" />
+            <Text className="text-xs font-semibold text-foreground">My Dues</Text>
+          </Button>
+        )
       }
     >
-      <ScrollView
-        className="flex-1 bg-background"
+      {!hasDashboardPermission ? (
+        <View className="flex-1 bg-background p-6 items-center justify-center">
+          <View className="w-16 h-16 rounded-full bg-destructive/10 items-center justify-center mb-4">
+            <Icon as={ShieldAlert} size={32} className="text-destructive" />
+          </View>
+          <Text className="text-xl font-bold text-foreground text-center mb-2">Access Denied</Text>
+          <Text className="text-sm text-muted-foreground text-center mb-6 px-4">
+            You do not have the required administrative permission (
+            <Text className="font-mono text-xs font-bold">billing:dashboard</Text>) to view community
+            financial KPIs.
+          </Text>
+          <Button
+            variant="default"
+            size="lg"
+            onPress={() => router.push('/(resident)/billing/my-dues' as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Return to My Dues"
+          >
+            Return to My Dues
+          </Button>
+        </View>
+      ) : (
+        <ScrollView
+          className="flex-1 bg-background"
         showsVerticalScrollIndicator={false}
         contentContainerClassName="p-4 pb-28 gap-5"
         refreshControl={
@@ -305,13 +303,16 @@ export function AdminBillingDashboardScreen() {
           )}
         </View>
       </ScrollView>
+      )}
 
       {/* Primary Action: New Assessment Wizard FAB (Reference from Amenities Dashboard) */}
-      <FAB
-        iconName="Plus"
-        label="New Assessment"
-        onPress={() => router.push('/(resident)/admin/billing/assessments' as any)}
-      />
+      {hasDashboardPermission && (
+        <FAB
+          iconName="Plus"
+          label="New Assessment"
+          onPress={() => router.push('/(resident)/admin/billing/assessments' as any)}
+        />
+      )}
     </ScreenShell>
   );
 }

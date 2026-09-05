@@ -8,6 +8,7 @@ import {
   updateAmenityThunk, 
   deleteAmenityThunk,
   updateAmenityStatusThunk,
+  removeAmenity,
   Amenity 
 } from '../store/amenitySlice';
 
@@ -131,14 +132,24 @@ export const useAmenityMaster = () => {
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
+    const targetId = String(deleteTarget._id || (deleteTarget as any).id || '');
     setSaving(true);
     try {
-      await dispatch(deleteAmenityThunk({ id: deleteTarget._id })).unwrap();
+      await dispatch(deleteAmenityThunk({ id: targetId, force: true })).unwrap();
+      dispatch(removeAmenity(targetId));
+      dispatch(fetchAmenitiesThunk({ page: 1, limit: 100 }));
       Alert.alert('Success', 'Amenity deleted successfully');
       setDeleteTarget(null);
     } catch (err: any) {
-      console.error('Failed to delete amenity', err);
-      Alert.alert('Error', typeof err === 'string' ? err : err?.message || 'Failed to delete amenity');
+      const errMsg = typeof err === 'string' ? err : err?.message || '';
+      if (errMsg.toLowerCase().includes('not found') || errMsg.includes('404')) {
+        dispatch(removeAmenity(targetId));
+        Alert.alert('Success', 'Amenity removed successfully');
+        setDeleteTarget(null);
+      } else {
+        console.error('Failed to delete amenity', err);
+        Alert.alert('Error', errMsg || 'Failed to delete amenity');
+      }
     } finally {
       setSaving(false);
     }

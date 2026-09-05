@@ -417,8 +417,14 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
     if (refreshToken) await storage.setItem('refreshToken', refreshToken);
     if (user) await storage.setItem('user', JSON.stringify(user));
 
-    const { fetchQuickActionsThunk } = require('../../dashboard/dashboardSlice');
-    dispatch(fetchQuickActionsThunk());
+    const { fetchQuickActionsThunk, resetQuickActionsForContext } = require('../../dashboard/dashboardSlice');
+    dispatch(resetQuickActionsForContext());
+    dispatch(
+      fetchQuickActionsThunk({
+        orgId: user?.activeOrgId || user?.orgId || cleanPayload.targetOrgId,
+        villaId: user?.activeVillaId || user?.villaId || user?.activeVillaNumber || user?.unitNumber || cleanPayload.targetVillaId,
+      })
+    );
 
     return { ...innerData, user };
   } catch (error: any) {
@@ -619,6 +625,26 @@ const authSlice = createSlice({
         const updated = {
           ...state.user,
           ...action.payload,
+        };
+        state.user = updated;
+        storage.setItem('user', JSON.stringify(updated)).catch(() => {});
+      }
+    },
+    setActiveUnitContext: (
+      state,
+      action: PayloadAction<{ villaId?: string; villaNumber?: string; orgId?: string; orgName?: string }>
+    ) => {
+      if (state.user) {
+        const u = state.user as any;
+        const updated = {
+          ...state.user,
+          villaId: action.payload.villaId || u.villaId,
+          activeVillaId: action.payload.villaId || u.activeVillaId,
+          villaNumber: action.payload.villaNumber || u.villaNumber,
+          activeVillaNumber: action.payload.villaNumber || u.activeVillaNumber,
+          unitNumber: action.payload.villaNumber || u.unitNumber,
+          ...(action.payload.orgId ? { orgId: action.payload.orgId, activeOrgId: action.payload.orgId } : {}),
+          ...(action.payload.orgName ? { organizationName: action.payload.orgName, activeOrganizationName: action.payload.orgName } : {}),
         };
         state.user = updated;
         storage.setItem('user', JSON.stringify(updated)).catch(() => {});
@@ -971,5 +997,11 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearStatus, updateTokenAndUser, updateUserProfile } = authSlice.actions;
+export const {
+  logout,
+  clearStatus,
+  updateTokenAndUser,
+  updateUserProfile,
+  setActiveUnitContext,
+} = authSlice.actions;
 export default authSlice.reducer;

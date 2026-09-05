@@ -19,13 +19,15 @@ import {
   clearStatus,
   bootstrapAuth,
   updateProfileThunk,
+  switchWorkspaceContextThunk,
 } from '../store/authSlice';
 import authService from '../services/authService';
 import { useCallback } from 'react';
 
 export const useAuth = () => {
-  let dispatch: AppDispatch | null = null;
-  let authState: any = {
+  const dispatch = useDispatch<AppDispatch>();
+  const storeState = useSelector((state: RootState) => state.auth);
+  const authState = storeState || {
     user: null,
     isAuthenticated: false,
     isInitialized: true,
@@ -33,16 +35,6 @@ export const useAuth = () => {
     error: null,
     otpSent: false,
   };
-
-  try {
-    dispatch = useDispatch<AppDispatch>();
-    const storeState = useSelector((state: RootState) => state.auth);
-    if (storeState) {
-      authState = storeState;
-    }
-  } catch (e) {
-    // Redux Provider context not available yet during initial mount
-  }
 
   const handleLogin = useCallback(
     (credentials: any) => {
@@ -162,6 +154,13 @@ export const useAuth = () => {
     [dispatch]
   );
 
+  const handleSwitchWorkspaceContext = useCallback(
+    (payload: any = {}) => {
+      return dispatch(switchWorkspaceContextThunk(payload));
+    },
+    [dispatch]
+  );
+
   return {
     ...authState,
     login: handleLogin,
@@ -183,6 +182,7 @@ export const useAuth = () => {
     clearStatus: handleClearStatus,
     bootstrap: handleBootstrap,
     updateProfile: handleUpdateProfile,
+    switchWorkspaceContext: handleSwitchWorkspaceContext,
   };
 };
 

@@ -11,6 +11,8 @@ export interface DatePickerProps {
   placeholder?: string;
   error?: string;
   className?: string;
+  minDate?: Date;
+  maxDate?: Date;
 }
 
 export const DatePicker = ({
@@ -20,6 +22,8 @@ export const DatePicker = ({
   placeholder = 'Select date',
   error,
   className,
+  minDate,
+  maxDate,
 }: DatePickerProps) => {
   const [modalVisible, setModalVisible] = useState(false);
   const isValidDate = value && !isNaN(value.getTime());
@@ -60,6 +64,8 @@ export const DatePicker = ({
         selectedDate={value}
         onSelectDate={onChange}
         title={label || placeholder}
+        minDate={minDate}
+        maxDate={maxDate}
       />
     </View>
   );

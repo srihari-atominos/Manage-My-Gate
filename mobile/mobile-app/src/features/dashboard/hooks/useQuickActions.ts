@@ -58,27 +58,34 @@ export const useQuickActions = () => {
   const userPermissions = authUser?.permissions || [];
   const currentUserId = authUser?._id || authUser?.id;
   const activeOrgId = authUser?.activeOrgId || authUser?.orgId || authUser?.organizationId;
+  const activeVilla = authUser?.villaId || authUser?.activeVillaNumber || authUser?.unitNumber || authUser?.villaNumber;
 
   useEffect(() => {
     if (isAuthenticated && currentUserId) {
-      dispatch(fetchQuickActionsThunk());
+      dispatch(fetchQuickActionsThunk({ orgId: activeOrgId, villaId: activeVilla }));
       loadWorkspaceModules('current');
     }
-  }, [dispatch, isAuthenticated, currentUserId, activeOrgId, loadWorkspaceModules]);
+  }, [dispatch, isAuthenticated, currentUserId, activeOrgId, activeVilla, loadWorkspaceModules]);
 
   const loadQuickActions = useCallback(() => {
     if (isAuthenticated) {
-      dispatch(fetchQuickActionsThunk());
+      dispatch(fetchQuickActionsThunk({ orgId: activeOrgId, villaId: activeVilla }));
       loadWorkspaceModules('current');
     }
-  }, [dispatch, isAuthenticated, loadWorkspaceModules]);
+  }, [dispatch, isAuthenticated, activeOrgId, activeVilla, loadWorkspaceModules]);
 
   const saveQuickActions = useCallback(
     async (selectedIds: string[]) => {
-      const result = await dispatch(updateQuickActionsThunk(selectedIds));
+      const result = await dispatch(
+        updateQuickActionsThunk({
+          activeQuickActions: selectedIds,
+          orgId: activeOrgId,
+          villaId: activeVilla,
+        })
+      );
       return result;
     },
-    [dispatch]
+    [dispatch, activeOrgId, activeVilla]
   );
 
   const clearError = useCallback(() => {
@@ -170,29 +177,31 @@ export const useQuickActions = () => {
   // Role-filtered active quick action IDs (max 5)
   const effectiveQuickActionIds = useMemo<string[]>(() => {
     const defaultIds = getDefaultQuickActionsForUser(user);
-    const candidateIds = (activeQuickActions && activeQuickActions.length > 0) ? activeQuickActions : defaultIds;
+    const hasCustomized = Array.isArray(activeQuickActions) && activeQuickActions.length > 0;
+    const candidateIds = hasCustomized ? activeQuickActions : defaultIds;
 
     const allowedIds = candidateIds.filter((id) => {
       const item = allFeaturesList.find((f) => f.id === id) || ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
       return item ? isFeatureAllowedForUser(item, user) : false;
     });
 
-    if (allowedIds.length >= 5) {
+    // If user explicitly configured their quick actions, strictly respect their choice (up to 5)
+    if (hasCustomized) {
       return allowedIds.slice(0, 5);
     }
 
+    // Otherwise, for fresh uncustomized defaults:
     const permittedDefaults = defaultIds.filter((id) => {
       const item = allFeaturesList.find((f) => f.id === id) || ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
       return item ? isFeatureAllowedForUser(item, user) : false;
     });
 
-    const combined = Array.from(new Set([...allowedIds, ...permittedDefaults]));
-    if (combined.length >= 5) {
-      return combined.slice(0, 5);
+    if (permittedDefaults.length > 0) {
+      return permittedDefaults.slice(0, 5);
     }
 
     const allPermitted = allFeaturesList.map((item) => item.id);
-    return Array.from(new Set([...combined, ...allPermitted])).slice(0, 5);
+    return Array.from(new Set(allPermitted)).slice(0, 5);
   }, [activeQuickActions, user, allFeaturesList]);
 
   // Equipped active quick action items (slots 1 through 5)

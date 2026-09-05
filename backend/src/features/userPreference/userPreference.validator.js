@@ -19,4 +19,14 @@ export const updateQuickActionsRules = [
       }
       return true;
     }),
+  body('orgId')
+    .optional()
+    .isString()
+    .trim()
+    .withMessage('orgId must be a string'),
+  body('villaId')
+    .optional()
+    .isString()
+    .trim()
+    .withMessage('villaId must be a string'),
 ];

@@ -255,12 +255,14 @@ export class AmenityBookingService {
 
       const booking = await amenityBookingRepository.create(newBookingData, sessionOpt);
 
+      let updatedWallet = null;
+      let walletTxn = null;
       if (finalPaymentMethod.toUpperCase() === 'WALLET' && totalAmount > 0) {
         const walletRepository = (await import('../wallet/wallet.repository.js')).default;
         
-        await walletRepository.updateBalance(userId, orgId, -totalAmount, sessionOpt);
+        updatedWallet = await walletRepository.updateBalance(userId, orgId, -totalAmount, sessionOpt);
         
-        await walletRepository.createTransaction({
+        walletTxn = await walletRepository.createTransaction({
           orgId,
           userId,
           type: 'Debit',
@@ -279,8 +281,11 @@ export class AmenityBookingService {
       }
 
       if (finalPaymentMethod.toUpperCase() === 'WALLET' && totalAmount > 0) {
-         const { walletEventEmitter, WALLET_UPDATED } = await import('../wallet/wallet.events.js');
-         walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId });
+         const { walletEventEmitter, WALLET_UPDATED, WALLET_TRANSACTION_CREATED } = await import('../wallet/wallet.events.js');
+         walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet?.balance });
+         if (walletTxn) {
+           walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, walletTxn);
+         }
       }
 
       amenityBookingEventEmitter.emit(AMENITY_BOOKING_CREATED, booking);

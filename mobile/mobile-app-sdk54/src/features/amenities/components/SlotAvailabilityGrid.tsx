@@ -79,7 +79,7 @@ export function SlotAvailabilityGrid({
               key={slotId}
               disabled={!isAvailable && !onSlotSelect}
               onPress={() => onSlotSelect && onSlotSelect(slot)}
-              accessibilityRole="button"
+              accessibilityRole={onBookSlot ? undefined : 'button'}
               accessibilityLabel={`Time slot ${slot.startTime} to ${slot.endTime}. ${
                 isAvailable ? `Available with capacity ${availableCount}` : 'Booked or unavailable'
               }`}

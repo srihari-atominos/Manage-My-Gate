@@ -44,14 +44,24 @@ export function InvoiceActionsBottomSheet({
     }
   }, [visible]);
 
+  const totalAmount = invoice?.totalDue ?? invoice?.amount ?? 0;
+  const paidAmount = invoice?.paidAmount ?? 0;
+  const remainingDue = Math.max(0, totalAmount - paidAmount);
+
+  const amountToApprove = useMemo(() => {
+    if (approvalMode === 'FULL') return remainingDue;
+    const parsed = parseFloat(customAmountStr);
+    return isNaN(parsed) || parsed <= 0 ? 0 : parsed;
+  }, [approvalMode, customAmountStr, remainingDue]);
+
+  const remainingAfterApproval = Math.max(0, remainingDue - amountToApprove);
+  const willBeFullyPaid = remainingAfterApproval === 0;
+
   if (!invoice) return null;
 
   const invNo = invoice.invoiceNumber || invoice._id || '—';
   const unitStr = invoice.unitNumber ? `Villa ${invoice.unitNumber}` : '—';
   const residentStr = invoice.targetUser || 'Resident';
-  const totalAmount = invoice.totalDue ?? invoice.amount ?? 0;
-  const paidAmount = invoice.paidAmount ?? 0;
-  const remainingDue = Math.max(0, totalAmount - paidAmount);
   const submittedAmount = (invoice as any).offlineAmount ?? remainingDue;
   const formattedAmount = `₹${(submittedAmount || totalAmount).toLocaleString('en-IN')}`;
 

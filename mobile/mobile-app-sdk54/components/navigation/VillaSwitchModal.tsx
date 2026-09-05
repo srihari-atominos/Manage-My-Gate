@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Home, Check, X, Building2 } from 'lucide-react-native';
 
 import { useDispatch, useSelector } from 'react-redux';
-import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
+import { switchWorkspaceContextThunk, setActiveUnitContext } from '../../src/features/auth/store/authSlice';
+import { fetchQuickActionsThunk, resetQuickActionsForContext } from '../../src/features/dashboard/dashboardSlice';
 
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
@@ -37,7 +38,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
 }) => {
   const { user } = useAuth();
   const dispatch = useDispatch<any>();
-  const { t } = useTranslation();
+  const { t, tRole } = useTranslation();
   const reduxWorkspaces = useSelector((state: any) => state.auth?.user?.availableWorkspaces || state.workspace?.availableWorkspaces);
 
   const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
@@ -83,22 +84,47 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
       });
     }
 
-    // 3. Fallback for active single unit
-    const activeVNum = userAny?.villaNumber || userAny?.activeVillaNumber || userAny?.unitNumber;
-    const activeVId = userAny?.villaId || '1';
-    if (activeVNum && unitsMap.size === 0) {
-      unitsMap.set(activeVId, {
-        id: activeVId,
-        unitNumber: activeVNum,
-        block: userAny?.villaBlock || '',
-        residencyType: userAny?.residentType || userAny?.residencyType || 'Owner',
+    // 3. Fallback to DUMMY_VILLAS matching active community context
+    if (unitsMap.size <= 1) {
+      const { DUMMY_VILLAS } = require('../../src/features/villa/store/villaSlice');
+      const isEmerald = communityName.toLowerCase().includes('emerald') || activeOrgId === '650000000000000000000002';
+      const isSkyline = communityName.toLowerCase().includes('skyline') || communityName.toLowerCase().includes('apartment') || activeOrgId === '650000000000000000000003';
+      
+      const filtered = DUMMY_VILLAS.filter((v: any) => {
+        if (isEmerald) return v.blockOrBuilding?.includes('Emerald Valley');
+        if (isSkyline) return v.blockOrBuilding?.startsWith('Block');
+        return v.blockOrBuilding?.includes('Palm Meadows') || v.blockOrBuilding === 'Phase 1';
+      });
+
+      filtered.forEach((v: any) => {
+        if (!unitsMap.has(v._id)) {
+          unitsMap.set(v._id, {
+            id: v._id,
+            unitNumber: v.unitNumber,
+            block: v.blockOrBuilding || '',
+            residencyType: v.primaryResident ? 'Resident' : 'Vacant',
+          });
+        }
       });
     }
 
     return Array.from(unitsMap.values());
-  }, [user, reduxWorkspaces, activeOrgId]);
+  }, [user, reduxWorkspaces, activeOrgId, communityName]);
 
   const handleSelect = (unit: VillaUnit) => {
+    // 1. Immediately reset quick actions in Redux so previous villa actions do not persist
+    dispatch(resetQuickActionsForContext());
+
+    // 2. Set active unit context synchronously in Redux and persistent storage
+    dispatch(
+      setActiveUnitContext({
+        villaId: unit.id,
+        villaNumber: unit.unitNumber,
+        orgId: activeOrgId,
+      })
+    );
+
+    // 3. Dispatch backend workspace switch if valid ObjectId
     const payload: any = {};
     if (unit.id && /^[0-9a-fA-F]{24}$/.test(unit.id)) {
       payload.targetVillaId = unit.id;
@@ -109,6 +135,15 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
     if (Object.keys(payload).length > 0) {
       dispatch(switchWorkspaceContextThunk(payload));
     }
+
+    // 4. Fetch the quick actions specifically scoped to this unit and organization
+    dispatch(
+      fetchQuickActionsThunk({
+        orgId: activeOrgId,
+        villaId: unit.id || unit.unitNumber,
+      })
+    );
+
     onSelectVilla(unit.unitNumber);
     onClose();
   };
@@ -131,7 +166,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
           </View>
 
           <Text className="text-xs text-muted-foreground">
-            Select a property unit context in <Text className="font-bold text-foreground">{communityName}</Text>:
+            {t('select_property_unit_context', 'Select a property unit context in')} <Text className="font-bold text-foreground">{communityName}</Text>:
           </Text>
 
           {/* Villa Units List */}
@@ -146,7 +181,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
                   const isSelected = isUnitIdMatch || (isUnitNumberMatch && isBlockMatch && isRoleMatch);
                   return (
                     <TouchableOpacity
-                      key={unit.id}
+                      key={`${unit.id || 'unit'}-${index}`}
                       onPress={() => handleSelect(unit)}
                       activeOpacity={0.8}
                       className={`flex-row items-center justify-between p-3.5 rounded-2xl border shadow-xs ${
@@ -175,7 +210,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
                             {unit.unitNumber}
                           </Text>
                           <Text className="text-[10px] text-muted-foreground">
-                            {unit.block ? `${unit.block} • ` : ''}{unit.residencyType}
+                            {unit.block ? `${unit.block} • ` : ''}{tRole(unit.residencyType, unit.residencyType)}
                           </Text>
                         </View>
                       </View>
@@ -187,17 +222,36 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
               ) : (
                 <View className="bg-secondary/40 border border-dashed border-border/80 rounded-2xl p-5 items-center justify-center gap-1.5 my-2">
                   <Home size={24} className="text-muted-foreground" />
-                  <Text className="text-xs font-bold text-foreground text-center">No Unit Assigned</Text>
+                  <Text className="text-xs font-bold text-foreground text-center">
+                    {t('no_unit_assigned_title', 'No Unit Assigned')}
+                  </Text>
                   <Text className="text-[10px] text-muted-foreground text-center">
-                    Your profile is not assigned to a property unit in this workspace.
+                    {t('no_unit_assigned_sub', 'Your profile is not assigned to a property unit in this workspace.')}
                   </Text>
                 </View>
               )}
             </View>
           </ScrollView>
 
-          <Button onPress={onClose} variant="secondary" className="mt-2 h-11">
-            <Text className="font-bold text-foreground text-sm">Cancel</Text>
+          {onOpenOrgModal && (
+            <TouchableOpacity
+              onPress={() => {
+                onClose();
+                onOpenOrgModal();
+              }}
+              activeOpacity={0.8}
+              className="flex-row items-center justify-between p-3 rounded-2xl bg-secondary/80 border border-border/80"
+            >
+              <View className="flex-row items-center gap-2">
+                <Building2 size={16} color="#6366f1" />
+                <Text className="text-xs font-bold text-foreground">{t('switch_community', 'Switch Community / Workspace')}</Text>
+              </View>
+              <Text className="text-[11px] font-bold text-primary">Switch</Text>
+            </TouchableOpacity>
+          )}
+
+          <Button onPress={onClose} variant="secondary" className="h-11">
+            <Text className="font-bold text-foreground text-sm">{t('cancel', 'Cancel')}</Text>
           </Button>
         </View>
       </View>

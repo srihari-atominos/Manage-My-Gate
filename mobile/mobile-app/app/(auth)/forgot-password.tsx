@@ -12,7 +12,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   ShieldCheck,
-  Sparkles,
 } from 'lucide-react-native';
 import * as React from 'react';
 import {
@@ -79,7 +78,6 @@ export default function ForgotPasswordScreen() {
   const [identifier, setIdentifier] = React.useState('');
   const [verifiedCode, setVerifiedCode] = React.useState('');
   const [resendCooldown, setResendCooldown] = React.useState(30);
-  const [devOtpCode, setDevOtpCode] = React.useState<string | null>(null);
 
   // Form hooks
   const emailForm = useForm<{ email: string }>({
@@ -129,15 +127,9 @@ export default function ForgotPasswordScreen() {
     const id = method === 'email' ? data.email?.trim().toLowerCase() : data.phone?.replace(/\s+/g, '').trim();
     if (!id) return;
     setIdentifier(id);
-    setDevOtpCode(null);
+    otpForm.reset({ code: '' });
     const action: any = await forgotPassword(id);
     if (isFulfilled(action)) {
-      const payload = action.payload;
-      const devCode = payload?.devCode || payload?.message?.match(/Dev Code:\s*(\d{6})/i)?.[1] || null;
-      if (devCode) {
-        setDevOtpCode(devCode);
-        otpForm.setValue('code', devCode);
-      }
       setResendCooldown(30);
       setStep(1);
     }
@@ -148,12 +140,6 @@ export default function ForgotPasswordScreen() {
     if (!identifier || resendCooldown > 0) return;
     const action: any = await forgotPassword(identifier);
     if (isFulfilled(action)) {
-      const payload = action.payload;
-      const devCode = payload?.devCode || payload?.message?.match(/Dev Code:\s*(\d{6})/i)?.[1] || null;
-      if (devCode) {
-        setDevOtpCode(devCode);
-        otpForm.setValue('code', devCode);
-      }
       setResendCooldown(30);
     }
   };
@@ -336,22 +322,6 @@ export default function ForgotPasswordScreen() {
               {/* STEP 1: Enter OTP */}
               {step === 1 && (
                 <View className="gap-3.5">
-                  {devOtpCode && (
-                    <TouchableOpacity
-                      onPress={() => otpForm.setValue('code', devOtpCode)}
-                      activeOpacity={0.8}
-                      className="bg-primary/10 border border-primary/30 rounded-2xl p-3 flex-row items-center justify-between"
-                    >
-                      <View className="flex-row items-center gap-2">
-                        <Sparkles size={16} color="#FF5E00" />
-                        <Text className="text-xs text-foreground font-medium">
-                          Dev Code: <Text className="font-bold text-primary tracking-widest">{devOtpCode}</Text>
-                        </Text>
-                      </View>
-                      <Text className="text-[11px] text-primary font-bold">Auto-fill</Text>
-                    </TouchableOpacity>
-                  )}
-
                   <Controller
                     control={otpForm.control}
                     name="code"

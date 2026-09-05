@@ -186,14 +186,14 @@ export const ResidentLedgerGroupCard: React.FC<ResidentLedgerGroupCardProps> = (
       {/* Expandable Invoice History Roster */}
       {expanded && (
         <View className="mt-3 pt-2 border-t border-border/40 gap-2">
-          {invoicesList.map((inv) => {
+          {invoicesList.map((inv, idx) => {
             const isPaid = inv?.status === 'PAID';
             const itemVariant: StatusVariant = isPaid ? 'success' : 'danger';
             const invAmount = Number(inv?.totalAmount ?? (inv as any)?.totalDue ?? (inv as any)?.amount ?? 0);
 
             return (
               <Pressable
-                key={inv?._id || inv?.invoiceNumber}
+                key={String(inv?._id || inv?.invoiceNumber || `inv-${idx}`)}
                 onPress={() =>
                   onSelectInvoice({
                     ...inv,

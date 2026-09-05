@@ -48,7 +48,12 @@ export class AmenityBookingRepository {
       if (typeof filters.status === 'object') {
         matchStage.status = filters.status;
       } else if (typeof filters.status === 'string') {
-        matchStage.status = filters.status.toLowerCase();
+        const s = filters.status.toLowerCase();
+        if (s === 'checked_in' || s === 'checked-in') {
+          matchStage.status = { $in: ['checked-in', 'checked_in'] };
+        } else {
+          matchStage.status = s;
+        }
       } else {
         matchStage.status = filters.status;
       }
@@ -99,21 +104,35 @@ export class AmenityBookingRepository {
             {
               $project: {
                 _id: 1,
+                bookingId: 1,
                 bookingDate: 1,
                 startTime: 1,
                 endTime: 1,
                 status: 1,
-                totalPrice: '$pricingDetails.totalAmount',
+                pricingDetails: 1,
+                totalFee: { $ifNull: ['$pricingDetails.totalAmount', 0] },
+                totalPrice: { $ifNull: ['$pricingDetails.totalAmount', 0] },
                 deposit: '$pricingDetails.securityDeposit',
+                paymentStatus: 1,
                 paymentMethod: 1,
+                qrCode: 1,
+                qrStatus: 1,
                 rejectionReason: 1,
                 numberOfPersons: 1,
                 createdAt: 1,
+                villaNumber: '$user.villaNumber',
+                userName: '$user.name',
                 userId: {
                   _id: '$user._id',
                   name: '$user.name',
                   username: '$user.username',
-                  email: '$user.email'
+                  email: '$user.email',
+                  villaNumber: '$user.villaNumber',
+                  flatNumber: '$user.flatNumber',
+                  unit: '$user.unit',
+                  phoneNumber: '$user.phoneNumber',
+                  building: '$user.building',
+                  tower: '$user.tower'
                 },
                 amenityId: {
                   _id: '$amenity._id',

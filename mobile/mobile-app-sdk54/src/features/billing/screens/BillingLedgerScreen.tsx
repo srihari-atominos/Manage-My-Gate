@@ -41,11 +41,18 @@ export function BillingLedgerScreen() {
   // Socket sync for real-time ledger updates
   useBillingSocket();
 
-  // Permission check from auth state
-  const permissions: string[] = useSelector((state: any) => state.auth?.user?.permissions || []);
-  const userRole: string = useSelector((state: any) => state.auth?.user?.role || '');
-  const isSuperAdmin = userRole === 'SuperAdmin' || userRole === 'Admin';
-  const hasLedgerPermission = isSuperAdmin || permissions.includes('billing:dashboard') || permissions.includes('billing:assessment_manager') || permissions.includes('*');
+  // Permission check from auth state (memoized boolean selector to avoid new reference warnings)
+  const hasLedgerPermission = useSelector((state: any) => {
+    const role = state.auth?.user?.role || '';
+    if (role === 'SuperAdmin' || role === 'Admin') return true;
+    const permissions = state.auth?.user?.permissions;
+    if (!Array.isArray(permissions)) return false;
+    return (
+      permissions.includes('billing:dashboard') ||
+      permissions.includes('billing:assessment_manager') ||
+      permissions.includes('*')
+    );
+  });
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -78,10 +85,25 @@ export function BillingLedgerScreen() {
     }
   }, [changeTablePage, pagination, search, statusFilter, loadingStates.fetchGrid]);
 
-  // Permission Denied View
-  if (!hasLedgerPermission) {
-    return (
-      <ScreenShell title="Billing Ledger" subtitle="Access Restricted" iconName="Receipt">
+  // Differentiated Empty Subtitles (Must be declared before any conditional return)
+  const emptySubtitle = useMemo(() => {
+    if (search.trim()) return `No billing records match "${search.trim()}".`;
+    if (statusFilter !== 'ALL') return `No invoices match status filter "${statusFilter.replace(/_/g, ' ')}".`;
+    return 'No community billing records found in the ledger.';
+  }, [search, statusFilter]);
+
+  return (
+    <ScreenShell
+      title="Billing Ledger"
+      subtitle={
+        !hasLedgerPermission
+          ? 'Access Restricted'
+          : `Total ${pagination.totalRecords || 0} community invoices`
+      }
+      iconName="Receipt"
+      loading={hasLedgerPermission && loadingStates.fetchGrid && invoicesList.length === 0}
+    >
+      {!hasLedgerPermission ? (
         <View className="flex-1 bg-background p-6 items-center justify-center">
           <View className="w-16 h-16 rounded-full bg-destructive/10 items-center justify-center mb-4">
             <Icon as={ShieldAlert} size={32} className="text-destructive" />
@@ -100,83 +122,67 @@ export function BillingLedgerScreen() {
             Return to My Dues
           </Button>
         </View>
-      </ScreenShell>
-    );
-  }
+      ) : (
+        <View className="flex-1 bg-background">
+          {/* Error Banner */}
+          {error ? (
+            <View className="px-4 pt-2">
+              <ErrorBanner message={error} onDismiss={resetBillingError} />
+            </View>
+          ) : null}
 
-  // Differentiated Empty Subtitles
-  const emptySubtitle = useMemo(() => {
-    if (search.trim()) return `No billing records match "${search.trim()}".`;
-    if (statusFilter !== 'ALL') return `No invoices match status filter "${statusFilter.replace(/_/g, ' ')}".`;
-    return 'No community billing records found in the ledger.';
-  }, [search, statusFilter]);
-
-  return (
-    <ScreenShell
-      title="Billing Ledger"
-      subtitle={`Total ${pagination.totalRecords || 0} community invoices`}
-      iconName="Receipt"
-      loading={loadingStates.fetchGrid && invoicesList.length === 0}
-    >
-      <View className="flex-1 bg-background">
-
-        {/* Error Banner */}
-        {error ? (
-          <View className="px-4 pt-2">
-            <ErrorBanner message={error} onDismiss={resetBillingError} />
+          {/* Unified Filter Pills (Row 1) & Search Input (Row 2) */}
+          <View className="px-4 pt-3 pb-1">
+            <SearchFilterBar
+              searchValue={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search resident, unit, or invoice number..."
+              sortOptions={FILTER_PILLS.map((p) => ({ label: p.label, value: p.id }))}
+              currentSort={statusFilter}
+              onSortChange={(val) => setStatusFilter(val as any)}
+              variant="default"
+              className="px-0 py-0 border-0"
+            />
           </View>
-        ) : null}
 
-        {/* Unified Filter Pills (Row 1) & Search Input (Row 2) */}
-        <View className="px-4 pt-3 pb-1">
-          <SearchFilterBar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search resident, unit, or invoice number..."
-            sortOptions={FILTER_PILLS.map((p) => ({ label: p.label, value: p.id }))}
-            currentSort={statusFilter}
-            onSortChange={(val) => setStatusFilter(val as any)}
-            variant="default"
-            className="px-0 py-0 border-0"
+          {/* Paginated Invoice Cards List */}
+          <PaginatedList<Invoice>
+            data={invoicesList}
+            keyExtractor={(inv, index) => inv._id || inv.invoiceNumber || `inv-${index}`}
+            renderItem={(inv) => (
+              <InvoiceCard
+                key={inv._id || inv.invoiceNumber}
+                invoice={inv}
+                onPress={() => setSelectedInvoice(inv)}
+              />
+            )}
+            pagination={pagination}
+            onLoadMore={handleLoadMore}
+            onRefresh={handleRefresh}
+            loading={loadingStates.fetchGrid}
+            emptyIcon="Receipt"
+            emptyTitle="No Invoices Found"
+            emptySubtitle={emptySubtitle}
+            contentContainerClassName="px-4 py-2"
+          />
+
+          {/* Quick Actions / Review Details BottomSheet */}
+          <InvoiceActionsBottomSheet
+            visible={!!selectedInvoice}
+            onClose={() => setSelectedInvoice(null)}
+            invoice={selectedInvoice}
+            onApproveOffline={approveOffline}
+            onSettleOfflineModal={(inv) => setSettleInvoice(inv)}
+          />
+
+          {/* Offline Payment Settlement Sheet */}
+          <OfflineSettleSheet
+            visible={!!settleInvoice}
+            onClose={() => setSettleInvoice(null)}
+            invoice={settleInvoice}
           />
         </View>
-
-        {/* Paginated Invoice Cards List */}
-        <PaginatedList<Invoice>
-          data={invoicesList}
-          renderItem={(inv) => (
-            <InvoiceCard
-              key={inv._id || inv.invoiceNumber}
-              invoice={inv}
-              onPress={() => setSelectedInvoice(inv)}
-            />
-          )}
-          pagination={pagination}
-          onLoadMore={handleLoadMore}
-          onRefresh={handleRefresh}
-          loading={loadingStates.fetchGrid}
-          emptyIcon="Receipt"
-          emptyTitle="No Invoices Found"
-          emptySubtitle={emptySubtitle}
-          contentContainerClassName="px-4 py-2"
-        />
-
-        {/* Quick Actions / Review Details BottomSheet */}
-        <InvoiceActionsBottomSheet
-          visible={!!selectedInvoice}
-          onClose={() => setSelectedInvoice(null)}
-          invoice={selectedInvoice}
-          onApproveOffline={approveOffline}
-          onSettleOfflineModal={(inv) => setSettleInvoice(inv)}
-        />
-
-        {/* Offline Payment Settlement Sheet */}
-        <OfflineSettleSheet
-          visible={!!settleInvoice}
-          onClose={() => setSettleInvoice(null)}
-          invoice={settleInvoice}
-        />
-      </View>
+      )}
     </ScreenShell>
   );
 }
