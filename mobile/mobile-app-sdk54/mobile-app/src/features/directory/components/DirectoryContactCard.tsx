@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Linking } from 'react-native';
+import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { ListCard } from '@/components/ui/ListCard';
 import { StatusVariant } from '@/components/ui/StatusBadge';
@@ -92,11 +93,10 @@ export const DirectoryContactCard = ({
               variant="outline"
               size="sm"
               onPress={handlePhonePress}
-              leftIcon={Phone}
-              className="flex-1 h-9 rounded-xl border-border bg-muted/40"
-              textClassName="text-xs font-semibold text-foreground"
+              className="flex-1 h-9 rounded-xl border-border bg-muted/40 flex-row items-center justify-center gap-1.5"
             >
-              Call
+              <Phone size={14} className="text-foreground" />
+              <Text className="text-xs font-semibold text-foreground">Call</Text>
             </Button>
           ) : null}
 
@@ -105,11 +105,10 @@ export const DirectoryContactCard = ({
               variant="secondary"
               size="sm"
               onPress={handleIntercomPress}
-              leftIcon={MessageSquare}
-              className="flex-1 h-9 rounded-xl bg-primary/10 border border-primary/20"
-              textClassName="text-xs font-semibold text-primary"
+              className="flex-1 h-9 rounded-xl bg-primary/10 border border-primary/20 flex-row items-center justify-center gap-1.5"
             >
-              Intercom #{member.intercomNumber}
+              <MessageSquare size={14} className="text-primary" />
+              <Text className="text-xs font-semibold text-primary">Intercom #{member.intercomNumber}</Text>
             </Button>
           ) : null}
         </View>

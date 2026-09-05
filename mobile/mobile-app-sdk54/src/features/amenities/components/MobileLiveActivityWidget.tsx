@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
-import { RootState } from '../../../store/store';
+import { RootState } from '@/src/store/store';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { QrCode, ShieldCheck, ArrowRight } from 'lucide-react-native';
+import { SectionHeader } from '@/components/common/SectionHeader';
+import { ListCard } from '@/components/ui/ListCard';
+import { EmptyState } from '@/components/feedback/EmptyState';
+import { QrCode, ArrowRight, ShieldCheck } from 'lucide-react-native';
 import { useSecurityLogs } from '../hooks/useSecurityLogs';
 import { SecurityLogDetailModal } from './SecurityLogDetailModal';
 import { FullActivityLogsModal } from './FullActivityLogsModal';
@@ -19,17 +22,29 @@ export function MobileLiveActivityWidget() {
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
   const [isFullLogsOpen, setIsFullLogsOpen] = useState(false);
 
-  // Combine real-time security logs, master admin bookings, and personal resident bookings
-  const rawList = [
+  // Combine real-time security logs, master admin bookings, and personal resident bookings with deduplication
+  const seenIds = new Set<string>();
+  const uniqueRawList: any[] = [];
+
+  for (const item of [
     ...(logs || []),
     ...(adminBookings || []),
     ...(myBookings || []),
     ...(dashboardStats?.recentScans || dashboardStats?.recentActivities || []),
-  ];
+  ]) {
+    if (!item) continue;
+    const itemId = String(item.id || item._id || item.bookingId || '');
+    if (itemId) {
+      if (seenIds.has(itemId)) continue;
+      seenIds.add(itemId);
+    }
+    uniqueRawList.push(item);
+  }
 
   const fallbackList = [
     {
       id: '1',
+      key: 'fallback-1',
       residentName: 'Rahul Sharma',
       unitInfo: 'Villa 102',
       amenityName: 'Swimming Pool',
@@ -51,6 +66,7 @@ export function MobileLiveActivityWidget() {
     },
     {
       id: '2',
+      key: 'fallback-2',
       residentName: 'Ananya Roy',
       unitInfo: 'Flat 404-B',
       amenityName: 'Tennis Court #1',
@@ -72,6 +88,7 @@ export function MobileLiveActivityWidget() {
     },
     {
       id: '3',
+      key: 'fallback-3',
       residentName: 'Vikram Seth',
       unitInfo: 'Villa 45',
       amenityName: 'Gym Fitness Center',
@@ -93,9 +110,10 @@ export function MobileLiveActivityWidget() {
     },
   ];
 
-  const activeLogs = rawList.length > 0
-    ? rawList.slice(0, 4).map((log: any, idx: number) => {
+  const activeLogs = uniqueRawList.length > 0
+    ? uniqueRawList.slice(0, 3).map((log: any, idx: number) => {
         const id = log.id || log._id || log.bookingId || `log-${idx}`;
+        const key = `${id}-${idx}`;
         const residentName = log.residentName || log.userName || log.user?.name || log.userId?.name || 'Resident';
         const unitInfo = log.unitInfo || log.unit || log.user?.unit || log.user?.villaNumber || log.villaNumber || log.flatNumber || 'Unit';
         const amenityName = log.amenityName || log.amenity?.name || log.amenityId?.name || 'Facility';
@@ -145,6 +163,7 @@ export function MobileLiveActivityWidget() {
 
         return {
           id,
+          key,
           residentName,
           unitInfo,
           amenityName,
@@ -156,76 +175,53 @@ export function MobileLiveActivityWidget() {
       })
     : fallbackList;
 
-  const logsForModal = rawList.length > 0 ? rawList : fallbackList;
+  const logsForModal = uniqueRawList.length > 0 ? uniqueRawList : fallbackList;
 
   return (
-    <View className="bg-card p-5 rounded-2xl border border-border/70 mb-6 shadow-xs">
-      <View className="flex-row items-center justify-between mb-4">
-        <View className="flex-row items-center gap-2.5 flex-1 pe-2">
-          <View className="p-2.5 rounded-xl bg-blue-500/10 shrink-0">
-            <ShieldCheck size={18} color="#3b82f6" />
-          </View>
-          <View className="flex-1">
-            <Text variant="large" className="font-bold text-foreground" numberOfLines={1}>
-              Live Activity Logs
-            </Text>
-            <Text variant="muted" className="text-[11px] text-muted-foreground mt-0.5">
-              Real-time QR scan & activity feed
-            </Text>
-          </View>
-        </View>
-        <View className="flex-row items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 shrink-0">
-          <View className="w-2 h-2 rounded-full bg-emerald-500" />
-          <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-            LIVE TICKER
-          </Text>
-        </View>
-      </View>
-
-      <View className="gap-3 mb-4">
-        {activeLogs.map((item: any) => (
-          <Pressable
-            key={item.id}
-            onPress={() => setSelectedLog(item.rawLog)}
-            className="p-3.5 rounded-xl bg-muted/30 dark:bg-muted/20 border border-border/50 active:bg-muted/60"
-          >
-            {/* Top Row: Resident Name & Unit (Left) | Status Badge (Right) */}
-            <View className="flex-row items-center justify-between gap-2 mb-2">
-              <View className="flex-row items-center gap-2.5 flex-1 me-2">
-                <View className="w-7.5 h-7.5 rounded-full bg-primary/10 items-center justify-center shrink-0">
-                  <QrCode size={15} color="#0084FF" />
-                </View>
-                <Text className="text-xs font-bold text-foreground flex-1" numberOfLines={1}>
-                  {item.residentName} <Text className="font-normal text-muted-foreground">({item.unitInfo})</Text>
-                </Text>
-              </View>
-              <StatusBadge
-                label={item.statusLabel}
-                variant={item.variant}
-                size="sm"
+    <View className="mb-6">
+      <SectionHeader
+        title="Recent Activity"
+        actionLabel="View All"
+        onAction={() => router.push('/(resident)/amenities/security-logs' as any)}
+        className="px-0 bg-transparent dark:bg-transparent"
+      />
+      {activeLogs.length === 0 ? (
+        <EmptyState
+          icon={ShieldCheck}
+          title="No Recent Activity"
+          description="Facility entry scans and bookings will appear here."
+          actionLabel="View Logs"
+          onAction={() => router.push('/(resident)/amenities/security-logs' as any)}
+        />
+      ) : (
+        <View className="bg-card p-4 rounded-2xl border border-border/70 shadow-xs">
+          <View className="gap-2.5 mb-2">
+            {activeLogs.map((item: any, idx: number) => (
+              <ListCard
+                key={item.key || `${item.id}-${idx}`}
+                title={`${item.residentName} (${item.unitInfo})`}
+                subtitle={`${item.amenityName} • ${item.timeStr}`}
+                leftIcon="QrCode"
+                status={{
+                  label: item.statusLabel,
+                  variant: item.variant,
+                }}
+                onPress={() => setSelectedLog(item.rawLog)}
+                variant="card"
+                className="mb-0 bg-muted/30 dark:bg-muted/20 border-border/50"
               />
-            </View>
+            ))}
+          </View>
 
-            {/* Bottom Row: Amenity Name (Left) | Time Slot (Right) */}
-            <View className="flex-row items-center justify-between gap-2 ps-10">
-              <Text className="text-[11px] font-semibold text-muted-foreground flex-1" numberOfLines={1}>
-                {item.amenityName}
-              </Text>
-              <Text className="text-[11px] font-semibold text-primary/80 shrink-0">
-                {item.timeStr}
-              </Text>
-            </View>
+          <Pressable
+            onPress={() => setIsFullLogsOpen(true)}
+            className="flex-row items-center justify-center gap-2 pt-3 border-t border-border/50 active:opacity-75"
+          >
+            <Text className="text-xs font-bold text-primary">View Full Activity Logs</Text>
+            <ArrowRight size={14} className="text-primary" />
           </Pressable>
-        ))}
-      </View>
-
-      <Pressable
-        onPress={() => setIsFullLogsOpen(true)}
-        className="flex-row items-center justify-center gap-2 pt-3.5 border-t border-border/50 active:opacity-75"
-      >
-        <Text className="text-xs font-bold text-primary">View Full Activity Logs</Text>
-        <ArrowRight size={14} color="#0084FF" />
-      </Pressable>
+        </View>
+      )}
 
       {/* Full Activity Logs Feed Bottom Sheet */}
       <FullActivityLogsModal
@@ -244,4 +240,6 @@ export function MobileLiveActivityWidget() {
     </View>
   );
 }
+
+export default MobileLiveActivityWidget;
 

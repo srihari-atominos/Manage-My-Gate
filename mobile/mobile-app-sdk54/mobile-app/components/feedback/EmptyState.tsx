@@ -23,11 +23,11 @@ export const EmptyState = ({
 }: EmptyStateProps) => {
   return (
     <View className={cn('items-center justify-center py-10 px-4', className)}>
-      {Icon && (
+      {Icon ? (
         <View className="mb-4 h-16 w-16 items-center justify-center rounded-3xl bg-secondary border border-border/80 shadow-xs">
-          <Icon size={30} className="text-primary" />
+          <Icon size={30} color="#0d9488" />
         </View>
-      )}
+      ) : null}
       <Text className="mb-1 text-center text-lg font-bold font-sans text-foreground">
         {title}
       </Text>

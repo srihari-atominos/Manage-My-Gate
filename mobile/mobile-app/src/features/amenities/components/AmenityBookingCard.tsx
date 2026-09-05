@@ -146,25 +146,25 @@ export function AmenityBookingCard({
               e?.stopPropagation?.();
               onViewPassQR(booking);
             }}
-            className="h-8 px-3 rounded-lg"
+            className="h-8 px-3 rounded-lg border-blue-500/30 bg-blue-500/10 active:bg-blue-500/20"
             accessibilityRole="button"
             accessibilityLabel="View digital pass QR"
           >
-            <Text className="text-primary text-xs font-semibold">View Pass QR</Text>
+            <Text className="text-blue-600 dark:text-blue-400 text-xs font-semibold">View Pass QR</Text>
           </Button>
           {onCancelPress && (
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
               onPress={(e: any) => {
                 e?.stopPropagation?.();
                 onCancelPress(booking);
               }}
-              className="h-8 px-3 rounded-lg"
+              className="h-8 px-3 rounded-lg border-border active:bg-secondary/60"
               accessibilityRole="button"
               accessibilityLabel="Cancel booking"
             >
-              <Text className="text-destructive-foreground text-xs font-semibold">
+              <Text className="text-muted-foreground text-xs font-semibold">
                 Cancel Booking
               </Text>
             </Button>

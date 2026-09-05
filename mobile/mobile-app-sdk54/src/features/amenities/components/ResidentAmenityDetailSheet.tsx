@@ -50,7 +50,7 @@ export function ResidentAmenityDetailSheet({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Amenity Details & Reservation">
-      <ScrollView className="max-h-[80vh] py-1" showsVerticalScrollIndicator={false} contentContainerClassName="pb-10">
+      <View className="py-1 pb-4">
         {/* Cover Image Header */}
         {imageUrl ? (
           <View className="h-44 w-full rounded-2xl overflow-hidden mb-3 border border-border">
@@ -161,11 +161,10 @@ export function ResidentAmenityDetailSheet({
             />
           ) : null}
         </View>
+      </View>
 
-      </ScrollView>
-
-      {/* Action CTAs - Sticky Bottom */}
-      <View className="flex-row gap-3 pt-3 pb-6 border-t border-border mt-auto">
+      {/* Action CTAs */}
+      <View className="flex-row gap-3 pt-3 pb-2 border-t border-border mt-2">
         <Button variant="outline" onPress={onClose} className="flex-1 bg-muted/30 border-border min-h-[48px] justify-center">
           <Text className="text-foreground font-bold text-sm">Close</Text>
         </Button>

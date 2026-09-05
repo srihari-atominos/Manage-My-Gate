@@ -6,6 +6,7 @@ import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { AmenityBooking } from '../store/amenityBookingSlice';
+import { encodeAppBarcode } from '@/src/utils/appBarcodeProtocol';
 
 export interface PassQRModalProps {
   visible: boolean;
@@ -37,10 +38,9 @@ export function PassQRModal({ visible, onClose, booking }: PassQRModalProps) {
   const badgeVariant = statusVariantMap[booking.status] || 'neutral';
   const bookingIdDisplay = booking.bookingId || (booking._id ? String(booking._id).substring(0, 8).toUpperCase() : 'PASS');
 
-  const qrString = booking.qrCode || booking.passCode || booking.bookingId || (booking._id ? String(booking._id) : 'PASS');
-  const qrUri = (qrString.startsWith('data:image') || qrString.startsWith('http'))
-    ? qrString
-    : `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrString)}`;
+  const rawBookingCode = booking.bookingId || (booking._id ? String(booking._id) : 'PASS');
+  const qrString = encodeAppBarcode('AMENITY', rawBookingCode, booking._id ? String(booking._id) : undefined);
+  const qrUri = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=10&data=${encodeURIComponent(qrString)}`;
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Digital Access Pass">

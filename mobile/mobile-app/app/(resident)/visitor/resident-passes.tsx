@@ -8,8 +8,6 @@ import { PaginatedList } from '@/components/ui/PaginatedList';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { FAB } from '@/components/ui/FAB';
 import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
 import { useAdminVisitor } from '@/src/features/visitor/hooks/useAdminVisitor';
 import { selectAuthUser } from '@/src/features/auth/store/authSelectors';
@@ -70,8 +68,6 @@ export default function ResidentPassesScreen() {
   const [activeStatusFilter, setActiveStatusFilter] = useState<string>('ALL');
   const [inviteSheetOpen, setInviteSheetOpen] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
-  const [revokeConfirmOpen, setRevokeConfirmOpen] = useState(false);
-  const [selectedPassToRevoke, setSelectedPassToRevoke] = useState<VisitorPass | null>(null);
 
   const fetchFilteredPasses = useCallback((page: number = 1, append: boolean = false) => {
     const status = activeStatusFilter === 'ALL' ? undefined : activeStatusFilter;
@@ -134,18 +130,7 @@ export default function ResidentPassesScreen() {
     router.push({ pathname: '/(resident)/visitor/invite' as any, params: { type } });
   };
 
-  const handleConfirmRevoke = async () => {
-    if (selectedPassToRevoke) {
-      if (isAdmin) {
-        await forceRevoke(selectedPassToRevoke._id, 'Admin Force Revocation');
-      } else {
-        await revokePass(selectedPassToRevoke._id);
-      }
-      setSelectedPassToRevoke(null);
-      setRevokeConfirmOpen(false);
-      fetchFilteredPasses(1, false);
-    }
-  };
+
 
   const pendingWalkInCount = walkIns?.pendingList?.length || 0;
 
@@ -312,13 +297,6 @@ export default function ResidentPassesScreen() {
         }}
       />
 
-      {/* Floating Action Button for Resident View */}
-      <FAB
-        iconName="Plus"
-        label="Invite Visitor"
-        onPress={() => setInviteSheetOpen(true)}
-      />
-
       {/* Invitation Type Selector Bottom Sheet */}
       <VisitorInvitationTypeSheet
         visible={inviteSheetOpen}
@@ -331,27 +309,10 @@ export default function ResidentPassesScreen() {
         visible={detailsModalOpen}
         pass={activePass}
         onClose={() => setDetailsModalOpen(false)}
-        onRevokePress={(passToRevoke) => {
-          setSelectedPassToRevoke(passToRevoke);
-          setRevokeConfirmOpen(true);
+        onRevokePress={() => {
+          fetchFilteredPasses(1, false);
         }}
       />
-
-      {/* Revoke Confirmation Dialog */}
-      <ConfirmationModal
-        visible={revokeConfirmOpen}
-        title="Revoke Visitor Pass?"
-        message={`Are you sure you want to revoke entry pass for ${selectedPassToRevoke?.visitorName || 'this visitor'}?`}
-        variant="danger"
-        confirmLabel="Revoke Pass"
-        onConfirm={handleConfirmRevoke}
-        onCancel={() => {
-          setRevokeConfirmOpen(false);
-          setSelectedPassToRevoke(null);
-        }}
-        loading={actionStatus === 'loading'}
-      />
-
       {/* Admin Villa Filter Sheet */}
       {isAdmin && (
         <AdminVillaFilterSheet

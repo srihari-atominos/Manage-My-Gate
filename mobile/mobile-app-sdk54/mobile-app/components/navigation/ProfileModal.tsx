@@ -62,11 +62,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   const handleOpenSettings = () => {
     onClose();
-    if (onOpenSettings) {
-      onOpenSettings();
-    } else {
-      router.push('/(resident)/settings' as any);
-    }
+    setTimeout(() => {
+      if (onOpenSettings) {
+        onOpenSettings();
+      } else {
+        router.push('/(resident)/settings' as any);
+      }
+    }, 120);
   };
 
   const handleLogout = () => {

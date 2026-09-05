@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import amenityApi from '../services/amenityApi';
+import amenityService from '../services/amenityService';
 
 export interface WalletTransaction {
   _id: string;
@@ -16,7 +16,9 @@ export interface WalletState {
   balance: number;
   currency: string;
   transactions: WalletTransaction[];
+  transactionHistory?: WalletTransaction[];
   loading: boolean;
+  isLoading?: boolean;
   toppingUp: boolean;
   error: string | null;
   successMsg: string | null;
@@ -36,7 +38,7 @@ export const fetchWalletThunk = createAsyncThunk(
   'wallet/fetchWallet',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await amenityApi.getWalletBalance();
+      const response = await amenityService.getWalletBalance();
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch wallet details');
@@ -48,7 +50,7 @@ export const topUpWalletThunk = createAsyncThunk(
   'wallet/topUpWallet',
   async (amount: number, { rejectWithValue }) => {
     try {
-      const response = await amenityApi.topUpWallet(amount);
+      const response = await amenityService.topUpWallet(amount);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to add funds to digital wallet');
@@ -78,7 +80,7 @@ const walletSlice = createSlice({
         if (payload) {
           state.balance = payload.balance ?? payload.currentBalance ?? state.balance;
           state.currency = payload.currency || 'INR';
-          state.transactions = payload.transactions || payload.ledger || [];
+          state.transactions = payload.transactions || payload.transactionHistory || payload.ledger || [];
         }
       })
       .addCase(fetchWalletThunk.rejected, (state, action) => {

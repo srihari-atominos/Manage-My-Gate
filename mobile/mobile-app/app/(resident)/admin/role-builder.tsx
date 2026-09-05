@@ -1,21 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import { View, FlatList, RefreshControl, TouchableOpacity, Alert, Modal } from 'react-native';
-import { ChevronLeft, ChevronRight, Plus, Hash, X } from 'lucide-react-native';
-import { ScreenShell } from '../../../components/ui/ScreenShell';
-import { SearchFilterBar } from '../../../components/ui/SearchFilterBar';
-import { FAB } from '../../../components/ui/FAB';
-import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
-import { EmptyState } from '../../../components/feedback/EmptyState';
-import { SkeletonLoader } from '../../../components/feedback/SkeletonLoader';
-import { Button } from '../../../components/ui/button';
-import { Icon } from '../../../components/ui/icon';
-import { Text } from '../../../components/ui/text';
-import { TextInput } from '../../../components/forms/TextInput';
-import { useTranslation } from '../../../src/utils/i18n';
-import { useRoles } from '../../../src/features/roleBuilder/hooks/useRoles';
-import { useRoleSocket } from '../../../src/features/roleBuilder/hooks/useRoleSocket';
-import { RoleCard } from '../../../src/features/roleBuilder/components/RoleCard';
-import { RoleFormSheetModal } from '../../../src/features/roleBuilder/components/RoleFormSheetModal';
+import { ChevronLeft, ChevronRight, Plus, Hash, X, ShieldCheck } from 'lucide-react-native';
+import { ScreenShell } from '@/components/ui/ScreenShell';
+import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
+import { FAB } from '@/components/ui/FAB';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { EmptyState } from '@/components/feedback/EmptyState';
+import { SkeletonLoader } from '@/components/feedback/SkeletonLoader';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { TextInput } from '@/components/forms/TextInput';
+import { useTranslation } from '@/src/utils/i18n';
+import { useRoles } from '@/src/features/roleBuilder/hooks/useRoles';
+import { useRoleSocket } from '@/src/features/roleBuilder/hooks/useRoleSocket';
+import { RoleCard } from '@/src/features/roleBuilder/components/RoleCard';
+import { RoleFormSheetModal } from '@/src/features/roleBuilder/components/RoleFormSheetModal';
 
 export default function RoleBuilderScreen() {
   useRoleSocket();
@@ -58,13 +58,13 @@ export default function RoleBuilderScreen() {
     const list = roles || [];
     return {
       total: list.length,
-      global: list.filter((r) => !r.isTenantRole).length,
-      unit: list.filter((r) => r.isTenantRole === true).length,
+      global: list.filter((r: any) => !r.isTenantRole).length,
+      unit: list.filter((r: any) => r.isTenantRole === true).length,
     };
   }, [roles]);
 
   const filteredRoles = useMemo(() => {
-    return (roles || []).filter((role) => {
+    return (roles || []).filter((role: any) => {
       if (scopeFilter === 'TENANT') return role.isTenantRole === true;
       if (scopeFilter === 'GLOBAL') return !role.isTenantRole;
       return true;
@@ -97,13 +97,13 @@ export default function RoleBuilderScreen() {
             className={`flex-row items-center px-3 py-1.5 rounded-lg border ${
               currentPage <= 1 || isLoading
                 ? 'bg-muted/40 border-border/40 opacity-40'
-                : 'bg-primary/10 border-primary/20 active:opacity-70'
+                : 'bg-blue-500/10 border-blue-500/20 active:opacity-70'
             }`}
             accessibilityRole="button"
             accessibilityLabel="Previous page"
           >
-            <ChevronLeft size={16} color={currentPage <= 1 || isLoading ? '#9ca3af' : '#6366f1'} className="me-1" />
-            <Text className={`text-xs font-bold ${currentPage <= 1 || isLoading ? 'text-muted-foreground' : 'text-primary'}`}>
+            <ChevronLeft size={16} color={currentPage <= 1 || isLoading ? '#9ca3af' : '#2563eb'} className="me-1" />
+            <Text className={`text-xs font-bold ${currentPage <= 1 || isLoading ? 'text-muted-foreground' : 'text-blue-600 dark:text-blue-400'}`}>
               Prev
             </Text>
           </TouchableOpacity>
@@ -131,15 +131,15 @@ export default function RoleBuilderScreen() {
             className={`flex-row items-center px-3 py-1.5 rounded-lg border ${
               currentPage >= totalPages || isLoading
                 ? 'bg-muted/40 border-border/40 opacity-40'
-                : 'bg-primary/10 border-primary/20 active:opacity-70'
+                : 'bg-blue-500/10 border-blue-500/20 active:opacity-70'
             }`}
             accessibilityRole="button"
             accessibilityLabel="Next page"
           >
-            <Text className={`text-xs font-bold me-1 ${currentPage >= totalPages || isLoading ? 'text-muted-foreground' : 'text-primary'}`}>
+            <Text className={`text-xs font-bold me-1 ${currentPage >= totalPages || isLoading ? 'text-muted-foreground' : 'text-blue-600 dark:text-blue-400'}`}>
               Next
             </Text>
-            <ChevronRight size={16} color={currentPage >= totalPages || isLoading ? '#9ca3af' : '#6366f1'} />
+            <ChevronRight size={16} color={currentPage >= totalPages || isLoading ? '#9ca3af' : '#2563eb'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -151,19 +151,18 @@ export default function RoleBuilderScreen() {
       title={t('feature_admin_role_builder_name', 'Role Builder')}
       subtitle={t('feature_admin_role_builder_sub', 'Configure access roles & RBAC')}
       iconName="ShieldCheck"
-      domainName="Administration & Security"
-      sharedSlice="roleSlice.ts"
       loading={false}
       error={error}
       onRetry={handleRefresh}
       headerRight={
         <TouchableOpacity
           onPress={openCreateModal}
-          className="p-2 rounded-xl bg-muted/60 border border-border flex-row items-center"
+          className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full active:opacity-80"
           accessibilityRole="button"
           accessibilityLabel="Add role"
         >
-          <Plus size={16} color="#6366f1" />
+          <Plus size={14} color="#ffffff" />
+          <Text className="text-xs font-bold text-primary-foreground">Add Role</Text>
         </TouchableOpacity>
       }
     >
@@ -178,11 +177,12 @@ export default function RoleBuilderScreen() {
         {/* Scope Filter Chips (below search bar, outside list) */}
         <View className="px-3 py-1.5 flex-row items-center gap-1.5">
           {[
-            { id: 'ALL', label: 'All Roles', count: stats.total },
-            { id: 'GLOBAL', label: 'Global', count: stats.global },
-            { id: 'TENANT', label: 'Unit Scope', count: stats.unit },
+            { id: 'ALL', label: 'All Roles', count: stats.total, color: 'blue' },
+            { id: 'GLOBAL', label: 'Global', count: stats.global, color: 'blue' },
+            { id: 'TENANT', label: 'Unit Scope', count: stats.unit, color: 'green' },
           ].map((tab) => {
             const isActive = scopeFilter === tab.id;
+            const activeColorClass = tab.color === 'green' ? 'bg-emerald-600 border-emerald-600' : 'bg-blue-600 border-blue-600';
             return (
               <TouchableOpacity
                 key={tab.id}
@@ -190,7 +190,7 @@ export default function RoleBuilderScreen() {
                 activeOpacity={0.8}
                 className={`px-3 py-1.5 rounded-xl border flex-row items-center gap-1.5 ${
                   isActive
-                    ? 'bg-primary border-primary shadow-xs'
+                    ? `${activeColorClass} shadow-xs`
                     : 'bg-card border-border/80'
                 }`}
               >
@@ -220,7 +220,7 @@ export default function RoleBuilderScreen() {
                 key={limit}
                 onPress={() => setRowsPerPage(limit)}
                 className={`px-1.5 py-0.5 rounded-md border active:opacity-70 ${
-                  rowsPerPage === limit ? 'bg-primary border-primary' : 'bg-background border-border/60'
+                  rowsPerPage === limit ? 'bg-blue-600 border-blue-600' : 'bg-background border-border/60'
                 }`}
                 accessibilityRole="button"
                 accessibilityLabel={`Set ${limit} rows per page`}
@@ -240,6 +240,7 @@ export default function RoleBuilderScreen() {
           </View>
         ) : filteredRoles.length === 0 ? (
           <EmptyState
+            icon={ShieldCheck}
             title={searchQuery ? 'No Matching Roles' : 'No Roles Configured'}
             description={
               searchQuery
@@ -274,9 +275,6 @@ export default function RoleBuilderScreen() {
         )}
       </View>
 
-      {/* Floating Action Button */}
-      <FAB iconName="Plus" onPress={openCreateModal} />
-
       {/* Create / Edit Form Sheet Modal */}
       <RoleFormSheetModal
         visible={isFormModalOpen}
@@ -307,7 +305,7 @@ export default function RoleBuilderScreen() {
           <View className="bg-card rounded-2xl p-5 border border-border w-full max-w-xs shadow-lg">
             <View className="flex-row items-center justify-between pb-2 border-b border-border mb-3">
               <View className="flex-row items-center">
-                <Hash size={18} color="#6366f1" className="me-2" />
+                <Hash size={18} color="#2563eb" className="me-2" />
                 <Text className="text-base font-bold text-foreground">Jump to Page</Text>
               </View>
               <TouchableOpacity onPress={() => setShowPageJumpModal(false)}>
@@ -332,7 +330,12 @@ export default function RoleBuilderScreen() {
               <Button variant="outline" size="sm" onPress={() => setShowPageJumpModal(false)}>
                 Cancel
               </Button>
-              <Button variant="default" size="sm" onPress={handleExecutePageJump}>
+              <Button
+                variant="default"
+                size="sm"
+                onPress={handleExecutePageJump}
+                className="bg-blue-600 active:bg-blue-700"
+              >
                 Go to Page
               </Button>
             </View>

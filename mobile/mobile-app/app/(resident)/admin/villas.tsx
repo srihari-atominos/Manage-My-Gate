@@ -8,7 +8,7 @@ import { FAB } from '@/components/ui/FAB';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/ui/icon';
 import { EmptyState } from '@/components/feedback/EmptyState';
-import { FileSpreadsheet, PlusCircle, Zap, FilterX } from 'lucide-react-native';
+import { FileSpreadsheet, PlusCircle, Zap, FilterX, Building2, Plus } from 'lucide-react-native';
 import { useVilla } from '@/src/features/villa/hooks/useVilla';
 import { useVillaSocket } from '@/src/features/villa/hooks/useVillaSocket';
 import { VillaCard } from '@/src/features/villa/components/VillaCard';
@@ -18,6 +18,7 @@ import { BatchGenerateModal } from '@/src/features/villa/components/BatchGenerat
 import { BulkUploadVillasModal } from '@/src/features/villa/components/BulkUploadVillasModal';
 import { Villa } from '@/src/features/villa/store/villaSlice';
 import { VillaPayload, BatchGenerateParams } from '@/src/features/villa/services/villaService';
+import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 import { useTranslation } from '@/src/utils/i18n';
 
 export default function VillaManagementScreen() {
@@ -143,6 +144,17 @@ export default function VillaManagementScreen() {
         fetchVillas();
         fetchStats();
       }}
+      headerRight={
+        <TouchableOpacity
+          onPress={handleOpenCreateForm}
+          className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full active:opacity-80"
+          accessibilityRole="button"
+          accessibilityLabel="Add Unit"
+        >
+          <Plus size={14} color="#ffffff" />
+          <Text className="text-xs font-bold text-primary-foreground">{t('create_unit', 'Add Unit')}</Text>
+        </TouchableOpacity>
+      }
     >
       <View className="flex-1 bg-background relative">
         {/* KPI Stats Horizontal Row */}
@@ -168,27 +180,27 @@ export default function VillaManagementScreen() {
           >
             <View className="flex-row items-center gap-2">
               <TouchableOpacity
-                onPress={() => setBulkUploadModalVisible(true)}
-                className="px-3 py-2 rounded-xl bg-muted/80 border border-border flex-row items-center gap-1.5 active:opacity-75"
+                onPress={handleOpenCreateForm}
+                className="px-3 py-2 rounded-xl bg-emerald-600 border border-emerald-600 flex-row items-center gap-1.5 active:bg-emerald-700 shadow-xs"
               >
-                <Icon as={FileSpreadsheet} size={15} className="text-primary" />
-                <Text className="text-xs font-bold text-foreground">{t('bulk_upload', 'Bulk Upload')}</Text>
+                <Icon as={PlusCircle} size={15} color="#ffffff" className="text-white" />
+                <Text className="text-xs font-bold text-white">{t('create_unit', 'Create Unit')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={handleOpenCreateForm}
-                className="px-3 py-2 rounded-xl bg-muted/80 border border-border flex-row items-center gap-1.5 active:opacity-75"
+                onPress={() => setBulkUploadModalVisible(true)}
+                className="px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/30 flex-row items-center gap-1.5 active:bg-blue-500/20"
               >
-                <Icon as={PlusCircle} size={15} className="text-primary" />
-                <Text className="text-xs font-bold text-foreground">{t('create_unit', 'Create Unit')}</Text>
+                <Icon as={FileSpreadsheet} size={15} color="#2563eb" className="text-blue-600" />
+                <Text className="text-xs font-bold text-blue-600 dark:text-blue-400">{t('bulk_upload', 'Bulk Upload')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setBatchModalVisible(true)}
-                className="px-3 py-2 rounded-xl bg-primary border border-primary flex-row items-center gap-1.5 active:opacity-85 shadow-xs"
+                className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex-row items-center gap-1.5 active:bg-amber-500/20"
               >
-                <Icon as={Zap} size={15} className="text-primary-foreground" />
-                <Text className="text-xs font-bold text-primary-foreground">{t('batch_generate', 'Batch Generate')}</Text>
+                <Icon as={Zap} size={15} color="#d97706" className="text-amber-600" />
+                <Text className="text-xs font-bold text-amber-600 dark:text-amber-400">{t('batch_generate', 'Batch Generate')}</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -223,25 +235,24 @@ export default function VillaManagementScreen() {
               <TouchableOpacity
                 onPress={() => handleStatusFilter('')}
                 className={`px-3 py-1.5 rounded-full border text-xs flex-row items-center justify-center ${
-                  !filters.status ? 'bg-primary border-primary' : 'bg-muted/80 border-border'
+                  !filters.status ? 'bg-blue-600 border-blue-600' : 'bg-card border-border'
                 }`}
               >
-                <Text className={`text-xs font-semibold ${!filters.status ? 'text-primary-foreground' : 'text-foreground'}`}>
+                <Text className={`text-xs font-semibold ${!filters.status ? 'text-white' : 'text-foreground'}`}>
                   All Statuses
                 </Text>
               </TouchableOpacity>
 
               {availableStatuses.map((st) => {
                 const isSel = filters.status === st;
+                const statusStyle = getStatusTabStyle(st, isSel);
                 return (
                   <TouchableOpacity
                     key={st}
                     onPress={() => handleStatusFilter(st)}
-                    className={`px-3 py-1.5 rounded-full border text-xs flex-row items-center justify-center ${
-                      isSel ? 'bg-primary border-primary' : 'bg-muted/80 border-border'
-                    }`}
+                    className={`px-3 py-1.5 rounded-full border text-xs flex-row items-center justify-center ${statusStyle.containerClass}`}
                   >
-                    <Text className={`text-xs font-semibold ${isSel ? 'text-primary-foreground' : 'text-foreground'}`}>
+                    <Text className={`text-xs ${statusStyle.textClass}`}>
                       {st}
                     </Text>
                   </TouchableOpacity>
@@ -277,6 +288,7 @@ export default function VillaManagementScreen() {
         ) : villas.length === 0 ? (
           <View className="flex-1 items-center justify-center p-6">
             <EmptyState
+              icon={Building2}
               title="No Units Found"
               description="No community units match the active search or filters. You can batch generate, bulk upload, or manually create new units."
               actionLabel="Batch Generate 54 Units"
@@ -306,33 +318,29 @@ export default function VillaManagementScreen() {
             ))}
           </ScrollView>
         )}
-
-        {/* Floating Action Button */}
-        <FAB
-          iconName="Plus"
-          label="Add Unit"
-          onPress={handleOpenCreateForm}
-          variant="primary"
-        />
       </View>
 
       {/* Details Bottom Sheet Modal */}
-      <VillaDetailsModal
-        visible={detailsModalVisible}
-        onClose={() => setDetailsModalVisible(false)}
-        villa={selectedVilla}
-        onEdit={handleOpenEditForm}
-        onDelete={handleDeleteUnit}
-      />
+      {detailsModalVisible && selectedVilla ? (
+        <VillaDetailsModal
+          visible={detailsModalVisible}
+          onClose={() => setDetailsModalVisible(false)}
+          villa={selectedVilla}
+          onEdit={handleOpenEditForm}
+          onDelete={handleDeleteUnit}
+        />
+      ) : null}
 
       {/* Create / Edit Form Modal */}
-      <VillaFormModal
-        visible={formModalVisible}
-        onClose={() => setFormModalVisible(false)}
-        onSubmit={handleFormSubmit}
-        editingVilla={editingVilla}
-        loading={actionLoading}
-      />
+      {formModalVisible ? (
+        <VillaFormModal
+          visible={formModalVisible}
+          onClose={() => setFormModalVisible(false)}
+          onSubmit={handleFormSubmit}
+          editingVilla={editingVilla}
+          loading={actionLoading}
+        />
+      ) : null}
 
       {/* Batch Generate Modal */}
       <BatchGenerateModal

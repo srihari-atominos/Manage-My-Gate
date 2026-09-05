@@ -1,3 +1,19 @@
+jest.mock('expo-modules-core', () => {
+  const actual = jest.requireActual('expo-modules-core');
+  return {
+    ...actual,
+    requireNativeModule: jest.fn((name) => {
+      if (name === 'ExpoFetchModule') {
+        return {
+          NativeResponse: class NativeResponse {},
+          NativeRequest: class NativeRequest {},
+        };
+      }
+      return {};
+    }),
+  };
+});
+
 // Global Mocks for Jest environment
 jest.mock('react-native-worklets', () => ({
   isWorkletFunction: jest.fn(() => false),

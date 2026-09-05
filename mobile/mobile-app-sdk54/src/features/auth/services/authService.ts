@@ -12,9 +12,18 @@ export const acceptInvite = async ({ token, password }: any) => {
   return await apiClient.post('/auth/accept-invite', { token, password });
 };
 
+export const verifyRegistration = async (email: string, code: string) => {
+  return await apiClient.post('/auth/register/verify', { email, code });
+};
+
 export const loginWithGoogle = async (payload: any) => {
   const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
   return await apiClient.post('/auth/google', body);
+};
+
+export const loginWithMicrosoft = async (payload: any) => {
+  const body = typeof payload === 'object' && payload !== null ? payload : { token: payload };
+  return await apiClient.post('/auth/microsoft', body);
 };
 
 export const initiatePhoneLogin = async (phone: string) => {
@@ -68,8 +77,10 @@ export const switchContext = async (payload: { targetOrgId?: string; targetRole?
 export default {
   login,
   register,
+  verifyRegistration,
   acceptInvite,
   loginWithGoogle,
+  loginWithMicrosoft,
   initiatePhoneLogin,
   verifyPhoneLogin,
   initiateEmailOtpLogin,

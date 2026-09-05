@@ -19,6 +19,7 @@ import {
 import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
 import { NotificationItemData } from '@/src/features/notification/services/notificationService';
 import { mapActionUrlToMobileRoute } from '@/src/features/notification/utils/notificationNavigation';
+import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 
 interface NotificationSheetModalProps {
   visible: boolean;
@@ -134,16 +135,10 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
           <View className="flex-row px-5 py-2.5 border-b border-border/70 bg-secondary/30 gap-2">
             <TouchableOpacity
               onPress={() => setActiveTab('all')}
-              className={`px-4 py-1.5 rounded-full border ${
-                activeTab === 'all'
-                  ? 'bg-primary border-primary'
-                  : 'bg-card border-border/80'
-              }`}
+              className={`px-4 py-1.5 rounded-full border ${getStatusTabStyle('all', activeTab === 'all').containerClass}`}
             >
               <Text
-                className={`text-xs font-bold ${
-                  activeTab === 'all' ? 'text-primary-foreground' : 'text-foreground'
-                }`}
+                className={`text-xs ${getStatusTabStyle('all', activeTab === 'all').textClass}`}
               >
                 All ({items.length})
               </Text>
@@ -151,16 +146,10 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
 
             <TouchableOpacity
               onPress={() => setActiveTab('unread')}
-              className={`px-4 py-1.5 rounded-full border ${
-                activeTab === 'unread'
-                  ? 'bg-primary border-primary'
-                  : 'bg-card border-border/80'
-              }`}
+              className={`px-4 py-1.5 rounded-full border ${getStatusTabStyle('warning', activeTab === 'unread').containerClass}`}
             >
               <Text
-                className={`text-xs font-bold ${
-                  activeTab === 'unread' ? 'text-primary-foreground' : 'text-foreground'
-                }`}
+                className={`text-xs ${getStatusTabStyle('warning', activeTab === 'unread').textClass}`}
               >
                 Unread ({unreadCount})
               </Text>
@@ -171,7 +160,7 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
           <ScrollView className="flex-1 px-4 py-2" showsVerticalScrollIndicator={false}>
             {loading && items.length === 0 ? (
               <View className="py-12 items-center justify-center">
-                <ActivityIndicator size="small" color="#172B70" />
+                <ActivityIndicator size="small" color="#03A9F4" />
                 <Text className="text-xs text-muted-foreground mt-2">Loading notifications...</Text>
               </View>
             ) : filteredItems.length > 0 ? (

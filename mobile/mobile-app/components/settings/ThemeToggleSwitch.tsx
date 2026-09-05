@@ -67,14 +67,14 @@ export const ThemeToggleSwitch = ({
               className={cn(
                 'flex-1 flex-row items-center justify-center py-2.5 rounded-lg gap-1.5',
                 isSelected
-                  ? 'bg-card border border-border shadow-sm'
+                  ? 'bg-card border border-border shadow-xs'
                   : 'bg-transparent active:bg-muted/60'
               )}
             >
               <Icon
                 as={opt.icon}
                 size={14}
-                className={isSelected ? 'text-primary' : 'text-muted-foreground'}
+                color={isSelected ? '#0284c7' : '#94a3b8'}
               />
               <Text
                 className={cn(

@@ -143,10 +143,10 @@ export default function SettingsScreen() {
           <Pressable
             onPress={() => {
               if (router.canGoBack()) router.back();
-              else router.replace('/(resident)/all-features' as any);
+              else router.replace('/(resident)/dashboard' as any);
             }}
             className="p-1 rounded-full active:bg-muted/60 -ms-1 me-2"
-            hitSlop={8}
+            hitSlop={12}
           >
             <Icon as={ChevronLeft} size={24} className="text-foreground" />
           </Pressable>
@@ -163,6 +163,36 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 80 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* ─── Profile Card ─── */}
+        <Pressable
+          onPress={() => router.push('/(resident)/profile' as any)}
+          className="mx-4 mt-4 bg-card rounded-2xl border border-border overflow-hidden active:opacity-90"
+        >
+          <View className="p-4 flex-row items-center gap-3">
+            <View className="h-14 w-14 rounded-full bg-primary/10 border-2 border-primary/20 items-center justify-center overflow-hidden shrink-0">
+              {user?.avatar && user.avatar.trim() ? (
+                <Image source={{ uri: user.avatar }} className="h-full w-full" />
+              ) : (
+                <UserIcon size={26} className="text-primary" />
+              )}
+            </View>
+            <View className="flex-1 min-w-0">
+              <Text className="text-base font-bold text-foreground" numberOfLines={1}>
+                {user?.username || user?.name || user?.email || 'Logged In Resident'}
+              </Text>
+              <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
+                {user?.role || 'Member'}
+              </Text>
+              {user?.email ? (
+                <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
+                  {user.email}
+                </Text>
+              ) : null}
+            </View>
+            <ChevronRight size={20} className="text-muted-foreground shrink-0" />
+          </View>
+        </Pressable>
+
         {/* ─── Appearance ─── */}
         <Text className="text-xs font-bold text-muted-foreground uppercase px-5 mt-4 mb-2">
           {t('appearance_language', 'Appearance & Language')}
@@ -309,81 +339,88 @@ export default function SettingsScreen() {
       </ScrollView>
 
       {/* ─── Language Selection Bottom Sheet ─── */}
-      <Modal
-        visible={languageModalOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setLanguageModalOpen(false)}
-      >
-        <View className="flex-1 justify-end bg-black/50">
-          <Pressable
-            className="absolute inset-0"
-            onPress={() => setLanguageModalOpen(false)}
-          />
-          <View className="bg-card rounded-t-3xl overflow-hidden">
-            <SheetGrabHandle onClose={() => setLanguageModalOpen(false)} />
-            <Text className="text-base font-bold text-foreground text-center py-2">
-              {t('select_language', 'Select Language')}
-            </Text>
-            <View className="px-5 pb-6 gap-2">
-              {LANGUAGE_OPTIONS.map((item) => {
-                const isSelected = item.code === languageCode;
-                return (
-                  <Pressable
-                    key={item.code}
-                    onPress={() => {
-                      setLanguageCode(item.code);
-                      setLanguageModalOpen(false);
-                    }}
-                    className={`flex-row items-center justify-between px-4 py-3.5 rounded-xl ${
-                      isSelected
-                        ? 'bg-primary/10 border border-primary'
-                        : 'bg-muted/30 border border-border active:bg-muted/60'
-                    }`}
-                  >
-                    <Text
-                      className={`text-sm ${
-                        isSelected ? 'font-bold text-primary' : 'font-medium text-foreground'
+      {languageModalOpen ? (
+        <Modal
+          visible={languageModalOpen}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setLanguageModalOpen(false)}
+        >
+          <View className="flex-1 justify-end bg-black/50">
+            <Pressable
+              className="absolute inset-0"
+              onPress={() => setLanguageModalOpen(false)}
+            />
+            <View className="bg-card rounded-t-3xl overflow-hidden">
+              <SheetGrabHandle onClose={() => setLanguageModalOpen(false)} />
+              <Text className="text-base font-bold text-foreground text-center py-2">
+                {t('select_language', 'Select Language')}
+              </Text>
+              <View className="px-5 pb-6 gap-2">
+                {LANGUAGE_OPTIONS.map((item) => {
+                  const isSelected = item.code === languageCode;
+                  return (
+                    <Pressable
+                      key={item.code}
+                      onPress={() => {
+                        setLanguageCode(item.code);
+                        setLanguageModalOpen(false);
+                      }}
+                      className={`flex-row items-center justify-between px-4 py-3.5 rounded-xl ${
+                        isSelected
+                          ? 'bg-primary/10 border border-primary'
+                          : 'bg-muted/30 border border-border active:bg-muted/60'
                       }`}
                     >
-                      {item.label}
-                    </Text>
-                    {isSelected && <Icon as={Check} size={18} className="text-primary" />}
-                  </Pressable>
-                );
-              })}
+                      <Text
+                        className={`text-sm ${
+                          isSelected ? 'font-bold text-primary' : 'font-medium text-foreground'
+                        }`}
+                      >
+                        {item.label}
+                      </Text>
+                      {isSelected && <Icon as={Check} size={18} className="text-primary" />}
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={{ height: Math.max(insets.bottom, 8) }} />
             </View>
-            <View style={{ height: Math.max(insets.bottom, 8) }} />
           </View>
-        </View>
-      </Modal>
-
+        </Modal>
+      ) : null}
 
       {/* ─── Community Directory Modal ─── */}
-      <ResidentDirectoryModal
-        visible={directoryOpen}
-        onClose={() => setDirectoryOpen(false)}
-        pulses={activePulses}
-      />
+      {directoryOpen ? (
+        <ResidentDirectoryModal
+          visible={directoryOpen}
+          onClose={() => setDirectoryOpen(false)}
+          pulses={activePulses}
+        />
+      ) : null}
 
       {/* ─── Interests Modal ─── */}
-      <InterestSelectorModal
-        visible={interestsOpen}
-        onClose={() => setInterestsOpen(false)}
-        masterInterests={masterInterests}
-        selectedInterests={userInterests}
-        onSave={(selectedIds) => saveInterests(selectedIds)}
-      />
+      {interestsOpen ? (
+        <InterestSelectorModal
+          visible={interestsOpen}
+          onClose={() => setInterestsOpen(false)}
+          masterInterests={masterInterests}
+          selectedInterests={userInterests}
+          onSave={(selectedIds) => saveInterests(selectedIds)}
+        />
+      ) : null}
 
       {/* ─── Create Pulse Sheet ─── */}
-      <CreatePulseBottomSheet
-        visible={createPulseOpen}
-        onClose={() => setCreatePulseOpen(false)}
-        initialPulse={userActivePulse}
-        onSubmit={(text, emoji, category, contextText) =>
-          createPulse(text, emoji, category, contextText)
-        }
-      />
+      {createPulseOpen ? (
+        <CreatePulseBottomSheet
+          visible={createPulseOpen}
+          onClose={() => setCreatePulseOpen(false)}
+          initialPulse={userActivePulse}
+          onSubmit={(text, emoji, category, contextText) =>
+            createPulse(text, emoji, category, contextText)
+          }
+        />
+      ) : null}
 
       {/* ─── Account Deletion Confirmation Modal ─── */}
       <ConfirmationModal

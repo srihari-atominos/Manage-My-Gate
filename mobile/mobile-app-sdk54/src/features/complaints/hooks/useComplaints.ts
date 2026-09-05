@@ -17,12 +17,15 @@ import {
   addFeedback as addFeedbackThunk,
   fetchDashboardAnalytics as fetchDashboardAnalyticsThunk,
   updateComplaintStatus as updateComplaintStatusThunk,
+  deleteComplaint as deleteComplaintThunk,
   clearComplaintErrors as clearComplaintErrorsAction,
 } from '../store/complaintSlice';
 import { AssignTechnicianPayload } from '../types';
+import { useComplaintSocket } from './useComplaintSocket';
 
 export const useComplaints = () => {
   const dispatch = useDispatch<AppDispatch>();
+  useComplaintSocket();
 
   const { list, pagination, currentComplaint, dashboardAnalytics, status, error } = useSelector(
     (state: RootState) => (state as any).complaints || {}
@@ -142,6 +145,13 @@ export const useComplaints = () => {
     dispatch(clearComplaintErrorsAction());
   }, [dispatch]);
 
+  const deleteComplaint = useCallback(
+    (id: string) => {
+      return dispatch(deleteComplaintThunk(id)).unwrap();
+    },
+    [dispatch]
+  );
+
   return {
     complaints: list || [],
     pagination: pagination || { totalRecords: 0, currentPage: 1, totalPages: 1, limit: 10 },
@@ -167,6 +177,7 @@ export const useComplaints = () => {
     addFeedback: submitFeedback,
     fetchDashboardAnalytics: getAnalytics,
     updateStatus,
+    deleteComplaint,
     clearErrors,
   };
 };

@@ -3,11 +3,12 @@ import { View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { DatePicker } from '@/components/common/DatePicker';
-import { UserCheck, Users, ShieldAlert, Check, Phone, Wrench, Building2, Clock, Send } from 'lucide-react-native';
+import { UserCheck, Users, ShieldAlert, Check, Phone, Wrench, Building2, Clock, Send, Star } from 'lucide-react-native';
 import apiClient from '../../../services/apiClient';
 import { Complaint, AssignTechnicianPayload } from '../types';
 
@@ -17,15 +18,21 @@ interface StaffMember {
   phone?: string;
   department?: string;
   specialization?: string;
+  specialty?: string;
+  type?: string;
+  rating?: number | string;
   status?: string;
   activeJobsCount?: number;
 }
 
-interface AssignTechnicianSheetProps {
+export interface AssignTechnicianSheetProps {
   visible: boolean;
-  complaint: Complaint | null;
+  complaint?: Complaint | null;
+  ticket?: any;
+  technicians?: StaffMember[];
+  loading?: boolean;
   onClose: () => void;
-  onAssign: (id: string, payload: AssignTechnicianPayload) => Promise<any>;
+  onAssign: (id: string, payload: any, techName?: string, notes?: string) => Promise<any>;
 }
 
 const DEFAULT_STAFF_LIST: StaffMember[] = [
@@ -38,13 +45,17 @@ const DEFAULT_STAFF_LIST: StaffMember[] = [
 export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
   visible,
   complaint,
+  ticket,
+  technicians: initialTechnicians,
+  loading = false,
   onClose,
   onAssign,
 }) => {
+  const targetItem = complaint || ticket;
   const [assignmentType, setAssignmentType] = useState<'direct' | 'broadcast' | 'vendor'>('direct');
   
   // Staff Selection State
-  const [staffList, setStaffList] = useState<StaffMember[]>(DEFAULT_STAFF_LIST);
+  const [staffList, setStaffList] = useState<StaffMember[]>(initialTechnicians || DEFAULT_STAFF_LIST);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [broadcastStaffIds, setBroadcastStaffIds] = useState<string[]>([]);
@@ -60,31 +71,34 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
   // Common Fields
   const [instructions, setInstructions] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
+      if (initialTechnicians && initialTechnicians.length > 0) {
+        setStaffList(initialTechnicians);
+        return;
+      }
       setIsLoadingStaff(true);
       apiClient
         .get('/technicians')
         .then((res: any) => {
           const list = res?.data || res || [];
-          if (Array.isArray(list) && list.length > 0) {
+          if (Array.isArray(list)) {
             setStaffList(list);
-          } else {
-            setStaffList(DEFAULT_STAFF_LIST);
           }
         })
         .catch((err) => {
-          console.log('[AssignSheet] Technician fetch fallback:', err);
-          setStaffList(DEFAULT_STAFF_LIST);
+          console.log('[AssignSheet] Technician fetch failed:', err);
+          setStaffList([]);
         })
         .finally(() => {
           setIsLoadingStaff(false);
         });
     }
-  }, [visible]);
+  }, [visible, initialTechnicians]);
 
-  if (!complaint) return null;
+  if (!targetItem) return null;
 
   const toggleBroadcastStaff = (id: string) => {
     setBroadcastStaffIds((prev) =>
@@ -94,39 +108,43 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
 
   const handleAssignSubmit = async () => {
     try {
+      setError(null);
       setIsSubmitting(true);
       let payload: AssignTechnicianPayload = {
         assignmentType,
-        instructions: instructions || undefined,
+        instructions: instructions.trim() || undefined,
       };
+      let techName = '';
 
       if (assignmentType === 'direct') {
         if (!selectedStaffId) {
-          Alert.alert('Selection Required', 'Please select a staff member to assign.');
+          setError('Please select a staff member to assign.');
           return;
         }
         const selected = staffList.find((s) => s._id === selectedStaffId);
+        techName = selected ? selected.name : '';
         payload.technicianId = selectedStaffId;
         payload.assignedTechnicianId = selectedStaffId;
-        payload.technicianName = selected ? selected.name : '';
+        payload.technicianName = techName;
         payload.vendor = 'In-House';
       } else if (assignmentType === 'broadcast') {
         if (broadcastStaffIds.length === 0) {
-          Alert.alert('Selection Required', 'Please select at least one staff member for broadcast dispatch.');
+          setError('Please select at least one staff member for broadcast dispatch.');
           return;
         }
         payload.technicianIds = broadcastStaffIds;
         payload.vendor = 'In-House';
       } else if (assignmentType === 'vendor') {
         if (!vendorName.trim()) {
-          Alert.alert('Required Field', 'Please enter the External Vendor Name.');
+          setError('Please enter the External Vendor Name.');
           return;
         }
-        if (!vendorPhone.trim()) {
-          Alert.alert('Required Field', 'Please enter the Vendor Phone Number.');
+        if (!vendorPhone.trim() || vendorPhone.replace(/\D/g, '').length !== 10) {
+          setError('Please enter a valid 10-digit Vendor Phone Number.');
           return;
         }
-        payload.technicianName = vendorName.trim();
+        techName = vendorName.trim();
+        payload.technicianName = techName;
         payload.vendor = vendorCompany.trim() || 'External Vendor';
         
         const extraVendorNotes = `\n[External Vendor Pass Details]\nPhone: ${vendorPhone}\nCompany: ${vendorCompany || 'N/A'}\nSpecialization: ${vendorSpecialization || 'N/A'}\nVisit Schedule: ${visitTiming}${customVisitDate ? ` (${customVisitDate.toLocaleDateString()})` : ''}`;
@@ -135,28 +153,44 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
         payload.preferredVisitTime = visitTiming;
       }
 
-      await onAssign(complaint._id, payload);
+      await onAssign(targetItem._id, payload, techName, instructions.trim());
+      setSelectedStaffId('');
+      setBroadcastStaffIds([]);
+      setInstructions('');
       onClose();
     } catch (err: any) {
       console.error('Failed to assign technician:', err);
-      Alert.alert('Assignment Error', err?.message || 'Failed to dispatch technician');
+      setError(err?.message || 'Failed to dispatch technician');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const ticketNumber = targetItem.complaintNumber || targetItem.ticketNumber || '';
+
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={`Assign Ticket #${complaint.complaintNumber}`}>
-      <ScrollView className="px-4 py-2" contentContainerStyle={{ paddingBottom: 60 }}>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title={`Assign Ticket ${ticketNumber ? `#${ticketNumber}` : ''}`}
+    >
+      <View className="px-1 py-1 pb-2">
+        {error && (
+          <View className="mb-3 p-3 bg-destructive/10 border border-destructive/20 rounded-xl flex-row items-center gap-2">
+            <Icon as={ShieldAlert} size={16} className="text-destructive shrink-0" />
+            <Text className="text-xs font-semibold text-destructive flex-1">{error}</Text>
+          </View>
+        )}
+
         {/* TICKET SUMMARY BANNER */}
-        <View className="bg-muted/40 border border-border/50 rounded-xl p-3 mb-3 flex-row items-center justify-between">
+        <View className="bg-card border border-border rounded-xl p-3 mb-3 flex-row items-center justify-between">
           <View className="flex-1 me-2">
             <Text className="text-[10px] font-bold text-muted-foreground uppercase">Target Issue</Text>
             <Text className="text-xs font-bold text-foreground" numberOfLines={1}>
-              {complaint.title}
+              {targetItem.title || 'Maintenance Request'}
             </Text>
           </View>
-          <StatusBadge label={complaint.category} variant="info" />
+          <StatusBadge label={targetItem.category || 'General'} variant="info" />
         </View>
 
         {/* 1-TAP SEGMENTED STRATEGY CHIPS */}
@@ -174,19 +208,13 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
                   key={strat.id}
                   activeOpacity={0.8}
                   onPress={() => setAssignmentType(strat.id as any)}
-                  style={{
-                    backgroundColor: isCurrent ? '#2563eb' : '#f1f5f9',
-                    borderColor: isCurrent ? '#2563eb' : '#cbd5e1',
-                    borderWidth: 1,
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: 10,
-                    flex: 1,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl items-center justify-center border ${
+                    isCurrent
+                      ? 'bg-primary border-primary'
+                      : 'bg-card border-border'
+                  }`}
                 >
-                  <Text style={{ color: isCurrent ? '#ffffff' : '#0f172a', fontWeight: 'bold', fontSize: 11 }}>
+                  <Text className={`font-bold text-xs ${isCurrent ? 'text-primary-foreground' : 'text-foreground'}`}>
                     {strat.label}
                   </Text>
                 </TouchableOpacity>
@@ -199,59 +227,56 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
         {assignmentType === 'direct' && (
           <View className="my-2 gap-2">
             <Text className="text-xs font-bold text-muted-foreground uppercase">
-              Select Staff Member ({complaint.category})
+              Select Staff Member ({targetItem.category || 'Maintenance'})
             </Text>
-            {staffList.map((staff) => {
-              const isSelected = selectedStaffId === staff._id;
-              const isBusy = (staff.activeJobsCount || 0) > 0;
+            {staffList.length === 0 ? (
+              <View className="bg-orange-50 border border-orange-200 p-4 rounded-xl items-center my-2">
+                <Icon as={ShieldAlert} size={24} color="#f97316" className="mb-2" />
+                <Text className="text-sm font-bold text-orange-700 text-center">No In-House Staff Found</Text>
+                <Text className="text-xs text-orange-600 text-center mt-1">
+                  You don't have any registered technicians. Please use the "External Vendor" tab or add staff first.
+                </Text>
+              </View>
+            ) : (
+              staffList.map((staff) => {
+                const isSelected = selectedStaffId === staff._id;
+                const isBusy = (staff.activeJobsCount || 0) > 0;
 
-              return (
-                <TouchableOpacity
-                  key={staff._id}
-                  activeOpacity={0.8}
-                  onPress={() => setSelectedStaffId(staff._id)}
-                  style={{
-                    backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
-                    borderColor: isSelected ? '#2563eb' : '#e2e8f0',
-                    borderWidth: isSelected ? 2 : 1,
-                    padding: 12,
-                    borderRadius: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <View className="flex-row items-center flex-1 me-2">
-                    <View
-                      style={{
-                        backgroundColor: isSelected ? '#2563eb' : '#f1f5f9',
-                        width: 36,
-                        height: 36,
-                        borderRadius: 18,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: 10,
-                      }}
-                    >
-                      <Icon as={UserCheck} size={18} color={isSelected ? '#ffffff' : '#64748b'} />
+                return (
+                  <TouchableOpacity
+                    key={staff._id}
+                    activeOpacity={0.8}
+                    onPress={() => setSelectedStaffId(staff._id)}
+                    className={`p-3 rounded-xl border flex-row items-center justify-between ${
+                      isSelected
+                        ? 'bg-primary/10 border-primary'
+                        : 'bg-card border-border'
+                    }`}
+                  >
+                    <View className="flex-row items-center flex-1 me-2">
+                      <View className={`w-9 h-9 rounded-full items-center justify-center me-2.5 ${
+                        isSelected ? 'bg-primary' : 'bg-muted'
+                      }`}>
+                        <Icon as={UserCheck} size={18} className={isSelected ? 'text-primary-foreground' : 'text-muted-foreground'} />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-xs font-bold text-foreground">{staff.name}</Text>
+                        <Text className="text-[11px] text-muted-foreground">
+                          {staff.specialization || staff.specialty || staff.department || 'Maintenance Staff'} • {staff.phone || 'No phone'}
+                        </Text>
+                      </View>
                     </View>
-                    <View className="flex-1">
-                      <Text className="text-xs font-bold text-foreground">{staff.name}</Text>
-                      <Text className="text-[11px] text-muted-foreground">
-                        {staff.specialization || staff.department || 'Maintenance Staff'} • {staff.phone || 'No phone'}
-                      </Text>
-                    </View>
-                  </View>
 
-                  <View className="items-end">
-                    <StatusBadge
-                      label={isBusy ? `Busy (${staff.activeJobsCount})` : 'Available'}
-                      variant={isBusy ? 'warning' : 'success'}
-                    />
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+                    <View className="items-end">
+                      <StatusBadge
+                        label={isBusy ? `Busy (${staff.activeJobsCount})` : 'Available'}
+                        variant={isBusy ? 'warning' : 'success'}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </View>
         )}
 
@@ -269,32 +294,17 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
                   key={staff._id}
                   activeOpacity={0.8}
                   onPress={() => toggleBroadcastStaff(staff._id)}
-                  style={{
-                    backgroundColor: isChecked ? '#eff6ff' : '#ffffff',
-                    borderColor: isChecked ? '#2563eb' : '#e2e8f0',
-                    borderWidth: isChecked ? 2 : 1,
-                    padding: 12,
-                    borderRadius: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
+                  className={`p-3 rounded-xl border flex-row items-center justify-between ${
+                    isChecked
+                      ? 'bg-primary/10 border-primary'
+                      : 'bg-card border-border'
+                  }`}
                 >
                   <View className="flex-row items-center flex-1 me-2">
-                    <View
-                      style={{
-                        backgroundColor: isChecked ? '#2563eb' : '#ffffff',
-                        borderColor: isChecked ? '#2563eb' : '#cbd5e1',
-                        borderWidth: 1,
-                        width: 20,
-                        height: 20,
-                        borderRadius: 6,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: 10,
-                      }}
-                    >
-                      {isChecked && <Icon as={Check} size={12} color="#ffffff" />}
+                    <View className={`w-5 h-5 rounded-md items-center justify-center me-2.5 border ${
+                      isChecked ? 'bg-primary border-primary' : 'bg-card border-border'
+                    }`}>
+                      {isChecked && <Icon as={Check} size={12} className="text-primary-foreground" />}
                     </View>
                     <View className="flex-1">
                       <Text className="text-xs font-bold text-foreground">{staff.name}</Text>
@@ -309,7 +319,7 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
 
         {/* 3. EXTERNAL VENDOR PASS DETAILS */}
         {assignmentType === 'vendor' && (
-          <View className="my-2 gap-3 bg-muted/30 border border-border/60 rounded-2xl p-3.5">
+          <View className="my-2 gap-3 bg-muted/20 border border-border rounded-2xl p-3.5">
             <Text className="text-xs font-bold text-muted-foreground uppercase">
               External Vendor Gate Pass Details
             </Text>
@@ -323,8 +333,9 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
 
             <TextInput
               label="Vendor Contact Phone *"
-              placeholder="e.g. +91 98765 43210"
+              placeholder="e.g. 9876543210"
               keyboardType="phone-pad"
+              maxLength={10}
               value={vendorPhone}
               onChangeText={setVendorPhone}
             />
@@ -364,30 +375,34 @@ export const AssignTechnicianSheet: React.FC<AssignTechnicianSheetProps> = ({
           placeholder="Enter instructions for the assigned technician..."
           value={instructions}
           onChangeText={setInstructions}
+          containerClassName="mt-2"
         />
 
-        {/* SOLID BLUE DISPATCH CTA BUTTON */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handleAssignSubmit}
-          disabled={isSubmitting}
-          style={{
-            backgroundColor: '#2563eb', // solid bright blue
-            paddingVertical: 14,
-            paddingHorizontal: 16,
-            borderRadius: 14,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginTop: 16,
-          }}
-        >
-          <Icon as={Send} size={16} color="#ffffff" style={{ marginRight: 8 }} />
-          <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 14 }}>
-            {isSubmitting ? 'Dispatching...' : 'Confirm & Dispatch Technician'}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
+        {/* Action Buttons */}
+        <View className="flex-row gap-2 pt-4 pb-2 border-t border-border mt-3">
+          <Button
+            variant="outline"
+            className="flex-1 h-12 rounded-xl"
+            onPress={onClose}
+            disabled={isSubmitting || loading}
+          >
+            <Text className="text-xs font-semibold text-foreground">Cancel</Text>
+          </Button>
+          <Button
+            variant="default"
+            className="flex-1 h-12 rounded-xl flex-row items-center justify-center gap-1.5"
+            onPress={handleAssignSubmit}
+            disabled={isSubmitting || loading}
+            loading={isSubmitting}
+            accessibilityLabel="Confirm and Dispatch Technician"
+          >
+            <Icon as={Send} size={14} className="text-primary-foreground" />
+            <Text className="text-xs font-bold text-primary-foreground">
+              {isSubmitting ? 'Dispatching...' : 'Dispatch'}
+            </Text>
+          </Button>
+        </View>
+      </View>
     </BottomSheet>
   );
 };

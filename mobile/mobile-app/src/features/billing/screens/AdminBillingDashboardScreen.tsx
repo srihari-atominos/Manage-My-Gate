@@ -209,6 +209,7 @@ export function AdminBillingDashboardScreen() {
     >
       <ScrollView
         className="flex-1 bg-background"
+        showsVerticalScrollIndicator={false}
         contentContainerClassName="p-4 pb-28 gap-5"
         refreshControl={
           <RefreshControl

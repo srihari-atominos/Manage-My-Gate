@@ -9,7 +9,6 @@ import {
 import { FeatureCategory, FeatureItem } from '../dashboardService';
 import { ALL_AVAILABLE_FEATURES } from '../dashboardCatalog';
 import { useWorkspace } from '../../workspace/hooks/useWorkspace';
-
 import { useAuth } from '../../auth/hooks/useAuth';
 import { isFeatureAllowedForUser, getDefaultQuickActionsForUser } from '../../../utils/rbac';
 
@@ -142,10 +141,10 @@ export const useQuickActions = () => {
       }).filter(category => category.items.length > 0);
     }
     
-    // RBAC permission filtering per user role & permissions and filter out excluded items
+    // RBAC permission filtering per user role & permissions
     return baseCatalog.map(category => ({
       ...category,
-      items: category.items.filter(item => item.id !== 'admin_organizations' && item.id !== 'admin_audit_logs' && isFeatureAllowedForUser(item, user))
+      items: category.items.filter(item => isFeatureAllowedForUser(item, user))
     })).filter(category => category.items.length > 0);
   }, [rawCatalog, modules, userPermissions, user]);
 
@@ -168,31 +167,52 @@ export const useQuickActions = () => {
     return (ALL_AVAILABLE_FEATURES as FeatureItem[]).filter(item => isFeatureAllowedForUser(item, user));
   }, [featureCatalog, user]);
 
-  // Equipped active quick action items (slots 1 through 7)
-  const equippedFeatures = useMemo<FeatureItem[]>(() => {
+  // Role-filtered active quick action IDs (max 5)
+  const effectiveQuickActionIds = useMemo<string[]>(() => {
     const defaultIds = getDefaultQuickActionsForUser(user);
-    const targetIds = (activeQuickActions && activeQuickActions.length > 0) ? activeQuickActions : defaultIds;
+    const candidateIds = (activeQuickActions && activeQuickActions.length > 0) ? activeQuickActions : defaultIds;
 
-    const itemMap = new Map<string, FeatureItem>();
-    (ALL_AVAILABLE_FEATURES as FeatureItem[]).forEach((item) => itemMap.set(item.id, item));
+    const allowedIds = candidateIds.filter((id) => {
+      const item = allFeaturesList.find((f) => f.id === id) || ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
+      return item ? isFeatureAllowedForUser(item, user) : false;
+    });
 
-    const allowedItems = targetIds
-      .map((id: string) => itemMap.get(id))
-      .filter((item: FeatureItem | undefined): item is FeatureItem => Boolean(item) && isFeatureAllowedForUser(item!, user));
-
-    if (allowedItems.length > 0) {
-      return allowedItems.slice(0, 7);
+    if (allowedIds.length >= 5) {
+      return allowedIds.slice(0, 5);
     }
 
-    // Fallback to role-appropriate defaults
-    return defaultIds
+    const permittedDefaults = defaultIds.filter((id) => {
+      const item = allFeaturesList.find((f) => f.id === id) || ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
+      return item ? isFeatureAllowedForUser(item, user) : false;
+    });
+
+    const combined = Array.from(new Set([...allowedIds, ...permittedDefaults]));
+    if (combined.length >= 5) {
+      return combined.slice(0, 5);
+    }
+
+    const allPermitted = allFeaturesList.map((item) => item.id);
+    return Array.from(new Set([...combined, ...allPermitted])).slice(0, 5);
+  }, [activeQuickActions, user, allFeaturesList]);
+
+  // Equipped active quick action items (slots 1 through 5)
+  const equippedFeatures = useMemo<FeatureItem[]>(() => {
+    const itemMap = new Map<string, FeatureItem>();
+    allFeaturesList.forEach((item) => itemMap.set(item.id, item));
+    (ALL_AVAILABLE_FEATURES as FeatureItem[]).forEach((item) => {
+      if (!itemMap.has(item.id)) {
+        itemMap.set(item.id, item);
+      }
+    });
+
+    return effectiveQuickActionIds
       .map((id: string) => itemMap.get(id))
-      .filter((item: FeatureItem | undefined): item is FeatureItem => Boolean(item) && isFeatureAllowedForUser(item!, user))
-      .slice(0, 7);
-  }, [activeQuickActions, user]);
+      .filter((item: FeatureItem | undefined): item is FeatureItem => Boolean(item && isFeatureAllowedForUser(item!, user)))
+      .slice(0, 5);
+  }, [effectiveQuickActionIds, allFeaturesList, user]);
 
   return {
-    activeQuickActions,
+    activeQuickActions: effectiveQuickActionIds,
     featureCatalog,
     allFeaturesList,
     equippedFeatures,

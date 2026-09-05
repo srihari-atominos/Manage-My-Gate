@@ -233,13 +233,12 @@ function ManageNoticesContent() {
       headerRight={
         canCreate ? (
           <Button
-            variant="default"
             size="sm"
             onPress={() => router.push('/(resident)/notices/create' as any)}
             accessibilityLabel="Create Notice"
-            className="flex-row items-center gap-1.5 rounded-full"
+            className="bg-emerald-600 active:bg-emerald-700 flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
           >
-            <Text className="text-primary-foreground font-bold text-xs">Create Notice</Text>
+            <Text className="text-white font-bold text-xs">Create Notice</Text>
           </Button>
         ) : null
       }

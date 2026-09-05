@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { View } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { TabBar } from '@/components/ui/TabBar';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { ExportReportButton } from '@/components/analytics/ExportReportButton';
@@ -31,16 +30,6 @@ export default function AdminGateLogsScreen() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-
-  const tabs = useMemo(
-    () => [
-      { key: 'ALL', label: 'All Logs' },
-      { key: 'ACTIVE', label: 'Inside Now' },
-      { key: 'EXPIRED', label: 'Completed' },
-      { key: 'REVOKED', label: 'Revoked/Denied' },
-    ],
-    []
-  );
 
   const loadData = useCallback(
     (page: number, append: boolean = false) => {
@@ -146,24 +135,23 @@ export default function AdminGateLogsScreen() {
 
   const renderHeader = () => (
     <View className="gap-3 mb-3">
-      {/* Multi-Facet Status Filter Bar */}
-      <TabBar
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={(tabKey) => {
-          setSearch('');
-          setActiveTab(tabKey);
-        }}
-        variant="pill"
-        className="my-1"
-      />
-
-      {/* Real-Time Keyword Search Bar */}
+      {/* Real-Time Keyword Search Bar & Moveable Slide Status Filter */}
       <SearchFilterBar
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search visitor, vehicle plate, guard or villa..."
-        variant="bordered"
+        sortOptions={[
+          { label: 'All Logs', value: 'ALL' },
+          { label: 'Inside Now', value: 'ACTIVE' },
+          { label: 'Completed', value: 'EXPIRED' },
+          { label: 'Revoked/Denied', value: 'REVOKED' },
+        ]}
+        currentSort={activeTab}
+        onSortChange={(tabKey) => {
+          setSearch('');
+          setActiveTab(tabKey);
+        }}
+        variant="default"
         className="px-0 py-0 border-0"
       />
 

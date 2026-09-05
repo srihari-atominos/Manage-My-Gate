@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, RefreshControl, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Filter, Users, ChevronLeft, ChevronRight, Mail, UserPlus, Users2, Hash, X } from 'lucide-react-native';
+import { Filter, Users, ChevronLeft, ChevronRight, Mail, UserPlus, Users2, Hash, X, Plus } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { FAB } from '@/components/ui/FAB';
@@ -144,7 +144,7 @@ export default function UserManagementScreen() {
             className={`flex-row items-center px-3 py-1.5 rounded-lg border ${
               currentPage <= 1 || isLoading
                 ? 'bg-muted/40 border-border/40 opacity-40'
-                : 'bg-primary/10 border-primary/20 active:opacity-70'
+                : 'bg-blue-500/10 border-blue-500/20 active:opacity-70'
             }`}
             accessibilityRole="button"
             accessibilityLabel="Previous page"
@@ -184,7 +184,7 @@ export default function UserManagementScreen() {
             className={`flex-row items-center px-3 py-1.5 rounded-lg border ${
               currentPage >= totalPages || isLoading
                 ? 'bg-muted/40 border-border/40 opacity-40'
-                : 'bg-primary/10 border-primary/20 active:opacity-70'
+                : 'bg-blue-500/10 border-blue-500/20 active:opacity-70'
             }`}
             accessibilityRole="button"
             accessibilityLabel="Next page"
@@ -192,7 +192,7 @@ export default function UserManagementScreen() {
             <Text className={`text-xs font-bold me-1 ${currentPage >= totalPages || isLoading ? 'text-muted-foreground' : 'text-primary'}`}>
               {t('next_page', 'Next')}
             </Text>
-            <ChevronRight size={16} color={currentPage >= totalPages || isLoading ? '#9ca3af' : '#6366f1'} />
+            <ChevronRight size={16} color={currentPage >= totalPages || isLoading ? '#9ca3af' : '#2563eb'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -210,19 +210,30 @@ export default function UserManagementScreen() {
       error={error}
       onRetry={refreshUsers}
       headerRight={
-        <TouchableOpacity
-          onPress={() => setShowFilterSheet(true)}
-          className="p-2 rounded-xl bg-muted/60 border border-border flex-row items-center"
-          accessibilityRole="button"
-          accessibilityLabel="Filter users"
-        >
-          <Filter size={16} color="#6366f1" className="me-1" />
-          {activeFilterCount > 0 ? (
-            <View className="bg-primary px-1.5 py-0.5 rounded-full ms-1">
-              <Text className="text-[10px] font-bold text-white">{activeFilterCount}</Text>
-            </View>
-          ) : null}
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-1.5">
+          <TouchableOpacity
+            onPress={() => setShowFilterSheet(true)}
+            className="p-2 rounded-xl bg-secondary border border-border flex-row items-center"
+            accessibilityRole="button"
+            accessibilityLabel="Filter users"
+          >
+            <Filter size={16} className="text-foreground me-1" />
+            {activeFilterCount > 0 ? (
+              <View className="bg-primary px-1.5 py-0.5 rounded-full ms-1">
+                <Text className="text-[10px] font-bold text-primary-foreground">{activeFilterCount}</Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowInviteModal(true)}
+            className="flex-row items-center gap-1 bg-primary px-3 py-1.5 rounded-full active:opacity-80"
+            accessibilityRole="button"
+            accessibilityLabel="Invite User"
+          >
+            <Plus size={14} color="#ffffff" />
+            <Text className="text-xs font-bold text-primary-foreground">{t('invite_user', 'Invite')}</Text>
+          </TouchableOpacity>
+        </View>
       }
     >
       <View className="flex-1">
@@ -241,7 +252,7 @@ export default function UserManagementScreen() {
             <View className="flex-row items-center gap-2">
               <TouchableOpacity
                 onPress={() => setShowTemplateModal(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-card border border-border/80 flex-row items-center shadow-xs active:opacity-70"
+                className="px-2.5 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/30 flex-row items-center shadow-xs active:opacity-70"
               >
                 <Mail size={14} color="#6366f1" className="me-1.5" />
                 <Text className="text-xs font-semibold text-foreground">{t('configure_invitation_mail', 'Configure Invitation Mail')}</Text>
@@ -249,7 +260,7 @@ export default function UserManagementScreen() {
 
               <TouchableOpacity
                 onPress={() => setShowBulkInviteModal(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-primary/10 border border-primary/20 flex-row items-center active:opacity-70"
+                className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex-row items-center active:opacity-70"
               >
                 <Users2 size={14} color="#6366f1" className="me-1.5" />
                 <Text className="text-xs font-bold text-primary">{t('bulk_invite', 'Bulk Invite')}</Text>
@@ -257,7 +268,7 @@ export default function UserManagementScreen() {
 
               <TouchableOpacity
                 onPress={() => setShowInviteModal(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-primary flex-row items-center active:opacity-80"
+                className="px-2.5 py-1.5 rounded-xl bg-emerald-600 border border-emerald-600 flex-row items-center active:opacity-80"
               >
                 <UserPlus size={14} color="#ffffff" className="me-1.5" />
                 <Text className="text-xs font-bold text-white">{t('invite_user', 'Invite User')}</Text>
@@ -283,7 +294,7 @@ export default function UserManagementScreen() {
                 onPress={() => setRowsPerPage(limit)}
                 className={`px-1.5 py-0.5 rounded-md border active:opacity-70 ${
                   rowsPerPage === limit
-                    ? 'bg-primary border-primary'
+                    ? 'bg-blue-600 border-blue-600'
                     : 'bg-background border-border/60'
                 }`}
                 accessibilityRole="button"
@@ -344,14 +355,6 @@ export default function UserManagementScreen() {
           />
         )}
       </View>
-
-      {/* Floating Action Button */}
-      <FAB
-        iconName="UserPlus"
-        label={t('invite_user', 'Invite User')}
-        onPress={() => setShowInviteModal(true)}
-        variant="primary"
-      />
 
       {/* Modals & Bottom Sheets */}
       <InviteUserModal

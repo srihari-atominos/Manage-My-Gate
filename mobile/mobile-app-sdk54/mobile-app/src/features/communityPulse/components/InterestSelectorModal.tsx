@@ -43,6 +43,8 @@ export const InterestSelectorModal = ({
     onClose();
   };
 
+  if (!visible) return null;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 justify-end bg-black/60">
@@ -96,8 +98,14 @@ export const InterestSelectorModal = ({
           </ScrollView>
 
           {/* Save Action */}
-          <Button onPress={handleSave} leftIcon={Check} className="h-12 bg-primary rounded-xl">
-            Save Interests ({currentSelected.length})
+          <Button
+            onPress={handleSave}
+            className="h-12 bg-primary rounded-xl flex-row items-center justify-center gap-2"
+          >
+            <Check size={18} className="text-primary-foreground" />
+            <Text className="text-primary-foreground font-bold text-sm">
+              Save Interests ({currentSelected.length})
+            </Text>
           </Button>
         </View>
       </View>

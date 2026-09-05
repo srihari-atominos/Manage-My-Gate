@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, RefreshControl } from 'react-native';
+import { View, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { TabBar } from '@/components/ui/TabBar';
 import { KPIRow } from '@/components/ui/KPIRow';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { QRScannerOverlay } from '@/components/hardware/QRScannerOverlay';
 import { ScanResultSheet, ScanResultData } from '@/components/hardware/ScanResultSheet';
 import { VisitorPassDetailsModal } from '@/src/features/visitor/components/VisitorPassDetailsModal';
 import { GuardInitiateWalkInModal } from '@/src/features/visitor/components/guard/GuardInitiateWalkInModal';
@@ -17,7 +19,22 @@ import { useVisitorPass } from '@/src/features/visitor/hooks/useVisitorPass';
 import { selectActiveOrgId, selectAuthUser } from '@/src/features/auth/store/authSelectors';
 import { useSelector } from 'react-redux';
 import visitorService from '@/src/features/visitor/services/visitorService';
-import { QrCode, ScanLine, Search, ShieldAlert, LogOut, CheckCircle2 } from 'lucide-react-native';
+import {
+  QrCode,
+  ScanLine,
+  Search,
+  ShieldAlert,
+  LogOut,
+  CheckCircle2,
+  AlertTriangle,
+  Barcode,
+  Zap,
+  ZapOff,
+  Maximize2,
+  Minimize2,
+  Camera,
+} from 'lucide-react-native';
+import { parseAndValidateAppBarcode } from '@/src/utils/appBarcodeProtocol';
 
 const GATE_TABS = [
   { key: 'CONSOLE', label: 'Console' },
@@ -32,6 +49,7 @@ export default function GateConsoleScreen() {
   const {
     passes,
     activePass,
+    setActivePass,
     activeVisitors,
     fetchPassDetails,
     walkIns,
@@ -56,6 +74,22 @@ export default function GateConsoleScreen() {
   const [activeTab, setActiveTab] = useState<'CONSOLE' | 'WALK_INS' | 'INSIDE' | 'DIRECTORY'>('CONSOLE');
   const [walkInLoading, setWalkInLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [insideCount, setInsideCount] = useState<number>(0);
+
+  // Minimized Barcode Scanner Hardware State
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [isScannerMinimized, setIsScannerMinimized] = useState(false);
+  const [inlineTorchOn, setInlineTorchOn] = useState(false);
+
+  const fetchGateMetrics = useCallback(async () => {
+    if (!activeOrgId) return;
+    try {
+      const activeList = await fetchActiveVisitors(activeOrgId);
+      setInsideCount(activeList.length);
+    } catch {
+      // Handled silently
+    }
+  }, [activeOrgId, fetchActiveVisitors]);
 
   const loadData = useCallback(async () => {
     setRefreshing(true);
@@ -94,7 +128,14 @@ export default function GateConsoleScreen() {
   const handleVerifyPass = async (codeToVerify?: string) => {
     const raw = (codeToVerify || passCode).trim();
     if (!raw) return;
-    const cleanCode = extractCodeFromRaw(raw);
+    let code = raw;
+    let barcodeMeta: any = null;
+    const validation = parseAndValidateAppBarcode(raw);
+    if (validation.isValid) {
+      code = validation.code || validation.passId || raw;
+      barcodeMeta = validation;
+    }
+    const cleanCode = extractCodeFromRaw(code);
     if (!cleanCode) return;
 
     setLoading(true);
@@ -107,6 +148,8 @@ export default function GateConsoleScreen() {
       const res: any = await fetchPassDetails(cleanCode);
       if (res?.meta?.requestStatus === 'fulfilled' && res?.payload) {
         passData = res.payload.data || res.payload;
+      } else if (res?.payload) {
+        passData = res.payload;
       }
     } catch {
       // Fallback
@@ -335,29 +378,29 @@ export default function GateConsoleScreen() {
         <View className="py-2.5 bg-background border-b border-border/40">
           <KPIRow
             cards={[
-              {
+              ({
                 title: 'Inside Now',
                 value: String(activeVisitors?.length || 0),
                 subtitle: 'Active Visitors',
                 iconName: 'Users',
                 variant: 'success',
                 onPress: () => setActiveTab('INSIDE'),
-              },
-              {
+              } as any),
+              ({
                 title: 'Pending Walk-Ins',
                 value: String(pendingCount),
                 subtitle: 'Awaiting Host',
                 iconName: 'Clock',
                 variant: pendingCount > 0 ? 'warning' : 'default',
                 onPress: () => setActiveTab('WALK_INS'),
-              },
-              {
+              } as any),
+              ({
                 title: 'Gate Status',
                 value: 'Active',
                 subtitle: 'Main Gate Desk',
                 iconName: 'ShieldCheck',
                 variant: 'info',
-              },
+              } as any),
             ]}
           />
         </View>
@@ -390,14 +433,106 @@ export default function GateConsoleScreen() {
                 <Text className="text-xs font-semibold text-primary flex-1">{statusMessage}</Text>
               </View>
             )}
+            {/* Verification Card with Integrated Minimized Barcode Scanner */}
+            <View className="bg-card border border-border rounded-2xl p-4 gap-3 overflow-hidden shadow-sm">
+              <View className="flex-row items-center justify-between border-b border-border/40 pb-2.5">
+                <View className="flex-row items-center gap-2">
+                  <Barcode size={18} className="text-emerald-500" />
+                  <Text className="text-sm font-bold text-foreground">Barcode & QR Gate Scanner</Text>
+                </View>
 
-            {/* Verification Card */}
-            <View className="bg-card border border-border rounded-2xl p-4 gap-3">
-              <View className="flex-row items-center gap-2 border-b border-border/40 pb-2.5">
-                <ScanLine size={18} className="text-primary" />
-                <Text className="text-sm font-bold text-foreground">Verify Pass Code / QR / Plate</Text>
+                {/* Top Controls: Light / Torch, Minimize/Expand, Fullscreen */}
+                <View className="flex-row items-center gap-1.5">
+                  {cameraPermission?.granted && !isScannerMinimized && (
+                    <TouchableOpacity
+                      onPress={() => setInlineTorchOn((prev) => !prev)}
+                      className={`p-1.5 rounded-lg border ${
+                        inlineTorchOn
+                          ? 'bg-amber-400 border-amber-300'
+                          : 'bg-muted border-border'
+                      }`}
+                      accessibilityLabel="Toggle Scanner Light"
+                    >
+                      {inlineTorchOn ? (
+                        <Zap size={14} color="#000000" fill="#000000" />
+                      ) : (
+                        <ZapOff size={14} className="text-muted-foreground" />
+                      )}
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    onPress={() => setIsScannerMinimized((prev) => !prev)}
+                    className="p-1.5 rounded-lg border border-border bg-muted"
+                    accessibilityLabel={isScannerMinimized ? 'Expand scanner' : 'Minimize scanner'}
+                  >
+                    {isScannerMinimized ? (
+                      <Maximize2 size={14} className="text-foreground" />
+                    ) : (
+                      <Minimize2 size={14} className="text-foreground" />
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => setQrScannerOpen(true)}
+                    className="p-1.5 rounded-lg border border-border bg-muted"
+                    accessibilityLabel="Open Fullscreen Scanner"
+                  >
+                    <Maximize2 size={14} className="text-foreground" />
+                  </TouchableOpacity>
+                </View>
               </View>
 
+              {/* Minimized Live Camera Viewport */}
+              {!isScannerMinimized ? (
+                !cameraPermission?.granted ? (
+                  <View className="h-44 w-full rounded-xl bg-black/90 items-center justify-center p-4 border border-border/40 gap-2">
+                    <Camera size={28} color="#94a3b8" />
+                    <Text className="text-xs text-white/80 font-semibold text-center">
+                      Camera access required to scan barcodes
+                    </Text>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onPress={requestCameraPermission}
+                      className="bg-emerald-600 px-4 py-1.5 rounded-lg mt-1"
+                    >
+                      <Text className="text-xs font-bold text-white">Enable Camera</Text>
+                    </Button>
+                  </View>
+                ) : (
+                  <View className="h-48 w-full rounded-xl overflow-hidden bg-black relative border border-emerald-500/30">
+                    <CameraView
+                      facing="back"
+                      enableTorch={Boolean(inlineTorchOn)}
+                      barcodeScannerSettings={{
+                        barcodeTypes: ['qr', 'code128', 'code39', 'ean13', 'ean8', 'pdf417', 'upc_a', 'upc_e'],
+                      }}
+                      onBarcodeScanned={loading ? undefined : ({ data }) => handleVerifyPass(data)}
+                      style={{ width: '100%', height: '100%' }}
+                    />
+                    <QRScannerOverlay
+                      mode="barcode"
+                      frameHeight={120}
+                      frameWidth={260}
+                      instruction="Fit Barcode inside Box"
+                    />
+                  </View>
+                )
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setIsScannerMinimized(false)}
+                  className="flex-row items-center justify-between p-3 rounded-xl bg-muted/60 border border-border"
+                >
+                  <View className="flex-row items-center gap-2">
+                    <Barcode size={16} className="text-emerald-600 dark:text-emerald-400" />
+                    <Text className="text-xs font-semibold text-foreground">Scanner Minimized</Text>
+                  </View>
+                  <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Expand Camera</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Manual Pass Code Fallback Input */}
               <View className="flex-row items-center gap-2">
                 <View className="flex-1">
                   <TextInput
@@ -405,6 +540,7 @@ export default function GateConsoleScreen() {
                     onChangeText={setPassCode}
                     placeholder="Enter 6-digit PIN, Plate, or Name..."
                     keyboardType="default"
+                    leftIcon={Search}
                     inputClassName="font-mono text-sm tracking-wider"
                     onSubmitEditing={() => handleVerifyPass()}
                   />
@@ -413,22 +549,24 @@ export default function GateConsoleScreen() {
                   size="sm"
                   onPress={() => handleVerifyPass()}
                   disabled={loading || !passCode.trim()}
-                  loading={loading}
-                  className="h-12 px-4 rounded-xl"
+                  className="h-12 px-4 rounded-xl bg-emerald-600 active:bg-emerald-700"
                   accessibilityLabel="Search Pass Code"
                 >
-                  <Search size={16} className="text-primary-foreground" />
+                  <Search size={18} color="#FFFFFF" strokeWidth={2.5} />
                 </Button>
               </View>
 
+              {/* Fullscreen Modal Option */}
               <Button
                 variant="outline"
-                className="flex-row items-center justify-center gap-2 h-11 rounded-xl border-primary/30 bg-primary/5"
+                className="flex-row items-center justify-center gap-2 h-11 rounded-xl border-emerald-500/30 bg-emerald-500/10 active:bg-emerald-500/20"
                 onPress={() => setQrScannerOpen(true)}
-                accessibilityLabel="Open Camera QR Scanner"
+                accessibilityLabel="Open Fullscreen Barcode Scanner"
               >
-                <QrCode size={18} className="text-primary" />
-                <Text className="text-xs font-bold text-primary">Open Camera QR Scanner</Text>
+                <Barcode size={18} className="text-emerald-600 dark:text-emerald-400" />
+                <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  Open Fullscreen Scanner
+                </Text>
               </Button>
             </View>
 
@@ -464,12 +602,12 @@ export default function GateConsoleScreen() {
                 <Button
                   variant="outline"
                   onPress={() => setActiveTab('INSIDE')}
-                  className="flex-1 h-auto py-3.5 rounded-xl flex-col items-center justify-center gap-1.5 bg-status-success/10 border-status-success/20"
+                  className="flex-1 h-auto py-3.5 rounded-xl flex-col items-center justify-center gap-1.5 bg-red-500/10 border-red-500/20"
                   accessibilityLabel="Gate Check-Out"
                 >
-                  <LogOut size={22} className="text-status-success" />
-                  <Text className="text-xs font-bold text-status-success text-center">
-                    Check-Out List
+                  <LogOut size={22} className="text-red-600 dark:text-red-400" />
+                  <Text className="text-xs font-bold text-red-600 dark:text-red-400 text-center">
+                    Gate Check-Out
                   </Text>
                 </Button>
               </View>

@@ -5,9 +5,12 @@ import { SlidersHorizontal, LayoutGrid } from 'lucide-react-native';
 import FeatureIcon from '@/components/ui/FeatureIcon';
 import ActionTile from './ActionTile';
 import { FeatureItem } from '@/src/features/dashboard/dashboardService';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import {
   ALL_AVAILABLE_FEATURES,
   DEFAULT_5_QUICK_ACTIONS,
+  isFeatureAllowedForUser,
+  getRoleDefaultQuickActions,
 } from '@/src/features/dashboard/dashboardCatalog';
 
 interface QuickActionsGridProps {
@@ -25,16 +28,51 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
   onOpenViewMore,
   onTilePress,
 }) => {
-  // Exactly 5 customizable feature items for slots 1 through 5
+  const { user } = useAuth();
+
+  // Exactly 5 customizable feature items for slots 1 through 5, strictly role-permitted
   const displayFeatures = React.useMemo(() => {
+    // 1. If equipped features passed from hook, filter to permitted items
     if (propEquippedFeatures && propEquippedFeatures.length > 0) {
-      return propEquippedFeatures.slice(0, 5);
+      const allowed = propEquippedFeatures.filter((item) => isFeatureAllowedForUser(item, user));
+      if (allowed.length > 0) {
+        return allowed.slice(0, 5);
+      }
     }
-    const ids = (activeFeatureIds && activeFeatureIds.length > 0 ? activeFeatureIds : DEFAULT_5_QUICK_ACTIONS).slice(0, 5);
-    return ids
+
+    // 2. Filter active feature IDs to only those permitted for current role
+    const roleDefaults = getRoleDefaultQuickActions(user);
+    const candidateIds =
+      activeFeatureIds && activeFeatureIds.length > 0 ? activeFeatureIds : roleDefaults;
+
+    const allowedItems = candidateIds
       .map((id) => ALL_AVAILABLE_FEATURES.find((item) => item.id === id))
-      .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] => Boolean(item));
-  }, [propEquippedFeatures, activeFeatureIds]);
+      .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] =>
+        Boolean(item && isFeatureAllowedForUser(item, user))
+      );
+
+    if (allowedItems.length >= 5) {
+      return allowedItems.slice(0, 5);
+    }
+
+    // 3. Backfill from role-specific defaults
+    const backfillItems = roleDefaults
+      .map((id) => ALL_AVAILABLE_FEATURES.find((item) => item.id === id))
+      .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] =>
+        Boolean(item && isFeatureAllowedForUser(item, user))
+      );
+
+    const merged = Array.from(new Set([...allowedItems, ...backfillItems]));
+    if (merged.length >= 5) {
+      return merged.slice(0, 5);
+    }
+
+    // 4. Absolute fallback to any permitted features
+    const allPermitted = ALL_AVAILABLE_FEATURES.filter((item) =>
+      isFeatureAllowedForUser(item, user)
+    );
+    return Array.from(new Set([...merged, ...allPermitted])).slice(0, 5);
+  }, [propEquippedFeatures, activeFeatureIds, user]);
 
   return (
     <View className="gap-3 my-3">

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
+import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 import { useDirectory } from '@/src/features/directory/hooks/useDirectory';
 import { DirectoryMember } from '@/src/features/directory/types/directoryTypes';
 
@@ -137,6 +138,8 @@ export const ResidentDirectoryModal = ({
     setConnectNeighbor(null);
   };
 
+  if (!visible) return null;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 justify-end bg-black/50">
@@ -194,17 +197,18 @@ export const ResidentDirectoryModal = ({
                 { key: 'interests', label: 'Interests' },
               ].map((tab) => {
                 const isActive = activeTab === tab.key;
+                const statusStyle = getStatusTabStyle(tab.key, isActive);
                 return (
                   <Pressable
                     key={tab.key}
                     onPress={() => setActiveTab(tab.key as any)}
                     className={`flex-1 py-2 rounded-lg items-center ${
-                      isActive ? 'bg-card border border-border shadow-sm' : ''
+                      isActive ? `${statusStyle.containerClass} shadow-sm` : ''
                     }`}
                   >
                     <Text
                       className={`text-xs ${
-                        isActive ? 'font-bold text-foreground' : 'font-medium text-muted-foreground'
+                        isActive ? statusStyle.textClass : 'font-medium text-muted-foreground'
                       }`}
                     >
                       {tab.label}
@@ -284,12 +288,10 @@ export const ResidentDirectoryModal = ({
             </ScrollView>
           </View>
         </View>
-      </View>
 
-      {/* Connect / Communicate Overlay */}
-      {connectNeighbor ? (
-        <Modal transparent animationType="slide" visible={Boolean(connectNeighbor)}>
-          <View className="flex-1 justify-end bg-black/60">
+        {/* Connect / Communicate Overlay */}
+        {connectNeighbor ? (
+          <View className="absolute inset-0 bg-black/60 justify-end z-50">
             <Pressable className="absolute inset-0" onPress={() => setConnectNeighbor(null)} />
             <View className="bg-card rounded-t-3xl overflow-hidden">
               <SheetGrabHandle onClose={() => setConnectNeighbor(null)} />
@@ -322,15 +324,15 @@ export const ResidentDirectoryModal = ({
                 <View className="gap-1.5">
                   <Text className="text-[11px] font-semibold text-muted-foreground">Quick Messages</Text>
                   <View className="flex-row flex-wrap gap-1.5">
-                    {["🏸 I'm joining!", '☕ Count me in!', '👋 Hi neighbor!', '📱 Call me'].map(
-                      (chip, idx) => (
+                    {['Hi neighbor! 👋', 'Up for coffee today? ☕', 'Are you playing badminton? 🏸', 'Quick question! ❓'].map(
+                      (chip) => (
                         <Pressable
-                          key={idx}
+                          key={chip}
                           onPress={() => setMessageText(chip)}
                           className={`px-3 py-1.5 rounded-full border ${
                             messageText === chip
                               ? 'bg-primary/10 border-primary'
-                              : 'bg-card border-border active:bg-muted/40'
+                              : 'bg-muted/30 border-border active:bg-muted/60'
                           }`}
                         >
                           <Text
@@ -358,34 +360,34 @@ export const ResidentDirectoryModal = ({
                 <View className="flex-row gap-2">
                   <Button
                     onPress={handleOpenWhatsApp}
-                    leftIcon={MessageSquare}
-                    className="flex-1 bg-emerald-600 rounded-xl h-11"
+                    className="flex-1 bg-emerald-600 rounded-xl h-11 flex-row items-center justify-center gap-2"
                   >
-                    WhatsApp
+                    <MessageSquare size={16} color="#fff" />
+                    <Text className="text-white font-semibold text-xs">WhatsApp</Text>
                   </Button>
                   <Button
                     onPress={handleMakeCall}
                     variant="outline"
-                    leftIcon={Phone}
-                    className="flex-1 border-primary rounded-xl h-11"
+                    className="flex-1 border-primary rounded-xl h-11 flex-row items-center justify-center gap-2"
                   >
-                    Call
+                    <Phone size={16} className="text-primary" />
+                    <Text className="text-primary font-semibold text-xs">Call</Text>
                   </Button>
                 </View>
 
                 <Button
                   onPress={handleSendMessage}
-                  leftIcon={Send}
-                  className="h-11 bg-primary rounded-xl"
+                  className="h-11 bg-primary rounded-xl flex-row items-center justify-center gap-2"
                 >
-                  Send In-App Notification
+                  <Send size={16} className="text-primary-foreground" />
+                  <Text className="text-primary-foreground font-bold text-xs">Send In-App Notification</Text>
                 </Button>
               </View>
               <View style={{ height: Math.max(insets.bottom, 16) }} />
             </View>
           </View>
-        </Modal>
-      ) : null}
+        ) : null}
+      </View>
     </Modal>
   );
 };

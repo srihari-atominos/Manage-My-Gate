@@ -100,7 +100,6 @@ export const useAmenityMaster = () => {
         Alert.alert('Success', 'Amenity created successfully');
       }
       handleCloseFormModal();
-      loadData();
     } catch (err: any) {
       console.error('Failed to save amenity', err);
       Alert.alert('Error', typeof err === 'string' ? err : err.message || 'Failed to save amenity. Please check your inputs.');
@@ -122,7 +121,6 @@ export const useAmenityMaster = () => {
       await dispatch(updateAmenityStatusThunk({ id: deactivateTarget._id, status: newStatus })).unwrap();
       Alert.alert('Success', `Amenity ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
       setDeactivateTarget(null);
-      loadData();
     } catch (err: any) {
       console.error('Failed to change status', err);
       Alert.alert('Error', typeof err === 'string' ? err : err.message || 'Failed to update status');
@@ -136,10 +134,11 @@ export const useAmenityMaster = () => {
     setSaving(true);
     try {
       await dispatch(deleteAmenityThunk({ id: deleteTarget._id })).unwrap();
+      Alert.alert('Success', 'Amenity deleted successfully');
       setDeleteTarget(null);
-      loadData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete amenity', err);
+      Alert.alert('Error', typeof err === 'string' ? err : err?.message || 'Failed to delete amenity');
     } finally {
       setSaving(false);
     }

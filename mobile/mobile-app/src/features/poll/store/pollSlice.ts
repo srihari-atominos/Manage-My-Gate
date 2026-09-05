@@ -96,10 +96,45 @@ export const voteOnPoll = createAsyncThunk(
   }
 );
 
+export const DEFAULT_MOCK_POLLS: Poll[] = [
+  {
+    _id: 'poll_mock_01',
+    title: 'Installation of 8 Additional Fast EV Charging Stations in Basement 2',
+    description: 'Should the society allocate reserve funds to install 8 dedicated 22kW AC EV charging bays?',
+    options: [
+      { text: 'Yes, strongly approve (allocate funds)', votesCount: 78 },
+      { text: 'No, postpone to next fiscal year', votesCount: 14 },
+      { text: 'Neutral / Need more vendor quotes', votesCount: 6 },
+    ],
+    status: 'Active',
+    hasVoted: false,
+    createdBy: { name: 'Managing Committee' },
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+    updatedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5).toISOString(),
+  },
+  {
+    _id: 'poll_mock_02',
+    title: 'Extension of Clubhouse & Gym Weekend Operating Hours',
+    description: 'Proposal to extend Saturday and Sunday closing time from 10:00 PM to 11:30 PM.',
+    options: [
+      { text: 'Agree - Extend till 11:30 PM', votesCount: 112 },
+      { text: 'Disagree - Keep existing 10:00 PM', votesCount: 23 },
+    ],
+    status: 'Active',
+    hasVoted: true,
+    votedOptionIndex: 0,
+    createdBy: { name: 'Sports & Amenities Sub-committee' },
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(),
+    updatedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2).toISOString(),
+  },
+];
+
 const initialState: PollState = {
-  activePolls: { data: [], total: 0, loading: false, error: null },
+  activePolls: { data: DEFAULT_MOCK_POLLS, total: DEFAULT_MOCK_POLLS.length, loading: false, error: null },
   closedPolls: { data: [], total: 0, loading: false, error: null },
-  myPolls: { data: [], total: 0, loading: false, error: null },
+  myPolls: { data: DEFAULT_MOCK_POLLS, total: DEFAULT_MOCK_POLLS.length, loading: false, error: null },
 };
 
 const updatePollInList = (list: Poll[], updatedPoll: Poll) => {

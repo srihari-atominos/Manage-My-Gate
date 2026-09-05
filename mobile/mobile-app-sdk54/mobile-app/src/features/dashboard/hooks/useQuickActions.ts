@@ -7,7 +7,11 @@ import {
   clearDashboardError,
 } from '../dashboardSlice';
 import { FeatureCategory, FeatureItem } from '../dashboardService';
-import { ALL_AVAILABLE_FEATURES } from '../../../../components/dashboard/CustomiseSheetModal';
+import {
+  ALL_AVAILABLE_FEATURES,
+  isFeatureAllowedForUser,
+  getRoleDefaultQuickActions,
+} from '../dashboardCatalog';
 
 // Helper to construct built-in feature catalog from local definitions
 const buildFallbackCatalog = (features: any[]): FeatureCategory[] => {
@@ -48,10 +52,11 @@ export const useQuickActions = () => {
   const { activeQuickActions, featureCatalog: rawCatalog, loading, updating, error } = useSelector(
     (state: RootState) => state.dashboard
   );
+  const user = useSelector((state: RootState) => state.auth.user);
 
   useEffect(() => {
     dispatch(fetchQuickActionsThunk());
-  }, [dispatch]);
+  }, [dispatch, user?.role, user?.id]);
 
   const loadQuickActions = useCallback(() => {
     dispatch(fetchQuickActionsThunk());
@@ -71,11 +76,14 @@ export const useQuickActions = () => {
 
   // Effective feature catalog: uses backend catalog if non-empty, otherwise falls back to built-in catalog
   const featureCatalog = useMemo<FeatureCategory[]>(() => {
-    if (rawCatalog && rawCatalog.length > 0) {
-      return rawCatalog;
-    }
-    return BUILT_IN_FEATURE_CATALOG;
-  }, [rawCatalog]);
+    const catalog = (rawCatalog && rawCatalog.length > 0) ? rawCatalog : BUILT_IN_FEATURE_CATALOG;
+    return catalog
+      .map((cat) => ({
+        ...cat,
+        items: cat.items.filter((item) => isFeatureAllowedForUser(item, user)),
+      }))
+      .filter((cat) => cat.items.length > 0);
+  }, [rawCatalog, user]);
 
   // Flattened array of all available items across categories for easy lookup
   const allFeaturesList = useMemo<FeatureItem[]>(() => {
@@ -88,35 +96,65 @@ export const useQuickActions = () => {
       });
       if (list.length > 0) return list;
     }
-    return ALL_AVAILABLE_FEATURES as FeatureItem[];
-  }, [featureCatalog]);
+    return (ALL_AVAILABLE_FEATURES as FeatureItem[]).filter((item) =>
+      isFeatureAllowedForUser(item, user)
+    );
+  }, [featureCatalog, user]);
 
-  // Equipped active quick action items (slots 1 through 7)
-  const equippedFeatures = useMemo<FeatureItem[]>(() => {
-    if (!activeQuickActions || activeQuickActions.length === 0) {
-      return (ALL_AVAILABLE_FEATURES as FeatureItem[]).slice(0, 4);
+  // Role-filtered active quick action IDs
+  const effectiveQuickActionIds = useMemo<string[]>(() => {
+    const roleDefaults = getRoleDefaultQuickActions(user);
+    const candidateIds =
+      activeQuickActions && activeQuickActions.length > 0 ? activeQuickActions : roleDefaults;
+
+    // Filter candidate IDs to strictly only those permitted for the user's active role
+    const allowedIds = candidateIds.filter((id) => {
+      const item =
+        allFeaturesList.find((f) => f.id === id) ||
+        ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
+      return item ? isFeatureAllowedForUser(item, user) : false;
+    });
+
+    if (allowedIds.length >= 5) {
+      return allowedIds.slice(0, 5);
     }
+
+    // Backfill with role-permitted defaults
+    const permittedDefaults = roleDefaults.filter((id) => {
+      const item =
+        allFeaturesList.find((f) => f.id === id) ||
+        ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
+      return item ? isFeatureAllowedForUser(item, user) : false;
+    });
+
+    const combined = Array.from(new Set([...allowedIds, ...permittedDefaults]));
+    if (combined.length >= 5) {
+      return combined.slice(0, 5);
+    }
+
+    // Secondary backfill from all permitted features
+    const allPermitted = allFeaturesList.map((item) => item.id);
+    return Array.from(new Set([...combined, ...allPermitted])).slice(0, 5);
+  }, [activeQuickActions, user, allFeaturesList]);
+
+  // Equipped active quick action items (slots 1 through 5)
+  const equippedFeatures = useMemo<FeatureItem[]>(() => {
     const itemMap = new Map<string, FeatureItem>();
     allFeaturesList.forEach((item) => itemMap.set(item.id, item));
+    ALL_AVAILABLE_FEATURES.forEach((item) => {
+      if (!itemMap.has(item.id)) {
+        itemMap.set(item.id, item as FeatureItem);
+      }
+    });
 
-    const result = activeQuickActions
+    return effectiveQuickActionIds
       .map((id) => itemMap.get(id))
-      .filter((item): item is FeatureItem => Boolean(item))
-      .slice(0, 7);
-
-    if (result.length > 0) return result;
-
-    // Direct fallback from ALL_AVAILABLE_FEATURES
-    const fallbackMap = new Map<string, FeatureItem>();
-    (ALL_AVAILABLE_FEATURES as FeatureItem[]).forEach((item) => fallbackMap.set(item.id, item));
-    return activeQuickActions
-      .map((id) => fallbackMap.get(id))
-      .filter((item): item is FeatureItem => Boolean(item))
-      .slice(0, 7);
-  }, [activeQuickActions, allFeaturesList]);
+      .filter((item): item is FeatureItem => Boolean(item && isFeatureAllowedForUser(item, user)))
+      .slice(0, 5);
+  }, [effectiveQuickActionIds, allFeaturesList, user]);
 
   return {
-    activeQuickActions,
+    activeQuickActions: effectiveQuickActionIds,
     featureCatalog,
     allFeaturesList,
     equippedFeatures,

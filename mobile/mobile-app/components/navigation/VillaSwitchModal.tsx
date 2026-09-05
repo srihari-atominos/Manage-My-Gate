@@ -83,20 +83,32 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
       });
     }
 
-    // 3. Fallback for active single unit
-    const activeVNum = userAny?.villaNumber || userAny?.activeVillaNumber || userAny?.unitNumber;
-    const activeVId = userAny?.villaId || '1';
-    if (activeVNum && unitsMap.size === 0) {
-      unitsMap.set(activeVId, {
-        id: activeVId,
-        unitNumber: activeVNum,
-        block: userAny?.villaBlock || '',
-        residencyType: userAny?.residentType || userAny?.residencyType || 'Owner',
+    // 3. Fallback to DUMMY_VILLAS matching active community context
+    if (unitsMap.size <= 1) {
+      const { DUMMY_VILLAS } = require('../../src/features/villa/store/villaSlice');
+      const isEmerald = communityName.toLowerCase().includes('emerald') || activeOrgId === '650000000000000000000002';
+      const isSkyline = communityName.toLowerCase().includes('skyline') || communityName.toLowerCase().includes('apartment') || activeOrgId === '650000000000000000000003';
+      
+      const filtered = DUMMY_VILLAS.filter((v: any) => {
+        if (isEmerald) return v.blockOrBuilding?.includes('Emerald Valley');
+        if (isSkyline) return v.blockOrBuilding?.startsWith('Block');
+        return v.blockOrBuilding?.includes('Palm Meadows') || v.blockOrBuilding === 'Phase 1';
+      });
+
+      filtered.forEach((v: any) => {
+        if (!unitsMap.has(v._id)) {
+          unitsMap.set(v._id, {
+            id: v._id,
+            unitNumber: v.unitNumber,
+            block: v.blockOrBuilding || '',
+            residencyType: v.primaryResident ? 'Resident' : 'Vacant',
+          });
+        }
       });
     }
 
     return Array.from(unitsMap.values());
-  }, [user, reduxWorkspaces, activeOrgId]);
+  }, [user, reduxWorkspaces, activeOrgId, communityName]);
 
   const handleSelect = (unit: VillaUnit) => {
     const payload: any = {};

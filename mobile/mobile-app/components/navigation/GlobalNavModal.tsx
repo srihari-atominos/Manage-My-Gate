@@ -20,6 +20,7 @@ import {
   QrCode,
   Sliders,
   Home,
+  Settings,
   Sparkles,
 } from 'lucide-react-native';
 
@@ -97,6 +98,14 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
       defaultTitle: 'VISITORS & SECURITY',
       items: [
         { id: 'v-main', labelKey: 'feature_visitor_resident_passes_name', defaultLabel: 'Visitor Pass Hub', route: '/(resident)/visitor', icon: ShieldCheck, color: '#8b5cf6' },
+      ],
+    },
+    {
+      titleKey: 'nav_preferences_settings',
+      defaultTitle: 'PREFERENCES & SETTINGS',
+      items: [
+        { id: 's-app', labelKey: 'app_settings', defaultLabel: 'App Settings', route: '/(resident)/settings', icon: Settings, color: '#64748b' },
+        { id: 's-workspace', labelKey: 'feature_admin_workspace_settings_name', defaultLabel: 'Workspace Settings', route: '/(resident)/admin/workspace-settings', icon: Sliders, color: '#475569' },
       ],
     },
   ];

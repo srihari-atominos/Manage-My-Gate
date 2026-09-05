@@ -93,7 +93,9 @@ export const useAppSocket = () => {
       });
 
       sharedSocket.on('disconnect', (reason) => {
-        console.log('[Socket] Disconnected:', reason);
+        if (reason !== 'io client disconnect') {
+          console.log('[Socket] Disconnected:', reason);
+        }
       });
 
       setActiveSocket(sharedSocket);

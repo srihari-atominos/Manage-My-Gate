@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Plus } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { TabBar } from '@/components/ui/TabBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
@@ -108,19 +109,6 @@ export default function PollDashboardScreen() {
 
   const renderHeader = () => (
     <View className="gap-3 mb-3">
-      {/* Create Poll Action */}
-      <View className="flex-row justify-between items-center mb-1">
-        <Text className="text-sm font-bold text-muted-foreground px-1">Overview</Text>
-        <Button 
-          variant="default"
-          size="sm"
-          onPress={() => router.push('/(resident)/polls/create')}
-          className="rounded-full px-5 h-9"
-        >
-          <Text className="text-xs font-bold text-primary-foreground">Create Poll</Text>
-        </Button>
-      </View>
-
       {/* KPI Summary Row */}
       <View className="flex-row gap-3">
         <KPICard
@@ -158,6 +146,19 @@ export default function PollDashboardScreen() {
       title="Community Polls"
       subtitle="Voice your opinion on community matters"
       iconName="BarChart2"
+      headerRight={
+        <Button
+          variant="default"
+          size="sm"
+          onPress={() => router.push('/(resident)/polls/create')}
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          accessibilityRole="button"
+          accessibilityLabel="Create Poll"
+        >
+          <Plus size={15} color="#ffffff" />
+          <Text className="text-xs font-bold text-primary-foreground">Create Poll</Text>
+        </Button>
+      }
     >
       <View className="flex-1 bg-background">
         {/* Paginated List */}

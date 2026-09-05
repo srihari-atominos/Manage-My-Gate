@@ -76,34 +76,26 @@ export default function AmenityLedgersScreen() {
       {/* Financial Master KPI Summary */}
       <KPIRow cards={kpiCards} className="px-0" />
 
-      {/* Search & Filter Controls */}
-      <View className="bg-card p-3.5 rounded-2xl border border-border gap-3 shadow-xs">
-        <SearchFilterBar
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          searchPlaceholder="Search booking ID, resident, villa #..."
-          variant="bordered"
-          className="px-0 py-0 border-0"
-        />
+      {/* Search & Moveable Slide Status Filter Bar */}
+      <SearchFilterBar
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search booking ID, resident, villa #..."
+        sortOptions={statusOptions}
+        currentSort={statusFilter}
+        onSortChange={setStatusFilter}
+        variant="default"
+        className="px-0 py-0 border-0"
+      />
 
-        <View className="flex-row gap-3">
-          <View className="flex-1">
-            <DropdownSelect
-              label="Facility"
-              options={amenityOptions}
-              value={selectedAmenityId}
-              onValueChange={setSelectedAmenityId}
-            />
-          </View>
-          <View className="flex-1">
-            <DropdownSelect
-              label="Status"
-              options={statusOptions}
-              value={statusFilter}
-              onValueChange={setStatusFilter}
-            />
-          </View>
-        </View>
+      {/* Facility Filter Bar */}
+      <View className="bg-card p-3 rounded-2xl border border-border shadow-xs">
+        <DropdownSelect
+          label="Facility Filter"
+          options={amenityOptions}
+          value={selectedAmenityId}
+          onValueChange={setSelectedAmenityId}
+        />
       </View>
 
       <Text variant="large" className="font-bold text-foreground mt-1">

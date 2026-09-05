@@ -13,6 +13,7 @@ import {
   REAL_APP_FEATURES,
   DEFAULT_5_QUICK_ACTIONS,
   AppFeatureItem,
+  getRoleDefaultQuickActions,
 } from '@/src/features/dashboard/dashboardCatalog';
 
 export { ALL_AVAILABLE_FEATURES, REAL_APP_FEATURES, AppFeatureItem };
@@ -85,10 +86,15 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
     onClose();
   };
 
-  // Active selected items (up to 5)
+  // Active selected items (up to 5, strictly permitted)
   const activeItems = useMemo(() => {
-    return ALL_AVAILABLE_FEATURES.filter((f) => selectedIds.includes(f.id)).slice(0, 5);
-  }, [selectedIds]);
+    return selectedIds
+      .map((id) => ALL_AVAILABLE_FEATURES.find((f) => f.id === id))
+      .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] =>
+        Boolean(item && isFeatureAllowedForUser(item, user))
+      )
+      .slice(0, 5);
+  }, [selectedIds, user]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

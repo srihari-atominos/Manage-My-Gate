@@ -1,13 +1,14 @@
 import * as React from 'react';
-import { View, Pressable, ScrollView, Platform } from 'react-native';
+import { View, Pressable, Platform } from 'react-native';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
+import { getStatusSemanticType, getStatusTabStyle } from './statusTabColors';
 
-const tabBarVariants = cva('my-2', {
+const tabBarVariants = cva('flex-row mx-4 my-2', {
   variants: {
     variant: {
-      pill: 'bg-secondary/70 border border-border/80 rounded-2xl p-1',
+      pill: 'bg-secondary border border-border/80 rounded-2xl p-1',
       underline: 'border-b border-border/80',
     },
   },
@@ -18,14 +19,14 @@ const tabBarVariants = cva('my-2', {
 
 const tabItemVariants = cva(
   cn(
-    'items-center justify-center relative flex-row',
+    'flex-1 items-center justify-center relative flex-row px-2',
     Platform.select({ web: 'cursor-pointer select-none transition-colors' })
   ),
   {
     variants: {
       variant: {
-        pill: 'py-2.5 px-4 rounded-xl',
-        underline: 'py-3 px-4 border-b-2 -mb-[1px]',
+        pill: 'py-2 rounded-xl',
+        underline: 'py-3 border-b-2 -mb-[1px]',
       },
       isActive: {
         true: '',
@@ -36,7 +37,7 @@ const tabItemVariants = cva(
       {
         variant: 'pill',
         isActive: true,
-        className: 'bg-card border border-border/80 shadow-xs',
+        className: 'bg-card border border-border/60 shadow-xs',
       },
       {
         variant: 'pill',
@@ -68,8 +69,8 @@ const tabTextVariants = cva('text-sm text-center', {
       underline: '',
     },
     isActive: {
-      true: 'text-foreground font-bold',
-      false: 'text-muted-foreground font-semibold',
+      true: 'text-foreground font-semibold',
+      false: 'text-muted-foreground font-medium',
     },
   },
   defaultVariants: {
@@ -89,9 +90,7 @@ export interface TabBarProps extends VariantProps<typeof tabBarVariants> {
   activeTab: string;
   onTabChange: (key: string) => void;
   variant?: 'pill' | 'underline';
-  scrollable?: boolean;
   className?: string;
-  contentContainerClassName?: string;
 }
 
 export const TabBar = React.forwardRef<View, TabBarProps>(
@@ -101,69 +100,55 @@ export const TabBar = React.forwardRef<View, TabBarProps>(
       activeTab,
       onTabChange,
       variant = 'pill',
-      scrollable,
       className,
-      contentContainerClassName,
       ...props
     },
     ref
   ) => {
-    // Auto-enable horizontal scroll if more than 3 tabs are present or explicitly requested
-    const isScrollable = scrollable ?? tabs.length > 3;
-
-    const renderTabItems = () =>
-      tabs.map((tab) => {
-        const isActive = activeTab === tab.key;
-        const hasBadge = typeof tab.badge === 'number' && tab.badge > 0;
-
-        return (
-          <Pressable
-            key={tab.key}
-            onPress={() => onTabChange(tab.key)}
-            className={cn(
-              tabItemVariants({ variant, isActive }),
-              !isScrollable && 'flex-1'
-            )}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
-            accessibilityLabel={tab.label}
-          >
-            <Text className={cn(tabTextVariants({ variant, isActive }))}>
-              {tab.label}
-            </Text>
-
-            {hasBadge && (
-              <View className="ms-1.5 min-w-[18px] h-[18px] rounded-full bg-destructive items-center justify-center px-1">
-                <Text className="text-white text-[10px] font-bold leading-none text-center">
-                  {tab.badge! > 99 ? '99+' : tab.badge}
-                </Text>
-              </View>
-            )}
-          </Pressable>
-        );
-      });
-
-    if (isScrollable) {
-      return (
-        <View ref={ref} className={cn(tabBarVariants({ variant }), className)} {...props}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerClassName={cn('flex-row items-center gap-1', contentContainerClassName)}
-          >
-            {renderTabItems()}
-          </ScrollView>
-        </View>
-      );
-    }
-
     return (
       <View
         ref={ref}
-        className={cn(tabBarVariants({ variant }), 'flex-row', className)}
+        className={cn(tabBarVariants({ variant }), className)}
         {...props}
       >
-        {renderTabItems()}
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          const hasBadge = typeof tab.badge === 'number' && tab.badge > 0;
+          const semantic = getStatusSemanticType(tab.key || tab.label);
+          const isStatusTab = semantic !== 'default';
+          const statusStyle = isStatusTab ? getStatusTabStyle(tab.key || tab.label, isActive) : null;
+
+          return (
+            <Pressable
+              key={tab.key}
+              onPress={() => onTabChange(tab.key)}
+              className={cn(
+                tabItemVariants({ variant, isActive }),
+                isStatusTab && variant === 'pill' && isActive && `${statusStyle?.containerClass} shadow-xs`
+              )}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={tab.label}
+            >
+              <Text
+                className={cn(
+                  tabTextVariants({ variant, isActive }),
+                  isStatusTab && isActive && statusStyle?.textClass
+                )}
+              >
+                {tab.label}
+              </Text>
+
+              {hasBadge && (
+                <View className="absolute top-1 right-2 min-w-[18px] h-[18px] rounded-full bg-destructive items-center justify-center px-1">
+                  <Text className="text-white text-[10px] font-bold leading-none text-center">
+                    {tab.badge! > 99 ? '99+' : tab.badge}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+          );
+        })}
       </View>
     );
   }
@@ -173,4 +158,3 @@ TabBar.displayName = 'TabBar';
 
 export { tabBarVariants, tabItemVariants, tabTextVariants };
 export default TabBar;
-

@@ -13,7 +13,6 @@ import { useAuth } from '../src/features/auth/hooks/useAuth';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useFonts, HankenGrotesk_400Regular, HankenGrotesk_500Medium, HankenGrotesk_600SemiBold, HankenGrotesk_700Bold } from '@expo-google-fonts/hanken-grotesk';
-import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import storage from '../src/utils/storage';
 
 export {
@@ -80,7 +79,6 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
-  const navigationTheme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
 
   return (
     <SafeAreaProvider>
@@ -88,11 +86,9 @@ export default function RootLayout() {
         <Provider store={store}>
           <BottomSheetModalProvider>
             <AppInitializer>
-              <ThemeProvider value={navigationTheme}>
-                <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-                <Stack screenOptions={{ headerShown: false }} />
-                <PortalHost />
-              </ThemeProvider>
+              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+              <Stack screenOptions={{ headerShown: false }} />
+              <PortalHost />
             </AppInitializer>
           </BottomSheetModalProvider>
         </Provider>

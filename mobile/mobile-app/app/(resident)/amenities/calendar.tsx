@@ -3,7 +3,9 @@ import { View } from 'react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
-import { FAB } from '@/components/ui/FAB';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { Plus } from 'lucide-react-native';
 import { useResidentCalendar } from '../../../src/features/amenities/hooks/useResidentCalendar';
 import { ScheduleDateNavigator } from '../../../src/features/amenities/components/ScheduleDateNavigator';
 import { FacilityHeaderBanner } from '../../../src/features/amenities/components/FacilityHeaderBanner';
@@ -78,6 +80,21 @@ export default function ResidentAmenityCalendarScreen() {
       loading={loading && amenities.length === 0}
       error={error}
       onRetry={handleRefresh}
+      headerRight={
+        currentAmenity ? (
+          <Button
+            variant="default"
+            size="sm"
+            onPress={() => handleBookAmenity(currentAmenity._id)}
+            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+            accessibilityRole="button"
+            accessibilityLabel="Book Slot"
+          >
+            <Plus size={15} color="#ffffff" />
+            <Text className="text-xs font-bold text-primary-foreground">Book Slot</Text>
+          </Button>
+        ) : null
+      }
     >
       <View className="flex-1 bg-background">
         <PaginatedList
@@ -105,15 +122,6 @@ export default function ResidentAmenityCalendarScreen() {
           ListHeaderComponent={renderHeader()}
           contentContainerClassName="p-4 gap-3.5 pb-28"
         />
-
-        {/* Resident Floating Action Button for Booking */}
-        {currentAmenity && (
-          <FAB
-            iconName="Plus"
-            label="Book Slot"
-            onPress={() => handleBookAmenity(currentAmenity._id)}
-          />
-        )}
       </View>
     </ScreenShell>
   );

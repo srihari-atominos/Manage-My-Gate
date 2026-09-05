@@ -6,6 +6,7 @@ import { RootState, AppDispatch } from '../../../store/store';
 import {
   fetchAmenityByIdThunk,
   fetchAmenitySlotsThunk,
+  clearAmenityError,
   AmenitySlot,
 } from '../store/amenitySlice';
 import {
@@ -41,6 +42,8 @@ export function useResidentBooking() {
 
   useEffect(() => {
     if (id) {
+      dispatch(clearAmenityError());
+      dispatch(clearBookingStatus());
       dispatch(fetchAmenityByIdThunk(id));
       dispatch(fetchWalletThunk());
     }

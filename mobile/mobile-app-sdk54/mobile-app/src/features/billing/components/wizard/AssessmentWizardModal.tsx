@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, Modal, ScrollView, Alert, Platform } from 'react-native';
+import { View, Modal, ScrollView, Alert, Platform, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { AssessmentFlowHeader } from './AssessmentFlowHeader';
@@ -38,6 +39,7 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const insets = useSafeAreaInsets();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   const {
@@ -241,15 +243,35 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
     }
   }, [currentStepIndex, handleModalClose, setFormError]);
 
+  // Reset step to 0 whenever modal opens
+  React.useEffect(() => {
+    if (visible) {
+      setCurrentStepIndex(0);
+      setFormError(null);
+    }
+  }, [visible, setFormError]);
+
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === WIZARD_STEPS.length - 1;
   const currentStepTitle = WIZARD_STEPS[currentStepIndex]?.title || '';
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleModalClose}>
-      <View className="flex-1 bg-black/60 justify-end">
-        <View className="bg-card border-t border-border rounded-t-3xl max-h-[94%] shadow-2xl overflow-hidden flex-col">
-          {/* Header */}
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      statusBarTranslucent
+      onRequestClose={handleModalClose}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <View
+        className="flex-1 bg-card flex-col"
+        style={{
+          paddingTop: Math.max(insets.top, 16),
+          paddingBottom: Math.max(insets.bottom, 12),
+        }}
+      >
+        {/* Header */}
           <AssessmentFlowHeader
             stepTitle={currentStepTitle}
             currentStep={currentStepIndex}
@@ -386,7 +408,6 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
             loading={isSubmitting}
           />
         </View>
-      </View>
     </Modal>
   );
 };

@@ -7,6 +7,7 @@ import visitorService from '../services/visitorService';
 import {
   getPasses,
   getPassDetails,
+  fetchPassByCode,
   createPass,
   updatePassStatus,
   clearPassStatus,
@@ -76,8 +77,24 @@ export const useVisitorPass = () => {
   );
 
   const fetchPassDetails = useCallback(
-    (id: string) => {
-      return dispatch(getPassDetails(id));
+    (codeOrId: string) => {
+      const clean = (codeOrId || '')
+        .trim()
+        .replace(
+          /^MMG[:\-_](GUEST|GROUP|CAB|DELIVERY|SERVICE|STAFF|AUTO|TAXI|VISITOR|RESIDENT|AMENITY|VIS|RES)[:\-_]/i,
+          ''
+        );
+      const parts = clean.split(/[:\-_]/);
+      const targetCode = parts[0] || clean;
+      const targetId = parts[1];
+
+      if (targetId && /^[0-9a-fA-F]{24}$/.test(targetId)) {
+        return dispatch(getPassDetails(targetId));
+      }
+      if (/^[0-9a-fA-F]{24}$/.test(targetCode)) {
+        return dispatch(getPassDetails(targetCode));
+      }
+      return dispatch(fetchPassByCode(targetCode));
     },
     [dispatch]
   );
@@ -156,6 +173,7 @@ export const useVisitorPass = () => {
     revokePass,
     resetPassStatus,
     selectPass,
+    setActivePass: selectPass,
     submitWalkIn,
     fetchActiveVisitors,
     checkoutVisitor,

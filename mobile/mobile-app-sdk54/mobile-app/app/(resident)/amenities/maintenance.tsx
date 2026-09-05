@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Plus } from 'lucide-react-native';
-import { FAB } from '@/components/ui/FAB';
 
 import { useAdminMaintenance } from '../../../src/features/amenities/hooks/useAdminMaintenance';
 import { MaintenanceTaskCard } from '../../../src/features/amenities/components/MaintenanceTaskCard';
@@ -56,14 +55,13 @@ export default function AmenityMaintenanceScheduleScreen() {
       onRetry={loadData}
       headerRight={
         <Button
-          variant="default"
           size="sm"
           onPress={handleOpenCreateModal}
-          className="flex-row items-center gap-1 rounded-full px-2.5 h-8"
+          className="flex-row items-center gap-1 rounded-full px-2.5 h-8 bg-emerald-600 active:bg-emerald-700"
           accessibilityLabel="Schedule Task"
         >
-          <Plus size={14} className="text-primary-foreground" />
-          <Text className="text-primary-foreground font-bold text-xs">Schedule</Text>
+          <Plus size={14} color="#FFFFFF" />
+          <Text className="text-white font-bold text-xs">Schedule</Text>
         </Button>
       }
     >
@@ -85,13 +83,6 @@ export default function AmenityMaintenanceScheduleScreen() {
           emptyTitle="No Maintenance Scheduled"
           emptySubtitle="All community facilities are operational with no scheduled upkeep tasks."
           contentContainerClassName="p-4 gap-3.5 pb-28"
-        />
-
-        {/* Primary Creation Action: Schedule Task FAB */}
-        <FAB
-          iconName="Plus"
-          label="Schedule Task"
-          onPress={handleOpenCreateModal}
         />
       </View>
 

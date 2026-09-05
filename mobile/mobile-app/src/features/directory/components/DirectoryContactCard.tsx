@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Linking } from 'react-native';
-import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
 import { ListCard } from '@/components/ui/ListCard';
 import { StatusVariant } from '@/components/ui/StatusBadge';
 import { useTranslation, i18n } from '@/src/utils/i18n';

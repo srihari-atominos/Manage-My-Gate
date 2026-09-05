@@ -156,12 +156,11 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
               <Text className="text-xs font-semibold text-foreground">Cancel</Text>
             </Button>
             <Button
-              variant="default"
               onPress={handleSubmit}
               loading={isSubmitting}
-              className="flex-1 rounded-xl"
+              className="flex-1 rounded-xl bg-emerald-600 active:bg-emerald-700"
             >
-              <Text className="text-xs font-semibold text-primary-foreground">Save & Connect</Text>
+              <Text className="text-xs font-bold text-white">Save & Connect</Text>
             </Button>
           </View>
         </View>

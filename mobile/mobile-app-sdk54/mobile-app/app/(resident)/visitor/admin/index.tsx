@@ -8,7 +8,6 @@ import { type KPICardProps } from '@/components/ui/KPICard';
 import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { EmptyState } from '@/components/feedback/EmptyState';
-import { FAB } from '@/components/ui/FAB';
 import { Button } from '@/components/ui/button';
 import { VisitorAnalyticsCard } from '@/src/features/visitor/components/admin/VisitorAnalyticsCard';
 import { VisitorPassCard } from '@/src/features/visitor/components/VisitorPassCard';
@@ -194,13 +193,6 @@ export default function AdminVisitorDashboardScreen() {
         visible={Boolean(selectedPass)}
         pass={selectedPass}
         onClose={() => setSelectedPass(null)}
-      />
-
-      {/* Primary Action: Create Admin Pass FAB */}
-      <FAB
-        iconName="UserPlus"
-        label="Admin Pass"
-        onPress={() => router.push('/(resident)/visitor/admin/create-pass' as any)}
       />
     </ScreenShell>
   );

@@ -8,7 +8,7 @@ import { FAB } from '@/components/ui/FAB';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/ui/icon';
 import { EmptyState } from '@/components/feedback/EmptyState';
-import { FileSpreadsheet, PlusCircle, Zap, FilterX } from 'lucide-react-native';
+import { FileSpreadsheet, PlusCircle, Zap, FilterX, Building2 } from 'lucide-react-native';
 import { useVilla } from '@/src/features/villa/hooks/useVilla';
 import { useVillaSocket } from '@/src/features/villa/hooks/useVillaSocket';
 import { VillaCard } from '@/src/features/villa/components/VillaCard';
@@ -18,6 +18,7 @@ import { BatchGenerateModal } from '@/src/features/villa/components/BatchGenerat
 import { BulkUploadVillasModal } from '@/src/features/villa/components/BulkUploadVillasModal';
 import { Villa } from '@/src/features/villa/store/villaSlice';
 import { VillaPayload, BatchGenerateParams } from '@/src/features/villa/services/villaService';
+import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 
 export default function VillaManagementScreen() {
   const {
@@ -156,27 +157,27 @@ export default function VillaManagementScreen() {
           >
             <View className="flex-row items-center gap-2">
               <TouchableOpacity
-                onPress={() => setBulkUploadModalVisible(true)}
-                className="px-3 py-2 rounded-xl bg-muted/80 border border-border flex-row items-center gap-1.5 active:opacity-75"
+                onPress={handleOpenCreateForm}
+                className="px-3 py-2 rounded-xl bg-emerald-600 border border-emerald-600 flex-row items-center gap-1.5 active:bg-emerald-700 shadow-xs"
               >
-                <Icon as={FileSpreadsheet} size={15} className="text-primary" />
-                <Text className="text-xs font-bold text-foreground">Bulk Upload</Text>
+                <Icon as={PlusCircle} size={15} color="#ffffff" className="text-white" />
+                <Text className="text-xs font-bold text-white">Create Unit</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={handleOpenCreateForm}
-                className="px-3 py-2 rounded-xl bg-muted/80 border border-border flex-row items-center gap-1.5 active:opacity-75"
+                onPress={() => setBulkUploadModalVisible(true)}
+                className="px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/30 flex-row items-center gap-1.5 active:bg-blue-500/20"
               >
-                <Icon as={PlusCircle} size={15} className="text-primary" />
-                <Text className="text-xs font-bold text-foreground">Create Unit</Text>
+                <Icon as={FileSpreadsheet} size={15} color="#2563eb" className="text-blue-600" />
+                <Text className="text-xs font-bold text-blue-600 dark:text-blue-400">Bulk Upload</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setBatchModalVisible(true)}
-                className="px-3 py-2 rounded-xl bg-primary border border-primary flex-row items-center gap-1.5 active:opacity-85 shadow-xs"
+                className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex-row items-center gap-1.5 active:bg-amber-500/20"
               >
-                <Icon as={Zap} size={15} className="text-primary-foreground" />
-                <Text className="text-xs font-bold text-primary-foreground">Batch Generate</Text>
+                <Icon as={Zap} size={15} color="#d97706" className="text-amber-600" />
+                <Text className="text-xs font-bold text-amber-600 dark:text-amber-400">Batch Generate</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -211,25 +212,24 @@ export default function VillaManagementScreen() {
               <TouchableOpacity
                 onPress={() => handleStatusFilter('')}
                 className={`px-3 py-1.5 rounded-full border text-xs flex-row items-center justify-center ${
-                  !filters.status ? 'bg-primary border-primary' : 'bg-muted/80 border-border'
+                  !filters.status ? 'bg-blue-600 border-blue-600' : 'bg-card border-border'
                 }`}
               >
-                <Text className={`text-xs font-semibold ${!filters.status ? 'text-primary-foreground' : 'text-foreground'}`}>
+                <Text className={`text-xs font-semibold ${!filters.status ? 'text-white' : 'text-foreground'}`}>
                   All Statuses
                 </Text>
               </TouchableOpacity>
 
               {availableStatuses.map((st) => {
                 const isSel = filters.status === st;
+                const statusStyle = getStatusTabStyle(st, isSel);
                 return (
                   <TouchableOpacity
                     key={st}
                     onPress={() => handleStatusFilter(st)}
-                    className={`px-3 py-1.5 rounded-full border text-xs flex-row items-center justify-center ${
-                      isSel ? 'bg-primary border-primary' : 'bg-muted/80 border-border'
-                    }`}
+                    className={`px-3 py-1.5 rounded-full border text-xs flex-row items-center justify-center ${statusStyle.containerClass}`}
                   >
-                    <Text className={`text-xs font-semibold ${isSel ? 'text-primary-foreground' : 'text-foreground'}`}>
+                    <Text className={`text-xs ${statusStyle.textClass}`}>
                       {st}
                     </Text>
                   </TouchableOpacity>
@@ -265,6 +265,7 @@ export default function VillaManagementScreen() {
         ) : villas.length === 0 ? (
           <View className="flex-1 items-center justify-center p-6">
             <EmptyState
+              icon={Building2}
               title="No Units Found"
               description="No community units match the active search or filters. You can batch generate, bulk upload, or manually create new units."
               actionLabel="Batch Generate 54 Units"
@@ -305,43 +306,51 @@ export default function VillaManagementScreen() {
       </View>
 
       {/* Details Bottom Sheet Modal */}
-      <VillaDetailsModal
-        visible={detailsModalVisible}
-        onClose={() => setDetailsModalVisible(false)}
-        villa={selectedVilla}
-        onEdit={handleOpenEditForm}
-        onDelete={handleDeleteUnit}
-      />
+      {detailsModalVisible && selectedVilla ? (
+        <VillaDetailsModal
+          visible={detailsModalVisible}
+          onClose={() => setDetailsModalVisible(false)}
+          villa={selectedVilla}
+          onEdit={handleOpenEditForm}
+          onDelete={handleDeleteUnit}
+        />
+      ) : null}
 
       {/* Create / Edit Form Modal */}
-      <VillaFormModal
-        visible={formModalVisible}
-        onClose={() => setFormModalVisible(false)}
-        onSubmit={handleFormSubmit}
-        editingVilla={editingVilla}
-        loading={actionLoading}
-      />
+      {formModalVisible ? (
+        <VillaFormModal
+          visible={formModalVisible}
+          onClose={() => setFormModalVisible(false)}
+          onSubmit={handleFormSubmit}
+          editingVilla={editingVilla}
+          loading={actionLoading}
+        />
+      ) : null}
 
       {/* Batch Generate Modal */}
-      <BatchGenerateModal
-        visible={batchModalVisible}
-        onClose={() => setBatchModalVisible(false)}
-        onSubmit={async (batchData: BatchGenerateParams) => {
-          await batchGenerate(batchData);
-        }}
-        loading={actionLoading}
-      />
+      {batchModalVisible ? (
+        <BatchGenerateModal
+          visible={batchModalVisible}
+          onClose={() => setBatchModalVisible(false)}
+          onSubmit={async (batchData: BatchGenerateParams) => {
+            await batchGenerate(batchData);
+          }}
+          loading={actionLoading}
+        />
+      ) : null}
 
       {/* Bulk Upload Modal */}
-      <BulkUploadVillasModal
-        visible={bulkUploadModalVisible}
-        onClose={() => setBulkUploadModalVisible(false)}
-        onBulkUpload={async (units) => {
-          await bulkUpload(units);
-        }}
-        onDownloadTemplate={downloadTemplate}
-        loading={actionLoading}
-      />
+      {bulkUploadModalVisible ? (
+        <BulkUploadVillasModal
+          visible={bulkUploadModalVisible}
+          onClose={() => setBulkUploadModalVisible(false)}
+          onBulkUpload={async (units) => {
+            await bulkUpload(units);
+          }}
+          onDownloadTemplate={downloadTemplate}
+          loading={actionLoading}
+        />
+      ) : null}
     </ScreenShell>
   );
 }

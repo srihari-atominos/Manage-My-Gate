@@ -3,6 +3,7 @@ import { Slot } from '@rn-primitives/slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 import { Platform, Text as RNText, type Role } from 'react-native';
+import i18n from '@/src/utils/i18n';
 
 const textVariants = cva(
   cn(
@@ -64,10 +65,21 @@ const ARIA_LEVEL: Partial<Record<TextVariant, string>> = {
 
 const TextClassContext = React.createContext<string | undefined>(undefined);
 
+function translateChildren(node: React.ReactNode): React.ReactNode {
+  if (typeof node === 'string') {
+    return i18n.translateText(node);
+  }
+  if (Array.isArray(node)) {
+    return React.Children.map(node, (child) => translateChildren(child));
+  }
+  return node;
+}
+
 function Text({
   className,
   asChild = false,
   variant = 'default',
+  children,
   ...props
 }: React.ComponentProps<typeof RNText> &
   React.RefAttributes<typeof RNText> &
@@ -76,14 +88,27 @@ function Text({
   }) {
   const textClass = React.useContext(TextClassContext);
   const Component = asChild ? Slot : RNText;
+
+  const [currentLang, setCurrentLang] = React.useState(i18n.getCurrentLanguage());
+  React.useEffect(() => {
+    return i18n.subscribe((newLang) => setCurrentLang(newLang));
+  }, []);
+
+  const translatedChildren = React.useMemo(() => {
+    return translateChildren(children);
+  }, [children, currentLang]);
+
   return (
     <Component
       className={cn(textVariants({ variant }), textClass, className)}
       role={variant ? ROLE[variant] : undefined}
       aria-level={variant ? ARIA_LEVEL[variant] : undefined}
       {...props}
-    />
+    >
+      {translatedChildren}
+    </Component>
   );
 }
 
 export { Text, TextClassContext };
+export default Text;

@@ -12,12 +12,14 @@ export interface CabPassReviewStepProps {
   provider: string;
   vehicle: CabVehicleData;
   schedule: CabScheduleData;
+  customProviderName?: string;
 }
 
 export const CabPassReviewStep: React.FC<CabPassReviewStepProps> = ({
   provider,
   vehicle,
   schedule,
+  customProviderName,
 }) => {
   const isMultiUse = schedule.usageType === 'MULTI_USE';
 
@@ -29,9 +31,14 @@ export const CabPassReviewStep: React.FC<CabPassReviewStepProps> = ({
     ? schedule.timeSlots.map((ts) => `${ts.startTime} - ${ts.endTime}`).join(', ')
     : 'Full Day (07:00 AM - 09:00 PM)';
 
+  const displayProvider =
+    provider === 'other' && customProviderName && customProviderName.trim()
+      ? customProviderName.trim()
+      : provider.toUpperCase();
+
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 gap-4">
-      <View className="gap-1">
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 gap-4 pb-10">
+      <View className="gap-1 mb-2">
         <Text variant="large" className="font-bold text-foreground">
           Review Cab Pre-Approval
         </Text>
@@ -41,7 +48,7 @@ export const CabPassReviewStep: React.FC<CabPassReviewStepProps> = ({
       </View>
 
       <DetailSection title="Cab Details" iconName="Car">
-        <DetailRow label="Service Provider" value={provider.toUpperCase()} iconName="Car" />
+        <DetailRow label="Service Provider" value={displayProvider} iconName="Car" />
         <DetailRow label="Vehicle Type" value={vehicle.vehicleType} iconName="Car" />
         <DetailRow
           label="License Plate Number"

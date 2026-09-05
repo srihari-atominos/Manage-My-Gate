@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { View, ScrollView, ActivityIndicator, Share } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Share, Linking } from 'react-native';
+import { File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
@@ -11,23 +14,29 @@ import { VisitorPassCode } from '../shared/VisitorPassCode';
 import { VisitorQRCode } from '../shared/VisitorQRCode';
 import { ExtendedVisitorPass } from '../../mocks/visitorMocks';
 import { useVisitorPass } from '../../hooks/useVisitorPass';
-import { X, ShieldAlert, Share2, QrCode } from 'lucide-react-native';
+import { X, ShieldAlert, Share2, QrCode, MessageCircle, Copy, Check } from 'lucide-react-native';
+import { encodeAppBarcode } from '@/src/utils/appBarcodeProtocol';
+import { generateQrPngBytes, bytesToBase64 } from '@/src/utils/qrPngGenerator';
 
 export interface VisitorLogDetailsModalProps {
   visible: boolean;
   pass: ExtendedVisitorPass | null;
   onClose: () => void;
+  onRevokeSuccess?: () => void;
 }
 
 export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
   visible,
   pass,
   onClose,
+  onRevokeSuccess,
 }) => {
   const [revokeConfirmOpen, setRevokeConfirmOpen] = useState(false);
   const [submittingRevoke, setSubmittingRevoke] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
+  const [sharingImage, setSharingImage] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const { revokePass, actionStatus } = useVisitorPass();
 
@@ -35,7 +44,11 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
 
   const rawPass = pass.rawPass || {};
   const passType = pass.passType || 'GUEST';
-  const shortKey = pass.code || rawPass.shortKey || rawPass.code;
+  const shortKey =
+    pass.code ||
+    rawPass.shortKey ||
+    rawPass.code ||
+    (typeof pass._id === 'string' && pass._id.length >= 6 ? pass._id.slice(-6).toUpperCase() : '849201');
 
   const canRevoke = pass.status === 'PENDING' || pass.status === 'ACTIVE';
 
@@ -52,23 +65,98 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
     ? `${rawPass.usageLimit.currentUses || 0} / ${rawPass.usageLimit.maxUses || 1} Uses`
     : null;
 
-  const handleSharePass = async () => {
+  const handleCopyCode = () => {
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShareBarcodeToWhatsApp = async () => {
+    if (!shortKey || sharingImage) return;
+    setSharingImage(true);
+    try {
+      // 1. Generate pure JS high-res PNG image (100% offline, zero network delay)
+      const targetCode = String(shortKey);
+      const barcodePayload = encodeAppBarcode(passType, targetCode, pass._id || rawPass._id, pass.visitorName || 'Guest');
+      const pngBytes = generateQrPngBytes(barcodePayload, 10, 4);
+
+      // 2. Save PNG to device cache
+      let targetUri = '';
+      try {
+        const file = new File(Paths.cache, `MMG_Pass_${targetCode}.png`);
+        if (!file.exists) {
+          file.create();
+        }
+        file.write(pngBytes);
+        targetUri = file.uri;
+      } catch {
+        const base64 = bytesToBase64(pngBytes);
+        const cacheDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory || '';
+        const fallbackUri = `${cacheDir}MMG_Pass_${targetCode}.png`;
+        await (FileSystem as any).writeAsStringAsync(fallbackUri, base64, { encoding: 'base64' });
+        targetUri = fallbackUri;
+      }
+
+      // 3. Share the actual PNG barcode image to WhatsApp / share sheet
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable && targetUri) {
+        await Sharing.shareAsync(targetUri, {
+          mimeType: 'image/png',
+          dialogTitle: `Manage-My-Gate Pass - ${targetCode}`,
+          UTI: 'public.png',
+        });
+      } else {
+        await handleSendTextWhatsApp();
+      }
+    } catch (e) {
+      console.log('Error sharing barcode image:', e);
+      handleSendTextWhatsApp();
+    } finally {
+      setSharingImage(false);
+    }
+  };
+
+  const handleSendTextWhatsApp = async () => {
     if (!shortKey) return;
-    const shareMessage =
-      `*Manage-My-Gate Visitor Pass*\n\n` +
-      `Visitor Name: ${pass.visitorName || 'Guest'}\n` +
-      `Pass Category: ${passType}\n` +
-      `Entry Pass Code: ${shortKey}\n` +
-      `Valid Until: ${pass.validUntil ? new Date(pass.validUntil).toLocaleString() : 'Today'}\n\n` +
-      `Please show this 6-digit passcode or QR code at the security gate for entry.`;
+    const targetCode = String(shortKey);
+    const barcodePayload = encodeAppBarcode(passType, targetCode, pass._id || rawPass._id, pass.visitorName || 'Guest');
+    const barcodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=12&data=${encodeURIComponent(barcodePayload)}`;
+    const destination = (pass as any).unit || (pass as any).villaNumber || (pass as any).destinationUnit;
+
+    const text =
+      `🚪 *MANAGE-MY-GATE VISITOR PASS* 🚪\n\n` +
+      `🔑 *PASS CODE:* *${targetCode}*\n` +
+      `👤 *Visitor:* ${pass.visitorName || 'Guest'}\n` +
+      `🎫 *Pass Type:* ${passType}\n` +
+      (destination ? `📍 *Destination Unit:* ${destination}\n` : '') +
+      `⏰ *Valid Until:* ${pass.validUntil ? new Date(pass.validUntil).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Today'}\n\n` +
+      `📱 *Barcode / QR Pass Link:*\n${barcodeImageUrl}\n\n` +
+      `*Security Instructions:*\n` +
+      `Please present this 6-digit Pass Code (${targetCode}) or the Barcode image at the security gate for fast check-in.`;
+
+    const phone = pass.phone ? pass.phone.replace(/[^0-9]/g, '') : '';
+    const whatsappUrl = phone
+      ? `whatsapp://send?phone=${phone}&text=${encodeURIComponent(text)}`
+      : `whatsapp://send?text=${encodeURIComponent(text)}`;
+    const webFallbackUrl = phone
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
 
     try {
-      await Share.share({
-        title: 'Visitor Entry Pass',
-        message: shareMessage,
-      });
-    } catch (err) {
-      console.log('Error sharing pass', err);
+      const supported = await Linking.canOpenURL(whatsappUrl);
+      if (supported) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        await Linking.openURL(webFallbackUrl);
+      }
+    } catch {
+      try {
+        await Share.share({
+          title: 'Manage-My-Gate Visitor Pass',
+          message: text,
+        });
+      } catch (err) {
+        console.log('Error sharing pass', err);
+      }
     }
   };
 
@@ -79,12 +167,10 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
 
     const targetId = pass._id || (pass as any).id || rawPass._id;
     try {
-      const resultAction = await revokePass(targetId);
-      if (resultAction && (resultAction as any).meta?.requestStatus === 'rejected') {
-        setRevokeError((resultAction as any).payload || 'Failed to revoke visitor pass');
-      } else {
-        setRevokeConfirmOpen(false);
-      }
+      await revokePass(targetId);
+      setRevokeConfirmOpen(false);
+      onRevokeSuccess?.();
+      onClose();
     } catch (err: any) {
       setRevokeError(err.message || 'Failed to revoke visitor pass');
     } finally {
@@ -93,10 +179,8 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
   };
 
   return (
-    <>
-      <BottomSheet visible={visible} onClose={onClose} title="Visitor Pass Details">
-        <ScrollView className="max-h-[520px] p-2">
-          <View className="gap-4 pb-6">
+    <BottomSheet visible={visible} onClose={onClose} title="Visitor Pass Details">
+      <View className="gap-4 pb-6">
             {/* Status Header */}
             <View className="flex-row items-center justify-between bg-card border border-border p-3.5 rounded-2xl">
               <View className="gap-1">
@@ -108,29 +192,70 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
               {shortKey ? <VisitorPassCode code={shortKey} /> : null}
             </View>
 
-            {/* Share Pass & QR Code Action Bar */}
-            <View className="flex-row gap-2">
+            {/* Share Pass & QR Code Action Controls */}
+            <View className="gap-2.5">
+              {/* Primary Action: Send Barcode & Pass Code to WhatsApp */}
               <Button
-                variant="default"
-                onPress={handleSharePass}
-                className="flex-1 h-11 rounded-xl bg-primary flex-row items-center justify-center gap-2"
+                onPress={handleShareBarcodeToWhatsApp}
+                disabled={sharingImage}
+                className="w-full h-12 rounded-xl bg-[#25D366] active:bg-[#1EBE5D] flex-row items-center justify-center gap-2.5 shadow-sm"
+                accessibilityLabel="Share Visitor Pass Barcode and Code on WhatsApp"
               >
-                <Share2 size={16} color="#fff" />
-                <Text className="font-bold text-primary-foreground text-xs">
-                  Share Pass & Code
-                </Text>
+                {sharingImage ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <MessageCircle size={19} color="#FFFFFF" strokeWidth={2.5} />
+                    <Text className="font-bold text-white text-sm">
+                      Share Barcode & Pass to WhatsApp
+                    </Text>
+                  </>
+                )}
               </Button>
 
-              <Button
-                variant="outline"
-                onPress={() => setShowQR(!showQR)}
-                className="h-11 px-3.5 rounded-xl flex-row items-center justify-center gap-1.5"
-              >
-                <QrCode size={16} className="text-foreground" />
-                <Text className="font-bold text-foreground text-xs">
-                  {showQR ? 'Hide QR' : 'Show QR'}
-                </Text>
-              </Button>
+              {/* Secondary Action Row: Copy Code, Send Text Only, Toggle QR */}
+              <View className="flex-row gap-2">
+                <Button
+                  variant="outline"
+                  onPress={handleCopyCode}
+                  className="flex-1 h-10 rounded-xl border-border bg-card active:bg-muted flex-row items-center justify-center gap-1.5"
+                >
+                  {copied ? (
+                    <>
+                      <Check size={15} className="text-emerald-600" />
+                      <Text className="font-bold text-emerald-600 text-xs">Copied</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={15} className="text-foreground" />
+                      <Text className="font-bold text-foreground text-xs">Copy Code</Text>
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onPress={handleSendTextWhatsApp}
+                  className="flex-1 h-10 rounded-xl border-blue-500/30 bg-blue-500/10 active:bg-blue-500/20 flex-row items-center justify-center gap-1.5"
+                  accessibilityLabel="Send Text Only"
+                >
+                  <Share2 size={15} className="text-blue-600 dark:text-blue-400" />
+                  <Text className="font-bold text-blue-600 dark:text-blue-400 text-xs">
+                    Text Only
+                  </Text>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onPress={() => setShowQR(!showQR)}
+                  className="h-10 px-3.5 rounded-xl border-border bg-card active:bg-muted flex-row items-center justify-center gap-1.5"
+                >
+                  <QrCode size={15} className="text-foreground" />
+                  <Text className="font-bold text-foreground text-xs">
+                    {showQR ? 'Hide' : 'QR View'}
+                  </Text>
+                </Button>
+              </View>
             </View>
 
             {/* QR Code Presentation */}
@@ -305,44 +430,60 @@ export const VisitorLogDetailsModal: React.FC<VisitorLogDetailsModalProps> = ({
             </DetailSection>
 
             {/* Revoke Action Button */}
+            {/* Revoke Action Button & Inline Confirmation */}
             {canRevoke && (
               <View className="pt-2 border-t border-border mt-2">
-                <Button
-                  variant="destructive"
-                  disabled={submittingRevoke || actionStatus === 'loading'}
-                  onPress={() => setRevokeConfirmOpen(true)}
-                  className="h-12 rounded-xl flex-row items-center justify-center gap-2"
-                >
-                  {submittingRevoke ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <X size={18} color="#fff" />
-                      <Text className="font-bold text-destructive-foreground text-base">
-                        Revoke Pass
-                      </Text>
-                    </>
-                  )}
-                </Button>
+                {revokeConfirmOpen ? (
+                  <View className="p-4 bg-destructive/10 border border-destructive/30 rounded-2xl gap-3">
+                    <View className="flex-row items-center gap-2">
+                      <ShieldAlert size={20} className="text-destructive" />
+                      <Text className="text-sm font-bold text-destructive">Revoke Visitor Pass?</Text>
+                    </View>
+                    <Text className="text-xs text-muted-foreground">
+                      This will immediately invalidate the entry pass for {pass.visitorName || 'this visitor'}.
+                    </Text>
+                    <View className="flex-row gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onPress={() => setRevokeConfirmOpen(false)}
+                        className="flex-1"
+                        disabled={submittingRevoke}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onPress={handleConfirmRevoke}
+                        disabled={submittingRevoke || actionStatus === 'loading'}
+                        className="flex-1 flex-row items-center justify-center gap-2"
+                      >
+                        {submittingRevoke ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          'Confirm Revoke'
+                        )}
+                      </Button>
+                    </View>
+                  </View>
+                ) : (
+                  <Button
+                    variant="destructive"
+                    disabled={submittingRevoke || actionStatus === 'loading'}
+                    onPress={() => setRevokeConfirmOpen(true)}
+                    className="h-12 rounded-xl flex-row items-center justify-center gap-2"
+                  >
+                    <X size={18} color="#fff" />
+                    <Text className="font-bold text-destructive-foreground text-base">
+                      Revoke Pass
+                    </Text>
+                  </Button>
+                )}
               </View>
             )}
           </View>
-        </ScrollView>
       </BottomSheet>
-
-      {/* Revocation Confirmation Modal */}
-      <ConfirmationModal
-        visible={revokeConfirmOpen}
-        title="Revoke Visitor Pass?"
-        message={`Are you sure you want to revoke this pass for ${
-          pass.visitorName || 'this visitor'
-        }? The 6-digit key and QR code will be invalidated immediately.`}
-        variant="danger"
-        confirmLabel="Revoke Pass"
-        onConfirm={handleConfirmRevoke}
-        onCancel={() => setRevokeConfirmOpen(false)}
-      />
-    </>
   );
 };
 
