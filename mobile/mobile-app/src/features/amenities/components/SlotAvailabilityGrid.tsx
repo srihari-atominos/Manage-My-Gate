@@ -53,12 +53,14 @@ export function SlotAvailabilityGrid({
   return (
     <View className={cn('gap-2.5', className)}>
       <View className="flex-row flex-wrap justify-between gap-y-2.5">
-        {slots.map((slot, index) => {
-          const slotId = slot._id || `${slot.startTime}-${slot.endTime}-${index}`;
+        {(slots || []).filter(Boolean).map((slot, index) => {
+          const slotStartTime = slot?.startTime || '00:00';
+          const slotEndTime = slot?.endTime || '00:00';
+          const slotId = slot._id || `${slotStartTime}-${slotEndTime}-${index}`;
           const isSelected =
             selectedSlot &&
             ((selectedSlot._id && slot._id && selectedSlot._id === slot._id) ||
-              (selectedSlot.startTime === slot.startTime && selectedSlot.endTime === slot.endTime));
+              (selectedSlot.startTime === slotStartTime && selectedSlot.endTime === slotEndTime));
 
           const availableCount =
             slot.availableCount !== undefined

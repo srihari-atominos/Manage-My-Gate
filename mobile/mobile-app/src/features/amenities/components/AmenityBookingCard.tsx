@@ -94,10 +94,17 @@ export function AmenityBookingCard({
   const paymentStatus = getPaymentStatus(booking);
   const qrStatus = getQrStatus(booking);
 
+  const timeWindowSubtitle = [
+    booking?.date,
+    booking?.startTime && booking?.endTime
+      ? `${booking.startTime} - ${booking.endTime}`
+      : booking?.startTime || booking?.endTime || '',
+  ].filter(Boolean).join(' • ');
+
   return (
     <ListCard
       title={amenityName}
-      subtitle={`${booking.date} • ${booking.startTime} - ${booking.endTime}`}
+      subtitle={timeWindowSubtitle || 'Amenity Reservation'}
       leftImage={coverImage || undefined}
       leftIcon={!coverImage ? 'CalendarCheck' : undefined}
       onPress={() => onPress(booking)}

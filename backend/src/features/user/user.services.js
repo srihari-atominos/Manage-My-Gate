@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import userRepository from './user.repository.js';
 import userEvents from './user.events.js';
+import otpService from '../otp/otp.services.js';
 import { hashPassword } from '../../utils/crypto.utils.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger, { loggerStorage } from '../../utils/logger.utils.js';
@@ -565,7 +566,42 @@ export class UserService {
     return updatedUser;
   }
 
-  async updateProfile(id, { name, phone, avatarFilename }) {
+  async requestEmailOtp(userId, newEmail) {
+    if (!newEmail) {
+      throw new HttpError(400, 'New email address is required.');
+    }
+    const normalizedEmail = newEmail.trim().toLowerCase();
+
+    // 1. Verify user exists
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new HttpError(404, 'User not found.');
+    }
+
+    if (user.email && user.email.toLowerCase() === normalizedEmail) {
+      throw new HttpError(400, 'The new email address cannot be the same as your current email.');
+    }
+
+    // 2. Check if another user already has this email
+    const existingUser = await userRepository.findByEmail(normalizedEmail);
+    if (existingUser && existingUser._id.toString() !== userId.toString()) {
+      throw new HttpError(400, `An account with email '${normalizedEmail}' already exists.`);
+    }
+
+    // 3. Generate OTP via otpService (valid for 15 minutes)
+    const plainCode = await otpService.createOTP(normalizedEmail, 'VERIFY', 15);
+
+    // 4. Emit event for logging and email dispatch
+    userEvents.emit('EMAIL_OTP_SENT', { email: normalizedEmail, code: plainCode });
+
+    return {
+      message: `Verification code sent to ${normalizedEmail}`,
+      email: normalizedEmail,
+      ...(process.env.NODE_ENV !== 'production' && { devCode: plainCode }),
+    };
+  }
+
+  async updateProfile(id, { name, phone, email, emailOtp, avatarFilename }) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -584,6 +620,26 @@ export class UserService {
             throw new HttpError(400, `User with phone number '${phone}' already exists.`);
           }
           payload.$set.phone = trimmedPhone;
+        }
+      }
+
+      // Email change verification via OTP
+      if (email !== undefined && email.trim() !== '') {
+        const normalizedEmail = email.trim().toLowerCase();
+        if (normalizedEmail !== (user.email || '').toLowerCase()) {
+          const existingEmailUser = await userRepository.findByEmail(normalizedEmail, session);
+          if (existingEmailUser && existingEmailUser._id.toString() !== id.toString()) {
+            throw new HttpError(400, `User with email '${normalizedEmail}' already exists.`);
+          }
+
+          if (!emailOtp || emailOtp.trim() === '') {
+            throw new HttpError(400, 'Verification OTP code is required to update email address.');
+          }
+
+          await otpService.verifyOTP(normalizedEmail, emailOtp.trim(), 'VERIFY', session, true);
+
+          payload.$set.email = normalizedEmail;
+          payload.$set.emailVerified = true;
         }
       }
 

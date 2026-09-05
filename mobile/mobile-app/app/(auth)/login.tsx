@@ -30,13 +30,16 @@ import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { useGoogleAuthSession } from '../../src/features/auth/hooks/useGoogleAuthSession';
 import {
   NahomEmblem,
   NahomWordmark,
 } from '@/components/auth/NahomBrandLogo';
 import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
+import { PhoneInput } from '@/components/forms/PhoneInput';
+import { Checkbox } from '@/components/forms/Checkbox';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
-import { sessionStore } from '@/src/utils/storage';
+import { storage, sessionStore } from '@/src/utils/storage';
 
 // 1. Basic Auth Validation Schema
 const basicAuthSchema = yup.object().shape({
@@ -55,7 +58,10 @@ const phoneSchema = yup.object().shape({
   phone: yup
     .string()
     .required('Phone number is required')
-    .matches(/^\+?[1-9]\d{1,14}$/, 'Enter a valid phone number (e.g. +919988776655)'),
+    .test('valid-phone', 'Please enter a valid mobile number with country code', (value) => {
+      if (!value) return false;
+      return /^\+[1-9]\d{7,14}$/.test(value.trim());
+    }),
 });
 
 interface BasicAuthFormValues {
@@ -69,6 +75,7 @@ interface PhoneFormValues {
 
 export default function LoginScreen() {
   const { user, login: performLogin, requestOtp, loading, error, isAuthenticated, otpSent, clearStatus } = useAuth();
+  const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
   const params = useLocalSearchParams<{ intent?: string; email?: string }>();
   const isCreateOrgIntent =
     params.intent === 'create-org' ||
@@ -91,6 +98,20 @@ export default function LoginScreen() {
   const [keepSignedIn, setKeepSignedIn] = React.useState(true);
   const [connectingHarmony, setConnectingHarmony] = React.useState(false);
   const passwordInputRef = React.useRef<TextInput>(null);
+
+  React.useEffect(() => {
+    const loadSavedPreferences = async () => {
+      try {
+        const savedKeep = await storage.getItem('keep_signed_in');
+        if (savedKeep !== null) {
+          setKeepSignedIn(savedKeep === 'true');
+        }
+      } catch (e) {
+        console.warn('Failed to load saved login preferences', e);
+      }
+    };
+    loadSavedPreferences();
+  }, []);
 
   // Staged Entrance Animation Drivers
   const emblemScale = React.useRef(new Animated.Value(0)).current;
@@ -262,8 +283,32 @@ export default function LoginScreen() {
     }
   }, [otpSent, submittedPhone]);
 
+  const savePreferences = async () => {
+    try {
+      await storage.setItem('keep_signed_in', keepSignedIn ? 'true' : 'false');
+    } catch (e) {
+      console.warn('Failed to save login preferences', e);
+    }
+  };
+
   // Handle Basic Auth Submit
   const onBasicSubmit = async (data: BasicAuthFormValues) => {
+    // Invoke Google / Browser Credential Management API to trigger Google Password Manager save prompt
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'PasswordCredential' in window && (navigator as any)?.credentials) {
+      try {
+        // @ts-ignore
+        const cred = new window.PasswordCredential({
+          id: data.login.trim(),
+          password: data.password,
+          name: data.login.trim(),
+        });
+        await (navigator as any).credentials.store(cred);
+      } catch (e) {
+        // Safe fallback if dismissed or unsupported
+      }
+    }
+
+    await savePreferences();
     await performLogin({
       login: data.login.trim(),
       password: data.password,
@@ -273,6 +318,7 @@ export default function LoginScreen() {
   // Handle Phone OTP Submit
   const onPhoneSubmit = async (data: PhoneFormValues) => {
     setSubmittedPhone(data.phone);
+    await savePreferences();
     await requestOtp(data.phone, false);
   };
 
@@ -424,6 +470,8 @@ export default function LoginScreen() {
                               autoCapitalize="none"
                               autoCorrect={false}
                               autoComplete="username"
+                              textContentType="username"
+                              importantForAutofill="yes"
                               returnKeyType="next"
                               onSubmitEditing={() => passwordInputRef.current?.focus()}
                               blurOnSubmit={false}
@@ -448,7 +496,11 @@ export default function LoginScreen() {
                         <Text className="text-xs font-bold text-foreground">
                           Password
                         </Text>
-                        <TouchableOpacity activeOpacity={0.8}>
+                        <TouchableOpacity
+                          onPress={() => router.push('/(auth)/forgot-password')}
+                          activeOpacity={0.8}
+                          hitSlop={8}
+                        >
                           <Text className="text-xs font-bold text-[#FF5E00] dark:text-[#FF7A00]">
                             Forgot?
                           </Text>
@@ -470,7 +522,9 @@ export default function LoginScreen() {
                               secureTextEntry={!showPassword}
                               autoCapitalize="none"
                               autoCorrect={false}
-                              autoComplete="password"
+                              autoComplete="current-password"
+                              textContentType="password"
+                              importantForAutofill="yes"
                               returnKeyType="go"
                               onSubmitEditing={basicForm.handleSubmit(onBasicSubmit)}
                               className={cnText(
@@ -499,26 +553,15 @@ export default function LoginScreen() {
                       )}
                     </View>
 
-                    {/* Keep me signed in Checkbox */}
+                    {/* Stay signed in Checkbox */}
                     <View className="flex-row items-center pt-0.5">
-                      <TouchableOpacity
-                        onPress={() => setKeepSignedIn(!keepSignedIn)}
-                        activeOpacity={0.8}
-                        className="flex-row items-center"
-                      >
-                        <View
-                          className={`size-4 rounded-full items-center justify-center me-2 ${
-                            keepSignedIn
-                              ? 'bg-[#FF5E00] dark:bg-[#FF5E00]'
-                              : 'border border-border bg-background'
-                          }`}
-                        >
-                          {keepSignedIn && <Check size={10} color="#FFFFFF" strokeWidth={3.5} />}
-                        </View>
-                        <Text className="text-xs text-muted-foreground font-medium">
-                          Keep me signed in
-                        </Text>
-                      </TouchableOpacity>
+                      <Checkbox
+                        checked={keepSignedIn}
+                        onCheckedChange={setKeepSignedIn}
+                        label="Stay signed in"
+                        labelClassName="text-xs text-muted-foreground font-medium"
+                        className="items-center"
+                      />
                     </View>
 
                     {/* Global Error Banner */}
@@ -570,39 +613,29 @@ export default function LoginScreen() {
                 ) : (
                   /* Phone OTP Form */
                   <View className="gap-3.5">
-                    <View>
-                      <Text className="text-xs font-bold text-foreground mb-1.5">
-                        Mobile Number
-                      </Text>
-                      <Controller
-                        control={phoneForm.control}
-                        name="phone"
-                        render={({ field: { onChange, onBlur, value } }) => (
-                          <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
-                            <Smartphone size={18} color="#94A3B8" className="me-2.5 shrink-0" />
-                            <TextInput
-                              value={value}
-                              onChangeText={onChange}
-                              onBlur={onBlur}
-                              placeholder="+919988776655"
-                              placeholderTextColor="#94A3B8"
-                              keyboardType="phone-pad"
-                              autoComplete="tel"
-                              returnKeyType="send"
-                              onSubmitEditing={phoneForm.handleSubmit(onPhoneSubmit)}
-                              className={cnText(
-                                'flex-1 text-sm text-foreground font-sans p-0',
-                                Platform.select({ web: 'outline-none' })
-                              )}
-                            />
-                          </View>
-                        )}
-                      />
-                      {phoneForm.formState.errors.phone && (
-                        <Text className="text-rose-500 text-[11px] mt-1 ms-1 font-medium">
-                          {phoneForm.formState.errors.phone.message}
-                        </Text>
+                    <Controller
+                      control={phoneForm.control}
+                      name="phone"
+                      render={({ field: { onChange, value } }) => (
+                        <PhoneInput
+                          label="Mobile Number"
+                          placeholder="98765 43210"
+                          value={value}
+                          onChangeText={onChange}
+                          error={phoneForm.formState.errors.phone?.message}
+                        />
                       )}
+                    />
+
+                    {/* Stay signed in Checkbox */}
+                    <View className="flex-row items-center pt-0.5">
+                      <Checkbox
+                        checked={keepSignedIn}
+                        onCheckedChange={setKeepSignedIn}
+                        label="Stay signed in"
+                        labelClassName="text-xs text-muted-foreground font-medium"
+                        className="items-center"
+                      />
                     </View>
 
                     {/* Global Error Banner */}
@@ -662,7 +695,11 @@ export default function LoginScreen() {
 
               {/* Social Authentication: Google ID & Microsoft ID */}
               <View className="flex-row items-center gap-3 w-full">
-                <SocialAuthButton provider="google" />
+                <SocialAuthButton
+                  provider="google"
+                  onPress={handleGoogleSignIn}
+                  loading={googleLoading}
+                />
                 <SocialAuthButton provider="microsoft" />
               </View>
 

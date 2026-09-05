@@ -266,12 +266,13 @@ export class AmenityBookingRepository {
 
   async findById(id, orgId, session = null) {
     const query = { orgId };
-    if (mongoose.Types.ObjectId.isValid(id)) {
-      query.$or = [{ _id: id }, { bookingId: id }];
+    const cleanId = String(id || '').trim();
+    if (mongoose.Types.ObjectId.isValid(cleanId)) {
+      query.$or = [{ _id: new mongoose.Types.ObjectId(cleanId) }, { bookingId: cleanId }];
     } else {
-      query.bookingId = id;
+      query.bookingId = cleanId;
     }
-    return await AmenityBooking.findOne(query).session(session).populate('amenityId');
+    return await AmenityBooking.findOne(query).session(session).populate('amenityId userId');
   }
 
   async create(bookingData, session = null) {
@@ -281,10 +282,11 @@ export class AmenityBookingRepository {
 
   async updateStatus(id, orgId, status, reviewData = {}, session = null) {
     const query = { orgId };
-    if (mongoose.Types.ObjectId.isValid(id)) {
-      query.$or = [{ _id: id }, { bookingId: id }];
+    const cleanId = String(id || '').trim();
+    if (mongoose.Types.ObjectId.isValid(cleanId)) {
+      query.$or = [{ _id: new mongoose.Types.ObjectId(cleanId) }, { bookingId: cleanId }];
     } else {
-      query.bookingId = id;
+      query.bookingId = cleanId;
     }
     return await AmenityBooking.findOneAndUpdate(
       query,

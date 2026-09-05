@@ -90,7 +90,6 @@ export const DirectoryContactCard = ({
         variant: getRoleVariant(member.role),
       }}
       showChevron={false}
-      onPress={() => (onOpenConversation && canMessage ? onOpenConversation(member) : undefined)}
       className={cn('mb-3.5 p-4 rounded-2xl border border-border/80 shadow-xs', className)}
     >
       {/* Contact Details Section */}
@@ -115,22 +114,8 @@ export const DirectoryContactCard = ({
       )}
 
       {/* Action Row */}
-      {(canMessage || canCall || canIntercom) && (
+      {(canCall || canIntercom) && (
         <View className="flex-row items-center gap-2 pt-3 mt-2.5 border-t border-border/40 w-full">
-          {/* Quick Message CTA */}
-          {canMessage ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              onPress={() => onQuickMessage && onQuickMessage(member)}
-              leftIcon={Send}
-              className="flex-1 h-9.5 rounded-xl bg-primary/10 border border-primary/20"
-              textClassName="text-xs font-bold text-primary"
-            >
-              {t('action_message', 'Message')}
-            </Button>
-          ) : null}
-
           {/* Call CTA */}
           {canCall && (
             <Button

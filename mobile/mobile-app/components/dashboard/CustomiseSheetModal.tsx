@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Modal, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
 import { Sparkles, X, Check } from 'lucide-react-native';
 import CustomiseDeckZone from './CustomiseDeckZone';
 import CustomiseAvailableZone from './CustomiseAvailableZone';
@@ -105,9 +106,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
           className="bg-card border-t border-border rounded-t-3xl shadow-2xl overflow-hidden flex-col"
         >
           {/* Top Pill Handle */}
-          <View className="items-center pt-2.5 pb-1 bg-card">
-            <View className="w-10 h-1.5 rounded-full bg-muted-foreground/30" />
-          </View>
+          <SheetGrabHandle onClose={onClose} />
 
           {/* Header Bar */}
           <View className="flex-row justify-between items-center px-5 py-3 border-b border-border bg-card">

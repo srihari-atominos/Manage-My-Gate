@@ -31,6 +31,7 @@ export function BillingLedgerScreen() {
     pagination,
     loadingStates,
     error,
+    activeOrgId,
     changeTablePage,
     approveOffline,
     rejectOffline,
@@ -93,12 +94,12 @@ export function BillingLedgerScreen() {
     { label: `✅ Paid (${statusCounts?.PAID ?? 0})`, value: 'PAID' },
   ], [statusCounts]);
 
-  // Trigger server-side query when status filter, advanced filters, or grouping mode changes
+  // Trigger server-side query when status filter, advanced filters, grouping mode, or active organization changes
   useEffect(() => {
     if (hasLedgerPermission) {
       changeTablePage(1, currentQueryParams);
     }
-  }, [statusFilter, activeFilters, groupMode, hasLedgerPermission]);
+  }, [statusFilter, activeFilters, groupMode, hasLedgerPermission, activeOrgId]);
 
   // Debounced search trigger (300ms)
   useEffect(() => {
@@ -107,7 +108,7 @@ export function BillingLedgerScreen() {
       changeTablePage(1, currentQueryParams);
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, hasLedgerPermission]);
+  }, [search, hasLedgerPermission, activeOrgId]);
 
   const handleRefresh = useCallback(() => {
     changeTablePage(1, currentQueryParams);

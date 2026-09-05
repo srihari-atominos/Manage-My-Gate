@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, useColorScheme, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, useColorScheme, Modal, ActivityIndicator } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 
 export interface SocialAuthButtonProps {
@@ -7,6 +7,8 @@ export interface SocialAuthButtonProps {
   onPress?: () => void;
   variant?: 'full' | 'compact';
   className?: string;
+  loading?: boolean;
+  disabled?: boolean;
 }
 
 export const GoogleIcon: React.FC<{ size?: number }> = ({ size = 20 }) => (
@@ -44,6 +46,8 @@ export const SocialAuthButton = ({
   onPress,
   variant = 'compact',
   className = '',
+  loading = false,
+  disabled = false,
 }: SocialAuthButtonProps) => {
   const [modalVisible, setModalVisible] = React.useState(false);
 
@@ -62,13 +66,20 @@ export const SocialAuthButton = ({
     <>
       <TouchableOpacity
         onPress={handlePress}
+        disabled={disabled || loading}
         activeOpacity={0.82}
-        className={`flex-1 h-11 bg-white dark:bg-[#1E232E] border border-border/90 rounded-2xl flex-row items-center justify-center gap-2 shadow-xs active:bg-muted/40 ${className}`}
+        className={`flex-1 h-11 bg-white dark:bg-[#1E232E] border border-border/90 rounded-2xl flex-row items-center justify-center gap-2 shadow-xs active:bg-muted/40 ${disabled || loading ? 'opacity-60' : ''} ${className}`}
       >
-        {isGoogle ? <GoogleIcon size={17} /> : <MicrosoftIcon size={17} />}
-        <Text className="text-xs font-bold text-slate-800 dark:text-white font-sans">
-          {variant === 'full' ? `Sign in with ${providerName}` : providerName}
-        </Text>
+        {loading ? (
+          <ActivityIndicator size="small" color={isGoogle ? '#4285F4' : '#00a4ef'} />
+        ) : (
+          <>
+            {isGoogle ? <GoogleIcon size={17} /> : <MicrosoftIcon size={17} />}
+            <Text className="text-xs font-bold text-slate-800 dark:text-white font-sans">
+              {variant === 'full' ? `Sign in with ${providerName}` : providerName}
+            </Text>
+          </>
+        )}
       </TouchableOpacity>
 
       {/* Themed Notice Popup Modal */}

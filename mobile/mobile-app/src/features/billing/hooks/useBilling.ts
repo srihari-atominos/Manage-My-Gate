@@ -65,15 +65,19 @@ export const useBilling = () => {
 
   const changeTablePage = useCallback(
     (pageNumber: number, filters: Record<string, any> = {}) => {
+      const mergedFilters = {
+        ...filters,
+        ...(activeOrgId && !filters.communityId ? { communityId: activeOrgId } : {}),
+      };
       return dispatch(
         fetchInvoicesGrid({
           page: pageNumber,
           limit: pagination.limit,
-          filters,
+          filters: mergedFilters,
         })
       );
     },
-    [dispatch, pagination.limit]
+    [dispatch, pagination.limit, activeOrgId]
   );
 
   const triggerManualRun = useCallback(
@@ -104,8 +108,8 @@ export const useBilling = () => {
   );
 
   const approveOffline = useCallback(
-    (invoiceId: string) => {
-      return dispatch(clearOfflineSettlement(invoiceId)).unwrap();
+    (invoiceId: string, options?: { amount?: number; settlementType?: 'FULL' | 'CUSTOM' }) => {
+      return dispatch(clearOfflineSettlement({ invoiceId, ...options })).unwrap();
     },
     [dispatch]
   );

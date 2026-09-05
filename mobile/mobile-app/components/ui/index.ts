@@ -19,6 +19,7 @@ export * from './Skeleton';
 export * from './StatusBadge';
 export * from './TabBar';
 export * from './TimelineItem';
+export * from './SheetGrabHandle';
 export * from './button';
 export * from './icon';
 export * from './input';

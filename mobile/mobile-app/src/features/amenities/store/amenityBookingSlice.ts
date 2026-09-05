@@ -265,7 +265,9 @@ export const checkInBookingThunk = createAsyncThunk(
       const response = await amenityService.checkInBooking(bookingId, payload || {});
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Check-in validation failed');
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Check-in validation failed'
+      );
     }
   }
 );
@@ -277,7 +279,9 @@ export const cancelBookingThunk = createAsyncThunk(
       const response = await amenityService.cancelBooking(bookingId, reason);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to cancel amenity booking');
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to cancel amenity booking'
+      );
     }
   }
 );

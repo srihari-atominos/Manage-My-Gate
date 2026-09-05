@@ -12,9 +12,14 @@ export function useResidentWallet() {
   const [cancelTarget, setCancelTarget] = useState<AmenityBooking | null>(null);
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
 
-  const { balance, currency, transactions, loading: walletLoading, toppingUp, error: walletError, successMsg: walletSuccess } = useSelector(
-    (state: RootState) => (state as any).amenityWallet || state.wallet
-  );
+  const walletState = useSelector((state: RootState) => state.wallet);
+  const balance = walletState?.balance || 0;
+  const currency = 'INR';
+  const transactions = walletState?.transactions || walletState?.transactionHistory || [];
+  const walletLoading = walletState?.isLoading || (walletState as any)?.loading || false;
+  const toppingUp = walletState?.isLoading || false;
+  const walletError = walletState?.error || null;
+  const walletSuccess = null;
 
   const { myBookings, loading: bookingsLoading } = useSelector(
     (state: RootState) => state.amenityBookings

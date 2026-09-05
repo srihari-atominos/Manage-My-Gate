@@ -224,8 +224,27 @@ export class AmenityBookingService {
         }
       }
 
+      const bookingIdStr = bookingData.bookingId || `BKG-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+      let qrCodeUrl = null;
+      try {
+        const QRCode = (await import('qrcode')).default;
+        const qrData = JSON.stringify({
+          bookingId: bookingIdStr,
+          displayId: bookingIdStr,
+          userId,
+          amenityId
+        });
+        qrCodeUrl = await QRCode.toDataURL(qrData);
+      } catch (e) {
+        logger.warn('Failed to pre-generate QR in createBooking, listener will retry:', e);
+      }
+
       const newBookingData = {
         ...bookingData,
+        bookingId: bookingIdStr,
+        qrCode: qrCodeUrl,
+        qrStatus: 'active',
+        qrGeneratedAt: new Date(),
         status: finalStatus,
         paymentStatus: finalPaymentStatus,
         pricingDetails,
@@ -567,8 +586,50 @@ export class AmenityBookingService {
             await paymentService.processRefund(booking.paymentId, refundAmount);
             newPaymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
           } catch (refundError) {
-             console.error(`[CANCEL BOOKING] Refund failed for booking ${bookingId}:`, refundError.message);
-             newPaymentStatus = 'failed';
+             console.error(`[CANCEL BOOKING] Refund failed for booking ${bookingId}, crediting to digital wallet:`, refundError.message);
+             try {
+               const walletRepository = (await import('../wallet/wallet.repository.js')).default;
+               await walletRepository.updateBalance(targetUserId, orgId, refundAmount);
+               await walletRepository.createTransaction({
+                 orgId,
+                 userId: targetUserId,
+                 type: 'Credit',
+                 amount: refundAmount,
+                 paymentMethod: booking.paymentMethod || 'ONLINE',
+                 paymentStatus: 'success',
+                 referenceType: 'Refund',
+                 referenceId: booking._id,
+                 description: `Refund for Cancelled Amenity Booking (${refundPercentage}% refund)`
+               });
+               const { walletEventEmitter, WALLET_UPDATED } = await import('../wallet/wallet.events.js');
+               walletEventEmitter.emit(WALLET_UPDATED, { userId: targetUserId, orgId });
+               newPaymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
+             } catch (fallbackErr) {
+               console.error(`[CANCEL BOOKING] Fallback wallet refund failed:`, fallbackErr.message);
+               newPaymentStatus = 'failed';
+             }
+          }
+        } else if (refundAmount > 0) {
+          // ONLINE or other digital payment method without direct gateway ID: Credit to resident's digital wallet
+          try {
+            const walletRepository = (await import('../wallet/wallet.repository.js')).default;
+            await walletRepository.updateBalance(targetUserId, orgId, refundAmount);
+            await walletRepository.createTransaction({
+              orgId,
+              userId: targetUserId,
+              type: 'Credit',
+              amount: refundAmount,
+              paymentMethod: booking.paymentMethod || 'ONLINE',
+              paymentStatus: 'success',
+              referenceType: 'Refund',
+              referenceId: booking._id,
+              description: `Refund for Cancelled Amenity Booking (${refundPercentage}% refund)`
+            });
+            const { walletEventEmitter, WALLET_UPDATED } = await import('../wallet/wallet.events.js');
+            walletEventEmitter.emit(WALLET_UPDATED, { userId: targetUserId, orgId });
+            newPaymentStatus = refundPercentage === 100 ? 'refunded' : 'partial_refund';
+          } catch (walletErr) {
+            console.error(`[CANCEL BOOKING] Digital wallet refund credit failed:`, walletErr.message);
           }
         }
       } else if (booking.paymentStatus === 'pending') {
@@ -934,6 +995,11 @@ export class AmenityBookingService {
       const updated = await amenityBookingRepository.updateStatus(bookingId, orgId, 'completed');
       updated.checkOutTime = new Date();
       await updated.save();
+      await updated.populate([
+        { path: 'checkedInBy', select: 'name username' },
+        { path: 'amenityId', select: 'name type location images' },
+        { path: 'userId', select: 'name username email profilePicture villaNumber unit flatNumber' }
+      ]);
       
       const { AMENITY_BOOKING_COMPLETED } = await import('./amenityBooking.events.js');
       amenityBookingEventEmitter.emit(AMENITY_BOOKING_COMPLETED, updated);
@@ -958,18 +1024,19 @@ export class AmenityBookingService {
       return h * 60 + m;
     };
     
-    // 7. Booking Time (Start Time <= Current Time <= End Time)
+    // 7. Booking Time (15-min early arrival grace window and 15-min departure grace window)
     const now = moment().tz(TIMEZONE);
     
-    const checkInStart = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
-    let checkInEnd = moment.tz(`${booking.bookingDate}T${booking.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE);
+    const checkInStart = moment.tz(`${booking.bookingDate}T${booking.startTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).subtract(15, 'minutes');
+    let checkInEnd = moment.tz(`${booking.bookingDate}T${booking.endTime}`, 'YYYY-MM-DDTHH:mm', TIMEZONE).add(15, 'minutes');
     
     if (checkInEnd.isBefore(checkInStart)) {
       checkInEnd.add(1, 'days');
     }
     
     if (now.isBefore(checkInStart)) {
-      throw emitDenied('Resident is too early for this booking.');
+      const allowedTime = checkInStart.format('hh:mm A');
+      throw emitDenied(`Resident is too early for this booking. Entry permitted from ${allowedTime}.`);
     }
     if (now.isAfter(checkInEnd)) {
       throw emitDenied('Booking time has expired.');
@@ -988,8 +1055,12 @@ export class AmenityBookingService {
     updated.checkedInBy = userId; // Log who scanned it (Security Guard)
     await updated.save();
     
-    // Populate checkedInBy so frontend can display the guard's name
-    await updated.populate('checkedInBy', 'name');
+    // Populate checkedInBy, amenityId, and userId so frontend displays guard and resident details
+    await updated.populate([
+      { path: 'checkedInBy', select: 'name username' },
+      { path: 'amenityId', select: 'name type location images' },
+      { path: 'userId', select: 'name username email profilePicture villaNumber unit flatNumber' }
+    ]);
 
     amenityBookingEventEmitter.emit(AMENITY_BOOKING_CHECKED_IN, updated);
     

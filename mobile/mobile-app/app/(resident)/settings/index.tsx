@@ -6,9 +6,8 @@ import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { ThemeToggleSwitch } from '@/components/settings/ThemeToggleSwitch';
+import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
 import { LanguageSelector } from '@/components/settings/LanguageSelector';
-import { EditProfileModal } from '@/components/settings/EditProfileModal';
 import { ResidentDirectoryModal } from '@/components/settings/ResidentDirectoryModal';
 import { SettingToggleRow } from '@/src/features/settings/components/SettingToggleRow';
 import { useSettings } from '@/src/features/settings/hooks/useSettings';
@@ -39,7 +38,6 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, logout, deleteAccount } = useAuth();
-  const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [createPulseOpen, setCreatePulseOpen] = useState(false);
   const [interestsOpen, setInterestsOpen] = useState(false);
   const [directoryOpen, setDirectoryOpen] = useState(false);
@@ -165,53 +163,11 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 80 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ─── Profile Card ─── */}
-        <Pressable
-          onPress={() => setEditProfileOpen(true)}
-          className="mx-4 mt-4 bg-card rounded-2xl border border-border overflow-hidden active:opacity-90"
-        >
-          <View className="p-4 flex-row items-center gap-3">
-            <View className="h-14 w-14 rounded-full bg-primary/10 border-2 border-primary/20 items-center justify-center overflow-hidden shrink-0">
-              {user?.avatar ? (
-                <Image source={{ uri: user.avatar }} className="h-full w-full" />
-              ) : (
-                <Icon as={UserIcon} size={26} className="text-primary" />
-              )}
-            </View>
-            <View className="flex-1 min-w-0">
-              <Text className="text-base font-bold text-foreground" numberOfLines={1}>
-                {user?.username || user?.name || user?.email || 'Logged In Resident'}
-              </Text>
-              <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
-                {user?.role || 'Member'}
-              </Text>
-              {user?.email ? (
-                <Text className="text-xs text-muted-foreground mt-0.5" numberOfLines={1}>
-                  {user.email}
-                </Text>
-              ) : null}
-            </View>
-            <Icon as={ChevronRight} size={20} className="text-muted-foreground shrink-0" />
-          </View>
-        </Pressable>
-
         {/* ─── Appearance ─── */}
-        <Text className="text-xs font-bold text-muted-foreground uppercase px-5 mt-5 mb-2">
+        <Text className="text-xs font-bold text-muted-foreground uppercase px-5 mt-4 mb-2">
           {t('appearance_language', 'Appearance & Language')}
         </Text>
         <View className="mx-4 bg-card rounded-2xl border border-border overflow-hidden">
-          {/* Theme Mode Row */}
-          <View className="px-4 pt-4 pb-3">
-            <ThemeToggleSwitch
-              themeMode={themeMode}
-              onSelectMode={setThemeMode}
-              t={t}
-              className="border-0 p-0 shadow-none bg-transparent"
-            />
-          </View>
-
-          <View className="h-px bg-border mx-4" />
-
           {/* Language Row */}
           <Pressable
             onPress={() => setLanguageModalOpen(true)}
@@ -365,9 +321,7 @@ export default function SettingsScreen() {
             onPress={() => setLanguageModalOpen(false)}
           />
           <View className="bg-card rounded-t-3xl overflow-hidden">
-            <View className="items-center pt-3 pb-1">
-              <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-            </View>
+            <SheetGrabHandle onClose={() => setLanguageModalOpen(false)} />
             <Text className="text-base font-bold text-foreground text-center py-2">
               {t('select_language', 'Select Language')}
             </Text>
@@ -404,21 +358,6 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* ─── Edit Profile Modal ─── */}
-      <EditProfileModal
-        visible={editProfileOpen}
-        onClose={() => setEditProfileOpen(false)}
-        user={user}
-        userPulse={userActivePulse}
-        userInterests={userInterests}
-        masterInterests={masterInterests}
-        onCreatePulse={() => {
-          setEditProfileOpen(false);
-          setCreatePulseOpen(true);
-        }}
-        onSaveInterests={(ids) => saveInterests(ids)}
-        t={t}
-      />
 
       {/* ─── Community Directory Modal ─── */}
       <ResidentDirectoryModal

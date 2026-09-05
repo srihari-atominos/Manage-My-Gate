@@ -57,13 +57,15 @@ export const useQuickActions = () => {
   const { modules, loadWorkspaceModules } = useWorkspace();
   const authUser = useSelector((state: RootState) => (state as any).auth?.user);
   const userPermissions = authUser?.permissions || [];
+  const currentUserId = authUser?._id || authUser?.id;
+  const activeOrgId = authUser?.activeOrgId || authUser?.orgId || authUser?.organizationId;
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && currentUserId) {
       dispatch(fetchQuickActionsThunk());
       loadWorkspaceModules('current');
     }
-  }, [dispatch, isAuthenticated, loadWorkspaceModules]);
+  }, [dispatch, isAuthenticated, currentUserId, activeOrgId, loadWorkspaceModules]);
 
   const loadQuickActions = useCallback(() => {
     if (isAuthenticated) {

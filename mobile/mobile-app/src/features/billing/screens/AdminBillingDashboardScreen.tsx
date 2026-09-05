@@ -1,18 +1,19 @@
 import React, { useEffect, useCallback } from 'react';
-import { View, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { View, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { KPIRow } from '@/components/ui/KPIRow';
-import { KPICardProps } from '@/components/ui/KPICard';
+import { KPIDashboardStrip } from '@/components/ui/KPIDashboardStrip';
+import { type KPICardProps } from '@/components/ui/KPICard';
+import { ActionGrid, type ActionGridItem } from '@/components/ui/ActionGrid';
 import { Card } from '@/components/common/Card';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/common/ProgressBar';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { ListItem } from '@/components/common/ListItem';
-import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
+import { FAB } from '@/components/ui/FAB';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import {
   Receipt,
@@ -22,6 +23,10 @@ import {
   Target,
   Layers,
   FileText,
+  CreditCard,
+  Wallet,
+  TrendingUp,
+  AlertCircle,
 } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
@@ -99,50 +104,112 @@ export function AdminBillingDashboardScreen() {
   // Calculate collection progress percentage
   const collectionRate = grossDemand > 0 ? Math.min(100, Math.round((totalCollected / grossDemand) * 100)) : 0;
 
+  // Universal KPI metrics configured for KPIDashboardStrip
   const kpiCards: KPICardProps[] = [
     {
       title: 'Gross Billed',
       value: `₹${grossDemand.toLocaleString('en-IN')}`,
-      iconName: 'Receipt',
-      iconColor: '#E5A93C',
-      bgColor: 'rgba(229, 169, 60, 0.12)',
       subtitle: `${grossDemandCount} total invoices`,
+      iconName: 'Receipt',
+      variant: 'default',
     },
     {
       title: 'Total Collected',
       value: `₹${totalCollected.toLocaleString('en-IN')}`,
-      iconName: 'Check',
-      iconColor: '#10b981',
-      bgColor: 'rgba(16, 185, 129, 0.12)',
+      trend: { direction: 'up', value: `${collectionRate}% rate` },
+      iconName: 'TrendingUp',
+      variant: 'success',
     },
     {
       title: 'Unpaid Arrears',
       value: `₹${totalUnpaidArrears.toLocaleString('en-IN')}`,
+      subtitle: 'Pending collection',
       iconName: 'AlertCircle',
-      iconColor: '#ef4444',
-      bgColor: 'rgba(239, 68, 68, 0.12)',
+      variant: 'destructive',
+      onPress: () => router.push('/(resident)/admin/billing/ledger' as any),
     },
     {
       title: 'Pending Clearance',
-      value: `₹${inTransitGateway.toLocaleString('en-IN')}`,
+      value: `₹${pendingOffline.toLocaleString('en-IN')}`,
+      subtitle: 'Offline submissions',
       iconName: 'Clock',
-      iconColor: '#f59e0b',
-      bgColor: 'rgba(245, 158, 11, 0.12)',
+      variant: 'warning',
+      onPress: () => router.push('/(resident)/admin/billing/ledger' as any),
     },
   ];
 
+  // Quick Navigation Hub ActionGrid Items (Dashboard button removed per user request)
+  const navItems: ActionGridItem[] = [
+    {
+      id: 'ledger',
+      name: 'Billing Ledger',
+      route: '/(resident)/admin/billing/ledger',
+      iconName: 'Receipt',
+      colorBg: 'bg-emerald-500/10',
+      colorIcon: '#10b981',
+      badge: pendingOffline > 0 ? String(pendingOffline) : undefined,
+      badgeColor: 'bg-amber-500',
+    },
+    {
+      id: 'assessments',
+      name: 'Assessments',
+      route: '/(resident)/admin/billing/assessments',
+      iconName: 'Landmark',
+      colorBg: 'bg-teal-500/10',
+      colorIcon: '#14b8a6',
+    },
+    {
+      id: 'my-dues',
+      name: 'Personal Dues',
+      route: '/(resident)/billing/my-dues',
+      iconName: 'Layers',
+      colorBg: 'bg-indigo-500/10',
+      colorIcon: '#6366f1',
+    },
+    {
+      id: 'wallet',
+      name: 'Digital Wallet',
+      route: '/(resident)/billing/wallet',
+      iconName: 'Wallet',
+      colorBg: 'bg-cyan-500/10',
+      colorIcon: '#06b6d4',
+    },
+    {
+      id: 'history',
+      name: 'Payment History',
+      route: '/(resident)/billing/history',
+      iconName: 'Clock',
+      colorBg: 'bg-purple-500/10',
+      colorIcon: '#a855f7',
+    },
+  ];
+
+  // Strict 3-Item Limit for Dashboard Activity Previews per Mobile Rule V.1
   const recentTransactions = Array.isArray(invoicesList) ? invoicesList.slice(0, 3) : [];
 
   return (
     <ScreenShell
       title="Billing Overview"
       subtitle="Community Collection & Dues Snapshot"
-      iconName="ChartColumn"
+      iconName="BarChart3"
       loading={loadingStates.fetchKPIs && !kpis}
+      headerRight={
+        <Button
+          variant="outline"
+          size="sm"
+          onPress={() => router.push('/(resident)/billing/my-dues' as any)}
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          accessibilityRole="button"
+          accessibilityLabel="View Personal Dues"
+        >
+          <CreditCard size={14} className="text-foreground" />
+          <Text className="text-xs font-semibold text-foreground">My Dues</Text>
+        </Button>
+      }
     >
       <ScrollView
         className="flex-1 bg-background"
-        contentContainerStyle={{ paddingVertical: 16 }}
+        contentContainerClassName="p-4 pb-28 gap-5"
         refreshControl={
           <RefreshControl
             refreshing={loadingStates.fetchKPIs}
@@ -153,46 +220,34 @@ export function AdminBillingDashboardScreen() {
       >
         {/* Error Banner */}
         {error ? (
-          <View className="px-4 mb-4">
-            <ErrorBanner message={error} onDismiss={resetBillingError} />
-          </View>
+          <ErrorBanner message={error} onDismiss={resetBillingError} />
         ) : null}
 
-        {/* 1. Collection Target Progress Widget */}
-        <View className="px-4 mb-6">
-          <Card className="bg-card border border-border rounded-2xl p-4">
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-center">
-                <Icon as={Target} size={18} className="text-primary me-2" />
-                <Text className="text-sm font-bold text-foreground">Current Month Collection Progress</Text>
-              </View>
-              <Text className="text-sm font-extrabold text-primary">{collectionRate}%</Text>
-            </View>
-            <ProgressBar progress={collectionRate} className="h-2 rounded-full mb-3" />
-            <View className="flex-row justify-between items-center">
-              <Text className="text-xs text-muted-foreground">
-                Collected: <Text className="font-semibold text-foreground">₹{totalCollected.toLocaleString('en-IN')}</Text>
-              </Text>
-              <Text className="text-xs text-muted-foreground">
-                Billed: <Text className="font-semibold text-foreground">₹{grossDemand.toLocaleString('en-IN')}</Text>
-              </Text>
-            </View>
-          </Card>
-        </View>
+        {/* 1. Universal Top KPI Metrics Strip (Reference from Amenities Dashboard) */}
+        <KPIDashboardStrip cards={kpiCards} loading={loadingStates.fetchKPIs && !kpis} layout="grid2x2" />
 
-        {/* 2. Collection KPI Metrics Carousel */}
-        <View className="mb-6">
-          <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-4 mb-3">
-            Collection Performance Summary
-          </Text>
-          <KPIRow cards={kpiCards} loading={loadingStates.fetchKPIs} />
-        </View>
+        {/* 2. Collection Target Progress Widget */}
+        <Card className="bg-card border border-border rounded-2xl p-4">
+          <View className="flex-row items-center justify-between mb-2">
+            <View className="flex-row items-center">
+              <Icon as={Target} size={18} className="text-primary me-2" />
+              <Text className="text-sm font-bold text-foreground">Current Month Collection Progress</Text>
+            </View>
+            <Text className="text-sm font-extrabold text-primary">{collectionRate}%</Text>
+          </View>
+          <ProgressBar progress={collectionRate} className="h-2 rounded-full mb-3" />
+          <View className="flex-row justify-between items-center">
+            <Text className="text-xs text-muted-foreground">
+              Collected: <Text className="font-semibold text-foreground">₹{totalCollected.toLocaleString('en-IN')}</Text>
+            </Text>
+            <Text className="text-xs text-muted-foreground">
+              Billed: <Text className="font-semibold text-foreground">₹{grossDemand.toLocaleString('en-IN')}</Text>
+            </Text>
+          </View>
+        </Card>
 
         {/* 3. Attention Required Box */}
-        <View className="px-4 mb-6">
-          <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-            Attention Required
-          </Text>
+        {pendingOffline > 0 ? (
           <View className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex-row items-start justify-between">
             <View className="flex-row items-start flex-1 me-3">
               <Icon as={Clock} size={22} className="text-amber-600 dark:text-amber-400 me-3 mt-0.5" />
@@ -201,9 +256,7 @@ export function AdminBillingDashboardScreen() {
                   Pending Offline Payment Verification
                 </Text>
                 <Text className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                  {pendingOffline > 0
-                    ? `₹${pendingOffline.toLocaleString('en-IN')} in bank transfer submissions awaiting admin clearance.`
-                    : 'Review pending bank transfer submissions from residents.'}
+                  ₹{pendingOffline.toLocaleString('en-IN')} in bank transfer and cash submissions awaiting admin clearance.
                 </Text>
               </View>
             </View>
@@ -215,98 +268,29 @@ export function AdminBillingDashboardScreen() {
               accessibilityRole="button"
               accessibilityLabel="Review pending offline payments"
             >
-              Review
+              <Text className="text-xs font-bold text-amber-900 dark:text-amber-200">Review</Text>
             </Button>
           </View>
-        </View>
+        ) : null}
 
-        {/* 4. Quick Navigation Hub (4 Sub-View Action Tiles in 2x2 Grid) */}
-        <View className="px-4 mb-6">
-          <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-            Quick Navigation
-          </Text>
-          <View className="flex-row flex-wrap gap-3">
-            {/* Tile 1: Billing Dashboard (Active) */}
-            <Pressable
-              className="w-[48%] bg-primary/10 border border-primary/30 rounded-xl p-3 justify-between active:opacity-80"
-              onPress={() => router.push('/(resident)/admin/billing' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Navigate to Billing Dashboard"
-            >
-              <View className="w-9 h-9 rounded-lg bg-primary/20 items-center justify-center mb-2">
-                <Icon as={Target} size={18} className="text-primary" />
-              </View>
-              <Text className="text-primary font-extrabold text-xs mb-0.5">Billing Dashboard</Text>
-              <Text className="text-primary/70 text-[10px]" numberOfLines={2}>
-                Collection KPIs & overview
-              </Text>
-            </Pressable>
+        {/* 4. Quick Navigation Hub using ActionGrid (Reference from Amenities Dashboard) */}
+        <ActionGrid title="Quick Navigation" items={navItems} />
 
-            {/* Tile 2: Billing Ledger */}
-            <Pressable
-              className="w-[48%] bg-card border border-border rounded-xl p-3 justify-between active:opacity-80"
-              onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Navigate to Billing Ledger"
-            >
-              <View className="w-9 h-9 rounded-lg bg-primary/10 items-center justify-center mb-2">
-                <Icon as={Receipt} size={18} className="text-primary" />
-              </View>
-              <Text className="text-foreground font-bold text-xs mb-0.5">Billing Ledger</Text>
-              <Text className="text-muted-foreground text-[10px]" numberOfLines={2}>
-                Search invoices & settle offline
-              </Text>
-            </Pressable>
-
-            {/* Tile 3: Assessment Manager */}
-            <Pressable
-              className="w-[48%] bg-card border border-border rounded-xl p-3 justify-between active:opacity-80"
-              onPress={() => router.push('/(resident)/admin/billing/assessments' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Navigate to Assessment Manager"
-            >
-              <View className="w-9 h-9 rounded-lg bg-emerald-500/10 items-center justify-center mb-2">
-                <Icon as={Landmark} size={18} className="text-emerald-600 dark:text-emerald-400" />
-              </View>
-              <Text className="text-foreground font-bold text-xs mb-0.5">Assessment Manager</Text>
-              <Text className="text-muted-foreground text-[10px]" numberOfLines={2}>
-                Formulas & WhatsApp links
-              </Text>
-            </Pressable>
-
-            {/* Tile 4: Action Center */}
-            <Pressable
-              className="w-[48%] bg-card border border-border rounded-xl p-3 justify-between active:opacity-80"
-              onPress={() => router.push('/(resident)/billing/my-dues' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Navigate to Action Center"
-            >
-              <View className="w-9 h-9 rounded-lg bg-indigo-500/10 items-center justify-center mb-2">
-                <Icon as={Layers} size={18} className="text-indigo-600 dark:text-indigo-400" />
-              </View>
-              <Text className="text-foreground font-bold text-xs mb-0.5">Action Center</Text>
-              <Text className="text-muted-foreground text-[10px]" numberOfLines={2}>
-                Resident dues & portfolio list
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* 5. Recent Activity Feed Snippet */}
-        <View className="px-4 mb-6">
+        {/* 5. Recent Activity Feed Snippet (Strict 3-Item Limit) */}
+        <View>
           <SectionHeader
             title="Recent Collections"
             actionLabel="View All"
             onAction={() => router.push('/(resident)/admin/billing/ledger' as any)}
           />
           {recentTransactions.length === 0 ? (
-            <Card className="bg-card border border-border rounded-xl p-4 items-center justify-center">
+            <Card className="bg-card border border-border rounded-xl p-4 items-center justify-center mt-2">
               <Text className="text-xs text-muted-foreground text-center">
                 No recent collection transactions found.
               </Text>
             </Card>
           ) : (
-            <View className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border">
+            <View className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border mt-2">
               {recentTransactions.map((tx: any) => (
                 <ListItem
                   key={tx._id || tx.invoiceNumber}
@@ -320,6 +304,13 @@ export function AdminBillingDashboardScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Primary Action: New Assessment Wizard FAB (Reference from Amenities Dashboard) */}
+      <FAB
+        iconName="Plus"
+        label="New Assessment"
+        onPress={() => router.push('/(resident)/admin/billing/assessments' as any)}
+      />
     </ScreenShell>
   );
 }

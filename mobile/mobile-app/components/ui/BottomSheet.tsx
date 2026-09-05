@@ -4,6 +4,8 @@ import { Text } from '@/components/ui/text';
 import { X } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
 
+import { SheetGrabHandle } from './SheetGrabHandle';
+
 export interface AppBottomSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -48,9 +50,7 @@ function BottomSheet({
         {/* Content Box */}
         <View className="bg-card border-t border-border/80 rounded-t-3xl max-h-[85vh] shadow-2xl overflow-hidden">
           {/* Top grab handle */}
-          <View className="items-center pt-2.5 pb-1 bg-card">
-            <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-          </View>
+          <SheetGrabHandle onClose={onClose} />
 
           {/* Title Header with Close X */}
           {Boolean(title) && (

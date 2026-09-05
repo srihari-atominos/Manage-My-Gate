@@ -1,10 +1,11 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Avatar } from '@/components/common/Avatar';
 import { useTranslation } from '@/src/utils/i18n';
-import { Mail, Phone, Sparkles } from 'lucide-react-native';
+import { Mail, Phone, Camera } from 'lucide-react-native';
+import { getImageUrl } from '@/src/utils/imageUrl';
 import { cn } from '@/lib/utils';
 
 export interface ProfileHeaderCardProps {
@@ -18,6 +19,8 @@ export interface ProfileHeaderCardProps {
   avatarFallback?: string;
   status?: string;
   className?: string;
+  onAvatarPress?: () => void;
+  showCameraBadge?: boolean;
 }
 
 export const ProfileHeaderCard = ({
@@ -31,11 +34,14 @@ export const ProfileHeaderCard = ({
   avatarFallback,
   status = 'Active',
   className,
+  onAvatarPress,
+  showCameraBadge = false,
 }: ProfileHeaderCardProps) => {
   const { t, tRole } = useTranslation();
   const initialLetter = avatarFallback || (name ? name.charAt(0).toUpperCase() : 'U');
   const localizedRole = tRole(roleName, roleName);
   const localizedStatus = t(`status_${status.toLowerCase().replace(/[\s\/-]+/g, '_')}`, t(status.toLowerCase(), status));
+  const resolvedAvatarUrl = avatarUrl ? getImageUrl(avatarUrl) : null;
 
   return (
     <View
@@ -44,18 +50,40 @@ export const ProfileHeaderCard = ({
         className
       )}
     >
-      {/* Avatar with Ring */}
-      <View className="relative items-center justify-center">
+      {/* Avatar with Ring & Camera Badge */}
+      <TouchableOpacity
+        onPress={onAvatarPress}
+        disabled={!onAvatarPress}
+        activeOpacity={0.85}
+        className="relative items-center justify-center"
+        accessibilityRole={onAvatarPress ? 'button' : 'none'}
+        accessibilityLabel="Change profile avatar"
+      >
         <Avatar
-          source={avatarUrl ? { uri: avatarUrl } : null}
+          source={resolvedAvatarUrl ? { uri: resolvedAvatarUrl } : null}
           fallback={initialLetter}
           size="xl"
-          className="border-2 border-primary/40 bg-primary/10"
+          className="border-2 border-primary/40 bg-primary/10 h-20 w-20"
         />
-        <View className="absolute -bottom-1 -right-1 bg-status-success rounded-full p-1 border-2 border-card">
-          <Sparkles size={10} className="text-white" />
-        </View>
-      </View>
+        {showCameraBadge && (
+          <View className="absolute -bottom-1 -right-1 size-7 rounded-full bg-primary border-2 border-card items-center justify-center shadow-xs">
+            <Camera size={13} color="#FFFFFF" />
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {onAvatarPress && (
+        <TouchableOpacity
+          onPress={onAvatarPress}
+          activeOpacity={0.8}
+          className="flex-row items-center gap-1.5 py-1 px-3 rounded-full bg-primary/10 border border-primary/20 -mt-1"
+        >
+          <Camera size={12} className="text-primary" />
+          <Text className="text-xs font-bold text-primary">
+            {t('change_photo', 'Change Photo')}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* User Info Header */}
       <View className="items-center">
@@ -100,13 +128,6 @@ export const ProfileHeaderCard = ({
         <StatusBadge
           label={localizedRole}
           variant="success"
-          size="sm"
-        />
-
-        <StatusBadge
-          label={localizedStatus}
-          variant="neutral"
-          dot
           size="sm"
         />
       </View>

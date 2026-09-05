@@ -70,7 +70,11 @@ export function AmenityLedgerCard({ booking, onPress, className }: AmenityLedger
         label: statusLabel,
         variant: statusVariant,
       }}
-      timestamp={`${booking.startTime} - ${booking.endTime}`}
+      timestamp={
+        booking?.startTime && booking?.endTime
+          ? `${booking.startTime} - ${booking.endTime}`
+          : booking?.startTime || booking?.endTime || ''
+      }
       onPress={onPress}
       className={className}
       rightContent={

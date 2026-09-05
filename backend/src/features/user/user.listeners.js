@@ -108,3 +108,32 @@ userEvents.on('USER_ADDED', async ({ email, orgId }) => {
     logger.error(`Asynchronous USER_ADDED email dispatch failed: ${error.message}`);
   }
 });
+
+userEvents.on('EMAIL_OTP_SENT', async ({ email, code }) => {
+  logger.info(`[USER EMAIL CHANGE OTP DELIVERED] Identifier: ${email} | Verification OTP Code: ${code}`);
+
+  try {
+    const { sendEmail } = await import('../../utils/email.utils.js');
+    const emailSubject = 'Your Email Verification Code';
+    const emailBody = `
+      <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px;">
+        <h2 style="color: #4f46e5; margin-top: 0;">Email Verification</h2>
+        <p>You requested to update your account email to <strong>${email}</strong>.</p>
+        <p>Please enter the following 6-digit verification code in the app to verify this change:</p>
+        <div style="background-color: #f3f4f6; border-radius: 6px; padding: 16px; text-align: center; margin: 24px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #111827;">${code}</span>
+        </div>
+        <p style="font-size: 13px; color: #6b7280;">This code is valid for 15 minutes. If you did not request this change, please ignore this email or contact support.</p>
+      </div>
+    `;
+    const sent = await sendEmail(null, email, emailSubject, emailBody);
+    if (sent) {
+      logger.info(`Email change OTP successfully delivered to inbox: ${email}`);
+    } else {
+      logger.info(`Email change verification code for ${email}: ${code}`);
+    }
+  } catch (error) {
+    logger.error(`Asynchronous EMAIL_OTP_SENT dispatch failed: ${error.message}`);
+  }
+});
+

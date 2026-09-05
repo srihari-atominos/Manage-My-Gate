@@ -29,8 +29,8 @@ export const ThemeToggleSwitch = ({
       : 'Light';
 
   const OPTIONS: Array<{ mode: ThemeMode; label: string; icon: any }> = [
-    { mode: 'system', label: 'Auto', icon: Smartphone },
     { mode: 'light', label: 'Light', icon: Sun },
+    { mode: 'system', label: 'Auto', icon: Smartphone },
     { mode: 'dark', label: 'Dark', icon: Moon },
   ];
 

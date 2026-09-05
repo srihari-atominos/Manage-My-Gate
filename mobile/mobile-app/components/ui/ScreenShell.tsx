@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Pressable, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
+import { View, Pressable, TouchableOpacity, ScrollView, BackHandler, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as LucideIcons from 'lucide-react-native';
@@ -120,8 +120,10 @@ export function ScreenShell({
                     onBackPress();
                   } else if (router.canGoBack()) {
                     router.back();
+                  } else if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history && window.history.length > 1) {
+                    window.history.back();
                   } else {
-                    router.replace('/(resident)/dashboard' as any);
+                    router.back();
                   }
                 }}
                 className="me-2 p-2 rounded-xl active:bg-secondary -ms-1 shrink-0 border border-transparent active:border-border/60"

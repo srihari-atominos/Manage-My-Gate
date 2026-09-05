@@ -505,7 +505,12 @@ export class InvoiceService {
     }
 
     // Check duplicate payment reference if reference is provided
-    const effectiveRef = offlineReference || `BANK-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const effectiveMethod = (paymentMethod || 'BANK_TRANSFER').toUpperCase();
+    const isCash = effectiveMethod === 'CASH';
+    const effectiveRef = offlineReference || (isCash
+      ? `CASH-REQ-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`
+      : `BANK-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`);
+
     if (offlineReference) {
       const duplicateRef = await Payment.findOne({ paymentReference: offlineReference, status: { $ne: 'REJECTED' } });
       if (duplicateRef) {
@@ -515,7 +520,7 @@ export class InvoiceService {
 
     const updatePayload = {
       offlineReference: effectiveRef,
-      paymentMethod: paymentMethod === 'NEFT' ? 'BANK_TRANSFER' : paymentMethod,
+      paymentMethod: isCash ? 'CASH' : 'BANK_TRANSFER',
     };
     if (amount) {
       updatePayload.offlineAmount = amount;
@@ -553,7 +558,7 @@ export class InvoiceService {
         amount: amount || result.totalAmount,
         status: 'VERIFICATION_PENDING',
         paymentCategory: 'OFFLINE',
-        paymentMethod: paymentMethod === 'NEFT' ? 'BANK_TRANSFER' : paymentMethod,
+        paymentMethod: isCash ? 'CASH' : 'BANK_TRANSFER',
         paymentReference: effectiveRef,
         paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
         proofDocument: paymentScreenshot || null,
@@ -568,18 +573,20 @@ export class InvoiceService {
       invoice: result,
       communityId: result.orgId || result.communityId,
       residentName: result.targetUserId ? `${result.targetUserId.firstName || ''} ${result.targetUserId.lastName || result.targetUserId.username || ''}`.trim() : 'Resident',
-      reference: effectiveRef
+      reference: effectiveRef,
+      paymentMethod: isCash ? 'CASH' : 'BANK_TRANSFER',
+      amount: amount || result.totalAmount
     });
 
     return result;
   }
 
   /**
-   * Approve/verify offline Bank Transfer payment (Admin only).
+   * Approve/verify offline payment (Cash or Bank Transfer) with Full or Custom amount support (Admin only).
    */
-  async approveOfflinePayment(invoiceId, adminUserId = null) {
+  async approveOfflinePayment(invoiceId, adminUserId = null, options = {}) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    logger.info('approveOfflinePayment called', { invoiceId, adminUserId, correlationId });
+    logger.info('approveOfflinePayment called', { invoiceId, adminUserId, options, correlationId });
 
     const Invoice = (await import('./invoice.model.js')).default;
     const Payment = (await import('../payment/payment.model.js')).default;
@@ -593,17 +600,43 @@ export class InvoiceService {
       throw new Error('Invoice is already marked as PAID.');
     }
 
-    const amountToApply = invoice.offlineAmount || invoice.outstandingAmount || invoice.totalAmount;
-    const offlineReference = invoice.offlineReference || `BANK-${Date.now()}`;
-    const paymentMethod = invoice.paymentMethod || 'BANK_TRANSFER';
-    
-    const newOutstanding = Math.max(0, (invoice.outstandingAmount || invoice.totalAmount) - amountToApply);
+    const currentTotal = invoice.totalAmount || invoice.totalDue || 0;
+    const currentPaid = invoice.paidAmount || 0;
+    const remainingDue = invoice.outstandingAmount !== undefined
+      ? invoice.outstandingAmount
+      : Math.max(0, currentTotal - currentPaid);
+
+    // Determine amount to apply
+    let amountToApply = 0;
+    const customAmount = options?.amount !== undefined && options?.amount !== null ? Number(options.amount) : null;
+    const settlementType = options?.settlementType || (customAmount ? 'CUSTOM' : 'FULL');
+
+    if (settlementType === 'FULL') {
+      amountToApply = remainingDue;
+    } else if (customAmount && customAmount > 0) {
+      amountToApply = Math.min(customAmount, remainingDue);
+    } else if (invoice.offlineAmount && invoice.offlineAmount > 0) {
+      amountToApply = Math.min(invoice.offlineAmount, remainingDue);
+    } else {
+      amountToApply = remainingDue;
+    }
+
+    if (amountToApply <= 0) {
+      amountToApply = remainingDue;
+    }
+
+    const offlineReference = invoice.offlineReference || `OFFLINE-${Date.now()}`;
+    const paymentMethod = (invoice.paymentMethod || 'BANK_TRANSFER').toUpperCase();
+    const isCash = paymentMethod === 'CASH';
+
+    const newOutstanding = Math.max(0, Math.round((remainingDue - amountToApply) * 100) / 100);
     const finalStatus = newOutstanding > 0 ? 'PARTIALLY_PAID' : 'PAID';
 
-    // Generate unique receipt number
+    // Generate unique receipt number (CASH-YYYY-XXXXXX or BANK-YYYY-XXXXXX)
     const yearStr = new Date().getFullYear();
     const randSeq = Math.floor(100000 + Math.random() * 900000);
-    const receiptNumber = `BANK-${yearStr}-${randSeq}`;
+    const receiptPrefix = isCash ? 'CASH' : 'BANK';
+    const receiptNumber = `${receiptPrefix}-${yearStr}-${randSeq}`;
 
     const updated = await invoiceRepository.updateStatusWithLock(
       invoiceId,
@@ -611,7 +644,9 @@ export class InvoiceService {
       {
         paid_at: new Date(),
         settled_at: new Date(),
-        amount: amountToApply
+        amount: amountToApply,
+        paymentMethod: paymentMethod,
+        offlineReference: offlineReference,
       }
     );
 
@@ -620,10 +655,12 @@ export class InvoiceService {
       let payment = await Payment.findOne({ invoiceId: invoice._id, status: 'VERIFICATION_PENDING' });
       if (payment) {
         payment.status = 'PAID';
+        payment.amount = amountToApply;
         payment.verifiedBy = adminUserId || null;
         payment.verifiedAt = new Date();
         payment.processedBy = adminUserId || null;
         payment.receiptNumber = receiptNumber;
+        payment.paymentMethod = paymentMethod;
         await payment.save();
       } else {
         await Payment.create({
@@ -651,6 +688,23 @@ export class InvoiceService {
       logger.error('Failed to create/update Payment record during approval:', err);
     }
 
+    // Append to audit history
+    try {
+      await Invoice.findByIdAndUpdate(invoice._id, {
+        $push: {
+          auditHistory: {
+            action: isCash ? 'CASH_PAYMENT_VERIFIED' : 'BANK_TRANSFER_VERIFIED',
+            details: `${isCash ? 'Cash' : 'Bank transfer'} payment of ₹${amountToApply} approved (${finalStatus}). Receipt #${receiptNumber}. Remaining due: ₹${newOutstanding}`,
+            performedBy: adminUserId,
+            source: 'ADMIN_PANEL',
+            date: new Date()
+          }
+        }
+      });
+    } catch (auditErr) {
+      logger.warn('Failed to append audit history for payment approval:', auditErr);
+    }
+
     const populated = await Invoice.findById(updated._id)
       .populate('targetUserId', 'name username email firstName lastName')
       .populate('unitId', 'unitNumber')
@@ -660,6 +714,7 @@ export class InvoiceService {
     result.receiptNumber = receiptNumber;
 
     invoiceEventEmitter.emit(INVOICE_STATUS_UPDATED, result);
+    invoiceEventEmitter.emit('OFFLINE_PAYMENT_APPROVED', result);
 
     return result;
   }

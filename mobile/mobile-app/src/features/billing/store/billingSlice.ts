@@ -195,9 +195,14 @@ export const submitOfflineSettlement = createAsyncThunk(
 
 export const clearOfflineSettlement = createAsyncThunk(
   'billing/clearOfflineSettlement',
-  async (invoiceId: string, { rejectWithValue }) => {
+  async (
+    payload: string | { invoiceId: string; amount?: number; settlementType?: 'FULL' | 'CUSTOM' },
+    { rejectWithValue }
+  ) => {
     try {
-      const data = await billingService.approveInvoiceOffline(invoiceId);
+      const invoiceId = typeof payload === 'string' ? payload : payload.invoiceId;
+      const opts = typeof payload === 'string' ? undefined : { amount: payload.amount, settlementType: payload.settlementType };
+      const data = await billingService.approveInvoiceOffline(invoiceId, opts);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to approve offline payment');
@@ -427,6 +432,14 @@ export const billingSlice = createSlice({
       .addCase(verifyRazorpaySignature.rejected, (state, action) => {
         state.loadingStates.settleInvoice = false;
         state.error = action.payload as string;
+      })
+
+      // Invalidate and reset billing cache when switching community workspace
+      .addCase('auth/switchWorkspaceContext/fulfilled', (state) => {
+        state.invoicesList = [];
+        state.pagination = { ...initialState.pagination };
+        state.kpis = { ...initialState.kpis };
+        state.activeDues = { ...initialState.activeDues };
       });
   },
 });

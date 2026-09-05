@@ -48,11 +48,28 @@ export const verifyWalletPayment = createAsyncThunk(
   }
 );
 
+export const topUpWalletDirect = createAsyncThunk(
+  'wallet/topUpWalletDirect',
+  async ({ amount }: { amount: number }, { rejectWithValue, dispatch }) => {
+    try {
+      const response: any = await billingService.topUpWalletDirect(amount);
+      dispatch(fetchWalletBalance());
+      return response?.data || response;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to add funds to digital wallet'
+      );
+    }
+  }
+);
+
 const initialState: WalletState = {
   balance: 0,
   activePasses: [],
   transactionHistory: [],
+  transactions: [],
   isLoading: false,
+  loading: false,
   error: null,
 };
 
@@ -73,12 +90,15 @@ export const walletSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Fetch Balance & History
       .addCase(fetchWalletBalance.pending, (state) => {
         state.isLoading = true;
+        state.loading = true;
         state.error = null;
       })
       .addCase(fetchWalletBalance.fulfilled, (state, action) => {
         state.isLoading = false;
+        state.loading = false;
         if (action.payload) {
           state.balance =
             action.payload.balance !== undefined
@@ -86,22 +106,59 @@ export const walletSlice = createSlice({
               : typeof action.payload === 'number'
               ? action.payload
               : state.balance;
+          const history = action.payload.transactionHistory || action.payload.transactions || state.transactionHistory || [];
           state.activePasses = action.payload.activePasses || state.activePasses;
-          state.transactionHistory = action.payload.transactionHistory || state.transactionHistory;
+          state.transactionHistory = history;
+          state.transactions = history;
         }
       })
       .addCase(fetchWalletBalance.rejected, (state, action) => {
         state.isLoading = false;
+        state.loading = false;
         state.error = action.payload as string;
       })
+      // Create Order
       .addCase(createWalletRazorpayOrder.pending, (state) => {
         state.isLoading = true;
+        state.loading = true;
       })
       .addCase(createWalletRazorpayOrder.fulfilled, (state) => {
         state.isLoading = false;
+        state.loading = false;
       })
       .addCase(createWalletRazorpayOrder.rejected, (state, action) => {
         state.isLoading = false;
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Verify Payment
+      .addCase(verifyWalletPayment.pending, (state) => {
+        state.isLoading = true;
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(verifyWalletPayment.fulfilled, (state) => {
+        state.isLoading = false;
+        state.loading = false;
+      })
+      .addCase(verifyWalletPayment.rejected, (state, action) => {
+        state.isLoading = false;
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Direct Top-up
+      .addCase(topUpWalletDirect.pending, (state) => {
+        state.isLoading = true;
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(topUpWalletDirect.fulfilled, (state) => {
+        state.isLoading = false;
+        state.loading = false;
+      })
+      .addCase(topUpWalletDirect.rejected, (state, action) => {
+        state.isLoading = false;
+        state.loading = false;
         state.error = action.payload as string;
       });
   },

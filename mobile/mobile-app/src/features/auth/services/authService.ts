@@ -90,6 +90,17 @@ export const deleteAccount = async () => {
   return await apiClient.delete('/users/me');
 };
 
+export const updateProfile = async (data: any) => {
+  const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+  return await apiClient.put('/users/profile', data, {
+    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+  });
+};
+
+export const requestEmailChangeOtp = async (newEmail: string) => {
+  return await apiClient.post('/users/request-email-otp', { newEmail });
+};
+
 export default {
   login,
   register,
@@ -106,6 +117,8 @@ export default {
   resetPassword,
   logoutApi,
   deleteAccount,
+  updateProfile,
+  requestEmailChangeOtp,
   fetchSessions,
   revokeSession,
   revokeAllSessions,

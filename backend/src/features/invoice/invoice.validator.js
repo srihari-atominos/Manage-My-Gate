@@ -67,6 +67,16 @@ export const approveInvoiceSchema = [
     .isString()
     .withMessage('Invoice ID must be a valid string')
     .trim(),
+
+  body('amount')
+    .optional()
+    .isFloat({ gt: 0 })
+    .withMessage('Amount must be a number strictly greater than 0'),
+
+  body('settlementType')
+    .optional()
+    .isIn(['FULL', 'CUSTOM'])
+    .withMessage('Settlement type must be either FULL or CUSTOM'),
 ];
 
 export const rejectOfflineSchema = [

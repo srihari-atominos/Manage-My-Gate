@@ -32,12 +32,20 @@ export class InvoiceRepository {
    * @returns {Promise<{ grossDemand: number, totalCollected: number, inTransitGateway: number, totalUnpaidArrears: number }>}
    */
   async getDashboardKPIs(communityId) {
-    const communityObjId = new mongoose.Types.ObjectId(communityId);
+    const communityMatchCandidates = [];
+    if (mongoose.Types.ObjectId.isValid(communityId)) {
+      communityMatchCandidates.push(new mongoose.Types.ObjectId(communityId));
+    }
+    if (communityId) {
+      communityMatchCandidates.push(String(communityId));
+    }
+
     const result = await Invoice.aggregate([
       {
         $match: {
           $or: [
-            { communityId: communityObjId },
+            { communityId: { $in: communityMatchCandidates } },
+            { orgId: { $in: communityMatchCandidates } },
             { communityId: { $exists: false } }
           ]
         }
@@ -51,13 +59,17 @@ export class InvoiceRepository {
         },
       },
       {
-        $unwind: '$assessment',
+        $unwind: {
+          path: '$assessment',
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $match: {
           $or: [
-            { communityId: communityObjId },
-            { 'assessment.communityId': communityObjId }
+            { communityId: { $in: communityMatchCandidates } },
+            { orgId: { $in: communityMatchCandidates } },
+            { 'assessment.communityId': { $in: communityMatchCandidates } }
           ]
         },
       },
@@ -312,7 +324,14 @@ export class InvoiceRepository {
 
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const take = parseInt(limit, 10);
-    const communityObjId = new mongoose.Types.ObjectId(orgId);
+
+    const communityMatchCandidates = [];
+    if (mongoose.Types.ObjectId.isValid(orgId)) {
+      communityMatchCandidates.push(new mongoose.Types.ObjectId(orgId));
+    }
+    if (orgId) {
+      communityMatchCandidates.push(String(orgId));
+    }
 
     const matchConditions = { isDeleted: false };
 
@@ -348,11 +367,13 @@ export class InvoiceRepository {
         { 'snapshot.assessmentName': { $regex: q, $options: 'i' } },
         { 'assessment.name': { $regex: q, $options: 'i' } },
         { 'unitInfo.unitNumber': { $regex: q, $options: 'i' } },
+        { 'snapshot.unitDetails.unitNumber': { $regex: q, $options: 'i' } },
         { 'unitInfo.blockOrBuilding': { $regex: q, $options: 'i' } },
         { 'userInfo.name': { $regex: q, $options: 'i' } },
         { 'userInfo.username': { $regex: q, $options: 'i' } },
         { 'userInfo.email': { $regex: q, $options: 'i' } },
         { 'userInfo.phone': { $regex: q, $options: 'i' } },
+        { 'snapshot.residentDetails.name': { $regex: q, $options: 'i' } },
       ];
     }
 
@@ -366,10 +387,15 @@ export class InvoiceRepository {
     const basePipeline = [
       {
         $match: {
-          $or: [
-            { communityId: communityObjId, ...matchConditions },
-            { orgId: communityObjId, ...matchConditions },
-            { communityId: { $exists: false }, ...matchConditions },
+          $and: [
+            {
+              $or: [
+                { communityId: { $in: communityMatchCandidates } },
+                { orgId: { $in: communityMatchCandidates } },
+                { communityId: { $exists: false } },
+              ],
+            },
+            matchConditions,
           ],
         },
       },
@@ -384,12 +410,16 @@ export class InvoiceRepository {
       { $unwind: { path: '$assessment', preserveNullAndEmptyArrays: true } },
       {
         $match: {
-          $or: [
-            { communityId: communityObjId },
-            { orgId: communityObjId },
-            { 'assessment.communityId': communityObjId },
+          $and: [
+            {
+              $or: [
+                { communityId: { $in: communityMatchCandidates } },
+                { orgId: { $in: communityMatchCandidates } },
+                { 'assessment.communityId': { $in: communityMatchCandidates } },
+              ],
+            },
+            matchConditions,
           ],
-          ...matchConditions,
         },
       },
       {
@@ -632,9 +662,9 @@ export class InvoiceRepository {
                 createdAt: 1,
                 assessmentName: { $ifNull: ['$snapshot.assessmentName', { $ifNull: ['$assessment.name', 'Maintenance Assessment'] }] },
                 date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-                unitNumber: '$unitInfo.unitNumber',
+                unitNumber: { $ifNull: ['$unitInfo.unitNumber', '$snapshot.unitDetails.unitNumber'] },
                 blockOrBuilding: '$unitInfo.blockOrBuilding',
-                targetUser: { $ifNull: ['$userInfo.name', '$userInfo.username'] },
+                targetUser: { $ifNull: ['$userInfo.name', { $ifNull: ['$userInfo.username', '$snapshot.residentDetails.name'] }] },
                 amount: { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', { $ifNull: ['$outstandingAmount', { $ifNull: ['$currentCharge', 0] }] }] }] },
                 totalDue: { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', { $ifNull: ['$outstandingAmount', { $ifNull: ['$currentCharge', 0] }] }] }] },
                 totalAmount: { $ifNull: ['$totalAmount', { $ifNull: ['$totalDue', 0] }] },

@@ -37,7 +37,7 @@ export function useResidentBooking() {
     (state: RootState) => state.amenityBookings
   );
 
-  const { balance, toppingUp } = useSelector((state: RootState) => (state as any).amenityWallet || state.wallet);
+  const { balance = 0, isLoading: walletLoading = false } = useSelector((state: RootState) => state.wallet);
 
   useEffect(() => {
     if (id) {
@@ -152,7 +152,7 @@ export function useResidentBooking() {
     isCheckoutOpen,
     isTopUpOpen,
     balance,
-    toppingUp,
+    toppingUp: walletLoading,
     totalFee: computedTotalFee,
     isBalanceSufficient,
     loading: amenityLoading || slotsLoading,

@@ -1,10 +1,11 @@
 import { Router } from 'express'
 import userController from './user.controller.js'
 import { validate } from '../../middlewares/validator.middleware.js'
-import { inviteUserRules, bulkInviteUserRules, updateUserRolesRules, updateProfileRules, requestDeletionRules } from './user.validateRules.js'
+import { inviteUserRules, bulkInviteUserRules, updateUserRolesRules, updateProfileRules, requestDeletionRules, requestEmailOtpRules } from './user.validateRules.js'
 import isAuthenticated from '../../middlewares/auth.middleware.js'
 import { authorizePermission, authorizeAnyPermission } from '../../middlewares/rbac.middleware.js'
 import { upload, imageSignatureValidator } from './middlewares/upload.middleware.js'
+import { otpLimiter } from '../../middlewares/rateLimiter.middleware.js'
 import tenantContext from '../../middlewares/tenant.middleware.js'
 
 import userPreferenceRouter from '../userPreference/userPreference.router.js'
@@ -154,6 +155,37 @@ router.post(
  *       400:
  *         description: Validation or upload error.
  */
+/**
+ * @swagger
+ * /users/request-email-otp:
+ *   post:
+ *     summary: Request verification OTP to update profile email address
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - newEmail
+ *             properties:
+ *               newEmail:
+ *                 type: string
+ *                 format: email
+ *                 example: newemail@example.com
+ *     responses:
+ *       200:
+ *         description: Verification OTP sent to new email.
+ *       400:
+ *         description: Validation error or email already in use.
+ */
+router.post(
+  '/request-email-otp',
+  otpLimiter,
+  validate(requestEmailOtpRules),
+  userController.requestEmailOtp
+)
+
 router.put(
   '/profile',
   upload.single('avatar'),

@@ -5,7 +5,7 @@ import { Bell, Home, Building2, ChevronDown } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useSelector } from 'react-redux';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { RoleSwitchModal } from './RoleSwitchModal';
 import { VillaSwitchModal } from './VillaSwitchModal';
 import { OrgSwitchModal } from './OrgSwitchModal';
@@ -102,6 +102,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const [orgModalVisible, setOrgModalVisible] = useState(false);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [notifModalVisible, setNotifModalVisible] = useState(false);
+
+  const params = useLocalSearchParams<{ openProfile?: string }>();
+
+  React.useEffect(() => {
+    if (params?.openProfile === 'true') {
+      setProfileModalVisible(true);
+    }
+  }, [params?.openProfile]);
 
   // Check if context switching is applicable
   const userUnits = (user as any)?.accessibleUnits || [];
@@ -258,7 +266,16 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
       {/* Profile & Settings Modal */}
       <ProfileModal
         visible={profileModalVisible}
-        onClose={() => setProfileModalVisible(false)}
+        onClose={() => {
+          setProfileModalVisible(false);
+          if (params?.openProfile) {
+            try {
+              router.setParams({ openProfile: undefined });
+            } catch (e) {
+              // safe fallback
+            }
+          }
+        }}
         unitName={activeVilla || 'No Unit Assigned'}
         communityName={activeCommunity}
         onOpenOrgModal={() => setOrgModalVisible(true)}

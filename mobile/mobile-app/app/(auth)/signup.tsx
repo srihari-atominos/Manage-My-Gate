@@ -30,6 +30,7 @@ import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { useGoogleAuthSession } from '../../src/features/auth/hooks/useGoogleAuthSession';
 import {
   NahomEmblem,
   NahomWordmark,
@@ -101,6 +102,7 @@ interface SignupFormValues {
 
 export default function SignupScreen() {
   const { register: performRegister, loading, error, successMsg, clearStatus, logout, isAuthenticated } = useAuth();
+  const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [localLoading, setLocalLoading] = React.useState(false);
@@ -361,7 +363,7 @@ export default function SignupScreen() {
                   render={({ field: { onChange, value } }) => (
                     <PhoneInput
                       label="Phone Number"
-                      placeholder="97866 08686"
+                      placeholder="98765 43210"
                       value={value}
                       onChangeText={onChange}
                       error={errors.phone?.message}
@@ -552,7 +554,11 @@ export default function SignupScreen() {
 
               {/* Social Authentication: Google ID & Microsoft ID */}
               <View className="flex-row items-center gap-3 w-full">
-                <SocialAuthButton provider="google" />
+                <SocialAuthButton
+                  provider="google"
+                  onPress={handleGoogleSignIn}
+                  loading={googleLoading}
+                />
                 <SocialAuthButton provider="microsoft" />
               </View>
 

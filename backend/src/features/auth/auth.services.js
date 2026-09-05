@@ -498,6 +498,8 @@ export class AuthService {
         email: user.email,
         username: user.username,
         name: user.name || user.username || user.email,
+        phone: user.phone || '',
+        avatar: user.avatar || '',
         role: tokenPayload.role,
         roleId: tokenPayload.roleId,
         roles: tokenPayload.roles,
@@ -553,6 +555,8 @@ export class AuthService {
         email: user.email,
         username: user.username,
         name: user.name || user.username || user.email,
+        phone: user.phone || '',
+        avatar: user.avatar || '',
         role: tokenPayload.role,
         roleId: tokenPayload.roleId,
         roles: tokenPayload.roles,
@@ -1357,19 +1361,43 @@ export class AuthService {
    * @param {string} identifier - User email or phone number
    */
   async forgotPassword(identifier) {
-    const user = await userService.getUserByEmailOrPhone(identifier);
+    const cleanId = typeof identifier === 'string'
+      ? (identifier.includes('@') ? identifier.trim().toLowerCase() : identifier.replace(/\s+/g, ''))
+      : identifier;
+    const user = await userService.getUserByEmailOrPhone(cleanId);
 
     if (!user) {
       throw new HttpError(404, 'No account found with this identifier.');
     }
 
-    const type = identifier.includes('@') ? 'EMAIL' : 'SMS';
-    const plainCode = await otpService.createOTP(identifier, 'RESET');
+    const type = cleanId.includes('@') ? 'EMAIL' : 'SMS';
+    const plainCode = await otpService.createOTP(cleanId, 'RESET');
     
-    authEvents.emit('OTP_SENT', { identifier, code: plainCode, type });
+    authEvents.emit('OTP_SENT', { identifier: cleanId, code: plainCode, type });
 
     const isDev = process.env.NODE_ENV !== 'production';
-    return { message: isDev ? `Password reset instructions sent (Dev Code: ${plainCode})` : 'Password reset instructions sent' };
+    return {
+      message: isDev ? `Password reset instructions sent (Dev Code: ${plainCode})` : 'Password reset instructions sent',
+      devCode: isDev ? plainCode : undefined,
+    };
+  }
+
+  /**
+   * Verifies the reset password OTP without consuming it prematurely.
+   * @param {string} identifier - User email or phone
+   * @param {string} code - Plain OTP code provided by user
+   */
+  async verifyResetPasswordOtp(identifier, code) {
+    const cleanId = typeof identifier === 'string'
+      ? (identifier.includes('@') ? identifier.trim().toLowerCase() : identifier.replace(/\s+/g, ''))
+      : identifier;
+    const user = await userService.getUserByEmailOrPhone(cleanId);
+    if (!user) {
+      throw new HttpError(404, 'No account found with this identifier.');
+    }
+
+    await otpService.verifyOTP(cleanId, code, 'RESET', null, false);
+    return true;
   }
 
   /**
@@ -1379,6 +1407,9 @@ export class AuthService {
    * @param {string} newPassword - Selected new password
    */
   async resetPassword(identifier, code, newPassword) {
+    const cleanId = typeof identifier === 'string'
+      ? (identifier.includes('@') ? identifier.trim().toLowerCase() : identifier.replace(/\s+/g, ''))
+      : identifier;
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     
@@ -1387,9 +1418,9 @@ export class AuthService {
     session.startTransaction();
 
     try {
-      await otpService.verifyOTP(identifier, code, 'RESET');
+      await otpService.verifyOTP(cleanId, code, 'RESET');
 
-      const user = await userService.getUserByEmailOrPhone(identifier, session);
+      const user = await userService.getUserByEmailOrPhone(cleanId, session);
       if (!user) {
         throw new HttpError(404, 'User not found.');
       }
@@ -1398,7 +1429,7 @@ export class AuthService {
       const hashedPassword = await hashPassword(newPassword);
       
       const updateData = { password: hashedPassword };
-      if (identifier.includes('@')) {
+      if (cleanId.includes('@')) {
         updateData.emailVerified = true;
       } else {
         updateData.phoneVerified = true;

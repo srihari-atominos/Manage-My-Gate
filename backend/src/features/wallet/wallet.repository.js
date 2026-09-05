@@ -7,14 +7,37 @@ class WalletRepository {
     const options = { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true };
     if (session) options.session = session;
 
-    if (!orgId) {
+    let targetOrgId = orgId;
+    if (!targetOrgId) {
       const existing = await Wallet.findOne({ userId }).session(session || null);
       if (existing) return existing;
+
+      try {
+        const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
+        const membership = await OrgMembership.findOne({ userId, status: 'Active' }).session(session || null);
+        if (membership && membership.orgId) {
+          targetOrgId = membership.orgId;
+        }
+      } catch (e) {
+        // Fallback if model not found
+      }
     }
-    
+
+    if (targetOrgId) {
+      return await Wallet.findOneAndUpdate(
+        { userId, orgId: targetOrgId },
+        { $setOnInsert: { balance: 0, orgId: targetOrgId } },
+        options
+      );
+    }
+
+    // If still no orgId, search existing or insert without orgId
+    const existingWallet = await Wallet.findOne({ userId }).session(session || null);
+    if (existingWallet) return existingWallet;
+
     return await Wallet.findOneAndUpdate(
-      { userId, ...(orgId ? { orgId } : {}) },
-      { $setOnInsert: { balance: 0, ...(orgId ? { orgId } : {}) } },
+      { userId },
+      { $setOnInsert: { balance: 0 } },
       options
     );
   }

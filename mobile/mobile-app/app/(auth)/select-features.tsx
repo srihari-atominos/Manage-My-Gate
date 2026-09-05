@@ -68,8 +68,14 @@ const FEATURE_MODULES: FeatureModule[] = [
 ];
 
 export default function SelectFeaturesScreen() {
-  const { user, updateOrganizationFeatures, switchWorkspaceContext, loading, error, clearStatus } = useAuth();
-  const params = useLocalSearchParams<{ orgId?: string; intent?: string }>();
+  const { user, createWorkspace, updateOrganizationFeatures, switchWorkspaceContext, loading, error, clearStatus } = useAuth();
+  const params = useLocalSearchParams<{
+    orgId?: string;
+    orgName?: string;
+    organizationType?: string;
+    timezone?: string;
+    intent?: string;
+  }>();
 
   const userAny = user as any;
 
@@ -100,36 +106,58 @@ export default function SelectFeaturesScreen() {
   };
 
   const onSubmit = async () => {
-    const orgId =
-      params?.orgId ||
-      userAny?.orgId ||
-      userAny?.activeOrgId ||
-      userAny?.organizationId ||
-      (Array.isArray(userAny?.availableWorkspaces) &&
-        (userAny?.availableWorkspaces[0]?.orgId ||
-          userAny?.availableWorkspaces[0]?._id ||
-          userAny?.availableWorkspaces[0]?.id));
-
     const featuresToSave =
       selectedFeatures.length > 0
         ? selectedFeatures
         : ['administration_security', 'visitor', 'amenities', 'notices', 'complaints', 'billing'];
 
     try {
-      if (orgId) {
-        await updateOrganizationFeatures(orgId, featuresToSave);
+      if (params?.orgName) {
+        // Mode 1: New organization creation - execute atomic DB write with chosen features
+        const action: any = await createWorkspace({
+          name: params.orgName.trim(),
+          organizationType: params.organizationType || 'Residential',
+          timezone: params.timezone || 'Asia/Kolkata',
+          features: featuresToSave,
+        });
+
+        if (
+          action &&
+          (action.type?.endsWith('/fulfilled') ||
+            (action.meta && action.meta.requestStatus === 'fulfilled') ||
+            action.payload?.user ||
+            action.payload?.organization ||
+            action.payload?.data)
+        ) {
+          sessionStore.removeItem('mobile_auth_intent');
+          router.replace('/(resident)/dashboard');
+        }
+      } else {
+        // Mode 2: Existing organization updating features
+        const orgId =
+          params?.orgId ||
+          userAny?.orgId ||
+          userAny?.activeOrgId ||
+          userAny?.organizationId ||
+          (Array.isArray(userAny?.availableWorkspaces) &&
+            (userAny?.availableWorkspaces[0]?.orgId ||
+              userAny?.availableWorkspaces[0]?._id ||
+              userAny?.availableWorkspaces[0]?.id));
+
+        if (orgId) {
+          await updateOrganizationFeatures(orgId, featuresToSave);
+        }
+        sessionStore.removeItem('mobile_auth_intent');
+        router.replace('/(resident)/dashboard');
       }
     } catch (e) {
-      console.warn('Organization features patch warning:', e);
-    } finally {
-      sessionStore.removeItem('mobile_auth_intent');
-      router.replace('/(resident)/dashboard');
+      console.warn('Organization features setup warning:', e);
     }
   };
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Configure Features', headerBackVisible: false }} />
+      <Stack.Screen options={{ title: 'Configure Features', headerBackVisible: Boolean(params?.orgName) }} />
       <KeyboardAvoidingShell className="bg-background">
         <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 24, flexGrow: 1 }} className="bg-background">
           <View className="gap-5 max-w-lg mx-auto w-full py-2 sm:py-4">

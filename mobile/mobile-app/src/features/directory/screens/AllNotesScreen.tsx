@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Linking, Platform } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
@@ -53,12 +54,19 @@ export function AllNotesScreen() {
     setQuickSheetOpen(true);
   };
 
+  const router = useRouter();
+
+  const handleBack = () => {
+    router.replace({ pathname: '/(resident)/dashboard', params: { openProfile: 'true' } } as any);
+  };
+
   return (
     <ScreenShell
       title={t('all_community_notes', 'All Community Notes')}
       subtitle={t('community_notes_sub', 'Discover 24-hour neighbor notes & publish your status')}
       iconName="Sparkles"
       showBackButton={true}
+      onBackPress={handleBack}
     >
       <View className="flex-1 bg-background px-4 pt-3 pb-6 gap-3.5">
         {/* Navigation Segmented Control */}

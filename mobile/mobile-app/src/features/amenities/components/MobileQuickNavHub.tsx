@@ -135,16 +135,6 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
       badge: 'LIVE',
       badgeColor: 'bg-purple-600',
     },
-    {
-      id: 'sec-logs',
-      name: 'Security Logs',
-      route: '/(resident)/amenities/security-logs',
-      iconName: 'ClipboardList',
-      colorBg: 'bg-slate-500/10',
-      colorIcon: '#64748b',
-      badge: securityLogsCount > 0 ? String(securityLogsCount) : undefined,
-      badgeColor: 'bg-slate-600',
-    },
   ];
 
   return (

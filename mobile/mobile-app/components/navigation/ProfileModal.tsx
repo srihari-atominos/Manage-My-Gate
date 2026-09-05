@@ -1,9 +1,12 @@
 import React from 'react';
-import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Modal, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { useRouter } from 'expo-router';
 import { Home, X, Settings, ShieldCheck, Mail, Building2, ChevronRight, Users, Sparkles } from 'lucide-react-native';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { useSettings } from '@/src/features/settings/hooks/useSettings';
+import { ThemeToggleSwitch } from '@/components/settings/ThemeToggleSwitch';
+import { getImageUrl } from '@/src/utils/imageUrl';
 import { useTranslation } from '@/src/utils/i18n';
 
 interface ProfileModalProps {
@@ -55,6 +58,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   }, [communityName, userAny]);
   const dynamicRole = user?.role || (userAny?.roles && userAny?.roles.length > 0 ? userAny?.roles[0] : 'Member');
 
+  const { themeMode, setThemeMode } = useSettings();
+  const userAvatar = user?.avatar || userAny?.avatarUrl;
+  const resolvedAvatarUrl = userAvatar ? getImageUrl(userAvatar) : null;
+
   const avatarLetter = React.useMemo(() => {
     if (user?.name) return user.name.charAt(0).toUpperCase();
     if (user?.email) return user.email.charAt(0).toUpperCase();
@@ -82,13 +89,29 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView className="max-h-[460px]" showsVerticalScrollIndicator={false}>
+          <ScrollView className="max-h-[520px]" showsVerticalScrollIndicator={false}>
             <View className="gap-4">
               {/* 1. User Profile Header Card */}
-              <View className="items-center bg-primary/10 border border-primary/25 rounded-2xl p-4 gap-1.5 shadow-xs">
-                <View className="size-14 rounded-full bg-primary/20 items-center justify-center border-2 border-primary/40 shadow-xs">
-                  <Text className="text-primary font-black text-xl">{avatarLetter}</Text>
-                </View>
+              <TouchableOpacity
+                onPress={() => {
+                  onClose();
+                  router.push('/(resident)/profile' as any);
+                }}
+                activeOpacity={0.8}
+                className="items-center bg-primary/10 border border-primary/25 rounded-2xl p-4 gap-1.5 shadow-xs active:bg-primary/20"
+                accessibilityRole="button"
+                accessibilityLabel="Edit Profile"
+              >
+                {resolvedAvatarUrl ? (
+                  <Image
+                    source={{ uri: resolvedAvatarUrl }}
+                    className="size-14 rounded-full border-2 border-primary/40 shadow-xs"
+                  />
+                ) : (
+                  <View className="size-14 rounded-full bg-primary/20 items-center justify-center border-2 border-primary/40 shadow-xs">
+                    <Text className="text-primary font-black text-xl">{avatarLetter}</Text>
+                  </View>
+                )}
 
                 <Text className="text-base font-extrabold text-foreground text-center">
                   {user?.name || (user?.email ? user.email.split('@')[0] : 'User')}
@@ -111,6 +134,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     </Text>
                   </View>
                 </View>
+              </TouchableOpacity>
+
+              {/* Theme Mode Toggle (Light - Auto - Dark) */}
+              <View className="gap-1.5">
+                <Text className="text-[11px] font-bold text-muted-foreground uppercase px-1">
+                  {t('theme_mode', 'Theme Mode')}
+                </Text>
+                <ThemeToggleSwitch
+                  themeMode={themeMode}
+                  onSelectMode={setThemeMode}
+                  t={t}
+                />
               </View>
 
               {/* 2. Context Switchers Section */}

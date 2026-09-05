@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
 import { useDirectory } from '@/src/features/directory/hooks/useDirectory';
 import { DirectoryMember } from '@/src/features/directory/types/directoryTypes';
 
@@ -143,9 +144,7 @@ export const ResidentDirectoryModal = ({
 
         <View className="bg-card rounded-t-3xl overflow-hidden" style={{ maxHeight: '92%' }}>
           {/* Grab Handle */}
-          <View className="items-center pt-3 pb-1">
-            <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-          </View>
+          <SheetGrabHandle onClose={onClose} />
 
           {/* Header */}
           <View className="flex-row items-center justify-between px-5 pb-3 border-b border-border">
@@ -293,9 +292,7 @@ export const ResidentDirectoryModal = ({
           <View className="flex-1 justify-end bg-black/60">
             <Pressable className="absolute inset-0" onPress={() => setConnectNeighbor(null)} />
             <View className="bg-card rounded-t-3xl overflow-hidden">
-              <View className="items-center pt-3 pb-1">
-                <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-              </View>
+              <SheetGrabHandle onClose={() => setConnectNeighbor(null)} />
 
               <View className="px-5 pb-2 gap-4">
                 {/* Header */}

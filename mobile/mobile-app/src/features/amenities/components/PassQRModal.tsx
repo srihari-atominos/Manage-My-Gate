@@ -63,7 +63,15 @@ export function PassQRModal({ visible, onClose, booking }: PassQRModalProps) {
           <DetailRow label="Location" value={amenityLocation} iconName="MapPin" />
           <DetailRow label="Booking Code" value={bookingIdDisplay} copyable={true} iconName="Hash" />
           <DetailRow label="Reservation Date" value={booking.date || booking.bookingDate || ''} iconName="Calendar" />
-          <DetailRow label="Time Window" value={`${booking.startTime} - ${booking.endTime}`} iconName="Clock" />
+          <DetailRow
+            label="Time Window"
+            value={
+              booking.startTime && booking.endTime
+                ? `${booking.startTime} - ${booking.endTime}`
+                : booking.startTime || booking.endTime || 'Full Day'
+            }
+            iconName="Clock"
+          />
           <DetailRow label="Attendees" value={`${booking.numberOfPersons || booking.guestsCount || 1} Person(s)`} iconName="Users" />
           <DetailRow label="Total Amount" value={booking.totalFee ? `₹${booking.totalFee.toFixed(2)}` : 'Free'} iconName="CreditCard" />
           <DetailRow label="Payment Method" value={booking.paymentMethod || 'None'} iconName="Wallet" />

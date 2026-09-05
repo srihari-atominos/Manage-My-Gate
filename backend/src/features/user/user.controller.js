@@ -99,15 +99,29 @@ export class UserController {
   }
 
   /**
-   * Updates current user's profile and avatar.
+   * Requests an OTP to verify a new email address during profile update.
+   */
+  async requestEmailOtp(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const { newEmail } = req.body;
+      const result = await userService.requestEmailOtp(userId, newEmail);
+      res.success(result, 'Verification OTP sent to new email address');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Updates current user's profile, email (with OTP), and avatar.
    */
   async updateProfile(req, res, next) {
     try {
       const userId = req.user.id;
-      const { name, phone } = req.body;
+      const { name, phone, email, emailOtp } = req.body;
       const avatarFilename = req.file ? req.file.filename : undefined;
 
-      const updatedUser = await userService.updateProfile(userId, { name, phone, avatarFilename });
+      const updatedUser = await userService.updateProfile(userId, { name, phone, email, emailOtp, avatarFilename });
       
       res.success({
         id: updatedUser._id,

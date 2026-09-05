@@ -75,40 +75,18 @@ export default function SetupOrganizationScreen() {
   }, [orgName]);
 
   const onSubmit = async (data: SetupOrgFormValues) => {
-    const action: any = await createWorkspace({
-      name: data.name.trim(),
-      organizationType: 'Residential',
-      timezone: 'Asia/Kolkata',
+    router.push({
+      pathname: '/(auth)/select-features',
+      params: {
+        orgName: data.name.trim(),
+        organizationType: 'Residential',
+        timezone: 'Asia/Kolkata',
+        intent: 'create-org',
+      },
     });
-
-    if (
-      action &&
-      (action.type?.endsWith('/fulfilled') ||
-        (action.meta && action.meta.requestStatus === 'fulfilled') ||
-        action.payload?.user ||
-        action.payload?.organization ||
-        action.payload?.data)
-    ) {
-      const innerUser = action.payload?.user || action.payload?.data?.user;
-      const innerOrg = action.payload?.organization || action.payload?.data?.organization;
-      const createdOrgId =
-        innerUser?.orgId ||
-        innerUser?.activeOrgId ||
-        innerUser?.organizationId ||
-        innerOrg?._id ||
-        innerOrg?.id ||
-        (Array.isArray(innerUser?.availableWorkspaces) &&
-          (innerUser.availableWorkspaces[0]?.orgId || innerUser.availableWorkspaces[0]?._id));
-
-      router.replace({
-        pathname: '/(auth)/select-features',
-        params: { orgId: createdOrgId, intent: 'create-org' },
-      });
-    }
   };
 
   const isSubmitDisabled =
-    loading ||
     checking ||
     isAvailable !== true ||
     !orgName ||
@@ -197,12 +175,11 @@ export default function SetupOrganizationScreen() {
 
                 <Button
                   onPress={form.handleSubmit(onSubmit)}
-                  loading={loading}
                   disabled={isSubmitDisabled}
                   textClassName="font-bold text-base"
                   className="mt-1 h-12 bg-primary rounded-xl w-full items-center justify-center"
                 >
-                  {loading ? 'Creating Organization...' : 'Create Organization'}
+                  Next: Select Features
                 </Button>
 
                 {/* Already Have Account */}

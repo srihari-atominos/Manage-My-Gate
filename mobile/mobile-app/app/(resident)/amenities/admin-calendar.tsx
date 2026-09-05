@@ -77,6 +77,8 @@ export default function AdminAmenityCalendarScreen() {
   ];
 
   const renderBookingItem = (item: AmenityBooking) => {
+    if (!item) return null;
+
     const name =
       typeof item.amenityId === 'object' && item.amenityId
         ? item.amenityId.name
@@ -98,10 +100,12 @@ export default function AdminAmenityCalendarScreen() {
     const statusLabel = isCancelled ? 'CANCELLED' : item.status === 'COMPLETED' ? 'COMPLETED' : 'CONFIRMED';
     const statusVariant: StatusVariant = isCancelled ? 'danger' : item.status === 'COMPLETED' ? 'neutral' : 'success';
 
+    const timeWindowStr = item.startTime && item.endTime ? `${item.startTime} - ${item.endTime}` : item.startTime || item.endTime || '';
+
     return (
       <ListCard
         key={item._id}
-        title={`${name} • ${item.startTime} - ${item.endTime}`}
+        title={timeWindowStr ? `${name} • ${timeWindowStr}` : name}
         subtitle={`Resident: ${residentName} (${villaNum})`}
         leftIcon="Calendar"
         status={{ label: statusLabel, variant: statusVariant }}

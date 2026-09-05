@@ -145,15 +145,18 @@ export const setupInvoiceSocketListeners = async () => {
         const Role = (await import('../role/role.model.js')).default;
         const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
         
+        const isCash = payload.paymentMethod === 'CASH' || payload.invoice?.paymentMethod === 'CASH';
+        const methodLabel = isCash ? 'cash payment request' : 'bank transfer';
+        const amtStr = (payload.amount || payload.invoice?.offlineAmount || payload.invoice?.totalAmount || 0).toLocaleString('en-IN');
+
         // Notify resident
         if (payload.invoice?.targetUserId) {
           const resUserId = payload.invoice.targetUserId._id || payload.invoice.targetUserId;
-          const amtStr = (payload.invoice?.offlineAmount || payload.invoice?.totalAmount || 0).toLocaleString('en-IN');
           await notificationService.createNotification({
             recipientId: resUserId,
             senderId: null,
-            title: 'Payment Submitted',
-            body: `Your ₹${amtStr} bank transfer has been submitted for verification.`,
+            title: isCash ? 'Cash Payment Submitted' : 'Payment Submitted',
+            body: `Your ₹${amtStr} ${methodLabel} has been submitted for verification.`,
             actionUrl: '/billing?tab=action-center',
             type: 'INFO',
           });
@@ -173,22 +176,50 @@ export const setupInvoiceSocketListeners = async () => {
           });
 
           for (const member of memberships) {
-            const amtStr = (payload.invoice?.offlineAmount || payload.invoice?.totalAmount || 0).toLocaleString('en-IN');
             await notificationService.createNotification({
               recipientId: member.userId,
               senderId: null,
-              title: 'New Bank Transfer',
-              body: `${payload.residentName || 'Resident'} submitted a ₹${amtStr} payment for verification.`,
+              title: isCash ? 'New Cash Payment Request' : 'New Bank Transfer',
+              body: `${payload.residentName || 'Resident'} submitted a ₹${amtStr} ${isCash ? 'cash' : 'bank transfer'} payment for verification.`,
               actionUrl: '/billing?tab=action-center',
               type: 'INFO',
             });
           }
         }
       } catch (err) {
-        logger.error('Failed to create notification for bank transfer submission:', err);
+        logger.error('Failed to create notification for payment submission:', err);
       }
     } catch (error) {
       logger.error('Failed to emit offline_payment_submitted socket event:', error);
+    }
+  });
+
+  invoiceEventEmitter.on('OFFLINE_PAYMENT_APPROVED', async (payload) => {
+    try {
+      if (!payload || !payload.targetUserId) return;
+      const targetUserId = payload.targetUserId._id || payload.targetUserId;
+      const userRoom = `user:${targetUserId}`;
+      const isCash = (payload.paymentMethod || '').toUpperCase() === 'CASH';
+      const amtStr = (payload.paidAmount || payload.totalAmount || 0).toLocaleString('en-IN');
+
+      try {
+        getIO().to(userRoom).emit('offline_payment_approved', payload);
+        getIO().to(userRoom).emit('invoice_paid', payload);
+      } catch (e) {
+        // Socket.io not initialized in test/CLI mode
+      }
+
+      const notificationService = (await import('../notification/notification.service.js')).default;
+      await notificationService.createNotification({
+        recipientId: targetUserId,
+        senderId: null,
+        title: isCash ? 'Cash Payment Approved' : 'Payment Verified',
+        body: `Your ₹${amtStr} ${isCash ? 'cash' : 'bank transfer'} payment has been verified. Status: ${payload.status}. Receipt: ${payload.receiptNumber || 'Generated'}`,
+        actionUrl: '/billing?tab=action-center',
+        type: 'SUCCESS',
+      });
+    } catch (error) {
+      logger.error('Failed to emit OFFLINE_PAYMENT_APPROVED socket event:', error);
     }
   });
 
