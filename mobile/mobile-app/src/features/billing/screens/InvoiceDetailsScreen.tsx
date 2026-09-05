@@ -6,7 +6,8 @@ import * as Sharing from 'expo-sharing';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/common/Button';
+import { Card } from '@/components/common/Card';
 import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
@@ -247,27 +248,27 @@ export function InvoiceDetailsScreen() {
             <Button
               variant="outline"
               size="sm"
+              leftIcon={QrCode}
               onPress={() => setShowQR(true)}
-              className="flex-row items-center gap-1 border-border bg-card px-2.5"
+              className="border-border bg-card px-2.5 h-8"
+              textClassName="text-xs font-bold text-primary"
               accessibilityRole="button"
               accessibilityLabel="Show Invoice QR Pass"
             >
-              <Icon as={QrCode} size={14} className="text-primary" />
-              <Text className="text-xs font-bold text-primary">QR</Text>
+              QR
             </Button>
             <Button
               variant="outline"
               size="sm"
+              leftIcon={isExporting ? FileText : Download}
               onPress={() => handleExportPdf('download')}
               disabled={isExporting}
-              className="flex-row items-center gap-1 border-border bg-card px-2.5"
+              className="border-border bg-card px-2.5 h-8"
+              textClassName="text-xs font-bold text-foreground"
               accessibilityRole="button"
               accessibilityLabel="Export or Download PDF Invoice"
             >
-              <Icon as={isExporting ? FileText : Download} size={14} className="text-foreground" />
-              <Text className="text-xs font-bold text-foreground">
-                {isExporting ? 'Exporting...' : 'PDF'}
-              </Text>
+              {isExporting ? 'Exporting...' : 'PDF'}
             </Button>
           </View>
         ) : null
@@ -296,8 +297,8 @@ export function InvoiceDetailsScreen() {
               />
             }
           >
-            {/* Hero Invoice Summary Card */}
-            <View className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+            {/* Hero Invoice Summary Card using canonical Card */}
+            <Card className="p-5 shadow-sm mb-0">
               <View className="flex-row items-center justify-between mb-4">
                 <View className="flex-row items-center flex-1 me-2">
                   <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center me-3">
@@ -350,23 +351,27 @@ export function InvoiceDetailsScreen() {
                 <Button
                   variant="outline"
                   size="sm"
+                  leftIcon={Share2}
                   onPress={() => handleExportPdf('print')}
-                  className="flex-1 flex-row items-center justify-center gap-1.5"
+                  className="flex-1"
+                  textClassName="text-xs font-semibold text-foreground"
+                  accessibilityLabel="Share Statement"
                 >
-                  <Icon as={Share2} size={14} className="text-foreground" />
-                  <Text className="text-xs font-semibold text-foreground">Share Statement</Text>
+                  Share Statement
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
+                  leftIcon={Download}
                   onPress={() => handleExportPdf('download')}
-                  className="flex-1 flex-row items-center justify-center gap-1.5"
+                  className="flex-1"
+                  textClassName="text-xs font-semibold text-foreground"
+                  accessibilityLabel="Download PDF"
                 >
-                  <Icon as={Download} size={14} className="text-foreground" />
-                  <Text className="text-xs font-semibold text-foreground">Download PDF</Text>
+                  Download PDF
                 </Button>
               </View>
-            </View>
+            </Card>
 
             {/* Verification Pending Info Banner */}
             {isPendingVerification ? (
@@ -450,15 +455,13 @@ export function InvoiceDetailsScreen() {
             <Button
               variant="default"
               size="lg"
-              className="w-full flex-row items-center justify-center"
+              className="w-full"
+              rightIcon={ChevronRight}
               onPress={() => setShowCheckout(true)}
               accessibilityRole="button"
               accessibilityLabel={`Proceed to Pay Remaining Dues ₹${remainingDue.toLocaleString('en-IN')}`}
             >
-              <Text className="font-bold text-base text-primary-foreground me-1">
-                Pay Remaining Dues • ₹{remainingDue.toLocaleString('en-IN')}
-              </Text>
-              <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
+              {`Pay Remaining Dues • ₹${remainingDue.toLocaleString('en-IN')}`}
             </Button>
           </View>
         ) : null}

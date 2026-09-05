@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
+import { ProgressBar } from '@/components/common/ProgressBar';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { Layers, Calendar, ChevronDown, ChevronUp, CheckCircle2, Clock, AlertCircle } from 'lucide-react-native';
 
@@ -94,13 +96,13 @@ export const CycleLedgerGroupCard: React.FC<CycleLedgerGroupCardProps> = ({
       <View className="flex-row items-start justify-between">
         <View className="flex-1 me-3">
           <View className="flex-row items-center gap-1.5 mb-1">
-            <Layers size={16} className="text-primary" />
+            <Icon as={Layers} size={16} className="text-primary" />
             <Text className="text-base font-bold text-foreground">
               {assessmentName}
             </Text>
           </View>
           <View className="flex-row items-center gap-1.5">
-            <Calendar size={11} className="text-muted-foreground" />
+            <Icon as={Calendar} size={11} className="text-muted-foreground" />
             <Text className="text-xs font-semibold text-muted-foreground">
               Period: {billingPeriodString} • {totalTargeted} Units
             </Text>
@@ -114,7 +116,7 @@ export const CycleLedgerGroupCard: React.FC<CycleLedgerGroupCardProps> = ({
         />
       </View>
 
-      {/* Progress Bar */}
+      {/* Canonical Reusable Progress Bar */}
       <View className="mt-3">
         <View className="flex-row items-center justify-between mb-1.5">
           <Text className="text-xs font-semibold text-foreground">
@@ -123,12 +125,7 @@ export const CycleLedgerGroupCard: React.FC<CycleLedgerGroupCardProps> = ({
           </Text>
           <Text className="text-xs font-bold text-primary">{collectionPercent}%</Text>
         </View>
-        <View className="h-2 w-full bg-muted rounded-full overflow-hidden">
-          <View
-            className="h-full bg-primary rounded-full"
-            style={{ width: `${Math.min(collectionPercent, 100)}%` }}
-          />
-        </View>
+        <ProgressBar progress={collectionPercent} className="h-2 rounded-full" />
       </View>
 
       {/* Status Breakdown Pills */}
@@ -157,7 +154,7 @@ export const CycleLedgerGroupCard: React.FC<CycleLedgerGroupCardProps> = ({
         <Text className="text-xs font-bold text-primary">
           {expanded ? 'Hide Unit Roster' : `View Unit Invoices (${invoicesList.length})`}
         </Text>
-        {expanded ? <ChevronUp size={16} className="text-primary" /> : <ChevronDown size={16} className="text-primary" />}
+        <Icon as={expanded ? ChevronUp : ChevronDown} size={16} className="text-primary" />
       </Pressable>
 
       {/* Expandable Invoice History Roster */}
@@ -183,13 +180,11 @@ export const CycleLedgerGroupCard: React.FC<CycleLedgerGroupCardProps> = ({
               >
                 <View className="flex-1 me-2">
                   <View className="flex-row items-center gap-1.5">
-                    {isPaid ? (
-                      <CheckCircle2 size={13} className="text-status-success" />
-                    ) : isPending ? (
-                      <Clock size={13} className="text-amber-500" />
-                    ) : (
-                      <AlertCircle size={13} className="text-destructive" />
-                    )}
+                    <Icon
+                      as={isPaid ? CheckCircle2 : isPending ? Clock : AlertCircle}
+                      size={13}
+                      className={isPaid ? 'text-status-success' : isPending ? 'text-amber-500' : 'text-destructive'}
+                    />
                     <Text className="text-xs font-bold text-foreground">
                       Unit {inv?.unitNumber || '—'} • {inv?.targetUser || 'Resident'}
                     </Text>

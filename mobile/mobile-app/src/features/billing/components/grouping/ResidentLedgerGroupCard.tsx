@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, Pressable, Alert } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
+import { Button } from '@/components/common/Button';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { User, Phone, Mail, ChevronDown, ChevronUp, Bell, AlertCircle, CheckCircle2 } from 'lucide-react-native';
 import billingService from '../../services/billingService';
@@ -121,7 +123,7 @@ export const ResidentLedgerGroupCard: React.FC<ResidentLedgerGroupCardProps> = (
       <View className="flex-row items-start justify-between">
         <View className="flex-1 me-3">
           <View className="flex-row items-center gap-1.5 mb-1">
-            <User size={16} className="text-primary" />
+            <Icon as={User} size={16} className="text-primary" />
             <Text className="text-base font-bold text-foreground">
               {residentName}
             </Text>
@@ -129,13 +131,13 @@ export const ResidentLedgerGroupCard: React.FC<ResidentLedgerGroupCardProps> = (
           <View className="flex-row items-center gap-3 mt-0.5">
             {phone && phone !== '—' ? (
               <View className="flex-row items-center gap-1">
-                <Phone size={11} className="text-muted-foreground" />
+                <Icon as={Phone} size={11} className="text-muted-foreground" />
                 <Text className="text-xs text-muted-foreground">{phone}</Text>
               </View>
             ) : null}
             {email && email !== '—' ? (
               <View className="flex-row items-center gap-1">
-                <Mail size={11} className="text-muted-foreground" />
+                <Icon as={Mail} size={11} className="text-muted-foreground" />
                 <Text className="text-xs text-muted-foreground" numberOfLines={1}>{email}</Text>
               </View>
             ) : null}
@@ -184,26 +186,24 @@ export const ResidentLedgerGroupCard: React.FC<ResidentLedgerGroupCardProps> = (
           <Text className="text-xs font-bold text-primary">
             {expanded ? 'Hide Invoices' : `Invoices (${invoicesList.length})`}
           </Text>
-          {expanded ? <ChevronUp size={16} className="text-primary" /> : <ChevronDown size={16} className="text-primary" />}
+          <Icon as={expanded ? ChevronUp : ChevronDown} size={16} className="text-primary" />
         </Pressable>
 
         {hasDues && residentUserId ? (
-          <Pressable
-            onPress={handleSendInAppReminder}
+          <Button
+            variant="outline"
+            size="sm"
+            loading={isSendingReminder}
             disabled={isSendingReminder}
-            className="flex-row items-center bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-full active:bg-primary/20"
+            onPress={handleSendInAppReminder}
+            leftIcon={Bell}
+            className="border-primary/30 bg-primary/10 h-8 px-3 rounded-full"
+            textClassName="text-xs font-bold text-primary"
             accessibilityRole="button"
             accessibilityLabel="Send in-app reminder to resident"
           >
-            {isSendingReminder ? (
-              <ActivityIndicator size="small" color="#2563eb" className="me-1.5" />
-            ) : (
-              <Bell size={13} className="text-primary me-1.5" />
-            )}
-            <Text className="text-xs font-bold text-primary">
-              {isSendingReminder ? 'Sending...' : 'In-App Reminder'}
-            </Text>
-          </Pressable>
+            {isSendingReminder ? 'Sending...' : 'In-App Reminder'}
+          </Button>
         ) : null}
       </View>
 
@@ -228,11 +228,11 @@ export const ResidentLedgerGroupCard: React.FC<ResidentLedgerGroupCardProps> = (
               >
                 <View className="flex-1 me-2">
                   <View className="flex-row items-center gap-1.5">
-                    {isPaid ? (
-                      <CheckCircle2 size={13} className="text-status-success" />
-                    ) : (
-                      <AlertCircle size={13} className="text-destructive" />
-                    )}
+                    <Icon
+                      as={isPaid ? CheckCircle2 : AlertCircle}
+                      size={13}
+                      className={isPaid ? 'text-status-success' : 'text-destructive'}
+                    />
                     <Text className="text-xs font-bold text-foreground">
                       Unit {inv?.unitNumber || '—'} • #{inv?.invoiceNumber || '—'}
                     </Text>

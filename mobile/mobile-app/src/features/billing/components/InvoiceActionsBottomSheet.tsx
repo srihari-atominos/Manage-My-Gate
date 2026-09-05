@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Share, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/common/Button';
 import { getStatusVariant } from '@/components/ui/StatusBadge';
-import { Clock, Bell } from 'lucide-react-native';
+import { Clock, Bell, FileText } from 'lucide-react-native';
 import { Invoice } from '../types';
 import billingService from '../services/billingService';
 
@@ -29,6 +30,7 @@ export function InvoiceActionsBottomSheet({
   onRejectOffline,
   onSettleOfflineModal,
 }: InvoiceActionsBottomSheetProps) {
+  const router = useRouter();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -178,6 +180,22 @@ export function InvoiceActionsBottomSheet({
 
           {/* Action CTAs */}
           <View className="gap-2.5 pt-2">
+            {/* Direct Link to Child Invoice Details Screen */}
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full border-primary/40"
+              leftIcon={FileText}
+              onPress={() => {
+                onClose();
+                router.push(`/(resident)/billing/invoice/${invoice._id || invoice.invoiceNumber}` as any);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="View Full Invoice Statement and Itemized Breakdown"
+            >
+              View Full Invoice Statement
+            </Button>
+
             {isPendingVerification && onApproveOffline ? (
               <Button
                 variant="default"
@@ -189,7 +207,7 @@ export function InvoiceActionsBottomSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Approve and Clear Offline Payment"
               >
-                <Text className="font-bold text-base text-primary-foreground">Approve & Clear Payment</Text>
+                Approve & Clear Payment
               </Button>
             ) : null}
 
@@ -197,14 +215,15 @@ export function InvoiceActionsBottomSheet({
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full border-destructive/50 text-destructive active:bg-destructive/10"
+                className="w-full border-destructive/50"
+                textClassName="text-destructive font-bold"
                 disabled={isApproving || isRejecting}
                 loading={isRejecting}
                 onPress={() => setShowRejectModal(true)}
                 accessibilityRole="button"
                 accessibilityLabel="Reject Offline Payment Submission"
               >
-                <Text className="font-bold text-base text-destructive">Reject Submission</Text>
+                Reject Submission
               </Button>
             ) : null}
 
@@ -228,17 +247,16 @@ export function InvoiceActionsBottomSheet({
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full border-primary/50 text-primary active:bg-primary/10"
+                className="w-full border-primary/50"
+                textClassName="text-primary font-bold"
+                leftIcon={Bell}
                 disabled={isApproving || isRejecting || isSendingReminder}
                 loading={isSendingReminder}
                 onPress={handleSendInAppReminder}
                 accessibilityRole="button"
                 accessibilityLabel="Send in-app reminder to resident"
               >
-                <View className="flex-row items-center justify-center gap-2">
-                  <Icon as={Bell} size={18} className="text-primary" />
-                  <Text className="font-bold text-base text-primary">Send In-App Reminder</Text>
-                </View>
+                Send In-App Reminder
               </Button>
             ) : null}
 

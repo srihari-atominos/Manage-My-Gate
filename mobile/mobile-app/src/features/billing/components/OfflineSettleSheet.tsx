@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Alert, ScrollView } from 'react-native';
+import { View, Alert } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/common/Button';
+import { SegmentedControl } from '@/components/common/SegmentedControl';
+import { DatePicker } from '@/components/common/DatePicker';
+import { formatDateString } from '@/components/common/DatePickerModal';
 import { TextInput } from '@/components/forms/TextInput';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { Landmark, FileText, Clock, AlertCircle, ChevronRight } from 'lucide-react-native';
+import { FileText, Clock, AlertCircle, ChevronRight } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { Invoice } from '../types';
 
@@ -30,7 +33,6 @@ export function OfflineSettleSheet({
   const [offlineReference, setOfflineReference] = useState<string>('');
   const [amountStr, setAmountStr] = useState<string>('');
   const [paymentDateStr, setPaymentDateStr] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [bankName, setBankName] = useState<string>('');
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -60,7 +62,6 @@ export function OfflineSettleSheet({
       setOfflineReference('');
       setAmountStr(remainingDue > 0 ? remainingDue.toString() : '');
       setPaymentDateStr(new Date().toISOString().slice(0, 10));
-      setBankName('');
       setShowConfirmModal(false);
       setIsSubmitting(false);
       resetBillingError();
@@ -153,26 +154,14 @@ export function OfflineSettleSheet({
             <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
               1. How did you pay?
             </Text>
-            <View className="flex-row gap-2.5">
-              {[
-                { key: 'BANK_TRANSFER', label: 'Bank Transfer' },
-                { key: 'CASH', label: 'Cash' },
-              ].map((item) => {
-                const isSelected = paymentMethod === item.key;
-                return (
-                  <Button
-                    key={item.key}
-                    variant={isSelected ? 'default' : 'outline'}
-                    onPress={() => setPaymentMethod(item.key as any)}
-                    className="flex-1 h-12 rounded-xl"
-                  >
-                    <Text className={`font-extrabold text-sm ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
-                      {item.label}
-                    </Text>
-                  </Button>
-                );
-              })}
-            </View>
+            <SegmentedControl
+              segments={[
+                { key: 'BANK_TRANSFER', label: 'Bank Transfer / Cheque' },
+                { key: 'CASH', label: 'Cash at Counter' },
+              ]}
+              activeSegment={paymentMethod}
+              onChange={(key) => setPaymentMethod(key as any)}
+            />
           </View>
 
           {paymentMethod === 'BANK_TRANSFER' ? (
@@ -191,14 +180,13 @@ export function OfflineSettleSheet({
                 />
               </View>
 
-              {/* Section 3: Payment Date */}
+              {/* Section 3: Payment Date via Canonical DatePicker */}
               <View className="mb-4">
-                <TextInput
+                <DatePicker
                   label="3. Payment Date"
-                  leftIcon={Clock}
-                  value={paymentDateStr}
-                  onChangeText={setPaymentDateStr}
-                  placeholder="YYYY-MM-DD"
+                  value={paymentDateStr ? new Date(`${paymentDateStr}T00:00:00`) : new Date()}
+                  onChange={(d) => setPaymentDateStr(formatDateString(d))}
+                  placeholder="Select Payment Date"
                 />
               </View>
 
@@ -217,17 +205,15 @@ export function OfflineSettleSheet({
               <Button
                 variant="default"
                 size="lg"
-                className="w-full flex-row items-center justify-center"
+                className="w-full mt-1"
                 disabled={isSubmissionBlocked || isFormInvalid || isSubmitting || loadingStates.settleInvoice}
                 loading={isSubmitting || loadingStates.settleInvoice}
                 onPress={handleOpenConfirm}
+                rightIcon={ChevronRight}
                 accessibilityRole="button"
                 accessibilityLabel="Submit Bank Transfer Details"
               >
-                <Text className="font-bold text-base text-primary-foreground me-1">
-                  Submit Payment • ₹{amountToSubmit.toLocaleString('en-IN')}
-                </Text>
-                <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
+                {`Submit Payment • ₹${amountToSubmit.toLocaleString('en-IN')}`}
               </Button>
             </>
           ) : (
@@ -260,4 +246,3 @@ export function OfflineSettleSheet({
 }
 
 export default OfflineSettleSheet;
-
