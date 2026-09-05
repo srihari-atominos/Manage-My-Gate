@@ -15,6 +15,7 @@ import { useBillingSocket } from '../hooks/useBillingSocket';
 import { UnitDueBreakdown, InvoiceStatus, Invoice } from '../types';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { OfflineSettleSheet } from '../components/OfflineSettleSheet';
+import { PaymentReceiptModal } from '../components/PaymentReceiptModal';
 
 export function ResidentMyDuesScreen() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export function ResidentMyDuesScreen() {
   // Modal sheet state
   const [checkoutInvoice, setCheckoutInvoice] = useState<Invoice | null>(null);
   const [offlineInvoice, setOfflineInvoice] = useState<Invoice | null>(null);
+  const [receiptInvoice, setReceiptInvoice] = useState<any | null>(null);
 
   // Load resident dues & wallet balance on screen mount
   useEffect(() => {
@@ -268,10 +270,10 @@ export function ResidentMyDuesScreen() {
                           </View>
                           <View className="flex-1">
                             <Text className="text-foreground font-bold text-base truncate">
-                              {invNo}
+                              {item.assessmentName || 'Maintenance Assessment'}
                             </Text>
-                            <Text className="text-muted-foreground text-xs font-medium">
-                              {unitStr} • {periodStr}
+                            <Text className="text-muted-foreground text-xs font-medium mt-0.5">
+                              #{invNo} • {unitStr} • {periodStr}
                             </Text>
                           </View>
                         </View>
@@ -377,8 +379,11 @@ export function ResidentMyDuesScreen() {
               outstandingAmount: amount || inv.outstandingAmount || inv.totalDue || 0,
             });
           }}
-          onPaymentSuccess={() => {
+          onPaymentSuccess={(result) => {
             loadResidentDues();
+            if (result || checkoutInvoice) {
+              setReceiptInvoice(result || checkoutInvoice);
+            }
           }}
         />
 
@@ -387,9 +392,19 @@ export function ResidentMyDuesScreen() {
           visible={!!offlineInvoice}
           invoice={offlineInvoice}
           onClose={() => setOfflineInvoice(null)}
-          onSettlementSubmitted={() => {
+          onSettlementSubmitted={(result) => {
             loadResidentDues();
+            if (result || offlineInvoice) {
+              setReceiptInvoice(result || offlineInvoice);
+            }
           }}
+        />
+
+        {/* Post-Payment Invoice Receipt & PDF Modal */}
+        <PaymentReceiptModal
+          visible={!!receiptInvoice}
+          invoice={receiptInvoice}
+          onClose={() => setReceiptInvoice(null)}
         />
       </View>
     </ScreenShell>

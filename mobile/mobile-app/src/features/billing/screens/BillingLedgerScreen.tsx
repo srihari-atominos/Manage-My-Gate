@@ -12,7 +12,7 @@ import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { ShieldAlert } from 'lucide-react-native';
 import { InvoiceCard } from '../components/InvoiceCard';
 import { InvoiceActionsBottomSheet } from '../components/InvoiceActionsBottomSheet';
-import { OfflineSettleSheet } from '../components/OfflineSettleSheet';
+import { AdminOfflineSettleSheet } from '../components/AdminOfflineSettleSheet';
 import { LedgerQRScannerModal } from '../components/LedgerQRScannerModal';
 import { LedgerFilterDrawer, LedgerFilterValues } from '../components/LedgerFilterDrawer';
 import { LedgerGroupingToggle, LedgerGroupingMode } from '../components/LedgerGroupingToggle';
@@ -41,11 +41,18 @@ export function BillingLedgerScreen() {
   // Socket sync for real-time ledger updates
   useBillingSocket();
 
-  // Permission check from auth state
-  const permissions: string[] = useSelector((state: any) => state.auth?.user?.permissions || []);
-  const userRole: string = useSelector((state: any) => state.auth?.user?.role || '');
-  const isSuperAdmin = userRole === 'SuperAdmin' || userRole === 'Admin';
-  const hasLedgerPermission = isSuperAdmin || permissions.includes('billing:dashboard') || permissions.includes('billing:assessment_manager') || permissions.includes('*');
+  // Permission check from auth state (memoized boolean selector to avoid new reference warnings)
+  const hasLedgerPermission = useSelector((state: any) => {
+    const role = state.auth?.user?.role || '';
+    if (role === 'SuperAdmin' || role === 'Admin') return true;
+    const permissions = state.auth?.user?.permissions;
+    if (!Array.isArray(permissions)) return false;
+    return (
+      permissions.includes('billing:dashboard') ||
+      permissions.includes('billing:assessment_manager') ||
+      permissions.includes('*')
+    );
+  });
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -120,10 +127,47 @@ export function BillingLedgerScreen() {
     }
   }, [changeTablePage, pagination, currentQueryParams, loadingStates.fetchGrid]);
 
-  // Permission Denied View
-  if (!hasLedgerPermission) {
-    return (
-      <ScreenShell title="Billing Ledger" subtitle="Access Restricted" iconName="Receipt">
+  // Differentiated Empty Subtitles (Must be declared before any conditional return)
+  const emptySubtitle = useMemo(() => {
+    if (search.trim()) return `No billing records match "${search.trim()}".`;
+    if (statusFilter !== 'ALL') return `No invoices match status filter "${statusFilter.replace(/_/g, ' ')}".`;
+    return 'No community billing records found in the ledger.';
+  }, [search, statusFilter]);
+
+  // Guaranteed unique key extractor for FlatList across all ledger modes
+  const ledgerKeyExtractor = useCallback((item: any, index: number): string => {
+    if (!item) return `ledger-item-${index}`;
+    if (groupMode === 'cycle') {
+      const period = item.billingPeriodString || (typeof item._id === 'object' ? item._id?.period : '') || '';
+      const assess = item.assessmentName || (typeof item._id === 'object' ? item._id?.assessmentId : '') || '';
+      return `cycle-${period}-${assess}-${index}`;
+    }
+    if (groupMode === 'unit') {
+      const unit = item.unitNumber || item.unitId || (typeof item._id === 'string' ? item._id : '') || '';
+      return `unit-${unit}-${index}`;
+    }
+    if (groupMode === 'resident') {
+      const resident = item.residentName || item.residentId || (typeof item._id === 'string' ? item._id : '') || '';
+      return `resident-${resident}-${index}`;
+    }
+    if (typeof item._id === 'string' && item._id) return item._id;
+    if (item.invoiceNumber) return String(item.invoiceNumber);
+    if (typeof item.id === 'string' && item.id) return item.id;
+    return `invoice-${index}`;
+  }, [groupMode]);
+
+  return (
+    <ScreenShell
+      title="Billing Ledger"
+      subtitle={
+        !hasLedgerPermission
+          ? 'Access Restricted'
+          : `Total ${pagination.totalRecords || 0} community invoices`
+      }
+      iconName="Receipt"
+      loading={hasLedgerPermission && loadingStates.fetchGrid && invoicesList.length === 0}
+    >
+      {!hasLedgerPermission ? (
         <View className="flex-1 bg-background p-6 items-center justify-center">
           <View className="w-16 h-16 rounded-full bg-destructive/10 items-center justify-center mb-4">
             <Icon as={ShieldAlert} size={32} className="text-destructive" />
@@ -142,56 +186,38 @@ export function BillingLedgerScreen() {
             Return to My Dues
           </Button>
         </View>
-      </ScreenShell>
-    );
-  }
+      ) : (
+        <View className="flex-1 bg-background">
+          {/* Error Banner */}
+          {error ? (
+            <View className="px-4 pt-2">
+              <ErrorBanner message={error} onDismiss={resetBillingError} />
+            </View>
+          ) : null}
 
-  // Differentiated Empty Subtitles
-  const emptySubtitle = useMemo(() => {
-    if (search.trim()) return `No billing records match "${search.trim()}".`;
-    if (statusFilter !== 'ALL') return `No invoices match status filter "${statusFilter.replace(/_/g, ' ')}".`;
-    return 'No community billing records found in the ledger.';
-  }, [search, statusFilter]);
+          {/* Unified Filter Pills (Row 2) & Search Input with Scanner & Filter Drawer trigger (Row 1) */}
+          <SearchFilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search unit 'Villa 104', Chq #, or resident..."
+            sortOptions={statusSortOptions}
+            currentSort={statusFilter}
+            onSortChange={(val) => setStatusFilter(val as any)}
+            onScanPress={() => setShowScanner(true)}
+            onFilterPress={() => setShowFilterDrawer(true)}
+            activeFilterCount={activeFilterCount}
+          />
 
-  return (
-    <ScreenShell
-      title="Billing Ledger"
-      subtitle={`Total ${pagination.totalRecords || 0} community invoices`}
-      iconName="Receipt"
-      loading={loadingStates.fetchGrid && invoicesList.length === 0}
-    >
-      <View className="flex-1 bg-background">
+          {/* Multi-Mode Grouping Toggle (Row 4) */}
+          <LedgerGroupingToggle
+            mode={groupMode}
+            onModeChange={setGroupMode}
+          />
 
-        {/* Error Banner */}
-        {error ? (
-          <View className="px-4 pt-2">
-            <ErrorBanner message={error} onDismiss={resetBillingError} />
-          </View>
-        ) : null}
-
-        {/* Unified Filter Pills (Row 2) & Search Input with Scanner & Filter Drawer trigger (Row 1) */}
-        <SearchFilterBar
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search unit 'Villa 104', Chq #, or resident..."
-          sortOptions={statusSortOptions}
-          currentSort={statusFilter}
-          onSortChange={(val) => setStatusFilter(val as any)}
-          onScanPress={() => setShowScanner(true)}
-          onFilterPress={() => setShowFilterDrawer(true)}
-          activeFilterCount={activeFilterCount}
-        />
-
-
-        {/* Multi-Mode Grouping Toggle (Row 4) */}
-        <LedgerGroupingToggle
-          mode={groupMode}
-          onModeChange={setGroupMode}
-        />
-
-        {/* Paginated Cards List (Flat or Grouped View) */}
-        <PaginatedList<any>
-          data={invoicesList}
+          {/* Paginated Cards List (Flat or Grouped View) */}
+          <PaginatedList<any>
+            data={invoicesList}
+            keyExtractor={ledgerKeyExtractor}
           renderItem={(item) => {
             if (groupMode === 'unit') {
               return (
@@ -275,13 +301,17 @@ export function BillingLedgerScreen() {
           onSettleOfflineModal={(inv) => setSettleInvoice(inv)}
         />
 
-        {/* Offline Payment Settlement Sheet */}
-        <OfflineSettleSheet
+        {/* Admin Offline Payment Settlement Sheet */}
+        <AdminOfflineSettleSheet
           visible={!!settleInvoice}
           onClose={() => setSettleInvoice(null)}
           invoice={settleInvoice}
+          onSuccess={() => {
+            changeTablePage(pagination?.currentPage || 1, currentQueryParams);
+          }}
         />
       </View>
+      )}
     </ScreenShell>
   );
 }

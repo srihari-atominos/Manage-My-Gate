@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Clock, Check } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { AmenitySlot } from '../store/amenitySlice';
@@ -11,6 +11,7 @@ export interface TimeSlotSelectorProps {
   selectedSlot: AmenitySlot | null;
   onSlotSelect: (slot: AmenitySlot) => void;
   loading?: boolean;
+  selectedDate?: string;
 }
 
 function getSlotDuration(start: string, end: string): string {
@@ -29,6 +30,7 @@ export function TimeSlotSelector({
   selectedSlot,
   onSlotSelect,
   loading = false,
+  selectedDate,
 }: TimeSlotSelectorProps) {
   if (loading) {
     return (
@@ -38,11 +40,38 @@ export function TimeSlotSelector({
     );
   }
 
-  if (!slots || slots.length === 0) {
+  // Calculate current date/time to filter out finished time slots
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const isToday = selectedDate ? selectedDate === todayStr : true;
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const visibleSlots = (slots || []).filter((slot) => {
+    if (!slot) return false;
+    // Omit closed slots
+    if (slot.status?.toLowerCase() === 'closed') return false;
+
+    // If viewing today, omit slots whose start time has already passed
+    if (isToday && slot.startTime) {
+      const [startH = 0, startM = 0] = slot.startTime.split(':').map(Number);
+      const slotStartMinutes = startH * 60 + startM;
+      if (slotStartMinutes <= currentMinutes) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  if (visibleSlots.length === 0) {
     return (
-      <View className="p-4 bg-muted/30 rounded-xl border border-border/50 items-center justify-center my-2">
-        <Text variant="muted" className="text-center text-xs">
-          No available time slots found for the selected date.
+      <View className="p-5 bg-muted/30 rounded-2xl border border-border/50 items-center justify-center my-3">
+        <Clock size={24} className="text-muted-foreground/60 mb-2" />
+        <Text variant="small" className="font-semibold text-foreground text-center">
+          No Remaining Time Slots
+        </Text>
+        <Text variant="muted" className="text-center text-xs mt-1 text-muted-foreground">
+          All time slots for this date have finished or are unavailable. Please select a future date.
         </Text>
       </View>
     );
@@ -58,39 +87,39 @@ export function TimeSlotSelector({
 
         {/* Top Legend Indicator */}
         <View className="flex-row items-center">
-          <View className="w-2 h-2 rounded-full bg-muted-foreground me-1.5" />
+          <View className="w-2 h-2 rounded-full bg-emerald-500 me-1.5" />
           <Text className="text-[11px] font-semibold text-muted-foreground">
-            Closed
+            {visibleSlots.length} Available
           </Text>
         </View>
       </View>
 
       {/* 2-Column Grid Cards */}
       <View className="flex-row flex-wrap justify-between gap-y-2">
-        {(slots || []).filter(Boolean).map((slot, index) => {
+        {visibleSlots.map((slot, index) => {
           const slotStartTime = slot?.startTime || '00:00';
           const slotEndTime = slot?.endTime || '00:00';
-          const slotId = slot._id || `${slotStartTime}-${slotEndTime}-${index}`;
+          const slotId = slot?._id || `${slotStartTime}-${slotEndTime}-${index}`;
           const isSelected =
             selectedSlot &&
-            ((selectedSlot._id && slot._id && selectedSlot._id === slot._id) ||
-              (selectedSlot.startTime === slotStartTime && selectedSlot.endTime === slotEndTime));
+            ((selectedSlot._id && slot?._id && selectedSlot._id === slot._id) ||
+              (selectedSlot?.startTime === slotStartTime && selectedSlot?.endTime === slotEndTime));
 
           const availableCount =
-            slot.availableCount !== undefined
+            slot?.availableCount !== undefined
               ? slot.availableCount
-              : slot.capacity
+              : slot?.capacity
               ? Math.max(0, slot.capacity - (slot.bookedCount || 0))
               : 1;
 
           const isAvailable =
-            slot.isAvailable !== undefined
+            slot?.isAvailable !== undefined
               ? slot.isAvailable
-              : slot.status
+              : slot?.status
               ? slot.status === 'Available'
               : availableCount > 0;
 
-          const duration = getSlotDuration(slot.startTime, slot.endTime);
+          const duration = getSlotDuration(slotStartTime, slotEndTime);
 
           return (
             <Pressable
@@ -118,7 +147,7 @@ export function TimeSlotSelector({
                       : 'text-foreground'
                   )}
                 >
-                  {slot.startTime}
+                  {slotStartTime}
                 </Text>
 
                 {isSelected && (
@@ -136,7 +165,7 @@ export function TimeSlotSelector({
                     !isAvailable ? 'text-muted-foreground/60' : 'text-muted-foreground'
                   )}
                 >
-                  {slot.endTime}
+                  {slotEndTime}
                 </Text>
                 <Text
                   className={cn(

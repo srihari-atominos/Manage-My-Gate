@@ -337,7 +337,11 @@ export default function ProfileScreen() {
   };
 
   const handleBack = () => {
-    router.replace({ pathname: '/(resident)/dashboard', params: { openProfile: 'true' } } as any);
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(resident)/dashboard' as any);
+    }
   };
 
   const displayName = name || user?.name || (user?.email ? user.email.split('@')[0] : t('logged_in_resident', 'Resident User'));

@@ -30,8 +30,7 @@ export const SYSTEM_FEATURE_CATALOG = [
       { id: 'amenities_admin_calendar', name: 'Admin Calendar', permission: 'amenities:admin_calander', iconName: 'CalendarDays', colorBg: 'bg-pink-500/15', colorIcon: '#ec4899', route: '/(resident)/amenities/admin-calendar' },
       { id: 'amenities_ledgers', name: 'Ledgers & Accounts', permission: 'amenities:ledgers', iconName: 'Receipt', colorBg: 'bg-emerald-500/15', colorIcon: '#059669', route: '/(resident)/amenities/ledgers' },
       { id: 'amenities_maintenance', name: 'Maintenance Schedule', permission: 'amenities:maintenance', iconName: 'Wrench', colorBg: 'bg-orange-600/15', colorIcon: '#ea580c', route: '/(resident)/amenities/maintenance' },
-      { id: 'amenities_scanner', name: 'Security Gate Scanner', permission: 'amenities:scanner', iconName: 'ScanLine', colorBg: 'bg-sky-500/15', colorIcon: '#0284c7', route: '/(resident)/amenities/scanner' },
-      { id: 'amenities_security_logs', name: 'Security Audit Logs', permission: 'amenities:security_logs', iconName: 'ClipboardList', colorBg: 'bg-slate-500/15', colorIcon: '#64748b', route: '/(resident)/amenities/security-logs' }
+      { id: 'amenities_scanner', name: 'Security Gate Scanner', permission: 'amenities:scanner', iconName: 'ScanLine', colorBg: 'bg-sky-500/15', colorIcon: '#0284c7', route: '/(resident)/amenities/scanner' }
     ]
   },
   {

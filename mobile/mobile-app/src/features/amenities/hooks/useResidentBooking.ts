@@ -21,8 +21,7 @@ export function useResidentBooking() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const _now = new Date();
-  const _offset = _now.getTimezoneOffset();
-  const today = new Date(_now.getTime() - (_offset * 60 * 1000)).toISOString().split('T')[0];
+  const today = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`;
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [selectedSlot, setSelectedSlot] = useState<AmenitySlot | null>(null);
   const [guestsCount, setGuestsCount] = useState<number>(1);
@@ -89,9 +88,9 @@ export function useResidentBooking() {
     if (!id) return;
     if (!isDaily && !selectedSlot) return;
 
-    const startTime = isDaily ? (currentAmenity.bookingRules?.openTime || '00:00') : selectedSlot!.startTime;
-    const endTime = isDaily ? (currentAmenity.bookingRules?.closeTime || '23:59') : selectedSlot!.endTime;
-    const slotId = isDaily ? undefined : selectedSlot!._id;
+    const startTime = isDaily ? (currentAmenity?.bookingRules?.openTime || '00:00') : (selectedSlot?.startTime || '00:00');
+    const endTime = isDaily ? (currentAmenity?.bookingRules?.closeTime || '23:59') : (selectedSlot?.endTime || '23:59');
+    const slotId = isDaily ? undefined : selectedSlot?._id;
 
     const result = await dispatch(
       createBookingThunk({

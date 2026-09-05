@@ -108,6 +108,7 @@ export default function ResidentAmenityCalendarScreen() {
               loading={slotsLoading}
               emptyTitle="No Slots Available"
               emptySubtitle="No time slots generated for this date or facility."
+              selectedDate={selectedDate}
             />
           )}
           pagination={{

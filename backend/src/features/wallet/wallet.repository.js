@@ -9,12 +9,11 @@ class WalletRepository {
 
     let targetOrgId = orgId;
     if (!targetOrgId) {
-      const existing = await Wallet.findOne({ userId }).session(session || null);
-      if (existing) return existing;
-
       try {
         const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
-        const membership = await OrgMembership.findOne({ userId, status: 'Active' }).session(session || null);
+        const membership = await OrgMembership.findOne({ userId, status: 'Active' })
+          .sort({ updatedAt: -1 })
+          .session(session || null);
         if (membership && membership.orgId) {
           targetOrgId = membership.orgId;
         }
@@ -31,8 +30,10 @@ class WalletRepository {
       );
     }
 
-    // If still no orgId, search existing or insert without orgId
-    const existingWallet = await Wallet.findOne({ userId }).session(session || null);
+    // If still no orgId, search existing with most recent activity or insert without orgId
+    const existingWallet = await Wallet.findOne({ userId })
+      .sort({ updatedAt: -1 })
+      .session(session || null);
     if (existingWallet) return existingWallet;
 
     return await Wallet.findOneAndUpdate(

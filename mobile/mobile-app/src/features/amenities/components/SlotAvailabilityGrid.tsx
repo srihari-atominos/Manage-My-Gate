@@ -17,6 +17,7 @@ export interface SlotAvailabilityGridProps {
   emptyTitle?: string;
   emptySubtitle?: string;
   className?: string;
+  selectedDate?: string;
 }
 
 export function SlotAvailabilityGrid({
@@ -28,6 +29,7 @@ export function SlotAvailabilityGrid({
   emptyTitle = 'No Slots Available',
   emptySubtitle = 'No operational time slots found for the selected date.',
   className,
+  selectedDate,
 }: SlotAvailabilityGridProps) {
   if (loading) {
     return (
@@ -39,7 +41,27 @@ export function SlotAvailabilityGrid({
     );
   }
 
-  if (!slots || slots.length === 0) {
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const isToday = selectedDate ? selectedDate === todayStr : false;
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const visibleSlots = (slots || []).filter((slot) => {
+    if (!slot) return false;
+    if (slot.status?.toLowerCase() === 'closed') return false;
+
+    if (isToday && slot.startTime) {
+      const [startH = 0, startM = 0] = slot.startTime.split(':').map(Number);
+      const slotStartMinutes = startH * 60 + startM;
+      if (slotStartMinutes <= currentMinutes) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  if (visibleSlots.length === 0) {
     return (
       <EmptyState
         icon={Clock}
@@ -53,26 +75,26 @@ export function SlotAvailabilityGrid({
   return (
     <View className={cn('gap-2.5', className)}>
       <View className="flex-row flex-wrap justify-between gap-y-2.5">
-        {(slots || []).filter(Boolean).map((slot, index) => {
+        {visibleSlots.map((slot, index) => {
           const slotStartTime = slot?.startTime || '00:00';
           const slotEndTime = slot?.endTime || '00:00';
-          const slotId = slot._id || `${slotStartTime}-${slotEndTime}-${index}`;
+          const slotId = slot?._id || `${slotStartTime}-${slotEndTime}-${index}`;
           const isSelected =
             selectedSlot &&
-            ((selectedSlot._id && slot._id && selectedSlot._id === slot._id) ||
-              (selectedSlot.startTime === slotStartTime && selectedSlot.endTime === slotEndTime));
+            ((selectedSlot._id && slot?._id && selectedSlot._id === slot._id) ||
+              (selectedSlot?.startTime === slotStartTime && selectedSlot?.endTime === slotEndTime));
 
           const availableCount =
-            slot.availableCount !== undefined
+            slot?.availableCount !== undefined
               ? slot.availableCount
-              : slot.capacity
+              : slot?.capacity
               ? Math.max(0, slot.capacity - (slot.bookedCount || 0))
               : 1;
 
           const isAvailable =
-            slot.isAvailable !== undefined
+            slot?.isAvailable !== undefined
               ? slot.isAvailable
-              : slot.status
+              : slot?.status
               ? slot.status === 'Available' || slot.status === 'AVAILABLE'
               : availableCount > 0;
 
@@ -81,8 +103,8 @@ export function SlotAvailabilityGrid({
               key={slotId}
               disabled={!isAvailable && !onSlotSelect}
               onPress={() => onSlotSelect && onSlotSelect(slot)}
-              accessibilityRole="button"
-              accessibilityLabel={`Time slot ${slot.startTime} to ${slot.endTime}. ${
+              accessibilityRole={onBookSlot ? undefined : 'button'}
+              accessibilityLabel={`Time slot ${slotStartTime} to ${slotEndTime}. ${
                 isAvailable ? `Available with capacity ${availableCount}` : 'Booked or unavailable'
               }`}
               className={cn(
@@ -117,7 +139,7 @@ export function SlotAvailabilityGrid({
                         : 'text-muted-foreground'
                     )}
                   >
-                    {slot.startTime} - {slot.endTime}
+                    {slotStartTime} - {slotEndTime}
                   </Text>
                 </View>
 
@@ -146,7 +168,10 @@ export function SlotAvailabilityGrid({
                 <Button
                   variant="outline"
                   size="sm"
-                  onPress={() => onBookSlot(slot)}
+                  onPress={(e: any) => {
+                    e?.stopPropagation?.();
+                    onBookSlot(slot);
+                  }}
                   className="mt-2 h-7 py-0.5 border-primary/30 bg-primary/5"
                   accessibilityLabel={`Book ${slot.startTime} to ${slot.endTime}`}
                 >

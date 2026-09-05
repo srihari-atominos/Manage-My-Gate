@@ -104,7 +104,11 @@ class WalletService {
     walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
     walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
 
-    return transaction;
+    return {
+      ...(transaction.toObject ? transaction.toObject() : transaction),
+      balance: updatedWallet.balance,
+      walletBalance: updatedWallet.balance
+    };
   }
 
   /**
@@ -334,7 +338,11 @@ class WalletService {
       walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
       walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
 
-      return transaction;
+      return {
+        ...(transaction.toObject ? transaction.toObject() : transaction),
+        balance: updatedWallet.balance,
+        walletBalance: updatedWallet.balance
+      };
     }
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
@@ -371,7 +379,11 @@ class WalletService {
     walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
     walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
 
-    return transaction;
+    return {
+      ...(transaction.toObject ? transaction.toObject() : transaction),
+      balance: updatedWallet.balance,
+      walletBalance: updatedWallet.balance
+    };
   }
 }
 

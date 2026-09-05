@@ -64,12 +64,6 @@ export function InvoiceActionsBottomSheet({
     }
   }, [visible, invoice, remainingDue, submittedOfflineAmount]);
 
-  if (!invoice) return null;
-
-  const invNo = invoice.invoiceNumber || invoice._id || '—';
-  const unitStr = invoice.unitNumber ? `Villa ${invoice.unitNumber}` : '—';
-  const residentStr = invoice.targetUser || 'Resident';
-
   const amountToApprove = useMemo(() => {
     if (approvalMode === 'FULL') return remainingDue;
     const parsed = parseFloat(customAmountStr);
@@ -78,6 +72,12 @@ export function InvoiceActionsBottomSheet({
 
   const remainingAfterApproval = Math.max(0, remainingDue - amountToApprove);
   const willBeFullyPaid = remainingAfterApproval === 0;
+
+  if (!invoice) return null;
+
+  const invNo = invoice.invoiceNumber || invoice._id || '—';
+  const unitStr = invoice.unitNumber ? `Villa ${invoice.unitNumber}` : '—';
+  const residentStr = invoice.targetUser || 'Resident';
 
   const status = invoice.status || 'UNPAID';
   const isPendingVerification = status === 'VERIFICATION_PENDING';

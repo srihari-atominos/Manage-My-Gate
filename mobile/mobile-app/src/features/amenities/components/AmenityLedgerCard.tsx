@@ -36,9 +36,10 @@ export function AmenityLedgerCard({ booking, onPress, className }: AmenityLedger
   const bookingCode = booking.bookingId ? `#${booking.bookingId}` : `#${booking._id.slice(-6).toUpperCase()}`;
   const subtitle = `Resident: ${residentName} (${villaNum}) • ${booking.date || booking.bookingDate || 'Recent'}`;
 
-  const isCancelled = (booking.status as string) === 'CANCELLED' || (booking.status as string) === 'REJECTED';
-  const statusLabel = isCancelled ? 'CANCELLED' : booking.status === 'COMPLETED' ? 'COMPLETED' : 'CONFIRMED';
-  const statusVariant: StatusVariant = isCancelled ? 'danger' : booking.status === 'COMPLETED' ? 'neutral' : 'success';
+  const rawStatus = (booking.status || '').toUpperCase();
+  const isCancelled = rawStatus === 'CANCELLED' || rawStatus === 'REJECTED';
+  const statusLabel = isCancelled ? 'CANCELLED' : rawStatus === 'COMPLETED' ? 'COMPLETED' : rawStatus === 'CHECKED_IN' || rawStatus === 'CHECKED-IN' ? 'CHECKED IN' : 'CONFIRMED';
+  const statusVariant: StatusVariant = isCancelled ? 'danger' : rawStatus === 'COMPLETED' ? 'neutral' : rawStatus.includes('CHECK') ? 'info' : 'success';
 
   const paymentStatus = booking.paymentStatus || (isCancelled ? 'REFUNDED' : 'PAID');
   const paymentVariant: StatusVariant =
@@ -48,7 +49,14 @@ export function AmenityLedgerCard({ booking, onPress, className }: AmenityLedger
       ? 'neutral'
       : 'warning';
 
-  const feeAmount = booking.totalFee ?? (booking as any).pricingDetails?.totalAmount ?? 0;
+  const feeAmount = Number(
+    booking.totalFee ??
+    (booking as any).totalPrice ??
+    (booking as any).pricingDetails?.totalAmount ??
+    (booking as any).totalAmount ??
+    (booking as any).amount ??
+    0
+  );
   const formattedFee = feeAmount > 0 ? `₹${feeAmount.toLocaleString('en-IN')}` : 'Free';
 
   // Dynamic status icon

@@ -254,7 +254,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
           {/* Profile Avatar Button */}
           <TouchableOpacity
-            onPress={() => router.push('/(resident)/profile' as any)}
+            onPress={() => setProfileModalVisible(true)}
             activeOpacity={0.85}
             className="size-10 rounded-full bg-primary items-center justify-center border border-primary shadow-xs active:opacity-90"
             accessibilityRole="button"

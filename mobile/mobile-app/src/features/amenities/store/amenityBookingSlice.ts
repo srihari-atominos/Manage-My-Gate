@@ -34,13 +34,22 @@ export const normalizeAmenityBooking = (raw: any): AmenityBooking => {
 
   const date = raw.bookingDate || raw.date || '';
   const guestsCount = raw.numberOfPersons ?? raw.guestsCount ?? 1;
-  const totalFee = raw.pricingDetails?.totalAmount ?? raw.totalFee ?? 0;
+  const totalFee = Number(
+    raw.pricingDetails?.totalAmount ??
+    raw.totalFee ??
+    raw.totalPrice ??
+    raw.totalAmount ??
+    raw.amount ??
+    raw.price ??
+    0
+  );
 
   const rawStatus = String(raw.status || 'CONFIRMED').toUpperCase().replace('-', '_');
-  const status: 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED' =
-    rawStatus === 'CHECKED_IN' || rawStatus === 'APPROVED' ? 'CHECKED_IN' :
+  const status: 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED' =
+    rawStatus === 'CHECKED_IN' ? 'CHECKED_IN' :
     rawStatus === 'COMPLETED' ? 'COMPLETED' :
-    rawStatus === 'CANCELLED' || rawStatus === 'REJECTED' ? 'CANCELLED' : 'CONFIRMED';
+    rawStatus === 'CANCELLED' || rawStatus === 'REJECTED' ? 'CANCELLED' :
+    rawStatus === 'PENDING' ? 'PENDING' : 'CONFIRMED';
 
   const userObj = typeof raw.userId === 'object' && raw.userId ? raw.userId : null;
   const residentName = raw.residentName || userObj?.name || userObj?.username || raw.userName || 'Community Resident';
@@ -244,38 +253,14 @@ export const fetchDashboardStatsThunk = createAsyncThunk(
 
 export const createBookingThunk = createAsyncThunk(
   'amenityBookings/createBooking',
-  async (payload: CreateBookingPayload, { rejectWithValue, getState }) => {
+  async (payload: CreateBookingPayload, { rejectWithValue }) => {
     try {
       const response = await amenityService.createAmenityBooking(payload);
       return response;
     } catch (error: any) {
       const isOCC = error.status === 409 || error.statusCode === 409 || (error.message && error.message.toLowerCase().includes('version'));
-      if (!isOCC) {
-        const state = (getState() as any)?.amenities;
-        const currentAmenity = state?.currentAmenity || state?.amenities?.find((a: any) => a._id === payload.amenityId);
-        const newBooking = {
-          _id: 'bk_' + Date.now(),
-          bookingId: 'BK-' + Math.floor(100000 + Math.random() * 900000),
-          amenityId: payload.amenityId,
-          amenityName: currentAmenity?.name || 'Community Amenity',
-          amenityLocation: currentAmenity?.location || 'Clubhouse',
-          bookingDate: payload.date,
-          date: payload.date,
-          startTime: payload.startTime,
-          endTime: payload.endTime,
-          numberOfPersons: payload.guestsCount || 1,
-          status: 'CONFIRMED',
-          paymentMethod: payload.paymentMethod || 'WALLET',
-          paymentStatus: 'PAID',
-          totalFee: (currentAmenity?.bookingFee || 50) * (payload.guestsCount || 1),
-          qrCode: 'PASS-' + Date.now(),
-          qrStatus: 'active',
-          createdAt: new Date().toISOString(),
-        };
-        return { data: { booking: newBooking } };
-      }
       return rejectWithValue({
-        message: error.message || 'Failed to complete amenity booking reservation',
+        message: error.response?.data?.message || error.message || 'Failed to complete amenity booking reservation',
         isOCC,
       });
     }
@@ -326,21 +311,22 @@ const amenityBookingSlice = createSlice({
       state.isOCCError = false;
       state.occErrorMessage = null;
     },
-    upsertBooking: (state, action: PayloadAction<AmenityBooking>) => {
+    upsertBooking: (state, action: PayloadAction<any>) => {
+      const normalized = normalizeAmenityBooking(action.payload);
       // Update or add in adminBookings
-      const adminIndex = state.adminBookings.findIndex((b) => b._id === action.payload._id);
+      const adminIndex = state.adminBookings.findIndex((b) => b._id === normalized._id);
       if (adminIndex !== -1) {
-        state.adminBookings[adminIndex] = action.payload;
+        state.adminBookings[adminIndex] = normalized;
       } else {
-        state.adminBookings.unshift(action.payload);
+        state.adminBookings.unshift(normalized);
       }
       
       // Update or add in myBookings
-      const myIndex = state.myBookings.findIndex((b) => b._id === action.payload._id);
+      const myIndex = state.myBookings.findIndex((b) => b._id === normalized._id);
       if (myIndex !== -1) {
-        state.myBookings[myIndex] = action.payload;
+        state.myBookings[myIndex] = normalized;
       } else {
-        state.myBookings.unshift(action.payload);
+        state.myBookings.unshift(normalized);
       }
     },
     removeBooking: (state, action: PayloadAction<string>) => {

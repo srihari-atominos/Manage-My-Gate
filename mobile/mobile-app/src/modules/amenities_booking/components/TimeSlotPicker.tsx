@@ -29,37 +29,56 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
   slots,
   selectedSlotIds,
   onToggleSlot,
+  selectedDate,
   pricePerHour = 500,
   className,
 }) => {
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const isToday = selectedDate ? selectedDate === todayStr : false;
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const visibleSlots = (slots || []).filter((slot) => {
+    if (!slot) return false;
+    if ((slot.status as string)?.toLowerCase() === 'closed') return false;
+    if (isToday && slot.startTime) {
+      const [startH = 0, startM = 0] = slot.startTime.split(':').map(Number);
+      if (startH * 60 + startM <= currentMinutes) return false;
+    }
+    return true;
+  });
+
   return (
     <View className={cn('w-full', className)}>
       {/* Top Legend Indicator */}
       <View className="flex-row items-center mb-2 px-0.5">
-        <View className="w-2 h-2 rounded-full bg-slate-400 me-1.5" />
+        <View className="w-2 h-2 rounded-full bg-emerald-500 me-1.5" />
         <Text className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-          Closed
+          {visibleSlots.length} Available
         </Text>
       </View>
 
       {/* Sleek & Compact 2-Column Grid Cards */}
       <View className="flex-row flex-wrap justify-between gap-y-2">
-        {slots.map((slot) => {
-          const isSelected = selectedSlotIds.includes(slot.id);
-          const isBooked = slot.status === 'booked';
-          const isMaintenance = slot.status === 'maintenance';
+        {visibleSlots.map((slot, index) => {
+          const slotStartTime = slot?.startTime || '00:00';
+          const slotEndTime = slot?.endTime || '00:00';
+          const slotId = slot?.id || `${slotStartTime}-${slotEndTime}-${index}`;
+          const isSelected = selectedSlotIds.includes(slotId);
+          const isBooked = slot?.status === 'booked';
+          const isMaintenance = slot?.status === 'maintenance';
           const isDisabled = isBooked || isMaintenance;
-          const duration = getSlotDuration(slot.startTime, slot.endTime);
+          const duration = getSlotDuration(slotStartTime, slotEndTime);
 
           return (
             <TouchableOpacity
-              key={slot.id}
+              key={slotId}
               disabled={isDisabled}
               onPress={() => onToggleSlot(slot)}
               activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityState={{ selected: isSelected, disabled: isDisabled }}
-              accessibilityLabel={`Time slot starting at ${slot.startTime}, ending at ${slot.endTime}, ${slot.status}`}
+              accessibilityLabel={`Time slot starting at ${slotStartTime}, ending at ${slotEndTime}, ${slot?.status || 'available'}`}
               className={cn(
                 'w-[48.5%] rounded-xl p-2.5 border flex-col justify-between min-h-[78px] active:scale-[0.97] transition-all bg-card',
                 isSelected
@@ -81,7 +100,7 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                       : 'text-slate-900 dark:text-white'
                   )}
                 >
-                  {slot.startTime}
+                  {slotStartTime}
                 </Text>
 
                 {isSelected && (
@@ -99,7 +118,7 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                     isDisabled ? 'text-slate-400/60' : 'text-slate-400 dark:text-slate-400'
                   )}
                 >
-                  {slot.endTime}
+                  {slotEndTime}
                 </Text>
                 <Text
                   className={cn(

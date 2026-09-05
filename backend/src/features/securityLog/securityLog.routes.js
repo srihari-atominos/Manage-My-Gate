@@ -10,15 +10,15 @@ const router = Router();
 router.use(isAuthenticated, tenantContext);
 
 // Dashboard stats - admins & guards
-router.get('/dashboard', authorizePermission('amenities', 'security_logs'), getDashboardStats);
+router.get('/dashboard', authorizePermission('amenities', ['security_logs', 'scanner', 'amenities', 'dashboard']), getDashboardStats);
 
 // Manual verification log
-router.post('/manual', authorizePermission('amenities', 'scanner'), manualVerification);
+router.post('/manual', authorizePermission('amenities', ['scanner', 'amenities', 'security_logs']), manualVerification);
 
 // List security logs with filters
-router.get('/', authorizePermission('amenities', 'security_logs'), getLogs);
+router.get('/', authorizePermission('amenities', ['security_logs', 'scanner', 'amenities', 'dashboard']), getLogs);
 
 // Delete security log
-router.delete('/:id', authorizePermission('amenities', 'security_logs'), deleteLog);
+router.delete('/:id', authorizePermission('amenities', ['security_logs', 'scanner', 'amenities', 'dashboard']), deleteLog);
 
 export default router;

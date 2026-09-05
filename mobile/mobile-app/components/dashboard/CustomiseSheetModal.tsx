@@ -64,12 +64,14 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   }, [activeFeatureIds, defaultRoleQuickActions, user]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>(sanitizedActiveIds);
+  const prevVisibleRef = React.useRef(visible);
 
-  // Sync selectedIds state whenever activeFeatureIds or visible state changes
+  // Sync selectedIds state ONLY when the modal transitions from closed to open
   useEffect(() => {
-    if (visible) {
+    if (visible && !prevVisibleRef.current) {
       setSelectedIds(sanitizedActiveIds);
     }
+    prevVisibleRef.current = visible;
   }, [visible, sanitizedActiveIds]);
 
   const toggleSelect = (id: string) => {
@@ -77,6 +79,9 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
       setSelectedIds((prev) => prev.filter((item) => item !== id));
     } else if (selectedIds.length < 5) {
       setSelectedIds((prev) => [...prev, id]);
+    } else {
+      // If already at 5, replace the last item with the newly chosen one so customization is frictionless
+      setSelectedIds((prev) => [...prev.slice(0, 4), id]);
     }
     if (onToggleFeature) onToggleFeature(id);
   };

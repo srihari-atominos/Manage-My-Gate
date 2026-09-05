@@ -15,8 +15,9 @@ import {
 import { useCallback } from 'react';
 
 export const useAuth = () => {
-  let dispatch: AppDispatch | null = null;
-  let authState: any = {
+  const dispatch = useDispatch<AppDispatch>();
+  const storeState = useSelector((state: RootState) => state.auth);
+  const authState = storeState || {
     user: null,
     isAuthenticated: false,
     isInitialized: true,
@@ -24,15 +25,6 @@ export const useAuth = () => {
     error: null,
     otpSent: false,
   };
-
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    dispatch = useDispatch<AppDispatch>();
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    authState = useSelector((state: RootState) => state.auth) || authState;
-  } catch (err) {
-    // Return safe initial fallback state if Redux Provider is not yet in tree
-  }
 
   const handleLogin = useCallback(
     (credentials: any) => {

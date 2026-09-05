@@ -13,6 +13,8 @@ export interface DatePickerModalProps {
   selectedDate: Date | null;
   onSelectDate: (date: Date) => void;
   title?: string;
+  minDate?: Date;
+  maxDate?: Date;
 }
 
 const MONTHS = [
@@ -45,6 +47,8 @@ export function DatePickerModal({
   selectedDate,
   onSelectDate,
   title = 'Select Date',
+  minDate,
+  maxDate,
 }: DatePickerModalProps) {
   const initialDate = selectedDate || new Date();
   const [viewYear, setViewYear] = useState<number>(initialDate.getFullYear());
@@ -216,13 +220,21 @@ export function DatePickerModal({
             const isSelected = isSelectedMonth && selectedDateNumber === dayNum;
             const isToday = isTodayMonth && todayDateNumber === dayNum;
 
+            const cellDate = new Date(viewYear, viewMonth, dayNum, 23, 59, 59);
+            const isPastMin = minDate ? cellDate < new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate(), 0, 0, 0) : false;
+            const isFutureMax = maxDate ? cellDate > new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate(), 23, 59, 59) : false;
+            const isDisabled = isPastMin || isFutureMax;
+
             return (
               <View key={`day-${dayNum}`} className="w-[14.28%] items-center justify-center">
                 <Pressable
-                  onPress={() => handleSelectDay(dayNum)}
+                  disabled={isDisabled}
+                  onPress={() => !isDisabled && handleSelectDay(dayNum)}
                   className={cn(
                     'w-9 h-9 items-center justify-center rounded-full border',
-                    isSelected
+                    isDisabled
+                      ? 'opacity-25 bg-transparent border-transparent'
+                      : isSelected
                       ? 'bg-primary border-primary shadow-sm'
                       : isToday
                       ? 'bg-primary/10 border-primary/40'
@@ -232,7 +244,9 @@ export function DatePickerModal({
                   <Text
                     className={cn(
                       'text-sm font-semibold',
-                      isSelected
+                      isDisabled
+                        ? 'text-muted-foreground line-through'
+                        : isSelected
                         ? 'text-white'
                         : isToday
                         ? 'text-primary font-bold'

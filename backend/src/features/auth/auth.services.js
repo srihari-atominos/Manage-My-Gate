@@ -1376,9 +1376,14 @@ export class AuthService {
     authEvents.emit('OTP_SENT', { identifier: cleanId, code: plainCode, type });
 
     const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      console.log('\n=========================================');
+      console.log(`[DEV MODE RESET] OTP for ${cleanId} is: ${plainCode}`);
+      console.log('=========================================\n');
+    }
+
     return {
-      message: isDev ? `Password reset instructions sent (Dev Code: ${plainCode})` : 'Password reset instructions sent',
-      devCode: isDev ? plainCode : undefined,
+      message: 'Password reset instructions sent',
     };
   }
 
