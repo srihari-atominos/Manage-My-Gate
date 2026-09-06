@@ -310,7 +310,12 @@ export function AdminBillingDashboardScreen() {
         <FAB
           iconName="Plus"
           label="New Assessment"
-          onPress={() => router.push('/(resident)/admin/billing/assessments' as any)}
+          onPress={() =>
+            router.push({
+              pathname: '/(resident)/admin/billing/assessments',
+              params: { create: 'true' },
+            } as any)
+          }
         />
       )}
     </ScreenShell>

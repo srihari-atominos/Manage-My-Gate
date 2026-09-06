@@ -134,7 +134,7 @@ export default function NotificationsScreen() {
       >
         {/* Unread Amber/Gold Dot */}
         {isUnread && (
-          <View className="size-2 rounded-full bg-primary absolute top-3.5 right-3.5" />
+          <View className="size-2 rounded-full bg-primary absolute top-3.5 end-3.5" />
         )}
 
         {/* Notification Type Icon Wrapper */}
@@ -143,7 +143,7 @@ export default function NotificationsScreen() {
         </View>
 
         {/* Content Section */}
-        <View className="flex-1 pr-3 justify-center">
+        <View className="flex-1 pe-3 justify-center">
           <View className="flex-row items-center justify-between">
             <Text
               className={`text-[13px] tracking-tight ${

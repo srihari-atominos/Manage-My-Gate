@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Modal, ScrollView, Alert, Platform, StatusBar } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, ScrollView, Alert, Platform, StatusBar, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
@@ -244,35 +244,43 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
   }, [currentStepIndex, handleModalClose, setFormError]);
 
   // Reset step to 0 whenever modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
       setCurrentStepIndex(0);
       setFormError(null);
     }
   }, [visible, setFormError]);
 
+  // Hardware Back Button Handler for Android / Mobile devices
+  useEffect(() => {
+    if (!visible) return;
+
+    const onHardwareBack = () => {
+      handleBackStep();
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+    return () => subscription.remove();
+  }, [visible, handleBackStep]);
+
+  if (!visible) return null;
+
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === WIZARD_STEPS.length - 1;
   const currentStepTitle = WIZARD_STEPS[currentStepIndex]?.title || '';
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="fullScreen"
-      statusBarTranslucent
-      onRequestClose={handleModalClose}
+    <View
+      className="absolute inset-0 z-50 bg-card flex-col"
+      style={{
+        paddingTop: Math.max(insets.top, 16),
+        paddingBottom: Math.max(insets.bottom, 12),
+      }}
     >
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      <View
-        className="flex-1 bg-card flex-col"
-        style={{
-          paddingTop: Math.max(insets.top, 16),
-          paddingBottom: Math.max(insets.bottom, 12),
-        }}
-      >
-        {/* Header */}
-          <AssessmentFlowHeader
+      {/* Header */}
+      <AssessmentFlowHeader
             stepTitle={currentStepTitle}
             currentStep={currentStepIndex}
             totalSteps={WIZARD_STEPS.length}
@@ -408,7 +416,6 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
             loading={isSubmitting}
           />
         </View>
-    </Modal>
   );
 };
 
