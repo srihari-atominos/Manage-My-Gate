@@ -19,16 +19,11 @@ export function useGoogleAuthSession() {
   const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || DEFAULT_GOOGLE_ANDROID_CLIENT_ID;
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || googleClientId;
 
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'managemygate',
-  });
-
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: googleClientId,
     webClientId: googleClientId,
     iosClientId,
     androidClientId,
-    redirectUri,
   });
 
   React.useEffect(() => {

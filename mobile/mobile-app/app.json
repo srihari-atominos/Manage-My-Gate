@@ -7,7 +7,8 @@
     "icon": "./assets/images/icon.png",
     "scheme": [
       "mobile-app",
-      "managemygate"
+      "managemygate",
+      "com.atominosconsulting.nahom"
     ],
     "userInterfaceStyle": "automatic",
     "jsEngine": "hermes",
