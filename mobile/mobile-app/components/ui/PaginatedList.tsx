@@ -129,6 +129,8 @@ export function PaginatedList<T>({
       onEndReached={handleEndReached}
       onEndReachedThreshold={0.5}
       onMomentumScrollBegin={handleMomentumScrollBegin}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       ListHeaderComponent={ListHeaderComponent as React.ReactElement | undefined}
       ListFooterComponent={renderFooter}

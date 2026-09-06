@@ -42,7 +42,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   badgeColor,
   iconBgColor,
   iconShapeClass,
-  containerClassName = 'w-1/3 px-1 py-1',
+  containerClassName = 'w-1/2 px-1.5 py-1.5',
   showArrow = false,
 }) => {
   const { t } = useTranslation();
@@ -53,7 +53,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
   }));
 
   const handlePressIn = () => {
-    scale.value = withTiming(0.95, { duration: 90 });
+    scale.value = withTiming(0.96, { duration: 90 });
   };
 
   const handlePressOut = () => {
@@ -71,13 +71,15 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={animatedStyle}
-        className="bg-card border border-border/70 dark:border-border/60 rounded-2xl p-3 h-[134px] justify-between relative overflow-hidden active:bg-secondary/70 shadow-sm"
+        className="bg-card border border-border/80 dark:border-border/60 rounded-2xl p-3.5 h-[126px] justify-between relative overflow-hidden active:bg-secondary/70 shadow-xs"
+        accessibilityRole="button"
+        accessibilityLabel={`${translatedLabel} ${translatedSubtitle}`}
       >
-        {/* Top Row: Tailored Feature Icon Container + Optional Due Badge / Arrow */}
+        {/* Top Row: Tailored Feature Icon Container + Optional Badge / Arrow */}
         <View className="flex-row items-center justify-between w-full">
           <View
-            className={`w-14 h-14 items-center justify-center ${
-              iconShapeClass || 'rounded-[19px]'
+            className={`w-11 h-11 items-center justify-center ${
+              iconShapeClass || 'rounded-[15px]'
             } ${
               iconBgColor || 'bg-secondary'
             }`}
@@ -85,7 +87,18 @@ export const ActionTile: React.FC<ActionTileProps> = ({
             {icon}
           </View>
 
-          {showArrow ? (
+          {badge ? (
+            <View
+              style={badgeColor ? { backgroundColor: badgeColor } : undefined}
+              className={`px-2 py-0.5 rounded-full ${
+                !badgeColor ? 'bg-primary' : ''
+              } items-center justify-center`}
+            >
+              <Text className="text-[9.5px] font-extrabold font-sans text-white tracking-wide uppercase">
+                {badge}
+              </Text>
+            </View>
+          ) : showArrow ? (
             <View className="w-5 h-5 rounded-full bg-secondary items-center justify-center border border-border/40 shrink-0">
               <ArrowUpRight size={11} className="text-muted-foreground" />
             </View>
@@ -95,23 +108,23 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         {/* Bottom Block: Balanced Label, Subtitle, and Subtle Chevron */}
         <View className="w-full">
           <Text
-            numberOfLines={2}
-            className="text-[12.5px] font-bold font-sans text-foreground leading-[16px] tracking-tight"
+            numberOfLines={1}
+            className="text-[13.5px] font-bold font-sans text-foreground leading-[17px] tracking-tight"
           >
             {translatedLabel}
           </Text>
 
-          <View className="flex-row items-center justify-between mt-1">
+          <View className="flex-row items-center justify-between mt-0.5">
             {translatedSubtitle ? (
               <Text
                 numberOfLines={1}
-                className="text-[10.5px] font-medium font-sans text-muted-foreground leading-[14px] flex-1 mr-1"
+                className="text-[11px] font-medium font-sans text-muted-foreground leading-[14px] flex-1 mr-1"
               >
                 {translatedSubtitle}
               </Text>
             ) : <View className="flex-1" />}
 
-            <ChevronRight size={13} color="#94A3B8" className="shrink-0 -mr-0.5" />
+            <ChevronRight size={12} color="#94A3B8" className="shrink-0 -mr-0.5" />
           </View>
         </View>
       </AnimatedPressable>
@@ -120,3 +133,4 @@ export const ActionTile: React.FC<ActionTileProps> = ({
 };
 
 export default ActionTile;
+

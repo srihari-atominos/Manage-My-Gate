@@ -2,13 +2,15 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { Home, Check, X, Building2 } from 'lucide-react-native';
+import { Home, Check, X, Building2, Lock, ShieldAlert } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 import { useDispatch, useSelector } from 'react-redux';
-import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
+import { performLogout } from '../../src/features/auth/store/authSlice';
 
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 interface VillaUnit {
   id: string;
@@ -35,6 +37,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   communityName = '',
   onOpenOrgModal,
 }) => {
+  const router = useRouter();
   const { user } = useAuth();
   const dispatch = useDispatch<any>();
   const { t, tRole } = useTranslation();
@@ -42,6 +45,9 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
 
   const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
   const activeVillaId = (user as any)?.villaId;
+
+  const [pendingUnit, setPendingUnit] = React.useState<VillaUnit | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = React.useState(false);
 
   const userUnits: VillaUnit[] = React.useMemo(() => {
     const userAny = user as any;
@@ -111,24 +117,34 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   }, [user, reduxWorkspaces, activeOrgId, communityName]);
 
   const handleSelect = (unit: VillaUnit) => {
-    const payload: any = {};
-    if (unit.id && /^[0-9a-fA-F]{24}$/.test(unit.id)) {
-      payload.targetVillaId = unit.id;
-    }
-    if (activeOrgId && /^[0-9a-fA-F]{24}$/.test(activeOrgId)) {
-      payload.targetOrgId = activeOrgId;
-    }
-    if (Object.keys(payload).length > 0) {
-      dispatch(switchWorkspaceContextThunk(payload));
-    }
-    onSelectVilla(unit.unitNumber);
+    setPendingUnit(unit);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSwitch = async () => {
+    if (!pendingUnit) return;
+    const unit = pendingUnit;
+    setShowConfirmModal(false);
+    setPendingUnit(null);
     onClose();
+    // 1. Terminate current session
+    await dispatch(performLogout());
+    // 2. Redirect to Login screen with target context parameters
+    router.replace({
+      pathname: '/(auth)/login' as any,
+      params: {
+        switchType: 'villa',
+        targetName: unit.unitNumber,
+        targetCommunity: communityName,
+        targetRole: unit.residencyType || 'Resident',
+      },
+    });
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/60 justify-center items-center p-4">
-        <View className="bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-xl gap-4">
+        <View className="bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-xl gap-3.5">
           {/* Header */}
           <View className="flex-row justify-between items-center pb-2 border-b border-border">
             <View className="flex-row items-center gap-2">
@@ -140,6 +156,14 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
             <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1.5 rounded-full bg-secondary">
               <X size={16} className="text-muted-foreground" />
             </TouchableOpacity>
+          </View>
+
+          {/* Logout & Re-authentication Warning Badge */}
+          <View className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-2.5 flex-row items-center gap-2">
+            <Lock size={15} color="#F59E0B" />
+            <Text className="text-[11px] text-amber-800 dark:text-amber-300 font-medium flex-1 leading-tight">
+              Switching property units will log you out and require login credentials for that unit.
+            </Text>
           </View>
 
           <Text className="text-xs text-muted-foreground">
@@ -232,6 +256,21 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
           </Button>
         </View>
       </View>
+
+      {/* Yes/No Permission Confirmation Dialog */}
+      <ConfirmationModal
+        visible={showConfirmModal}
+        variant="warning"
+        title={t('confirm_switch_unit_title', 'Switch Property Unit?')}
+        message={`${t('confirm_switch_unit_msg', 'Switching will sign you out and require login credentials for')} ${pendingUnit?.unitNumber || ''}. ${t('do_you_want_to_proceed', 'Do you want to proceed?')}`}
+        confirmLabel={t('yes_switch', 'Yes, Switch')}
+        cancelLabel={t('no_cancel', 'No, Cancel')}
+        onConfirm={handleConfirmSwitch}
+        onCancel={() => {
+          setShowConfirmModal(false);
+          setPendingUnit(null);
+        }}
+      />
     </Modal>
   );
 };

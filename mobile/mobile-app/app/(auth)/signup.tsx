@@ -550,10 +550,10 @@ export default function SignupScreen() {
                 <View className="flex-1 h-px bg-border/80" />
               </View>
 
-              {/* Social Authentication: Google ID & Microsoft ID */}
+              {/* Social Authentication: Google ID & Apple ID */}
               <View className="flex-row items-center gap-3 w-full">
                 <SocialAuthButton provider="google" />
-                <SocialAuthButton provider="microsoft" />
+                <SocialAuthButton provider="apple" />
               </View>
 
               {/* Already Have Account */}

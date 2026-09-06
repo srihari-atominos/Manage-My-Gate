@@ -22,7 +22,7 @@ export interface CustomiseDeckZoneProps {
 
 export const CustomiseDeckZone: React.FC<CustomiseDeckZoneProps> = ({
   activeItems,
-  maxCapacity = 5,
+  maxCapacity = 6,
   onRemoveItem,
 }) => {
   const { t, tFeatureName } = useTranslation();

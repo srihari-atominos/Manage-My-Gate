@@ -3,7 +3,6 @@ import {
   View,
   TouchableOpacity,
   Platform,
-  LayoutChangeEvent,
   Pressable,
 } from 'react-native';
 import { Text } from '@/components/ui/text';
@@ -12,9 +11,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
 import {
   Home,
+  Users,
+  LayoutGrid,
   ShieldCheck,
-  Sparkles,
-  CreditCard,
+  User,
 } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
@@ -24,14 +24,16 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/src/utils/i18n';
 
-export type MainTabKey = 'dashboard' | 'visitor' | 'amenities' | 'billing';
+export type MainTabKey = 'dashboard' | 'community' | 'all-features' | 'security' | 'profile';
 
 interface TabItem {
   key: MainTabKey;
   label: string;
   route: string;
   icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  isCenter?: boolean;
 }
 
 const TAB_ITEMS: TabItem[] = [
@@ -42,32 +44,35 @@ const TAB_ITEMS: TabItem[] = [
     icon: Home,
   },
   {
-    key: 'visitor',
-    label: 'Visitors',
+    key: 'community',
+    label: 'Community',
+    route: '/(resident)/notices/active-board',
+    icon: Users,
+  },
+  {
+    key: 'all-features',
+    label: 'View All',
+    route: '/(resident)/all-features',
+    icon: LayoutGrid,
+    isCenter: true,
+  },
+  {
+    key: 'security',
+    label: 'Security',
     route: '/(resident)/visitor',
     icon: ShieldCheck,
   },
   {
-    key: 'amenities',
-    label: 'Amenities',
-    route: '/(resident)/amenities/dashboard',
-    icon: Sparkles,
-  },
-  {
-    key: 'billing',
-    label: 'Billing',
-    route: '/(resident)/billing',
-    icon: CreditCard,
+    key: 'profile',
+    label: 'Profile',
+    route: '/(resident)/profile',
+    icon: User,
   },
 ];
 
-const ACTIVE_ORANGE = '#FF6A00';
+const BRAND_ORANGE = '#FF6A00';
 
-// Global memory to preserve sliding position across route transitions without jumping
-let globalLastActiveX = -1;
-let globalLastCapsuleWidth = 72;
-
-interface TabButtonProps {
+interface StandardTabButtonProps {
   item: TabItem;
   isActive: boolean;
   isDark: boolean;
@@ -75,7 +80,7 @@ interface TabButtonProps {
   onPress: () => void;
 }
 
-const TabButton: React.FC<TabButtonProps> = ({
+const StandardTabButton: React.FC<StandardTabButtonProps> = ({
   item,
   isActive,
   isDark,
@@ -83,11 +88,11 @@ const TabButton: React.FC<TabButtonProps> = ({
   onPress,
 }) => {
   const IconComponent = item.icon;
-  const zoomScale = useSharedValue(isActive ? 1.12 : 1.0);
+  const zoomScale = useSharedValue(isActive ? 1.08 : 1.0);
 
   useEffect(() => {
-    zoomScale.value = withTiming(isActive ? 1.12 : 1.0, {
-      duration: 170,
+    zoomScale.value = withTiming(isActive ? 1.08 : 1.0, {
+      duration: 150,
       easing: Easing.out(Easing.cubic),
     });
   }, [isActive, zoomScale]);
@@ -96,26 +101,21 @@ const TabButton: React.FC<TabButtonProps> = ({
     transform: [{ scale: zoomScale.value }],
   }));
 
-  const inactiveIconColor = isDark ? '#9CA3AF' : '#8E8E93';
-  const inactiveTextColor = isDark ? '#9CA3AF' : '#8E8E93';
-
-  const iconColor = isActive ? ACTIVE_ORANGE : inactiveIconColor;
-  const textColor = isActive ? ACTIVE_ORANGE : inactiveTextColor;
+  const inactiveColor = isDark ? '#9CA3AF' : '#8E8E93';
+  const activeColor = BRAND_ORANGE;
 
   const content = (
     <View className="items-center justify-center py-1">
-      {/* Icon Area */}
       <Animated.View style={animatedIconStyle} className="items-center justify-center">
         <IconComponent
-          size={isActive ? 22 : 21}
-          color={iconColor}
-          strokeWidth={isActive ? 2.3 : 1.9}
+          size={20}
+          color={isActive ? activeColor : inactiveColor}
+          strokeWidth={isActive ? 2.4 : 1.8}
         />
       </Animated.View>
 
-      {/* Label Underneath (Inside the full active capsule) */}
       <Text
-        style={{ color: textColor }}
+        style={{ color: isActive ? activeColor : inactiveColor }}
         className={cn(
           'text-[10px] font-sans tracking-tight mt-1 text-center',
           isActive ? 'font-bold' : 'font-medium'
@@ -131,7 +131,7 @@ const TabButton: React.FC<TabButtonProps> = ({
     return (
       <Pressable
         onPress={onPress}
-        className="py-1 items-center justify-center h-[52px] z-10 select-none w-full"
+        className="py-1 items-center justify-center h-[52px] select-none w-full"
         accessibilityRole="tab"
         accessibilityState={{ selected: isActive }}
         accessibilityLabel={item.label}
@@ -145,10 +145,104 @@ const TabButton: React.FC<TabButtonProps> = ({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
-      className="py-1 items-center justify-center h-[52px] z-10 w-full"
+      className="py-1 items-center justify-center h-[52px] w-full"
       accessibilityRole="tab"
       accessibilityState={{ selected: isActive }}
       accessibilityLabel={item.label}
+    >
+      {content}
+    </TouchableOpacity>
+  );
+};
+
+interface CenterElevatedButtonProps {
+  item: TabItem;
+  isActive: boolean;
+  isDark: boolean;
+  isIOS: boolean;
+  onPress: () => void;
+}
+
+const CenterElevatedButton: React.FC<CenterElevatedButtonProps> = ({
+  item,
+  isActive,
+  isDark,
+  isIOS,
+  onPress,
+}) => {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withTiming(0.92, { duration: 90 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withTiming(1, { duration: 120 });
+  };
+
+  const content = (
+    <View className="items-center justify-center -mt-6">
+      {/* Elevated Circular Action Button */}
+      <Animated.View
+        style={[
+          animatedStyle,
+          {
+            shadowColor: BRAND_ORANGE,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.38,
+            shadowRadius: 10,
+            elevation: 8,
+          },
+        ]}
+        className="w-[50px] h-[50px] rounded-full bg-[#FF6A00] items-center justify-center border-2 border-card"
+      >
+        <LayoutGrid size={22} color="#FFFFFF" strokeWidth={2.4} />
+      </Animated.View>
+
+      {/* Label underneath */}
+      <Text
+        style={{ color: isActive ? BRAND_ORANGE : isDark ? '#9CA3AF' : '#64748B' }}
+        className={cn(
+          'text-[10px] font-sans tracking-tight mt-1 text-center',
+          isActive ? 'font-bold' : 'font-semibold'
+        )}
+        numberOfLines={1}
+      >
+        {item.label}
+      </Text>
+    </View>
+  );
+
+  if (isIOS) {
+    return (
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        className="items-center justify-center z-20 w-full"
+        accessibilityRole="tab"
+        accessibilityState={{ selected: isActive }}
+        accessibilityLabel="View All Modules"
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={0.85}
+      className="items-center justify-center z-20 w-full"
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isActive }}
+      accessibilityLabel="View All Modules"
     >
       {content}
     </TouchableOpacity>
@@ -159,126 +253,45 @@ export const BottomNavigationBar: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname() || '';
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const isIOS = Platform.OS === 'ios';
 
-  // Dynamic Billing route based on user roles / permissions
-  const billingRoute = useMemo(() => {
-    const permissions = user?.permissions || [];
-    const userRole = (user?.role || '').toLowerCase();
-    const hasAdminAccess =
-      permissions.includes('billing:dashboard') ||
-      permissions.includes('billing:assessment_manager') ||
-      userRole === 'admin' ||
-      userRole === 'accountant' ||
-      userRole === 'treasury';
-
-    return hasAdminAccess ? '/(resident)/admin/billing' : '/(resident)/billing/my-dues';
-  }, [user]);
-
   // Determine active tab from pathname
   const activeTab: MainTabKey = useMemo(() => {
-    if (pathname.includes('/visitor')) return 'visitor';
-    if (pathname.includes('/amenities')) return 'amenities';
-    if (pathname.includes('/billing')) return 'billing';
-    if (pathname.includes('/dashboard')) return 'dashboard';
+    if (pathname.includes('/all-features')) return 'all-features';
+    if (pathname.includes('/visitor')) return 'security';
+    if (pathname.includes('/notices') || pathname.includes('/directory') || pathname.includes('/polls')) return 'community';
+    if (pathname.includes('/profile') || pathname.includes('/settings')) return 'profile';
+    if (pathname.includes('/dashboard') || pathname === '/' || pathname === '/(resident)') return 'dashboard';
     return 'dashboard';
   }, [pathname]);
 
-  // Local optimistic state for immediate responsiveness on tap
   const [selectedTabKey, setSelectedTabKey] = useState<MainTabKey>(activeTab);
 
   useEffect(() => {
     setSelectedTabKey(activeTab);
   }, [activeTab]);
 
-  const currentActiveIndex = TAB_ITEMS.findIndex((t) => t.key === selectedTabKey);
-
-  // Layout storage for exact measured coordinates of all 4 tabs
-  const tabLayoutsRef = useRef<{ [key: number]: { x: number; width: number } }>({});
-  const [hasMeasured, setHasMeasured] = useState(false);
-
-  // Shared animated values for X translation and width expansion
-  const shiftOffset = useSharedValue(globalLastActiveX >= 0 ? globalLastActiveX : 0);
-  const capsuleWidthValue = useSharedValue(globalLastCapsuleWidth > 0 ? globalLastCapsuleWidth : 72);
-  const isInitializedRef = useRef(globalLastActiveX >= 0);
-
-  const animateToTab = (index: number) => {
-    const layout = tabLayoutsRef.current[index];
-    if (!layout) return;
-
-    const capsuleW = Math.min(layout.width - 4, 76);
-    const targetX = layout.x + (layout.width - capsuleW) / 2;
-
-    if (!isInitializedRef.current) {
-      shiftOffset.value = targetX;
-      capsuleWidthValue.value = capsuleW;
-      isInitializedRef.current = true;
-    } else {
-      shiftOffset.value = withTiming(targetX, {
-        duration: 190,
-        easing: Easing.out(Easing.cubic),
-      });
-      capsuleWidthValue.value = withTiming(capsuleW, {
-        duration: 170,
-        easing: Easing.out(Easing.cubic),
-      });
-    }
-
-    globalLastActiveX = targetX;
-    globalLastCapsuleWidth = capsuleW;
-  };
-
-  const onTabLayout = (index: number, layout: { x: number; width: number }) => {
-    tabLayoutsRef.current[index] = layout;
-
-    if (index === currentActiveIndex) {
-      setHasMeasured(true);
-      animateToTab(index);
-    }
-  };
-
-  useEffect(() => {
-    if (currentActiveIndex >= 0 && tabLayoutsRef.current[currentActiveIndex]) {
-      animateToTab(currentActiveIndex);
-    }
-  }, [currentActiveIndex]);
-
-  const animatedCapsuleStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: shiftOffset.value }],
-    width: capsuleWidthValue.value,
-  }));
-
   const isNavigatingRef = useRef(false);
 
-  const handleTabPress = (item: TabItem, index: number) => {
-    // 1. Immediately trigger visual sliding animation
+  const handleTabPress = (item: TabItem) => {
     setSelectedTabKey(item.key);
-    animateToTab(index);
 
-    // 2. Prevent double-tap navigation storms
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
 
-    let targetRoute = item.route;
-    if (item.key === 'billing') {
-      targetRoute = billingRoute;
-    }
-
-    // 3. Short micro-delay so user visibly sees the capsule glide across before screen switches
     setTimeout(() => {
       try {
-        router.navigate(targetRoute as any);
+        router.navigate(item.route as any);
       } catch {
-        router.replace(targetRoute as any);
+        router.replace(item.route as any);
       } finally {
         setTimeout(() => {
           isNavigatingRef.current = false;
         }, 150);
       }
-    }, 120);
+    }, 60);
   };
 
   return (
@@ -287,15 +300,15 @@ export const BottomNavigationBar: React.FC = () => {
       style={{
         paddingBottom: Math.max(insets.bottom, isIOS ? 12 : 8),
       }}
-      className="absolute bottom-0 left-0 right-0 items-center justify-center px-4 z-50"
+      className="absolute bottom-0 left-0 right-0 items-center justify-center px-4 z-50 pointer-events-box-none"
     >
-      {/* Floating Pill Navigation Container */}
+      {/* Floating 5-Item Navigation Bar with Elevated Center Slot */}
       <View
         style={{
           backgroundColor: isIOS
             ? isDark
-              ? 'rgba(22, 23, 27, 0.92)'
-              : 'rgba(255, 255, 255, 0.94)'
+              ? 'rgba(22, 23, 27, 0.94)'
+              : 'rgba(255, 255, 255, 0.96)'
             : isDark
             ? '#18181B'
             : '#FFFFFF',
@@ -310,53 +323,43 @@ export const BottomNavigationBar: React.FC = () => {
           shadowOpacity: isDark ? 0.55 : 0.12,
           shadowRadius: 20,
         }}
-        className="w-full max-w-[400px] h-[64px] px-3 py-1 flex-row items-center justify-between relative overflow-hidden"
+        className="w-full max-w-[410px] h-[64px] px-2 py-1 flex-row items-center justify-between relative overflow-visible"
       >
-        {/* Persistent Single Animated Sliding Capsule (Encloses BOTH Icon and Label) */}
-        <Animated.View
-          style={[
-            animatedCapsuleStyle,
-            {
-              position: 'absolute',
-              top: 6,
-              bottom: 6,
-              borderRadius: 24,
-              backgroundColor: isDark
-                ? 'rgba(255, 106, 0, 0.18)'
-                : 'rgba(255, 106, 0, 0.12)',
-              borderColor: isDark
-                ? 'rgba(255, 106, 0, 0.35)'
-                : 'rgba(255, 106, 0, 0.25)',
-              borderWidth: 1,
-              shadowColor: ACTIVE_ORANGE,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isDark ? 0.35 : 0.15,
-              shadowRadius: 6,
-              opacity: hasMeasured || globalLastActiveX >= 0 ? 1 : 0,
-            },
-          ]}
-        />
+        {/* 5 Symmetrical Tab Items */}
+        {TAB_ITEMS.map((item) => {
+          const isActive = selectedTabKey === item.key;
 
-        {/* 4 Feature Tab Items with Measured Layout Coordinates */}
-        {TAB_ITEMS.map((item, index) => (
-          <View
-            key={item.key}
-            className="flex-1 items-center justify-center"
-            onLayout={(e) => onTabLayout(index, e.nativeEvent.layout)}
-          >
-            <TabButton
-              item={item}
-              isActive={selectedTabKey === item.key}
-              isDark={isDark}
-              isIOS={isIOS}
-              onPress={() => handleTabPress(item, index)}
-            />
-          </View>
-        ))}
+          if (item.isCenter) {
+            return (
+              <View key={item.key} className="flex-1 items-center justify-center overflow-visible">
+                <CenterElevatedButton
+                  item={item}
+                  isActive={isActive}
+                  isDark={isDark}
+                  isIOS={isIOS}
+                  onPress={() => handleTabPress(item)}
+                />
+              </View>
+            );
+          }
+
+          return (
+            <View key={item.key} className="flex-1 items-center justify-center">
+              <StandardTabButton
+                item={item}
+                isActive={isActive}
+                isDark={isDark}
+                isIOS={isIOS}
+                onPress={() => handleTabPress(item)}
+              />
+            </View>
+          );
+        })}
       </View>
     </View>
   );
 };
 
 export default BottomNavigationBar;
+
 

@@ -1,5 +1,15 @@
 import React, { useState, useRef } from 'react';
-import { View, Pressable, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
+import {
+  View,
+  Pressable,
+  TouchableOpacity,
+  ScrollView,
+  BackHandler,
+  Keyboard,
+  Platform,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as LucideIcons from 'lucide-react-native';
@@ -200,21 +210,31 @@ export function ScreenShell({
       ) : null}
 
       {/* Main content area */}
-      <View className="flex-1 bg-background">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+        className="flex-1 bg-background"
+      >
         {loading && !hasChildren ? (
           <Skeleton variant="listItem" count={5} />
         ) : scrollable ? (
           <ScrollView 
             className="flex-1"
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }}
           >
             {children}
           </ScrollView>
         ) : (
-          children
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View className="flex-1 bg-background">
+              {children}
+            </View>
+          </TouchableWithoutFeedback>
         )}
-      </View>
+      </KeyboardAvoidingView>
 
       {/* Global Easy Navigation Modal (Triggered from Compass Icon Button) */}
       <GlobalNavModal
@@ -226,10 +246,6 @@ export function ScreenShell({
       <RoleSwitchModal
         visible={showRoleModal}
         onClose={() => setShowRoleModal(false)}
-        onSelectRole={() => {
-          setShowRoleModal(false);
-          setShowVillaModal(true);
-        }}
       />
 
       {/* Villa Unit Context Switcher Modal */}
@@ -237,10 +253,7 @@ export function ScreenShell({
         visible={showVillaModal}
         onClose={() => setShowVillaModal(false)}
         activeVilla={selectedVilla}
-        onSelectVilla={(v) => {
-          setSelectedVilla(v);
-          setShowVillaModal(false);
-        }}
+        onSelectVilla={(v) => setSelectedVilla(v)}
       />
 
       {/* Down Bar Navigation */}

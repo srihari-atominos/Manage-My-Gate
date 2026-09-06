@@ -195,6 +195,7 @@ const FALLBACK_SECURITY_PERMISSIONS = new Set([
 
 const FALLBACK_RESIDENT_FEATURE_IDS = new Set([
   'visitor_resident_passes',
+  'visitor_gate_pass',
   'billing_dashboard',
   'billing_my_dues',
   'billing_wallet',
@@ -229,28 +230,69 @@ export const isFeatureAllowedForUser = (
   item: { id: string; permission?: string; categoryKey?: string },
   user: UserLike | null | undefined
 ): boolean => {
-  if (!user) return false;
-  if (item.id === 'admin_organizations' || item.id === 'admin_audit_logs') return false;
+  if (!user || !item) return false;
+  if (item.id === 'admin_organizations' || item.id === 'admin_audit_logs') {
+    return user.isPlatform === true || Boolean(user.permissions && user.permissions.includes('platform:super_admin'));
+  }
 
   // 1. Super Admins & Community Admins have full feature access
   if (checkIsAdmin(user)) {
     return true;
   }
 
-  // 2. Security role check - ensure security personas always get gate and scanner features
-  if (checkIsSecurityRole(user)) {
-    if (FALLBACK_SECURITY_FEATURE_IDS.has(item.id)) return true;
-    if (item.permission && FALLBACK_SECURITY_PERMISSIONS.has(item.permission)) return true;
-  }
-
+  const roleName = getUserRoleName(user).toLowerCase();
   const permissions = Array.isArray(user.permissions) ? user.permissions : [];
 
-  // 3. Strict evaluation of permissions assigned in Role Builder (when permissions array is populated)
+  // 2. Strict evaluation of permissions assigned in Role Builder (when permissions array is populated)
   if (permissions.length > 0) {
     return matchesUserPermissions(item.permission, item.id, permissions);
   }
 
-  const roleName = getUserRoleName(user).toLowerCase();
+  // 3. Fallback persona validation when explicit permissions array is not provided:
+  // 3a. Security Guard persona (Only gate, scanner, logs, notices, tickets allowed)
+  if (checkIsSecurityRole(user)) {
+    if (FALLBACK_SECURITY_FEATURE_IDS.has(item.id)) return true;
+    if (item.permission && FALLBACK_SECURITY_PERMISSIONS.has(item.permission)) return true;
+    return false;
+  }
+
+  // 3b. Staff / Assignee persona
+  if (roleName.includes('staff') || roleName.includes('assignee') || roleName.includes('vendor')) {
+    const staffAllowed = [
+      'complaints_assignee',
+      'complaints_track_requests',
+      'complaints_raise_ticket',
+      'notices_active_board',
+    ];
+    return staffAllowed.includes(item.id);
+  }
+
+  // 3c. Facility / Community Manager persona
+  if (roleName.includes('facility') || roleName.includes('manager')) {
+    const managerAllowed = [
+      'amenities_dashboard',
+      'amenities_admin_calendar',
+      'amenities_ledgers',
+      'amenities_master',
+      'amenities_maintenance',
+      'amenities_scanner',
+      'amenities_security_logs',
+      'complaints_dashboard',
+      'complaints_complaint_management',
+      'complaints_staff',
+      'complaints_assignee',
+      'notices_dashboard',
+      'notices_manage_notices',
+      'visitor_admin_dashboard',
+      'visitor_community_passes',
+      'visitor_admin_logs',
+      'billing_dashboard',
+      'billing_action_center',
+    ];
+    return managerAllowed.includes(item.id);
+  }
+
+  // 3d. Resident / Tenant / Owner persona
   const isResidentRole =
     !roleName ||
     roleName.includes('resident') ||
@@ -267,17 +309,19 @@ export const isFeatureAllowedForUser = (
   return false;
 };
 
+
 /**
- * Returns role-appropriate default quick action feature IDs (5 slots)
+ * Returns role-appropriate default quick action feature IDs (6 slots)
  */
 export const getDefaultQuickActionsForUser = (user: UserLike | null | undefined): string[] => {
   if (checkIsSecurityRole(user)) {
     return [
       'visitor_gate_console',
       'amenities_scanner',
-      'amenities_security_logs',
       'notices_active_board',
       'complaints_track_requests',
+      'complaints_raise_ticket',
+      'amenities_security_logs',
     ];
   }
 
@@ -288,15 +332,18 @@ export const getDefaultQuickActionsForUser = (user: UserLike | null | undefined)
       'visitor_admin_dashboard',
       'billing_action_center',
       'notices_manage_notices',
+      'amenities_dashboard',
     ];
   }
 
-  // Default Resident Quick Actions
+  // Default Resident Quick Actions (6 slots)
   return [
     'visitor_resident_passes',
     'billing_dashboard',
     'complaints_track_requests',
     'amenities_discover',
     'notices_active_board',
+    'visitor_gate_pass',
   ];
 };
+

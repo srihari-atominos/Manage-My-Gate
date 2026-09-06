@@ -10,6 +10,7 @@ import {
   Shield,
   ArrowRight,
   Sparkles,
+  X,
 } from 'lucide-react-native';
 import * as React from 'react';
 import {
@@ -69,7 +70,14 @@ interface PhoneFormValues {
 
 export default function LoginScreen() {
   const { user, login: performLogin, requestOtp, loading, error, isAuthenticated, otpSent, clearStatus } = useAuth();
-  const params = useLocalSearchParams<{ intent?: string; email?: string }>();
+  const params = useLocalSearchParams<{
+    intent?: string;
+    email?: string;
+    switchType?: 'community' | 'villa' | 'role';
+    targetName?: string;
+    targetCommunity?: string;
+    targetRole?: string;
+  }>();
   const isCreateOrgIntent =
     params.intent === 'create-org' ||
     params.intent === 'create' ||
@@ -90,6 +98,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [keepSignedIn, setKeepSignedIn] = React.useState(true);
   const [connectingHarmony, setConnectingHarmony] = React.useState(false);
+  const [switchDismissed, setSwitchDismissed] = React.useState(false);
   const passwordInputRef = React.useRef<TextInput>(null);
 
   // Staged Entrance Animation Drivers
@@ -399,6 +408,50 @@ export default function LoginScreen() {
 
               {/* Form Card Container */}
               <View className="bg-card border border-border/80 rounded-3xl p-5 gap-3.5 shadow-xs">
+                {/* Context Switch Auth Requirement Banner */}
+                {params.switchType && params.targetName && !switchDismissed && (
+                  <View className="bg-orange-50/90 dark:bg-[#1E232E] border border-[#FF6A00]/30 rounded-2xl p-3.5 gap-2.5 shadow-2xs">
+                    {/* Header Row: Lock Icon, Title & Close Button */}
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center gap-2">
+                        <View className="w-7 h-7 rounded-lg bg-[#FF6A00]/15 dark:bg-[#FF6A00]/25 items-center justify-center">
+                          <Lock size={14} color="#FF6A00" strokeWidth={2.4} />
+                        </View>
+                        <Text className="text-[13px] font-extrabold text-foreground font-sans tracking-tight">
+                          Authentication Required
+                        </Text>
+                      </View>
+
+                      <TouchableOpacity
+                        onPress={() => setSwitchDismissed(true)}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        className="w-6 h-6 rounded-full bg-black/5 dark:bg-white/10 items-center justify-center"
+                        accessibilityRole="button"
+                        accessibilityLabel="Dismiss notice"
+                      >
+                        <X size={12} color="#64748B" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Target Context Capsule Pill */}
+                    <View className="flex-row items-center bg-white dark:bg-card border border-border/80 rounded-xl px-3 py-2 gap-2 shadow-2xs">
+                      <View className="bg-[#FF6A00]/15 dark:bg-[#FF6A00]/25 px-2 py-0.5 rounded-md shrink-0">
+                        <Text className="text-[9.5px] font-extrabold text-[#FF6A00] font-sans uppercase">
+                          {params.switchType === 'villa' ? 'Unit' : params.switchType === 'community' ? 'Community' : 'Role'}
+                        </Text>
+                      </View>
+                      <Text
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                        className="text-xs font-bold text-foreground font-sans flex-1"
+                      >
+                        {params.targetName}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
                 {authMode === 'basic' ? (
                   /* Email / Password Form */
                   <View className="gap-3.5">
@@ -660,10 +713,10 @@ export default function LoginScreen() {
                 <View className="flex-1 h-px bg-border/80" />
               </View>
 
-              {/* Social Authentication: Google ID & Microsoft ID */}
+              {/* Social Authentication: Google ID & Apple ID */}
               <View className="flex-row items-center gap-3 w-full">
                 <SocialAuthButton provider="google" />
-                <SocialAuthButton provider="microsoft" />
+                <SocialAuthButton provider="apple" />
               </View>
 
               {/* Create Account Prompt */}
