@@ -33,16 +33,6 @@ export default function AdminGateLogsScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const tabs = useMemo(
-    () => [
-      { key: 'ALL', label: 'All Logs' },
-      { key: 'ACTIVE', label: 'Inside Now' },
-      { key: 'EXPIRED', label: 'Completed' },
-      { key: 'REVOKED', label: 'Revoked/Denied' },
-    ],
-    []
-  );
-
   const loadData = useCallback(
     (page: number, append: boolean = false) => {
       const params: any = {

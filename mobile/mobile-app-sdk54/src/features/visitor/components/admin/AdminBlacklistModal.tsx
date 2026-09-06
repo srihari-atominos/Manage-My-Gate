@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Modal, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { View, Modal, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
 import { ShieldAlert, X } from 'lucide-react-native';
 
@@ -31,6 +32,14 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
     if (!reason.trim()) {
       setError('Please specify reason for blacklisting');
       return;
+    }
+    
+    if (phone && phone.trim()) {
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length !== 10) {
+        setError('Contact number must be exactly 10 digits');
+        return;
+      }
     }
 
     setError(null);
@@ -69,48 +78,40 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
 
           {/* Form */}
           <View className="gap-2.5">
-            <View>
-              <Text className="text-xs font-semibold text-muted-foreground mb-1">Visitor Name *</Text>
-              <TextInput
-                value={visitorName}
-                onChangeText={setVisitorName}
-                placeholder="e.g. John Doe"
-                className="bg-card border border-border rounded-xl p-3 text-sm text-foreground"
-              />
-            </View>
+            <TextInput
+              label="Visitor Name"
+              required
+              value={visitorName}
+              onChangeText={setVisitorName}
+              placeholder="e.g. John Doe"
+            />
 
-            <View>
-              <Text className="text-xs font-semibold text-muted-foreground mb-1">Phone Number</Text>
-              <TextInput
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="e.g. +91 9876543210"
-                keyboardType="phone-pad"
-                className="bg-card border border-border rounded-xl p-3 text-sm text-foreground"
-              />
-            </View>
+            <TextInput
+              label="Phone Number"
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="e.g. 9876543210"
+              keyboardType="phone-pad"
+              maxLength={10}
+            />
 
-            <View>
-              <Text className="text-xs font-semibold text-muted-foreground mb-1">National ID / Govt ID</Text>
-              <TextInput
-                value={idProofNumber}
-                onChangeText={setIdProofNumber}
-                placeholder="e.g. AADHAAR / DL Number"
-                className="bg-card border border-border rounded-xl p-3 text-sm text-foreground"
-              />
-            </View>
+            <TextInput
+              label="National ID / Govt ID"
+              value={idProofNumber}
+              onChangeText={setIdProofNumber}
+              placeholder="e.g. AADHAAR / DL Number"
+            />
 
-            <View>
-              <Text className="text-xs font-semibold text-muted-foreground mb-1">Blacklist Reason *</Text>
-              <TextInput
-                value={reason}
-                onChangeText={setReason}
-                placeholder="Describe reason for restricting entry..."
-                multiline
-                numberOfLines={3}
-                className="bg-card border border-border rounded-xl p-3 text-sm text-foreground min-h-[70px]"
-              />
-            </View>
+            <TextInput
+              label="Blacklist Reason"
+              required
+              value={reason}
+              onChangeText={setReason}
+              placeholder="Describe reason for restricting entry..."
+              multiline
+              numberOfLines={3}
+              inputClassName="min-h-[70px]"
+            />
           </View>
 
           {/* Actions */}
@@ -118,8 +119,14 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
             <Button variant="outline" className="flex-1" onPress={onClose} disabled={loading}>
               <Text className="text-xs font-semibold">Cancel</Text>
             </Button>
-            <Button variant="destructive" className="flex-1" onPress={handleSubmit} disabled={loading}>
-              {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text className="text-xs font-semibold text-white">Add to Blacklist</Text>}
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onPress={handleSubmit}
+              disabled={loading}
+              loading={loading}
+            >
+              <Text className="text-xs font-semibold text-destructive-foreground">Add to Blacklist</Text>
             </Button>
           </View>
         </View>

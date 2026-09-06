@@ -105,11 +105,16 @@ export default function AmenitySlotWizardScreen() {
         <View className="mb-4">
           <DatePicker
             label="Booking Date"
-            value={new Date(selectedDate)}
+            value={(() => {
+              const [y, m, d] = (selectedDate || '').split('-').map(Number);
+              return !isNaN(y) && !isNaN(m) && !isNaN(d) ? new Date(y, m - 1, d, 12, 0, 0) : new Date();
+            })()}
+            minDate={new Date()}
             onChange={(d) => {
-              const offset = d.getTimezoneOffset();
-              const localDate = new Date(d.getTime() - (offset * 60 * 1000));
-              handleDateChange(localDate.toISOString().split('T')[0]);
+              const y = d.getFullYear();
+              const m = String(d.getMonth() + 1).padStart(2, '0');
+              const day = String(d.getDate()).padStart(2, '0');
+              handleDateChange(`${y}-${m}-${day}`);
             }}
           />
         </View>
@@ -135,6 +140,7 @@ export default function AmenitySlotWizardScreen() {
             selectedSlot={selectedSlot}
             onSlotSelect={handleSlotSelect}
             loading={loading}
+            selectedDate={selectedDate}
           />
         )}
 

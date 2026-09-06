@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react-native';
@@ -44,23 +44,20 @@ export const VisitorPassFlowFooter: React.FC<VisitorPassFlowFooterProps> = ({
         variant="default"
         onPress={onNext}
         disabled={disabled || loading}
-        className="flex-1 h-12 rounded-xl bg-primary flex-row items-center justify-center gap-2"
+        loading={loading}
+        className="flex-1 h-12 rounded-xl flex-row items-center justify-center gap-2"
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
+        <Text className="font-bold text-primary-foreground text-base">
+          {labelText}
+        </Text>
+        {isLastStep ? (
+          <CheckCircle2 size={18} className="text-primary-foreground" />
         ) : (
-          <>
-            <Text className="font-bold text-primary-foreground text-base">
-              {labelText}
-            </Text>
-            {isLastStep ? (
-              <CheckCircle2 size={18} color="#fff" />
-            ) : (
-              <ArrowRight size={18} color="#fff" />
-            )}
-          </>
+          <ArrowRight size={18} className="text-primary-foreground" />
         )}
       </Button>
     </View>
   );
 };
+
+export default VisitorPassFlowFooter;

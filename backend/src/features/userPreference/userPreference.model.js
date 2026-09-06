@@ -10,6 +10,33 @@ function hasNoDuplicates(val) {
   return new Set(val).size === val.length;
 }
 
+const scopedPreferenceSchema = new mongoose.Schema(
+  {
+    orgId: {
+      type: String,
+      default: '',
+    },
+    villaId: {
+      type: String,
+      default: '',
+    },
+    activeQuickActions: {
+      type: [String],
+      validate: [
+        {
+          validator: arrayLimit,
+          message: 'activeQuickActions cannot contain more than 7 items',
+        },
+        {
+          validator: hasNoDuplicates,
+          message: 'activeQuickActions cannot contain duplicate items',
+        },
+      ],
+    },
+  },
+  { _id: false }
+);
+
 const userPreferenceSchema = new mongoose.Schema(
   {
     userId: {
@@ -32,6 +59,10 @@ const userPreferenceSchema = new mongoose.Schema(
           message: 'activeQuickActions cannot contain duplicate items',
         },
       ],
+    },
+    scopedPreferences: {
+      type: [scopedPreferenceSchema],
+      default: [],
     },
   },
   {

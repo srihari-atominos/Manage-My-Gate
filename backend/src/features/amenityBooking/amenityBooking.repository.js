@@ -48,7 +48,12 @@ export class AmenityBookingRepository {
       if (typeof filters.status === 'object') {
         matchStage.status = filters.status;
       } else if (typeof filters.status === 'string') {
-        matchStage.status = filters.status.toLowerCase();
+        const s = filters.status.toLowerCase();
+        if (s === 'checked_in' || s === 'checked-in') {
+          matchStage.status = { $in: ['checked-in', 'checked_in'] };
+        } else {
+          matchStage.status = s;
+        }
       } else {
         matchStage.status = filters.status;
       }
@@ -99,21 +104,35 @@ export class AmenityBookingRepository {
             {
               $project: {
                 _id: 1,
+                bookingId: 1,
                 bookingDate: 1,
                 startTime: 1,
                 endTime: 1,
                 status: 1,
-                totalPrice: '$pricingDetails.totalAmount',
+                pricingDetails: 1,
+                totalFee: { $ifNull: ['$pricingDetails.totalAmount', 0] },
+                totalPrice: { $ifNull: ['$pricingDetails.totalAmount', 0] },
                 deposit: '$pricingDetails.securityDeposit',
+                paymentStatus: 1,
                 paymentMethod: 1,
+                qrCode: 1,
+                qrStatus: 1,
                 rejectionReason: 1,
                 numberOfPersons: 1,
                 createdAt: 1,
+                villaNumber: '$user.villaNumber',
+                userName: '$user.name',
                 userId: {
                   _id: '$user._id',
                   name: '$user.name',
                   username: '$user.username',
-                  email: '$user.email'
+                  email: '$user.email',
+                  villaNumber: '$user.villaNumber',
+                  flatNumber: '$user.flatNumber',
+                  unit: '$user.unit',
+                  phoneNumber: '$user.phoneNumber',
+                  building: '$user.building',
+                  tower: '$user.tower'
                 },
                 amenityId: {
                   _id: '$amenity._id',
@@ -266,12 +285,13 @@ export class AmenityBookingRepository {
 
   async findById(id, orgId, session = null) {
     const query = { orgId };
-    if (mongoose.Types.ObjectId.isValid(id)) {
-      query.$or = [{ _id: id }, { bookingId: id }];
+    const cleanId = String(id || '').trim();
+    if (mongoose.Types.ObjectId.isValid(cleanId)) {
+      query.$or = [{ _id: new mongoose.Types.ObjectId(cleanId) }, { bookingId: cleanId }];
     } else {
-      query.bookingId = id;
+      query.bookingId = cleanId;
     }
-    return await AmenityBooking.findOne(query).session(session).populate('amenityId');
+    return await AmenityBooking.findOne(query).session(session).populate('amenityId userId');
   }
 
   async create(bookingData, session = null) {
@@ -281,10 +301,11 @@ export class AmenityBookingRepository {
 
   async updateStatus(id, orgId, status, reviewData = {}, session = null) {
     const query = { orgId };
-    if (mongoose.Types.ObjectId.isValid(id)) {
-      query.$or = [{ _id: id }, { bookingId: id }];
+    const cleanId = String(id || '').trim();
+    if (mongoose.Types.ObjectId.isValid(cleanId)) {
+      query.$or = [{ _id: new mongoose.Types.ObjectId(cleanId) }, { bookingId: cleanId }];
     } else {
-      query.bookingId = id;
+      query.bookingId = cleanId;
     }
     return await AmenityBooking.findOneAndUpdate(
       query,

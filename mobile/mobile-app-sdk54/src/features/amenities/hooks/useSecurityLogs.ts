@@ -5,10 +5,12 @@ import { useAppSocket } from '../../../hooks/useAppSocket';
 import {
   fetchSecurityLogsThunk,
   fetchDashboardStatsThunk,
+  deleteSecurityLogThunk,
   setFilters,
   setPage,
   clearFilters,
   addLogRealTime,
+  deleteLogRealTime,
 } from '../store/securityLogSlice';
 
 export function useSecurityLogs() {
@@ -50,10 +52,16 @@ export function useSecurityLogs() {
       dispatch(addLogRealTime(logData));
     };
 
+    const handleLogDeleted = (data: { id: string }) => {
+      dispatch(deleteLogRealTime(data.id));
+    };
+
     socket.on('SECURITY_LOG_CREATED', handleLogCreated);
+    socket.on('SECURITY_LOG_DELETED', handleLogDeleted);
 
     return () => {
       socket.off('SECURITY_LOG_CREATED', handleLogCreated);
+      socket.off('SECURITY_LOG_DELETED', handleLogDeleted);
     };
   }, [dispatch, socket]);
 
@@ -69,6 +77,10 @@ export function useSecurityLogs() {
     dispatch(clearFilters());
   };
 
+  const handleDeleteLog = async (id: string) => {
+    await dispatch(deleteSecurityLogThunk(id)).unwrap();
+  };
+
   return {
     logs,
     dashboard,
@@ -80,6 +92,7 @@ export function useSecurityLogs() {
     handleFilterChange,
     handlePageChange,
     handleClearFilters,
+    handleDeleteLog,
   };
 }
 

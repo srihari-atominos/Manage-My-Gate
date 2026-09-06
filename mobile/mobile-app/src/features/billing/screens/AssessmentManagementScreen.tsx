@@ -12,7 +12,7 @@ import { TextInput } from '@/components/forms/TextInput';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { SearchBar } from '@/components/forms/SearchBar';
+import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { SlidersHorizontal, Play, Send, ShieldAlert, Landmark, Calendar, Layers, CheckCircle2, Clock, Plus, Trash2, Pencil, Filter, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
@@ -123,11 +123,14 @@ export function AssessmentManagementScreen() {
 
   useBillingSocket();
 
-  // Permission check from auth state
-  const permissions: string[] = useSelector((state: any) => state.auth?.user?.permissions || []);
-  const userRole: string = useSelector((state: any) => state.auth?.user?.role || '');
-  const isSuperAdmin = userRole === 'SuperAdmin' || userRole === 'Admin';
-  const hasAssessmentPermission = isSuperAdmin || permissions.includes('billing:assessment_manager') || permissions.includes('*');
+  // Permission check from auth state (memoized boolean selector to avoid new reference warnings)
+  const hasAssessmentPermission = useSelector((state: any) => {
+    const role = state.auth?.user?.role || '';
+    if (role === 'SuperAdmin' || role === 'Admin') return true;
+    const permissions = state.auth?.user?.permissions;
+    if (!Array.isArray(permissions)) return false;
+    return permissions.includes('billing:assessment_manager') || permissions.includes('*');
+  });
 
   const [assessments, setAssessments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -185,32 +188,6 @@ export function AssessmentManagementScreen() {
   useEffect(() => {
     fetchAssessments();
   }, [fetchAssessments]);
-
-  // Permission Denied View
-  if (!hasAssessmentPermission) {
-    return (
-      <ScreenShell title="Assessment Management" subtitle="Access Restricted" iconName="Sliders">
-        <View className="flex-1 bg-background p-6 items-center justify-center">
-          <View className="w-16 h-16 rounded-full bg-destructive/10 items-center justify-center mb-4">
-            <Icon as={ShieldAlert} size={32} className="text-destructive" />
-          </View>
-          <Text className="text-xl font-bold text-foreground text-center mb-2">Access Denied</Text>
-          <Text className="text-sm text-muted-foreground text-center mb-6 px-4">
-            You do not have the required administrative permission (<Text className="font-mono text-xs font-bold">billing:assessment_manager</Text>) to manage assessment rules or execute billing runs.
-          </Text>
-          <Button
-            variant="default"
-            size="lg"
-            onPress={() => router.push('/(resident)/billing/my-dues' as any)}
-            accessibilityRole="button"
-            accessibilityLabel="Return to My Dues"
-          >
-            Return to My Dues
-          </Button>
-        </View>
-      </ScreenShell>
-    );
-  }
 
   const handleOpenRunModal = (assessment: any) => {
     setSelectedAssessment(assessment);
@@ -339,75 +316,86 @@ export function AssessmentManagementScreen() {
     <>
       <ScreenShell
         title="Assessment Management"
-        subtitle="Maintenance calculation formulas & billing runs"
+        subtitle={!hasAssessmentPermission ? 'Access Restricted' : 'Maintenance calculation formulas & billing runs'}
         iconName="SlidersHorizontal"
-        loading={isLoading && assessments.length === 0}
-      >
-        {/* ── FIXED TOP CONTROL BAR (Search, Filters & Create Action) ───── */}
-        <View className="px-4 pt-3 pb-3 bg-card border-b border-border gap-2.5 z-10">
-          {/* Row 1: Search Input Box + Create Rule Button */}
-          <View className="flex-row items-center gap-2">
-            <SearchBar
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search rule..."
-              className="flex-1"
-            />
-            <Button
-              variant="default"
-              size="sm"
-              className="bg-primary flex-row items-center px-3 h-11"
+        loading={hasAssessmentPermission && isLoading && assessments.length === 0}
+        headerRight={
+          !hasAssessmentPermission ? undefined : (
+            <TouchableOpacity
+              activeOpacity={0.8}
               onPress={() => {
                 setAssessmentToEdit(null);
                 setShowCreateModal(true);
               }}
+              className="h-9 px-3 rounded-xl bg-emerald-600 active:bg-emerald-700 flex-row items-center justify-center gap-1.5 shadow-sm"
               accessibilityRole="button"
               accessibilityLabel="Create New Assessment Rule"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Icon as={Plus} size={14} className="text-white me-1" />
-              <Text className="font-bold text-xs text-white">Create Rule</Text>
+              <Plus size={15} color="#ffffff" strokeWidth={2.5} />
+              <Text className="text-xs font-bold text-white">Create Rule</Text>
+            </TouchableOpacity>
+          )
+        }
+      >
+        {!hasAssessmentPermission ? (
+          <View className="flex-1 bg-background p-6 items-center justify-center">
+            <View className="w-16 h-16 rounded-full bg-destructive/10 items-center justify-center mb-4">
+              <Icon as={ShieldAlert} size={32} className="text-destructive" />
+            </View>
+            <Text className="text-xl font-bold text-foreground text-center mb-2">Access Denied</Text>
+            <Text className="text-sm text-muted-foreground text-center mb-6 px-4">
+              You do not have the required administrative permission (<Text className="font-mono text-xs font-bold">billing:assessment_manager</Text>) to manage assessment rules or execute billing runs.
+            </Text>
+            <Button
+              variant="default"
+              size="lg"
+              onPress={() => router.push('/(resident)/billing/my-dues' as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Return to My Dues"
+            >
+              Return to My Dues
             </Button>
           </View>
+        ) : (
+          <>
+            {/* CANONICAL SEARCH FILTER BAR WITH MOVEABLE STATUS SLIDE PILLS */}
+            <View className="px-4 pt-3 pb-1">
+          <SearchFilterBar
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search rule..."
+            sortOptions={[
+              { label: 'All', value: 'ALL' },
+              { label: 'Recurring', value: 'RECURRING' },
+              { label: 'One-Time', value: 'ONE_TIME' },
+              { label: 'Capital Repair', value: 'CAPITAL_REPAIR' },
+            ]}
+            currentSort={typeFilter}
+            onSortChange={(val: any) => setTypeFilter(val)}
+            variant="default"
+            className="px-0 py-0 border-0"
+          />
 
-          {/* Row 2: Full Width Type Filter Chips */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="w-full">
-            <View className="flex-row gap-1.5 pe-4">
-              {[
-                { label: 'All', value: 'ALL' },
-                { label: 'Recurring', value: 'RECURRING' },
-                { label: 'One-Time', value: 'ONE_TIME' },
-                { label: 'Capital Repair', value: 'CAPITAL_REPAIR' },
-              ].map((tab) => {
-                const isSelected = typeFilter === tab.value;
-                return (
-                  <TouchableOpacity
-                    key={tab.value}
-                    onPress={() => setTypeFilter(tab.value)}
-                    activeOpacity={0.7}
-                    className={`px-3 py-1.5 rounded-full border ${
-                      isSelected
-                        ? 'border-primary bg-primary'
-                        : 'border-border bg-background'
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-bold ${
-                        isSelected ? 'text-white' : 'text-foreground'
-                      }`}
-                    >
-                      {tab.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </ScrollView>
-
-          {/* Row 3: Rule Count Header */}
-          <View className="flex-row items-center justify-between pt-0.5">
+          <View className="flex-row items-center justify-between pt-2 pb-1">
             <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               Assessment Rules ({filteredAssessments.length} of {assessments.length})
             </Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                setAssessmentToEdit(null);
+                setShowCreateModal(true);
+              }}
+              className="flex-row items-center gap-1 bg-emerald-600/10 border border-emerald-600/25 px-2.5 py-1 rounded-lg"
+              accessibilityRole="button"
+              accessibilityLabel="New Rule"
+            >
+              <Plus size={13} className="text-emerald-600 dark:text-emerald-400" />
+              <Text className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                + New Rule
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -450,19 +438,19 @@ export function AssessmentManagementScreen() {
                   Reset Search & Filters
                 </Button>
               ) : (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="bg-primary"
+                <TouchableOpacity
+                  activeOpacity={0.8}
                   onPress={() => {
                     setAssessmentToEdit(null);
                     setShowCreateModal(true);
                   }}
+                  className="bg-emerald-600 active:bg-emerald-700 px-4 py-2.5 rounded-xl flex-row items-center gap-2 shadow-sm"
                   accessibilityRole="button"
                   accessibilityLabel="Create First Assessment Rule"
                 >
-                  + Create First Assessment Rule
-                </Button>
+                  <Plus size={16} color="#ffffff" strokeWidth={2.5} />
+                  <Text className="text-xs font-bold text-white">Create First Assessment Rule</Text>
+                </TouchableOpacity>
               )}
             </View>
           ) : (
@@ -490,6 +478,8 @@ export function AssessmentManagementScreen() {
             })
           )}
         </ScrollView>
+          </>
+        )}
       </ScreenShell>
 
       {/* Assessment Rule Detail Bottom Sheet */}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../../store/store';
 import {
@@ -172,25 +173,37 @@ export function useAdminCalendar() {
 
   const handleManualSubmit = async (formData: ManualBookingFormData) => {
     setSubmittingManual(true);
-    await dispatch(createManualBookingThunk(formData));
-    setSubmittingManual(false);
-    handleCloseManualModal();
-    loadData();
+    try {
+      await dispatch(createManualBookingThunk(formData)).unwrap();
+      setSubmittingManual(false);
+      handleCloseManualModal();
+      loadData();
+    } catch (err: any) {
+      setSubmittingManual(false);
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to create manual reservation';
+      Alert.alert('Reservation Error', msg);
+    }
   };
 
   const handleConfirmAdminCancel = async (reason?: string) => {
     if (!cancelTarget) return;
     setSubmittingCancel(true);
-    await dispatch(
-      adminCancelBookingThunk({
-        bookingId: cancelTarget._id,
-        reason: reason || 'Admin Cancellation',
-      })
-    );
-    setSubmittingCancel(false);
-    setCancelTarget(null);
-    setSelectedBookingDetail(null);
-    loadData();
+    try {
+      await dispatch(
+        adminCancelBookingThunk({
+          bookingId: cancelTarget._id,
+          reason: reason || 'Admin Cancellation',
+        })
+      ).unwrap();
+      setSubmittingCancel(false);
+      setCancelTarget(null);
+      setSelectedBookingDetail(null);
+      loadData();
+    } catch (err: any) {
+      setSubmittingCancel(false);
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to cancel reservation';
+      Alert.alert('Cancellation Error', msg);
+    }
   };
 
   return {

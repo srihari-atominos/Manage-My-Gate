@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { FAB } from '@/components/ui/FAB';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { SegmentedControl, SegmentItem } from '@/components/common/SegmentedControl';
@@ -11,7 +10,7 @@ import { ListCard } from '@/components/ui/ListCard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { type StatusVariant } from '@/components/ui/StatusBadge';
-import { Plus } from 'lucide-react-native';
+import { Plus, Wrench } from 'lucide-react-native';
 
 import { useAdminCalendar } from '../../../src/features/amenities/hooks/useAdminCalendar';
 import { ScheduleDateNavigator } from '../../../src/features/amenities/components/ScheduleDateNavigator';
@@ -77,6 +76,8 @@ export default function AdminAmenityCalendarScreen() {
   ];
 
   const renderBookingItem = (item: AmenityBooking) => {
+    if (!item) return null;
+
     const name =
       typeof item.amenityId === 'object' && item.amenityId
         ? item.amenityId.name
@@ -98,10 +99,12 @@ export default function AdminAmenityCalendarScreen() {
     const statusLabel = isCancelled ? 'CANCELLED' : item.status === 'COMPLETED' ? 'COMPLETED' : 'CONFIRMED';
     const statusVariant: StatusVariant = isCancelled ? 'danger' : item.status === 'COMPLETED' ? 'neutral' : 'success';
 
+    const timeWindowStr = item.startTime && item.endTime ? `${item.startTime} - ${item.endTime}` : item.startTime || item.endTime || '';
+
     return (
       <ListCard
         key={item._id}
-        title={`${name} • ${item.startTime} - ${item.endTime}`}
+        title={timeWindowStr ? `${name} • ${timeWindowStr}` : name}
         subtitle={`Resident: ${residentName} (${villaNum})`}
         leftIcon="Calendar"
         status={{ label: statusLabel, variant: statusVariant }}
@@ -115,13 +118,13 @@ export default function AdminAmenityCalendarScreen() {
           </Text>
           {!isCancelled && item.status !== 'COMPLETED' && (
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
               onPress={() => setCancelTarget(item)}
-              className="py-1 px-3 h-7"
+              className="py-1 px-3 h-7 border-border active:bg-secondary/60"
               accessibilityLabel={`Cancel booking for ${residentName}`}
             >
-              <Text className="text-destructive-foreground text-xs font-semibold">Cancel Slot</Text>
+              <Text className="text-muted-foreground text-xs font-semibold">Cancel Slot</Text>
             </Button>
           )}
         </View>
@@ -148,33 +151,26 @@ export default function AdminAmenityCalendarScreen() {
         title="Choose Occupancy Date"
       />
 
-      {/* Search & Filter Controls Card */}
-      <View className="bg-card p-3.5 rounded-2xl border border-border gap-3 shadow-xs">
-        <SearchFilterBar
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          searchPlaceholder="Search resident, villa #, pass code..."
-          variant="default"
-          className="px-0 py-0 border-0"
+      {/* Search & Moveable Slide Status Filter Bar */}
+      <SearchFilterBar
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search resident, villa #, pass code..."
+        sortOptions={statusOptions}
+        currentSort={statusFilter}
+        onSortChange={setStatusFilter}
+        variant="default"
+        className="px-0 py-0 border-0"
+      />
+
+      {/* Facility Filter Bar */}
+      <View className="bg-card p-3 rounded-2xl border border-border shadow-xs">
+        <DropdownSelect
+          label="Facility Filter"
+          options={amenityOptions}
+          value={selectedAmenityId}
+          onValueChange={setSelectedAmenityId}
         />
-        <View className="flex-row gap-3">
-          <View className="flex-1">
-            <DropdownSelect
-              label="Facility"
-              options={amenityOptions}
-              value={selectedAmenityId}
-              onValueChange={setSelectedAmenityId}
-            />
-          </View>
-          <View className="flex-1">
-            <DropdownSelect
-              label="Status"
-              options={statusOptions}
-              value={statusFilter}
-              onValueChange={setStatusFilter}
-            />
-          </View>
-        </View>
       </View>
 
       {/* Summary Counter */}
@@ -198,7 +194,29 @@ export default function AdminAmenityCalendarScreen() {
       iconName="Calendar"
       loading={loading && adminBookings.length === 0}
       error={error}
-      onRetry={loadData}
+      headerRight={
+        <View className="flex-row items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={() => router.push('/(resident)/amenities/maintenance' as any)}
+            className="flex-row items-center gap-1 rounded-full px-2 py-1 h-7 bg-amber-500/10 border-amber-500/30"
+            accessibilityLabel="Maintenance Schedule"
+          >
+            <Wrench size={12} className="text-amber-600 dark:text-amber-400" />
+            <Text className="text-amber-600 dark:text-amber-400 font-bold text-[11px]">Maintenance</Text>
+          </Button>
+          <Button
+            size="sm"
+            onPress={handleOpenManualModal}
+            className="flex-row items-center gap-1 rounded-full px-2 py-1 h-7 bg-emerald-600 active:bg-emerald-700"
+            accessibilityLabel="Reserve manual slot"
+          >
+            <Plus size={13} color="#FFFFFF" />
+            <Text className="text-white font-bold text-[11px]">Reserve</Text>
+          </Button>
+        </View>
+      }
     >
       <View className="flex-1 bg-background">
         <PaginatedList<AmenityBooking>
@@ -218,13 +236,6 @@ export default function AdminAmenityCalendarScreen() {
           emptyTitle="No Reservations Found"
           emptySubtitle="No active or pending bookings match your selected date bounds or filter."
           contentContainerClassName="p-4 pt-3 pb-28 gap-3"
-        />
-
-        {/* Primary Action: New Booking FAB */}
-        <FAB
-          iconName="Plus"
-          label="New Booking"
-          onPress={handleOpenManualModal}
         />
       </View>
 

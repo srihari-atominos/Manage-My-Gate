@@ -64,8 +64,9 @@ export class InvoiceController {
     try {
       const { id } = req.params;
       const adminUserId = req.user?.id || req.user?._id;
-      const data = await invoiceService.approveOfflinePayment(id, adminUserId);
-      res.success(data, 'Bank transfer payment verified and confirmed successfully.');
+      const { amount, settlementType } = req.body || {};
+      const data = await invoiceService.approveOfflinePayment(id, adminUserId, { amount, settlementType });
+      res.success(data, 'Offline payment verified and confirmed successfully.');
     } catch (error) {
       next(error);
     }
@@ -134,7 +135,7 @@ export class InvoiceController {
    */
   async getDashboardKPIs(req, res, next) {
     try {
-      const orgId = req.tenant.orgId;
+      const orgId = req.query.communityId || req.tenant.orgId;
       const data = await invoiceService.getDashboardKPIs(orgId);
       res.success(data, 'Dashboard billing KPIs retrieved successfully');
     } catch (error) {
@@ -147,7 +148,7 @@ export class InvoiceController {
    */
   async getAllInvoices(req, res, next) {
     try {
-      const orgId = req.tenant.orgId;
+      const orgId = req.query.communityId || req.tenant.orgId;
       const data = await invoiceService.getInvoices(orgId, req.query);
       res.success(data, 'Community invoices retrieved successfully');
     } catch (error) {

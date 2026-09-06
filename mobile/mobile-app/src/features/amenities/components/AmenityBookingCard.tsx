@@ -27,14 +27,39 @@ export function AmenityBookingCard({
   const amenityObj = typeof booking.amenityId === 'object' && booking.amenityId ? booking.amenityId : null;
   const amenityName = amenityObj?.name || booking.amenityName || 'Amenity Pass';
   const coverImage = amenityObj?.images?.[0];
-  const isCancelable = booking.status === 'CONFIRMED' || booking.status === 'PENDING';
+  const statusUpper = (booking.status || '').toUpperCase();
+  const dateStr = booking.date || (booking as any).bookingDate || '';
+  const endTimeStr = booking.endTime || '23:59';
+
+  let isExpired = false;
+  if (dateStr) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const [endH, endM] = endTimeStr.split(':').map(Number);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      const endDateTime = new Date(year, month - 1, day, isNaN(endH) ? 23 : endH, isNaN(endM) ? 59 : endM, 0);
+      if (endDateTime < new Date()) {
+        isExpired = true;
+      }
+    }
+  }
+
+  // If expired, the status label should show "EXPIRED" (unless already CANCELLED or COMPLETED)
+  const isTerminal = ['CANCELLED', 'REJECTED', 'COMPLETED', 'CHECKED_IN', 'CHECKED-IN'].includes(statusUpper);
+  const displayStatus = isExpired && !isTerminal ? 'EXPIRED' : statusUpper;
+
+  // An expired booking MUST NOT show the cancel option!
+  const isCancelable = !isExpired && (statusUpper === 'CONFIRMED' || statusUpper === 'PENDING');
+  const canViewPass = !['CANCELLED', 'REJECTED'].includes(statusUpper);
+
   const bookingIdDisplay = booking.bookingId || (booking._id ? String(booking._id).substring(0, 8).toUpperCase() : 'PASS');
 
   const getEntryStatus = (item: AmenityBooking): { label: string; variant: StatusVariant } => {
     const s = (item?.status || '').toLowerCase();
     const q = (item?.qrStatus || '').toLowerCase();
 
-    if (q === 'expired') return { label: 'Expired', variant: 'danger' };
+    if (q === 'expired' || (isExpired && !['checked_in', 'checked-in', 'completed'].includes(s))) {
+      return { label: 'Expired', variant: 'danger' };
+    }
     switch (s) {
       case 'checked_in':
       case 'checked-in':
@@ -68,11 +93,10 @@ export function AmenityBookingCard({
     const q = (item?.qrStatus || '').toLowerCase();
 
     if (s === 'cancelled') return { label: 'Revoked', variant: 'danger' };
+    if (isExpired || q === 'expired') return { label: 'Expired', variant: 'danger' };
     switch (q) {
       case 'active':
         return { label: 'Active', variant: 'success' };
-      case 'expired':
-        return { label: 'Expired', variant: 'danger' };
       case 'revoked':
         return { label: 'Revoked', variant: 'danger' };
       default:
@@ -82,6 +106,7 @@ export function AmenityBookingCard({
 
   const getBookingStatusVariant = (status: string): StatusVariant => {
     switch (status) {
+      case 'EXPIRED': return 'danger';
       case 'CONFIRMED': return 'success';
       case 'CHECKED_IN': return 'info';
       case 'CANCELLED': return 'danger';
@@ -94,16 +119,23 @@ export function AmenityBookingCard({
   const paymentStatus = getPaymentStatus(booking);
   const qrStatus = getQrStatus(booking);
 
+  const timeWindowSubtitle = [
+    booking?.date,
+    booking?.startTime && booking?.endTime
+      ? `${booking.startTime} - ${booking.endTime}`
+      : booking?.startTime || booking?.endTime || '',
+  ].filter(Boolean).join(' • ');
+
   return (
     <ListCard
       title={amenityName}
-      subtitle={`${booking.date} • ${booking.startTime} - ${booking.endTime}`}
+      subtitle={timeWindowSubtitle || 'Amenity Reservation'}
       leftImage={coverImage || undefined}
       leftIcon={!coverImage ? 'CalendarCheck' : undefined}
       onPress={() => onPress(booking)}
       status={{
-        label: booking.status,
-        variant: getBookingStatusVariant(booking.status),
+        label: displayStatus,
+        variant: getBookingStatusVariant(displayStatus),
       }}
       secondaryBadge={paymentStatus}
     >
@@ -130,7 +162,7 @@ export function AmenityBookingCard({
       </View>
 
       {/* Action CTA Row */}
-      {isCancelable && (
+      {canViewPass && (
         <View className="flex-row justify-between items-center pt-2 mt-1 border-t border-border/30">
           <Button
             variant="outline"
@@ -139,25 +171,25 @@ export function AmenityBookingCard({
               e?.stopPropagation?.();
               onViewPassQR(booking);
             }}
-            className="h-8 px-3 rounded-lg"
+            className="h-8 px-3 rounded-lg border-blue-500/30 bg-blue-500/10 active:bg-blue-500/20"
             accessibilityRole="button"
             accessibilityLabel="View digital pass QR"
           >
-            <Text className="text-primary text-xs font-semibold">View Pass QR</Text>
+            <Text className="text-blue-600 dark:text-blue-400 text-xs font-semibold">View Pass QR</Text>
           </Button>
-          {onCancelPress && (
+          {isCancelable && onCancelPress && (
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
               onPress={(e: any) => {
                 e?.stopPropagation?.();
                 onCancelPress(booking);
               }}
-              className="h-8 px-3 rounded-lg"
+              className="h-8 px-3 rounded-lg border-border active:bg-secondary/60"
               accessibilityRole="button"
               accessibilityLabel="Cancel booking"
             >
-              <Text className="text-destructive-foreground text-xs font-semibold">
+              <Text className="text-muted-foreground text-xs font-semibold">
                 Cancel Booking
               </Text>
             </Button>

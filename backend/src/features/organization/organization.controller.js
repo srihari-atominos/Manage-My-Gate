@@ -55,9 +55,9 @@ export class OrganizationController {
 
   async setupWorkspace(req, res, next) {
     try {
-      const { name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, password } = req.body;
+      const { name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, password, features } = req.body;
       const userId = req.user.id;
-      const result = await organizationService.setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId, password });
+      const result = await organizationService.setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId, password, features });
       
       // Set the newly scoped token cookie if needed, just like switchContext / login
       setAuthCookie(res, result.token);

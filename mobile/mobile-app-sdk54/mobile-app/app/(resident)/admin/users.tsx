@@ -142,13 +142,13 @@ export default function UserManagementScreen() {
             className={`flex-row items-center px-3 py-1.5 rounded-lg border ${
               currentPage <= 1 || isLoading
                 ? 'bg-muted/40 border-border/40 opacity-40'
-                : 'bg-primary/10 border-primary/20 active:opacity-70'
+                : 'bg-blue-500/10 border-blue-500/20 active:opacity-70'
             }`}
             accessibilityRole="button"
             accessibilityLabel="Previous page"
           >
-            <ChevronLeft size={16} color={currentPage <= 1 || isLoading ? '#9ca3af' : '#6366f1'} className="me-1" />
-            <Text className={`text-xs font-bold ${currentPage <= 1 || isLoading ? 'text-muted-foreground' : 'text-primary'}`}>
+            <ChevronLeft size={16} color={currentPage <= 1 || isLoading ? '#9ca3af' : '#2563eb'} className="me-1" />
+            <Text className={`text-xs font-bold ${currentPage <= 1 || isLoading ? 'text-muted-foreground' : 'text-blue-600 dark:text-blue-400'}`}>
               Prev
             </Text>
           </TouchableOpacity>
@@ -182,15 +182,15 @@ export default function UserManagementScreen() {
             className={`flex-row items-center px-3 py-1.5 rounded-lg border ${
               currentPage >= totalPages || isLoading
                 ? 'bg-muted/40 border-border/40 opacity-40'
-                : 'bg-primary/10 border-primary/20 active:opacity-70'
+                : 'bg-blue-500/10 border-blue-500/20 active:opacity-70'
             }`}
             accessibilityRole="button"
             accessibilityLabel="Next page"
           >
-            <Text className={`text-xs font-bold me-1 ${currentPage >= totalPages || isLoading ? 'text-muted-foreground' : 'text-primary'}`}>
+            <Text className={`text-xs font-bold me-1 ${currentPage >= totalPages || isLoading ? 'text-muted-foreground' : 'text-blue-600 dark:text-blue-400'}`}>
               Next
             </Text>
-            <ChevronRight size={16} color={currentPage >= totalPages || isLoading ? '#9ca3af' : '#6366f1'} />
+            <ChevronRight size={16} color={currentPage >= totalPages || isLoading ? '#9ca3af' : '#2563eb'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -210,13 +210,13 @@ export default function UserManagementScreen() {
       headerRight={
         <TouchableOpacity
           onPress={() => setShowFilterSheet(true)}
-          className="p-2 rounded-xl bg-muted/60 border border-border flex-row items-center"
+          className="p-2 rounded-xl bg-secondary border border-border flex-row items-center"
           accessibilityRole="button"
           accessibilityLabel="Filter users"
         >
-          <Filter size={16} color="#6366f1" className="me-1" />
+          <Filter size={16} className="text-foreground me-1" />
           {activeFilterCount > 0 ? (
-            <View className="bg-primary px-1.5 py-0.5 rounded-full ms-1">
+            <View className="bg-blue-600 px-1.5 py-0.5 rounded-full ms-1">
               <Text className="text-[10px] font-bold text-white">{activeFilterCount}</Text>
             </View>
           ) : null}
@@ -239,23 +239,23 @@ export default function UserManagementScreen() {
             <View className="flex-row items-center gap-2">
               <TouchableOpacity
                 onPress={() => setShowTemplateModal(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-card border border-border/80 flex-row items-center shadow-xs active:opacity-70"
+                className="px-2.5 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/30 flex-row items-center shadow-xs active:opacity-70"
               >
-                <Mail size={14} color="#6366f1" className="me-1.5" />
-                <Text className="text-xs font-semibold text-foreground">Configure Invitation Mail</Text>
+                <Mail size={14} color="#2563eb" className="me-1.5" />
+                <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">Configure Invitation Mail</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setShowBulkInviteModal(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-primary/10 border border-primary/20 flex-row items-center active:opacity-70"
+                className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex-row items-center active:opacity-70"
               >
-                <Users2 size={14} color="#6366f1" className="me-1.5" />
-                <Text className="text-xs font-bold text-primary">Bulk Invite</Text>
+                <Users2 size={14} color="#d97706" className="me-1.5" />
+                <Text className="text-xs font-bold text-amber-600 dark:text-amber-400">Bulk Invite</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setShowInviteModal(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-primary flex-row items-center active:opacity-80"
+                className="px-2.5 py-1.5 rounded-xl bg-emerald-600 border border-emerald-600 flex-row items-center active:opacity-80"
               >
                 <UserPlus size={14} color="#ffffff" className="me-1.5" />
                 <Text className="text-xs font-bold text-white">Invite User</Text>
@@ -281,7 +281,7 @@ export default function UserManagementScreen() {
                 onPress={() => setRowsPerPage(limit)}
                 className={`px-1.5 py-0.5 rounded-md border active:opacity-70 ${
                   rowsPerPage === limit
-                    ? 'bg-primary border-primary'
+                    ? 'bg-blue-600 border-blue-600'
                     : 'bg-background border-border/60'
                 }`}
                 accessibilityRole="button"
@@ -348,7 +348,7 @@ export default function UserManagementScreen() {
         iconName="UserPlus"
         label="Invite User"
         onPress={() => setShowInviteModal(true)}
-        variant="primary"
+        className="bg-emerald-600 border-emerald-600"
       />
 
       {/* Modals & Bottom Sheets */}
@@ -396,7 +396,7 @@ export default function UserManagementScreen() {
           <View className="bg-card rounded-2xl p-5 border border-border w-full max-w-xs shadow-lg">
             <View className="flex-row items-center justify-between pb-2 border-b border-border mb-3">
               <View className="flex-row items-center">
-                <Hash size={18} color="#6366f1" className="me-2" />
+                <Hash size={18} color="#2563eb" className="me-2" />
                 <Text className="text-base font-bold text-foreground">Jump to Page</Text>
               </View>
               <TouchableOpacity onPress={() => setShowPageJumpModal(false)}>
@@ -421,7 +421,12 @@ export default function UserManagementScreen() {
               <Button variant="outline" size="sm" onPress={() => setShowPageJumpModal(false)}>
                 Cancel
               </Button>
-              <Button variant="default" size="sm" onPress={handleExecutePageJump}>
+              <Button
+                variant="default"
+                size="sm"
+                onPress={handleExecutePageJump}
+                className="bg-blue-600 active:bg-blue-700"
+              >
                 Go to Page
               </Button>
             </View>

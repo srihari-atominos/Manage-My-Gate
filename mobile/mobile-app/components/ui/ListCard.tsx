@@ -116,10 +116,10 @@ const ListCard = React.forwardRef<View, ListCardProps>(
           />
         ) : DynamicIcon ? (
           <View
-            className="w-11 h-11 rounded-xl items-center justify-center shrink-0 me-3.5 border border-border/50"
+            className="w-12 h-12 rounded-xl items-center justify-center shrink-0 me-3.5 border border-border/50"
             style={{ backgroundColor: leftIconBgColor }}
           >
-            <Icon as={DynamicIcon} size={20} color={leftIconColor} />
+            <Icon as={DynamicIcon} size={22} color={leftIconColor} />
           </View>
         ) : null}
 

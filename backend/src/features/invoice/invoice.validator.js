@@ -36,8 +36,8 @@ export const offlineSettleSchema = [
 
   body('paymentMethod')
     .optional()
-    .isIn(['BANK_TRANSFER', 'NEFT', 'CASH'])
-    .withMessage('Payment method must be BANK_TRANSFER, NEFT, or CASH'),
+    .isIn(['BANK_TRANSFER', 'NEFT', 'UPI'])
+    .withMessage('Payment method must be BANK_TRANSFER, NEFT, or UPI'),
 
   body('amountPaid')
     .optional()
@@ -66,6 +66,38 @@ export const approveInvoiceSchema = [
     .withMessage('Invoice ID or Number path parameter is required')
     .isString()
     .withMessage('Invoice ID must be a valid string')
+    .trim(),
+
+  body('amount')
+    .optional()
+    .isFloat({ gt: 0 })
+    .withMessage('Amount must be a number strictly greater than 0'),
+
+  body('settlementType')
+    .optional()
+    .isIn(['FULL', 'CUSTOM'])
+    .withMessage('Settlement type must be either FULL or CUSTOM'),
+
+  body('paymentMethod')
+    .optional()
+    .isIn(['BANK_TRANSFER', 'CASH', 'NEFT', 'UPI', 'CHEQUE'])
+    .withMessage('Payment method must be BANK_TRANSFER, CASH, NEFT, UPI, or CHEQUE'),
+
+  body('paymentReference')
+    .optional()
+    .isString()
+    .withMessage('Payment reference must be a string')
+    .trim(),
+
+  body('reference')
+    .optional()
+    .isString()
+    .withMessage('Payment reference must be a string')
+    .trim(),
+
+  body('notes')
+    .optional()
+    .isString()
     .trim(),
 ];
 
@@ -105,4 +137,13 @@ export const recordCashPaymentSchema = [
     .withMessage('Cash amount is required')
     .isFloat({ gt: 0 })
     .withMessage('Cash amount must be a number strictly greater than 0'),
+
+  body('paymentMethod')
+    .optional()
+    .isIn(['CASH', 'BANK_TRANSFER', 'NEFT', 'UPI', 'CHEQUE']),
+
+  body('reference')
+    .optional()
+    .isString()
+    .trim(),
 ];

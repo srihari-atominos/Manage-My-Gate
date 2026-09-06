@@ -1,6 +1,6 @@
-import React, { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../../store/store';
+import { useCallback } from 'react';
+import { AppDispatch, RootState } from '@/src/store/store';
 import {
   fetchActivePolls,
   fetchClosedPolls,

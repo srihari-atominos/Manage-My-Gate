@@ -10,6 +10,7 @@ export interface CheckboxProps {
   description?: string;
   disabled?: boolean;
   className?: string;
+  labelClassName?: string;
 }
 
 export const Checkbox = ({
@@ -19,6 +20,7 @@ export const Checkbox = ({
   description,
   disabled = false,
   className,
+  labelClassName,
 }: CheckboxProps) => {
   return (
     <Pressable
@@ -39,9 +41,9 @@ export const Checkbox = ({
         {checked && <Check size={14} color="#ffffff" strokeWidth={3} />}
       </View>
       {(Boolean(label) || Boolean(description)) && (
-        <View className="ms-3 flex-1">
+        <View className="ms-2 flex-1 justify-center">
           {Boolean(label) && (
-            <Text className="text-[15px] font-medium font-sans text-foreground">
+            <Text className={cn('text-[15px] font-medium font-sans text-foreground', labelClassName)}>
               {label}
             </Text>
           )}

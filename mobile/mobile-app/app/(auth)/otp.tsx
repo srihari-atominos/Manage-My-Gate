@@ -3,7 +3,7 @@ import { Text } from '@/components/ui/text';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { KeyRoundIcon } from 'lucide-react-native';
 import * as React from 'react';
-import { View, ScrollView, ActivityIndicator, TextInput, ImageBackground, Platform, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native';
+import { View, ScrollView, ActivityIndicator, TextInput, ImageBackground, Platform, Keyboard, Alert } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -89,8 +89,7 @@ export default function OtpScreen() {
           keyboardDismissMode="on-drag"
           className="p-6"
         >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-            <View className="gap-6 flex-1 justify-center max-w-sm mx-auto w-full">
+          <View className="gap-6 flex-1 justify-center max-w-sm mx-auto w-full">
             {/* Header */}
             <View className="items-center mb-6">
               <View className="bg-primary/10 p-4 rounded-full mb-3">
@@ -105,66 +104,64 @@ export default function OtpScreen() {
               </Text>
             </View>
 
-          {/* Form Card */}
-          <View className="bg-card border border-border rounded-2xl p-5 gap-4">
-            <View className="gap-2">
-              <Text className="text-foreground font-semibold text-sm">Security Code</Text>
-              
-              <Controller
-                control={control}
-                name="code"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    placeholder="123456"
-                    placeholderTextColor="#777"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    keyboardType="number-pad"
-                    maxLength={8}
-                    className="bg-muted/50 text-foreground border border-border rounded-xl px-4 py-3.5 text-center text-lg font-bold tracking-[6px]"
-                  />
+            {/* Form Card */}
+            <View className="bg-card border border-border rounded-2xl p-5 gap-4">
+              <View className="gap-2">
+                <Text className="text-foreground font-semibold text-sm">Security Code</Text>
+                
+                <Controller
+                  control={control}
+                  name="code"
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <TextInput
+                      placeholder="123456"
+                      placeholderTextColor="#777"
+                      onBlur={onBlur}
+                      onChangeText={onChange}
+                      value={value}
+                      keyboardType="number-pad"
+                      maxLength={8}
+                      className="bg-muted/50 text-foreground border border-border rounded-xl px-4 py-3.5 text-center text-lg font-bold tracking-[6px]"
+                    />
+                  )}
+                />
+
+                {errors.code && (
+                  <Text className="text-destructive text-xs font-semibold mt-1">
+                    {errors.code.message}
+                  </Text>
                 )}
-              />
-
-              {errors.code && (
-                <Text className="text-destructive text-xs font-semibold mt-1">
-                  {errors.code.message}
-                </Text>
-              )}
-            </View>
-
-            {/* Error Banner */}
-            {error && (
-              <View className="bg-destructive/10 border border-destructive/20 rounded-xl p-3">
-                <Text className="text-destructive text-xs text-center font-medium">{error}</Text>
               </View>
-            )}
 
-            <Button onPress={handleSubmit(onSubmit)} disabled={loading} className="mt-2 h-12">
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="font-bold text-primary-foreground">Verify & Sign In</Text>
+              {error && (
+                <View className="bg-destructive/10 border border-destructive/20 rounded-xl p-3">
+                  <Text className="text-destructive text-xs text-center font-medium">{error}</Text>
+                </View>
               )}
-            </Button>
 
-            {/* Resend Helper */}
-            <View className="items-center mt-2">
-              {resendCooldown > 0 ? (
-                <Text className="text-muted-foreground text-xs font-medium">
-                  Resend code in {resendCooldown}s
-                </Text>
-              ) : (
-                <Button onPress={handleResend} variant="ghost" className="h-8">
-                  <Text className="text-primary text-xs font-semibold">Resend verification code</Text>
-                </Button>
-              )}
+              <Button onPress={handleSubmit(onSubmit)} disabled={loading} className="mt-2 h-12">
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="font-bold text-primary-foreground">Verify & Sign In</Text>
+                )}
+              </Button>
+
+              {/* Resend Helper */}
+              <View className="items-center mt-2">
+                {resendCooldown > 0 ? (
+                  <Text className="text-muted-foreground text-xs font-medium">
+                    Resend code in {resendCooldown}s
+                  </Text>
+                ) : (
+                  <Button onPress={handleResend} variant="ghost" className="h-8">
+                    <Text className="text-primary text-xs font-semibold">Resend verification code</Text>
+                  </Button>
+                )}
+              </View>
             </View>
           </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </ScrollView>
+        </ScrollView>
     </ImageBackground>
   </>
 );

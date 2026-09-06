@@ -49,6 +49,18 @@ export const updateUserRolesRules = [
 ];
 
 /**
+ * Validation rules for requesting an email OTP during profile update.
+ */
+export const requestEmailOtpRules = [
+  body('newEmail')
+    .notEmpty()
+    .withMessage('New email address is required')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .trim(),
+];
+
+/**
  * Validation rules for updating user profile.
  */
 export const updateProfileRules = [
@@ -60,6 +72,16 @@ export const updateProfileRules = [
     .optional()
     .trim()
     .escape(),
+  body('email')
+    .optional()
+    .trim()
+    .isEmail()
+    .withMessage('Please provide a valid email address'),
+  body('emailOtp')
+    .optional()
+    .trim()
+    .isLength({ min: 6, max: 6 })
+    .withMessage('OTP must be 6 digits'),
 ];
 
 export const bulkInviteUserRules = [

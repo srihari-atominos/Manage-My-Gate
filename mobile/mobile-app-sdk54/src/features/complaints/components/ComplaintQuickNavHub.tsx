@@ -7,6 +7,7 @@ import * as LucideIcons from 'lucide-react-native';
 export interface QuickNavItem {
   id: string;
   name: string;
+  keywords?: string[];
   route: string;
   iconName: string;
   colorBg: string;
@@ -26,6 +27,7 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
     {
       id: 'raise-ticket',
       name: 'Raise Ticket',
+      keywords: ['raise', 'create', 'new', 'ticket', 'report', 'issue', 'complaint', 'upkeep'],
       route: '/(resident)/complaints/raise-ticket',
       iconName: 'PlusCircle',
       colorBg: 'bg-blue-500/10',
@@ -34,6 +36,7 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
     {
       id: 'my-tickets',
       name: 'My Tickets',
+      keywords: ['my', 'tickets', 'track', 'status', 'list', 'history', 'complaints', 'upkeep'],
       route: '/(resident)/complaints/my-tickets',
       iconName: 'Search',
       colorBg: 'bg-amber-500/10',
@@ -42,6 +45,7 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
     {
       id: 'management',
       name: 'Management',
+      keywords: ['management', 'admin', 'kanban', 'board', 'queue', 'upkeep', 'staff'],
       route: '/(resident)/complaints/manage',
       iconName: 'Kanban',
       colorBg: 'bg-indigo-500/10',
@@ -50,6 +54,7 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
     {
       id: 'staff-directory',
       name: 'Staff & Vendors',
+      keywords: ['staff', 'vendors', 'technician', 'roster', 'contacts', 'directory', 'upkeep', 'maintenance', 'worker', 'crew'],
       route: '/(resident)/complaints/staff',
       iconName: 'Users',
       colorBg: 'bg-emerald-500/10',
@@ -58,6 +63,7 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
     {
       id: 'assignee-console',
       name: 'Assignee Queue',
+      keywords: ['assignee', 'queue', 'tasks', 'staff', 'technician', 'work orders', 'assigned'],
       route: '/(resident)/complaints/assignee',
       iconName: 'ClipboardList',
       colorBg: 'bg-purple-500/10',
@@ -67,7 +73,11 @@ export function ComplaintQuickNavHub({ searchQuery = '', onFeedbackPress }: Comp
 
   const filteredItems = navItems.filter((item) => {
     if (!searchQuery.trim()) return true;
-    return item.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
+    const q = searchQuery.toLowerCase().trim();
+    const matchName = item.name.toLowerCase().includes(q);
+    const matchId = item.id.toLowerCase().includes(q);
+    const matchKeywords = item.keywords ? item.keywords.some((k) => k.toLowerCase().includes(q)) : false;
+    return matchName || matchId || matchKeywords;
   });
 
   return (

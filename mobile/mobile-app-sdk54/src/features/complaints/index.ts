@@ -18,3 +18,5 @@ export * from './screens/AdminComplaintManagementScreen';
 export * from './screens/StaffAssigneeQueueScreen';
 export * from './screens/StaffVendorDirectoryScreen';
 export * from './screens/ComplaintDashboardScreen';
+export * from './hooks/useComplaintSocket';
+

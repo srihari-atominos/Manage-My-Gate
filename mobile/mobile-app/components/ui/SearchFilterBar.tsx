@@ -12,6 +12,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { cn } from '@/lib/utils';
+import { getStatusTabStyle } from './statusTabColors';
 
 export interface SortOption {
   label: string;
@@ -100,23 +101,22 @@ export const SearchFilterBar = React.forwardRef<View, SearchFilterBarProps>(
           >
             {sortOptions.map((option) => {
               const isSelected = currentSort === option.value;
+              const statusStyle = getStatusTabStyle(option.value || option.label, isSelected);
               return (
                 <Pressable
                   key={option.value}
                   onPress={() => onSortChange?.(option.value)}
                   className={cn(
-                    'flex-row items-center px-4 py-2 rounded-full border',
-                    isSelected
-                      ? 'bg-primary border-primary shadow-xs'
-                      : 'bg-muted/60 border-border active:bg-muted'
+                    'flex-row items-center px-3 py-1.5 rounded-full border text-xs',
+                    statusStyle.containerClass
                   )}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
                 >
                   <Text
                     className={cn(
-                      'text-sm font-semibold font-sans',
-                      isSelected ? 'text-primary-foreground font-bold' : 'text-muted-foreground'
+                      'text-xs font-sans',
+                      statusStyle.textClass
                     )}
                   >
                     {option.label}

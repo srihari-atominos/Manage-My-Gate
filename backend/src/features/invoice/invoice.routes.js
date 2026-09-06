@@ -15,7 +15,7 @@ router.use(isAuthenticated);
 // Open to all authenticated users (personal dues summary doesn't require x-organization-id tenant context header check)
 router.get(
   '/my-dues',
-  authorizePermission('billing', 'action_center'),
+  authorizePermission('billing', ['action_center', 'dashboard', 'assessment_manager']),
   invoiceController.getMyDues
 );
 

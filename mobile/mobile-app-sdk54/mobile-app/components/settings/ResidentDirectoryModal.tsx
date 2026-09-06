@@ -5,13 +5,15 @@ import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PulseItem } from '@/src/features/communityPulse/types/communityPulseTypes';
-import { formatRelativeTime } from '@/src/features/communityPulse/hooks/useCommunityPulse';
+import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
+import { getStatusTabStyle } from '@/components/ui/statusTabColors';
+import { useDirectory } from '@/src/features/directory/hooks/useDirectory';
+import { DirectoryMember } from '@/src/features/directory/types/directoryTypes';
 
 export interface ResidentDirectoryModalProps {
   visible: boolean;
   onClose: () => void;
-  pulses: PulseItem[];
+  pulses?: any[];
 }
 
 export interface ResidentProfileItem {
@@ -21,7 +23,7 @@ export interface ResidentProfileItem {
   role: string;
   phone: string;
   avatar?: string;
-  activePulse?: PulseItem;
+  activePulse?: any;
   interests: Array<{ name: string; emoji: string }>;
 }
 
@@ -82,30 +84,29 @@ export const ResidentDirectoryModal = ({
   pulses,
 }: ResidentDirectoryModalProps) => {
   const insets = useSafeAreaInsets();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'active_pulse' | 'interests'>('all');
+  const { members, searchQuery, setSearchQuery, activeTab, setActiveTab } = useDirectory();
   const [connectNeighbor, setConnectNeighbor] = useState<ResidentProfileItem | null>(null);
   const [messageText, setMessageText] = useState('');
 
-  const neighborList: ResidentProfileItem[] = SAMPLE_NEIGHBORS.map((neighbor) => {
-    const pulse = pulses.find((p) =>
-      p.userName.toLowerCase().includes(neighbor.name.split(' ')[0].toLowerCase())
-    );
-    return { ...neighbor, activePulse: pulse || undefined };
-  });
+  const neighborList: ResidentProfileItem[] = (members || []).map((member: DirectoryMember) => ({
+    id: member.id || member.userId,
+    name: member.name || 'Resident',
+    villa: member.unitNumber || 'Villa',
+    role: member.role || 'Resident',
+    phone: member.phone || '',
+    avatar: member.avatarUrl || undefined,
+    interests: (member.interests || []).map((i: string) => ({ name: i, emoji: '✨' })),
+  }));
 
   const filteredNeighbors = neighborList.filter((item) => {
-    const query = searchQuery.trim().toLowerCase();
-    const matchesSearch =
-      !query ||
-      item.name.toLowerCase().includes(query) ||
-      item.villa.toLowerCase().includes(query) ||
-      (item.activePulse && item.activePulse.text.toLowerCase().includes(query)) ||
-      item.interests.some((i) => i.name.toLowerCase().includes(query));
-
-    if (!matchesSearch) return false;
-    if (activeTab === 'active_pulse') return Boolean(item.activePulse);
-    if (activeTab === 'interests') return item.interests.length > 0;
+    if (activeTab === 'interests' && item.interests.length === 0) return false;
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchName = item.name.toLowerCase().includes(q);
+      const matchVilla = item.villa.toLowerCase().includes(q);
+      const matchInterest = item.interests.some((i) => i.name.toLowerCase().includes(q));
+      return matchName || matchVilla || matchInterest;
+    }
     return true;
   });
 
@@ -137,6 +138,8 @@ export const ResidentDirectoryModal = ({
     setConnectNeighbor(null);
   };
 
+  if (!visible) return null;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 justify-end bg-black/50">
@@ -144,9 +147,7 @@ export const ResidentDirectoryModal = ({
 
         <View className="bg-card rounded-t-3xl overflow-hidden" style={{ maxHeight: '92%' }}>
           {/* Grab Handle */}
-          <View className="items-center pt-3 pb-1">
-            <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-          </View>
+          <SheetGrabHandle onClose={onClose} />
 
           {/* Header */}
           <View className="flex-row items-center justify-between px-5 pb-3 border-b border-border">
@@ -193,21 +194,21 @@ export const ResidentDirectoryModal = ({
             <View className="flex-row mx-4 mb-3 bg-muted/40 border border-border p-0.5 rounded-xl gap-0.5">
               {[
                 { key: 'all', label: 'All' },
-                { key: 'active_pulse', label: 'Active Pulses' },
                 { key: 'interests', label: 'Interests' },
               ].map((tab) => {
                 const isActive = activeTab === tab.key;
+                const statusStyle = getStatusTabStyle(tab.key, isActive);
                 return (
                   <Pressable
                     key={tab.key}
                     onPress={() => setActiveTab(tab.key as any)}
                     className={`flex-1 py-2 rounded-lg items-center ${
-                      isActive ? 'bg-card border border-border shadow-sm' : ''
+                      isActive ? `${statusStyle.containerClass} shadow-sm` : ''
                     }`}
                   >
                     <Text
                       className={`text-xs ${
-                        isActive ? 'font-bold text-foreground' : 'font-medium text-muted-foreground'
+                        isActive ? statusStyle.textClass : 'font-medium text-muted-foreground'
                       }`}
                     >
                       {tab.label}
@@ -258,29 +259,6 @@ export const ResidentDirectoryModal = ({
                       </Pressable>
                     </Pressable>
 
-                    {/* Active Pulse */}
-                    {item.activePulse ? (
-                      <Pressable
-                        onPress={() => setConnectNeighbor(item)}
-                        className="mx-3.5 mb-3 bg-primary/8 border border-primary/15 rounded-xl p-2.5 flex-row items-center active:opacity-80"
-                      >
-                        <Text className="text-base me-2">{item.activePulse.emoji || '💬'}</Text>
-                        <View className="flex-1 min-w-0 me-2">
-                          <Text className="text-xs font-bold text-foreground" numberOfLines={1}>
-                            {item.activePulse.text}
-                          </Text>
-                          {item.activePulse.contextText ? (
-                            <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
-                              {item.activePulse.contextText}
-                            </Text>
-                          ) : null}
-                        </View>
-                        <Text className="text-[10px] font-mono text-muted-foreground shrink-0">
-                          {formatRelativeTime(item.activePulse.createdAt)}
-                        </Text>
-                      </Pressable>
-                    ) : null}
-
                     {/* Interest Chips */}
                     <View className="flex-row flex-wrap gap-1.5 px-3.5 pb-3">
                       {item.interests.map((interest, idx) => (
@@ -310,17 +288,13 @@ export const ResidentDirectoryModal = ({
             </ScrollView>
           </View>
         </View>
-      </View>
 
-      {/* Connect / Communicate Overlay */}
-      {connectNeighbor ? (
-        <Modal transparent animationType="slide" visible={Boolean(connectNeighbor)}>
-          <View className="flex-1 justify-end bg-black/60">
+        {/* Connect / Communicate Overlay */}
+        {connectNeighbor ? (
+          <View className="absolute inset-0 bg-black/60 justify-end z-50">
             <Pressable className="absolute inset-0" onPress={() => setConnectNeighbor(null)} />
             <View className="bg-card rounded-t-3xl overflow-hidden">
-              <View className="items-center pt-3 pb-1">
-                <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-              </View>
+              <SheetGrabHandle onClose={() => setConnectNeighbor(null)} />
 
               <View className="px-5 pb-2 gap-4">
                 {/* Header */}
@@ -346,31 +320,19 @@ export const ResidentDirectoryModal = ({
                   </Pressable>
                 </View>
 
-                {/* Status Reference */}
-                {connectNeighbor.activePulse ? (
-                  <View className="bg-primary/8 border border-primary/15 rounded-2xl p-3">
-                    <Text className="text-[10px] font-bold text-primary uppercase mb-0.5">
-                      Responding to:
-                    </Text>
-                    <Text className="text-xs font-semibold text-foreground">
-                      {connectNeighbor.activePulse.emoji} {connectNeighbor.activePulse.text}
-                    </Text>
-                  </View>
-                ) : null}
-
                 {/* Quick Chips */}
                 <View className="gap-1.5">
                   <Text className="text-[11px] font-semibold text-muted-foreground">Quick Messages</Text>
                   <View className="flex-row flex-wrap gap-1.5">
-                    {["🏸 I'm joining!", '☕ Count me in!', '👋 Hi neighbor!', '📱 Call me'].map(
-                      (chip, idx) => (
+                    {['Hi neighbor! 👋', 'Up for coffee today? ☕', 'Are you playing badminton? 🏸', 'Quick question! ❓'].map(
+                      (chip) => (
                         <Pressable
-                          key={idx}
+                          key={chip}
                           onPress={() => setMessageText(chip)}
                           className={`px-3 py-1.5 rounded-full border ${
                             messageText === chip
                               ? 'bg-primary/10 border-primary'
-                              : 'bg-card border-border active:bg-muted/40'
+                              : 'bg-muted/30 border-border active:bg-muted/60'
                           }`}
                         >
                           <Text
@@ -398,34 +360,34 @@ export const ResidentDirectoryModal = ({
                 <View className="flex-row gap-2">
                   <Button
                     onPress={handleOpenWhatsApp}
-                    leftIcon={MessageSquare}
-                    className="flex-1 bg-emerald-600 rounded-xl h-11"
+                    className="flex-1 bg-emerald-600 rounded-xl h-11 flex-row items-center justify-center gap-2"
                   >
-                    WhatsApp
+                    <MessageSquare size={16} color="#fff" />
+                    <Text className="text-white font-semibold text-xs">WhatsApp</Text>
                   </Button>
                   <Button
                     onPress={handleMakeCall}
                     variant="outline"
-                    leftIcon={Phone}
-                    className="flex-1 border-primary rounded-xl h-11"
+                    className="flex-1 border-primary rounded-xl h-11 flex-row items-center justify-center gap-2"
                   >
-                    Call
+                    <Phone size={16} className="text-primary" />
+                    <Text className="text-primary font-semibold text-xs">Call</Text>
                   </Button>
                 </View>
 
                 <Button
                   onPress={handleSendMessage}
-                  leftIcon={Send}
-                  className="h-11 bg-primary rounded-xl"
+                  className="h-11 bg-primary rounded-xl flex-row items-center justify-center gap-2"
                 >
-                  Send In-App Notification
+                  <Send size={16} className="text-primary-foreground" />
+                  <Text className="text-primary-foreground font-bold text-xs">Send In-App Notification</Text>
                 </Button>
               </View>
               <View style={{ height: Math.max(insets.bottom, 16) }} />
             </View>
           </View>
-        </Modal>
-      ) : null}
+        ) : null}
+      </View>
     </Modal>
   );
 };

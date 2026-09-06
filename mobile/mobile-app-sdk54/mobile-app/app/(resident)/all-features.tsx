@@ -17,6 +17,7 @@ import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import CustomiseSheetModal, { ALL_AVAILABLE_FEATURES } from '@/components/dashboard/CustomiseSheetModal';
+import { isFeatureAllowedForUser } from '@/src/features/dashboard/dashboardCatalog';
 
 export default function AllFeaturesScreen() {
   const router = useRouter();
@@ -231,11 +232,7 @@ export default function AllFeaturesScreen() {
                     return false;
                   }
 
-                  if (item.permission && !isSuperAdmin) {
-                    return userPermissions.includes(item.permission);
-                  }
-
-                  return true;
+                  return isFeatureAllowedForUser(item, user);
                 });
 
                 if (filteredItems.length === 0) return null;

@@ -7,7 +7,6 @@ import { ScrollContainer } from '@/components/layout/ScrollContainer';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Badge } from '@/components/common/Badge';
 import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
@@ -117,7 +116,7 @@ function NoticeDetailContent() {
                 <Text className="text-primary text-xs font-semibold">Pinned</Text>
               </View>
             )}
-            <Badge label={selectedNotice.category || 'General'} variant="outline" size="sm" />
+            <StatusBadge label={selectedNotice.category || 'General'} variant="info" size="sm" />
             <StatusBadge label={selectedNotice.priority || 'Medium'} variant={getStatusVariant(selectedNotice.priority || 'Medium')} size="sm" />
             <StatusBadge label={selectedNotice.status || 'Published'} variant={getStatusVariant(selectedNotice.status || 'Published')} size="sm" />
           </View>

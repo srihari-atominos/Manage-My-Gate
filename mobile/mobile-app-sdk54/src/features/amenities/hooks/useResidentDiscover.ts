@@ -95,7 +95,7 @@ export function useResidentDiscover() {
 
   const navigateToBooking = (amenityId: string) => {
     router.push({
-      pathname: '/(resident)/amenities/booking/[id]',
+      pathname: '/(resident)/amenities/booking/[id]' as any,
       params: { id: amenityId },
     });
   };

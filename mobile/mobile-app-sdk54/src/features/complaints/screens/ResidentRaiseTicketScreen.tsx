@@ -13,7 +13,7 @@ import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { DatePicker } from '@/components/common/DatePicker';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import {
   Camera,
   Image as ImageIcon,

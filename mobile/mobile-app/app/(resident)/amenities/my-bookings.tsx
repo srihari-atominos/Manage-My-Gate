@@ -3,8 +3,10 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
-import { TabBar } from '@/components/ui/TabBar';
-import { FAB } from '@/components/ui/FAB';
+import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { Plus } from 'lucide-react-native';
 import { useMyBookings } from '@/src/features/amenities/hooks/useMyBookings';
 import { AmenityBookingCard } from '@/src/features/amenities/components/AmenityBookingCard';
 import { PassQRModal } from '@/src/features/amenities/components/PassQRModal';
@@ -32,6 +34,31 @@ export default function MyBookingsScreen() {
     handleConfirmCancel,
   } = useMyBookings();
 
+  const [search, setSearch] = React.useState('');
+
+  const sortOptions = useMemo(
+    () => [
+      { label: 'All Bookings', value: 'All' },
+      { label: 'Confirmed', value: 'CONFIRMED' },
+      { label: 'Completed', value: 'COMPLETED' },
+      { label: 'Cancelled', value: 'CANCELLED' },
+    ],
+    []
+  );
+
+  const displayedBookings = useMemo(() => {
+    let list = filteredBookings;
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      list = list.filter((b) =>
+        (b.amenityName && b.amenityName.toLowerCase().includes(q)) ||
+        (b.passCode && b.passCode.toLowerCase().includes(q)) ||
+        (b._id && b._id.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [filteredBookings, search]);
+
   const renderBookingItem = (item: AmenityBooking) => (
     <AmenityBookingCard
       key={item._id}
@@ -42,19 +69,18 @@ export default function MyBookingsScreen() {
     />
   );
 
-  const filterTabItems = useMemo(() => {
-    return filterTabs.map((tab) => ({ key: tab, label: tab }));
-  }, [filterTabs]);
-
   const renderHeader = () => (
-    <View className="mb-3">
-      {/* Segmented TabBar Filter */}
-      <TabBar
-        tabs={filterTabItems}
-        activeTab={selectedFilter}
-        onTabChange={setSelectedFilter}
-        variant="pill"
-        className="my-1"
+    <View className="gap-3 mb-3">
+      {/* Real-Time Keyword Search Bar & Moveable Slide Status Filter */}
+      <SearchFilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by facility name or pass code..."
+        sortOptions={sortOptions}
+        currentSort={selectedFilter}
+        onSortChange={setSelectedFilter}
+        variant="default"
+        className="px-0 py-0 border-0"
       />
     </View>
   );
@@ -67,11 +93,24 @@ export default function MyBookingsScreen() {
       loading={loading && myBookings.length === 0}
       error={error}
       onRetry={handleRefresh}
+      headerRight={
+        <Button
+          variant="default"
+          size="sm"
+          onPress={() => router.push('/(resident)/amenities/discover' as any)}
+          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          accessibilityRole="button"
+          accessibilityLabel="Book Amenity"
+        >
+          <Plus size={15} color="#ffffff" />
+          <Text className="text-xs font-bold text-primary-foreground">Book Amenity</Text>
+        </Button>
+      }
     >
       <View className="flex-1 bg-background">
         {/* Paginated List of Bookings */}
         <PaginatedList
-          data={filteredBookings}
+          data={displayedBookings}
           renderItem={renderBookingItem}
           pagination={pagination}
           onLoadMore={handleLoadMore}
@@ -82,13 +121,6 @@ export default function MyBookingsScreen() {
           emptyTitle="No Bookings Found"
           emptySubtitle="You have no reservations matching this filter."
           contentContainerClassName="px-4 pt-3 pb-28"
-        />
-
-        {/* Resident Action Trigger: FAB */}
-        <FAB
-          iconName="Plus"
-          label="Book Amenity"
-          onPress={() => router.push('/(resident)/amenities/discover' as any)}
         />
       </View>
 

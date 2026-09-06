@@ -7,7 +7,7 @@ import { KPIDashboardStrip } from '@/components/ui/KPIDashboardStrip';
 import { type KPICardProps } from '@/components/ui/KPICard';
 import { Button } from '@/components/ui/button';
 import { FAB } from '@/components/ui/FAB';
-import { CalendarCheck } from 'lucide-react-native';
+import { CalendarCheck, Plus } from 'lucide-react-native';
 import { useAmenityDashboard } from '@/src/features/amenities/hooks/useAmenityDashboard';
 import { MobileQuickNavHub } from '@/src/features/amenities/components/MobileQuickNavHub';
 import { MobileLiveActivityWidget } from '@/src/features/amenities/components/MobileLiveActivityWidget';
@@ -101,19 +101,19 @@ export default function AmenityExecutiveDashboardScreen() {
       onRetry={loadData}
       headerRight={
         <Button
-          variant="outline"
+          variant="default"
           size="sm"
-          onPress={() => router.push('/(resident)/amenities/my-bookings' as any)}
+          onPress={() => router.push('/(resident)/amenities/discover' as any)}
           className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
           accessibilityRole="button"
-          accessibilityLabel="View My Bookings"
+          accessibilityLabel="Book Amenity"
         >
-          <CalendarCheck size={14} className="text-foreground" />
-          <Text className="text-xs font-semibold text-foreground">{t('feature_amenities_my_booking_name', 'My Bookings')}</Text>
+          <Plus size={15} color="#ffffff" />
+          <Text className="text-xs font-bold text-primary-foreground">{t('feature_amenities_discover_name', 'Book Amenity')}</Text>
         </Button>
       }
     >
-      <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 pb-28 gap-4">
+      <ScrollView className="flex-1 bg-background" showsVerticalScrollIndicator={false} contentContainerClassName="p-4 pb-28 gap-4">
         {/* Universal Top KPI Metrics Strip */}
         <KPIDashboardStrip cards={kpiCards} loading={loading && !dashboardStats} />
 
@@ -123,13 +123,6 @@ export default function AmenityExecutiveDashboardScreen() {
         {/* 3. Live Gate Access Log Feed */}
         <MobileLiveActivityWidget />
       </ScrollView>
-
-      {/* Primary Action: Book Amenity FAB */}
-      <FAB
-        iconName="Plus"
-        label={t('feature_amenities_discover_name', 'Book Amenity')}
-        onPress={() => router.push('/(resident)/amenities/discover' as any)}
-      />
     </ScreenShell>
   );
 }

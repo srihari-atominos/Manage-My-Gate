@@ -79,7 +79,15 @@ export function BookingDetailModal({
           />
           <DetailRow label={t('booking_code', 'Booking Code')} value={bookingIdDisplay} copyable={true} iconName="Hash" />
           <DetailRow label={t('reservation_date', 'Reservation Date')} value={booking.date || booking.bookingDate || ''} iconName="Calendar" />
-          <DetailRow label={t('time_window', 'Time Window')} value={`${booking.startTime} - ${booking.endTime}`} iconName="Clock" />
+          <DetailRow
+            label={t('time_window', 'Time Window')}
+            value={
+              booking.startTime && booking.endTime
+                ? `${booking.startTime} - ${booking.endTime}`
+                : booking.startTime || booking.endTime || 'Full Day'
+            }
+            iconName="Clock"
+          />
           <DetailRow
             label={t('attendees', 'Attendees')}
             value={`${booking.numberOfPersons || booking.guestsCount || 1} Person(s)`}

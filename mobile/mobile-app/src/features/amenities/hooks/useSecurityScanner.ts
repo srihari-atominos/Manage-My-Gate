@@ -54,19 +54,19 @@ export function useSecurityScanner() {
 
   const handleBarCodeScanned = useCallback(
     async ({ type, data }: { type: string; data: string }) => {
-      if (!isScanning || checkingIn) return;
+      if (checkingIn || !data) return;
 
       setIsScanning(false);
-      let bookingId = data;
+      let bookingId = String(data).trim();
 
-      // Check if data is JSON payload containing bookingId
+      // Check if data is JSON payload containing bookingId or _id
       try {
         const parsed = JSON.parse(data);
-        if (parsed.bookingId || parsed._id || parsed.id) {
-          bookingId = parsed.bookingId || parsed._id || parsed.id;
+        if (parsed && typeof parsed === 'object') {
+          bookingId = String(parsed.bookingId || parsed._id || parsed.id || parsed.displayId || parsed.code || bookingId).trim();
         }
       } catch {
-        // Raw ID string payload
+        // Raw ID or booking code string payload
       }
 
       await dispatch(
@@ -78,7 +78,7 @@ export function useSecurityScanner() {
       setIsResultModalOpen(true);
       loadRecentScans();
     },
-    [dispatch, isScanning, checkingIn, loadRecentScans]
+    [dispatch, checkingIn, loadRecentScans]
   );
 
   const resetScanner = () => {

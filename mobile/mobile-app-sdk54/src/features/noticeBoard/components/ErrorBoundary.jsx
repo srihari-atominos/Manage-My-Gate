@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 
 /**
  * Notice Board Screen-Level Error Boundary

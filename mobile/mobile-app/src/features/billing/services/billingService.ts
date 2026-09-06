@@ -85,9 +85,13 @@ export const billingService = {
   /**
    * Clear/approve offline payment (Admin only).
    * @param invoiceId
+   * @param payload (optional settlement details: full or custom amount)
    */
-  async approveInvoiceOffline(invoiceId: string): Promise<any> {
-    const response: any = await apiClient.patch(`/invoices/${invoiceId}/approve`);
+  async approveInvoiceOffline(
+    invoiceId: string,
+    payload?: { amount?: number; settlementType?: 'FULL' | 'CUSTOM' }
+  ): Promise<any> {
+    const response: any = await apiClient.patch(`/invoices/${invoiceId}/approve`, payload || {});
     const body = response?.success !== undefined ? response : response?.data;
     return body?.data || body;
   },
@@ -166,6 +170,16 @@ export const billingService = {
    */
   async createWalletOrder(amount: number): Promise<any> {
     const response: any = await apiClient.post('/wallet/create-order', { amount });
+    const body = response?.success !== undefined ? response : response?.data;
+    return body?.data || body;
+  },
+
+  /**
+   * Direct wallet top-up (bypass gateway or test add-money).
+   * @param amount
+   */
+  async topUpWalletDirect(amount: number): Promise<any> {
+    const response: any = await apiClient.post('/wallet/add-money', { amount });
     const body = response?.success !== undefined ? response : response?.data;
     return body?.data || body;
   },

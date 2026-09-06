@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, Pressable, TouchableOpacity } from 'react-native';
-import { Zap, ZapOff, Sparkles } from 'lucide-react-native';
+import { Zap, ZapOff } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 
-export type FlashMode = 'off' | 'on' | 'auto';
+export type FlashMode = 'off' | 'on';
 
 export interface FlashlightToggleProps {
   mode?: FlashMode;
@@ -34,12 +34,7 @@ export const FlashlightToggle = ({
   };
 
   const handleCycleNext = () => {
-    const cycleMap: Record<FlashMode, FlashMode> = {
-      off: 'on',
-      on: 'auto',
-      auto: 'off',
-    };
-    const next = cycleMap[currentMode];
+    const next: FlashMode = currentMode === 'on' ? 'off' : 'on';
     if (onModeChange) {
       onModeChange(next);
     } else if (onToggle) {
@@ -99,26 +94,6 @@ export const FlashlightToggle = ({
             ON
           </Text>
         </TouchableOpacity>
-
-        {/* AUTO */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => handleSelectMode('auto')}
-          className={cn(
-            'flex-row items-center gap-1.5 px-3 py-1.5 rounded-full',
-            currentMode === 'auto' ? 'bg-sky-500 shadow-sm' : 'opacity-70'
-          )}
-        >
-          <Sparkles size={13} color={currentMode === 'auto' ? '#ffffff' : '#94a3b8'} />
-          <Text
-            className={cn(
-              'text-[11px] font-extrabold tracking-wider',
-              currentMode === 'auto' ? 'text-white' : 'text-slate-400'
-            )}
-          >
-            AUTO
-          </Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -131,8 +106,6 @@ export const FlashlightToggle = ({
         'flex-row items-center justify-center rounded-full px-3.5 py-1.5 border shadow-md active:opacity-80',
         currentMode === 'on'
           ? 'border-amber-300 bg-amber-400 shadow-amber-500/30'
-          : currentMode === 'auto'
-          ? 'border-sky-400 bg-sky-500/80 shadow-sky-500/30'
           : 'border-white/25 bg-black/75 shadow-black/40',
         className
       )}
@@ -142,15 +115,11 @@ export const FlashlightToggle = ({
           'mr-1.5 h-5 w-5 items-center justify-center rounded-full',
           currentMode === 'on'
             ? 'bg-black/15'
-            : currentMode === 'auto'
-            ? 'bg-black/20'
             : 'bg-white/10'
         )}
       >
         {currentMode === 'on' ? (
           <Zap size={12} color="#000000" fill="#000000" />
-        ) : currentMode === 'auto' ? (
-          <Sparkles size={12} color="#ffffff" />
         ) : (
           <ZapOff size={12} color="#ffffff" />
         )}
@@ -160,8 +129,6 @@ export const FlashlightToggle = ({
           'text-[10px] font-black tracking-wider uppercase',
           currentMode === 'on'
             ? 'text-black'
-            : currentMode === 'auto'
-            ? 'text-white'
             : 'text-white'
         )}
       >

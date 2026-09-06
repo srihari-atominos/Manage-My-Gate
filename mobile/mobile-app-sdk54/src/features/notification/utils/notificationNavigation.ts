@@ -8,7 +8,7 @@ export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string): st
       case 'VISITOR':
         return '/(resident)/visitor';
       case 'BILLING':
-        return '/(resident)/billing/dashboard';
+        return '/(resident)/billing';
       case 'COMPLAINT':
         return '/(resident)/complaints/my-tickets';
       case 'NOTICE':
@@ -48,7 +48,7 @@ export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string): st
     return '/(resident)/notices';
   }
   if (cleanUrl.includes('billing')) {
-    return '/(resident)/billing/dashboard';
+    return '/(resident)/billing';
   }
   if (cleanUrl.includes('users')) {
     return '/(resident)/admin/users';

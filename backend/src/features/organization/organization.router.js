@@ -47,6 +47,10 @@ const setupWorkspaceRules = [
     .isString()
     .withMessage('Organization name must be a string')
     .trim(),
+  body('features')
+    .optional()
+    .isArray()
+    .withMessage('features must be an array'),
   body('password')
     .optional()
     .isString()

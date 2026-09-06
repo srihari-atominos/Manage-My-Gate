@@ -54,6 +54,7 @@ export interface UnitDueBreakdown {
   invoiceNumber: string;
   unitId?: string;
   unitNumber?: string;
+  assessmentName?: string;
   totalDue: number;
   outstandingAmount?: number;
   paidAmount?: number;

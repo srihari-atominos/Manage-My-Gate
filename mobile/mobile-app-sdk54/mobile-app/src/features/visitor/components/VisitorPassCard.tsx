@@ -41,7 +41,7 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
   if (displayVilla) subtitleParts.push(`Villa: ${displayVilla}`);
   if (pass.phone) subtitleParts.push(`Ph: ${pass.phone}`);
   else if (pass.purpose) subtitleParts.push(`For: ${pass.purpose}`);
-  else subtitleParts.push(`Code: ${pass.code || pass._id.slice(-6)}`);
+  else subtitleParts.push(`Code: ${pass.code || (typeof pass._id === 'string' ? pass._id.slice(-6) : 'PASS')}`);
 
   const subtitle = subtitleParts.join(' • ');
 
@@ -65,10 +65,10 @@ export const VisitorPassCard: React.FC<VisitorPassCardProps> = ({
             e?.stopPropagation?.();
             onShowQR(pass);
           }}
-          className="flex-row items-center gap-1.5 h-8 px-2.5 rounded-lg border-border"
+          className="flex-row items-center gap-1.5 h-8 px-2.5 rounded-lg border-blue-500/30 bg-blue-500/10 active:bg-blue-500/20"
         >
-          <QrCode size={14} className="text-foreground" />
-          <Text className="text-xs font-semibold text-foreground">Pass Code</Text>
+          <QrCode size={14} className="text-blue-600 dark:text-blue-400" />
+          <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">Pass Code</Text>
         </Button>
       }
     />

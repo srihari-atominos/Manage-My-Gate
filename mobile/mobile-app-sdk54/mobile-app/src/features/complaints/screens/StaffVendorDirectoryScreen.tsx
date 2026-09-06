@@ -11,6 +11,8 @@ import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { InviteStaffVendorSheet } from '../components/InviteStaffVendorSheet';
 import { Users, Phone, MessageSquare, Edit3, Trash2, UserPlus, Shield, Wrench } from 'lucide-react-native';
 import { technicianService, TechnicianData } from '../services/technicianService';
+import { Button } from '@/components/ui/button';
+import { getStatusTabStyle } from '@/components/ui/statusTabColors';
 
 const DEFAULT_DIRECTORY: TechnicianData[] = [
   {
@@ -180,6 +182,21 @@ export function StaffVendorDirectoryScreen() {
       subtitle="Manage technicians and active staff accounts"
       iconName="Users"
       loading={isLoading && technicians.length === 0}
+      headerRight={
+        <Button
+          size="sm"
+          onPress={() => {
+            setEditingTechnician(null);
+            setShowInviteSheet(true);
+          }}
+          className="bg-emerald-600 active:bg-emerald-700 flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+          accessibilityRole="button"
+          accessibilityLabel="Add Staff"
+        >
+          <Icon as={UserPlus} size={14} className="text-white" />
+          <Text className="text-xs font-bold text-white">Add Staff</Text>
+        </Button>
+      }
     >
       <View className="flex-1 bg-background">
         {error ? (
@@ -193,85 +210,38 @@ export function StaffVendorDirectoryScreen() {
           contentContainerStyle={{ paddingBottom: 60 }}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadData} tintColor="#6366f1" />}
         >
-          {/* TOP SEARCH BAR & ADD STAFF BUTTON ROW */}
-          <View className="px-4 pt-3 pb-2 flex-row items-center gap-2">
-            <View className="flex-1">
-              <SearchFilterBar
-                searchValue={searchQuery}
-                onSearchChange={setSearchQuery}
-                searchPlaceholder="Search name, phone, trade..."
-              />
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                setEditingTechnician(null);
-                setShowInviteSheet(true);
-              }}
-              style={{
-                backgroundColor: '#2563eb', // solid bright blue
-                paddingVertical: 10,
-                paddingHorizontal: 14,
-                borderRadius: 12,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Icon as={UserPlus} size={14} color="#ffffff" style={{ marginRight: 4 }} />
-              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 12 }}>+ Add Staff</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* TYPE FILTER PILLS (ALL / IN-HOUSE / EXTERNAL VENDOR) */}
-          <View className="px-4 py-1 flex-row gap-2">
-            {[
-              { label: `All Staff (${counts.total})`, value: 'ALL' },
-              { label: `In-House (${counts.inHouse})`, value: 'IN_HOUSE' },
-              { label: `Vendors (${counts.vendors})`, value: 'VENDOR' },
-            ].map((tab) => {
-              const isActive = selectedTypeTab === tab.value;
-              return (
-                <TouchableOpacity
-                  key={tab.value}
-                  activeOpacity={0.8}
-                  onPress={() => setSelectedTypeTab(tab.value as any)}
-                  style={{
-                    backgroundColor: isActive ? '#2563eb' : '#f1f5f9',
-                    borderColor: isActive ? '#2563eb' : '#cbd5e1',
-                    borderWidth: 1,
-                    paddingVertical: 6,
-                    paddingHorizontal: 12,
-                    borderRadius: 20,
-                    flex: 1,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ color: isActive ? '#ffffff' : '#0f172a', fontWeight: 'bold', fontSize: 11 }}>
-                    {tab.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          {/* TOP SEARCH BAR & CANONICAL TYPE FILTER PILLS */}
+          <View className="px-4 pt-3 pb-1">
+            <SearchFilterBar
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              searchPlaceholder="Search name, phone, trade..."
+              sortOptions={[
+                { label: `All Staff (${counts.total})`, value: 'ALL' },
+                { label: `In-House (${counts.inHouse})`, value: 'IN_HOUSE' },
+                { label: `Vendors (${counts.vendors})`, value: 'VENDOR' },
+              ]}
+              currentSort={selectedTypeTab}
+              onSortChange={(val) => setSelectedTypeTab(val as any)}
+              variant="default"
+              className="px-0 py-0 border-0"
+            />
           </View>
 
           {/* HORIZONTAL DEPARTMENT FILTER CHIPS */}
-          <View className="px-4 py-2">
+          <View className="px-4 py-1.5">
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 py-1">
               {departmentTabs.map((dept) => {
                 const isActive = selectedDepartment === dept;
+                const statusStyle = getStatusTabStyle(dept, isActive);
                 return (
                   <TouchableOpacity
                     key={dept}
                     activeOpacity={0.8}
                     onPress={() => setSelectedDepartment(dept)}
-                    className={`px-3 py-1.5 rounded-full border me-1.5 ${
-                      isActive ? 'bg-slate-900 border-slate-900' : 'bg-card border-border active:bg-muted'
-                    }`}
+                    className={`px-3 py-1.5 rounded-full border me-1.5 ${statusStyle.containerClass}`}
                   >
-                    <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-foreground'}`}>
+                    <Text className={`text-xs ${statusStyle.textClass}`}>
                       {dept}
                     </Text>
                   </TouchableOpacity>

@@ -148,7 +148,17 @@ export const DropdownSelect = ({
             
             <FlatList
               data={options}
-              keyExtractor={(item) => item.value}
+              keyExtractor={(item, index) => {
+                if (item && typeof item === 'object') {
+                  if (typeof item.value === 'string' || typeof item.value === 'number') {
+                    return String(item.value);
+                  }
+                  if (typeof item.label === 'string' && item.label) {
+                    return `${item.label}-${index}`;
+                  }
+                }
+                return `opt-${index}`;
+              }}
               ListEmptyComponent={() => (
                 <View className="py-6 items-center justify-center">
                   <Text className="text-base text-muted-foreground italic">No options available</Text>

@@ -13,7 +13,8 @@ export const visitorAdminService = {
 
   // 3. Admin Force Revoke any pass with reason
   forceRevokePass: async (id: string, reason: string) => {
-    return await apiClient.patch(`/visitor-pass/admin/${id}/force-revoke`, { reason });
+    // Fallback to standard status update since admin route doesn't exist
+    return await apiClient.patch(`/visitor-pass/${id}/status`, { status: 'REVOKED', reason });
   },
 
   // 4. Admin Master Gate Approvals Stream

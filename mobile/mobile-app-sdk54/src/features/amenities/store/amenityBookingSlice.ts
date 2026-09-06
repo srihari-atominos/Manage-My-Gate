@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import amenityApi, { CreateBookingPayload, CheckInPayload } from '../services/amenityApi';
+import amenityService, { CreateBookingPayload, CheckInPayload } from '../services/amenityService';
 import { PaginationMeta } from './amenitySlice';
 
 export interface AmenityBooking {
@@ -131,7 +131,7 @@ export const fetchMyBookingsThunk = createAsyncThunk(
   'amenityBookings/fetchMyBookings',
   async (params: { page?: number; limit?: number; status?: string } = {}, { rejectWithValue }) => {
     try {
-      const response = await amenityApi.getMyBookings(params);
+      const response = await amenityService.getMyBookings(params);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch personal bookings');
@@ -154,7 +154,7 @@ export const fetchAdminCalendarThunk = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await amenityApi.getAdminCalendar(params);
+      const response = await amenityService.getAdminCalendar(params);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch admin calendar bookings');
@@ -175,7 +175,7 @@ export const fetchBookingQueueThunk = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await amenityApi.getBookingQueue(params);
+      const response = await amenityService.getBookingQueue(params);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch master booking ledger');
@@ -198,7 +198,7 @@ export const createManualBookingThunk = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await amenityApi.createManualBooking(payload);
+      const response = await amenityService.createManualBooking(payload);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to create manual admin reservation');
@@ -210,7 +210,7 @@ export const adminCancelBookingThunk = createAsyncThunk(
   'amenityBookings/adminCancelBooking',
   async ({ bookingId, reason }: { bookingId: string; reason?: string }, { rejectWithValue }) => {
     try {
-      const response = await amenityApi.adminCancelBooking(bookingId, reason);
+      const response = await amenityService.adminCancelBooking(bookingId, reason);
       return { bookingId, response };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to cancel reservation');
@@ -222,7 +222,7 @@ export const fetchRecentScansThunk = createAsyncThunk(
   'amenityBookings/fetchRecentScans',
   async (params: { page?: number; limit?: number } = {}, { rejectWithValue }) => {
     try {
-      const response = await amenityApi.getRecentScans(params);
+      const response = await amenityService.getRecentScans(params);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch gate audit scans');
@@ -234,7 +234,7 @@ export const fetchDashboardStatsThunk = createAsyncThunk(
   'amenityBookings/fetchDashboardStats',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await amenityApi.getDashboardStats();
+      const response = await amenityService.getDashboardStats();
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch dashboard metrics');
@@ -246,7 +246,7 @@ export const createBookingThunk = createAsyncThunk(
   'amenityBookings/createBooking',
   async (payload: CreateBookingPayload, { rejectWithValue }) => {
     try {
-      const response = await amenityApi.createAmenityBooking(payload);
+      const response = await amenityService.createAmenityBooking(payload);
       return response;
     } catch (error: any) {
       const isOCC = error.status === 409 || error.statusCode === 409 || (error.message && error.message.toLowerCase().includes('version'));
@@ -262,7 +262,7 @@ export const checkInBookingThunk = createAsyncThunk(
   'amenityBookings/checkInBooking',
   async ({ bookingId, payload }: { bookingId: string; payload?: CheckInPayload }, { rejectWithValue }) => {
     try {
-      const response = await amenityApi.checkInBooking(bookingId, payload || {});
+      const response = await amenityService.checkInBooking(bookingId, payload || {});
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Check-in validation failed');
@@ -274,7 +274,7 @@ export const cancelBookingThunk = createAsyncThunk(
   'amenityBookings/cancelBooking',
   async ({ bookingId, reason }: { bookingId: string; reason?: string }, { rejectWithValue }) => {
     try {
-      const response = await amenityApi.cancelBooking(bookingId, reason);
+      const response = await amenityService.cancelBooking(bookingId, reason);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to cancel amenity booking');
@@ -297,6 +297,27 @@ const amenityBookingSlice = createSlice({
       state.successMsg = null;
       state.isOCCError = false;
       state.occErrorMessage = null;
+    },
+    upsertBooking: (state, action: PayloadAction<AmenityBooking>) => {
+      // Update or add in adminBookings
+      const adminIndex = state.adminBookings.findIndex((b) => b._id === action.payload._id);
+      if (adminIndex !== -1) {
+        state.adminBookings[adminIndex] = action.payload;
+      } else {
+        state.adminBookings.unshift(action.payload);
+      }
+      
+      // Update or add in myBookings
+      const myIndex = state.myBookings.findIndex((b) => b._id === action.payload._id);
+      if (myIndex !== -1) {
+        state.myBookings[myIndex] = action.payload;
+      } else {
+        state.myBookings.unshift(action.payload);
+      }
+    },
+    removeBooking: (state, action: PayloadAction<string>) => {
+      state.adminBookings = state.adminBookings.filter((b) => b._id !== action.payload);
+      state.myBookings = state.myBookings.filter((b) => b._id !== action.payload);
     },
   },
   extraReducers: (builder) => {
@@ -495,6 +516,8 @@ export const {
   setActivePass,
   clearCheckInResult,
   clearBookingStatus,
+  upsertBooking,
+  removeBooking,
 } = amenityBookingSlice.actions;
 
 export default amenityBookingSlice.reducer;

@@ -1,8 +1,12 @@
 import React from 'react';
 import { QRCodeView } from '@/components/ui/QRCodeView';
+import { encodeAppBarcode, AppBarcodeType } from '@/src/utils/appBarcodeProtocol';
 
 export interface VisitorQRCodeProps {
   code?: string;
+  passId?: string;
+  visitorName?: string;
+  type?: AppBarcodeType | string;
   size?: number;
   validityText?: string;
 }
@@ -12,16 +16,19 @@ export interface VisitorQRCodeProps {
  */
 export const VisitorQRCode: React.FC<VisitorQRCodeProps> = ({
   code = '849201',
-  size = 180,
+  passId,
+  visitorName,
+  type = 'GUEST',
+  size = 190,
   validityText = 'Scan at security gate for entry verification',
 }) => {
+  const barcodePayload = encodeAppBarcode(type as AppBarcodeType, code, passId, visitorName);
+
   return (
     <QRCodeView
-      value={code}
+      value={barcodePayload}
       size={size}
       caption={validityText}
     />
   );
 };
-
-export default VisitorQRCode;

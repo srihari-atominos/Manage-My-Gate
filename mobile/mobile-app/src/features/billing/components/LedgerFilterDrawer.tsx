@@ -69,10 +69,13 @@ export const LedgerFilterDrawer: React.FC<LedgerFilterDrawerProps> = ({
       // Fetch distinct blocks for this community
       fetchVillaBlocks()
         .then((res: any) => {
-          const blocks = res?.data || res || [];
-          if (Array.isArray(blocks)) {
-            setAvailableBlocks(blocks.filter(Boolean));
-          }
+          const raw = res?.data?.data || res?.data || res || [];
+          const blocks = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+          setAvailableBlocks(
+            blocks
+              .map((b: any) => (typeof b === 'string' ? b : b?.block || b?.blockOrBuilding || b?._id || b?.name || ''))
+              .filter((b: string) => Boolean(b) && b !== '[object Object]')
+          );
         })
         .catch(() => {});
     }

@@ -90,7 +90,16 @@ export class VisitorPassController {
   async getByCode(req, res, next) {
     try {
       const { code } = req.params;
-      const passId = await visitorPassTokenService.getPassIdByCode(code);
+      let passId;
+      try {
+        passId = await visitorPassTokenService.getPassIdByCode(code);
+      } catch (err) {
+        if (/^[0-9a-fA-F]{24}$/.test(code)) {
+          passId = code;
+        } else {
+          throw err;
+        }
+      }
       const data = await visitorPassService.getPassById(passId);
       res.success(data, 'Visitor pass retrieved by code successfully');
     } catch (error) {

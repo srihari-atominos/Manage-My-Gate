@@ -7,6 +7,7 @@ import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { QRCodeView } from '@/components/ui/QRCodeView';
 import { AmenityBooking } from '../store/amenityBookingSlice';
+import { encodeAppBarcode } from '@/src/utils/appBarcodeProtocol';
 
 export interface PassQRModalProps {
   visible: boolean;
@@ -38,7 +39,8 @@ export function PassQRModal({ visible, onClose, booking }: PassQRModalProps) {
   const badgeVariant = statusVariantMap[booking.status] || 'neutral';
   const bookingIdDisplay = booking.bookingId || (booking._id ? String(booking._id).substring(0, 8).toUpperCase() : 'PASS');
 
-  const qrString = booking.qrCode || booking.passCode || booking.bookingId || (booking._id ? String(booking._id) : 'PASS');
+  const rawBookingCode = booking.bookingId || (booking._id ? String(booking._id) : 'PASS');
+  const qrString = encodeAppBarcode('AMENITY', rawBookingCode, booking._id ? String(booking._id) : undefined);
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Digital Access Pass">
@@ -56,7 +58,15 @@ export function PassQRModal({ visible, onClose, booking }: PassQRModalProps) {
           <DetailRow label="Location" value={amenityLocation} iconName="MapPin" />
           <DetailRow label="Booking Code" value={bookingIdDisplay} copyable={true} iconName="Hash" />
           <DetailRow label="Reservation Date" value={booking.date || booking.bookingDate || ''} iconName="Calendar" />
-          <DetailRow label="Time Window" value={`${booking.startTime} - ${booking.endTime}`} iconName="Clock" />
+          <DetailRow
+            label="Time Window"
+            value={
+              booking.startTime && booking.endTime
+                ? `${booking.startTime} - ${booking.endTime}`
+                : booking.startTime || booking.endTime || 'Full Day'
+            }
+            iconName="Clock"
+          />
           <DetailRow label="Attendees" value={`${booking.numberOfPersons || booking.guestsCount || 1} Person(s)`} iconName="Users" />
           <DetailRow label="Total Amount" value={booking.totalFee ? `₹${booking.totalFee.toFixed(2)}` : 'Free'} iconName="CreditCard" />
           <DetailRow label="Payment Method" value={booking.paymentMethod || 'None'} iconName="Wallet" />

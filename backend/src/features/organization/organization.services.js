@@ -195,13 +195,16 @@ export class OrganizationService {
     return !org;
   }
 
-  async setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId }) {
+  async setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId, features }) {
     // Enforce name uniqueness checks BEFORE starting the write transaction
     const trimmedName = name.trim();
     const existingOrg = await organizationRepository.findByName(trimmedName);
     if (existingOrg) {
       throw new HttpError(409, 'Conflict. Organization name already exists.');
     }
+
+    const defaultFeatures = ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices', 'complaints', 'visitor', 'billing'];
+    const finalFeatures = Array.isArray(features) && features.length > 0 ? features : defaultFeatures;
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -215,7 +218,7 @@ export class OrganizationService {
         contactPhone,
         expectedMemberCount,
         timezone: timezone || 'Asia/Kolkata',
-        allowedFeatures: ['users', 'roles', 'integrations', 'villas', 'amenities', 'notices', 'complaints', 'visitor', 'billing']
+        allowedFeatures: finalFeatures
       }, session);
 
       // 2. Create the default Roles and assign Permissions
@@ -237,9 +240,27 @@ export class OrganizationService {
         { name: 'Community Admin', description: 'Gated community administrator with full access privileges.', orgId: newOrg._id, isTenantRole: false },
         session
       );
-      // Admin gets all permissions
-      const allPermissionIds = allPermissions.map(p => p._id.toString());
-      await rolePermissionService.updateRolePermissions(adminRole._id.toString(), allPermissionIds, session);
+
+      let adminPermissionIds;
+      if (Array.isArray(features) && features.length > 0) {
+        const targetPermissions = allPermissions.filter(perm =>
+          features.includes(perm.feature)
+        );
+        const granularIds = targetPermissions.map(p => p._id.toString());
+        const basePermissions = allPermissions.filter(perm =>
+          ['users:read', 'roles:read', 'workspaces:read', 'workspaces:update'].includes(perm.name)
+        );
+        for (const basePerm of basePermissions) {
+          const bId = basePerm._id.toString();
+          if (!granularIds.includes(bId)) {
+            granularIds.push(bId);
+          }
+        }
+        adminPermissionIds = granularIds;
+      } else {
+        adminPermissionIds = allPermissions.map(p => p._id.toString());
+      }
+      await rolePermissionService.updateRolePermissions(adminRole._id.toString(), adminPermissionIds, session);
 
       // Create Resident Owner Role
       const ownerRole = await roleService.createRole(

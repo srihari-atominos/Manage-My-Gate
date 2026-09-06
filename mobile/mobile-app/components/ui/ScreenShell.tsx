@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Pressable, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
+import { View, Pressable, TouchableOpacity, ScrollView, BackHandler, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as LucideIcons from 'lucide-react-native';
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { RoleSwitchModal } from '../navigation/RoleSwitchModal';
 import { VillaSwitchModal } from '../navigation/VillaSwitchModal';
 import { GlobalNavModal } from '../navigation/GlobalNavModal';
+import { BottomNavigationBar } from '../navigation/BottomNavigationBar';
 
 export interface ScreenShellProps {
   title: string;
@@ -29,6 +30,8 @@ export interface ScreenShellProps {
   className?: string;
   enableHeaderDoubleTap?: boolean; // Mobile gesture: double-tap header to switch role/villa
   scrollable?: boolean;          // Wrap children in a ScrollView
+  showBottomNav?: boolean;       // Render bottom navigation bar
+  hideBottomNav?: boolean;       // Explicitly hide bottom navigation bar
 }
 
 export function ScreenShell({
@@ -45,6 +48,8 @@ export function ScreenShell({
   className,
   enableHeaderDoubleTap = true,
   scrollable = false,
+  showBottomNav = false,
+  hideBottomNav = false,
 }: ScreenShellProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -112,7 +117,7 @@ export function ScreenShell({
         className="bg-card border-b border-border px-4 pb-3 shadow-xs"
       >
         <View className="flex-row items-center justify-between gap-2 min-h-[44px]">
-          <View className="flex-row items-center flex-1 me-2">
+          <View className="flex-row items-center flex-1 me-2 min-w-0">
             {showBackButton && (
               <Pressable
                 onPress={() => {
@@ -120,8 +125,10 @@ export function ScreenShell({
                     onBackPress();
                   } else if (router.canGoBack()) {
                     router.back();
+                  } else if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history && window.history.length > 1) {
+                    window.history.back();
                   } else {
-                    router.replace('/(resident)/dashboard' as any);
+                    router.back();
                   }
                 }}
                 className="me-2 p-2 rounded-xl active:bg-secondary -ms-1 shrink-0 border border-transparent active:border-border/60"
@@ -142,14 +149,14 @@ export function ScreenShell({
             {/* Double Tap Gesture Header Area */}
             <Pressable
               onPress={handleHeaderPress}
-              className="flex-1 justify-center active:opacity-80"
+              className="flex-1 justify-center active:opacity-80 min-w-0"
               accessibilityHint="Double tap header title to switch active Role or Villa Unit"
             >
-              <Text variant="large" numberOfLines={1} className="text-foreground font-bold tracking-tight">
+              <Text variant="large" numberOfLines={1} className="text-foreground font-bold tracking-tight shrink">
                 {title}
               </Text>
               {subtitle ? (
-                <Text variant="muted" numberOfLines={1} className="text-xs text-muted-foreground mt-0.5 font-medium">
+                <Text variant="muted" numberOfLines={1} className="text-xs text-muted-foreground mt-0.5 font-medium shrink">
                   {subtitle}
                 </Text>
               ) : null}
@@ -237,6 +244,9 @@ export function ScreenShell({
           setShowVillaModal(false);
         }}
       />
+
+      {/* Down Bar Navigation */}
+      {showBottomNav && !hideBottomNav && <BottomNavigationBar />}
     </View>
   );
 }

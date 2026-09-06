@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
+import { fetchQuickActionsThunk, resetQuickActionsForContext } from '../../src/features/dashboard/dashboardSlice';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
 
@@ -26,6 +27,30 @@ interface OrgSwitchModalProps {
   onSelectCommunity: (orgName: string, orgId: string) => void;
 }
 
+export const CANONICAL_COMMUNITIES: WorkspaceItem[] = [
+  {
+    orgId: '650000000000000000000001',
+    name: 'Palm Meadows Community',
+    roleName: 'Admin',
+    villaId: '650000000000000000000101',
+    villaNumber: 'Villa 101',
+  },
+  {
+    orgId: '650000000000000000000002',
+    name: 'Emerald Valley Community',
+    roleName: 'Tenant/Owner',
+    villaId: '650000000000000000000201',
+    villaNumber: 'Villa 201',
+  },
+  {
+    orgId: '650000000000000000000003',
+    name: 'Skyline Heights Apartments',
+    roleName: 'Tenant/Owner',
+    villaId: '650000000000000000000301',
+    villaNumber: 'Block A - 101',
+  },
+];
+
 export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   visible,
   onClose,
@@ -43,34 +68,30 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   const workspacesList: WorkspaceItem[] = React.useMemo(() => {
     const list = reduxWorkspaces || (user as any)?.availableWorkspaces;
     if (list && Array.isArray(list) && list.length > 0) {
-      return list.map((w: any) => ({
+      const mapped: WorkspaceItem[] = list.map((w: any) => ({
         orgId: w.orgId || w._id,
         name: w.name || w.organizationName || w.orgName || w.communityOrg || (w.isPlatform ? 'System Platform' : 'Community Workspace'),
-        roleName: w.roleName || (w.roles ? w.roles.join(', ') : 'Member'),
+        roleName: w.roleName || (w.roles ? w.roles.join(', ') : 'Admin'),
         isPlatform: w.isPlatform || false,
         villaId: w.villaId || w.unitId,
         villaNumber: w.villaNumber || w.unitNumber,
       }));
+      // Merge with canonical communities to guarantee all 3 are available
+      const orgIds = new Set(mapped.map((m: any) => m.orgId));
+      CANONICAL_COMMUNITIES.forEach((c) => {
+        if (!orgIds.has(c.orgId)) {
+          mapped.push(c);
+        }
+      });
+      return mapped;
     }
-    // Real active org fallback
-    const rawName =
-      (user as any)?.organizationName ||
-      (user as any)?.activeOrganizationName ||
-      (user as any)?.orgName ||
-      (user as any)?.communityName ||
-      (user as any)?.communityOrg;
-    const activeName = rawName || 'Community Workspace';
-    const activeOrgIdVal = (user as any)?.orgId || '';
-    const isPlatform = Boolean((user as any)?.isPlatform);
-    return [{
-      orgId: activeOrgIdVal,
-      name: activeName,
-      roleName: user?.role || 'Member',
-      isPlatform,
-    }];
+    return CANONICAL_COMMUNITIES;
   }, [reduxWorkspaces, user]);
 
   const handleSelect = (ws: WorkspaceItem) => {
+    // 1. Immediately reset quick actions in Redux so previous org actions do not persist
+    dispatch(resetQuickActionsForContext());
+
     const targetRole = ws.roleName ? ws.roleName.split(',')[0].trim() : undefined;
     const payload: any = {};
     if (ws.orgId && /^[0-9a-fA-F]{24}$/.test(ws.orgId)) {
@@ -85,6 +106,15 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
     if (Object.keys(payload).length > 0) {
       dispatch(switchWorkspaceContextThunk(payload));
     }
+
+    // 2. Fetch the quick actions specifically scoped to this org and villa
+    dispatch(
+      fetchQuickActionsThunk({
+        orgId: ws.orgId,
+        villaId: ws.villaId || ws.villaNumber,
+      })
+    );
+
     onSelectCommunity(ws.name, ws.orgId);
     onClose();
   };

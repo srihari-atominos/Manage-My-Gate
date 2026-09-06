@@ -18,7 +18,8 @@ import {
   Wallet,
   QrCode,
   Sliders,
-  Home
+  Home,
+  Settings
 } from 'lucide-react-native';
 
 export interface GlobalNavCategory {
@@ -79,6 +80,13 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
       title: 'VISITORS & SECURITY',
       items: [
         { id: 'v-main', label: 'Visitor Pass Hub', route: '/(resident)/visitor', icon: ShieldCheck, color: '#8b5cf6' },
+      ],
+    },
+    {
+      title: 'PREFERENCES & SETTINGS',
+      items: [
+        { id: 's-app', label: 'App Settings', route: '/(resident)/settings', icon: Settings, color: '#64748b' },
+        { id: 's-workspace', label: 'Workspace Settings', route: '/(resident)/admin/workspace-settings', icon: Sliders, color: '#475569' },
       ],
     },
   ];

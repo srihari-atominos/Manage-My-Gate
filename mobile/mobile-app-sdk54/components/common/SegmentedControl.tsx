@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { cn } from '../../lib/utils';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { getStatusSemanticType, getStatusTabStyle } from '@/components/ui/statusTabColors';
 
 export interface SegmentItem {
   key: string;
@@ -22,11 +23,12 @@ export const SegmentedControl = ({
   className,
 }: SegmentedControlProps) => {
   const activeIndex = segments.findIndex((s) => s.key === activeSegment);
-  const segmentWidth = 100 / segments.length;
+  const safeActiveIndex = activeIndex >= 0 ? activeIndex : 0;
+  const segmentWidth = 100 / (segments.length || 1);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      left: withTiming(`${activeIndex * segmentWidth}%`, { duration: 200 }),
+      left: `${safeActiveIndex * segmentWidth}%`,
       width: `${segmentWidth}%`,
     };
   });
@@ -44,6 +46,10 @@ export const SegmentedControl = ({
       />
       {segments.map((segment) => {
         const isActive = segment.key === activeSegment;
+        const semantic = getStatusSemanticType(segment.key || segment.label);
+        const isStatusSegment = semantic !== 'default';
+        const statusStyle = isStatusSegment ? getStatusTabStyle(segment.key || segment.label, isActive) : null;
+
         return (
           <Pressable
             key={segment.key}
@@ -53,7 +59,11 @@ export const SegmentedControl = ({
             <Text
               className={cn(
                 'text-[13px] font-semibold font-sans',
-                isActive ? 'text-foreground' : 'text-muted-foreground'
+                isActive
+                  ? isStatusSegment && statusStyle
+                    ? statusStyle.textClass
+                    : 'text-foreground'
+                  : 'text-muted-foreground'
               )}
             >
               {segment.label}

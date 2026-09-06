@@ -84,31 +84,17 @@ export function ActionGrid({
                   item.disabled && 'opacity-50'
                 )}
               >
-                {/* Optional Top-Right Badge Indicator */}
-                {item.badge !== undefined && item.badge !== null && item.badge !== '' ? (
-                  <View
-                    className={cn(
-                      'absolute -top-1.5 -right-1.5 px-2 py-0.5 rounded-full z-10',
-                      item.badgeColor || 'bg-primary'
-                    )}
-                  >
-                    <Text className="text-[9px] font-bold text-white">
-                      {String(item.badge)}
-                    </Text>
-                  </View>
-                ) : null}
-
                 {/* Icon Container */}
                 <View
                   className={cn(
-                    'w-11 h-11 rounded-2xl items-center justify-center mb-2',
+                    'w-12 h-12 rounded-[16px] items-center justify-center mb-2',
                     item.colorBg || 'bg-primary/10'
                   )}
                 >
                   {item.icon ? (
                     item.icon
                   ) : (
-                    <IconComp size={20} color={item.colorIcon || 'hsl(var(--primary))'} />
+                    <IconComp size={22} color={item.colorIcon || 'hsl(var(--primary))'} strokeWidth={2.2} />
                   )}
                 </View>
 

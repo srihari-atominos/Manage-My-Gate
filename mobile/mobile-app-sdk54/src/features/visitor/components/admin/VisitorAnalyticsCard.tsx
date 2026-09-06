@@ -1,56 +1,95 @@
 import React from 'react';
 import { View } from 'react-native';
+import { KPIRow } from '@/components/ui/KPIRow';
+import { KPICardProps } from '@/components/ui/KPICard';
 import { Text } from '@/components/ui/text';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { VisitorAnalyticsData } from '../../store/adminVisitorThunks';
-import { ShieldCheck, Clock, Users, ShieldAlert, TrendingUp } from 'lucide-react-native';
+import { TrendingUp, Clock, AlertTriangle } from 'lucide-react-native';
+import { cn } from '@/lib/utils';
 
-interface VisitorAnalyticsCardProps {
+export interface VisitorAnalyticsCardProps {
   analytics: VisitorAnalyticsData | null;
+  loading?: boolean;
+  className?: string;
 }
 
-export const VisitorAnalyticsCard: React.FC<VisitorAnalyticsCardProps> = ({ analytics }) => {
+export const VisitorAnalyticsCard: React.FC<VisitorAnalyticsCardProps> = ({
+  analytics,
+  loading = false,
+  className,
+}) => {
   const totalEntries = analytics?.totalEntriesToday ?? 0;
   const activeInside = analytics?.activeInsideCount ?? 0;
   const pending = analytics?.pendingApprovalsCount ?? 0;
   const blacklisted = analytics?.totalBlacklistedCount ?? 0;
-  const peakHour = analytics?.peakHour || '5:00 PM - 6:00 PM';
+  const peakHour = analytics?.peakHour || '05:00 PM - 06:00 PM';
+
+  const kpiCards: KPICardProps[] = [
+    {
+      title: 'Total Entries',
+      value: totalEntries,
+      variant: 'default',
+      iconName: 'Users',
+    },
+    {
+      title: 'Inside Now',
+      value: activeInside,
+      variant: 'success',
+      iconName: 'DoorOpen',
+    },
+    {
+      title: 'Pending Approvals',
+      value: pending,
+      variant: 'warning',
+      iconName: 'Clock',
+    },
+    {
+      title: 'Blacklisted Flags',
+      value: blacklisted,
+      variant: 'destructive',
+      iconName: 'ShieldAlert',
+    },
+  ];
 
   return (
-    <View className="bg-card border border-border rounded-2xl p-4 gap-3">
-      <View className="flex-row items-center justify-between border-b border-border/40 pb-2.5">
+    <View className={cn('bg-card border border-border rounded-2xl p-4 gap-3.5 shadow-xs', className)}>
+      {/* Header Row */}
+      <View className="flex-row items-center justify-between border-b border-border/60 pb-3">
         <View className="flex-row items-center gap-2">
-          <TrendingUp size={18} className="text-primary" />
+          <View className="size-8 rounded-full bg-primary/10 items-center justify-center border border-primary/20">
+            <TrendingUp size={16} className="text-primary" />
+          </View>
           <Text className="text-sm font-bold text-foreground">Gate Entry Traffic Summary</Text>
         </View>
-        <Text className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-          Today
-        </Text>
+        <StatusBadge label="Today" variant="success" size="sm" dot />
       </View>
 
-      <View className="flex-row gap-2">
-        <View className="flex-1 bg-muted/40 p-2.5 rounded-xl border border-border/40 items-center">
-          <Text className="text-lg font-extrabold text-foreground">{totalEntries}</Text>
-          <Text className="text-[10px] font-semibold text-muted-foreground">Total Entries</Text>
+      {/* 2x2 Normalized KPI Grid */}
+      <KPIRow
+        layout="grid"
+        cards={kpiCards}
+        loading={loading}
+        className="px-0"
+      />
+
+      {/* Footer Telemetry Information */}
+      <View className="flex-row items-center justify-between pt-2 border-t border-border/40">
+        <View className="flex-row items-center gap-1.5 flex-1 min-w-0">
+          <Clock size={13} className="text-muted-foreground shrink-0" />
+          <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+            Peak Window: <Text className="font-bold text-foreground">{peakHour}</Text>
+          </Text>
         </View>
 
-        <View className="flex-1 bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20 items-center">
-          <Text className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">{activeInside}</Text>
-          <Text className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Inside Now</Text>
-        </View>
-
-        <View className="flex-1 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20 items-center">
-          <Text className="text-lg font-extrabold text-amber-600 dark:text-amber-400">{pending}</Text>
-          <Text className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">Pending</Text>
-        </View>
-      </View>
-
-      <View className="flex-row items-center justify-between pt-1">
-        <Text className="text-xs text-muted-foreground">
-          Peak Traffic Hour: <Text className="font-bold text-foreground">{peakHour}</Text>
-        </Text>
-        <Text className="text-xs text-destructive font-semibold">
-          {blacklisted} Blacklisted
-        </Text>
+        {blacklisted > 0 && (
+          <View className="flex-row items-center gap-1 shrink-0 bg-destructive/10 px-2 py-0.5 rounded-full border border-destructive/20">
+            <AlertTriangle size={11} className="text-destructive" />
+            <Text className="text-[11px] text-destructive font-bold">
+              {blacklisted} Blocked
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );

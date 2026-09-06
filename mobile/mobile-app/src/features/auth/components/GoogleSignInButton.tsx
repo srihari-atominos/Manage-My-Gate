@@ -11,7 +11,7 @@ import * as AuthSession from 'expo-auth-session';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const DEFAULT_GOOGLE_CLIENT_ID = '66219996167-57amlm9js0r3uoov6ijhdbu3cqqrmpmb.apps.googleusercontent.com';
+const DEFAULT_GOOGLE_CLIENT_ID = '610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com';
 
 export function GoogleSignInButton() {
   const { loginWithGoogle, loading } = useAuth();

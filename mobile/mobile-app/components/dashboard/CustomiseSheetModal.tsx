@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Modal, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
 import { Sparkles, X, Check } from 'lucide-react-native';
 import CustomiseDeckZone from './CustomiseDeckZone';
 import CustomiseAvailableZone from './CustomiseAvailableZone';
@@ -12,6 +13,7 @@ import {
   REAL_APP_FEATURES,
   DEFAULT_5_QUICK_ACTIONS,
   AppFeatureItem,
+  getRoleDefaultQuickActions,
 } from '@/src/features/dashboard/dashboardCatalog';
 
 export { ALL_AVAILABLE_FEATURES, REAL_APP_FEATURES, AppFeatureItem };
@@ -62,12 +64,14 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   }, [activeFeatureIds, defaultRoleQuickActions, user]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>(sanitizedActiveIds);
+  const prevVisibleRef = React.useRef(visible);
 
-  // Sync selectedIds state whenever activeFeatureIds or visible state changes
+  // Sync selectedIds state ONLY when the modal transitions from closed to open
   useEffect(() => {
-    if (visible) {
+    if (visible && !prevVisibleRef.current) {
       setSelectedIds(sanitizedActiveIds);
     }
+    prevVisibleRef.current = visible;
   }, [visible, sanitizedActiveIds]);
 
   const toggleSelect = (id: string) => {
@@ -75,6 +79,9 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
       setSelectedIds((prev) => prev.filter((item) => item !== id));
     } else if (selectedIds.length < 5) {
       setSelectedIds((prev) => [...prev, id]);
+    } else {
+      // If already at 5, replace the last item with the newly chosen one so customization is frictionless
+      setSelectedIds((prev) => [...prev.slice(0, 4), id]);
     }
     if (onToggleFeature) onToggleFeature(id);
   };
@@ -84,10 +91,15 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
     onClose();
   };
 
-  // Active selected items (up to 5)
+  // Active selected items (up to 5, strictly permitted)
   const activeItems = useMemo(() => {
-    return ALL_AVAILABLE_FEATURES.filter((f) => selectedIds.includes(f.id)).slice(0, 5);
-  }, [selectedIds]);
+    return selectedIds
+      .map((id) => ALL_AVAILABLE_FEATURES.find((f) => f.id === id))
+      .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] =>
+        Boolean(item && isFeatureAllowedForUser(item, user))
+      )
+      .slice(0, 5);
+  }, [selectedIds, user]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -105,9 +117,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
           className="bg-card border-t border-border rounded-t-3xl shadow-2xl overflow-hidden flex-col"
         >
           {/* Top Pill Handle */}
-          <View className="items-center pt-2.5 pb-1 bg-card">
-            <View className="w-10 h-1.5 rounded-full bg-muted-foreground/30" />
-          </View>
+          <SheetGrabHandle onClose={onClose} />
 
           {/* Header Bar */}
           <View className="flex-row justify-between items-center px-5 py-3 border-b border-border bg-card">

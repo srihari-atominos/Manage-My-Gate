@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Bell, Home, Building2, ChevronDown } from 'lucide-react-native';
+import { Bell, Home, Building2, ChevronDown, Sun, Moon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
+import storage from '../../src/utils/storage';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useSelector } from 'react-redux';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { RoleSwitchModal } from './RoleSwitchModal';
 import { VillaSwitchModal } from './VillaSwitchModal';
 import { OrgSwitchModal } from './OrgSwitchModal';
 import { ProfileModal } from './ProfileModal';
 import { NotificationSheetModal } from './NotificationSheetModal';
+import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
+import { RealtimeNotificationToast } from '@/components/feedback/RealtimeNotificationToast';
+import { mapActionUrlToMobileRoute } from '@/src/features/notification/utils/notificationNavigation';
+import { useTranslation } from '@/src/utils/i18n';
 
 interface MobileHeaderProps {
   unitName?: string | null;
@@ -27,12 +34,21 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   onNotificationPress,
 }) => {
   const { user } = useAuth();
+  const router = useRouter();
+  const { t } = useTranslation();
   
-  // Real-time notification count from Redux store if available
-  const storeUnreadCount = useSelector((state: any) => state.notification?.unreadCount);
+  // Real-time notification hook initialization to ensure WebSockets & state remain active
+  const {
+    unreadCount: hookUnreadCount,
+    latestNotification,
+    dismissLatestNotification,
+    markAsRead,
+  } = useNotifications();
+
+  // Real-time notification count from Redux store or prop override
   const liveUnreadCount = unreadNotificationCount !== undefined 
     ? unreadNotificationCount 
-    : (typeof storeUnreadCount === 'number' ? storeUnreadCount : 0);
+    : (typeof hookUnreadCount === 'number' ? hookUnreadCount : 0);
 
   const reduxWorkspaces = useSelector((state: any) => state.auth?.user?.availableWorkspaces || state.workspace?.availableWorkspaces || EMPTY_ARRAY);
 
@@ -53,14 +69,23 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
     if (userOrg) return userOrg;
 
-    // 2. Fall back to availableWorkspaces list in Redux
-    const workspaces = (user as any)?.availableWorkspaces || [];
-    if (Array.isArray(workspaces) && workspaces.length > 0 && workspaces[0]?.name) {
-      return workspaces[0].name;
+    // 2. Fall back to availableWorkspaces list matching active workspace orgId
+    const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
+    const workspaces = (user as any)?.availableWorkspaces || reduxWorkspaces || [];
+    if (Array.isArray(workspaces) && workspaces.length > 0) {
+      if (activeOrgId) {
+        const activeWs = workspaces.find(
+          (w: any) => w.orgId === activeOrgId || w._id === activeOrgId || w.id === activeOrgId,
+        );
+        if (activeWs?.name) return activeWs.name;
+      }
+      if (workspaces[0]?.name) {
+        return workspaces[0].name;
+      }
     }
 
     return 'Community Workspace';
-  }, [communityName, user]);
+  }, [communityName, user, reduxWorkspaces]);
 
   const [activeVilla, setActiveVilla] = useState<string | null>(dynamicVilla);
   const [activeCommunity, setActiveCommunity] = useState<string>(dynamicCommunity);
@@ -80,6 +105,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [notifModalVisible, setNotifModalVisible] = useState(false);
 
+  const params = useLocalSearchParams<{ openProfile?: string }>();
+
+  React.useEffect(() => {
+    if (params?.openProfile === 'true') {
+      setProfileModalVisible(true);
+    }
+  }, [params?.openProfile]);
+
   // Check if context switching is applicable
   const userUnits = (user as any)?.accessibleUnits || [];
   const hasMultipleOrgs = Array.isArray(reduxWorkspaces) && reduxWorkspaces.length > 1;
@@ -95,6 +128,18 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     return 'U';
   }, [user]);
 
+  const { colorScheme, setColorScheme } = useColorScheme();
+
+  const toggleTheme = async () => {
+    const nextTheme = colorScheme === 'dark' ? 'light' : 'dark';
+    setColorScheme(nextTheme);
+    try {
+      await storage.setItem('theme_preference', nextTheme);
+    } catch (err) {
+      console.warn('Failed to save theme preference:', err);
+    }
+  };
+
   const handleContextPress = () => {
     if (!canSwitchContext) return;
     if (hasUnit) {
@@ -108,7 +153,20 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     if (onNotificationPress) {
       onNotificationPress();
     } else {
-      setNotifModalVisible(true);
+      router.push('/(resident)/notifications' as any);
+    }
+  };
+
+  const handleToastPress = (notification: any) => {
+    const notifId = notification?.id || notification?._id;
+    if (notifId && !notification.isRead) {
+      markAsRead(notifId);
+    }
+    if (notification.actionUrl) {
+      const route = mapActionUrlToMobileRoute(notification.actionUrl, notification.type);
+      router.push(route as any);
+    } else {
+      router.push('/(resident)/notifications' as any);
     }
   };
 
@@ -134,7 +192,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           onPress={handleContextPress}
           activeOpacity={canSwitchContext ? 0.8 : 1}
           disabled={!canSwitchContext}
-          className="flex-row items-center gap-2 max-w-[64%] bg-secondary border border-border/80 px-3 py-1.5 rounded-full shadow-xs"
+          className="flex-row items-center gap-2 max-w-[55%] bg-secondary border border-border/80 px-3 py-1.5 rounded-full shadow-xs"
         >
           <View className="p-1.5 rounded-full bg-primary items-center justify-center border border-primary/30">
             {hasUnit ? (
@@ -159,17 +217,34 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           ) : null}
         </TouchableOpacity>
 
-        {/* Right Section: Notification Bell & Profile Avatar (Primary Navy) */}
+        {/* Right Section: Theme Toggle, Notification Bell & Profile Avatar */}
         <View className="flex-row items-center gap-2">
+          {/* Theme Shift Toggle Icon Button */}
+          <TouchableOpacity
+            onPress={toggleTheme}
+            activeOpacity={0.7}
+            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center active:bg-secondary shadow-xs"
+            accessibilityRole="button"
+            accessibilityLabel="Toggle Light and Dark Theme"
+          >
+            {colorScheme === 'dark' ? (
+              <Sun size={18} color="#F59E0B" strokeWidth={2.2} />
+            ) : (
+              <Moon size={18} color="#334155" strokeWidth={2.2} />
+            )}
+          </TouchableOpacity>
+
           {/* Notification Bell Icon Button */}
           <TouchableOpacity
             onPress={handleBellPress}
             activeOpacity={0.7}
-            className="size-10 rounded-full bg-card border border-border items-center justify-center relative active:bg-secondary shadow-xs"
+            className="size-10 rounded-full bg-secondary/80 dark:bg-secondary border border-border items-center justify-center relative active:bg-secondary shadow-xs"
+            accessibilityRole="button"
+            accessibilityLabel="Notifications"
           >
-            <Bell size={18} className="text-foreground" />
+            <Bell size={18} color={colorScheme === 'dark' ? '#F1F5F9' : '#334155'} strokeWidth={2.2} />
             {liveUnreadCount > 0 ? (
-              <View className="absolute -top-0.5 -right-0.5 bg-[#A51B73] rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card">
+              <View className="absolute -top-0.5 -right-0.5 bg-[#FF6A00] rounded-full min-w-4 h-4 px-1 items-center justify-center border-2 border-card">
                 <Text className="text-[8.5px] font-bold font-sans text-white leading-tight">
                   {liveUnreadCount > 99 ? '99+' : liveUnreadCount}
                 </Text>
@@ -177,16 +252,25 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             ) : null}
           </TouchableOpacity>
 
-          {/* Profile Avatar Button (Primary Navy #172B70) */}
+          {/* Profile Avatar Button */}
           <TouchableOpacity
             onPress={() => setProfileModalVisible(true)}
             activeOpacity={0.85}
             className="size-10 rounded-full bg-primary items-center justify-center border border-primary shadow-xs active:opacity-90"
+            accessibilityRole="button"
+            accessibilityLabel="User Profile"
           >
             <Text className="text-white font-bold font-sans text-[14px]">{avatarLetter}</Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Real-time Notification Banner Toast */}
+      <RealtimeNotificationToast
+        notification={latestNotification}
+        onDismiss={dismissLatestNotification}
+        onPressBanner={handleToastPress}
+      />
 
       {/* Interactive Villa Switcher Modal */}
       <VillaSwitchModal
@@ -195,6 +279,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         activeVilla={activeVilla || ''}
         onSelectVilla={(villaNum) => setActiveVilla(villaNum)}
         communityName={activeCommunity}
+        onOpenOrgModal={() => setOrgModalVisible(true)}
       />
 
       {/* Interactive Organization / Community Switcher Modal */}
@@ -214,7 +299,16 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
       {/* Profile & Settings Modal */}
       <ProfileModal
         visible={profileModalVisible}
-        onClose={() => setProfileModalVisible(false)}
+        onClose={() => {
+          setProfileModalVisible(false);
+          if (params?.openProfile) {
+            try {
+              router.setParams({ openProfile: undefined });
+            } catch (e) {
+              // safe fallback
+            }
+          }
+        }}
         unitName={activeVilla || 'No Unit Assigned'}
         communityName={activeCommunity}
         onOpenOrgModal={() => setOrgModalVisible(true)}

@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { name: 'Dashboard', route: '/(resident)/notices/dashboard' },
   { name: 'Active Notice', route: '/(resident)/notices' },
   { name: 'Manage Notices', route: '/(resident)/notices/manage' },
-  { name: 'Polls', route: '/(resident)/notices/polls' },
+  { name: 'Polls', route: '/(resident)/polls' },
 ];
 
 export function NoticeBoardTopNav() {

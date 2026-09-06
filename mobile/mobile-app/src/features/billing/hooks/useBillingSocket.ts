@@ -83,6 +83,8 @@ export const useBillingSocket = () => {
     socket.on('PAYMENT_SUCCESS', handlePaymentSuccess);
     socket.on('WALLET_UPDATED', handleWalletUpdated);
     socket.on('walletUpdated', handleWalletUpdated);
+    socket.on('wallet_updated', handleWalletUpdated);
+    socket.on('wallet_transaction_created', handleWalletUpdated);
     socket.on('offline_payment_submitted', handleOfflinePaymentSubmitted);
 
     // Lifecycle Cleanup
@@ -94,6 +96,8 @@ export const useBillingSocket = () => {
       socket.off('PAYMENT_SUCCESS', handlePaymentSuccess);
       socket.off('WALLET_UPDATED', handleWalletUpdated);
       socket.off('walletUpdated', handleWalletUpdated);
+      socket.off('wallet_updated', handleWalletUpdated);
+      socket.off('wallet_transaction_created', handleWalletUpdated);
       socket.off('offline_payment_submitted', handleOfflinePaymentSubmitted);
     };
   }, [socket, dispatch, rooms]);

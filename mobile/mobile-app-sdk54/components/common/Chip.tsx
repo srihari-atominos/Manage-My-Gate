@@ -26,7 +26,7 @@ export const Chip = ({
       className={cn(
         'flex-row items-center rounded-full border px-3 py-1.5',
         selected
-          ? 'border-primary bg-primary'
+          ? 'border-blue-600 bg-blue-600'
           : 'border-border bg-card',
         className
       )}
@@ -37,14 +37,14 @@ export const Chip = ({
           size={14}
           className={cn(
             'me-1.5',
-            selected ? 'text-primary-foreground' : 'text-muted-foreground'
+            selected ? 'text-white' : 'text-muted-foreground'
           )}
         />
       )}
       <Text
         className={cn(
           'text-sm font-medium',
-          selected ? 'text-primary-foreground' : 'text-foreground',
+          selected ? 'text-white font-bold' : 'text-foreground',
           labelClassName
         )}
       >

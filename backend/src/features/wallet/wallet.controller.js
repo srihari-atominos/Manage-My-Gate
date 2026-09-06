@@ -3,7 +3,7 @@ import walletService from './wallet.service.js';
 export const getMyWallet = async (req, res, next) => {
   try {
     const userId = req.user.id || req.user._id;
-    const orgId = req.user?.orgId || req.user?.communityId || req.tenant?.orgId || req.headers['x-organization-id'];
+    const orgId = req.headers['x-organization-id'] || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
     
     const walletData = await walletService.getWalletData(userId, orgId);
     
@@ -20,7 +20,7 @@ export const getMyWallet = async (req, res, next) => {
 export const addMoney = async (req, res, next) => {
   try {
     const userId = req.user.id || req.user._id;
-    const orgId = req.user?.orgId || req.user?.communityId || req.tenant?.orgId || req.headers['x-organization-id'];
+    const orgId = req.headers['x-organization-id'] || req.body?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
     const { amount, paymentMethod } = req.body;
 
     if (!amount || amount <= 0) {
@@ -42,7 +42,7 @@ export const addMoney = async (req, res, next) => {
 export const payInvoice = async (req, res, next) => {
   try {
     const userId = req.user.id || req.user._id;
-    const orgId = req.user?.orgId || req.user?.communityId || req.tenant?.orgId || req.headers['x-organization-id'];
+    const orgId = req.headers['x-organization-id'] || req.body?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
     const { invoiceId, amount } = req.body;
 
     if (!invoiceId) {
@@ -65,7 +65,8 @@ export const createOrder = async (req, res, next) => {
   try {
     const { amount } = req.body;
     const userId = req.user.id || req.user._id;
-    const order = await walletService.createRechargeOrder(userId, amount);
+    const orgId = req.headers['x-organization-id'] || req.body?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
+    const order = await walletService.createRechargeOrder(userId, amount, orgId);
     res.status(200).json({ success: true, data: order });
   } catch (error) {
     next(error);
@@ -75,7 +76,7 @@ export const createOrder = async (req, res, next) => {
 export const verifyPayment = async (req, res, next) => {
   try {
     const userId = req.user.id || req.user._id;
-    const orgId = req.user?.orgId || req.user?.communityId || req.tenant?.orgId || req.headers['x-organization-id'];
+    const orgId = req.headers['x-organization-id'] || req.body?.orgId || req.user?.orgId || req.user?.communityId || req.tenant?.orgId;
     const transaction = await walletService.verifyPaymentSignature(userId, orgId, req.body);
     res.status(200).json({ success: true, data: transaction });
   } catch (error) {

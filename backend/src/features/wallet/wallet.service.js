@@ -104,7 +104,11 @@ class WalletService {
     walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
     walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
 
-    return transaction;
+    return {
+      ...(transaction.toObject ? transaction.toObject() : transaction),
+      balance: updatedWallet.balance,
+      walletBalance: updatedWallet.balance
+    };
   }
 
   /**
@@ -218,7 +222,7 @@ class WalletService {
     const amenityBookingService = (await import('../amenityBooking/amenityBooking.services.js')).default;
     const activeBookings = await amenityBookingService.getActivePasses(userId, orgId);
     
-    const activePasses = activeBookings.map(b => ({
+    const activePasses = (activeBookings || []).filter(Boolean).map(b => ({
       _id: b._id,
       bookingId: b.bookingId,
       amenityName: b.amenityId?.name || 'Amenity',
@@ -226,8 +230,8 @@ class WalletService {
       location: b.amenityId?.location || 'Community Center',
       residentName: b.userId?.name || 'Resident',
       date: b.bookingDate,
-      startTime: b.startTime,
-      endTime: b.endTime,
+      startTime: b.startTime || '',
+      endTime: b.endTime || '',
       qrPayload: b.qrCode,
       qrStatus: b.qrStatus,
       status: b.status,
@@ -242,7 +246,8 @@ class WalletService {
     return {
       balance: wallet.balance,
       activePasses,
-      transactionHistory
+      transactionHistory,
+      transactions: transactionHistory
     };
   }
 
@@ -300,7 +305,7 @@ class WalletService {
     const razorpay_order_id = paymentData?.razorpay_order_id || paymentData?.razorpayOrderId || paymentData?.orderId;
     const razorpay_payment_id = paymentData?.razorpay_payment_id || paymentData?.razorpayPaymentId || paymentData?.paymentId;
     const razorpay_signature = paymentData?.razorpay_signature || paymentData?.razorpaySignature;
-    const numericAmount = Number(amount) || 0;
+    const numericAmount = Number(paymentData?.amount) || 0;
     if (numericAmount <= 0) {
       throw new HttpError(400, 'Invalid recharge amount');
     }
@@ -333,7 +338,11 @@ class WalletService {
       walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
       walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
 
-      return transaction;
+      return {
+        ...(transaction.toObject ? transaction.toObject() : transaction),
+        balance: updatedWallet.balance,
+        walletBalance: updatedWallet.balance
+      };
     }
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
@@ -370,7 +379,11 @@ class WalletService {
     walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
     walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
 
-    return transaction;
+    return {
+      ...(transaction.toObject ? transaction.toObject() : transaction),
+      balance: updatedWallet.balance,
+      walletBalance: updatedWallet.balance
+    };
   }
 }
 

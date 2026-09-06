@@ -1,14 +1,13 @@
 import * as React from 'react';
-import { ActivityIndicator, Modal, Platform, View } from 'react-native';
-import { useColorScheme } from 'nativewind';
-import { AlertTriangle, Info } from 'lucide-react-native';
-import { cva, type VariantProps } from 'class-variance-authority';
+import { Modal, Platform, View } from 'react-native';
+import { AlertTriangle, Info, CheckCircle2 } from 'lucide-react-native';
+import { cva } from 'class-variance-authority';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 
-export type ConfirmationVariant = 'danger' | 'warning' | 'info';
+export type ConfirmationVariant = 'danger' | 'warning' | 'info' | 'success';
 
 export interface ConfirmationModalProps {
   visible: boolean;
@@ -23,34 +22,36 @@ export interface ConfirmationModalProps {
   className?: string;
 }
 
-export const CONFIRMATION_VARIANT_CONFIG: Record<
-  ConfirmationVariant,
-  {
-    lightBg: string;
-    darkBg: string;
-    iconColor: string;
-    icon: typeof AlertTriangle | typeof Info;
-  }
-> = {
+export const CONFIRMATION_VARIANT_CONFIG = {
   danger: {
-    lightBg: '#fee2e2',
-    darkBg: '#450a0a',
-    iconColor: '#dc2626',
+    iconBgClass: 'bg-destructive/10 border border-destructive/20',
+    iconColorClass: 'text-destructive',
     icon: AlertTriangle,
+    buttonClass: 'bg-red-600 active:bg-red-700',
+    textClass: 'text-white font-bold',
   },
   warning: {
-    lightBg: '#ffedd5',
-    darkBg: '#431407',
-    iconColor: '#ea580c',
+    iconBgClass: 'bg-amber-500/10 border border-amber-500/20',
+    iconColorClass: 'text-amber-600 dark:text-amber-400',
     icon: AlertTriangle,
+    buttonClass: 'bg-amber-500 active:bg-amber-600',
+    textClass: 'text-white font-bold',
   },
   info: {
-    lightBg: '#dbeafe',
-    darkBg: '#172554',
-    iconColor: '#2563eb',
+    iconBgClass: 'bg-blue-500/10 border border-blue-500/20',
+    iconColorClass: 'text-blue-600 dark:text-blue-400',
     icon: Info,
+    buttonClass: 'bg-blue-600 active:bg-blue-700',
+    textClass: 'text-white font-bold',
   },
-};
+  success: {
+    iconBgClass: 'bg-emerald-500/10 border border-emerald-500/20',
+    iconColorClass: 'text-emerald-600 dark:text-emerald-400',
+    icon: CheckCircle2,
+    buttonClass: 'bg-emerald-600 active:bg-emerald-700',
+    textClass: 'text-white font-bold',
+  },
+} as const;
 
 const confirmationModalVariants = cva(
   cn(
@@ -65,6 +66,7 @@ const confirmationModalVariants = cva(
         danger: '',
         warning: '',
         info: '',
+        success: '',
       },
     },
     defaultVariants: {
@@ -89,12 +91,8 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
     },
     ref
   ) => {
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === 'dark';
-
-    const validVariant = CONFIRMATION_VARIANT_CONFIG[variant] ? variant : 'danger';
+    const validVariant: ConfirmationVariant = CONFIRMATION_VARIANT_CONFIG[variant] ? variant : 'danger';
     const config = CONFIRMATION_VARIANT_CONFIG[validVariant];
-
     const confirmButtonVariant = validVariant === 'danger' ? 'destructive' : 'default';
 
     return (
@@ -111,12 +109,9 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
           >
             {/* Icon circle header */}
             <View
-              className="w-12 h-12 rounded-full items-center justify-center self-center"
-              style={{
-                backgroundColor: isDark ? config.darkBg : config.lightBg,
-              }}
+              className={cn('w-12 h-12 rounded-full items-center justify-center self-center', config.iconBgClass)}
             >
-              <Icon as={config.icon} size={24} color={config.iconColor} />
+              <Icon as={config.icon} size={24} className={config.iconColorClass} />
             </View>
 
             {/* Title */}
@@ -135,18 +130,18 @@ const ConfirmationModal = React.forwardRef<View, ConfirmationModalProps>(
                 variant="outline"
                 disabled={loading}
                 onPress={onCancel}
-                className="flex-1"
+                className="flex-1 border-border active:bg-secondary/60"
               >
-                <Text>{cancelLabel}</Text>
+                <Text className="text-foreground">{cancelLabel}</Text>
               </Button>
               <Button
-                variant={confirmButtonVariant}
+                variant={validVariant === 'danger' ? 'destructive' : 'default'}
                 disabled={loading}
+                loading={loading}
                 onPress={onConfirm}
-                className="flex-1"
+                className={cn('flex-1', config.buttonClass)}
               >
-                {loading && <ActivityIndicator size="small" color="#ffffff" />}
-                <Text>{confirmLabel}</Text>
+                <Text className={config.textClass}>{confirmLabel}</Text>
               </Button>
             </View>
           </View>

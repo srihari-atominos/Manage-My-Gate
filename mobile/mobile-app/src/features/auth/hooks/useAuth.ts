@@ -13,15 +13,21 @@ import {
   verifyOtpLogin,
   performLogout,
   deleteAccountThunk,
+  requestPasswordReset,
+  verifyResetOtpAction,
+  resetPasswordAction,
   clearStatus,
   bootstrapAuth,
+  updateProfileThunk,
+  switchWorkspaceContextThunk,
 } from '../store/authSlice';
 import authService from '../services/authService';
 import { useCallback } from 'react';
 
 export const useAuth = () => {
-  let dispatch: AppDispatch | null = null;
-  let authState: any = {
+  const dispatch = useDispatch<AppDispatch>();
+  const storeState = useSelector((state: RootState) => state.auth);
+  const authState = storeState || {
     user: null,
     isAuthenticated: false,
     isInitialized: true,
@@ -29,16 +35,6 @@ export const useAuth = () => {
     error: null,
     otpSent: false,
   };
-
-  try {
-    dispatch = useDispatch<AppDispatch>();
-    const storeState = useSelector((state: RootState) => state.auth);
-    if (storeState) {
-      authState = storeState;
-    }
-  } catch (e) {
-    // Redux Provider context not available yet during initial mount
-  }
 
   const handleLogin = useCallback(
     (credentials: any) => {
@@ -122,6 +118,27 @@ export const useAuth = () => {
     return dispatch ? dispatch(deleteAccountThunk()) : Promise.resolve();
   }, [dispatch]);
 
+  const handleForgotPassword = useCallback(
+    (identifier: string) => {
+      return dispatch ? dispatch(requestPasswordReset(identifier)) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleVerifyResetOtp = useCallback(
+    (identifier: string, code: string) => {
+      return dispatch ? dispatch(verifyResetOtpAction({ identifier, code })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleResetPassword = useCallback(
+    (payload: { identifier: string; code: string; newPassword: string }) => {
+      return dispatch ? dispatch(resetPasswordAction(payload)) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
   const handleClearStatus = useCallback(() => {
     if (dispatch) dispatch(clearStatus());
   }, [dispatch]);
@@ -129,6 +146,20 @@ export const useAuth = () => {
   const handleBootstrap = useCallback(() => {
     if (dispatch) dispatch(bootstrapAuth());
   }, [dispatch]);
+
+  const handleUpdateProfile = useCallback(
+    (payload: any) => {
+      return dispatch ? dispatch(updateProfileThunk(payload)) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleSwitchWorkspaceContext = useCallback(
+    (payload: any = {}) => {
+      return dispatch(switchWorkspaceContextThunk(payload));
+    },
+    [dispatch]
+  );
 
   return {
     ...authState,
@@ -143,10 +174,15 @@ export const useAuth = () => {
     loginWithMicrosoft: handleLoginWithMicrosoft,
     requestOtp: handleRequestOtp,
     verifyOtp: handleVerifyOtp,
+    forgotPassword: handleForgotPassword,
+    verifyResetOtp: handleVerifyResetOtp,
+    resetPassword: handleResetPassword,
     logout: handleLogout,
     deleteAccount: handleDeleteAccount,
     clearStatus: handleClearStatus,
     bootstrap: handleBootstrap,
+    updateProfile: handleUpdateProfile,
+    switchWorkspaceContext: handleSwitchWorkspaceContext,
   };
 };
 

@@ -145,7 +145,7 @@ export const UserCard: React.FC<UserCardProps> = ({
             className={`flex-row items-center px-2 py-0.5 rounded-md border active:opacity-70 ${
               isSelf
                 ? 'bg-muted border-border opacity-40'
-                : 'bg-primary/10 border-primary/20'
+                : 'bg-blue-500/10 border-blue-500/20'
             }`}
             accessibilityRole="button"
             accessibilityLabel={`Manage roles for ${user.name}`}
@@ -162,7 +162,7 @@ export const UserCard: React.FC<UserCardProps> = ({
             className={`flex-row items-center px-2 py-0.5 rounded-md border active:opacity-70 ${
               isSelf
                 ? 'bg-muted border-border opacity-40'
-                : 'bg-destructive/10 border-destructive/20'
+                : 'bg-red-500/10 border-red-500/20'
             }`}
             accessibilityRole="button"
             accessibilityLabel={`Delete user ${user.name}`}

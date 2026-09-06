@@ -1,17 +1,16 @@
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, ScrollView, Share, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
-import { Button } from '@/components/common/Button';
-import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
+import { Button } from '@/components/ui/button';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
-import { CheckCircle2, Clock, XCircle, AlertCircle, RefreshCw, Share2, Receipt, ChevronRight, Home, CreditCard } from 'lucide-react-native';
+import { Share2 } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
-import { generateInvoiceHtml } from '../utils/invoicePdfUtility';
+import { PaymentResultHeroCard } from '../components/PaymentResultHeroCard';
 import { InvoiceStatus, Invoice } from '../types';
 
 export function PaymentResultScreen() {
@@ -39,10 +38,6 @@ export function PaymentResultScreen() {
   useBillingSocket();
 
   useEffect(() => {
-    loadResidentDues();
-  }, [loadResidentDues]);
-
-  const handleRefresh = useCallback(() => {
     loadResidentDues();
   }, [loadResidentDues]);
 
@@ -87,7 +82,6 @@ export function PaymentResultScreen() {
 
   // Authoritative financial state
   const status: InvoiceStatus = invoice?.status || (params?.status as InvoiceStatus) || 'UNPAID';
-  const statusVariant = getStatusVariant(status);
 
   const totalDue = invoice?.totalDue ?? invoice?.amount ?? (params?.amount ? parseFloat(params.amount) : 0);
   const paidAmount = invoice?.paidAmount ?? (status === 'PAID' ? totalDue : 0);
@@ -97,9 +91,6 @@ export function PaymentResultScreen() {
 
   const isPaid = status === 'PAID';
   const isPartial = status === 'PARTIALLY_PAID' || (paidAmount > 0 && remainingDue > 0);
-  const isPending = status === 'VERIFICATION_PENDING';
-  const isFailed = status === 'FAILED';
-  const isCancelled = status === 'CANCELLED';
 
   // Native Receipt Share Handler
   const handleShareReceipt = async () => {
@@ -121,67 +112,22 @@ export function PaymentResultScreen() {
       iconName="Receipt"
       loading={loadingStates.fetchDues && !invoice}
     >
-      <View className="flex-1 bg-background p-4 justify-between">
-        <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 24 }}>
+      <View className="flex-1 bg-background justify-between">
+        {/* Scrollable Receipt Body with pb-32 Bottom Clearance */}
+        <ScrollView className="flex-1" contentContainerClassName="p-4 gap-4 pb-32">
+          {/* Domain Hero Outcome Card */}
+          <PaymentResultHeroCard
+            status={status}
+            amount={totalDue}
+            paidAmount={paidAmount}
+            remainingDue={remainingDue}
+            invoiceNumber={invNo}
+            unitName={unitStr}
+            reference={refStr}
+          />
 
-          {/* Hero Result Banner */}
-          <View className="bg-card border border-border rounded-2xl p-6 items-center shadow-sm mb-4">
-            {/* Header Icon */}
-            <View className={`w-16 h-16 rounded-full items-center justify-center mb-3 ${
-              isPaid ? 'bg-emerald-500/10' :
-              isPartial ? 'bg-amber-500/10' :
-              isPending ? 'bg-blue-500/10' :
-              isFailed ? 'bg-rose-500/10' : 'bg-slate-500/10'
-            }`}>
-              <Icon
-                as={
-                  isPaid ? CheckCircle2 :
-                  isPartial ? Clock :
-                  isPending ? Clock :
-                  isFailed ? XCircle :
-                  isCancelled ? AlertCircle : RefreshCw
-                }
-                size={36}
-                className={
-                  isPaid ? 'text-emerald-600 dark:text-emerald-400' :
-                  isPartial ? 'text-amber-600 dark:text-amber-400' :
-                  isPending ? 'text-blue-600 dark:text-blue-400' :
-                  isFailed ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-400'
-                }
-              />
-            </View>
-
-            {/* Title */}
-            <Text className="text-xl font-extrabold text-foreground text-center mb-1">
-              {isPaid ? 'Payment Confirmed!' :
-               isPartial ? 'Partial Payment Received' :
-               isPending ? 'Submitted for Verification' :
-               isFailed ? 'Payment Failed' :
-               isCancelled ? 'Payment Cancelled' : 'Payment Status Unknown'}
-            </Text>
-
-            {/* Amount */}
-            <Text className="text-3xl font-black text-foreground tracking-tight my-1">
-              ₹{(isPaid ? totalDue : (paidAmount || totalDue)).toLocaleString('en-IN')}
-            </Text>
-
-            {/* Subtitle */}
-            <Text className="text-xs text-muted-foreground text-center mt-1 px-4">
-              {isPaid ? `Invoice #${invNo} for ${unitStr} has been fully settled.` :
-               isPartial ? `Partially settled balance. Remaining due: ₹${remainingDue.toLocaleString('en-IN')}.` :
-               isPending ? `Offline ref #${refStr} submitted and pending admin clearance verification.` :
-               isFailed ? 'Your transaction could not be completed by the gateway.' :
-               isCancelled ? 'No funds were deducted from your account.' :
-               'Network status unknown. Please check payment status before retrying.'}
-            </Text>
-
-            <View className="mt-3">
-              <StatusBadge label={status.replace(/_/g, ' ')} variant={statusVariant} dot />
-            </View>
-          </View>
-
-          {/* Payment Summary Section */}
-          <DetailSection title="Transaction Details" className="mb-4">
+          {/* Payment Summary Details Section */}
+          <DetailSection title="Transaction Details">
             <DetailRow label="Invoice Number" value={invNo} copyable />
             <DetailRow label="Unit & Period" value={`${unitStr} (${periodStr})`} />
             <DetailRow label="Settled Amount" value={`₹${(isPaid ? totalDue : paidAmount).toLocaleString('en-IN')}`} />
@@ -195,13 +141,13 @@ export function PaymentResultScreen() {
             <DetailRow
               label="Transaction Date"
               value={new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              isLast
             />
           </DetailSection>
-
         </ScrollView>
 
-        {/* Action CTAs */}
-        <View className="gap-2.5 pt-2 border-t border-border bg-background">
+        {/* Sticky Bottom Completion CTAs */}
+        <View className="gap-2.5 p-4 pt-2 pb-6 border-t border-border bg-background">
           {(isPaid || isPartial) ? (
             <Button
               variant="default"
@@ -225,7 +171,7 @@ export function PaymentResultScreen() {
               accessibilityRole="button"
               accessibilityLabel="View Invoice Details"
             >
-              View Invoice Details
+              <Text className="font-semibold text-base text-foreground">View Invoice Details</Text>
             </Button>
           ) : null}
 
@@ -237,7 +183,7 @@ export function PaymentResultScreen() {
             accessibilityRole="button"
             accessibilityLabel="Return to My Dues Overview"
           >
-            Return to My Dues
+            <Text className="font-semibold text-base text-secondary-foreground">Return to My Dues</Text>
           </Button>
         </View>
       </View>

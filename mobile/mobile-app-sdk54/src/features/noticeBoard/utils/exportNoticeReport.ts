@@ -58,11 +58,11 @@ export const exportNoticeReport = async (dashboardStats: any): Promise<void> => 
     const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
     // Define temporary local file path
-    const fileUri = ((FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || '') + 'notice_board_report.xlsx';
+    const fileUri = (FileSystem as any).documentDirectory + 'notice_board_report.xlsx';
 
     // Write file to filesystem
-    await (FileSystem as any).writeAsStringAsync(fileUri, wbout, {
-      encoding: (FileSystem as any).EncodingType?.Base64 || 'base64',
+    await FileSystem.writeAsStringAsync(fileUri, wbout, {
+      encoding: 'base64' as any,
     });
 
     // Check if sharing is available

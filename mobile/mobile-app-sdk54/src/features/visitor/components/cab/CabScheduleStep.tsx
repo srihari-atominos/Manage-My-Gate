@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Input } from '@/components/ui/input';
+import { TextInput } from '@/components/forms/TextInput';
 import { Clock, Zap, Plus, Trash2, Calendar } from 'lucide-react-native';
 import { MOCK_WEEKDAYS } from '../../mocks/visitorMocks';
 
@@ -81,7 +81,7 @@ export const CabScheduleStep: React.FC<CabScheduleStepProps> = ({
   };
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 gap-4">
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-4">
       {/* Usage Type Segmented Toggle */}
       <View className="flex-row bg-muted/30 p-1 rounded-2xl border border-border">
         <TouchableOpacity
@@ -142,7 +142,7 @@ export const CabScheduleStep: React.FC<CabScheduleStepProps> = ({
                       : 'bg-card border-border'
                   }`}
                 >
-                  <View className="gap-0.5 flex-1 pr-2">
+                  <View className="gap-0.5 flex-1 pe-2">
                     <View className="flex-row items-center gap-2">
                       {opt.id === 'IMMEDIATE' ? (
                         <Zap size={16} className="text-amber-500" />
@@ -167,7 +167,7 @@ export const CabScheduleStep: React.FC<CabScheduleStepProps> = ({
                       isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/40'
                     }`}
                   >
-                    {isSelected ? <View className="w-2 h-2 rounded-full bg-white" /> : null}
+                    {isSelected ? <View className="w-2 h-2 rounded-full bg-primary-foreground" /> : null}
                   </View>
                 </TouchableOpacity>
               );
@@ -176,28 +176,28 @@ export const CabScheduleStep: React.FC<CabScheduleStepProps> = ({
 
           {data.arrivalWindow === 'CUSTOM' ? (
             <View className="bg-card border border-border rounded-2xl p-4 gap-3">
-              <Input
+              <TextInput
                 label="Visit Date (YYYY-MM-DD)"
                 placeholder={new Date().toISOString().split('T')[0]}
-                leftIcon={<Calendar size={18} className="text-muted-foreground" />}
+                leftIcon={Calendar}
                 value={data.customVisitDate || new Date().toISOString().split('T')[0]}
                 onChangeText={(val) => onChange({ ...data, customVisitDate: val })}
               />
               <View className="flex-row items-center gap-3">
                 <View className="flex-1">
-                  <Input
+                  <TextInput
                     label="Start Time"
                     placeholder="02:00 PM"
-                    leftIcon={<Clock size={18} className="text-muted-foreground" />}
+                    leftIcon={Clock}
                     value={data.customStartTime || '02:00 PM'}
                     onChangeText={(val) => onChange({ ...data, customStartTime: val })}
                   />
                 </View>
                 <View className="flex-1">
-                  <Input
+                  <TextInput
                     label="End Time"
                     placeholder="06:00 PM"
-                    leftIcon={<Clock size={18} className="text-muted-foreground" />}
+                    leftIcon={Clock}
                     value={data.customEndTime || '06:00 PM'}
                     onChangeText={(val) => onChange({ ...data, customEndTime: val })}
                   />
@@ -247,7 +247,7 @@ export const CabScheduleStep: React.FC<CabScheduleStepProps> = ({
                 >
                   <Text
                     className={`text-xs font-bold ${
-                      isSelected ? 'text-white' : 'text-foreground'
+                      isSelected ? 'text-primary-foreground' : 'text-foreground'
                     }`}
                   >
                     {day.label}
@@ -302,12 +302,12 @@ export const CabScheduleStep: React.FC<CabScheduleStepProps> = ({
 
                 <View className="flex-row items-center gap-3">
                   <View className="flex-1">
-                    <Input
+                    <TextInput
                       label="Start Time"
                       value={slot.startTime}
                       onChangeText={(txt) => updateTimeSlot(index, 'startTime', txt)}
                       placeholder="e.g. 07:30 AM"
-                      className="text-xs font-semibold"
+                      inputClassName="text-xs font-semibold"
                     />
                   </View>
 
@@ -316,12 +316,12 @@ export const CabScheduleStep: React.FC<CabScheduleStepProps> = ({
                   </View>
 
                   <View className="flex-1">
-                    <Input
+                    <TextInput
                       label="End Time"
                       value={slot.endTime}
                       onChangeText={(txt) => updateTimeSlot(index, 'endTime', txt)}
                       placeholder="e.g. 09:00 AM"
-                      className="text-xs font-semibold"
+                      inputClassName="text-xs font-semibold"
                     />
                   </View>
                 </View>
@@ -339,5 +339,7 @@ export const CabScheduleStep: React.FC<CabScheduleStepProps> = ({
     </ScrollView>
   );
 };
+
+export default CabScheduleStep;
 
 

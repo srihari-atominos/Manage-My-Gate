@@ -163,7 +163,7 @@ export const CycleLedgerGroupCard: React.FC<CycleLedgerGroupCardProps> = ({
       {/* Expandable Invoice History Roster */}
       {expanded && (
         <View className="mt-3 pt-2 border-t border-border/40 gap-2">
-          {invoicesList.map((inv) => {
+          {invoicesList.map((inv, idx) => {
             const isPaid = inv?.status === 'PAID';
             const isPending = inv?.status === 'VERIFICATION_PENDING';
             const itemVariant: StatusVariant = isPaid ? 'success' : isPending ? 'warning' : 'danger';
@@ -171,7 +171,7 @@ export const CycleLedgerGroupCard: React.FC<CycleLedgerGroupCardProps> = ({
 
             return (
               <Pressable
-                key={inv?._id || inv?.invoiceNumber}
+                key={String(inv?._id || inv?.invoiceNumber || `inv-${idx}`)}
                 onPress={() =>
                   onSelectInvoice({
                     ...inv,

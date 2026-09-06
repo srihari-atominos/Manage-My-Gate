@@ -59,7 +59,7 @@ export function BookingCheckoutModal({
           <DetailRow label="Date" value={date} iconName="Calendar" />
           <DetailRow 
             label="Time Slot" 
-            value={isDaily ? 'Full Day' : `${slot!.startTime} - ${slot!.endTime}`} 
+            value={isDaily ? 'Full Day' : `${slot?.startTime || '00:00'} - ${slot?.endTime || '00:00'}`} 
             iconName="Clock" 
           />
           <DetailRow 

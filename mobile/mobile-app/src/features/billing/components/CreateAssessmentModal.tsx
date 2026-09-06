@@ -220,23 +220,22 @@ export const CreateAssessmentModal: React.FC<CreateAssessmentModalProps> = ({
             <Button
               variant="outline"
               size="lg"
-              className="flex-1"
+              className="flex-1 border-border active:bg-secondary/60"
               onPress={handleModalClose}
               disabled={isSubmitting}
             >
-              Cancel
+              <Text className="text-foreground">Cancel</Text>
             </Button>
 
             <Button
-              variant="default"
               size="lg"
-              className="flex-1 bg-primary"
+              className="flex-1 bg-emerald-600 active:bg-emerald-700"
               onPress={handleSubmit}
               loading={isSubmitting}
               accessibilityRole="button"
               accessibilityLabel="Save & Create Assessment Rule"
             >
-              Create Rule
+              <Text className="text-white font-bold">Create Rule</Text>
             </Button>
           </View>
         </View>

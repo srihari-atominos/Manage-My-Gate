@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
@@ -50,32 +50,12 @@ export function DirectoryScreen() {
     onOpenConversation,
   } = useDirectoryMessaging();
 
+  const handleBack = () => {
+    router.replace({ pathname: '/(resident)/dashboard', params: { openProfile: 'true' } } as any);
+  };
+
   const renderHeader = (
     <View className="gap-3 pb-3">
-      {/* Direct Link Banner to All Notes & Publish Note Page */}
-      <View className="bg-primary/10 border border-primary/20 rounded-2xl p-3.5 flex-row items-center justify-between shadow-xs">
-        <View className="flex-1 me-2">
-          <View className="flex-row items-center gap-1.5">
-            <Sparkles size={15} className="text-primary" />
-            <Text className="text-xs font-bold text-foreground">{t('all_community_notes', 'Community Notes')}</Text>
-          </View>
-          <Text className="text-[11px] text-muted-foreground mt-0.5" numberOfLines={1}>
-            {t('community_notes_sub', 'View 24h status notes or publish your own')}
-          </Text>
-        </View>
-
-        <Button
-          variant="default"
-          size="sm"
-          onPress={() => router.push('/(resident)/notes' as any)}
-          leftIcon={Sparkles}
-          className="rounded-xl px-3.5 h-9"
-          textClassName="text-xs font-bold text-primary-foreground"
-        >
-          {t('all_notes', 'All Notes')}
-        </Button>
-      </View>
-
       {/* Search Bar */}
       <DirectorySearch
         value={searchQuery}
@@ -94,6 +74,7 @@ export function DirectoryScreen() {
       subtitle={t('nav_community_directory_sub', 'Find and contact residents, security & community staff')}
       iconName="Users"
       showBackButton={true}
+      onBackPress={handleBack}
     >
       <View className="flex-1 bg-background">
         <PaginatedList<DirectoryMember>

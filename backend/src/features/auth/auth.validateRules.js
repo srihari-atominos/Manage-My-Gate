@@ -212,6 +212,12 @@ export const forgotPasswordRules = [
     .notEmpty()
     .withMessage('Identifier is required')
     .trim()
+    .customSanitizer((value) => {
+      if (typeof value === 'string') {
+        return value.includes('@') ? value.trim().toLowerCase() : value.replace(/\s+/g, '');
+      }
+      return value;
+    })
     .custom((value) => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const phoneRegex = /^\+?\d{8,15}$/;
@@ -230,6 +236,12 @@ export const verifyResetPasswordOtpRules = [
     .notEmpty()
     .withMessage('Identifier is required')
     .trim()
+    .customSanitizer((value) => {
+      if (typeof value === 'string') {
+        return value.includes('@') ? value.trim().toLowerCase() : value.replace(/\s+/g, '');
+      }
+      return value;
+    })
     .custom((value) => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const phoneRegex = /^\+?\d{8,15}$/;
@@ -258,6 +270,12 @@ export const resetPasswordRules = [
     .notEmpty()
     .withMessage('Identifier is required')
     .trim()
+    .customSanitizer((value) => {
+      if (typeof value === 'string') {
+        return value.includes('@') ? value.trim().toLowerCase() : value.replace(/\s+/g, '');
+      }
+      return value;
+    })
     .custom((value) => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const phoneRegex = /^\+?\d{8,15}$/;

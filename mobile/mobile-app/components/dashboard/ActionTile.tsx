@@ -71,13 +71,13 @@ export const ActionTile: React.FC<ActionTileProps> = ({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={animatedStyle}
-        className="bg-card border border-border rounded-2xl p-3 h-[130px] justify-between relative overflow-hidden active:bg-secondary/70 shadow-sm"
+        className="bg-card border border-border/70 dark:border-border/60 rounded-2xl p-3 h-[134px] justify-between relative overflow-hidden active:bg-secondary/70 shadow-sm"
       >
         {/* Top Row: Tailored Feature Icon Container + Optional Due Badge / Arrow */}
         <View className="flex-row items-center justify-between w-full">
           <View
-            className={`w-11 h-11 items-center justify-center ${
-              iconShapeClass || 'rounded-[15px]'
+            className={`w-14 h-14 items-center justify-center ${
+              iconShapeClass || 'rounded-[19px]'
             } ${
               iconBgColor || 'bg-secondary'
             }`}
@@ -85,17 +85,9 @@ export const ActionTile: React.FC<ActionTileProps> = ({
             {icon}
           </View>
 
-          {badge ? (
-            <View
-              className={`px-2 py-0.5 rounded-full ${
-                badgeColor || 'bg-[#FF7A00]'
-              }`}
-            >
-              <Text className="text-[9.5px] font-bold text-white font-sans">{badge}</Text>
-            </View>
-          ) : showArrow ? (
+          {showArrow ? (
             <View className="w-5 h-5 rounded-full bg-secondary items-center justify-center border border-border/40 shrink-0">
-              <ArrowUpRight size={10} className="text-muted-foreground" />
+              <ArrowUpRight size={11} className="text-muted-foreground" />
             </View>
           ) : null}
         </View>
@@ -113,7 +105,7 @@ export const ActionTile: React.FC<ActionTileProps> = ({
             {translatedSubtitle ? (
               <Text
                 numberOfLines={1}
-                className="text-[10px] font-medium font-sans text-muted-foreground leading-[14px] flex-1 mr-1"
+                className="text-[10.5px] font-medium font-sans text-muted-foreground leading-[14px] flex-1 mr-1"
               >
                 {translatedSubtitle}
               </Text>

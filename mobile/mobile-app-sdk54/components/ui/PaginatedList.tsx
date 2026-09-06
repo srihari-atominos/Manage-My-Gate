@@ -74,8 +74,32 @@ export function PaginatedList<T>({
   const defaultKeyExtractor = (item: T, index: number): string => {
     if (item && typeof item === 'object') {
       const itemRecord = item as Record<string, any>;
-      if (itemRecord._id != null) return String(itemRecord._id);
-      if (itemRecord.id != null) return String(itemRecord.id);
+      if (itemRecord._id != null) {
+        if (typeof itemRecord._id === 'string' || typeof itemRecord._id === 'number') {
+          return String(itemRecord._id);
+        }
+        if (typeof itemRecord._id === 'object') {
+          try {
+            return `${JSON.stringify(itemRecord._id)}-${index}`;
+          } catch {
+            // fallback
+          }
+        }
+      }
+      if (itemRecord.id != null) {
+        if (typeof itemRecord.id === 'string' || typeof itemRecord.id === 'number') {
+          return String(itemRecord.id);
+        }
+        if (typeof itemRecord.id === 'object') {
+          try {
+            return `${JSON.stringify(itemRecord.id)}-${index}`;
+          } catch {
+            // fallback
+          }
+        }
+      }
+      if (itemRecord.invoiceNumber != null) return `${String(itemRecord.invoiceNumber)}-${index}`;
+      if (itemRecord.key != null) return String(itemRecord.key);
     }
     return String(index);
   };

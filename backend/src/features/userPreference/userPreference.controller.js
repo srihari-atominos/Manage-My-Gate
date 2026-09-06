@@ -8,7 +8,11 @@ class UserPreferenceController {
   async getUserPreferences(req, res, next) {
     try {
       const userId = req.user?._id || req.user?.id;
-      const data = await userPreferenceService.getUserPreferences(userId);
+      const context = {
+        orgId: req.query?.orgId || req.user?.orgId || '',
+        villaId: req.query?.villaId || req.user?.villaId || req.user?.villaNumber || '',
+      };
+      const data = await userPreferenceService.getUserPreferences(userId, context);
 
       return res.status(200).json({
         success: true,
@@ -27,9 +31,13 @@ class UserPreferenceController {
   async updateQuickActions(req, res, next) {
     try {
       const userId = req.user?._id || req.user?.id;
-      const { activeQuickActions } = req.body;
+      const { activeQuickActions, orgId, villaId } = req.body;
+      const context = {
+        orgId: orgId || req.user?.orgId || '',
+        villaId: villaId || req.user?.villaId || req.user?.villaNumber || '',
+      };
 
-      const data = await userPreferenceService.updateQuickActions(userId, activeQuickActions);
+      const data = await userPreferenceService.updateQuickActions(userId, activeQuickActions, context);
 
       return res.status(200).json({
         success: true,

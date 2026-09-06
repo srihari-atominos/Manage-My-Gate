@@ -103,6 +103,7 @@ export function useResidentBooking() {
     );
 
     if (createBookingThunk.fulfilled.match(result)) {
+      dispatch(fetchWalletThunk());
       setIsCheckoutOpen(false);
       setIsSuccessModalOpen(true);
     }

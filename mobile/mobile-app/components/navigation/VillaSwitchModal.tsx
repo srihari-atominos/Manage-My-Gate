@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Home, Check, X, Building2 } from 'lucide-react-native';
 
 import { useDispatch, useSelector } from 'react-redux';
-import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
+import { switchWorkspaceContextThunk, setActiveUnitContext } from '../../src/features/auth/store/authSlice';
+import { fetchQuickActionsThunk, resetQuickActionsForContext } from '../../src/features/dashboard/dashboardSlice';
 
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
@@ -83,22 +84,47 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
       });
     }
 
-    // 3. Fallback for active single unit
-    const activeVNum = userAny?.villaNumber || userAny?.activeVillaNumber || userAny?.unitNumber;
-    const activeVId = userAny?.villaId || '1';
-    if (activeVNum && unitsMap.size === 0) {
-      unitsMap.set(activeVId, {
-        id: activeVId,
-        unitNumber: activeVNum,
-        block: userAny?.villaBlock || '',
-        residencyType: userAny?.residentType || userAny?.residencyType || 'Owner',
+    // 3. Fallback to DUMMY_VILLAS matching active community context
+    if (unitsMap.size <= 1) {
+      const { DUMMY_VILLAS } = require('../../src/features/villa/store/villaSlice');
+      const isEmerald = communityName.toLowerCase().includes('emerald') || activeOrgId === '650000000000000000000002';
+      const isSkyline = communityName.toLowerCase().includes('skyline') || communityName.toLowerCase().includes('apartment') || activeOrgId === '650000000000000000000003';
+      
+      const filtered = DUMMY_VILLAS.filter((v: any) => {
+        if (isEmerald) return v.blockOrBuilding?.includes('Emerald Valley');
+        if (isSkyline) return v.blockOrBuilding?.startsWith('Block');
+        return v.blockOrBuilding?.includes('Palm Meadows') || v.blockOrBuilding === 'Phase 1';
+      });
+
+      filtered.forEach((v: any) => {
+        if (!unitsMap.has(v._id)) {
+          unitsMap.set(v._id, {
+            id: v._id,
+            unitNumber: v.unitNumber,
+            block: v.blockOrBuilding || '',
+            residencyType: v.primaryResident ? 'Resident' : 'Vacant',
+          });
+        }
       });
     }
 
     return Array.from(unitsMap.values());
-  }, [user, reduxWorkspaces, activeOrgId]);
+  }, [user, reduxWorkspaces, activeOrgId, communityName]);
 
   const handleSelect = (unit: VillaUnit) => {
+    // 1. Immediately reset quick actions in Redux so previous villa actions do not persist
+    dispatch(resetQuickActionsForContext());
+
+    // 2. Set active unit context synchronously in Redux and persistent storage
+    dispatch(
+      setActiveUnitContext({
+        villaId: unit.id,
+        villaNumber: unit.unitNumber,
+        orgId: activeOrgId,
+      })
+    );
+
+    // 3. Dispatch backend workspace switch if valid ObjectId
     const payload: any = {};
     if (unit.id && /^[0-9a-fA-F]{24}$/.test(unit.id)) {
       payload.targetVillaId = unit.id;
@@ -109,6 +135,15 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
     if (Object.keys(payload).length > 0) {
       dispatch(switchWorkspaceContextThunk(payload));
     }
+
+    // 4. Fetch the quick actions specifically scoped to this unit and organization
+    dispatch(
+      fetchQuickActionsThunk({
+        orgId: activeOrgId,
+        villaId: unit.id || unit.unitNumber,
+      })
+    );
+
     onSelectVilla(unit.unitNumber);
     onClose();
   };

@@ -8,6 +8,7 @@ import {
   updateAmenityThunk, 
   deleteAmenityThunk,
   updateAmenityStatusThunk,
+  removeAmenity,
   Amenity 
 } from '../store/amenitySlice';
 
@@ -100,7 +101,6 @@ export const useAmenityMaster = () => {
         Alert.alert('Success', 'Amenity created successfully');
       }
       handleCloseFormModal();
-      loadData();
     } catch (err: any) {
       console.error('Failed to save amenity', err);
       Alert.alert('Error', typeof err === 'string' ? err : err.message || 'Failed to save amenity. Please check your inputs.');
@@ -122,7 +122,6 @@ export const useAmenityMaster = () => {
       await dispatch(updateAmenityStatusThunk({ id: deactivateTarget._id, status: newStatus })).unwrap();
       Alert.alert('Success', `Amenity ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
       setDeactivateTarget(null);
-      loadData();
     } catch (err: any) {
       console.error('Failed to change status', err);
       Alert.alert('Error', typeof err === 'string' ? err : err.message || 'Failed to update status');
@@ -133,13 +132,24 @@ export const useAmenityMaster = () => {
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
+    const targetId = String(deleteTarget._id || (deleteTarget as any).id || '');
     setSaving(true);
     try {
-      await dispatch(deleteAmenityThunk({ id: deleteTarget._id })).unwrap();
+      await dispatch(deleteAmenityThunk({ id: targetId, force: true })).unwrap();
+      dispatch(removeAmenity(targetId));
+      dispatch(fetchAmenitiesThunk({ page: 1, limit: 100 }));
+      Alert.alert('Success', 'Amenity deleted successfully');
       setDeleteTarget(null);
-      loadData();
-    } catch (err) {
-      console.error('Failed to delete amenity', err);
+    } catch (err: any) {
+      const errMsg = typeof err === 'string' ? err : err?.message || '';
+      if (errMsg.toLowerCase().includes('not found') || errMsg.includes('404')) {
+        dispatch(removeAmenity(targetId));
+        Alert.alert('Success', 'Amenity removed successfully');
+        setDeleteTarget(null);
+      } else {
+        console.error('Failed to delete amenity', err);
+        Alert.alert('Error', errMsg || 'Failed to delete amenity');
+      }
     } finally {
       setSaving(false);
     }

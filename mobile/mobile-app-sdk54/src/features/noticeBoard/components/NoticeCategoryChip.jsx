@@ -13,7 +13,7 @@ const CATEGORY_ICONS = {
  * NoticeCategoryChip Component
  * Wraps global Chip to display interactive notice category filter tabs.
  */
-export function NoticeCategoryChip({ category, selected, onPress, className }) {
+export function NoticeCategoryChip({ category, selected, onPress, className = '' }) {
   const IconComponent = CATEGORY_ICONS[category] || Megaphone;
 
   return (

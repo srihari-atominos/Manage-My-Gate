@@ -1,0 +1,1 @@
+const mongoose = require('mongoose'); mongoose.connect('mongodb://localhost:27017/database_name').then(async () => { const passes = await mongoose.connection.collection('visitorpasses').find({'vehicleDetails.number': { $regex: /KA-01-TN-9876/i }}).toArray(); console.log('Passes found:', JSON.stringify(passes, null, 2)); process.exit(0); }).catch(console.error);

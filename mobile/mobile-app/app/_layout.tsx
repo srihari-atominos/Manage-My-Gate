@@ -20,6 +20,7 @@ import {
 } from '@expo-google-fonts/hanken-grotesk';
 import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import storage from '../src/utils/storage';
+import i18n from '../src/utils/i18n';
 import * as SplashScreen from 'expo-splash-screen';
 import useGlobalAppSocket from '../src/hooks/useGlobalAppSocket';
 
@@ -52,12 +53,14 @@ function AuthRouteGuard() {
         const savedTheme = await storage.getItem('theme_preference');
         if (savedTheme === 'dark' || savedTheme === 'light') {
           setColorScheme(savedTheme);
+        } else {
+          setColorScheme('light');
+          await storage.setItem('theme_preference', 'light');
         }
       } catch (e) {
         console.warn('Failed to restore theme on startup:', e);
       }
       try {
-        const { i18n } = await import('../src/utils/i18n');
         await i18n.initLanguage();
       } catch (e) {
         console.warn('Failed to restore language preference on startup:', e);
@@ -71,10 +74,11 @@ function AuthRouteGuard() {
   useEffect(() => {
     if (!rootNavigationState?.key || !isInitialized) return;
 
-    const firstSegment = (segments as any)?.[0] as string | undefined;
-    const currentRoute = (segments as any)?.[1] as string | undefined;
+    const segs = (segments || []) as string[];
+    const firstSegment = segs[0] as string | undefined;
+    const currentRoute = segs[1] as string | undefined;
     const inAuthGroup = firstSegment === '(auth)';
-    const isRoot = !firstSegment;
+    const isRoot = !firstSegment || firstSegment === 'index';
     const u = user as any;
 
     const hasTokenParam = !!searchParams?.token;
@@ -132,7 +136,6 @@ function AuthRouteGuard() {
 
 export default function RootLayout() {
   const { colorScheme } = useColorScheme();
-  const navigationTheme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
 
   const [fontsLoaded] = useFonts({
     HankenGrotesk_400Regular,
@@ -165,7 +168,7 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <Provider store={store}>
           <BottomSheetModalProvider>
-            <ThemeProvider value={navigationTheme}>
+            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
               <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
               <Stack screenOptions={{ headerShown: false }} />
               <AuthRouteGuard />

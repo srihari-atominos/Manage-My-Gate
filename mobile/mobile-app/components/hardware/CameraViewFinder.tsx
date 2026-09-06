@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Camera, CameraOff, Zap, ZapOff } from 'lucide-react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { QRScannerOverlay } from './QRScannerOverlay';
-import { cn } from '../../lib/utils';
+import { cn } from '@/lib/utils';
 
 export interface CameraViewFinderProps {
   onScan: (data: string) => void;
@@ -81,7 +81,7 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
     );
   }
 
-  // 3. Live Native Camera View with Flash Toggle
+  // 3. Live Native Camera View
   return (
     <View className={containerClasses}>
       <CameraView

@@ -12,12 +12,34 @@ const generateUUID = (): string => {
 
 import { Platform } from 'react-native';
 
-const getApiBaseUrl = () => {
+export const getApiBaseUrl = () => {
   let url = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:5002/api/v1' : 'http://localhost:5002/api/v1');
   if (Platform.OS === 'android' && url.includes('localhost')) {
     url = url.replace('localhost', '10.0.2.2');
   }
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    const isPrivateOrLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(url);
+    if (isPrivateOrLocalUrl && window.location.hostname) {
+      url = url.replace(/^https?:\/\/[^/:]+/i, `${window.location.protocol}//${window.location.hostname}`);
+    }
+  }
   return url;
+};
+
+export const getSocketBaseUrl = () => {
+  let socketUrl =
+    process.env.EXPO_PUBLIC_SOCKET_URL ||
+    (process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api.*$/, '') : 'http://localhost:5002');
+  if (Platform.OS === 'android' && socketUrl.includes('localhost')) {
+    socketUrl = socketUrl.replace('localhost', '10.0.2.2');
+  }
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    const isPrivateOrLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(socketUrl);
+    if (isPrivateOrLocalUrl && window.location.hostname) {
+      socketUrl = socketUrl.replace(/^https?:\/\/[^/:]+/i, `${window.location.protocol}//${window.location.hostname}`);
+    }
+  }
+  return socketUrl;
 };
 
 const apiClient = axios.create({
@@ -85,6 +107,9 @@ const decodeJwtPayload = (token: string): any => {
 // Request Interceptor: Attach headers and correlation ID
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    // Dynamically align baseURL with the active runtime environment
+    config.baseURL = getApiBaseUrl();
+
     // Generate and inject a unique Request Correlation ID
     config.headers['X-Request-ID'] = generateUUID();
 

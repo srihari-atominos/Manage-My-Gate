@@ -90,13 +90,13 @@ export default function AmenitySecurityGateScannerScreen() {
   // Clean raw scanned text
   const extractCodeFromRaw = (raw: string): string => {
     let text = (raw || '').trim();
-    if (text.startsWith('{') && text.endsWith('}')) {
-      try {
-        const parsed = JSON.parse(text);
-        text = parsed.bookingId || parsed._id || parsed.id || parsed.code || text;
-      } catch {}
-    }
-    return text.trim();
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object') {
+        text = parsed.bookingId || parsed._id || parsed.id || parsed.displayId || parsed.code || text;
+      }
+    } catch {}
+    return String(text).trim();
   };
 
   const handleVerifyPass = async (codeToVerify?: string) => {
@@ -314,7 +314,10 @@ export default function AmenitySecurityGateScannerScreen() {
               <Button
                 variant="outline"
                 className="flex-row items-center justify-center gap-2 h-11 rounded-xl border-amber-500/40 bg-amber-500/10"
-                onPress={() => setQrScannerOpen(true)}
+                onPress={() => {
+                  resetScanner();
+                  setQrScannerOpen(true);
+                }}
                 accessibilityLabel="Open Camera QR Scanner"
               >
                 <QrCode size={18} color="#ea580c" />

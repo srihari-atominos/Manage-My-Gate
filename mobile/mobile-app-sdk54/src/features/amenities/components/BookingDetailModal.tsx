@@ -52,7 +52,7 @@ export function BookingDetailModal({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Reservation Details">
-      <ScrollView className="max-h-[80vh] py-1" showsVerticalScrollIndicator={false}>
+      <View className="py-1">
         <View className="flex-row items-center justify-between mb-3 bg-card p-3 rounded-xl border border-border">
           <View>
             <Text className="text-base font-bold text-foreground">{amenityName}</Text>
@@ -114,7 +114,7 @@ export function BookingDetailModal({
             <Text className="text-white font-bold text-sm">Close</Text>
           </Button>
         </View>
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 }

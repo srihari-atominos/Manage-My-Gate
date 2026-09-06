@@ -5,8 +5,7 @@ import { RootState, AppDispatch } from '../../../store/store';
 import { fetchRolesAsync } from '../store/roleSlice';
 import { updateTokenAndUser } from '../../auth/store/authSlice';
 import { getUserRoleName } from '../../../utils/rbac';
-
-const DEFAULT_SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5002';
+import { getSocketBaseUrl } from '../../../services/apiClient';
 
 /**
  * Custom Hook: useRoleSocket
@@ -28,7 +27,7 @@ export const useRoleSocket = () => {
     '';
 
   useEffect(() => {
-    const socket = io(DEFAULT_SOCKET_URL, {
+    const socket = io(getSocketBaseUrl(), {
       ...(token ? { auth: { token } } : {}),
       withCredentials: true,
       transports: ['websocket', 'polling'],

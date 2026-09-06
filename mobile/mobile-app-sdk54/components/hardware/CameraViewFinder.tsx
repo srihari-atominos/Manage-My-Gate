@@ -1,25 +1,35 @@
 import React, { useState } from 'react';
-import { View, Platform, TouchableOpacity } from 'react-native';
+import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { Camera, CameraOff, RefreshCw, Zap, ZapOff } from 'lucide-react-native';
+import { Camera, CameraOff } from 'lucide-react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { QRScannerOverlay } from './QRScannerOverlay';
+import { cn } from '@/lib/utils';
 
 export interface CameraViewFinderProps {
   onScan: (data: string) => void;
   instruction?: string;
   isScanning?: boolean;
+  enableTorch?: boolean;
+  fullscreen?: boolean;
+  className?: string;
 }
 
 export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
   onScan,
   instruction = 'Position Amenity QR Code within Frame',
   isScanning = true,
+  enableTorch = false,
+  fullscreen = false,
+  className,
 }) => {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
-  const [torchOn, setTorchOn] = useState(false);
+
+  const containerClasses = fullscreen
+    ? 'flex-1 w-full h-full inset-0 absolute bg-black justify-center items-center'
+    : 'h-64 w-full rounded-2xl overflow-hidden bg-black relative mb-4 border border-border justify-center items-center';
 
   const handleBarcodeScanned = ({ data }: { data: string }) => {
     if (scanned || !isScanning || !data) return;
@@ -34,7 +44,7 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
   // 1. Permission loading state
   if (!permission) {
     return (
-      <View className="h-64 w-full rounded-2xl overflow-hidden bg-black relative mb-4 border border-border justify-center items-center">
+      <View className={cn(containerClasses, className)}>
         <Text className="text-white text-xs font-semibold">Initializing camera...</Text>
       </View>
     );
@@ -43,7 +53,7 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
   // 2. Permission not granted state
   if (!permission.granted) {
     return (
-      <View className="h-64 w-full rounded-2xl overflow-hidden bg-black relative mb-4 border border-border justify-center items-center p-4">
+      <View className={cn(containerClasses, 'p-4', className)}>
         <View className="w-12 h-12 rounded-full bg-white/10 items-center justify-center mb-2">
           <CameraOff size={24} color="#ffffff" />
         </View>
@@ -68,12 +78,12 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
     );
   }
 
-  // 3. Live Native Camera View with Flash Toggle
+  // 3. Live Native Camera View
   return (
-    <View className="h-64 w-full rounded-2xl overflow-hidden bg-black relative mb-4 border border-border justify-center items-center">
+    <View className={cn(containerClasses, className)}>
       <CameraView
         facing="back"
-        enableTorch={torchOn}
+        enableTorch={Boolean(enableTorch)}
         barcodeScannerSettings={{
           barcodeTypes: ['qr'],
         }}
@@ -81,29 +91,6 @@ export const CameraViewFinder: React.FC<CameraViewFinderProps> = ({
         style={{ width: '100%', height: '100%' }}
       />
       <QRScannerOverlay instruction={instruction} />
-
-      {/* Compact Flashlight Torch Toggle Overlay */}
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => setTorchOn(!torchOn)}
-        className={`absolute top-3 right-3 z-30 px-2.5 py-1.5 rounded-full flex-row items-center gap-1 border shadow-lg ${
-          torchOn
-            ? 'bg-amber-400 border-amber-300 shadow-amber-500/40'
-            : 'bg-black/75 border-white/30 shadow-black/50'
-        }`}
-      >
-        {torchOn ? (
-          <>
-            <Zap size={13} color="#000000" fill="#000000" strokeWidth={2.5} />
-            <Text className="text-[10px] font-black text-black tracking-wider uppercase">Flash ON</Text>
-          </>
-        ) : (
-          <>
-            <ZapOff size={13} color="#ffffff" strokeWidth={2.5} />
-            <Text className="text-[10px] font-bold text-white tracking-wider uppercase">Flash OFF</Text>
-          </>
-        )}
-      </TouchableOpacity>
     </View>
   );
 };

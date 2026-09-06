@@ -7,21 +7,23 @@ class UserPreferenceService {
   /**
    * Get user preferences alongside system feature catalog
    * @param {string} userId 
+   * @param {{ orgId?: string, villaId?: string }} [context]
    */
-  async getUserPreferences(userId) {
+  async getUserPreferences(userId, context = {}) {
     if (!userId) {
       throw new Error('User ID is required');
     }
 
-    let userPref = await userPreferenceRepository.findByUserId(userId);
+    const result = await userPreferenceRepository.findByUserIdAndContext(userId, context);
     
-    if (!userPref || !userPref.activeQuickActions || userPref.activeQuickActions.length === 0) {
-      // Auto-initialize default preferences if not present
-      userPref = await userPreferenceRepository.createDefaultPreferences(userId);
+    if (!result.doc) {
+      // Auto-initialize base record if missing
+      await userPreferenceRepository.createDefaultPreferences(userId);
     }
 
     return {
-      activeQuickActions: userPref.activeQuickActions || DEFAULT_ACTIVE_QUICK_ACTIONS,
+      activeQuickActions: result.isCustomized ? result.activeQuickActions : null,
+      isCustomized: result.isCustomized,
       featureCatalog: SYSTEM_FEATURE_CATALOG,
     };
   }
@@ -30,8 +32,9 @@ class UserPreferenceService {
    * Update user's active quick actions using a Mongoose Transaction
    * @param {string} userId 
    * @param {string[]} activeQuickActions 
+   * @param {{ orgId?: string, villaId?: string }} [context]
    */
-  async updateQuickActions(userId, activeQuickActions) {
+  async updateQuickActions(userId, activeQuickActions, context = {}) {
     if (!userId) {
       throw new Error('User ID is required');
     }
@@ -58,6 +61,7 @@ class UserPreferenceService {
       updatedPref = await userPreferenceRepository.upsertQuickActions(
         userId,
         activeQuickActions,
+        context,
         session
       );
 
@@ -72,11 +76,13 @@ class UserPreferenceService {
     // Emit application event upon successful database write
     userPreferenceEvents.emit(USER_PREFERENCE_UPDATED, {
       userId,
-      activeQuickActions: updatedPref.activeQuickActions,
+      orgId: context?.orgId || null,
+      villaId: context?.villaId || null,
+      activeQuickActions,
     });
 
     return {
-      activeQuickActions: updatedPref.activeQuickActions,
+      activeQuickActions,
       featureCatalog: SYSTEM_FEATURE_CATALOG,
     };
   }

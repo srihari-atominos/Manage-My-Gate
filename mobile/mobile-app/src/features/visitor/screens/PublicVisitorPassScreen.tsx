@@ -301,6 +301,9 @@ export function PublicVisitorPassScreen() {
               <View className="my-2">
                 <VisitorQRCode
                   code={passCode}
+                  passId={passData._id}
+                  visitorName={passData.visitorName}
+                  type={(passData as any).passType || 'GUEST'}
                   size={190}
                   validityText="Scan at Gate Security Scanner"
                 />

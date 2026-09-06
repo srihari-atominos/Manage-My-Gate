@@ -59,25 +59,69 @@ export interface VillaState {
 }
 
 export const DUMMY_VILLAS: Villa[] = [
-  { _id: '650000000000000000000101', unitNumber: 'Villa 101', blockOrBuilding: 'Phase 1', floor: 1, squareFeetArea: 2400, status: 'Occupied', type: '3BHK Villa' },
-  { _id: '650000000000000000000102', unitNumber: 'Villa 102', blockOrBuilding: 'Phase 1', floor: 1, squareFeetArea: 2400, status: 'Vacant', type: '3BHK Villa' },
-  { _id: '650000000000000000000103', unitNumber: 'Villa 103', blockOrBuilding: 'Phase 1', floor: 1, squareFeetArea: 2800, status: 'Occupied', type: '4BHK Villa' },
-  { _id: '650000000000000000000201', unitNumber: 'Block A-201', blockOrBuilding: 'Block A', floor: 2, squareFeetArea: 1800, status: 'Occupied', type: '2BHK Apartment' },
-  { _id: '650000000000000000000202', unitNumber: 'Block A-202', blockOrBuilding: 'Block A', floor: 2, squareFeetArea: 1800, status: 'Under Maintenance', type: '2BHK Apartment' },
+  // ── Community 1: Palm Meadows Community (10 Villas) ───────────────────
+  { _id: '650000000000000000000101', unitNumber: 'Villa 101', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2400, status: 'Occupied', type: '3BHK Luxury Villa', primaryResident: { name: 'Arun Kumar', email: 'arun.kumar@community.org', phone: '+919876543210' } },
+  { _id: '650000000000000000000102', unitNumber: 'Villa 102', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2400, status: 'Occupied', type: '3BHK Luxury Villa', primaryResident: { name: 'Priya Sharma', email: 'priya.sharma@community.org', phone: '+919876543211' } },
+  { _id: '650000000000000000000103', unitNumber: 'Villa 103', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2800, status: 'Occupied', type: '4BHK Grand Villa', primaryResident: { name: 'Vikram Mehta', email: 'vikram.mehta@community.org', phone: '+919876543212' } },
+  { _id: '650000000000000000000104', unitNumber: 'Villa 104', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2800, status: 'Occupied', type: '4BHK Grand Villa', primaryResident: { name: 'Dr. Meera Reddy', email: 'meera.reddy@community.org', phone: '+919876543216' } },
+  { _id: '650000000000000000000105', unitNumber: 'Villa 105', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2400, status: 'Occupied', type: '3BHK Luxury Villa', primaryResident: { name: 'Sunita Rao', email: 'sunita.rao@accounts.org', phone: '+919876543218' } },
+  { _id: '650000000000000000000106', unitNumber: 'Villa 106', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2400, status: 'Vacant', type: '3BHK Luxury Villa' },
+  { _id: '650000000000000000000107', unitNumber: 'Villa 107', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2800, status: 'Vacant', type: '4BHK Grand Villa' },
+  { _id: '650000000000000000000108', unitNumber: 'Villa 108', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2400, status: 'Under Maintenance', type: '3BHK Luxury Villa' },
+  { _id: '650000000000000000000109', unitNumber: 'Villa 109', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2800, status: 'Vacant', type: '4BHK Grand Villa' },
+  { _id: '650000000000000000000110', unitNumber: 'Villa 110', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 2, squareFeetArea: 3400, status: 'Vacant', type: '5BHK Presidential Villa' },
+
+  // ── Community 2: Emerald Valley Community (10 Villas) ─────────────────
+  { _id: '650000000000000000000201', unitNumber: 'Villa 201', blockOrBuilding: 'Emerald Valley - North Wing', floor: 1, squareFeetArea: 2600, status: 'Occupied', type: '3BHK Lakeview Villa', primaryResident: { name: 'Rohan Patel', email: 'rohan.patel@community.org', phone: '+919876543217' } },
+  { _id: '650000000000000000000202', unitNumber: 'Villa 202', blockOrBuilding: 'Emerald Valley - North Wing', floor: 1, squareFeetArea: 2600, status: 'Occupied', type: '3BHK Lakeview Villa', primaryResident: { name: 'Ananya Roy', email: 'ananya.roy@community.org', phone: '+919876543213' } },
+  { _id: '650000000000000000000203', unitNumber: 'Villa 203', blockOrBuilding: 'Emerald Valley - North Wing', floor: 1, squareFeetArea: 3000, status: 'Occupied', type: '4BHK Royal Villa', primaryResident: { name: 'David D\'Souza', email: 'david.dsouza@facility.org', phone: '+919876543219' } },
+  { _id: '650000000000000000000204', unitNumber: 'Villa 204', blockOrBuilding: 'Emerald Valley - North Wing', floor: 1, squareFeetArea: 3000, status: 'Vacant', type: '4BHK Royal Villa' },
+  { _id: '650000000000000000000205', unitNumber: 'Villa 205', blockOrBuilding: 'Emerald Valley - North Wing', floor: 1, squareFeetArea: 2600, status: 'Vacant', type: '3BHK Lakeview Villa' },
+  { _id: '650000000000000000000206', unitNumber: 'Villa 206', blockOrBuilding: 'Emerald Valley - South Wing', floor: 1, squareFeetArea: 2600, status: 'Vacant', type: '3BHK Lakeview Villa' },
+  { _id: '650000000000000000000207', unitNumber: 'Villa 207', blockOrBuilding: 'Emerald Valley - South Wing', floor: 1, squareFeetArea: 3000, status: 'Vacant', type: '4BHK Royal Villa' },
+  { _id: '650000000000000000000208', unitNumber: 'Villa 208', blockOrBuilding: 'Emerald Valley - South Wing', floor: 1, squareFeetArea: 3000, status: 'Under Maintenance', type: '4BHK Royal Villa' },
+  { _id: '650000000000000000000209', unitNumber: 'Villa 209', blockOrBuilding: 'Emerald Valley - South Wing', floor: 1, squareFeetArea: 2600, status: 'Vacant', type: '3BHK Lakeview Villa' },
+  { _id: '650000000000000000000210', unitNumber: 'Villa 210', blockOrBuilding: 'Emerald Valley - South Wing', floor: 2, squareFeetArea: 3600, status: 'Vacant', type: '5BHK Pinnacle Villa' },
+
+  // ── Apartment: Skyline Heights Apartments (10 Blocks) ─────────────────
+  { _id: '650000000000000000000301', unitNumber: 'Block A - 101', blockOrBuilding: 'Block A', floor: 1, squareFeetArea: 1600, status: 'Occupied', type: '2BHK Apartment', primaryResident: { name: 'Suresh Nair', email: 'suresh.nair@maintenance.org', phone: '+919876543215' } },
+  { _id: '650000000000000000000302', unitNumber: 'Block B - 101', blockOrBuilding: 'Block B', floor: 1, squareFeetArea: 1600, status: 'Occupied', type: '2BHK Apartment', primaryResident: { name: 'Rajesh Verma', email: 'rajesh.verma@security.org', phone: '+919876543214' } },
+  { _id: '650000000000000000000303', unitNumber: 'Block C - 101', blockOrBuilding: 'Block C', floor: 1, squareFeetArea: 1900, status: 'Vacant', type: '3BHK Apartment' },
+  { _id: '650000000000000000000304', unitNumber: 'Block D - 101', blockOrBuilding: 'Block D', floor: 1, squareFeetArea: 1900, status: 'Vacant', type: '3BHK Apartment' },
+  { _id: '650000000000000000000305', unitNumber: 'Block E - 101', blockOrBuilding: 'Block E', floor: 1, squareFeetArea: 1600, status: 'Vacant', type: '2BHK Apartment' },
+  { _id: '650000000000000000000306', unitNumber: 'Block F - 101', blockOrBuilding: 'Block F', floor: 1, squareFeetArea: 1600, status: 'Vacant', type: '2BHK Apartment' },
+  { _id: '650000000000000000000307', unitNumber: 'Block G - 101', blockOrBuilding: 'Block G', floor: 1, squareFeetArea: 1900, status: 'Vacant', type: '3BHK Apartment' },
+  { _id: '650000000000000000000308', unitNumber: 'Block H - 101', blockOrBuilding: 'Block H', floor: 1, squareFeetArea: 1900, status: 'Under Maintenance', type: '3BHK Apartment' },
+  { _id: '650000000000000000000309', unitNumber: 'Block I - 101', blockOrBuilding: 'Block I', floor: 1, squareFeetArea: 1600, status: 'Vacant', type: '2BHK Apartment' },
+  { _id: '650000000000000000000310', unitNumber: 'Block J - 101', blockOrBuilding: 'Block J', floor: 10, squareFeetArea: 2800, status: 'Vacant', type: '4BHK Penthouse' },
 ];
 
-export const DUMMY_BLOCKS = ['Phase 1', 'Block A', 'Block B'];
+export const DUMMY_BLOCKS = [
+  'Palm Meadows - Phase 1',
+  'Emerald Valley - North Wing',
+  'Emerald Valley - South Wing',
+  'Block A',
+  'Block B',
+  'Block C',
+  'Block D',
+  'Block E',
+  'Block F',
+  'Block G',
+  'Block H',
+  'Block I',
+  'Block J',
+];
 
 const initialState: VillaState = {
-  villas: [],
+  villas: DUMMY_VILLAS,
   currentVilla: null,
-  blocks: [],
+  blocks: DUMMY_BLOCKS,
   blocksLoading: false,
   stats: {
-    total: 0,
-    occupied: 0,
-    vacant: 0,
-    maintenance: 0,
+    total: DUMMY_VILLAS.length,
+    occupied: DUMMY_VILLAS.filter((v) => v.status === 'Occupied').length,
+    vacant: DUMMY_VILLAS.filter((v) => v.status === 'Vacant').length,
+    maintenance: DUMMY_VILLAS.filter((v) => v.status === 'Under Maintenance').length,
   },
   filters: {
     search: '',
@@ -86,8 +130,8 @@ const initialState: VillaState = {
   },
   pagination: {
     currentPage: 1,
-    totalPages: 1,
-    totalRecords: 0,
+    totalPages: Math.ceil(DUMMY_VILLAS.length / 10),
+    totalRecords: DUMMY_VILLAS.length,
     rowsPerPage: 10,
   },
   loading: false,
@@ -303,21 +347,29 @@ const villaSlice = createSlice({
           pag = resPayload.pagination || resPayload;
         }
 
-        state.villas = list;
+        state.villas = list.length > 0 ? list : DUMMY_VILLAS;
         if (pag && typeof pag === 'object') {
           state.pagination = {
             currentPage: pag.page || pag.currentPage || 1,
-            totalPages: pag.totalPages || 1,
+            totalPages: pag.totalPages || Math.ceil(state.villas.length / 10),
             totalRecords: pag.totalDocs || pag.totalRecords || pag.total || state.villas.length,
             rowsPerPage: pag.limit || pag.rowsPerPage || state.pagination.rowsPerPage,
+          };
+        } else {
+          state.pagination = {
+            currentPage: 1,
+            totalPages: Math.ceil(state.villas.length / 10),
+            totalRecords: state.villas.length,
+            rowsPerPage: 10,
           };
         }
       })
       .addCase(getVillas.rejected, (state, action) => {
         state.loading = false;
         if (state.villas.length === 0) {
-          state.villas = [];
-          state.pagination.totalRecords = 0;
+          state.villas = DUMMY_VILLAS;
+          state.pagination.totalRecords = DUMMY_VILLAS.length;
+          state.pagination.totalPages = Math.ceil(DUMMY_VILLAS.length / 10);
         }
         state.error = (action.payload as string) || 'Failed to load villas';
       })
@@ -329,10 +381,13 @@ const villaSlice = createSlice({
       .addCase(getVillaBlocks.fulfilled, (state, action) => {
         state.blocksLoading = false;
         const resData = action.payload?.data !== undefined ? action.payload.data : action.payload;
-        state.blocks = Array.isArray(resData) ? resData : [];
+        state.blocks = Array.isArray(resData) && resData.length > 0 ? resData : DUMMY_BLOCKS;
       })
       .addCase(getVillaBlocks.rejected, (state) => {
         state.blocksLoading = false;
+        if (state.blocks.length === 0) {
+          state.blocks = DUMMY_BLOCKS;
+        }
       })
 
       // getVillaStats

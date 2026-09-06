@@ -3,12 +3,14 @@ import { View, ScrollView } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { ActionBar } from '@/components/ui/ActionBar';
 import { WalkInApprovalItem } from '../../mocks/visitorMocks';
-import { Check, X, ShieldAlert, Clock } from 'lucide-react-native';
+import { Check, X, ShieldAlert } from 'lucide-react-native';
 
 export interface WalkInVisitorDetailsModalProps {
   visible: boolean;
@@ -45,32 +47,36 @@ export const WalkInVisitorDetailsModal: React.FC<WalkInVisitorDetailsModalProps>
       <BottomSheet visible={visible} onClose={onClose} title="Walk-In Entry Verification">
         <ScrollView className="max-h-[520px] p-2">
           <View className="gap-4 pb-6">
-            {/* Header Alert Banner */}
-            <View className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl gap-2">
+            {/* Canonical Header Alert Banner */}
+            <View className="bg-status-warning/15 border border-status-warning/30 p-3.5 rounded-xl gap-2">
               <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center gap-2">
-                  <ShieldAlert size={20} className="text-amber-600 dark:text-amber-400" />
-                  <Text className="font-extrabold text-foreground text-sm">
+                <View className="flex-row items-center gap-2 flex-1 me-2">
+                  <Icon as={ShieldAlert} size={18} className="text-status-warning shrink-0" />
+                  <Text className="font-bold text-foreground text-sm flex-1" numberOfLines={1}>
                     Visitor Waiting at Gate
                   </Text>
                 </View>
-                <View className="flex-row items-center gap-1 bg-amber-500/20 px-2 py-0.5 rounded-full">
-                  <Clock size={12} className="text-amber-600 dark:text-amber-400" />
-                  <Text className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                    {item.waitingDurationMinutes}m waiting
-                  </Text>
-                </View>
+                <StatusBadge
+                  label={`${item.waitingDurationMinutes}m waiting`}
+                  variant="warning"
+                  dot
+                  size="sm"
+                />
               </View>
-              <Text variant="muted" className="text-xs">
+              <Text variant="muted" className="text-xs text-muted-foreground">
                 Guard at {item.gateName} initiated entry verification for your villa.
               </Text>
             </View>
 
-            {/* Visitor Details Section */}
+            {/* Canonical Visitor Details Section */}
             <DetailSection title="Visitor Information" iconName="User">
               <DetailRow label="Visitor Full Name" value={item.visitorName} iconName="User" />
               <DetailRow label="Phone Number" value={item.phone} iconName="Phone" copyable />
-              <DetailRow label="Pass Category" value={<StatusBadge label={item.passType} variant="info" />} iconName="Tag" />
+              <DetailRow
+                label="Pass Category"
+                value={<StatusBadge label={item.passType} variant="info" size="sm" />}
+                iconName="Tag"
+              />
               <DetailRow label="Purpose of Visit" value={item.purpose} iconName="FileText" />
               {item.vehicleNo ? (
                 <DetailRow label="Vehicle Plate No" value={item.vehicleNo} iconName="Car" copyable />
@@ -81,30 +87,30 @@ export const WalkInVisitorDetailsModal: React.FC<WalkInVisitorDetailsModalProps>
               <DetailRow label="Gate Location" value={item.gateName} iconName="Shield" isLast />
             </DetailSection>
 
-            {/* Action Bar */}
-            <View className="flex-row gap-3 pt-2">
+            {/* Canonical Bottom Action Bar */}
+            <ActionBar className="border-t border-border px-0 pt-3 bg-transparent">
               <Button
                 variant="destructive"
                 onPress={() => setRejectConfirmOpen(true)}
-                className="flex-1 h-12 rounded-xl flex-row items-center justify-center gap-2"
+                className="flex-1 h-11 rounded-xl flex-row items-center justify-center gap-2"
+                accessibilityRole="button"
+                accessibilityLabel={`Reject Entry for ${item.visitorName}`}
               >
-                <X size={18} color="#fff" />
-                <Text className="font-bold text-destructive-foreground text-base">
-                  Reject Entry
-                </Text>
+                <Icon as={X} size={18} className="text-destructive-foreground me-1.5" />
+                <Text className="font-bold text-destructive-foreground">Reject Entry</Text>
               </Button>
 
               <Button
                 variant="default"
                 onPress={handleConfirmApprove}
-                className="flex-1 h-12 rounded-xl bg-emerald-600 dark:bg-emerald-700 flex-row items-center justify-center gap-2"
+                className="flex-1 h-11 rounded-xl flex-row items-center justify-center gap-2"
+                accessibilityRole="button"
+                accessibilityLabel={`Approve Entry for ${item.visitorName}`}
               >
-                <Check size={18} color="#fff" />
-                <Text className="font-bold text-white text-base">
-                  Approve Entry
-                </Text>
+                <Icon as={Check} size={18} className="text-primary-foreground me-1.5" />
+                <Text className="font-bold text-primary-foreground">Approve Entry</Text>
               </Button>
-            </View>
+            </ActionBar>
           </View>
         </ScrollView>
       </BottomSheet>
@@ -122,3 +128,5 @@ export const WalkInVisitorDetailsModal: React.FC<WalkInVisitorDetailsModalProps>
     </>
   );
 };
+
+export default WalkInVisitorDetailsModal;

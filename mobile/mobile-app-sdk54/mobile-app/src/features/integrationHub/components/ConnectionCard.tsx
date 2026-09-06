@@ -75,22 +75,22 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
             <TouchableOpacity
               onPress={() => onEdit(connection)}
               activeOpacity={0.7}
-              className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 items-center justify-center"
+              className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 active:bg-blue-500/20 items-center justify-center"
               accessibilityRole="button"
               accessibilityLabel="Edit Connection Label"
             >
-              <Edit2 size={13} color="#0d9488" />
+              <Edit2 size={13} color="#2563eb" />
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
             onPress={() => onDisconnect(connection)}
             activeOpacity={0.7}
-            className="w-7 h-7 rounded-lg bg-destructive/10 border border-destructive/20 items-center justify-center"
+            className="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 active:bg-red-500/20 items-center justify-center"
             accessibilityRole="button"
             accessibilityLabel="Disconnect Integration"
           >
-            <Trash2 size={13} color="#ef4444" />
+            <Trash2 size={13} color="#dc2626" />
           </TouchableOpacity>
         </View>
       </View>

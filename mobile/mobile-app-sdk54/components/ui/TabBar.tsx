@@ -3,6 +3,7 @@ import { View, Pressable, Platform } from 'react-native';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
+import { getStatusSemanticType, getStatusTabStyle } from './statusTabColors';
 
 const tabBarVariants = cva('flex-row mx-4 my-2', {
   variants: {
@@ -113,17 +114,28 @@ export const TabBar = React.forwardRef<View, TabBarProps>(
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           const hasBadge = typeof tab.badge === 'number' && tab.badge > 0;
+          const semantic = getStatusSemanticType(tab.key || tab.label);
+          const isStatusTab = semantic !== 'default';
+          const statusStyle = isStatusTab ? getStatusTabStyle(tab.key || tab.label, isActive) : null;
 
           return (
             <Pressable
               key={tab.key}
               onPress={() => onTabChange(tab.key)}
-              className={cn(tabItemVariants({ variant, isActive }))}
+              className={cn(
+                tabItemVariants({ variant, isActive }),
+                isStatusTab && variant === 'pill' && isActive && `${statusStyle?.containerClass} shadow-xs`
+              )}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
               accessibilityLabel={tab.label}
             >
-              <Text className={cn(tabTextVariants({ variant, isActive }))}>
+              <Text
+                className={cn(
+                  tabTextVariants({ variant, isActive }),
+                  isStatusTab && isActive && statusStyle?.textClass
+                )}
+              >
                 {tab.label}
               </Text>
 

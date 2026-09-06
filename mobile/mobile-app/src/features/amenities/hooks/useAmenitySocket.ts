@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import useAppSocket from '../../../hooks/useAppSocket';
 import { upsertAmenity, removeAmenity } from '../store/amenitySlice';
 import { upsertBooking } from '../store/amenityBookingSlice';
+import { fetchWalletThunk } from '../store/walletSlice';
 
 export const useAmenitySocket = () => {
   const { socket } = useAppSocket();
@@ -34,6 +35,7 @@ export const useAmenitySocket = () => {
     const handleBookingCreated = (booking: any) => {
       console.log('Socket: AMENITY_BOOKING_CREATED received', booking);
       dispatch(upsertBooking(booking));
+      (dispatch as any)(fetchWalletThunk());
     };
 
     const handleBookingCheckin = (booking: any) => {
@@ -43,7 +45,8 @@ export const useAmenitySocket = () => {
 
     const handleBookingCancelled = (booking: any) => {
       console.log('Socket: AMENITY_BOOKING_CANCELLED received', booking);
-      dispatch(upsertBooking(booking)); // Upsert will overwrite the status to CANCELLED since it's the full updated object
+      dispatch(upsertBooking(booking));
+      (dispatch as any)(fetchWalletThunk());
     };
 
     // Attach listeners
@@ -51,8 +54,11 @@ export const useAmenitySocket = () => {
     socket.on('AMENITY_UPDATED', handleAmenityUpdated);
     socket.on('AMENITY_DELETED', handleAmenityDeleted);
     socket.on('AMENITY_BOOKING_CREATED', handleBookingCreated);
+    socket.on('amenity_booking_created', handleBookingCreated);
     socket.on('AMENITY_CHECKIN', handleBookingCheckin);
+    socket.on('amenity_checkin', handleBookingCheckin);
     socket.on('AMENITY_BOOKING_CANCELLED', handleBookingCancelled);
+    socket.on('amenity_booking_cancelled', handleBookingCancelled);
 
     // Cleanup listeners on unmount
     return () => {
@@ -60,8 +66,11 @@ export const useAmenitySocket = () => {
       socket.off('AMENITY_UPDATED', handleAmenityUpdated);
       socket.off('AMENITY_DELETED', handleAmenityDeleted);
       socket.off('AMENITY_BOOKING_CREATED', handleBookingCreated);
+      socket.off('amenity_booking_created', handleBookingCreated);
       socket.off('AMENITY_CHECKIN', handleBookingCheckin);
+      socket.off('amenity_checkin', handleBookingCheckin);
       socket.off('AMENITY_BOOKING_CANCELLED', handleBookingCancelled);
+      socket.off('amenity_booking_cancelled', handleBookingCancelled);
     };
   }, [socket, dispatch]);
 

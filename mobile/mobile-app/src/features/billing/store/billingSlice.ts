@@ -63,22 +63,89 @@ const performInvoiceSync = (state: BillingState, updatedInvoice: any) => {
   }
 };
 
+export const DEFAULT_MOCK_INVOICES: Invoice[] = [
+  {
+    _id: 'inv_mock_01',
+    invoiceNumber: 'INV-2026-0901',
+    unitNumber: 'A-402',
+    unitId: 'unit_a402',
+    amount: 4850,
+    totalDue: 4850,
+    billingPeriodString: 'September 2026',
+    status: 'UNPAID',
+    dueDate: '2026-09-15T00:00:00.000Z',
+    createdAt: '2026-09-01T00:00:00.000Z',
+    items: [
+      { description: 'Quarterly Maintenance Levy', amount: 3500 },
+      { description: 'Sinking Fund Contribution', amount: 800 },
+      { description: 'Clubhouse & Amenity Subscription', amount: 550 },
+    ],
+  },
+  {
+    _id: 'inv_mock_02',
+    invoiceNumber: 'INV-2026-0801',
+    unitNumber: 'A-402',
+    unitId: 'unit_a402',
+    amount: 4850,
+    totalDue: 0,
+    billingPeriodString: 'August 2026',
+    status: 'PAID',
+    dueDate: '2026-08-15T00:00:00.000Z',
+    createdAt: '2026-08-01T00:00:00.000Z',
+    updatedAt: '2026-08-10T14:32:00.000Z',
+    items: [
+      { description: 'Quarterly Maintenance Levy', amount: 3500 },
+      { description: 'Sinking Fund Contribution', amount: 800 },
+      { description: 'Clubhouse & Amenity Subscription', amount: 550 },
+    ],
+  },
+  {
+    _id: 'inv_mock_03',
+    invoiceNumber: 'INV-2026-0701',
+    unitNumber: 'A-402',
+    unitId: 'unit_a402',
+    amount: 5200,
+    totalDue: 0,
+    billingPeriodString: 'July 2026',
+    status: 'PAID',
+    dueDate: '2026-07-15T00:00:00.000Z',
+    createdAt: '2026-07-01T00:00:00.000Z',
+    updatedAt: '2026-07-12T10:15:00.000Z',
+    items: [
+      { description: 'Quarterly Maintenance Levy', amount: 3500 },
+      { description: 'Sinking Fund Contribution', amount: 800 },
+      { description: 'DG Generator Backup Diesel Surcharge', amount: 900 },
+    ],
+  },
+];
+
 const initialState: BillingState = {
   kpis: {
-    grossDemand: 0,
-    grossDemandCount: 0,
-    totalCollected: 0,
-    inTransitGateway: 0,
-    totalUnpaidArrears: 0,
-    pendingOffline: 0,
+    grossDemand: 184500,
+    grossDemandCount: 42,
+    totalCollected: 142000,
+    inTransitGateway: 12500,
+    totalUnpaidArrears: 30000,
+    pendingOffline: 2,
   },
   activeDues: {
-    totalPortfolioDue: 0,
-    unitBreakdown: [],
+    totalPortfolioDue: 4850,
+    unitBreakdown: [
+      {
+        invoiceId: 'inv_mock_01',
+        invoiceNumber: 'INV-2026-0901',
+        unitId: 'unit_a402',
+        unitNumber: 'A-402',
+        totalDue: 4850,
+        billingPeriodString: 'September 2026',
+        status: 'UNPAID',
+        dueDate: '2026-09-15T00:00:00.000Z',
+      },
+    ],
     secondaryCompliance: [],
-    recentInvoices: [],
+    recentInvoices: DEFAULT_MOCK_INVOICES,
   },
-  invoicesList: [],
+  invoicesList: DEFAULT_MOCK_INVOICES,
   statusCounts: {
     ALL: 0,
     VERIFICATION_PENDING: 0,
@@ -90,7 +157,7 @@ const initialState: BillingState = {
   pagination: {
     currentPage: 1,
     totalPages: 1,
-    totalRecords: 0,
+    totalRecords: DEFAULT_MOCK_INVOICES.length,
     limit: 10,
   },
   loadingStates: {
@@ -195,9 +262,14 @@ export const submitOfflineSettlement = createAsyncThunk(
 
 export const clearOfflineSettlement = createAsyncThunk(
   'billing/clearOfflineSettlement',
-  async (invoiceId: string, { rejectWithValue }) => {
+  async (
+    payload: string | { invoiceId: string; amount?: number; settlementType?: 'FULL' | 'CUSTOM' },
+    { rejectWithValue }
+  ) => {
     try {
-      const data = await billingService.approveInvoiceOffline(invoiceId);
+      const invoiceId = typeof payload === 'string' ? payload : payload.invoiceId;
+      const opts = typeof payload === 'string' ? undefined : { amount: payload.amount, settlementType: payload.settlementType };
+      const data = await billingService.approveInvoiceOffline(invoiceId, opts);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to approve offline payment');
@@ -427,6 +499,14 @@ export const billingSlice = createSlice({
       .addCase(verifyRazorpaySignature.rejected, (state, action) => {
         state.loadingStates.settleInvoice = false;
         state.error = action.payload as string;
+      })
+
+      // Invalidate and reset billing cache when switching community workspace
+      .addCase('auth/switchWorkspaceContext/fulfilled', (state) => {
+        state.invoicesList = [];
+        state.pagination = { ...initialState.pagination };
+        state.kpis = { ...initialState.kpis };
+        state.activeDues = { ...initialState.activeDues };
       });
   },
 });

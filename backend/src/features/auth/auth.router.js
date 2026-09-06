@@ -262,6 +262,7 @@ router.post('/login/phone/verify', authLimiter, validate(phoneVerifyRules), auth
 router.post('/login/email-otp', otpLimiter, validate(emailOtpLoginRules), authController.initiateEmailOtpLogin);
 router.post('/login/email-otp/verify', authLimiter, validate(emailOtpVerifyRules), authController.verifyEmailOtpLogin);
 router.post('/forgot-password', otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
+router.post('/forgot-password/initiate', otpLimiter, validate(forgotPasswordRules), authController.forgotPassword);
 router.post('/forgot-password/verify-otp', authLimiter, validate(verifyResetPasswordOtpRules), authController.verifyResetPasswordOtp);
 router.post('/reset-password', authLimiter, validate(resetPasswordRules), authController.resetPassword);
 router.post('/setup-account-password', validate(setupAccountPasswordRules), authController.setupAccountPassword);

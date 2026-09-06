@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 
 interface AssessmentFlowFooterProps {
   onBack: () => void;

@@ -82,7 +82,7 @@ export const ServicePassReviewStep: React.FC<ServicePassReviewStepProps> = ({
         />
         <DetailRow
           label="Daily Entry Slot"
-          value={`${timeWindow.startTime} - ${timeWindow.endTime}`}
+          value={`${timeWindow?.startTime || '08:00'} - ${timeWindow?.endTime || '18:00'}`}
           iconName="Clock"
           isLast
         />

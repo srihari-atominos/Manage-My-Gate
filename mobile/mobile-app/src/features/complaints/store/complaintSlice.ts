@@ -16,16 +16,73 @@ interface ComplaintState {
   error: string | null;
 }
 
+export const DEFAULT_MOCK_COMPLAINTS: Complaint[] = [
+  {
+    _id: 'comp_mock_01',
+    complaintNumber: 'TKT-2026-1082',
+    residentId: 'usr_02',
+    residentName: 'Priya Sharma',
+    title: 'Water Pressure Drop in Master Bathroom',
+    description: 'Noticeable drop in cold water line pressure on 4th floor over past 24 hours.',
+    category: 'PLUMBING',
+    priority: 'High',
+    status: 'In Progress',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
+    assignedTechnicianName: 'Suresh Nair',
+    assignedTechnicianPhone: '+91 98765 43215',
+  },
+  {
+    _id: 'comp_mock_02',
+    complaintNumber: 'TKT-2026-1075',
+    residentId: 'usr_03',
+    residentName: 'Vikram Mehta',
+    title: 'Corridor Sensor Light Replacement',
+    description: 'Motion sensor LED light fixture outside elevator lobby flickers intermittently.',
+    category: 'ELECTRICAL',
+    priority: 'Medium',
+    status: 'Completed',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
+    assignedTechnicianName: 'Suresh Nair',
+    assignedTechnicianPhone: '+91 98765 43215',
+  },
+  {
+    _id: 'comp_mock_03',
+    complaintNumber: 'TKT-2026-1064',
+    residentId: 'usr_04',
+    residentName: 'Ananya Roy',
+    title: 'EV Charging Bay Access Card Reader Offline',
+    description: 'Slot EV-04 RFID reader not acknowledging security card swipe.',
+    category: 'GENERAL',
+    priority: 'Low',
+    status: 'Open',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    assignedTechnicianName: 'David D\'Souza',
+    assignedTechnicianPhone: '+91 98765 43219',
+  },
+];
+
 const initialState: ComplaintState = {
-  list: [],
+  list: DEFAULT_MOCK_COMPLAINTS,
   pagination: {
-    totalRecords: 0,
+    totalRecords: DEFAULT_MOCK_COMPLAINTS.length,
     currentPage: 1,
     totalPages: 1,
     limit: 10,
   },
   currentComplaint: null,
-  dashboardAnalytics: null,
+  dashboardAnalytics: {
+    total: DEFAULT_MOCK_COMPLAINTS.length,
+    open: 1,
+    inProgress: 1,
+    resolved: 1,
+    slaBreached: 0,
+    byCategory: [
+      { category: 'PLUMBING', count: 1 },
+      { category: 'ELECTRICAL', count: 1 },
+      { category: 'GENERAL', count: 1 },
+    ],
+  } as any,
   status: 'idle',
   error: null,
 };

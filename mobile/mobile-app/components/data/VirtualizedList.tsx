@@ -33,9 +33,22 @@ export const VirtualizedList = <T extends any>({
     );
   }
 
+  const defaultKeyExtractor = (item: any, index: number): string => {
+    if (item && typeof item === 'object') {
+      if (typeof item._id === 'string') return item._id;
+      if (typeof item.id === 'string') return item.id;
+      if (typeof item.key === 'string') return item.key;
+      if (typeof item._id === 'number') return String(item._id);
+      if (typeof item.id === 'number') return String(item.id);
+      if (typeof item.code === 'string') return item.code;
+    }
+    return `virt-item-${index}`;
+  };
+
   return (
     <FlatList
       data={data}
+      keyExtractor={props.keyExtractor || defaultKeyExtractor}
       className={cn('flex-1', className)}
       ListEmptyComponent={EmptyComponent}
       showsVerticalScrollIndicator={false}

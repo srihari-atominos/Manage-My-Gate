@@ -17,6 +17,7 @@ export default function ResidentLayout() {
       <Stack.Screen name="directory/conversation/[id]" />
       <Stack.Screen name="notes/index" />
       <Stack.Screen name="settings/index" />
+      <Stack.Screen name="notifications" />
     </Stack>
   );
 }

@@ -5,7 +5,24 @@ import { cn } from '../../lib/utils';
 
 export interface ButtonProps extends PressableProps {
   children: React.ReactNode;
-  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' | 'primary';
+  variant?: 
+    | 'default' 
+    | 'primary' 
+    | 'destructive' 
+    | 'destructive-outline'
+    | 'stop'
+    | 'stop-outline'
+    | 'success'
+    | 'edit'
+    | 'warning'
+    | 'warning-solid'
+    | 'info'
+    | 'info-solid'
+    | 'purple'
+    | 'outline' 
+    | 'secondary' 
+    | 'ghost' 
+    | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   leftIcon?: LucideIcon;
   rightIcon?: LucideIcon;
@@ -34,7 +51,17 @@ export const Button = forwardRef<View, ButtonProps>(
     const variantClasses = {
       default: 'bg-primary border border-primary/90 shadow-xs',
       primary: 'bg-primary border border-primary/90 shadow-xs',
-      destructive: 'bg-destructive border border-destructive/20 shadow-xs',
+      destructive: 'bg-rose-600 active:bg-rose-700 shadow-xs',
+      'destructive-outline': 'border border-rose-500/40 bg-rose-50 dark:bg-rose-950/40 shadow-xs',
+      stop: 'bg-rose-600 active:bg-rose-700 shadow-xs',
+      'stop-outline': 'border border-rose-500/40 bg-rose-50 dark:bg-rose-950/40 shadow-xs',
+      success: 'bg-emerald-600 active:bg-emerald-700 shadow-xs',
+      edit: 'border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 shadow-xs',
+      warning: 'border border-amber-500/40 bg-amber-50 dark:bg-amber-950/40 shadow-xs',
+      'warning-solid': 'bg-amber-600 active:bg-amber-700 shadow-xs',
+      info: 'border border-blue-500/40 bg-blue-50 dark:bg-blue-950/40 shadow-xs',
+      'info-solid': 'bg-blue-600 active:bg-blue-700 shadow-xs',
+      purple: 'border border-purple-500/40 bg-purple-50 dark:bg-purple-950/40 shadow-xs',
       outline: 'border border-border/80 bg-card shadow-xs',
       secondary: 'bg-secondary border border-border/70 shadow-xs',
       ghost: 'bg-transparent',
@@ -44,7 +71,17 @@ export const Button = forwardRef<View, ButtonProps>(
     const textClasses = {
       default: 'text-primary-foreground',
       primary: 'text-primary-foreground',
-      destructive: 'text-destructive-foreground',
+      destructive: 'text-white font-bold',
+      'destructive-outline': 'text-rose-600 dark:text-rose-400 font-bold',
+      stop: 'text-white font-bold',
+      'stop-outline': 'text-rose-600 dark:text-rose-400 font-bold',
+      success: 'text-white font-bold',
+      edit: 'text-emerald-700 dark:text-emerald-400 font-bold',
+      warning: 'text-amber-700 dark:text-amber-400 font-bold',
+      'warning-solid': 'text-white font-bold',
+      info: 'text-blue-700 dark:text-blue-400 font-bold',
+      'info-solid': 'text-white font-bold',
+      purple: 'text-purple-700 dark:text-purple-400 font-bold',
       outline: 'text-foreground',
       secondary: 'text-secondary-foreground',
       ghost: 'text-foreground',

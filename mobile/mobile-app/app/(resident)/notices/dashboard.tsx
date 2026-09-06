@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
 import { View, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
-import { ListChecks, CheckCircle, PenTool, Pin, AlertTriangle, Info, Bell } from 'lucide-react-native';
+import { ListChecks, CheckCircle, PenTool, Pin, AlertTriangle, Info, Bell, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -79,8 +79,6 @@ export default function NoticeDashboardScreen() {
       iconName: 'CheckCircle',
       colorBg: 'bg-emerald-500/10',
       colorIcon: '#10b981',
-      badge: stats.activeNotices > 0 ? String(stats.activeNotices) : undefined,
-      badgeColor: 'bg-emerald-500',
       route: '/(resident)/notices',
     },
     {
@@ -89,8 +87,6 @@ export default function NoticeDashboardScreen() {
       iconName: 'ListChecks',
       colorBg: 'bg-primary/10',
       colorIcon: '#6366f1',
-      badge: stats.totalNotices > 0 ? String(stats.totalNotices) : undefined,
-      badgeColor: 'bg-primary',
       onPress: () => {
         setFilters({});
         router.push('/(resident)/notices/manage' as any);
@@ -115,20 +111,33 @@ export default function NoticeDashboardScreen() {
       onRetry={handleRefresh}
       loading={dashboardLoading && !dashboardStats}
       headerRight={
-        <Button
-          variant="outline"
-          size="sm"
-          onPress={() => {
-            setFilters({});
-            router.push('/(resident)/notices/manage' as any);
-          }}
-          className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
-          accessibilityRole="button"
-          accessibilityLabel="Manage Notices"
-        >
-          <ListChecks size={14} className="text-foreground" />
-          <Text className="text-xs font-semibold text-foreground">Manage</Text>
-        </Button>
+        <View className="flex-row items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={() => {
+              setFilters({});
+              router.push('/(resident)/notices/manage' as any);
+            }}
+            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+            accessibilityRole="button"
+            accessibilityLabel="Manage Notices"
+          >
+            <ListChecks size={13} className="text-foreground" />
+            <Text className="text-xs font-semibold text-foreground">Manage</Text>
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onPress={() => router.push('/(resident)/notices/create' as any)}
+            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+            accessibilityRole="button"
+            accessibilityLabel="Create New Notice"
+          >
+            <Plus size={14} color="#ffffff" />
+            <Text className="text-xs font-bold text-primary-foreground">New Notice</Text>
+          </Button>
+        </View>
       }
     >
       <ScrollView
@@ -178,13 +187,6 @@ export default function NoticeDashboardScreen() {
           )}
         </View>
       </ScrollView>
-
-      {/* Primary Action: Create New Notice FAB */}
-      <FAB
-        iconName="Plus"
-        label="New Notice"
-        onPress={() => router.push('/(resident)/notices/create' as any)}
-      />
     </ScreenShell>
   );
 }

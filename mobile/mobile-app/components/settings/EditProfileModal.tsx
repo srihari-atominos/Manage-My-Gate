@@ -7,17 +7,18 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
-import { updateUserProfile, User } from '@/src/features/auth/store/authSlice';
-import { PulseItem, CommunityInterest } from '@/src/features/communityPulse/types/communityPulseTypes';
-import { formatRemainingTime } from '@/src/features/communityPulse/hooks/useCommunityPulse';
+import { updateProfileThunk, User } from '@/src/features/auth/store/authSlice';
+import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
+import { ThemeToggleSwitch } from '@/components/settings/ThemeToggleSwitch';
+import { useSettings } from '@/src/features/settings/hooks/useSettings';
 
 export interface EditProfileModalProps {
   visible: boolean;
   onClose: () => void;
   user: User | null;
-  userPulse?: PulseItem | null;
+  userPulse?: any;
   userInterests?: string[];
-  masterInterests?: CommunityInterest[];
+  masterInterests?: any[];
   onCreatePulse?: () => void;
   onSaveInterests?: (interests: string[]) => void;
   t?: (key: string, fallback?: string) => string;
@@ -36,6 +37,7 @@ export const EditProfileModal = ({
 }: EditProfileModalProps) => {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
+  const { themeMode, setThemeMode } = useSettings();
   const translate = t || ((_, fb) => fb || '');
 
   const [username, setUsername] = useState('');
@@ -47,10 +49,16 @@ export const EditProfileModal = ({
 
   useEffect(() => {
     if (visible && user) {
-      setUsername(user.username || user.name || 'testuser');
-      setEmail(user.email || 'naveen@atominosconsulting.com');
-      setPhone(user.phone || '');
-      setAvatarUri(user.avatar || null);
+      const uAny = user as any;
+      const initialName = user.name || user.username || uAny.fullName || (user.email ? user.email.split('@')[0] : '');
+      const initialEmail = user.email || uAny.emailAddress || '';
+      const initialPhone = user.phone || uAny.phoneNumber || uAny.mobile || '';
+      const initialAvatar = user.avatar || uAny.avatarUrl || null;
+
+      setUsername(initialName);
+      setEmail(initialEmail);
+      setPhone(initialPhone);
+      setAvatarUri(initialAvatar);
     }
     if (visible && userInterests) {
       setSelectedInterests(userInterests);
@@ -138,13 +146,13 @@ export const EditProfileModal = ({
       return;
     }
     dispatch(
-      updateUserProfile({
+      updateProfileThunk({
         username: username.trim(),
         name: username.trim(),
         email: email.trim(),
         phone: phone.trim(),
         avatar: avatarUri || undefined,
-      })
+      }) as any
     );
     if (onSaveInterests) {
       onSaveInterests(selectedInterests);
@@ -156,6 +164,8 @@ export const EditProfileModal = ({
     onClose();
   };
 
+  if (!visible) return null;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -166,9 +176,7 @@ export const EditProfileModal = ({
 
         <View className="bg-card rounded-t-3xl overflow-hidden" style={{ maxHeight: '88%' }}>
           {/* Grab Handle */}
-          <View className="items-center pt-3 pb-1">
-            <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-          </View>
+          <SheetGrabHandle onClose={onClose} />
 
           {/* Header */}
           <View className="flex-row items-center justify-between px-5 pb-3 border-b border-border">
@@ -262,54 +270,16 @@ export const EditProfileModal = ({
                 </View>
               </View>
 
-              {/* Active Pulse */}
+              {/* Appearance: Theme Mode */}
               <View className="gap-2 pt-1">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2">
-                    <Activity size={14} className="text-primary" />
-                    <Text className="text-xs font-bold text-muted-foreground uppercase">
-                      Active Pulse
-                    </Text>
-                  </View>
-                  {onCreatePulse ? (
-                    <Pressable
-                      onPress={onCreatePulse}
-                      className="flex-row items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 active:bg-primary/20"
-                    >
-                      {userPulse ? (
-                        <Sparkles size={12} className="text-primary" />
-                      ) : (
-                        <Plus size={12} className="text-primary" />
-                      )}
-                      <Text className="text-[11px] font-bold text-primary">
-                        {userPulse ? 'Change' : 'Create'}
-                      </Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-
-                {userPulse ? (
-                  <View className="bg-primary/8 border border-primary/20 rounded-2xl p-3 flex-row items-center">
-                    <Text className="text-lg me-2.5">{userPulse.emoji || '💬'}</Text>
-                    <View className="flex-1">
-                      <Text className="text-xs font-bold text-foreground" numberOfLines={1}>
-                        {userPulse.text}
-                      </Text>
-                      {userPulse.contextText ? (
-                        <Text className="text-[11px] text-muted-foreground" numberOfLines={1}>
-                          {userPulse.contextText}
-                        </Text>
-                      ) : null}
-                      <Text className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                        Expires in {formatRemainingTime(userPulse.expiresAt)}
-                      </Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View className="bg-muted/20 border border-dashed border-border rounded-2xl p-3 items-center">
-                    <Text className="text-xs text-muted-foreground">No active pulse. Tap Create above.</Text>
-                  </View>
-                )}
+                <Text className="text-xs font-bold text-muted-foreground uppercase px-1">
+                  {translate('appearance_language', 'Appearance')}
+                </Text>
+                <ThemeToggleSwitch
+                  themeMode={themeMode}
+                  onSelectMode={setThemeMode}
+                  t={t}
+                />
               </View>
 
               {/* Interest Chips */}
@@ -354,29 +324,24 @@ export const EditProfileModal = ({
               {/* Save Button */}
               <Button
                 onPress={handleSave}
-                leftIcon={Check}
-                className="h-12 bg-primary rounded-2xl mt-2"
+                className="h-12 bg-primary rounded-xl flex-row items-center justify-center gap-2 mt-2"
               >
-                {translate('save_changes', 'Save Changes')}
+                <Check size={18} className="text-primary-foreground" />
+                <Text className="text-primary-foreground font-bold">
+                  {translate('save_changes', 'Save Changes')}
+                </Text>
               </Button>
             </View>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
 
-      {/* Android/Web Photo Source Picker Bottom Sheet */}
-      <Modal
-        visible={showPhotoOptions}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPhotoOptions(false)}
-      >
-        <View className="flex-1 justify-end bg-black/50">
+      {/* Photo Source Picker Overlay */}
+      {showPhotoOptions && (
+        <View className="absolute inset-0 bg-black/50 justify-end z-50">
           <Pressable className="absolute inset-0" onPress={() => setShowPhotoOptions(false)} />
           <View className="bg-card rounded-t-3xl overflow-hidden">
-            <View className="items-center pt-3 pb-1">
-              <View className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-            </View>
+            <SheetGrabHandle onClose={() => setShowPhotoOptions(false)} />
             <Text className="text-base font-bold text-foreground text-center py-2">
               Change Profile Photo
             </Text>
@@ -417,7 +382,7 @@ export const EditProfileModal = ({
             <View style={{ height: Math.max(insets.bottom, 8) }} />
           </View>
         </View>
-      </Modal>
+      )}
     </Modal>
   );
 };
