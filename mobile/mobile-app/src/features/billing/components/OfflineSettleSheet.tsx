@@ -5,7 +5,10 @@ import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/common/Button';
+import { SegmentedControl } from '@/components/common/SegmentedControl';
+import { DatePicker } from '@/components/common/DatePicker';
+import { formatDateString } from '@/components/common/DatePickerModal';
 import { TextInput } from '@/components/forms/TextInput';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -393,12 +396,11 @@ export function OfflineSettleSheet({
                   placeholder="e.g. UTR12345678 or IMPS-98124"
                 />
 
-                <TextInput
+                <DatePicker
                   label="Payment Date"
-                  leftIcon={Clock}
-                  value={paymentDateStr}
-                  onChangeText={setPaymentDateStr}
-                  placeholder="YYYY-MM-DD"
+                  value={paymentDateStr ? new Date(`${paymentDateStr}T00:00:00`) : new Date()}
+                  onChange={(d) => setPaymentDateStr(formatDateString(d))}
+                  placeholder="Select Payment Date"
                 />
               </View>
 
@@ -410,6 +412,7 @@ export function OfflineSettleSheet({
                 disabled={isSubmissionBlocked || isFormInvalid || isSubmitting || loadingStates.settleInvoice}
                 loading={isSubmitting || loadingStates.settleInvoice}
                 onPress={handleOpenConfirm}
+                rightIcon={ChevronRight}
                 accessibilityRole="button"
                 accessibilityLabel={`Submit Bank Transfer payment for ₹${amountToSubmit.toLocaleString('en-IN')}`}
               >
