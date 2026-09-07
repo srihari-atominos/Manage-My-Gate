@@ -88,7 +88,7 @@ export class InvoiceRepository {
             { $group: { _id: null, total: { $sum: '$paidFallback' } } },
           ],
           inTransitGateway: [
-            { $match: { status: 'PAID', settled_at: null, paymentMethod: { $nin: ['CASH', 'BANK_TRANSFER'] } } },
+            { $match: { status: 'PAID', settled_at: null, paymentMethod: { $nin: ['CASH', 'BANK_TRANSFER', 'CHEQUE', 'DEMAND_DRAFT', 'NEFT', 'UPI'] } } },
             { $group: { _id: null, total: { $sum: '$paidFallback' } } },
           ],
           pendingOffline: [
@@ -310,6 +310,12 @@ export class InvoiceRepository {
       invoice.settled_at = paymentData.settled_at || null;
       invoice.paymentMethod = paymentData.paymentMethod || invoice.paymentMethod || null;
       invoice.offlineReference = paymentData.offlineReference || invoice.offlineReference || null;
+      if (paymentData.paymentScreenshot !== undefined) {
+        invoice.paymentScreenshot = paymentData.paymentScreenshot;
+      }
+      if (paymentData.payerNotes !== undefined) {
+        invoice.payerNotes = paymentData.payerNotes;
+      }
       
       let applyAmount = 0;
       if (paymentData.amount) {
@@ -402,7 +408,11 @@ export class InvoiceRepository {
 
     // 2. Payment Method filtering
     if (paymentMethod && paymentMethod !== 'ALL') {
-      matchConditions.paymentMethod = paymentMethod;
+      if (paymentMethod === 'NEFT' || paymentMethod === 'BANK_TRANSFER') {
+        matchConditions.paymentMethod = { $in: ['BANK_TRANSFER', 'NEFT'] };
+      } else {
+        matchConditions.paymentMethod = paymentMethod;
+      }
     }
 
     // 3. Omnisearch matching

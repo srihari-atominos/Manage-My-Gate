@@ -124,7 +124,17 @@ export const useBilling = () => {
   );
 
   const approveOffline = useCallback(
-    (invoiceId: string, options?: { amount?: number; settlementType?: 'FULL' | 'CUSTOM' }) => {
+    (
+      invoiceId: string,
+      options?: {
+        amount?: number;
+        settlementType?: 'FULL' | 'CUSTOM';
+        paymentMethod?: string;
+        paymentReference?: string;
+        reference?: string;
+        notes?: string;
+      }
+    ) => {
       return dispatch(clearOfflineSettlement({ invoiceId, ...options })).unwrap();
     },
     [dispatch]

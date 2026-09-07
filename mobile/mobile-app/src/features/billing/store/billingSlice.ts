@@ -272,12 +272,34 @@ export const submitOfflineSettlement = createAsyncThunk(
 export const clearOfflineSettlement = createAsyncThunk(
   'billing/clearOfflineSettlement',
   async (
-    payload: string | { invoiceId: string; amount?: number; settlementType?: 'FULL' | 'CUSTOM' },
+    payload:
+      | string
+      | {
+          invoiceId: string;
+          amount?: number;
+          settlementType?: 'FULL' | 'CUSTOM';
+          paymentMethod?: string;
+          paymentReference?: string;
+          reference?: string;
+          notes?: string;
+          paymentScreenshot?: string;
+        },
     { rejectWithValue }
   ) => {
     try {
       const invoiceId = typeof payload === 'string' ? payload : payload.invoiceId;
-      const opts = typeof payload === 'string' ? undefined : { amount: payload.amount, settlementType: payload.settlementType };
+      const opts =
+        typeof payload === 'string'
+          ? undefined
+          : {
+              amount: payload.amount,
+              settlementType: payload.settlementType,
+              paymentMethod: payload.paymentMethod,
+              paymentReference: payload.paymentReference,
+              reference: payload.reference,
+              notes: payload.notes,
+              paymentScreenshot: payload.paymentScreenshot,
+            };
       const data = await billingService.approveInvoiceOffline(invoiceId, opts);
       return data;
     } catch (error: any) {

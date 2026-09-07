@@ -89,8 +89,16 @@ export class InvoiceController {
     try {
       const { id } = req.params;
       const adminUserId = req.user?.id || req.user?._id;
-      const { amount, settlementType } = req.body || {};
-      const data = await invoiceService.approveOfflinePayment(id, adminUserId, { amount, settlementType });
+      const { amount, settlementType, paymentMethod, paymentReference, reference, notes, paymentScreenshot } = req.body || {};
+      const data = await invoiceService.approveOfflinePayment(id, adminUserId, {
+        amount,
+        settlementType,
+        paymentMethod,
+        paymentReference,
+        reference,
+        notes,
+        paymentScreenshot,
+      });
       res.success(data, 'Offline payment verified and confirmed successfully.');
     } catch (error) {
       next(error);
