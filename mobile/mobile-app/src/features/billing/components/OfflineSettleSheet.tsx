@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Alert, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Text } from '@/components/ui/text';
@@ -484,7 +484,7 @@ export function OfflineSettleSheet({
                   onAdd={(newFiles) => setAttachments((prev) => [...prev, ...newFiles])}
                   onRemove={(idx) => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
                   maxFiles={1}
-                  accept="all"
+                  accept="images-and-pdf"
                 />
               </View>
 
