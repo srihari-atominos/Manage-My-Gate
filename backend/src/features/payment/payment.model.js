@@ -84,6 +84,10 @@ const paymentSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  payerNotes: {
+    type: String,
+    default: null
+  },
   receivedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

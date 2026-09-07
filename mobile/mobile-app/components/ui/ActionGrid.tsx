@@ -84,6 +84,20 @@ export function ActionGrid({
                   item.disabled && 'opacity-50'
                 )}
               >
+                {/* Optional Badge Notification Pill */}
+                {item.badge !== undefined && item.badge !== null && item.badge !== '' && (
+                  <View
+                    className={cn(
+                      'absolute top-2 end-2 px-1.5 py-0.5 rounded-full min-w-[18px] items-center justify-center z-10',
+                      item.badgeColor || 'bg-primary'
+                    )}
+                  >
+                    <Text className="text-[10px] font-bold text-white leading-none">
+                      {item.badge}
+                    </Text>
+                  </View>
+                )}
+
                 {/* Icon Container */}
                 <View
                   className={cn(

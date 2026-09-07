@@ -48,16 +48,19 @@ export const useBilling = () => {
         console.warn('loadAdminDashboard ignored: active communityId/orgId is undefined');
         return;
       }
-      dispatch(fetchInvoicesGrid({ page: 1, limit: 10 }));
+      dispatch(fetchInvoicesGrid({ page: 1, limit: 10, filters: { communityId: orgId } }));
       return dispatch(fetchAdminKPIs(orgId));
     },
     [dispatch, activeOrgId]
   );
 
-  const loadResidentDues = useCallback(() => {
-    dispatch(fetchWalletBalance());
-    return dispatch(fetchMyDues());
-  }, [dispatch]);
+  const loadResidentDues = useCallback(
+    (communityId?: string) => {
+      dispatch(fetchWalletBalance());
+      return dispatch(fetchMyDues(communityId || activeOrgId));
+    },
+    [dispatch, activeOrgId]
+  );
 
   const loadWalletBalance = useCallback(() => {
     return dispatch(fetchWalletBalance());
@@ -93,7 +96,17 @@ export const useBilling = () => {
   );
 
   const settleOffline = useCallback(
-    (invoiceId: string, referenceData: { offlineReference: string; offlineAmount?: number; amountPaid?: number; amount?: number; paymentReference?: string; paymentMethod: string; paymentDate?: string; paymentScreenshot?: string }) => {
+    (invoiceId: string, referenceData: {
+      offlineReference: string;
+      offlineAmount?: number;
+      amountPaid?: number;
+      amount?: number;
+      paymentReference?: string;
+      paymentMethod: string;
+      paymentDate?: string;
+      paymentScreenshot?: string;
+      payerNotes?: string;
+    }) => {
       const effectiveAmount = referenceData.offlineAmount ?? referenceData.amountPaid ?? referenceData.amount;
       return dispatch(
         submitOfflineSettlement({
@@ -101,6 +114,9 @@ export const useBilling = () => {
           offlineReference: referenceData.offlineReference || referenceData.paymentReference || '',
           amount: effectiveAmount,
           paymentMethod: referenceData.paymentMethod,
+          paymentDate: referenceData.paymentDate,
+          paymentScreenshot: referenceData.paymentScreenshot,
+          payerNotes: referenceData.payerNotes,
         })
       ).unwrap();
     },

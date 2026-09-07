@@ -791,15 +791,26 @@ export class VillaService {
     return await Villa.find({ orgId }).session(session);
   }
 
-  async getUnitsByOwner(ownerId, session = null) {
-    return await Villa.find({
+  async getUnitsByOwner(ownerId, orgId = null, session = null) {
+    let effectiveOrgId = orgId;
+    let effectiveSession = session;
+    if (orgId && typeof orgId === 'object' && orgId.constructor && orgId.constructor.name === 'ClientSession') {
+      effectiveSession = orgId;
+      effectiveOrgId = null;
+    }
+
+    const query = {
       residents: {
         $elemMatch: {
           userId: ownerId,
           residencyType: { $in: ['Resident Owner', 'Non-Resident Owner'] }
         }
       }
-    }).session(session);
+    };
+    if (effectiveOrgId) {
+      query.orgId = effectiveOrgId;
+    }
+    return await Villa.find(query).session(effectiveSession);
   }
 
   async getUnitsByResidentUserIds(userIds, session = null) {

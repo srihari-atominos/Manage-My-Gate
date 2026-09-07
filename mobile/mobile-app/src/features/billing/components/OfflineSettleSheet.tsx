@@ -1,19 +1,23 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Alert, TouchableOpacity } from 'react-native';
+import { View, Alert, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Button } from '@/components/common/Button';
-import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { DatePicker } from '@/components/common/DatePicker';
 import { formatDateString } from '@/components/common/DatePickerModal';
 import { TextInput } from '@/components/forms/TextInput';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { AttachmentPicker, Attachment } from '@/components/ui/AttachmentPicker';
 import {
   Landmark,
+  Smartphone,
+  FileCheck,
+  Banknote,
+  Building2,
   FileText,
   Clock,
   AlertCircle,
@@ -22,15 +26,72 @@ import {
   CheckCircle2,
   Download,
   Printer,
+  Copy,
 } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
+import { billingService } from '../services/billingService';
 import { Invoice } from '../types';
 import { generateInvoiceHtml, exportInvoiceHtmlDocument } from '../utils/invoicePdfUtility';
+
+export type OfflinePaymentType = 'BANK_TRANSFER' | 'UPI' | 'CHEQUE' | 'CASH' | 'DEMAND_DRAFT';
+
+interface PaymentTypeOption {
+  key: OfflinePaymentType;
+  label: string;
+  sublabel: string;
+  icon: any;
+  refLabel: string;
+  refPlaceholder: string;
+}
+
+const OFFLINE_METHODS: PaymentTypeOption[] = [
+  {
+    key: 'BANK_TRANSFER',
+    label: 'Bank Transfer',
+    sublabel: 'NEFT / RTGS / IMPS',
+    icon: Landmark,
+    refLabel: 'UTR / Transaction Reference Number *',
+    refPlaceholder: 'e.g. UTR12345678 or IMPS-98124',
+  },
+  {
+    key: 'UPI',
+    label: 'UPI / QR',
+    sublabel: 'GPay, PhonePe, Paytm',
+    icon: Smartphone,
+    refLabel: 'UPI Ref / UTR (12 Digits) *',
+    refPlaceholder: 'e.g. 12-digit UPI Reference Number',
+  },
+  {
+    key: 'CHEQUE',
+    label: 'Cheque',
+    sublabel: 'Bank Cheque',
+    icon: FileCheck,
+    refLabel: 'Cheque Number & Bank Name *',
+    refPlaceholder: 'e.g. Chq #004521, HDFC Bank',
+  },
+  {
+    key: 'CASH',
+    label: 'Cash Deposit',
+    sublabel: 'Facility Office',
+    icon: Banknote,
+    refLabel: 'Receipt Number / Deposit Notes (Optional)',
+    refPlaceholder: 'e.g. Handed to Office Manager',
+  },
+  {
+    key: 'DEMAND_DRAFT',
+    label: 'Demand Draft',
+    sublabel: 'Bank DD',
+    icon: Building2,
+    refLabel: 'Demand Draft Number & Issuing Bank *',
+    refPlaceholder: 'e.g. DD #771234, SBI',
+  },
+];
 
 export interface OfflineSettleSheetProps {
   visible: boolean;
   onClose: () => void;
   invoice: Invoice | null;
+  initialAmount?: number;
   onSettlementSubmitted?: (result: any) => void;
   communityName?: string;
 }
@@ -39,18 +100,18 @@ export function OfflineSettleSheet({
   visible,
   onClose,
   invoice,
+  initialAmount,
   onSettlementSubmitted,
   communityName = 'Community Workspace',
 }: OfflineSettleSheetProps) {
   const router = useRouter();
   const { settleOffline, loadResidentDues, loadingStates, error, resetBillingError } = useBilling();
 
-  // Resident flow is strictly Bank Transfer
-  const paymentMethod = 'BANK_TRANSFER';
-  const [paymentMode, setPaymentMode] = useState<'FULL' | 'CUSTOM'>('FULL');
-  const [customAmountStr, setCustomAmountStr] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<OfflinePaymentType>('BANK_TRANSFER');
   const [offlineReference, setOfflineReference] = useState<string>('');
   const [paymentDateStr, setPaymentDateStr] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [payerNotes, setPayerNotes] = useState<string>('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -66,15 +127,16 @@ export function OfflineSettleSheet({
       ? (invoice as any).outstandingAmount
       : Math.max(0, totalDue - paidAmount);
 
+  // Use the pre-selected amount from the checkout flow (removing the redundant amount selection UI)
   const amountToSubmit = useMemo(() => {
-    if (paymentMode === 'FULL') return remainingDue;
-    const parsed = parseFloat(customAmountStr);
-    return isNaN(parsed) || parsed <= 0 ? 0 : parsed;
-  }, [paymentMode, customAmountStr, remainingDue]);
+    if (initialAmount !== undefined && initialAmount > 0) {
+      return Math.min(initialAmount, remainingDue > 0 ? remainingDue : initialAmount);
+    }
+    return remainingDue;
+  }, [initialAmount, remainingDue]);
 
   const remainingAfterPayment = Math.max(0, Math.round((remainingDue - amountToSubmit) * 100) / 100);
-  const isAmountTooHigh = amountToSubmit > remainingDue;
-  const isFormInvalid = isAmountTooHigh || amountToSubmit <= 0;
+  const isFormInvalid = amountToSubmit <= 0;
 
   // Invoice status guard
   const status = invoice?.status || 'UNPAID';
@@ -83,23 +145,27 @@ export function OfflineSettleSheet({
   const isCancelled = status === 'CANCELLED';
   const isSubmissionBlocked = isPaid || isPending || isCancelled || remainingDue <= 0;
 
+  const currentOption = useMemo(() => {
+    return OFFLINE_METHODS.find((m) => m.key === paymentMethod) || OFFLINE_METHODS[0];
+  }, [paymentMethod]);
+
   useEffect(() => {
     if (visible && invoice) {
-      setPaymentMode('FULL');
-      setCustomAmountStr('');
+      setPaymentMethod('BANK_TRANSFER');
       setOfflineReference('');
+      setPayerNotes('');
+      setAttachments([]);
       setPaymentDateStr(new Date().toISOString().slice(0, 10));
       setShowConfirmModal(false);
       setIsSubmitting(false);
       setSubmittedResult(null);
       resetBillingError();
     }
-  }, [visible, invoice, remainingDue, resetBillingError]);
+  }, [visible, invoice, resetBillingError]);
 
   if (!invoice) return null;
 
   const invNo = invoice.invoiceNumber || invoice._id || '—';
-  const unitStr = invoice.unitNumber ? `Villa ${invoice.unitNumber}` : 'Villa Unit';
   const residentStr = invoice.targetUser || (invoice as any)?.residentName || 'Resident';
 
   const handleOpenConfirm = () => {
@@ -115,9 +181,41 @@ export function OfflineSettleSheet({
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
 
+      const prefixMap: Record<OfflinePaymentType, string> = {
+        BANK_TRANSFER: 'BANK',
+        UPI: 'UPI',
+        CHEQUE: 'CHQ',
+        CASH: 'CASH',
+        DEMAND_DRAFT: 'DD',
+      };
+      const prefix = prefixMap[paymentMethod] || 'OFFLINE';
+
       let effectiveRef = offlineReference.trim();
       if (!effectiveRef) {
-        effectiveRef = `BANK-${dateStr}-${randomSuffix}`;
+        effectiveRef = `${prefix}-${dateStr}-${randomSuffix}`;
+      }
+
+      // Upload proof attachment if attached
+      let uploadedProofUrl: string | undefined;
+      if (attachments.length > 0) {
+        try {
+          const formData = new FormData();
+          const fileItem = attachments[0];
+          if (Platform.OS === 'web' && fileItem.file) {
+            formData.append('proof', fileItem.file);
+          } else {
+            formData.append('proof', {
+              uri: fileItem.uri,
+              name: fileItem.name || `proof_${Date.now()}.jpg`,
+              type: fileItem.type || 'image/jpeg',
+            } as any);
+          }
+          const uploadRes = await billingService.uploadProof(formData);
+          uploadedProofUrl = uploadRes?.url;
+        } catch (uploadErr) {
+          console.warn('[OfflineSettleSheet] Proof upload fallback to local URI:', uploadErr);
+          uploadedProofUrl = attachments[0].uri;
+        }
       }
 
       const result = await settleOffline(invoice._id, {
@@ -125,11 +223,22 @@ export function OfflineSettleSheet({
         offlineAmount: amountToSubmit,
         paymentMethod,
         paymentDate: paymentDateStr,
+        paymentScreenshot: uploadedProofUrl,
+        payerNotes: payerNotes.trim() || undefined,
       });
 
       setIsSubmitting(false);
       setShowConfirmModal(false);
-      setSubmittedResult(result || { ...invoice, offlineReference: effectiveRef, offlineAmount: amountToSubmit });
+      setSubmittedResult(
+        result || {
+          ...invoice,
+          offlineReference: effectiveRef,
+          offlineAmount: amountToSubmit,
+          paymentMethod,
+          paymentScreenshot: uploadedProofUrl,
+          payerNotes: payerNotes.trim() || undefined,
+        }
+      );
       await loadResidentDues();
       if (onSettlementSubmitted) onSettlementSubmitted(result);
     } catch (err: any) {
@@ -148,8 +257,8 @@ export function OfflineSettleSheet({
         paidAmount: (invoice.paidAmount || 0) + amountToSubmit,
         outstandingAmount: remainingAfterPayment,
         status: remainingAfterPayment === 0 ? 'PAID' : 'PARTIALLY_PAID',
-        paymentMethod: 'BANK_TRANSFER',
-        offlineReference: offlineReference.trim() || 'BANK-SUBMISSION',
+        paymentMethod,
+        offlineReference: offlineReference.trim() || 'OFFLINE-SUBMISSION',
       };
 
       const html = generateInvoiceHtml(targetInvoice, {
@@ -157,7 +266,7 @@ export function OfflineSettleSheet({
         residentName: residentStr,
       });
 
-      const filename = `Invoice_${invNo}_BankTransfer.html`;
+      const filename = `Invoice_${invNo}_${paymentMethod}.html`;
       await exportInvoiceHtmlDocument(html, filename, `Invoice Statement #${invNo}`, { action });
       setIsExportingPdf(false);
     } catch (pdfErr: any) {
@@ -178,9 +287,9 @@ export function OfflineSettleSheet({
       <BottomSheet
         visible={visible}
         onClose={onClose}
-        title={submittedResult ? `Request Submitted • #${invNo}` : `Bank Transfer • #${invNo}`}
+        title={submittedResult ? `Request Submitted • #${invNo}` : `Offline Settlement • #${invNo}`}
       >
-        <View className="py-2 pb-2">
+        <ScrollView showsVerticalScrollIndicator={false} className="py-2 pb-6">
           {/* Post Submission Success View */}
           {submittedResult ? (
             <View className="gap-4">
@@ -192,7 +301,7 @@ export function OfflineSettleSheet({
                   Payment Request Submitted!
                 </Text>
                 <Text className="text-xs text-muted-foreground text-center mt-1">
-                  Bank transfer of ₹{amountToSubmit.toLocaleString('en-IN')} (Ref: #{offlineReference || 'BANK-TRANSFER'}) submitted for verification.
+                  {currentOption.label} of ₹{amountToSubmit.toLocaleString('en-IN')} (Ref: #{offlineReference || 'OFFLINE-REQ'}) submitted for verification.
                 </Text>
                 <View className="mt-3 flex-row items-center gap-2">
                   <StatusBadge label="VERIFICATION PENDING" variant="warning" />
@@ -251,21 +360,8 @@ export function OfflineSettleSheet({
               </Button>
             </View>
           ) : (
-            // Bank Transfer Submission Form
-            <View className="gap-3">
-              {/* Verification Notice */}
-              <View className="bg-primary/10 border border-primary/20 rounded-xl p-3.5 flex-row items-start">
-                <Icon as={Clock} size={18} className="text-primary me-2.5 mt-0.5" />
-                <View className="flex-1">
-                  <Text className="text-xs font-bold text-foreground">
-                    Bank Transfer (NEFT / IMPS / UPI)
-                  </Text>
-                  <Text className="text-xs text-muted-foreground mt-0.5">
-                    Submit your bank transfer reference after transferring funds to the society account. Admin will verify and reconcile.
-                  </Text>
-                </View>
-              </View>
-
+            // Offline Payment Request Submission Form
+            <View className="gap-4">
               {/* Submission Blocked Guard */}
               {isSubmissionBlocked ? (
                 <View className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 flex-row items-center">
@@ -287,112 +383,84 @@ export function OfflineSettleSheet({
                 </View>
               ) : null}
 
-              {/* Section 1: Amount Selection (Full vs Custom) */}
-              <View className="gap-2">
-                <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  1. Amount to Pay
-                </Text>
-
-                {/* Option A: Full Amount */}
-                <TouchableOpacity
-                  onPress={() => setPaymentMode('FULL')}
-                  activeOpacity={0.8}
-                  className={`p-3 rounded-xl border flex-row items-center justify-between ${
-                    paymentMode === 'FULL'
-                      ? 'bg-primary/10 border-primary'
-                      : 'bg-card border-border'
-                  }`}
-                >
-                  <View className="flex-row items-center gap-3">
-                    <View
-                      className={`w-5 h-5 rounded-full border items-center justify-center ${
-                        paymentMode === 'FULL' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                      }`}
-                    >
-                      {paymentMode === 'FULL' ? <Check size={12} className="text-primary-foreground" /> : null}
-                    </View>
-                    <View>
-                      <Text className="font-bold text-sm text-foreground">Full Outstanding Due</Text>
-                      <Text className="text-xs text-muted-foreground">Clear entire remaining balance</Text>
-                    </View>
-                  </View>
-
-                  <Text className="text-base font-extrabold text-foreground">
-                    ₹{remainingDue.toLocaleString('en-IN')}
+              {/* 1. Settlement Amount Summary (Pre-selected from checkout; duplicate selection removed) */}
+              <View className="bg-muted/40 border border-border/60 rounded-xl p-3.5 flex-row items-center justify-between">
+                <View>
+                  <Text className="text-xs text-muted-foreground font-medium">Settlement Amount</Text>
+                  <Text className="text-xl font-extrabold text-primary">
+                    ₹{amountToSubmit.toLocaleString('en-IN')}
                   </Text>
-                </TouchableOpacity>
-
-                {/* Option B: Custom Amount */}
-                <TouchableOpacity
-                  onPress={() => setPaymentMode('CUSTOM')}
-                  activeOpacity={0.8}
-                  className={`p-3 rounded-xl border ${
-                    paymentMode === 'CUSTOM'
-                      ? 'bg-primary/10 border-primary'
-                      : 'bg-card border-border'
-                  }`}
-                >
-                  <View className="flex-row items-center gap-3 mb-1">
-                    <View
-                      className={`w-5 h-5 rounded-full border items-center justify-center ${
-                        paymentMode === 'CUSTOM' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                      }`}
-                    >
-                      {paymentMode === 'CUSTOM' ? <Check size={12} className="text-primary-foreground" /> : null}
-                    </View>
-                    <Text className="font-bold text-sm text-foreground">Custom Partial Amount</Text>
-                  </View>
-
-                  {paymentMode === 'CUSTOM' ? (
-                    <View className="mt-2 ps-8">
-                      <TextInput
-                        label="Enter Custom Amount (₹)"
-                        required
-                        value={customAmountStr}
-                        onChangeText={setCustomAmountStr}
-                        placeholder={`Max ₹${remainingDue.toLocaleString('en-IN')}`}
-                        keyboardType="numeric"
-                        inputClassName="font-bold text-base"
-                        error={
-                          isAmountTooHigh
-                            ? `Cannot exceed remaining dues of ₹${remainingDue.toLocaleString('en-IN')}`
-                            : undefined
-                        }
-                      />
-                    </View>
-                  ) : null}
-                </TouchableOpacity>
-
-                {/* Breakdown Preview */}
-                <View className="bg-muted/40 border border-border/60 rounded-xl p-3 flex-row items-center justify-between">
-                  <View>
-                    <Text className="text-xs text-muted-foreground">Paying Now</Text>
-                    <Text className="text-base font-extrabold text-primary">
-                      ₹{amountToSubmit.toLocaleString('en-IN')}
-                    </Text>
-                  </View>
-                  <View className="items-end">
-                    <Text className="text-xs text-muted-foreground">Remaining After Clearance</Text>
-                    <Text className="text-base font-bold text-foreground">
-                      ₹{remainingAfterPayment.toLocaleString('en-IN')}
-                    </Text>
-                  </View>
+                </View>
+                <View className="items-end">
+                  <Text className="text-xs text-muted-foreground font-medium">Remaining Liability</Text>
+                  <Text className="text-base font-bold text-foreground">
+                    ₹{remainingAfterPayment.toLocaleString('en-IN')}
+                  </Text>
                 </View>
               </View>
 
-              {/* Section 2: Transfer Details */}
+              {/* 2. Select Offline Payment Type */}
+              <View className="gap-2">
+                <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  1. Select Payment Method
+                </Text>
+                <View className="gap-2">
+                  {OFFLINE_METHODS.map((method) => {
+                    const isSelected = paymentMethod === method.key;
+                    const MethodIcon = method.icon;
+                    return (
+                      <TouchableOpacity
+                        key={method.key}
+                        onPress={() => setPaymentMethod(method.key)}
+                        activeOpacity={0.8}
+                        className={`p-3 rounded-xl border flex-row items-center justify-between ${
+                          isSelected ? 'bg-primary/10 border-primary' : 'bg-card border-border'
+                        }`}
+                      >
+                        <View className="flex-row items-center gap-3">
+                          <View
+                            className={`w-9 h-9 rounded-xl items-center justify-center ${
+                              isSelected ? 'bg-primary/20' : 'bg-muted'
+                            }`}
+                          >
+                            <Icon
+                              as={MethodIcon}
+                              size={18}
+                              className={isSelected ? 'text-primary' : 'text-muted-foreground'}
+                            />
+                          </View>
+                          <View>
+                            <Text className="font-bold text-sm text-foreground">{method.label}</Text>
+                            <Text className="text-xs text-muted-foreground">{method.sublabel}</Text>
+                          </View>
+                        </View>
+
+                        <View
+                          className={`w-5 h-5 rounded-full border items-center justify-center ${
+                            isSelected ? 'border-primary bg-primary' : 'border-muted-foreground'
+                          }`}
+                        >
+                          {isSelected ? <Check size={12} className="text-primary-foreground" /> : null}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* 3. Reference and Date Details */}
               <View className="gap-2.5">
                 <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  2. Transfer Reference Details
+                  2. Reference & Date Details
                 </Text>
 
                 <TextInput
-                  label="Payment Reference / UTR Number"
-                  required
+                  label={currentOption.refLabel}
+                  required={paymentMethod !== 'CASH'}
                   leftIcon={FileText}
                   value={offlineReference}
                   onChangeText={setOfflineReference}
-                  placeholder="e.g. UTR12345678 or IMPS-98124"
+                  placeholder={currentOption.refPlaceholder}
                 />
 
                 <DatePicker
@@ -400,6 +468,38 @@ export function OfflineSettleSheet({
                   value={paymentDateStr ? new Date(`${paymentDateStr}T00:00:00`) : new Date()}
                   onChange={(d) => setPaymentDateStr(formatDateString(d))}
                   placeholder="Select Payment Date"
+                />
+              </View>
+
+              {/* 4. Receipt / Proof Attachment */}
+              <View className="gap-1.5">
+                <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  3. Receipt / Document Proof
+                </Text>
+                <Text className="text-xs text-muted-foreground mb-1">
+                  Attach screenshot, bank transfer receipt, or cheque photo (Images or PDF)
+                </Text>
+                <AttachmentPicker
+                  attachments={attachments}
+                  onAdd={(newFiles) => setAttachments((prev) => [...prev, ...newFiles])}
+                  onRemove={(idx) => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                  maxFiles={1}
+                  accept="images-and-pdf"
+                />
+              </View>
+
+              {/* 5. Payer Remarks / Description */}
+              <View className="gap-1.5">
+                <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  4. Payer Description / Notes (Optional)
+                </Text>
+                <TextInput
+                  placeholder="Add any remarks for the approver (e.g. Paid from HDFC account ending 4012)..."
+                  value={payerNotes}
+                  onChangeText={setPayerNotes}
+                  multiline
+                  numberOfLines={3}
+                  inputClassName="min-h-[70px] text-start"
                 />
               </View>
 
@@ -413,20 +513,20 @@ export function OfflineSettleSheet({
                 onPress={handleOpenConfirm}
                 rightIcon={ChevronRight}
                 accessibilityRole="button"
-                accessibilityLabel={`Submit Bank Transfer payment for ₹${amountToSubmit.toLocaleString('en-IN')}`}
+                accessibilityLabel={`Submit ${currentOption.label} payment for ₹${amountToSubmit.toLocaleString('en-IN')}`}
               >
-                {`Submit Payment • ₹${amountToSubmit.toLocaleString('en-IN')}`}
+                {`Submit ${currentOption.label} • ₹${amountToSubmit.toLocaleString('en-IN')}`}
               </Button>
             </View>
           )}
-        </View>
+        </ScrollView>
       </BottomSheet>
 
       {/* Confirmation Modal */}
       <ConfirmationModal
         visible={showConfirmModal}
-        title="Submit Bank Transfer Request?"
-        message={`Are you sure you want to submit ₹${amountToSubmit.toLocaleString('en-IN')} via Bank Transfer (Ref: ${offlineReference || 'Self-Transfer'})? Your payment will be sent to Admin for verification.`}
+        title={`Submit ${currentOption.label} Request?`}
+        message={`Are you sure you want to submit ₹${amountToSubmit.toLocaleString('en-IN')} via ${currentOption.label} (Ref: ${offlineReference || 'Self-Submission'})? Your payment request will be sent to Admin for verification.`}
         confirmLabel="Confirm & Submit"
         cancelLabel="Cancel"
         variant="info"

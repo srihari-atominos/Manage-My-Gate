@@ -490,9 +490,9 @@ export class InvoiceService {
   }
 
   /**
-   * Settle payment with offline Bank Transfer.
+   * Settle payment with offline payment request.
    */
-  async logOfflinePayment(invoiceId, offlineReference, amount, paymentMethod = 'BANK_TRANSFER', paymentDate = null, paymentScreenshot = null) {
+  async logOfflinePayment(invoiceId, offlineReference, amount, paymentMethod = 'BANK_TRANSFER', paymentDate = null, paymentScreenshot = null, payerNotes = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info('logOfflinePayment called', { invoiceId, offlineReference, amount, paymentMethod, correlationId });
 
@@ -514,10 +514,17 @@ export class InvoiceService {
 
     // Check duplicate payment reference if reference is provided
     const effectiveMethod = (paymentMethod || 'BANK_TRANSFER').toUpperCase();
-    const isCash = effectiveMethod === 'CASH';
-    const effectiveRef = offlineReference || (isCash
-      ? `CASH-REQ-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`
-      : `BANK-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`);
+    const prefixMap = {
+      CASH: 'CASH',
+      CHEQUE: 'CHQ',
+      UPI: 'UPI',
+      DEMAND_DRAFT: 'DD',
+      NEFT: 'NEFT',
+      BANK_TRANSFER: 'BANK',
+    };
+    const prefix = prefixMap[effectiveMethod] || 'OFFLINE';
+
+    const effectiveRef = offlineReference || `${prefix}-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     if (offlineReference) {
       const duplicateRef = await Payment.findOne({ paymentReference: offlineReference, status: { $ne: 'REJECTED' } });
@@ -528,7 +535,7 @@ export class InvoiceService {
 
     const updatePayload = {
       offlineReference: effectiveRef,
-      paymentMethod: isCash ? 'CASH' : 'BANK_TRANSFER',
+      paymentMethod: effectiveMethod,
     };
     if (amount) {
       updatePayload.offlineAmount = amount;
@@ -538,6 +545,9 @@ export class InvoiceService {
     }
     if (paymentScreenshot) {
       updatePayload.paymentScreenshot = paymentScreenshot;
+    }
+    if (payerNotes) {
+      updatePayload.payerNotes = payerNotes;
     }
 
     const updated = await invoiceRepository.updateStatusWithLock(
@@ -566,10 +576,11 @@ export class InvoiceService {
         amount: amount || result.totalAmount,
         status: 'VERIFICATION_PENDING',
         paymentCategory: 'OFFLINE',
-        paymentMethod: isCash ? 'CASH' : 'BANK_TRANSFER',
+        paymentMethod: effectiveMethod,
         paymentReference: effectiveRef,
         paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
         proofDocument: paymentScreenshot || null,
+        payerNotes: payerNotes || null,
         gateway: 'offline',
         gatewayTransactionId: effectiveRef,
       });
@@ -582,8 +593,10 @@ export class InvoiceService {
       communityId: result.orgId || result.communityId,
       residentName: result.targetUserId ? `${result.targetUserId.firstName || ''} ${result.targetUserId.lastName || result.targetUserId.username || ''}`.trim() : 'Resident',
       reference: effectiveRef,
-      paymentMethod: isCash ? 'CASH' : 'BANK_TRANSFER',
-      amount: amount || result.totalAmount
+      paymentMethod: effectiveMethod,
+      amount: amount || result.totalAmount,
+      payerNotes: payerNotes || null,
+      paymentScreenshot: paymentScreenshot || null,
     });
 
     return result;
@@ -635,16 +648,24 @@ export class InvoiceService {
 
     const paymentMethod = (options?.paymentMethod || invoice.paymentMethod || 'BANK_TRANSFER').toUpperCase();
     const isCash = paymentMethod === 'CASH';
-    const offlineReference = options?.paymentReference || options?.reference || invoice.offlineReference || (isCash ? `CASH-${Date.now()}` : `BANK-${Date.now()}`);
+    const prefixMap = {
+      CASH: 'CASH',
+      CHEQUE: 'CHQ',
+      UPI: 'UPI',
+      DEMAND_DRAFT: 'DD',
+      NEFT: 'NEFT',
+      BANK_TRANSFER: 'BANK',
+    };
+    const methodPrefix = prefixMap[paymentMethod] || 'OFFLINE';
+    const offlineReference = options?.paymentReference || options?.reference || invoice.offlineReference || `${methodPrefix}-${Date.now()}`;
 
     const newOutstanding = Math.max(0, Math.round((remainingDue - amountToApply) * 100) / 100);
     const finalStatus = newOutstanding > 0 ? 'PARTIALLY_PAID' : 'PAID';
 
-    // Generate unique receipt number (CASH-YYYY-XXXXXX or BANK-YYYY-XXXXXX)
+    // Generate unique receipt number (METHOD-YYYY-XXXXXX)
     const yearStr = new Date().getFullYear();
     const randSeq = Math.floor(100000 + Math.random() * 900000);
-    const receiptPrefix = isCash ? 'CASH' : 'BANK';
-    const receiptNumber = `${receiptPrefix}-${yearStr}-${randSeq}`;
+    const receiptNumber = `${methodPrefix}-${yearStr}-${randSeq}`;
 
     const updated = await invoiceRepository.updateStatusWithLock(
       invoiceId,
@@ -689,25 +710,35 @@ export class InvoiceService {
           verifiedBy: adminUserId || null,
           verifiedAt: new Date(),
           processedBy: adminUserId || null,
-          gateway: 'offline'
+          gateway: 'offline',
         });
       }
     } catch (err) {
       logger.error('Failed to create/update Payment record during approval:', err);
     }
 
+    const methodLabels = {
+      CASH: 'Cash',
+      CHEQUE: 'Cheque',
+      UPI: 'UPI Transfer',
+      DEMAND_DRAFT: 'Demand Draft',
+      BANK_TRANSFER: 'Bank transfer',
+      NEFT: 'NEFT',
+    };
+    const methodLabel = methodLabels[paymentMethod] || paymentMethod;
+
     // Append to audit history
     try {
       await Invoice.findByIdAndUpdate(invoice._id, {
         $push: {
           auditHistory: {
-            action: isCash ? 'CASH_PAYMENT_VERIFIED' : 'BANK_TRANSFER_VERIFIED',
-            details: `${isCash ? 'Cash' : 'Bank transfer'} payment of ₹${amountToApply} approved (${finalStatus}). Receipt #${receiptNumber}. Remaining due: ₹${newOutstanding}`,
+            action: `${paymentMethod}_PAYMENT_VERIFIED`,
+            details: `${methodLabel} payment of ₹${amountToApply} approved (${finalStatus}). Receipt #${receiptNumber}. Remaining due: ₹${newOutstanding}`,
             performedBy: adminUserId,
             source: 'ADMIN_PANEL',
-            date: new Date()
-          }
-        }
+            date: new Date(),
+          },
+        },
       });
     } catch (auditErr) {
       logger.warn('Failed to append audit history for payment approval:', auditErr);
@@ -1032,14 +1063,16 @@ export class InvoiceService {
 
   /**
    * Fetch portfolio dues and compliance info for a persona.
+   * @param {object} userContext - Current authenticated user context
+   * @param {string} [communityId] - Optional Community / Organization ID to scope dues
    */
-  async getUserDuesOverview(userContext) {
+  async getUserDuesOverview(userContext, communityId = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
     const resolvedUserId = userContext.id || userContext._id;
-    logger.info('getUserDuesOverview called', { userId: resolvedUserId, correlationId });
+    logger.info('getUserDuesOverview called', { userId: resolvedUserId, communityId, correlationId });
 
-    const personalDues = await invoiceRepository.getUserPortfolioDues(resolvedUserId);
-    const recentInvoices = await invoiceRepository.getUserRecentInvoices(resolvedUserId);
+    const personalDues = await invoiceRepository.getUserPortfolioDues(resolvedUserId, communityId);
+    const recentInvoices = await invoiceRepository.getUserRecentInvoices(resolvedUserId, communityId);
 
     const secondaryCompliance = [];
 
@@ -1055,8 +1088,8 @@ export class InvoiceService {
     }
 
     if (isOwner) {
-      // Find units owned by this user
-      const ownedUnits = await villaService.getUnitsByOwner(resolvedUserId);
+      // Find units owned by this user (scoped to communityId if provided)
+      const ownedUnits = await villaService.getUnitsByOwner(resolvedUserId, communityId);
       
       for (const unit of ownedUnits) {
         // Find if occupied by tenant
@@ -1070,12 +1103,16 @@ export class InvoiceService {
             logger.warn(`Tenant details not resolved for user ${tenant.userId}`);
           }
 
-          // Fetch outstanding unpaid tenant invoices for this unit
-          const tenantInvoices = await Invoice.find({
+          // Fetch outstanding unpaid tenant invoices for this unit (scoped to communityId if provided)
+          const tenantInvoiceQuery = {
             unitId: unit._id,
             targetUserId: tenant.userId,
             status: { $in: ['UNPAID', 'VERIFICATION_PENDING'] },
-          });
+          };
+          if (communityId) {
+            tenantInvoiceQuery.communityId = communityId;
+          }
+          const tenantInvoices = await Invoice.find(tenantInvoiceQuery);
 
           for (const inv of tenantInvoices) {
             secondaryCompliance.push({

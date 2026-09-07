@@ -404,6 +404,7 @@ export function ResidentMyDuesScreen() {
         <OfflineSettleSheet
           visible={!!offlineInvoice}
           invoice={offlineInvoice}
+          initialAmount={(offlineInvoice as any)?.outstandingAmount ?? offlineInvoice?.totalDue}
           onClose={() => setOfflineInvoice(null)}
           onSettlementSubmitted={(result) => {
             loadResidentDues();

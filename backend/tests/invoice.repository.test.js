@@ -61,7 +61,10 @@ describe('Invoice Repository Tests', () => {
         grossDemandCount: 3,
         totalCollected: 11909,
         inTransitGateway: 0,
-        totalUnpaidArrears: 0
+        totalUnpaidArrears: 0,
+        pendingOffline: 0,
+        pendingOfflineAmount: 0,
+        pendingOfflineCount: 0,
       });
     });
   });

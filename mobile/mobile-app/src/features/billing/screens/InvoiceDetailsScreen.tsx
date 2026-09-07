@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, ScrollView, RefreshControl, Share } from 'react-native';
+import { View, ScrollView, RefreshControl, Share, TouchableOpacity, Image as RNImage, Modal, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -25,6 +25,13 @@ import {
   Share2,
   FileText,
   QrCode,
+  Banknote,
+  Landmark,
+  CreditCard,
+  FileSpreadsheet,
+  ExternalLink,
+  Eye,
+  X,
 } from 'lucide-react-native';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { useBilling } from '../hooks/useBilling';
@@ -32,8 +39,80 @@ import { useBillingSocket } from '../hooks/useBillingSocket';
 import { billingService } from '../services/billingService';
 import { InvoiceStatus, Invoice } from '../types';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
+import { OfflineSettleSheet } from '../components/OfflineSettleSheet';
 import { InvoiceQRModal } from '../components/InvoiceQRModal';
 import { generateInvoiceHtml, exportInvoiceHtmlDocument } from '../utils/invoicePdfUtility';
+import { getImageUrl } from '@/src/utils/imageUrl';
+
+const getMethodMeta = (method?: string) => {
+  const m = (method || 'BANK_TRANSFER').toUpperCase();
+  switch (m) {
+    case 'CHEQUE':
+      return {
+        label: 'Cheque Payment',
+        icon: FileSpreadsheet,
+        badgeBg: 'bg-blue-500/10 border-blue-500/30',
+        textColor: 'text-blue-900 dark:text-blue-200',
+        subTextColor: 'text-blue-800 dark:text-blue-300',
+        iconColor: 'text-blue-600 dark:text-blue-400',
+        refLabel: 'Cheque #',
+      };
+    case 'UPI':
+      return {
+        label: 'UPI / QR Payment',
+        icon: QrCode,
+        badgeBg: 'bg-purple-500/10 border-purple-500/30',
+        textColor: 'text-purple-900 dark:text-purple-200',
+        subTextColor: 'text-purple-800 dark:text-purple-300',
+        iconColor: 'text-purple-600 dark:text-purple-400',
+        refLabel: 'UPI / UTR Ref',
+      };
+    case 'DEMAND_DRAFT':
+      return {
+        label: 'Demand Draft (DD)',
+        icon: CreditCard,
+        badgeBg: 'bg-indigo-500/10 border-indigo-500/30',
+        textColor: 'text-indigo-900 dark:text-indigo-200',
+        subTextColor: 'text-indigo-800 dark:text-indigo-300',
+        iconColor: 'text-indigo-600 dark:text-indigo-400',
+        refLabel: 'DD Number',
+      };
+    case 'CASH':
+      return {
+        label: 'Cash Payment',
+        icon: Banknote,
+        badgeBg: 'bg-emerald-500/10 border-emerald-500/30',
+        textColor: 'text-emerald-900 dark:text-emerald-200',
+        subTextColor: 'text-emerald-800 dark:text-emerald-300',
+        iconColor: 'text-emerald-600 dark:text-emerald-400',
+        refLabel: 'Cash Receipt Ref',
+      };
+    case 'BANK_TRANSFER':
+    case 'NEFT':
+    default:
+      return {
+        label: 'Bank Transfer (NEFT/IMPS)',
+        icon: Landmark,
+        badgeBg: 'bg-amber-500/10 border-amber-500/30',
+        textColor: 'text-amber-900 dark:text-amber-200',
+        subTextColor: 'text-amber-800 dark:text-amber-300',
+        iconColor: 'text-amber-600 dark:text-amber-400',
+        refLabel: 'Transaction Reference (UTR)',
+      };
+  }
+};
+
+const isImageProof = (url?: string | null) => {
+  if (!url) return false;
+  const clean = url.split('?')[0].toLowerCase();
+  return (
+    clean.endsWith('.jpg') ||
+    clean.endsWith('.jpeg') ||
+    clean.endsWith('.png') ||
+    clean.endsWith('.webp') ||
+    clean.endsWith('.gif')
+  );
+};
 
 export function InvoiceDetailsScreen() {
   const router = useRouter();
@@ -41,6 +120,9 @@ export function InvoiceDetailsScreen() {
   const invoiceId = params?.id || '';
 
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showOfflineSheet, setShowOfflineSheet] = useState(false);
+  const [offlineAmount, setOfflineAmount] = useState<number | undefined>(undefined);
+  const [previewProofUrl, setPreviewProofUrl] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [fallbackInvoice, setFallbackInvoice] = useState<Invoice | null>(null);
@@ -228,6 +310,7 @@ export function InvoiceDetailsScreen() {
   const isPendingVerification = status === 'VERIFICATION_PENDING';
   const isCancelled = status === 'CANCELLED';
   const isPartial = status === 'PARTIALLY_PAID' || (paidAmount > 0 && remainingDue > 0);
+  const methodMeta = getMethodMeta(invoice?.paymentMethod);
 
   // Payment progress percentage
   const paidPercentage =
@@ -380,17 +463,92 @@ export function InvoiceDetailsScreen() {
 
             {/* Verification Pending Info Banner */}
             {isPendingVerification ? (
-              <View className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex-row items-start">
-                <Icon as={Clock} size={20} className="text-amber-500 me-3 mt-0.5" />
+              <View className={`border rounded-xl p-4 flex-row items-start ${methodMeta.badgeBg}`}>
+                <Icon as={methodMeta.icon} size={20} className={`me-3 mt-0.5 ${methodMeta.iconColor}`} />
                 <View className="flex-1">
-                  <Text className="text-sm font-bold text-foreground">
-                    Payment Verification Pending
+                  <Text className={`text-sm font-bold ${methodMeta.textColor}`}>
+                    {`${methodMeta.label} Verification Pending`}
                   </Text>
-                  <Text className="text-xs text-muted-foreground mt-1">
-                    Your offline payment reference has been submitted. The admin team is currently verifying the receipt.
+                  <Text className={`text-xs mt-1 ${methodMeta.subTextColor}`}>
+                    Your offline payment reference (#{invoice?.offlineReference || '—'}) has been submitted. The admin team is currently verifying the receipt and clearing the dues.
                   </Text>
                 </View>
               </View>
+            ) : null}
+
+            {/* Offline Submission Details (Proof & Remarks) */}
+            {(invoice?.payerNotes || invoice?.paymentScreenshot || (isPendingVerification && invoice?.offlineReference)) ? (
+              <DetailSection title="Offline Payment Submission Details">
+                {invoice?.paymentMethod ? (
+                  <DetailRow label="Payment Method" value={methodMeta.label} />
+                ) : null}
+                {invoice?.offlineReference ? (
+                  <DetailRow label={methodMeta.refLabel} value={invoice.offlineReference} copyable />
+                ) : null}
+                {(invoice as any)?.offlineAmount ? (
+                  <DetailRow label="Submitted Amount" value={`₹${Number((invoice as any).offlineAmount).toLocaleString('en-IN')}`} />
+                ) : null}
+                {invoice?.payerNotes ? (
+                  <DetailRow label="Payer Remarks / Description" value={invoice.payerNotes} />
+                ) : null}
+                {invoice?.paymentScreenshot ? (
+                  <View className="py-2">
+                    <View className="flex-row items-center justify-between mb-2">
+                      <Text className="text-xs font-semibold text-muted-foreground">Proof of Payment</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          const fullUrl = getImageUrl(invoice.paymentScreenshot);
+                          if (isImageProof(invoice.paymentScreenshot)) {
+                            setPreviewProofUrl(fullUrl);
+                          } else {
+                            Linking.openURL(fullUrl);
+                          }
+                        }}
+                        className="flex-row items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-md"
+                      >
+                        <Icon as={isImageProof(invoice.paymentScreenshot) ? Eye : ExternalLink} size={13} className="text-primary" />
+                        <Text className="text-xs font-bold text-primary">
+                          {isImageProof(invoice.paymentScreenshot) ? 'Preview Proof' : 'Open Document'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {isImageProof(invoice.paymentScreenshot) ? (
+                      <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => setPreviewProofUrl(getImageUrl(invoice.paymentScreenshot))}
+                        className="rounded-lg overflow-hidden border border-border/70 bg-muted/40 items-center justify-center h-44"
+                      >
+                        <RNImage
+                          source={{ uri: getImageUrl(invoice.paymentScreenshot) }}
+                          className="w-full h-full"
+                          resizeMode="cover"
+                        />
+                        <View className="absolute bottom-2 right-2 bg-black/70 px-2.5 py-1 rounded-md flex-row items-center gap-1">
+                          <Icon as={Eye} size={12} color="#ffffff" />
+                          <Text className="text-white text-[10px] font-bold">Tap to Zoom</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => Linking.openURL(getImageUrl(invoice.paymentScreenshot))}
+                        className="flex-row items-center gap-3 p-3 bg-muted/40 rounded-lg border border-border/70"
+                      >
+                        <View className="w-10 h-10 rounded-lg bg-primary/10 items-center justify-center">
+                          <Icon as={FileText} size={20} className="text-primary" />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-xs font-bold text-foreground" numberOfLines={1}>
+                            {invoice.paymentScreenshot.split('/').pop() || 'Proof_Document.pdf'}
+                          </Text>
+                          <Text className="text-[10px] text-muted-foreground">Attached Document • Tap to Open</Text>
+                        </View>
+                        <Icon as={ExternalLink} size={16} className="text-muted-foreground" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ) : null}
+              </DetailSection>
             ) : null}
 
             {/* Itemized Financial Charge Breakdown Section */}
@@ -441,11 +599,11 @@ export function InvoiceDetailsScreen() {
               <DetailRow label="Billing Cycle" value={periodStr} />
               <DetailRow label="Payment Status" value={statusLabel} />
               {invoice?.paymentMethod ? (
-                <DetailRow label="Payment Method" value={invoice.paymentMethod} />
+                <DetailRow label="Payment Method" value={methodMeta.label} />
               ) : null}
               {invoice?.offlineReference ? (
                 <DetailRow
-                  label="Offline Cheque / Ref #"
+                  label={methodMeta.refLabel}
                   value={invoice.offlineReference}
                   copyable
                 />
@@ -476,7 +634,26 @@ export function InvoiceDetailsScreen() {
           visible={showCheckout}
           onClose={() => setShowCheckout(false)}
           invoice={invoice}
+          onOpenOfflineSheet={(inv, amount) => {
+            setShowCheckout(false);
+            setOfflineAmount(amount);
+            setShowOfflineSheet(true);
+          }}
           onPaymentSuccess={() => {
+            loadResidentDues();
+            if (invoiceId) {
+              billingService.getInvoiceById(invoiceId).then(setFallbackInvoice).catch(() => {});
+            }
+          }}
+        />
+
+        {/* Offline Settlement Modal Sheet */}
+        <OfflineSettleSheet
+          visible={showOfflineSheet}
+          invoice={invoice}
+          initialAmount={offlineAmount || remainingDue}
+          onClose={() => setShowOfflineSheet(false)}
+          onSettlementSubmitted={() => {
             loadResidentDues();
             if (invoiceId) {
               billingService.getInvoiceById(invoiceId).then(setFallbackInvoice).catch(() => {});
@@ -490,6 +667,38 @@ export function InvoiceDetailsScreen() {
           invoice={invoice}
           onClose={() => setShowQR(false)}
         />
+
+        {/* Fullscreen Proof Preview Modal */}
+        <Modal visible={!!previewProofUrl} transparent animationType="fade">
+          <View className="flex-1 bg-black/90 items-center justify-center p-4">
+            <View className="absolute top-12 left-6 right-6 flex-row justify-between items-center z-10">
+              <TouchableOpacity
+                onPress={() => {
+                  if (previewProofUrl) Linking.openURL(previewProofUrl);
+                }}
+                className="flex-row items-center gap-1 bg-white/20 px-3 py-2 rounded-full"
+              >
+                <Icon as={ExternalLink} size={16} color="#ffffff" />
+                <Text className="text-white text-xs font-bold">Open Original</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setPreviewProofUrl(null)}
+                className="p-2 rounded-full bg-white/20"
+              >
+                <Icon as={X} size={22} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+
+            {previewProofUrl ? (
+              <RNImage
+                source={{ uri: previewProofUrl }}
+                className="w-full h-4/5"
+                resizeMode="contain"
+              />
+            ) : null}
+          </View>
+        </Modal>
       </View>
     </ScreenShell>
   );
