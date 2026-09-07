@@ -8,21 +8,24 @@ import {
   CButton,
   CFormCheck,
   CSpinner,
+  CAlert,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilCreditCard } from '@coreui/icons'
 import useWalletPayment from '../../hooks/useWalletPayment.js'
 
 export const WalletRechargeModal = memo(
-  ({ isOpen, onClose, walletBalance, onSuccess, onFailure, user }) => {
+  ({ isOpen, onClose, walletBalance, isPaymentGatewayConfigured = true, onSuccess, onFailure, user }) => {
     const { t } = useTranslation()
     const [amount, setAmount] = useState('1000')
     const [paymentMethod, setPaymentMethod] = useState('RAZORPAY')
     const { rechargeWallet, loading } = useWalletPayment()
+    const isGatewayReady = isPaymentGatewayConfigured !== false
 
     const presetAmounts = [500, 1000, 2000, 5000]
 
     const handleCheckoutSubmit = async () => {
+      if (!isGatewayReady) return
       const numericAmount = Number(amount)
       if (!numericAmount || isNaN(numericAmount) || numericAmount <= 0) return
 
@@ -58,6 +61,16 @@ export const WalletRechargeModal = memo(
             </div>
           ) : (
             <div>
+              {!isGatewayReady && (
+                <CAlert color="warning" className="mb-3 text-start small">
+                  <strong>{t('wallet.recharge.unavailableTitle', 'Online Recharge Unavailable:')}</strong>{' '}
+                  {t(
+                    'wallet.recharge.unavailableDesc',
+                    'The community administration has not connected an online payment gateway. Please contact management for manual or offline top-up.',
+                  )}
+                </CAlert>
+              )}
+
               {/* Recharge Summary Card */}
               <div className="p-3 mb-4 rounded border bg-light text-start">
                 <div className="d-flex justify-content-between align-items-center mb-2">
@@ -173,11 +186,12 @@ export const WalletRechargeModal = memo(
                 <CButton
                   color="primary"
                   onClick={handleCheckoutSubmit}
-                  disabled={loading || !amount || Number(amount) <= 0}
+                  disabled={loading || !isGatewayReady || !amount || Number(amount) <= 0}
                   className="px-4"
                 >
-                  {t('wallet.recharge.payBtn', 'Confirm & Pay ₹')}
-                  {displayAmount.toLocaleString('en-IN')}
+                  {isGatewayReady
+                    ? `${t('wallet.recharge.payBtn', 'Confirm & Pay ₹')}${displayAmount.toLocaleString('en-IN')}`
+                    : t('wallet.recharge.gatewayNotConfigured', 'Gateway Not Configured')}
                 </CButton>
               </div>
             </div>

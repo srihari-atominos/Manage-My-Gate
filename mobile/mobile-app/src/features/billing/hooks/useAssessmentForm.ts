@@ -517,7 +517,12 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
   }, []);
 
   const handleTieredRate = useCallback((key: keyof typeof tieredRates, val: string) => {
-    setTieredRates((prev) => ({ ...prev, [key]: val }));
+    let cleaned = val.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+    setTieredRates((prev) => ({ ...prev, [key]: cleaned }));
   }, []);
 
   const handleScopeTypeChange = useCallback((val: string) => {
@@ -591,6 +596,14 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
       // Filter targetRoleIds to ensure only valid Mongo ObjectIds are sent
       const validTargetRoleIds = checkedRoles.filter((id) => /^[0-9a-fA-F]{24}$/.test(id));
 
+      const hasTenantRole = checkedRoles.some((id) =>
+        (roleNamesMap[id] || '').toLowerCase().includes('tenant')
+      );
+      const hasOwnerRole = checkedRoles.some((id) =>
+        (roleNamesMap[id] || '').toLowerCase().includes('owner')
+      );
+      const targetRole = hasTenantRole && hasOwnerRole ? 'BOTH' : hasTenantRole ? 'TENANT' : 'OWNER';
+
       const payload: Record<string, any> = {
         communityId: effectiveCommunityId,
         name: name.trim(),
@@ -617,22 +630,23 @@ export const useAssessmentForm = ({ communityId, assessment = null }: UseAssessm
             scopeType === 'ALL_COMMUNITY'
               ? []
               : selectedIds.filter((id) => /^[0-9a-fA-F]{24}$/.test(id)),
+          targetRole,
           targetRoleIds: validTargetRoleIds,
         },
         calculationMethod: {
           type: calcMethod,
-          flatAmount: calcMethod === 'FLAT_RATE' ? Number(flatAmount || 0) : 0,
-          ratePerSqFt: calcMethod === 'PER_SQ_FT' ? Number(ratePerSqFt || 0) : 0,
+          flatAmount: calcMethod === 'FLAT_RATE' ? Math.max(0, parseFloat(flatAmount) || 0) : 0,
+          ratePerSqFt: calcMethod === 'PER_SQ_FT' ? Math.max(0, parseFloat(ratePerSqFt) || 0) : 0,
           tieredRates:
             calcMethod === 'TIERED_BHK'
               ? {
-                  studio: Number(tieredRates.studio || 0),
-                  bhk1: Number(tieredRates.bhk1 || 0),
-                  bhk2: Number(tieredRates.bhk2 || 0),
-                  bhk3: Number(tieredRates.bhk3 || 0),
-                  bhk4: Number(tieredRates.bhk4 || 0),
-                  penthouse: Number(tieredRates.penthouse || 0),
-                  duplex: Number(tieredRates.duplex || 0),
+                  studio: Math.max(0, parseFloat(tieredRates.studio) || 0),
+                  bhk1: Math.max(0, parseFloat(tieredRates.bhk1) || 0),
+                  bhk2: Math.max(0, parseFloat(tieredRates.bhk2) || 0),
+                  bhk3: Math.max(0, parseFloat(tieredRates.bhk3) || 0),
+                  bhk4: Math.max(0, parseFloat(tieredRates.bhk4) || 0),
+                  penthouse: Math.max(0, parseFloat(tieredRates.penthouse) || 0),
+                  duplex: Math.max(0, parseFloat(tieredRates.duplex) || 0),
                 }
               : undefined,
         },

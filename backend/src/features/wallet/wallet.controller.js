@@ -65,7 +65,8 @@ export const createOrder = async (req, res, next) => {
   try {
     const { amount } = req.body;
     const userId = req.user.id || req.user._id;
-    const order = await walletService.createRechargeOrder(userId, amount);
+    const orgId = req.user?.orgId || req.user?.communityId || req.tenant?.orgId || req.headers['x-organization-id'];
+    const order = await walletService.createRechargeOrder(userId, orgId, amount);
     res.status(200).json({ success: true, data: order });
   } catch (error) {
     next(error);

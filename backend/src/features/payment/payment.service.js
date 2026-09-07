@@ -385,6 +385,45 @@ export class PaymentService {
       return null;
     }
   }
+
+  /**
+   * Check if payment gateway is actively configured for an organization
+   */
+  async isGatewayConfigured(orgId, gateway = 'razorpay') {
+    const configuredProvider = (process.env.PAYMENT_PROVIDER || 'mock').toLowerCase();
+    if (configuredProvider === 'mock') {
+      return { isConfigured: true, provider: 'mock', isMock: true };
+    }
+
+    try {
+      let credentials = {};
+      const platformOrgId = process.env.PLATFORM_ORG_ID;
+      if (platformOrgId) {
+        credentials = await integrationHubService.getDecryptedCredentials(platformOrgId, gateway);
+      } else {
+        const globalConn = await integrationHubService.getGlobalConnectionByProvider(gateway);
+        if (globalConn) {
+          credentials = await integrationHubService.getDecryptedCredentialsById(globalConn._id);
+        } else if (orgId) {
+          credentials = await integrationHubService.getDecryptedCredentials(orgId, gateway);
+        }
+      }
+
+      const keyId = credentials?.keyId || credentials?.key_id || process.env.RAZORPAY_KEY_ID;
+      const keySecret = credentials?.keySecret || credentials?.key_secret || process.env.RAZORPAY_KEY_SECRET;
+      const isRealKey = !!(keyId && keySecret && (keyId.startsWith('rzp_test_') || keyId.startsWith('rzp_live_')));
+
+      return {
+        isConfigured: isRealKey,
+        provider: gateway,
+        isMock: false,
+        keyId: isRealKey ? keyId : null
+      };
+    } catch (err) {
+      logger.warn('Failed to check gateway configuration status', { error: err.message });
+      return { isConfigured: false, provider: gateway, isMock: false };
+    }
+  }
 }
 
 export default new PaymentService();

@@ -258,7 +258,6 @@ export class InvoiceRepository {
       throw new HttpError(409, 'Invoice is already paid and cannot be updated');
     }
 
-    invoice.status = newStatus;
     if (newStatus === 'PAID' || newStatus === 'PARTIALLY_PAID') {
       invoice.paid_at = paymentData.paid_at || new Date();
       invoice.settled_at = paymentData.settled_at || null;
@@ -279,16 +278,27 @@ export class InvoiceRepository {
       invoice.paidAmount = (invoice.paidAmount || 0) + applyAmount;
       invoice.outstandingAmount = Math.max(0, Math.round(((invoice.totalAmount || 0) - invoice.paidAmount) * 100) / 100);
       
+      if (invoice.outstandingAmount > 0.01) {
+        invoice.status = 'PARTIALLY_PAID';
+      } else {
+        invoice.status = 'PAID';
+        invoice.outstandingAmount = 0;
+      }
+
       // Reset offline amount since it has been processed
       invoice.offlineAmount = 0;
     } else if (newStatus === 'CANCELLED') {
+      invoice.status = newStatus;
       invoice.paid_at = null;
       invoice.settled_at = null;
       invoice.paymentMethod = null;
       invoice.offlineReference = null;
     } else if (newStatus === 'VERIFICATION_PENDING') {
+      invoice.status = newStatus;
       if (paymentData.offlineReference !== undefined) invoice.offlineReference = paymentData.offlineReference;
       if (paymentData.offlineAmount !== undefined) invoice.offlineAmount = paymentData.offlineAmount;
+    } else {
+      invoice.status = newStatus;
     }
 
     return await invoice.save(session ? { session } : undefined);

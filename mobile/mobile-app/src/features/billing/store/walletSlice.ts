@@ -52,6 +52,7 @@ const initialState: WalletState = {
   balance: 0,
   activePasses: [],
   transactionHistory: [],
+  isPaymentGatewayConfigured: true,
   isLoading: false,
   error: null,
 };
@@ -88,6 +89,9 @@ export const walletSlice = createSlice({
               : state.balance;
           state.activePasses = action.payload.activePasses || state.activePasses;
           state.transactionHistory = action.payload.transactionHistory || state.transactionHistory;
+          if (action.payload.isPaymentGatewayConfigured !== undefined) {
+            state.isPaymentGatewayConfigured = action.payload.isPaymentGatewayConfigured;
+          }
         }
       })
       .addCase(fetchWalletBalance.rejected, (state, action) => {

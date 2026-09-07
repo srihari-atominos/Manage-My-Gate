@@ -160,17 +160,56 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
 
     // Step 3 Validation
     if (currentStepIndex === 2) {
+      const isPositiveNumeric = (val: string) => /^\d+(\.\d+)?$/.test(val.trim());
+
       if (calcMethod === 'FLAT_RATE') {
+        if (!flatAmount || !isPositiveNumeric(flatAmount)) {
+          setFormError('Please enter a valid numeric flat amount greater than 0 (words and letters are not allowed).');
+          return;
+        }
         const num = Number(flatAmount);
-        if (isNaN(num) || num <= 0) {
+        if (num <= 0) {
           setFormError('Please enter a valid flat amount greater than 0.');
           return;
         }
       }
+
       if (calcMethod === 'PER_SQ_FT') {
+        if (!ratePerSqFt || !isPositiveNumeric(ratePerSqFt)) {
+          setFormError('Please enter a valid numeric rate per square foot greater than 0 (words and letters are not allowed).');
+          return;
+        }
         const num = Number(ratePerSqFt);
-        if (isNaN(num) || num <= 0) {
+        if (num <= 0) {
           setFormError('Please enter a valid rate per square foot greater than 0.');
+          return;
+        }
+      }
+
+      if (calcMethod === 'TIERED_BHK') {
+        const entries = Object.entries(tieredRates || {});
+        let hasAtLeastOnePositiveRate = false;
+
+        for (const [field, rateStr] of entries) {
+          const str = String(rateStr || '').trim();
+          if (str) {
+            if (!isPositiveNumeric(str)) {
+              setFormError(`Invalid rate entered for layout "${field}": only numbers are allowed (words and letters are not permitted).`);
+              return;
+            }
+            const val = Number(str);
+            if (val < 0) {
+              setFormError(`Rate for layout "${field}" cannot be negative.`);
+              return;
+            }
+            if (val > 0) {
+              hasAtLeastOnePositiveRate = true;
+            }
+          }
+        }
+
+        if (!hasAtLeastOnePositiveRate) {
+          setFormError('Please enter a valid fee amount greater than 0 for at least one building layout type.');
           return;
         }
       }

@@ -96,8 +96,10 @@ const paymentSchema = new mongoose.Schema({
   },
   receiptNumber: {
     type: String,
-    default: null,
-    index: { unique: true, sparse: true }
+    index: {
+      unique: true,
+      partialFilterExpression: { receiptNumber: { $type: 'string' } }
+    }
   },
   rejectionReason: {
     type: String,
@@ -110,8 +112,10 @@ const paymentSchema = new mongoose.Schema({
   },
   gatewayTransactionId: {
     type: String,
-    default: null,
-    index: { unique: true, sparse: true }
+    index: {
+      unique: true,
+      partialFilterExpression: { gatewayTransactionId: { $type: 'string' } }
+    }
   },
   paymentMethod: {
     type: String,
