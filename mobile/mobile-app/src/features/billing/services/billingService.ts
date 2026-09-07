@@ -208,12 +208,14 @@ export const billingService = {
   async verifyWalletPayment(paymentData: any): Promise<any> {
     const formattedPayload = {
       ...paymentData,
+      paymentId: paymentData?.paymentId || paymentData?.payment_id,
+      payment_id: paymentData?.paymentId || paymentData?.payment_id,
       amount: paymentData?.amount,
       razorpay_order_id: paymentData?.razorpay_order_id || paymentData?.razorpayOrderId || paymentData?.orderId,
-      razorpay_payment_id: paymentData?.razorpay_payment_id || paymentData?.razorpayPaymentId || paymentData?.paymentId,
+      razorpay_payment_id: paymentData?.razorpay_payment_id || paymentData?.razorpayPaymentId,
       razorpay_signature: paymentData?.razorpay_signature || paymentData?.razorpaySignature,
       razorpayOrderId: paymentData?.razorpay_order_id || paymentData?.razorpayOrderId || paymentData?.orderId,
-      razorpayPaymentId: paymentData?.razorpay_payment_id || paymentData?.razorpayPaymentId || paymentData?.paymentId,
+      razorpayPaymentId: paymentData?.razorpay_payment_id || paymentData?.razorpayPaymentId,
       razorpaySignature: paymentData?.razorpay_signature || paymentData?.razorpaySignature,
     };
     const response: any = await apiClient.post('/wallet/verify-payment', formattedPayload);

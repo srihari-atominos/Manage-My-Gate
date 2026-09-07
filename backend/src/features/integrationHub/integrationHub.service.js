@@ -253,11 +253,29 @@ export class IntegrationHubService {
   }
 
   /**
+   * Check whether a provider has been configured and connected by the community admin for this organization.
+   * @param {string} orgId - Organization ID
+   * @param {string} [provider='razorpay'] - Provider key
+   * @returns {Promise<boolean>}
+   */
+  async isProviderConfigured(orgId, provider = 'razorpay') {
+    if (!orgId) return false;
+    const connection = await integrationHubRepository.findConnectionByOrgAndProvider(orgId, provider);
+    if (!connection || connection.status !== 'connected' || !Array.isArray(connection.credentials)) {
+      return false;
+    }
+    const credKeys = connection.credentials.map((c) => c.key);
+    const hasKeyId = credKeys.includes('keyId') || credKeys.includes('key_id');
+    const hasKeySecret = credKeys.includes('keySecret') || credKeys.includes('key_secret');
+    return hasKeyId && hasKeySecret;
+  }
+
+  /**
    * Retrieve and decrypt credentials for an organization by provider key.
    * Strictly for internal cross-feature use by payment and other services.
    * @param {string} orgId - Organization ID
    * @param {string} [provider='razorpay'] - Provider key
-   * @returns {Promise<object>} Raw decrypted credentials key-value object
+   * @returns {Promise<object>} Raw decrypted credentials key-value object with isConfigured flag
    */
   async getDecryptedCredentials(orgId, provider = 'razorpay') {
     if (!orgId) {
@@ -266,8 +284,9 @@ export class IntegrationHubService {
 
     const connection = await integrationHubRepository.findConnectionByOrgAndProvider(orgId, provider);
     let decryptedCredentials = {};
+    let isConfigured = false;
 
-    if (connection && connection.credentials) {
+    if (connection && connection.status === 'connected' && connection.credentials) {
       for (const cred of connection.credentials) {
         if (cred.authTag) {
           decryptedCredentials[cred.key] = decryptGCM(cred.encryptedValue, cred.iv, cred.authTag);
@@ -275,11 +294,15 @@ export class IntegrationHubService {
           decryptedCredentials[cred.key] = decrypt(cred.encryptedValue, cred.iv);
         }
       }
+      const keyId = decryptedCredentials.keyId || decryptedCredentials.key_id;
+      const keySecret = decryptedCredentials.keySecret || decryptedCredentials.key_secret;
+      if (keyId && keySecret) {
+        isConfigured = true;
+      }
     }
 
-    // Fallback to process.env if keyId / keySecret not present in tenant DB record
-    const keyId = decryptedCredentials.keyId || decryptedCredentials.key_id || process.env.RAZORPAY_KEY_ID || '';
-    const keySecret = decryptedCredentials.keySecret || decryptedCredentials.key_secret || process.env.RAZORPAY_KEY_SECRET || '';
+    const keyId = decryptedCredentials.keyId || decryptedCredentials.key_id || '';
+    const keySecret = decryptedCredentials.keySecret || decryptedCredentials.key_secret || '';
 
     return {
       ...decryptedCredentials,
@@ -287,6 +310,7 @@ export class IntegrationHubService {
       keySecret,
       key_id: keyId,
       key_secret: keySecret,
+      isConfigured,
     };
   }
 

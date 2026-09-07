@@ -83,6 +83,18 @@ class WalletRepository {
     return null;
   }
 
+  async findTransactionByRazorpayPaymentId(razorpayPaymentId, session = null) {
+    if (!razorpayPaymentId) return null;
+    const activeSession = this._getActiveSession(session);
+    return await WalletTransaction.findOne({ razorpay_payment_id: razorpayPaymentId }).session(activeSession);
+  }
+
+  async findTransactionByRazorpayOrderId(razorpayOrderId, session = null) {
+    if (!razorpayOrderId) return null;
+    const activeSession = this._getActiveSession(session);
+    return await WalletTransaction.findOne({ razorpay_order_id: razorpayOrderId }).session(activeSession);
+  }
+
   async createRazorpayTransaction(data, session = null) {
     const activeSession = this._getActiveSession(session);
     const transaction = new WalletTransaction({

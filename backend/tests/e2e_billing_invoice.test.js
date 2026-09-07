@@ -21,6 +21,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 dotenv.config();
+process.env.NODE_ENV = 'test';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +39,8 @@ import invoiceService from '../src/features/invoice/invoice.services.js';
 import invoiceRepository from '../src/features/invoice/invoice.repository.js';
 import walletService from '../src/features/wallet/wallet.service.js';
 import paymentService from '../src/features/payment/payment.service.js';
+import integrationHubService from '../src/features/integrationHub/integrationHub.service.js';
+import IntegrationHub from '../src/features/integrationHub/integrationHub.model.js';
 
 import http from 'http';
 import { initSocket } from '../src/config/socket.js';
@@ -84,6 +87,18 @@ async function runE2ETest() {
       orgId: testOrg._id,
       status: 'Active'
     });
+
+    await integrationHubService.connect(
+      testAdmin._id,
+      testOrg._id,
+      'razorpay',
+      'Community Razorpay Gateway',
+      {
+        keyId: 'rzp_test_e2e_gateway_123',
+        keySecret: 'mock_e2e_secret_456'
+      }
+    );
+    console.log('  ✓ Configured Razorpay gateway in Integration Hub for test community');
 
     testResident1 = await User.create({
       name: 'Resident Alpha',
@@ -388,6 +403,7 @@ async function runE2ETest() {
       await Wallet.deleteMany({ orgId: testOrg._id });
       await WalletTransaction.deleteMany({ orgId: testOrg._id });
       await Payment.deleteMany({ orgId: testOrg._id });
+      await IntegrationHub.deleteMany({ orgId: testOrg._id });
       await User.deleteMany({ orgId: testOrg._id });
       await Organization.deleteOne({ _id: testOrg._id });
       console.log('✨ Cleanup complete.');

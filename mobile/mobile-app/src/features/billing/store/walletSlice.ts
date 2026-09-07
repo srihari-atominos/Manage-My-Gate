@@ -68,7 +68,7 @@ const initialState: WalletState = {
   activePasses: [],
   transactionHistory: [],
   transactions: [],
-  isPaymentGatewayConfigured: true,
+  isPaymentGatewayConfigured: false,
   isLoading: false,
   loading: false,
   error: null,
