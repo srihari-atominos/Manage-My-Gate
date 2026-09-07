@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Share, Alert, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/common/Button';
 import { TextInput } from '@/components/forms/TextInput';
 import { getStatusVariant } from '@/components/ui/StatusBadge';
-import { Clock, Check, Banknote, Landmark, XCircle, CheckCircle2, ShieldAlert } from 'lucide-react-native';
+import { Clock, Check, Banknote, Landmark, XCircle, CheckCircle2, ShieldAlert, Bell, FileText } from 'lucide-react-native';
 import { Invoice } from '../types';
+import billingService from '../services/billingService';
 
 export interface InvoiceActionsBottomSheetProps {
   visible: boolean;
@@ -29,6 +31,7 @@ export function InvoiceActionsBottomSheet({
   onRejectOffline,
   onSettleOfflineModal,
 }: InvoiceActionsBottomSheetProps) {
+  const router = useRouter();
   const [approvalMode, setApprovalMode] = useState<'FULL' | 'CUSTOM'>('FULL');
   const [customAmountStr, setCustomAmountStr] = useState<string>('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -36,6 +39,7 @@ export function InvoiceActionsBottomSheet({
   const [rejectReason, setRejectReason] = useState('');
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
 
   // Derived figures
   const totalAmount = invoice?.totalDue ?? invoice?.amount ?? 0;
@@ -61,6 +65,7 @@ export function InvoiceActionsBottomSheet({
       setRejectReason('');
       setIsApproving(false);
       setIsRejecting(false);
+      setIsSendingReminder(false);
     }
   }, [visible, invoice, remainingDue, submittedOfflineAmount]);
 
@@ -140,6 +145,22 @@ export function InvoiceActionsBottomSheet({
       setIsRejecting(false);
       setShowRejectModal(false);
       Alert.alert('Rejection Failed', err?.message || err || 'Could not reject payment submission.');
+    }
+  };
+
+  const handleSendInAppReminder = async () => {
+    if (!invoice._id || isSendingReminder) return;
+    setIsSendingReminder(true);
+    try {
+      await billingService.sendInvoiceReminder(invoice._id);
+      setIsSendingReminder(false);
+      Alert.alert(
+        'Reminder Sent',
+        `In-app notification reminder sent to ${residentStr} for Invoice #${invNo}.`
+      );
+    } catch (err: any) {
+      setIsSendingReminder(false);
+      Alert.alert('Reminder Failed', err?.message || err || 'Could not send reminder notification.');
     }
   };
 
@@ -283,38 +304,52 @@ export function InvoiceActionsBottomSheet({
 
           {/* Action CTAs */}
           <View className="gap-2.5 pt-2">
+            {/* Direct Link to Child Invoice Details Screen */}
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full border-primary/40"
+              leftIcon={FileText}
+              onPress={() => {
+                onClose();
+                router.push(`/(resident)/billing/invoice/${invoice._id || invoice.invoiceNumber}` as any);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="View Full Invoice Statement and Itemized Breakdown"
+            >
+              View Full Invoice Statement
+            </Button>
+
             {isPendingVerification && onApproveOffline ? (
               <View className="gap-2">
                 <Button
                   variant="default"
                   size="lg"
-                  className="w-full bg-status-success active:bg-status-success/90 flex-row items-center justify-center gap-1.5"
+                  className="w-full bg-status-success active:bg-status-success/90"
                   disabled={isApproving || isRejecting || amountToApprove <= 0}
                   loading={isApproving}
                   onPress={() => setShowConfirmModal(true)}
                   accessibilityRole="button"
                   accessibilityLabel="Approve and Clear Offline Payment"
                 >
-                  <Icon as={CheckCircle2} size={18} className="text-primary-foreground" />
-                  <Text className="font-bold text-base text-primary-foreground">
-                    {willBeFullyPaid
-                      ? `Mark as Paid • Full ₹${amountToApprove.toLocaleString('en-IN')}`
-                      : `Approve Custom Amount • ₹${amountToApprove.toLocaleString('en-IN')}`}
-                  </Text>
+                  {willBeFullyPaid
+                    ? `Mark as Paid • Full ₹${amountToApprove.toLocaleString('en-IN')}`
+                    : `Approve Custom Amount • ₹${amountToApprove.toLocaleString('en-IN')}`}
                 </Button>
 
                 {onRejectOffline ? (
                   <Button
                     variant="outline"
                     size="default"
-                    className="w-full border-destructive/40 text-destructive active:bg-destructive/10"
+                    className="w-full border-destructive/40"
+                    textClassName="text-destructive font-bold"
                     disabled={isApproving || isRejecting}
                     loading={isRejecting}
                     onPress={() => setShowRejectModal(true)}
                     accessibilityRole="button"
                     accessibilityLabel="Reject Payment Submission"
                   >
-                    <Text className="text-destructive font-bold text-sm">Reject Submission</Text>
+                    Reject Submission
                   </Button>
                 ) : null}
               </View>
@@ -324,7 +359,8 @@ export function InvoiceActionsBottomSheet({
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full border-emerald-500/30 bg-emerald-500/10 active:bg-emerald-500/20"
+                className="w-full border-emerald-500/30 bg-emerald-500/10"
+                textClassName="font-bold text-emerald-600 dark:text-emerald-400"
                 onPress={() => {
                   onClose();
                   onSettleOfflineModal(invoice);
@@ -332,9 +368,24 @@ export function InvoiceActionsBottomSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Record Offline Settlement"
               >
-                <Text className="font-bold text-base text-emerald-600 dark:text-emerald-400">
-                  Record Offline Settlement
-                </Text>
+                Record Offline Settlement
+              </Button>
+            ) : null}
+
+            {status !== 'PAID' ? (
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full border-primary/50"
+                textClassName="text-primary font-bold"
+                leftIcon={Bell}
+                disabled={isApproving || isRejecting || isSendingReminder}
+                loading={isSendingReminder}
+                onPress={handleSendInAppReminder}
+                accessibilityRole="button"
+                accessibilityLabel="Send in-app reminder to resident"
+              >
+                Send In-App Reminder
               </Button>
             ) : null}
 

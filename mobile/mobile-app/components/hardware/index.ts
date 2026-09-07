@@ -5,5 +5,6 @@ export * from './ManualCodeEntrySheet';
 export * from './NFCScanIndicator';
 export * from './PrinterStatusBadge';
 export * from './QRScannerOverlay';
+export * from './QRScannerModal';
 export * from './ScanResultSheet';
 

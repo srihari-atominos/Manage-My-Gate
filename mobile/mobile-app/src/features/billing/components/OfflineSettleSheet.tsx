@@ -5,7 +5,10 @@ import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/common/Button';
+import { SegmentedControl } from '@/components/common/SegmentedControl';
+import { DatePicker } from '@/components/common/DatePicker';
+import { formatDateString } from '@/components/common/DatePickerModal';
 import { TextInput } from '@/components/forms/TextInput';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -190,8 +193,6 @@ export function OfflineSettleSheet({
                 </Text>
                 <Text className="text-xs text-muted-foreground text-center mt-1">
                   Bank transfer of ₹{amountToSubmit.toLocaleString('en-IN')} (Ref: #{offlineReference || 'BANK-TRANSFER'}) submitted for verification.
-                </Text>
-
                 <View className="mt-3 flex-row items-center gap-2">
                   <StatusBadge label="VERIFICATION PENDING" variant="warning" />
                   {remainingAfterPayment > 0 ? (
@@ -399,6 +400,77 @@ export function OfflineSettleSheet({
                   value={paymentDateStr}
                   onChangeText={setPaymentDateStr}
                   placeholder="YYYY-MM-DD"
+=======
+          {/* Verification Pending Notice */}
+          <View className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-4 flex-row items-start">
+            <Icon as={Clock} size={20} className="text-primary me-3 mt-0.5" />
+            <View className="flex-1">
+              <Text className="text-sm font-bold text-foreground">
+                Payment Verification Pending
+              </Text>
+              <Text className="text-xs text-muted-foreground mt-1">
+                Submitting bank transfer details does NOT mark the invoice paid immediately. The community team will verify your payment details.
+              </Text>
+            </View>
+          </View>
+
+          {/* Submission Blocked Guard */}
+          {isSubmissionBlocked ? (
+            <View className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-4 flex-row items-center me-1">
+              <Icon as={AlertCircle} size={20} className="text-amber-600 dark:text-amber-400 me-3" />
+              <Text className="text-xs font-semibold text-amber-900 dark:text-amber-200 flex-1">
+                {isPaid ? 'This invoice has already been fully settled.' :
+                 isPending ? 'An offline payment is already pending verification.' :
+                 'Invoice is cancelled and cannot accept payments.'}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Error Banner */}
+          {error ? (
+            <View className="mb-4">
+              <ErrorBanner message={error} onDismiss={() => resetBillingError()} />
+            </View>
+          ) : null}
+
+          {/* Section 1: Offline Payment Method */}
+          <View className="mb-4">
+            <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+              1. How did you pay?
+            </Text>
+            <SegmentedControl
+              segments={[
+                { key: 'BANK_TRANSFER', label: 'Bank Transfer / Cheque' },
+                { key: 'CASH', label: 'Cash at Counter' },
+              ]}
+              activeSegment={paymentMethod}
+              onChange={(key) => setPaymentMethod(key as any)}
+            />
+          </View>
+
+          {paymentMethod === 'BANK_TRANSFER' ? (
+            <>
+              {/* Section 2: Amount Paid */}
+              <View className="mb-4">
+                <TextInput
+                  label="2. Amount Paid (₹)"
+                  required
+                  value={amountStr}
+                  onChangeText={setAmountStr}
+                  placeholder={`Remaining Due ₹${remainingDue.toLocaleString('en-IN')}`}
+                  keyboardType="numeric"
+                  inputClassName="font-bold text-base"
+                  error={isAmountTooHigh ? `Amount cannot exceed remaining dues of ₹${remainingDue.toLocaleString('en-IN')}` : undefined}
+                />
+              </View>
+
+              {/* Section 3: Payment Date via Canonical DatePicker */}
+              <View className="mb-4">
+                <DatePicker
+                  label="3. Payment Date"
+                  value={paymentDateStr ? new Date(`${paymentDateStr}T00:00:00`) : new Date()}
+                  onChange={(d) => setPaymentDateStr(formatDateString(d))}
+                  placeholder="Select Payment Date"
                 />
               </View>
 
@@ -406,17 +478,15 @@ export function OfflineSettleSheet({
               <Button
                 variant="default"
                 size="lg"
-                className="w-full flex-row items-center justify-center mt-1"
+                className="w-full mt-1"
                 disabled={isSubmissionBlocked || isFormInvalid || isSubmitting || loadingStates.settleInvoice}
                 loading={isSubmitting || loadingStates.settleInvoice}
                 onPress={handleOpenConfirm}
+                rightIcon={ChevronRight}
                 accessibilityRole="button"
                 accessibilityLabel={`Submit Bank Transfer payment for ₹${amountToSubmit.toLocaleString('en-IN')}`}
               >
-                <Text className="font-bold text-base text-primary-foreground me-1">
-                  {`Submit Bank Transfer • ₹${amountToSubmit.toLocaleString('en-IN')}`}
-                </Text>
-                <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
+                {`Submit Payment • ₹${amountToSubmit.toLocaleString('en-IN')}`}
               </Button>
             </View>
           )}

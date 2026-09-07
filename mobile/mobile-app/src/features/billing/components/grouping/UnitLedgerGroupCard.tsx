@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Pressable } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { Building2, ChevronDown, ChevronUp, CheckCircle2, Clock, AlertCircle } from 'lucide-react-native';
 
@@ -90,7 +91,7 @@ export const UnitLedgerGroupCard: React.FC<UnitLedgerGroupCardProps> = ({
       <View className="flex-row items-start justify-between">
         <View className="flex-1 me-3">
           <View className="flex-row items-center gap-1.5 mb-1">
-            <Building2 size={16} className="text-primary" />
+            <Icon as={Building2} size={16} className="text-primary" />
             <Text className="text-base font-bold text-foreground">
               Unit {unitNum}
             </Text>
@@ -129,7 +130,7 @@ export const UnitLedgerGroupCard: React.FC<UnitLedgerGroupCardProps> = ({
         <Text className="text-xs font-bold text-primary">
           {expanded ? 'Hide Invoices' : `View Invoices (${invoicesList.length})`}
         </Text>
-        {expanded ? <ChevronUp size={16} className="text-primary" /> : <ChevronDown size={16} className="text-primary" />}
+        <Icon as={expanded ? ChevronUp : ChevronDown} size={16} className="text-primary" />
       </Pressable>
 
       {/* Expandable Invoice History Roster */}
@@ -155,13 +156,11 @@ export const UnitLedgerGroupCard: React.FC<UnitLedgerGroupCardProps> = ({
               >
                 <View className="flex-1 me-2">
                   <View className="flex-row items-center gap-1.5">
-                    {isPaid ? (
-                      <CheckCircle2 size={13} className="text-status-success" />
-                    ) : isPending ? (
-                      <Clock size={13} className="text-amber-500" />
-                    ) : (
-                      <AlertCircle size={13} className="text-destructive" />
-                    )}
+                    <Icon
+                      as={isPaid ? CheckCircle2 : isPending ? Clock : AlertCircle}
+                      size={13}
+                      className={isPaid ? 'text-status-success' : isPending ? 'text-amber-500' : 'text-destructive'}
+                    />
                     <Text className="text-xs font-bold text-foreground">
                       #{inv?.invoiceNumber || '—'}
                     </Text>

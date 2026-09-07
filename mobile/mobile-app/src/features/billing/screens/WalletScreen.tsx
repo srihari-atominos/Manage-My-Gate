@@ -29,6 +29,7 @@ export function WalletScreen() {
   const history: any[] = walletState?.transactionHistory || (walletState as any)?.transactions || [];
   const isLoading = walletState?.isLoading || (walletState as any)?.loading || false;
   const error = walletState?.error || null;
+  const isGatewayReady = walletState?.isPaymentGatewayConfigured !== false;
 
   // Real-time socket listener
   useBillingSocket();
@@ -179,6 +180,14 @@ export function WalletScreen() {
           title="Add Money to Digital Wallet"
         >
           <View className="py-2 gap-4">
+            {!isGatewayReady ? (
+              <View className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+                <Text className="text-xs text-amber-900 dark:text-amber-200 font-semibold">
+                  Online Top-Up Unavailable: Community management has not configured an online merchant account.
+                </Text>
+              </View>
+            ) : null}
+
             <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               Select Top-Up Amount
             </Text>
@@ -247,16 +256,18 @@ export function WalletScreen() {
               variant="default"
               size="lg"
               className="w-full flex-row items-center justify-center bg-status-success active:bg-status-success/90 mt-2"
-              disabled={isTopUpInvalid || isProcessingTopUp}
+              disabled={isTopUpInvalid || isProcessingTopUp || !isGatewayReady}
               loading={isProcessingTopUp}
               onPress={handleProceedTopUp}
               accessibilityRole="button"
               accessibilityLabel={`Proceed to Top-Up ₹${topUpAmount.toLocaleString('en-IN')} via Razorpay`}
             >
               <Text className="font-bold text-base text-primary-foreground me-1">
-                Proceed to Top-Up • ₹{topUpAmount.toLocaleString('en-IN')}
+                {isGatewayReady
+                  ? `Proceed to Top-Up • ₹${topUpAmount.toLocaleString('en-IN')}`
+                  : 'Gateway Not Configured'}
               </Text>
-              <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
+              {isGatewayReady ? <Icon as={ChevronRight} size={18} className="text-primary-foreground" /> : null}
             </Button>
           </View>
         </BottomSheet>
