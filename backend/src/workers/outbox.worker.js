@@ -162,7 +162,7 @@ export async function processOutboxEvents() {
     const event = await OutboxEvent.findOneAndUpdate(
       { status: 'PENDING' },
       { $set: { status: 'PROCESSING' } },
-      { sort: { createdAt: 1 }, new: true }
+      { sort: { createdAt: 1 }, returnDocument: 'after' }
     );
 
     // If no more pending events found, terminate batch run

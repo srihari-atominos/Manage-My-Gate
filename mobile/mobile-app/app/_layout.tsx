@@ -24,6 +24,7 @@ import i18n from '../src/utils/i18n';
 import * as SplashScreen from 'expo-splash-screen';
 import useAutoUpdate from '../src/hooks/useAutoUpdate';
 import usePushNotifications from '../src/features/notification/hooks/usePushNotifications';
+import { useGlobalAppSocket } from '../src/hooks/useGlobalAppSocket';
 
 // Prevent splash screen from auto-hiding before asset loading is complete
 SplashScreen.preventAutoHideAsync().catch(() => {});
