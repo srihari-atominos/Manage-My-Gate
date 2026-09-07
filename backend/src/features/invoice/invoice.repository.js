@@ -134,15 +134,21 @@ export class InvoiceRepository {
   /**
    * Get outstanding dues grouped by targetUserId for portfolio summary.
    * @param {string} userId - User ID.
+   * @param {string} [communityId] - Optional Community/Organization ID.
    * @returns {Promise<{ _id: string, totalPortfolioDue: number, unitBreakdown: Array } | null>}
    */
-  async getUserPortfolioDues(userId) {
+  async getUserPortfolioDues(userId, communityId = null) {
+    const matchStage = {
+      targetUserId: new mongoose.Types.ObjectId(userId),
+      status: { $ne: 'PAID' },
+    };
+    if (communityId) {
+      matchStage.communityId = new mongoose.Types.ObjectId(communityId);
+    }
+
     const result = await Invoice.aggregate([
       {
-        $match: {
-          targetUserId: new mongoose.Types.ObjectId(userId),
-          status: { $ne: 'PAID' },
-        },
+        $match: matchStage,
       },
       {
         $lookup: {
@@ -186,6 +192,10 @@ export class InvoiceRepository {
               paid_at: '$paid_at',
               paymentMethod: '$paymentMethod',
               offlineReference: '$offlineReference',
+              offlineAmount: '$offlineAmount',
+              paymentDate: '$paymentDate',
+              paymentScreenshot: '$paymentScreenshot',
+              payerNotes: '$payerNotes',
             },
           },
         },
@@ -198,15 +208,21 @@ export class InvoiceRepository {
   /**
    * Get recent invoice history for a user.
    * @param {string} userId - User ID.
+   * @param {string} [communityId] - Optional Community/Organization ID.
    * @returns {Promise<Array>}
    */
-  async getUserRecentInvoices(userId) {
+  async getUserRecentInvoices(userId, communityId = null) {
+    const matchStage = {
+      targetUserId: new mongoose.Types.ObjectId(userId),
+      isDeleted: false,
+    };
+    if (communityId) {
+      matchStage.communityId = new mongoose.Types.ObjectId(communityId);
+    }
+
     return await Invoice.aggregate([
       {
-        $match: {
-          targetUserId: new mongoose.Types.ObjectId(userId),
-          isDeleted: false
-        }
+        $match: matchStage,
       },
       {
         $lookup: {
@@ -250,7 +266,11 @@ export class InvoiceRepository {
           createdAt: 1,
           paid_at: 1,
           paymentMethod: 1,
-          offlineReference: 1
+          offlineReference: 1,
+          offlineAmount: 1,
+          paymentDate: 1,
+          paymentScreenshot: 1,
+          payerNotes: 1
         }
       }
     ]);
@@ -324,6 +344,10 @@ export class InvoiceRepository {
       invoice.status = newStatus;
       if (paymentData.offlineReference !== undefined) invoice.offlineReference = paymentData.offlineReference;
       if (paymentData.offlineAmount !== undefined) invoice.offlineAmount = paymentData.offlineAmount;
+      if (paymentData.paymentMethod !== undefined) invoice.paymentMethod = paymentData.paymentMethod;
+      if (paymentData.paymentDate !== undefined) invoice.paymentDate = paymentData.paymentDate;
+      if (paymentData.paymentScreenshot !== undefined) invoice.paymentScreenshot = paymentData.paymentScreenshot;
+      if (paymentData.payerNotes !== undefined) invoice.payerNotes = paymentData.payerNotes;
     } else {
       invoice.status = newStatus;
     }
@@ -518,6 +542,10 @@ export class InvoiceRepository {
                       createdAt: '$createdAt',
                       paymentMethod: '$paymentMethod',
                       offlineReference: '$offlineReference',
+                      offlineAmount: '$offlineAmount',
+                      paymentDate: '$paymentDate',
+                      paymentScreenshot: '$paymentScreenshot',
+                      payerNotes: '$payerNotes',
                     },
                   },
                 },
@@ -638,7 +666,12 @@ export class InvoiceRepository {
                       paidAmount: { $ifNull: ['$paidAmount', 0] },
                       outstandingAmount: { $ifNull: ['$outstandingAmount', 0] },
                       status: '$status',
+                      paymentMethod: '$paymentMethod',
                       offlineReference: '$offlineReference',
+                      offlineAmount: '$offlineAmount',
+                      paymentDate: '$paymentDate',
+                      paymentScreenshot: '$paymentScreenshot',
+                      payerNotes: '$payerNotes',
                     },
                   },
                 },
@@ -702,6 +735,7 @@ export class InvoiceRepository {
                 offlineAmount: 1,
                 paymentDate: 1,
                 paymentScreenshot: 1,
+                payerNotes: 1,
                 rejectionReason: 1,
               },
             },

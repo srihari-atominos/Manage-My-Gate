@@ -18,9 +18,12 @@ export const billingService = {
 
   /**
    * Fetch personal outstanding dues for a resident.
+   * @param communityId - Optional active community ID
    */
-  async getMyDues(): Promise<any> {
-    const response: any = await apiClient.get('/invoices/my-dues');
+  async getMyDues(communityId?: string): Promise<any> {
+    const response: any = await apiClient.get('/invoices/my-dues', {
+      params: communityId ? { communityId } : undefined,
+    });
     const body = response?.success !== undefined ? response : response?.data;
     return body?.data || body;
   },
@@ -67,6 +70,20 @@ export const billingService = {
    */
   async triggerInvoiceGeneration(payload: Record<string, any> = {}): Promise<any> {
     const response: any = await apiClient.post('/invoices/trigger-whatsapp', payload);
+    const body = response?.success !== undefined ? response : response?.data;
+    return body?.data || body;
+  },
+
+  /**
+   * Upload payment proof document / image.
+   * @param formData
+   */
+  async uploadProof(formData: any): Promise<{ url: string }> {
+    const response: any = await apiClient.post('/invoices/upload-proof', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     const body = response?.success !== undefined ? response : response?.data;
     return body?.data || body;
   },

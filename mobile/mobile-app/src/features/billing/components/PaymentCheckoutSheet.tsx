@@ -348,7 +348,7 @@ export function PaymentCheckoutSheet({
               </View>
             </TouchableOpacity>
 
-            {/* Pay Offline (Bank Transfer) Option */}
+            {/* Offline Payment Request Option */}
             <TouchableOpacity
               onPress={() => setSelectedMethod('OFFLINE')}
               activeOpacity={0.8}
@@ -361,8 +361,8 @@ export function PaymentCheckoutSheet({
                   <Icon as={Landmark} size={20} className="text-amber-600 dark:text-amber-400" />
                 </View>
                 <View>
-                  <Text className="font-bold text-sm text-foreground">Pay via Bank Transfer</Text>
-                  <Text className="text-xs text-muted-foreground">Bank Transfer (NEFT / IMPS / UPI)</Text>
+                  <Text className="font-bold text-sm text-foreground">Offline Payment Request</Text>
+                  <Text className="text-xs text-muted-foreground">Bank Transfer (NEFT/IMPS), UPI, Cheque, Cash</Text>
                 </View>
               </View>
 
@@ -389,7 +389,7 @@ export function PaymentCheckoutSheet({
               {selectedMethod === 'WALLET'
                 ? `Pay ₹${amountToPay.toLocaleString('en-IN')} via Wallet`
                 : selectedMethod === 'OFFLINE'
-                ? `Proceed with Bank Transfer (₹${amountToPay.toLocaleString('en-IN')})`
+                ? `Proceed with Offline Payment (₹${amountToPay.toLocaleString('en-IN')})`
                 : `Proceed to Razorpay (₹${amountToPay.toLocaleString('en-IN')})`}
             </Text>
             <Icon as={ChevronRight} size={18} className="text-primary-foreground" />

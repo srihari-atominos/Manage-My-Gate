@@ -54,10 +54,13 @@ export const useBilling = () => {
     [dispatch, activeOrgId]
   );
 
-  const loadResidentDues = useCallback(() => {
-    dispatch(fetchWalletBalance());
-    return dispatch(fetchMyDues());
-  }, [dispatch]);
+  const loadResidentDues = useCallback(
+    (communityId?: string) => {
+      dispatch(fetchWalletBalance());
+      return dispatch(fetchMyDues(communityId || activeOrgId));
+    },
+    [dispatch, activeOrgId]
+  );
 
   const loadWalletBalance = useCallback(() => {
     return dispatch(fetchWalletBalance());
@@ -93,7 +96,17 @@ export const useBilling = () => {
   );
 
   const settleOffline = useCallback(
-    (invoiceId: string, referenceData: { offlineReference: string; offlineAmount?: number; amountPaid?: number; amount?: number; paymentReference?: string; paymentMethod: string; paymentDate?: string; paymentScreenshot?: string }) => {
+    (invoiceId: string, referenceData: {
+      offlineReference: string;
+      offlineAmount?: number;
+      amountPaid?: number;
+      amount?: number;
+      paymentReference?: string;
+      paymentMethod: string;
+      paymentDate?: string;
+      paymentScreenshot?: string;
+      payerNotes?: string;
+    }) => {
       const effectiveAmount = referenceData.offlineAmount ?? referenceData.amountPaid ?? referenceData.amount;
       return dispatch(
         submitOfflineSettlement({
@@ -101,6 +114,9 @@ export const useBilling = () => {
           offlineReference: referenceData.offlineReference || referenceData.paymentReference || '',
           amount: effectiveAmount,
           paymentMethod: referenceData.paymentMethod,
+          paymentDate: referenceData.paymentDate,
+          paymentScreenshot: referenceData.paymentScreenshot,
+          payerNotes: referenceData.payerNotes,
         })
       ).unwrap();
     },

@@ -167,9 +167,17 @@ export const fetchAdminKPIs = createAsyncThunk(
 
 export const fetchMyDues = createAsyncThunk(
   'billing/fetchMyDues',
-  async (_, { rejectWithValue }) => {
+  async (communityId: string | undefined, { rejectWithValue, getState }) => {
     try {
-      const data = await billingService.getMyDues();
+      const state: any = getState();
+      const targetCommunityId =
+        communityId ||
+        state?.workspace?.activeOrganizationId ||
+        state?.auth?.activeOrganizationId ||
+        state?.auth?.user?.activeOrganizationId ||
+        state?.auth?.user?.orgId ||
+        state?.auth?.user?.communityId;
+      const data = await billingService.getMyDues(targetCommunityId);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch personal dues');
@@ -224,7 +232,23 @@ export const triggerInvoiceGenerationThunk = createAsyncThunk(
 export const submitOfflineSettlement = createAsyncThunk(
   'billing/submitOfflineSettlement',
   async (
-    { invoiceId, offlineReference, paymentMethod, amount }: { invoiceId: string; offlineReference: string; paymentMethod: string; amount?: number },
+    {
+      invoiceId,
+      offlineReference,
+      paymentMethod,
+      amount,
+      paymentDate,
+      paymentScreenshot,
+      payerNotes,
+    }: {
+      invoiceId: string;
+      offlineReference: string;
+      paymentMethod: string;
+      amount?: number;
+      paymentDate?: string;
+      paymentScreenshot?: string;
+      payerNotes?: string;
+    },
     { rejectWithValue }
   ) => {
     try {
@@ -234,6 +258,9 @@ export const submitOfflineSettlement = createAsyncThunk(
         paymentMethod,
         offlineAmount: amount,
         amount,
+        paymentDate,
+        paymentScreenshot,
+        payerNotes,
       });
       return data;
     } catch (error: any) {

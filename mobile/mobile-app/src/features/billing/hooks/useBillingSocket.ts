@@ -4,6 +4,7 @@ import { AppDispatch, RootState } from '../../../store/store';
 import { useAppSocket } from '../../../hooks/useAppSocket';
 import { syncRealtimeInvoice, fetchMyDues, fetchAdminKPIs, fetchInvoicesGrid } from '../store/billingSlice';
 import { fetchWalletBalance, syncWalletBalance } from '../store/walletSlice';
+import { checkIsAdmin } from '../../../utils/rbac';
 
 /**
  * Custom Hook: useBillingSocket
@@ -11,6 +12,10 @@ import { fetchWalletBalance, syncWalletBalance } from '../store/walletSlice';
  * Silent background listener that manages the real-time Socket.io connections
  * and event listeners for invoice billing & wallet balance updates.
  * Conforms to the "Thin View" pattern by encapsulating all socket logic.
+ *
+ * Features:
+ * 1. Community Isolation: Only updates dues and active invoices if the event belongs to the active community.
+ * 2. RBAC Guard: Restricts admin-only calls (fetchAdminKPIs, fetchInvoicesGrid) to authorized admin roles.
  */
 export const useBillingSocket = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -20,11 +25,22 @@ export const useBillingSocket = () => {
   const activeOrgId = useSelector((state: any) =>
     state.workspace?.activeOrganizationId ||
     state.auth?.activeOrganizationId ||
+    state.auth?.user?.activeOrganizationId ||
     state.auth?.user?.orgId ||
     state.auth?.user?.communityId
   );
   const userId = user?.id || user?._id;
   const orgId = activeOrgId || user?.orgId;
+
+  const permissions: string[] = user?.permissions || [];
+  const canManageAdminBilling = useMemo(() => {
+    return (
+      checkIsAdmin(user) ||
+      permissions.includes('billing:dashboard') ||
+      permissions.includes('billing:assessment_manager') ||
+      permissions.includes('*')
+    );
+  }, [user, permissions]);
 
   const rooms = useMemo(() => {
     const list: string[] = [];
@@ -41,12 +57,31 @@ export const useBillingSocket = () => {
       socket.emit('join_room', room);
     });
 
+    // Helper: Verify if an incoming event belongs to the currently active community
+    const isEventForCurrentCommunity = (payload: any) => {
+      if (!orgId) return true;
+      const eventCommunityId =
+        payload?.communityId?._id ||
+        payload?.communityId?.id ||
+        payload?.communityId ||
+        payload?.orgId?._id ||
+        payload?.orgId?.id ||
+        payload?.orgId;
+      if (!eventCommunityId) return true;
+      return String(eventCommunityId) === String(orgId);
+    };
+
     // 1. Invoice Generation Handler
     const handleInvoiceGenerated = (payload: any) => {
       console.log('[Billing Socket] Real-time event: invoice_generated', payload);
-      if (payload) dispatch(syncRealtimeInvoice(payload));
-      dispatch(fetchMyDues());
-      if (orgId) {
+      const isCurrentCommunity = isEventForCurrentCommunity(payload);
+      if (payload && isCurrentCommunity) {
+        dispatch(syncRealtimeInvoice(payload));
+      }
+      if (isCurrentCommunity) {
+        dispatch(fetchMyDues(orgId));
+      }
+      if (orgId && canManageAdminBilling) {
         dispatch(fetchAdminKPIs(orgId));
         dispatch(fetchInvoicesGrid({ page: 1, limit: 10, filters: { communityId: orgId } }));
       }
@@ -55,9 +90,14 @@ export const useBillingSocket = () => {
     // 2. Invoice Status Update Handler
     const handleInvoiceStatusUpdated = (payload: any) => {
       console.log('[Billing Socket] Real-time event: invoice_status_updated / INVOICE_UPDATED', payload);
-      if (payload) dispatch(syncRealtimeInvoice(payload));
-      dispatch(fetchMyDues());
-      if (orgId) {
+      const isCurrentCommunity = isEventForCurrentCommunity(payload);
+      if (payload && isCurrentCommunity) {
+        dispatch(syncRealtimeInvoice(payload));
+      }
+      if (isCurrentCommunity) {
+        dispatch(fetchMyDues(orgId));
+      }
+      if (orgId && canManageAdminBilling) {
         dispatch(fetchAdminKPIs(orgId));
         dispatch(fetchInvoicesGrid({ page: 1, limit: 10, filters: { communityId: orgId } }));
       }
@@ -66,10 +106,15 @@ export const useBillingSocket = () => {
     // 3. Payment Success Handler
     const handlePaymentSuccess = (payload: any) => {
       console.log('[Billing Socket] Real-time event: PAYMENT_SUCCESS', payload);
-      if (payload?.invoice) dispatch(syncRealtimeInvoice(payload.invoice));
-      dispatch(fetchMyDues());
+      const isCurrentCommunity = isEventForCurrentCommunity(payload?.invoice || payload);
+      if (payload?.invoice && isCurrentCommunity) {
+        dispatch(syncRealtimeInvoice(payload.invoice));
+      }
+      if (isCurrentCommunity) {
+        dispatch(fetchMyDues(orgId));
+      }
       dispatch(fetchWalletBalance());
-      if (orgId) {
+      if (orgId && canManageAdminBilling) {
         dispatch(fetchAdminKPIs(orgId));
         dispatch(fetchInvoicesGrid({ page: 1, limit: 10, filters: { communityId: orgId } }));
       }
@@ -82,16 +127,17 @@ export const useBillingSocket = () => {
         dispatch(syncWalletBalance(payload));
       }
       dispatch(fetchWalletBalance());
-      dispatch(fetchMyDues());
+      dispatch(fetchMyDues(orgId));
     };
 
     // 5. Offline Payment Submission Handler
     const handleOfflinePaymentSubmitted = (payload: any) => {
       console.log('[Billing Socket] Real-time event: offline_payment_submitted', payload);
-      if (payload?.invoice) {
+      const isCurrentCommunity = isEventForCurrentCommunity(payload?.invoice || payload);
+      if (payload?.invoice && isCurrentCommunity) {
         dispatch(syncRealtimeInvoice(payload.invoice));
       }
-      if (orgId) {
+      if (orgId && canManageAdminBilling) {
         dispatch(fetchAdminKPIs(orgId));
         dispatch(fetchInvoicesGrid({ page: 1, limit: 10, filters: { communityId: orgId } }));
       }
@@ -122,7 +168,7 @@ export const useBillingSocket = () => {
       socket.off('wallet_transaction_created', handleWalletUpdated);
       socket.off('offline_payment_submitted', handleOfflinePaymentSubmitted);
     };
-  }, [socket, dispatch, rooms]);
+  }, [socket, dispatch, rooms, orgId, canManageAdminBilling]);
 };
 
 export default useBillingSocket;
