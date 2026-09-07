@@ -37,9 +37,11 @@ const DATE_PRESETS = [
 
 const PAYMENT_METHODS = [
   { id: 'ALL', label: 'All Methods' },
-  { id: 'CHEQUE', label: 'Cheque' },
-  { id: 'NEFT', label: 'NEFT / RTGS' },
   { id: 'CASH', label: 'Cash' },
+  { id: 'BANK_TRANSFER', label: 'Bank Transfer (NEFT/RTGS)' },
+  { id: 'UPI', label: 'UPI / QR' },
+  { id: 'CHEQUE', label: 'Cheque' },
+  { id: 'DEMAND_DRAFT', label: 'Demand Draft' },
   { id: 'WALLET', label: 'Wallet' },
   { id: 'RAZORPAY', label: 'Online / Gateway' },
 ];

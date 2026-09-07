@@ -106,7 +106,15 @@ export const billingService = {
    */
   async approveInvoiceOffline(
     invoiceId: string,
-    payload?: { amount?: number; settlementType?: 'FULL' | 'CUSTOM' }
+    payload?: {
+      amount?: number;
+      settlementType?: 'FULL' | 'CUSTOM';
+      paymentMethod?: string;
+      paymentReference?: string;
+      reference?: string;
+      notes?: string;
+      paymentScreenshot?: string;
+    }
   ): Promise<any> {
     const response: any = await apiClient.patch(`/invoices/${invoiceId}/approve`, payload || {});
     const body = response?.success !== undefined ? response : response?.data;

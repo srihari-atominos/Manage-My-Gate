@@ -136,7 +136,9 @@ export function OfflineSettleSheet({
   }, [initialAmount, remainingDue]);
 
   const remainingAfterPayment = Math.max(0, Math.round((remainingDue - amountToSubmit) * 100) / 100);
-  const isFormInvalid = amountToSubmit <= 0;
+  const isReferenceRequired = paymentMethod !== 'CASH';
+  const isReferenceMissing = isReferenceRequired && !offlineReference.trim();
+  const isFormInvalid = amountToSubmit <= 0 || isReferenceMissing;
 
   // Invoice status guard
   const status = invoice?.status || 'UNPAID';
@@ -169,7 +171,12 @@ export function OfflineSettleSheet({
   const residentStr = invoice.targetUser || (invoice as any)?.residentName || 'Resident';
 
   const handleOpenConfirm = () => {
-    if (isSubmissionBlocked || isFormInvalid) return;
+    if (isSubmissionBlocked) return;
+    if (isReferenceMissing) {
+      Alert.alert('Reference Required', `Please enter the transaction reference / UTR for ${currentOption.label}.`);
+      return;
+    }
+    if (isFormInvalid) return;
     setShowConfirmModal(true);
   };
 
@@ -191,7 +198,7 @@ export function OfflineSettleSheet({
       const prefix = prefixMap[paymentMethod] || 'OFFLINE';
 
       let effectiveRef = offlineReference.trim();
-      if (!effectiveRef) {
+      if (!effectiveRef && paymentMethod === 'CASH') {
         effectiveRef = `${prefix}-${dateStr}-${randomSuffix}`;
       }
 
@@ -411,7 +418,10 @@ export function OfflineSettleSheet({
                     return (
                       <TouchableOpacity
                         key={method.key}
-                        onPress={() => setPaymentMethod(method.key)}
+                        onPress={() => {
+                          setPaymentMethod(method.key);
+                          setOfflineReference('');
+                        }}
                         activeOpacity={0.8}
                         className={`p-3 rounded-xl border flex-row items-center justify-between ${
                           isSelected ? 'bg-primary/10 border-primary' : 'bg-card border-border'
@@ -454,14 +464,21 @@ export function OfflineSettleSheet({
                   2. Reference & Date Details
                 </Text>
 
-                <TextInput
-                  label={currentOption.refLabel}
-                  required={paymentMethod !== 'CASH'}
-                  leftIcon={FileText}
-                  value={offlineReference}
-                  onChangeText={setOfflineReference}
-                  placeholder={currentOption.refPlaceholder}
-                />
+                <View className="gap-1">
+                  <TextInput
+                    label={currentOption.refLabel}
+                    required={paymentMethod !== 'CASH'}
+                    leftIcon={FileText}
+                    value={offlineReference}
+                    onChangeText={setOfflineReference}
+                    placeholder={currentOption.refPlaceholder}
+                  />
+                  {isReferenceRequired && !offlineReference.trim() ? (
+                    <Text className="text-[11px] text-amber-600 dark:text-amber-400 ms-1">
+                      * Mandatory: Enter transaction UTR, cheque #, or reference ID to submit
+                    </Text>
+                  ) : null}
+                </View>
 
                 <DatePicker
                   label="Payment Date"

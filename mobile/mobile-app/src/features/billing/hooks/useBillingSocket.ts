@@ -148,6 +148,10 @@ export const useBillingSocket = () => {
     socket.on('invoice_status_updated', handleInvoiceStatusUpdated);
     socket.on('INVOICE_UPDATED', handleInvoiceStatusUpdated);
     socket.on('INVOICE_STATUS_UPDATED', handleInvoiceStatusUpdated);
+    socket.on('offline_payment_approved', handleInvoiceStatusUpdated);
+    socket.on('bank_transfer_rejected', handleInvoiceStatusUpdated);
+    socket.on('cash_payment_recorded', handleInvoiceStatusUpdated);
+    socket.on('invoice_paid', handleInvoiceStatusUpdated);
     socket.on('PAYMENT_SUCCESS', handlePaymentSuccess);
     socket.on('WALLET_UPDATED', handleWalletUpdated);
     socket.on('walletUpdated', handleWalletUpdated);
@@ -161,6 +165,10 @@ export const useBillingSocket = () => {
       socket.off('invoice_status_updated', handleInvoiceStatusUpdated);
       socket.off('INVOICE_UPDATED', handleInvoiceStatusUpdated);
       socket.off('INVOICE_STATUS_UPDATED', handleInvoiceStatusUpdated);
+      socket.off('offline_payment_approved', handleInvoiceStatusUpdated);
+      socket.off('bank_transfer_rejected', handleInvoiceStatusUpdated);
+      socket.off('cash_payment_recorded', handleInvoiceStatusUpdated);
+      socket.off('invoice_paid', handleInvoiceStatusUpdated);
       socket.off('PAYMENT_SUCCESS', handlePaymentSuccess);
       socket.off('WALLET_UPDATED', handleWalletUpdated);
       socket.off('walletUpdated', handleWalletUpdated);

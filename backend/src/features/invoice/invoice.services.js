@@ -512,8 +512,11 @@ export class InvoiceService {
       throw new Error('An offline payment for this invoice is already pending verification.');
     }
 
-    // Check duplicate payment reference if reference is provided
     const effectiveMethod = (paymentMethod || 'BANK_TRANSFER').toUpperCase();
+    if (effectiveMethod !== 'CASH' && (!offlineReference || !String(offlineReference).trim())) {
+      throw new HttpError(400, `Payment reference number or transaction UTR is required for ${effectiveMethod}.`);
+    }
+
     const prefixMap = {
       CASH: 'CASH',
       CHEQUE: 'CHQ',
@@ -524,10 +527,11 @@ export class InvoiceService {
     };
     const prefix = prefixMap[effectiveMethod] || 'OFFLINE';
 
-    const effectiveRef = offlineReference || `${prefix}-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const cleanRef = offlineReference ? String(offlineReference).trim() : '';
+    const effectiveRef = cleanRef || `${prefix}-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    if (offlineReference) {
-      const duplicateRef = await Payment.findOne({ paymentReference: offlineReference, status: { $ne: 'REJECTED' } });
+    if (cleanRef) {
+      const duplicateRef = await Payment.findOne({ paymentReference: cleanRef, status: { $ne: 'REJECTED' } });
       if (duplicateRef) {
         throw new Error('This payment reference number has already been submitted.');
       }
@@ -657,7 +661,12 @@ export class InvoiceService {
       BANK_TRANSFER: 'BANK',
     };
     const methodPrefix = prefixMap[paymentMethod] || 'OFFLINE';
-    const offlineReference = options?.paymentReference || options?.reference || invoice.offlineReference || `${methodPrefix}-${Date.now()}`;
+    const rawProvidedRef = options?.paymentReference || options?.reference || invoice.offlineReference;
+    const cleanRef = rawProvidedRef ? String(rawProvidedRef).trim() : '';
+    if (paymentMethod !== 'CASH' && !cleanRef) {
+      throw new HttpError(400, `Payment reference number or transaction UTR is required for ${paymentMethod}.`);
+    }
+    const offlineReference = cleanRef || `${methodPrefix}-${Date.now()}`;
 
     const newOutstanding = Math.max(0, Math.round((remainingDue - amountToApply) * 100) / 100);
     const finalStatus = newOutstanding > 0 ? 'PARTIALLY_PAID' : 'PAID';
@@ -676,6 +685,8 @@ export class InvoiceService {
         amount: amountToApply,
         paymentMethod: paymentMethod,
         offlineReference: offlineReference,
+        payerNotes: options?.notes || invoice.payerNotes,
+        paymentScreenshot: options?.paymentScreenshot || invoice.paymentScreenshot,
       }
     );
 
@@ -687,9 +698,16 @@ export class InvoiceService {
         payment.amount = amountToApply;
         payment.verifiedBy = adminUserId || null;
         payment.verifiedAt = new Date();
+        payment.receivedBy = payment.receivedBy || adminUserId || null;
         payment.processedBy = adminUserId || null;
         payment.receiptNumber = receiptNumber;
         payment.paymentMethod = paymentMethod;
+        if (options?.notes) {
+          payment.payerNotes = options.notes;
+        }
+        if (options?.paymentScreenshot) {
+          payment.proofDocument = options.paymentScreenshot;
+        }
         await payment.save();
       } else {
         await Payment.create({
@@ -709,7 +727,10 @@ export class InvoiceService {
           receiptNumber: receiptNumber,
           verifiedBy: adminUserId || null,
           verifiedAt: new Date(),
+          receivedBy: adminUserId || null,
           processedBy: adminUserId || null,
+          proofDocument: options?.paymentScreenshot || invoice.paymentScreenshot || null,
+          payerNotes: options?.notes || invoice.payerNotes || null,
           gateway: 'offline',
         });
       }
