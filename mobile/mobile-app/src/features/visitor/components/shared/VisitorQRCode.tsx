@@ -32,3 +32,5 @@ export const VisitorQRCode: React.FC<VisitorQRCodeProps> = ({
     />
   );
 };
+
+export default VisitorQRCode;
