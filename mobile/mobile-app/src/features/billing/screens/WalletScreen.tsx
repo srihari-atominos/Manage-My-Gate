@@ -13,7 +13,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { Wallet, Plus, ArrowDownLeft, ArrowUpRight, Receipt, ShieldCheck, ChevronRight } from 'lucide-react-native';
+import { Wallet, Plus, ArrowDownLeft, ArrowUpRight, Receipt, ShieldCheck, ChevronRight, AlertCircle } from 'lucide-react-native';
 import { fetchWalletBalance, createWalletRazorpayOrder, verifyWalletPayment, clearWalletError } from '../store/walletSlice';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import { RazorpayCheckoutModal } from '../components/RazorpayCheckoutModal';
@@ -29,7 +29,7 @@ export function WalletScreen() {
   const history: any[] = walletState?.transactionHistory || (walletState as any)?.transactions || [];
   const isLoading = walletState?.isLoading || (walletState as any)?.loading || false;
   const error = walletState?.error || null;
-  const isGatewayReady = walletState?.isPaymentGatewayConfigured !== false;
+  const isGatewayReady = walletState?.isPaymentGatewayConfigured === true;
 
   // Real-time socket listener
   useBillingSocket();
@@ -95,11 +95,13 @@ export function WalletScreen() {
   };
 
   const handleWalletRazorpaySuccess = async (payload: any) => {
+    const currentPaymentId = payload?.paymentId || razorpayOptions?.paymentId;
     setRazorpayOptions(null);
     setIsProcessingTopUp(true);
     try {
       await dispatch(verifyWalletPayment({
         ...payload,
+        paymentId: currentPaymentId,
         amount: topUpAmount,
       })).unwrap();
       setIsProcessingTopUp(false);
@@ -151,6 +153,16 @@ export function WalletScreen() {
             loading={isLoading}
             ListHeaderComponent={
               <View className="mb-3">
+                {/* Gateway unconfigured notice */}
+                {!isGatewayReady && !isLoading ? (
+                  <View className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-3 flex-row items-center">
+                    <Icon as={AlertCircle} size={16} className="text-amber-600 dark:text-amber-400 me-2.5 shrink-0" />
+                    <Text className="text-xs text-amber-900 dark:text-amber-200 font-medium flex-1">
+                      Online Top-Up Disabled: Community administrator has not configured Razorpay in the Integration Hub.
+                    </Text>
+                  </View>
+                ) : null}
+
                 {/* Authoritative Wallet Balance Hero Card */}
                 <WalletHeroCard
                   balance={balance}

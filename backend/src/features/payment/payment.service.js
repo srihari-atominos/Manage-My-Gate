@@ -40,42 +40,43 @@ export class PaymentService {
         }
       }
 
-      const configuredProvider = (process.env.PAYMENT_PROVIDER || 'mock').toLowerCase();
-      let activeGateway = (gateway || configuredProvider).toLowerCase();
+      let activeGateway = (gateway || 'razorpay').toLowerCase();
 
-      if (configuredProvider === 'mock') {
-        activeGateway = 'mock';
-      } else if (configuredProvider === 'razorpay') {
-        activeGateway = 'razorpay';
+      let credentials = {};
+      let isConfigured = false;
+      try {
+        isConfigured = await integrationHubService.isProviderConfigured(orgId, 'razorpay');
+        if (isConfigured) {
+          credentials = await integrationHubService.getDecryptedCredentials(orgId, 'razorpay');
+        }
+      } catch (error) {
+        logger.warn('Failed to fetch credentials for razorpay from integrationHub', { error: error.message });
+      }
+
+      if (activeGateway === 'razorpay') {
+        if (!isConfigured) {
+          throw new HttpError(
+            400,
+            'Online payment gateway (Razorpay) has not been configured for your community by the administrator. Please contact your community admin or use an offline payment method.'
+          );
+        }
+
+        const keyId = credentials?.keyId || credentials?.key_id;
+        const keySecret = credentials?.keySecret || credentials?.key_secret;
+
+        if (!keyId || !keySecret || keyId === 'test_key' || keyId === 'rzp_test_YOUR_KEY_ID_HERE') {
+          throw new HttpError(
+            400,
+            'Razorpay credentials configured for your community are invalid. Please contact your community admin.'
+          );
+        }
+      } else if (activeGateway === 'mock') {
+        if (process.env.NODE_ENV !== 'test') {
+          throw new HttpError(400, 'Mock payment gateway is disabled in this environment.');
+        }
       }
 
       logger.info(`Initiating payment order via '${activeGateway}' strategy`, { orgId, userId, amount, currency });
-
-      let credentials = {};
-      if (activeGateway === 'razorpay') {
-        try {
-          const platformOrgId = process.env.PLATFORM_ORG_ID;
-          if (platformOrgId) {
-            credentials = await integrationHubService.getDecryptedCredentials(platformOrgId, activeGateway);
-          } else {
-            const globalConn = await integrationHubService.getGlobalConnectionByProvider(activeGateway);
-            if (globalConn) {
-              credentials = await integrationHubService.getDecryptedCredentialsById(globalConn._id);
-            } else {
-              credentials = await integrationHubService.getDecryptedCredentials(orgId, activeGateway);
-            }
-          }
-        } catch (error) {
-          logger.warn(`Failed to fetch credentials for ${activeGateway}`, { error: error.message });
-        }
-
-        const keyId = credentials?.keyId || credentials?.key_id || process.env.RAZORPAY_KEY_ID;
-        const keySecret = credentials?.keySecret || credentials?.key_secret || process.env.RAZORPAY_KEY_SECRET;
-
-        if (!keyId || !keySecret || keyId === 'test_key' || keyId === 'rzp_test_YOUR_KEY_ID_HERE') {
-          throw new HttpError(400, 'PAYMENT_PROVIDER is set to "razorpay", but valid Razorpay Key ID and Key Secret are not configured in backend/.env or IntegrationHub.');
-        }
-      }
 
       const provider = getPaymentProvider(activeGateway);
       
