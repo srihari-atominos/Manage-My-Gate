@@ -22,11 +22,11 @@ export const VisitorQRCode: React.FC<VisitorQRCodeProps> = ({
   size = 190,
   validityText = 'Scan at security gate for entry verification',
 }) => {
-  const barcodePayload = encodeAppBarcode(type as AppBarcodeType, code, passId, visitorName);
+  const barcodePayload = encodeAppBarcode(type, code, passId, visitorName);
 
   return (
     <QRCodeView
-      value={barcodePayload}
+      value={barcodePayload || code}
       size={size}
       caption={validityText}
     />

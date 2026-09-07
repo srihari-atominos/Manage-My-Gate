@@ -194,7 +194,6 @@ export function OfflineSettleSheet({
                 <Text className="text-xs text-muted-foreground text-center mt-1">
                   Bank transfer of ₹{amountToSubmit.toLocaleString('en-IN')} (Ref: #{offlineReference || 'BANK-TRANSFER'}) submitted for verification.
                 </Text>
-
                 <View className="mt-3 flex-row items-center gap-2">
                   <StatusBadge label="VERIFICATION PENDING" variant="warning" />
                   {remainingAfterPayment > 0 ? (
@@ -408,7 +407,7 @@ export function OfflineSettleSheet({
               <Button
                 variant="default"
                 size="lg"
-                className="w-full flex-row items-center justify-center mt-1"
+                className="w-full mt-2"
                 disabled={isSubmissionBlocked || isFormInvalid || isSubmitting || loadingStates.settleInvoice}
                 loading={isSubmitting || loadingStates.settleInvoice}
                 onPress={handleOpenConfirm}
@@ -416,10 +415,7 @@ export function OfflineSettleSheet({
                 accessibilityRole="button"
                 accessibilityLabel={`Submit Bank Transfer payment for ₹${amountToSubmit.toLocaleString('en-IN')}`}
               >
-                <Text className="font-bold text-base text-primary-foreground me-1">
-                  {`Submit Bank Transfer • ₹${amountToSubmit.toLocaleString('en-IN')}`}
-                </Text>
-                <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
+                {`Submit Payment • ₹${amountToSubmit.toLocaleString('en-IN')}`}
               </Button>
             </View>
           )}

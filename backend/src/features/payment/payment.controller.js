@@ -102,6 +102,22 @@ class PaymentController {
       next(error);
     }
   }
+
+  /**
+   * Get Gateway Configuration Status
+   */
+  async getGatewayStatus(req, res, next) {
+    try {
+      const orgId = req.user?.orgId || req.user?.communityId || req.tenant?.orgId || req.headers['x-organization-id'];
+      const status = await paymentService.isGatewayConfigured(orgId);
+      res.status(200).json({
+        success: true,
+        data: status
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new PaymentController();

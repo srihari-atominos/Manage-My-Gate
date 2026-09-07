@@ -358,24 +358,22 @@ export function InvoiceDetailsScreen() {
                   size="sm"
                   leftIcon={Share2}
                   onPress={() => handleExportPdf('print')}
-                  className="flex-1 flex-row items-center justify-center gap-1.5 border-primary/40 bg-primary/10"
-                  accessibilityRole="button"
-                  accessibilityLabel="View PDF Statement"
+                  className="flex-1"
+                  textClassName="text-xs font-semibold text-foreground"
+                  accessibilityLabel="Share Statement"
                 >
-                  <Icon as={FileText} size={14} className="text-primary" />
-                  <Text className="text-xs font-bold text-primary">View PDF</Text>
+                  Share Statement
                 </Button>
                 <Button
                   variant="default"
                   size="sm"
                   leftIcon={Download}
                   onPress={() => handleExportPdf('download')}
-                  className="flex-1 flex-row items-center justify-center gap-1.5 bg-primary"
-                  accessibilityRole="button"
+                  className="flex-1"
+                  textClassName="text-xs font-semibold text-primary-foreground"
                   accessibilityLabel="Download PDF Statement"
                 >
-                  <Icon as={Download} size={14} className="text-primary-foreground" />
-                  <Text className="text-xs font-bold text-primary-foreground">Download PDF</Text>
+                  Download PDF
                 </Button>
               </View>
             </Card>

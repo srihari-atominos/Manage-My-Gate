@@ -22,7 +22,9 @@ import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native
 import storage from '../src/utils/storage';
 import i18n from '../src/utils/i18n';
 import * as SplashScreen from 'expo-splash-screen';
-import useGlobalAppSocket from '../src/hooks/useGlobalAppSocket';
+import useAutoUpdate from '../src/hooks/useAutoUpdate';
+import usePushNotifications from '../src/features/notification/hooks/usePushNotifications';
+import { useGlobalAppSocket } from '../src/hooks/useGlobalAppSocket';
 
 // Prevent splash screen from auto-hiding before asset loading is complete
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -42,6 +44,12 @@ function AuthRouteGuard() {
 
   // Initialize global real-time Socket.io engine
   useGlobalAppSocket();
+
+  // Check and apply EAS Over-The-Air (OTA) updates automatically
+  useAutoUpdate();
+
+  // Initialize and listen to device push notifications
+  usePushNotifications();
 
   const isCreateOrgIntent = searchParams.intent === 'create-org' || searchParams.intent === 'create';
 

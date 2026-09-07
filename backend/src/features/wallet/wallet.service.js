@@ -120,11 +120,19 @@ class WalletService {
     }
 
     const session = await mongoose.startSession();
-    session.startTransaction();
+    let isTransactionActive = false;
+    try {
+      session.startTransaction();
+      isTransactionActive = true;
+    } catch (err) {
+      logger.warn('Mongoose transaction not supported in current MongoDB environment; continuing with session:', { error: err.message });
+    }
+
+    const activeSession = isTransactionActive ? session : undefined;
 
     try {
       // 1. Fetch invoice inside session via invoiceService (no direct model query)
-      const invoice = await invoiceService.getInvoiceById(invoiceId, session);
+      const invoice = await invoiceService.getInvoiceById(invoiceId, activeSession);
 
       if (invoice.targetUserId.toString() !== userId.toString()) {
         throw new HttpError(403, 'Unauthorized. Invoice does not belong to this user.');
@@ -146,13 +154,13 @@ class WalletService {
       }
 
       // 2. Fetch wallet and verify balance
-      const wallet = await walletRepository.getWallet(userId, targetOrgId, session);
+      const wallet = await walletRepository.getWallet(userId, targetOrgId, activeSession);
       if (!wallet || wallet.balance < amountDue) {
         throw new HttpError(400, `Insufficient wallet balance. Total due is ₹${amountDue}, but current wallet balance is ₹${wallet ? wallet.balance : 0}.`);
       }
 
       // 3. Deduct balance from wallet
-      const updatedWallet = await walletRepository.updateBalance(userId, targetOrgId, -amountDue, session);
+      const updatedWallet = await walletRepository.updateBalance(userId, targetOrgId, -amountDue, activeSession);
 
       // 4. Create wallet debit transaction
       const walletTxn = await walletRepository.createTransaction({
@@ -165,7 +173,7 @@ class WalletService {
         referenceType: 'Invoice',
         referenceId: invoice._id,
         description: `Payment for Invoice #${invoice.invoiceNumber}`
-      }, session);
+      }, activeSession);
 
       // 5. Settle Invoice using InvoiceService (passing session)
       const updatedInvoice = await invoiceService.settleInvoicePayment(invoiceId, {
@@ -173,7 +181,7 @@ class WalletService {
         amount: amountDue,
         paid_at: new Date(),
         settled_at: new Date(),
-      }, session);
+      }, activeSession);
 
       // 6. Record Payment entry for auditing via paymentService (no direct repository call)
       const paymentRecord = await paymentService.recordPayment({
@@ -187,10 +195,12 @@ class WalletService {
         gateway: 'mock',
         paymentMethod: 'WALLET',
         gatewayTransactionId: walletTxn.transactionId
-      }, session);
+      }, activeSession);
 
-      // Commit transaction
-      await session.commitTransaction();
+      // Commit transaction if active
+      if (isTransactionActive) {
+        await session.commitTransaction();
+      }
       session.endSession();
 
       // Emit decoupled Node events
@@ -206,7 +216,9 @@ class WalletService {
         walletBalance: updatedWallet.balance
       };
     } catch (error) {
-      await session.abortTransaction();
+      if (isTransactionActive) {
+        await session.abortTransaction();
+      }
       session.endSession();
       logger.error('Error settling invoice via wallet:', error);
       if (error instanceof HttpError) throw error;
@@ -242,28 +254,56 @@ class WalletService {
     }));
 
     const transactionHistory = transactions.map(t => t.toObject());
+    const gateway = await this.getGatewayCredentials(orgId);
 
     return {
       balance: wallet.balance,
       activePasses,
       transactionHistory,
-      transactions: transactionHistory
+      transactions: transactionHistory,
+      isPaymentGatewayConfigured: gateway.isConfigured,
+      isMockGateway: gateway.isMock
     };
   }
 
-  async createRechargeOrder(userId, amount) {
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const isRealKey = keyId && (keyId.startsWith('rzp_test_') || keyId.startsWith('rzp_live_'));
+  async getGatewayCredentials(orgId) {
+    let credentials = {};
+    if (orgId) {
+      try {
+        const integrationHubService = (await import('../integrationHub/integrationHub.service.js')).default;
+        credentials = await integrationHubService.getDecryptedCredentials(orgId, 'razorpay');
+      } catch (err) {
+        logger.warn('Failed to fetch gateway credentials from integrationHub, falling back to ENV', { error: err.message });
+      }
+    }
+    const keyId = credentials?.keyId || credentials?.key_id || process.env.RAZORPAY_KEY_ID || '';
+    const keySecret = credentials?.keySecret || credentials?.key_secret || process.env.RAZORPAY_KEY_SECRET || '';
+    const isRealKey = !!(keyId && (keyId.startsWith('rzp_test_') || keyId.startsWith('rzp_live_')));
     const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !isRealKey;
+    return {
+      keyId,
+      keySecret,
+      isRealKey,
+      isMock,
+      isConfigured: isRealKey || process.env.PAYMENT_PROVIDER === 'mock'
+    };
+  }
 
-    if (isMock) {
-      logger.info('Creating Mock Razorpay Recharge Order', { userId, amount });
+  async createRechargeOrder(userId, orgId, amount) {
+    if (!amount || amount <= 0) {
+      throw new HttpError(400, 'Invalid recharge amount');
+    }
+
+    const gateway = await this.getGatewayCredentials(orgId);
+
+    if (gateway.isMock) {
+      logger.info('Creating Mock Razorpay Recharge Order', { userId, orgId, amount });
       const mockId = `order_mock_${Math.random().toString(36).substring(2, 15)}`;
-      const activeKey = keyId || 'rzp_test_mockkey';
+      const activeKey = gateway.keyId || 'rzp_test_mockkey';
       return {
         id: mockId,
         orderId: mockId,
-        amount: amount * 100, // Razorpay works in paise
+        amount: Math.round(amount * 100), // Razorpay works in paise
         currency: "INR",
         status: "created",
         key: activeKey,
@@ -273,9 +313,13 @@ class WalletService {
       };
     }
 
+    if (!gateway.isRealKey || !gateway.keySecret) {
+      throw new HttpError(400, 'Online payment gateway is not configured for this community.');
+    }
+
     const instance = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET
+      key_id: gateway.keyId,
+      key_secret: gateway.keySecret
     });
 
     const options = {
@@ -286,13 +330,12 @@ class WalletService {
 
     try {
       const order = await instance.orders.create(options);
-      const activeKey = process.env.RAZORPAY_KEY_ID;
       return {
         ...order,
         orderId: order.id,
-        key: activeKey,
-        keyId: activeKey,
-        razorpayKeyId: activeKey,
+        key: gateway.keyId,
+        keyId: gateway.keyId,
+        razorpayKeyId: gateway.keyId,
         isMock: false
       };
     } catch (error) {
@@ -310,9 +353,8 @@ class WalletService {
       throw new HttpError(400, 'Invalid recharge amount');
     }
 
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const isRealKey = keyId && (keyId.startsWith('rzp_test_') || keyId.startsWith('rzp_live_'));
-    const isMock = process.env.PAYMENT_PROVIDER === 'mock' || !isRealKey || razorpay_order_id?.startsWith('order_mock_') || razorpay_signature?.startsWith('sig_mock_');
+    const gateway = await this.getGatewayCredentials(orgId);
+    const isMock = gateway.isMock || razorpay_order_id?.startsWith('order_mock_') || razorpay_signature?.startsWith('sig_mock_');
 
     if (isMock) {
       logger.info('Verifying Mock Razorpay Signature', { userId, orgId, paymentData });
@@ -345,9 +387,13 @@ class WalletService {
       };
     }
 
+    if (!gateway.keySecret) {
+      throw new HttpError(400, 'Payment gateway secret key is missing for signature verification.');
+    }
+
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
+      .createHmac('sha256', gateway.keySecret.trim())
       .update(body.toString())
       .digest('hex');
 
@@ -384,6 +430,31 @@ class WalletService {
       balance: updatedWallet.balance,
       walletBalance: updatedWallet.balance
     };
+  }
+
+  async processPayment(userId, orgId, amount, description = 'Wallet payment') {
+    const numericAmount = Number(amount);
+    if (!numericAmount || numericAmount <= 0) {
+      throw new HttpError(400, 'Invalid payment amount');
+    }
+    const wallet = await walletRepository.getWallet(userId, orgId);
+    if (!wallet || wallet.balance < numericAmount) {
+      throw new HttpError(400, 'Insufficient wallet balance');
+    }
+    const updatedWallet = await walletRepository.updateBalance(userId, orgId, -numericAmount);
+    const transaction = await walletRepository.createTransaction({
+      orgId,
+      userId,
+      type: 'Debit',
+      amount: numericAmount,
+      paymentMethod: 'wallet',
+      paymentStatus: 'success',
+      referenceType: 'Other',
+      description
+    });
+    walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
+    walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
+    return transaction;
   }
 }
 

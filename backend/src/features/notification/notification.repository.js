@@ -13,7 +13,7 @@ export class NotificationRepository {
    */
   async create(notificationData, session) {
     const notification = new Notification(notificationData);
-    return await notification.save({ session });
+    return await notification.save(session ? { session } : undefined);
   }
 
   /**

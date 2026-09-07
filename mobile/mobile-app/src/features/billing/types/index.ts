@@ -117,6 +117,7 @@ export interface WalletState {
   activePasses?: any[];
   transactionHistory?: any[];
   transactions?: any[];
+  isPaymentGatewayConfigured?: boolean;
   loading?: boolean;
   isLoading: boolean;
   error: string | null;

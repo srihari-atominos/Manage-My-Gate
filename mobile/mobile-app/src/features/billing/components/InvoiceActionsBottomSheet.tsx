@@ -7,7 +7,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { DetailSection } from '@/components/ui/DetailSection';
 import { DetailRow } from '@/components/ui/DetailRow';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/common/Button';
 import { TextInput } from '@/components/forms/TextInput';
 import { getStatusVariant } from '@/components/ui/StatusBadge';
 import { Clock, Check, Banknote, Landmark, XCircle, CheckCircle2, ShieldAlert, Bell, FileText } from 'lucide-react-native';
@@ -325,33 +325,31 @@ export function InvoiceActionsBottomSheet({
                 <Button
                   variant="default"
                   size="lg"
-                  className="w-full bg-status-success active:bg-status-success/90 flex-row items-center justify-center gap-1.5"
+                  className="w-full bg-status-success active:bg-status-success/90"
                   disabled={isApproving || isRejecting || amountToApprove <= 0}
                   loading={isApproving}
                   onPress={() => setShowConfirmModal(true)}
                   accessibilityRole="button"
                   accessibilityLabel="Approve and Clear Offline Payment"
                 >
-                  <Icon as={CheckCircle2} size={18} className="text-primary-foreground" />
-                  <Text className="font-bold text-base text-primary-foreground">
-                    {willBeFullyPaid
-                      ? `Mark as Paid • Full ₹${amountToApprove.toLocaleString('en-IN')}`
-                      : `Approve Custom Amount • ₹${amountToApprove.toLocaleString('en-IN')}`}
-                  </Text>
+                  {willBeFullyPaid
+                    ? `Mark as Paid • Full ₹${amountToApprove.toLocaleString('en-IN')}`
+                    : `Approve Custom Amount • ₹${amountToApprove.toLocaleString('en-IN')}`}
                 </Button>
 
                 {onRejectOffline ? (
                   <Button
                     variant="outline"
                     size="default"
-                    className="w-full border-destructive/40 text-destructive active:bg-destructive/10"
+                    className="w-full border-destructive/40"
+                    textClassName="text-destructive font-bold"
                     disabled={isApproving || isRejecting}
                     loading={isRejecting}
                     onPress={() => setShowRejectModal(true)}
                     accessibilityRole="button"
                     accessibilityLabel="Reject Payment Submission"
                   >
-                    <Text className="text-destructive font-bold text-sm">Reject Submission</Text>
+                    Reject Submission
                   </Button>
                 ) : null}
               </View>
@@ -361,7 +359,8 @@ export function InvoiceActionsBottomSheet({
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full border-emerald-500/30 bg-emerald-500/10 active:bg-emerald-500/20"
+                className="w-full border-emerald-500/30 bg-emerald-500/10"
+                textClassName="font-bold text-emerald-600 dark:text-emerald-400"
                 onPress={() => {
                   onClose();
                   onSettleOfflineModal(invoice);
@@ -369,9 +368,7 @@ export function InvoiceActionsBottomSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Record Offline Settlement"
               >
-                <Text className="font-bold text-base text-emerald-600 dark:text-emerald-400">
-                  Record Offline Settlement
-                </Text>
+                Record Offline Settlement
               </Button>
             ) : null}
 

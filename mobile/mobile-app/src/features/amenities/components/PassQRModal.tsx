@@ -39,8 +39,7 @@ export function PassQRModal({ visible, onClose, booking }: PassQRModalProps) {
   const badgeVariant = statusVariantMap[booking.status] || 'neutral';
   const bookingIdDisplay = booking.bookingId || (booking._id ? String(booking._id).substring(0, 8).toUpperCase() : 'PASS');
 
-  const rawBookingCode = booking.bookingId || (booking._id ? String(booking._id) : 'PASS');
-  const qrString = encodeAppBarcode('AMENITY', rawBookingCode, booking._id ? String(booking._id) : undefined);
+  const qrString = booking.qrCode || booking.passCode || encodeAppBarcode('AMENITY', booking.bookingId || (booking._id ? String(booking._id) : 'PASS'), booking._id ? String(booking._id) : undefined);
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Digital Access Pass">

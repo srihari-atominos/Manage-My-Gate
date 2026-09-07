@@ -7,7 +7,8 @@ import { Modal, Button, Form, Spinner, Alert } from 'react-bootstrap'
 const WalletRechargeModal = ({ show, onHide }) => {
   const dispatch = useDispatch()
   const [amount, setAmount] = useState('')
-  const { isLoading, error } = useSelector((state) => state.wallet)
+  const { isLoading, error, isPaymentGatewayConfigured } = useSelector((state) => state.wallet)
+  const isGatewayReady = isPaymentGatewayConfigured !== false
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -90,6 +91,11 @@ const WalletRechargeModal = ({ show, onHide }) => {
         <Modal.Title>Recharge Wallet</Modal.Title>
       </Modal.Header>
       <Modal.Body>
+        {!isGatewayReady && (
+          <Alert variant="warning" className="small mb-3">
+            <strong>Online Recharge Unavailable:</strong> The community administration has not connected an online payment merchant account. Please contact management for manual or offline top-up.
+          </Alert>
+        )}
         {error && <Alert variant="danger">{typeof error === 'object' ? error.message || JSON.stringify(error) : error}</Alert>}
         <Form onSubmit={handleRecharge}>
           <Form.Group className="mb-3">
@@ -100,11 +106,12 @@ const WalletRechargeModal = ({ show, onHide }) => {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               min="1"
+              disabled={!isGatewayReady}
               required
             />
           </Form.Group>
-          <Button variant="primary" type="submit" disabled={isLoading} className="w-100">
-            {isLoading ? <Spinner size="sm" animation="border" /> : 'Proceed to Pay'}
+          <Button variant="primary" type="submit" disabled={isLoading || !isGatewayReady} className="w-100">
+            {isLoading ? <Spinner size="sm" animation="border" /> : isGatewayReady ? 'Proceed to Pay' : 'Gateway Not Configured'}
           </Button>
         </Form>
       </Modal.Body>

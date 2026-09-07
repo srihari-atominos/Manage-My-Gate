@@ -15,8 +15,8 @@ import { useBillingSocket } from '../hooks/useBillingSocket';
 import { UnitDueBreakdown, InvoiceStatus, Invoice } from '../types';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { OfflineSettleSheet } from '../components/OfflineSettleSheet';
-import { InvoiceQRModal } from '../components/InvoiceQRModal';
 import { PaymentReceiptModal } from '../components/PaymentReceiptModal';
+import { InvoiceQRModal } from '../components/InvoiceQRModal';
 
 export function ResidentMyDuesScreen() {
   const router = useRouter();
@@ -36,8 +36,8 @@ export function ResidentMyDuesScreen() {
   // Modal sheet state
   const [checkoutInvoice, setCheckoutInvoice] = useState<Invoice | null>(null);
   const [offlineInvoice, setOfflineInvoice] = useState<Invoice | null>(null);
-  const [qrInvoice, setQrInvoice] = useState<Invoice | null>(null);
   const [receiptInvoice, setReceiptInvoice] = useState<any | null>(null);
+  const [qrInvoice, setQrInvoice] = useState<Invoice | null>(null);
 
   // Load resident dues & wallet balance on screen mount
   useEffect(() => {
@@ -413,17 +413,18 @@ export function ResidentMyDuesScreen() {
           }}
         />
 
-        {/* Invoice QR Pass Modal */}
-        <InvoiceQRModal
-          visible={!!qrInvoice}
-          invoice={qrInvoice}
-          onClose={() => setQrInvoice(null)}
-        />
         {/* Post-Payment Invoice Receipt & PDF Modal */}
         <PaymentReceiptModal
           visible={!!receiptInvoice}
           invoice={receiptInvoice}
           onClose={() => setReceiptInvoice(null)}
+        />
+
+        {/* Invoice QR Pass Modal */}
+        <InvoiceQRModal
+          visible={!!qrInvoice}
+          invoice={qrInvoice}
+          onClose={() => setQrInvoice(null)}
         />
       </View>
     </ScreenShell>

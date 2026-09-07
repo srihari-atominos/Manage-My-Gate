@@ -88,13 +88,17 @@ export class AssessmentService {
   /**
    * Update assessment template rules.
    */
-  async updateAssessment(id, updateData) {
+  async updateAssessment(id, updateData, orgId = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    logger.info('updateAssessment service called', { id, updateData, correlationId });
+    logger.info('updateAssessment service called', { id, updateData, orgId, correlationId });
 
     const existing = await assessmentRepository.findById(id);
     if (!existing) {
       throw new HttpError(404, `Assessment with ID ${id} not found`);
+    }
+
+    if (orgId && String(existing.communityId) !== String(orgId)) {
+      throw new HttpError(403, 'Forbidden: Assessment template belongs to another organization');
     }
 
     // If changing communityId or scope, validate scope
@@ -163,13 +167,17 @@ export class AssessmentService {
   /**
    * Delete or archive assessment template safely.
    */
-  async deleteAssessment(id) {
+  async deleteAssessment(id, orgId = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    logger.info('deleteAssessment service called', { id, correlationId });
+    logger.info('deleteAssessment service called', { id, orgId, correlationId });
 
     const existing = await assessmentRepository.findById(id);
     if (!existing) {
       throw new HttpError(404, `Assessment template with ID ${id} not found`);
+    }
+
+    if (orgId && String(existing.communityId) !== String(orgId)) {
+      throw new HttpError(403, 'Forbidden: Assessment template belongs to another organization');
     }
 
     // Check if any invoices are associated with this template via invoiceService
@@ -263,9 +271,9 @@ export class AssessmentService {
   /**
    * Manually trigger billing run for assessment template.
    */
-  async runBilling(id, orgId) {
+  async runBilling(id, orgId, billingPeriodString = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
-    logger.info('runBilling manually triggered', { id, orgId, correlationId });
+    logger.info('runBilling manually triggered', { id, orgId, billingPeriodString, correlationId });
 
     const assessment = await assessmentRepository.findById(id);
     if (!assessment) {
@@ -276,7 +284,11 @@ export class AssessmentService {
       throw new HttpError(403, 'Forbidden: Assessment template belongs to another organization');
     }
 
-    const stats = await invoiceService.generateBatchInvoices(assessment);
+    const targetAssessment = billingPeriodString
+      ? { ...assessment.toObject(), billingPeriodString }
+      : assessment;
+
+    const stats = await invoiceService.generateBatchInvoices(targetAssessment);
 
     logger.info('Manual billing run completed stats:', { id, stats, correlationId });
     return stats;

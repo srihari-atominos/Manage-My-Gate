@@ -112,7 +112,7 @@ function NoticeDetailContent() {
           <View className="flex-row flex-wrap gap-2 mb-3">
             {selectedNotice.isPinned && (
               <View className="flex-row items-center bg-primary/10 px-2 py-1 rounded-md">
-                <Icon as={Pin} size={12} className="text-primary mr-1" />
+                <Icon as={Pin} size={12} className="text-primary me-1" />
                 <Text className="text-primary text-xs font-semibold">Pinned</Text>
               </View>
             )}

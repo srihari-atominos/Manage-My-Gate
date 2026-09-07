@@ -338,7 +338,12 @@ export const VisitorPassWizard: React.FC<VisitorPassWizardProps> = ({
         </View>
       )}
 
-      <ScrollView className="flex-1" contentContainerClassName="p-4 gap-4 pb-8">
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="p-4 gap-4 pb-8"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {isAdmin && currentStepIndex === 0 && (
           <AdminPassSetupStep
             data={adminScope}
