@@ -16,17 +16,11 @@ import { Icon } from '@/components/ui/icon';
 import { FAB } from '@/components/ui/FAB';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import {
-  Receipt,
   Clock,
   ShieldAlert,
-  Landmark,
   Target,
-  Layers,
   FileText,
   CreditCard,
-  Wallet,
-  TrendingUp,
-  AlertCircle,
 } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
@@ -46,13 +40,27 @@ export function AdminBillingDashboardScreen() {
   // Socket sync for real-time KPI & ledger updates
   useBillingSocket();
 
-  // Permission check from auth state (memoized boolean selector to avoid new reference warnings)
+  // Permission check from auth state accommodating admin roles and permissions
   const hasDashboardPermission = useSelector((state: any) => {
     const role = state.auth?.user?.role || '';
-    if (role === 'SuperAdmin' || role === 'Admin') return true;
+    const adminRoles = [
+      'Super Admin',
+      'Platform Super Admin',
+      'Community Admin',
+      'Admin',
+      'SuperAdmin',
+      'Finance Manager',
+      'Finance Admin',
+    ];
+    if (adminRoles.includes(role)) return true;
     const permissions = state.auth?.user?.permissions;
-    if (!Array.isArray(permissions)) return false;
-    return permissions.includes('billing:dashboard') || permissions.includes('*');
+    if (Array.isArray(permissions)) {
+      return permissions.some((p: any) => {
+        const name = typeof p === 'string' ? p : p?.name;
+        return name === 'billing:dashboard' || name === 'billing' || name === '*';
+      });
+    }
+    return false;
   });
 
   const fetchDashboardData = useCallback(() => {
@@ -73,7 +81,8 @@ export function AdminBillingDashboardScreen() {
   const totalCollected = kpis?.totalCollected || 0;
   const totalUnpaidArrears = kpis?.totalUnpaidArrears || 0;
   const inTransitGateway = kpis?.inTransitGateway || 0;
-  const pendingOffline = kpis?.pendingOffline || 0;
+  const pendingOfflineAmount = kpis?.pendingOfflineAmount ?? kpis?.pendingOffline ?? 0;
+  const pendingOfflineCount = kpis?.pendingOfflineCount ?? (pendingOfflineAmount > 0 ? 1 : 0);
 
   // Calculate collection progress percentage
   const collectionRate = grossDemand > 0 ? Math.min(100, Math.round((totalCollected / grossDemand) * 100)) : 0;
@@ -100,19 +109,27 @@ export function AdminBillingDashboardScreen() {
       subtitle: 'Pending collection',
       iconName: 'AlertCircle',
       variant: 'destructive',
-      onPress: () => router.push('/(resident)/admin/billing/ledger' as any),
+      onPress: () =>
+        router.push({
+          pathname: '/(resident)/admin/billing/ledger',
+          params: { status: 'UNPAID' },
+        } as any),
     },
     {
       title: 'Pending Clearance',
-      value: `₹${pendingOffline.toLocaleString('en-IN')}`,
-      subtitle: 'Offline submissions',
+      value: `₹${pendingOfflineAmount.toLocaleString('en-IN')}`,
+      subtitle: `${pendingOfflineCount} offline submission${pendingOfflineCount === 1 ? '' : 's'}`,
       iconName: 'Clock',
       variant: 'warning',
-      onPress: () => router.push('/(resident)/admin/billing/ledger' as any),
+      onPress: () =>
+        router.push({
+          pathname: '/(resident)/admin/billing/ledger',
+          params: { status: 'VERIFICATION_PENDING' },
+        } as any),
     },
   ];
 
-  // Quick Navigation Hub ActionGrid Items (Dashboard button removed per user request)
+  // Quick Navigation Hub ActionGrid Items
   const navItems: ActionGridItem[] = [
     {
       id: 'ledger',
@@ -121,7 +138,7 @@ export function AdminBillingDashboardScreen() {
       iconName: 'Receipt',
       colorBg: 'bg-emerald-500/10',
       colorIcon: '#10b981',
-      badge: pendingOffline > 0 ? String(pendingOffline) : undefined,
+      badge: pendingOfflineCount > 0 ? String(pendingOfflineCount) : undefined,
       badgeColor: 'bg-amber-500',
     },
     {
@@ -190,9 +207,7 @@ export function AdminBillingDashboardScreen() {
           </View>
           <Text className="text-xl font-bold text-foreground text-center mb-2">Access Denied</Text>
           <Text className="text-sm text-muted-foreground text-center mb-6 px-4">
-            You do not have the required administrative permission (
-            <Text className="font-mono text-xs font-bold">billing:dashboard</Text>) to view community
-            financial KPIs.
+            You do not have administrative permission to view community financial KPIs.
           </Text>
           <Button
             variant="default"
@@ -207,105 +222,110 @@ export function AdminBillingDashboardScreen() {
       ) : (
         <ScrollView
           className="flex-1 bg-background"
-        showsVerticalScrollIndicator={false}
-        contentContainerClassName="p-4 pb-28 gap-5"
-        refreshControl={
-          <RefreshControl
-            refreshing={loadingStates.fetchKPIs}
-            onRefresh={fetchDashboardData}
-            colors={['#6366f1']}
-          />
-        }
-      >
-        {/* Error Banner */}
-        {error ? (
-          <ErrorBanner message={error} onDismiss={resetBillingError} />
-        ) : null}
+          showsVerticalScrollIndicator={false}
+          contentContainerClassName="p-4 pb-28 gap-5"
+          refreshControl={
+            <RefreshControl
+              refreshing={loadingStates.fetchKPIs}
+              onRefresh={fetchDashboardData}
+              colors={['#6366f1']}
+            />
+          }
+        >
+          {/* Error Banner */}
+          {error ? (
+            <ErrorBanner message={error} onDismiss={resetBillingError} />
+          ) : null}
 
-        {/* 1. Universal Top KPI Metrics Strip (Reference from Amenities Dashboard) */}
-        <KPIDashboardStrip cards={kpiCards} loading={loadingStates.fetchKPIs && !kpis} layout="grid2x2" />
+          {/* 1. Universal Top KPI Metrics Strip */}
+          <KPIDashboardStrip cards={kpiCards} loading={loadingStates.fetchKPIs && !kpis} layout="grid2x2" />
 
-        {/* 2. Collection Target Progress Widget */}
-        <Card className="bg-card border border-border rounded-2xl p-4">
-          <View className="flex-row items-center justify-between mb-2">
-            <View className="flex-row items-center">
-              <Icon as={Target} size={18} className="text-primary me-2" />
-              <Text className="text-sm font-bold text-foreground">Current Month Collection Progress</Text>
-            </View>
-            <Text className="text-sm font-extrabold text-primary">{collectionRate}%</Text>
-          </View>
-          <ProgressBar progress={collectionRate} className="h-2 rounded-full mb-3" />
-          <View className="flex-row justify-between items-center">
-            <Text className="text-xs text-muted-foreground">
-              Collected: <Text className="font-semibold text-foreground">₹{totalCollected.toLocaleString('en-IN')}</Text>
-            </Text>
-            <Text className="text-xs text-muted-foreground">
-              Billed: <Text className="font-semibold text-foreground">₹{grossDemand.toLocaleString('en-IN')}</Text>
-            </Text>
-          </View>
-        </Card>
-
-        {/* 3. Attention Required Box */}
-        {pendingOffline > 0 ? (
-          <View className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex-row items-start justify-between">
-            <View className="flex-row items-start flex-1 me-3">
-              <Icon as={Clock} size={22} className="text-amber-600 dark:text-amber-400 me-3 mt-0.5" />
-              <View className="flex-1">
-                <Text className="font-extrabold text-sm text-amber-900 dark:text-amber-200">
-                  Pending Offline Payment Verification
-                </Text>
-                <Text className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                  ₹{pendingOffline.toLocaleString('en-IN')} in bank transfer and cash submissions awaiting admin clearance.
-                </Text>
+          {/* 2. Collection Target Progress Widget */}
+          <Card className="bg-card border border-border rounded-2xl p-4">
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center">
+                <Icon as={Target} size={18} className="text-primary me-2" />
+                <Text className="text-sm font-bold text-foreground">Current Month Collection Progress</Text>
               </View>
+              <Text className="text-sm font-extrabold text-primary">{collectionRate}%</Text>
             </View>
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-amber-500/20 border-amber-500/40"
-              onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Review pending offline payments"
-            >
-              <Text className="text-xs font-bold text-amber-900 dark:text-amber-200">Review</Text>
-            </Button>
-          </View>
-        ) : null}
-
-        {/* 4. Quick Navigation Hub using ActionGrid (Reference from Amenities Dashboard) */}
-        <ActionGrid title="Quick Navigation" items={navItems} />
-
-        {/* 5. Recent Activity Feed Snippet (Strict 3-Item Limit) */}
-        <View>
-          <SectionHeader
-            title="Recent Collections"
-            actionLabel="View All"
-            onAction={() => router.push('/(resident)/admin/billing/ledger' as any)}
-          />
-          {recentTransactions.length === 0 ? (
-            <Card className="bg-card border border-border rounded-xl p-4 items-center justify-center mt-2">
-              <Text className="text-xs text-muted-foreground text-center">
-                No recent collection transactions found.
+            <ProgressBar progress={collectionRate} className="h-2 rounded-full mb-3" />
+            <View className="flex-row justify-between items-center">
+              <Text className="text-xs text-muted-foreground">
+                Collected: <Text className="font-semibold text-foreground">₹{totalCollected.toLocaleString('en-IN')}</Text>
               </Text>
-            </Card>
-          ) : (
-            <View className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border mt-2">
-              {recentTransactions.map((tx: any) => (
-                <ListItem
-                  key={tx._id || tx.invoiceNumber}
-                  title={`${tx.unitNumber || 'Unit'} • ${tx.targetUser || 'Resident'}`}
-                  subtitle={`Inv #${tx.invoiceNumber || '—'} • ${tx.date || ''}`}
-                  leftIcon={FileText}
-                  onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
-                />
-              ))}
+              <Text className="text-xs text-muted-foreground">
+                Billed: <Text className="font-semibold text-foreground">₹{grossDemand.toLocaleString('en-IN')}</Text>
+              </Text>
             </View>
-          )}
-        </View>
-      </ScrollView>
+          </Card>
+
+          {/* 3. Attention Required Box */}
+          {pendingOfflineAmount > 0 ? (
+            <View className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex-row items-start justify-between">
+              <View className="flex-row items-start flex-1 me-3">
+                <Icon as={Clock} size={22} className="text-amber-600 dark:text-amber-400 me-3 mt-0.5" />
+                <View className="flex-1">
+                  <Text className="font-extrabold text-sm text-amber-900 dark:text-amber-200">
+                    Pending Offline Payment Verification
+                  </Text>
+                  <Text className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                    ₹{pendingOfflineAmount.toLocaleString('en-IN')} across {pendingOfflineCount} submission{pendingOfflineCount === 1 ? '' : 's'} awaiting admin clearance.
+                  </Text>
+                </View>
+              </View>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-amber-500/20 border-amber-500/40"
+                onPress={() =>
+                  router.push({
+                    pathname: '/(resident)/admin/billing/ledger',
+                    params: { status: 'VERIFICATION_PENDING' },
+                  } as any)
+                }
+                accessibilityRole="button"
+                accessibilityLabel="Review pending offline payments"
+              >
+                <Text className="text-xs font-bold text-amber-900 dark:text-amber-200">Review</Text>
+              </Button>
+            </View>
+          ) : null}
+
+          {/* 4. Quick Navigation Hub using ActionGrid */}
+          <ActionGrid title="Quick Navigation" items={navItems} />
+
+          {/* 5. Recent Invoices Feed Snippet (Strict 3-Item Limit) */}
+          <View>
+            <SectionHeader
+              title="Recent Invoices"
+              actionLabel="View All"
+              onAction={() => router.push('/(resident)/admin/billing/ledger' as any)}
+            />
+            {recentTransactions.length === 0 ? (
+              <Card className="bg-card border border-border rounded-xl p-4 items-center justify-center mt-2">
+                <Text className="text-xs text-muted-foreground text-center">
+                  No invoices found for this community.
+                </Text>
+              </Card>
+            ) : (
+              <View className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border mt-2">
+                {recentTransactions.map((tx: any) => (
+                  <ListItem
+                    key={tx._id || tx.invoiceNumber}
+                    title={`${tx.unitNumber || 'Unit'} • ${tx.targetUser || 'Resident'}`}
+                    subtitle={`Inv #${tx.invoiceNumber || '—'} • ${tx.status || 'UNPAID'} • ₹${(tx.totalDue || tx.totalAmount || tx.amount || 0).toLocaleString('en-IN')}`}
+                    leftIcon={FileText}
+                    onPress={() => router.push('/(resident)/admin/billing/ledger' as any)}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        </ScrollView>
       )}
 
-      {/* Primary Action: New Assessment Wizard FAB (Reference from Amenities Dashboard) */}
+      {/* Primary Action: New Assessment Wizard FAB */}
       {hasDashboardPermission && (
         <FAB
           iconName="Plus"

@@ -120,32 +120,14 @@ export const DEFAULT_MOCK_INVOICES: Invoice[] = [
 ];
 
 const initialState: BillingState = {
-  kpis: {
-    grossDemand: 184500,
-    grossDemandCount: 42,
-    totalCollected: 142000,
-    inTransitGateway: 12500,
-    totalUnpaidArrears: 30000,
-    pendingOffline: 2,
-  },
+  kpis: null,
   activeDues: {
-    totalPortfolioDue: 4850,
-    unitBreakdown: [
-      {
-        invoiceId: 'inv_mock_01',
-        invoiceNumber: 'INV-2026-0901',
-        unitId: 'unit_a402',
-        unitNumber: 'A-402',
-        totalDue: 4850,
-        billingPeriodString: 'September 2026',
-        status: 'UNPAID',
-        dueDate: '2026-09-15T00:00:00.000Z',
-      },
-    ],
+    totalPortfolioDue: 0,
+    unitBreakdown: [],
     secondaryCompliance: [],
-    recentInvoices: DEFAULT_MOCK_INVOICES,
+    recentInvoices: [],
   },
-  invoicesList: DEFAULT_MOCK_INVOICES,
+  invoicesList: [],
   statusCounts: {
     ALL: 0,
     VERIFICATION_PENDING: 0,
@@ -157,7 +139,7 @@ const initialState: BillingState = {
   pagination: {
     currentPage: 1,
     totalPages: 1,
-    totalRecords: DEFAULT_MOCK_INVOICES.length,
+    totalRecords: 0,
     limit: 10,
   },
   loadingStates: {
@@ -338,7 +320,7 @@ export const billingSlice = createSlice({
     clearInvoicesGrid: (state) => {
       state.invoicesList = [];
       state.pagination = { ...initialState.pagination };
-      state.kpis = { ...initialState.kpis };
+      state.kpis = null;
       state.activeDues = { ...initialState.activeDues };
     },
   },
@@ -351,7 +333,7 @@ export const billingSlice = createSlice({
       })
       .addCase(fetchAdminKPIs.fulfilled, (state, action) => {
         state.loadingStates.fetchKPIs = false;
-        state.kpis = action.payload || initialState.kpis;
+        state.kpis = action.payload || null;
       })
       .addCase(fetchAdminKPIs.rejected, (state, action) => {
         state.loadingStates.fetchKPIs = false;
@@ -505,7 +487,7 @@ export const billingSlice = createSlice({
       .addCase('auth/switchWorkspaceContext/fulfilled', (state) => {
         state.invoicesList = [];
         state.pagination = { ...initialState.pagination };
-        state.kpis = { ...initialState.kpis };
+        state.kpis = null;
         state.activeDues = { ...initialState.activeDues };
       });
   },

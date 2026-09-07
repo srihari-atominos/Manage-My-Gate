@@ -48,7 +48,7 @@ export const useBilling = () => {
         console.warn('loadAdminDashboard ignored: active communityId/orgId is undefined');
         return;
       }
-      dispatch(fetchInvoicesGrid({ page: 1, limit: 10 }));
+      dispatch(fetchInvoicesGrid({ page: 1, limit: 10, filters: { communityId: orgId } }));
       return dispatch(fetchAdminKPIs(orgId));
     },
     [dispatch, activeOrgId]

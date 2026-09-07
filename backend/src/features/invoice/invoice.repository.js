@@ -43,12 +43,12 @@ export class InvoiceRepository {
     const result = await Invoice.aggregate([
       {
         $match: {
+          isDeleted: { $ne: true },
           $or: [
             { communityId: { $in: communityMatchCandidates } },
             { orgId: { $in: communityMatchCandidates } },
-            { communityId: { $exists: false } }
-          ]
-        }
+          ],
+        },
       },
       {
         $lookup: {
@@ -65,35 +65,45 @@ export class InvoiceRepository {
         },
       },
       {
-        $match: {
-          $or: [
-            { communityId: { $in: communityMatchCandidates } },
-            { orgId: { $in: communityMatchCandidates } },
-            { 'assessment.communityId': { $in: communityMatchCandidates } }
-          ]
+        $addFields: {
+          totalDueFallback: {
+            $ifNull: ['$totalAmount', { $ifNull: ['$totalDue', { $ifNull: ['$currentCharge', 0] }] }],
+          },
+          paidFallback: {
+            $ifNull: ['$paidAmount', 0],
+          },
+          outstandingFallback: {
+            $ifNull: ['$outstandingAmount', { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', 0] }] }],
+          },
         },
       },
       {
         $facet: {
           grossDemand: [
             { $match: { status: { $ne: 'CANCELLED' } } },
-            { $group: { _id: null, total: { $sum: '$totalDue' }, count: { $sum: 1 } } },
+            { $group: { _id: null, total: { $sum: '$totalDueFallback' }, count: { $sum: 1 } } },
           ],
           totalCollected: [
-            { $match: { status: 'PAID', paid_at: { $ne: null } } },
-            { $group: { _id: null, total: { $sum: '$totalDue' } } },
+            { $match: { status: { $in: ['PAID', 'PARTIALLY_PAID'] } } },
+            { $group: { _id: null, total: { $sum: '$paidFallback' } } },
           ],
           inTransitGateway: [
-            { $match: { status: 'PAID', paid_at: { $ne: null }, settled_at: null } },
-            { $group: { _id: null, total: { $sum: '$totalDue' } } },
+            { $match: { status: 'PAID', settled_at: null, paymentMethod: { $nin: ['CASH', 'BANK_TRANSFER'] } } },
+            { $group: { _id: null, total: { $sum: '$paidFallback' } } },
           ],
           pendingOffline: [
             { $match: { status: 'VERIFICATION_PENDING' } },
-            { $group: { _id: null, total: { $sum: '$totalDue' } } },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: { $ifNull: ['$offlineAmount', '$outstandingFallback'] } },
+                count: { $sum: 1 },
+              },
+            },
           ],
           totalUnpaidArrears: [
-            { $match: { status: 'UNPAID' } },
-            { $group: { _id: null, total: { $sum: '$totalDue' } } },
+            { $match: { status: { $in: ['UNPAID', 'OVERDUE', 'PARTIALLY_PAID'] } } },
+            { $group: { _id: null, total: { $sum: '$outstandingFallback' } } },
           ],
         },
       },
@@ -105,15 +115,19 @@ export class InvoiceRepository {
     const grossDemandCount = kpis?.grossDemand[0]?.count || 0;
     const totalCollected = kpis?.totalCollected[0]?.total || 0;
     const inTransitGateway = kpis?.inTransitGateway[0]?.total || 0;
-    const pendingOffline = kpis?.pendingOffline[0]?.total || 0;
+    const pendingOfflineAmount = kpis?.pendingOffline[0]?.total || 0;
+    const pendingOfflineCount = kpis?.pendingOffline[0]?.count || 0;
     const totalUnpaidArrears = kpis?.totalUnpaidArrears[0]?.total || 0;
 
     return {
       grossDemand,
       grossDemandCount,
       totalCollected,
-      inTransitGateway: inTransitGateway + pendingOffline,
+      inTransitGateway,
       totalUnpaidArrears,
+      pendingOffline: pendingOfflineAmount,
+      pendingOfflineAmount,
+      pendingOfflineCount,
     };
   }
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import { useAppSocket } from '../../../hooks/useAppSocket';
-import { syncRealtimeInvoice, fetchMyDues } from '../store/billingSlice';
+import { syncRealtimeInvoice, fetchMyDues, fetchAdminKPIs, fetchInvoicesGrid } from '../store/billingSlice';
 import { fetchWalletBalance, syncWalletBalance } from '../store/walletSlice';
 
 /**
@@ -17,8 +17,14 @@ export const useBillingSocket = () => {
   const { socket } = useAppSocket();
 
   const user = useSelector((state: RootState) => state.auth?.user);
+  const activeOrgId = useSelector((state: any) =>
+    state.workspace?.activeOrganizationId ||
+    state.auth?.activeOrganizationId ||
+    state.auth?.user?.orgId ||
+    state.auth?.user?.communityId
+  );
   const userId = user?.id || user?._id;
-  const orgId = user?.orgId;
+  const orgId = activeOrgId || user?.orgId;
 
   const rooms = useMemo(() => {
     const list: string[] = [];
@@ -40,6 +46,10 @@ export const useBillingSocket = () => {
       console.log('[Billing Socket] Real-time event: invoice_generated', payload);
       if (payload) dispatch(syncRealtimeInvoice(payload));
       dispatch(fetchMyDues());
+      if (orgId) {
+        dispatch(fetchAdminKPIs(orgId));
+        dispatch(fetchInvoicesGrid({ page: 1, limit: 10, filters: { communityId: orgId } }));
+      }
     };
 
     // 2. Invoice Status Update Handler
@@ -47,6 +57,10 @@ export const useBillingSocket = () => {
       console.log('[Billing Socket] Real-time event: invoice_status_updated / INVOICE_UPDATED', payload);
       if (payload) dispatch(syncRealtimeInvoice(payload));
       dispatch(fetchMyDues());
+      if (orgId) {
+        dispatch(fetchAdminKPIs(orgId));
+        dispatch(fetchInvoicesGrid({ page: 1, limit: 10, filters: { communityId: orgId } }));
+      }
     };
 
     // 3. Payment Success Handler
@@ -55,6 +69,10 @@ export const useBillingSocket = () => {
       if (payload?.invoice) dispatch(syncRealtimeInvoice(payload.invoice));
       dispatch(fetchMyDues());
       dispatch(fetchWalletBalance());
+      if (orgId) {
+        dispatch(fetchAdminKPIs(orgId));
+        dispatch(fetchInvoicesGrid({ page: 1, limit: 10, filters: { communityId: orgId } }));
+      }
     };
 
     // 4. Digital Wallet Update Handler
@@ -72,6 +90,10 @@ export const useBillingSocket = () => {
       console.log('[Billing Socket] Real-time event: offline_payment_submitted', payload);
       if (payload?.invoice) {
         dispatch(syncRealtimeInvoice(payload.invoice));
+      }
+      if (orgId) {
+        dispatch(fetchAdminKPIs(orgId));
+        dispatch(fetchInvoicesGrid({ page: 1, limit: 10, filters: { communityId: orgId } }));
       }
     };
 

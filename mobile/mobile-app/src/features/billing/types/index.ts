@@ -46,6 +46,8 @@ export interface BillingKPIs {
   inTransitGateway: number;
   totalUnpaidArrears: number;
   pendingOffline?: number;
+  pendingOfflineAmount?: number;
+  pendingOfflineCount?: number;
 }
 
 export interface UnitDueBreakdown {
@@ -124,7 +126,7 @@ export interface WalletState {
 }
 
 export interface BillingState {
-  kpis: BillingKPIs;
+  kpis: BillingKPIs | null;
   activeDues: ActiveDues;
   invoicesList: any[];
   statusCounts: Record<string, number>;
