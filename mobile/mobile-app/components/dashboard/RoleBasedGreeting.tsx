@@ -71,7 +71,7 @@ export const formatRoleDisplay = (rawRole: string): string => {
 /**
  * Extracts and formats the dynamic unit / villa / apartment number from user session
  */
-export const formatUnitLocation = (user: any, propUnitName?: string | null): string | null => {
+export const formatUnitLocation = (user: any, propUnitName?: string | null): string => {
   if (propUnitName && typeof propUnitName === 'string' && propUnitName.trim() !== '') {
     const pTrim = propUnitName.trim();
     const hasPrefix = /^(villa|unit|flat|apt|apartment|tower|block|gate|#)/i.test(pTrim);
@@ -79,71 +79,71 @@ export const formatUnitLocation = (user: any, propUnitName?: string | null): str
     return `Villa ${pTrim}`;
   }
 
-  if (!user) return null;
-
-  // 1. Security / Guard persona check
-  const roleLower = (user.role || (Array.isArray(user.roles) ? user.roles[0] : '') || '').toLowerCase();
-  if (roleLower.includes('guard') || roleLower.includes('security')) {
-    const gateVal = user.gate || user.assignedGate || user.gateName;
-    if (gateVal) return String(gateVal);
-    return 'Gate 01';
-  }
-
-  // 2. Check direct unit fields on user session object
-  const rawUnit =
-    user.villaNumber ||
-    user.activeVillaNumber ||
-    user.unitNumber ||
-    user.activeUnitNumber ||
-    user.unitName ||
-    user.flatNumber ||
-    user.apartmentNumber ||
-    user.villa ||
-    user.unit;
-
-  // 3. Check accessible units array if available
-  let candidateUnit = rawUnit;
-  if (!candidateUnit && Array.isArray(user.accessibleUnits) && user.accessibleUnits.length > 0) {
-    candidateUnit =
-      user.accessibleUnits[0]?.villaNumber ||
-      user.accessibleUnits[0]?.unitNumber ||
-      user.accessibleUnits[0]?.name ||
-      user.accessibleUnits[0]?.villaName;
-  }
-
-  // 4. Check available workspaces
-  if (!candidateUnit && Array.isArray(user.availableWorkspaces) && user.availableWorkspaces.length > 0) {
-    candidateUnit =
-      user.availableWorkspaces[0]?.villaNumber ||
-      user.availableWorkspaces[0]?.unitNumber;
-  }
-
-  if (candidateUnit === undefined || candidateUnit === null) {
-    return null;
-  }
-
-  const strUnit = String(candidateUnit).trim();
-  if (!strUnit) return null;
-
-  // Check if building / block is present
-  const blockOrTower = user.block || user.blockOrBuilding || user.tower || user.building || user.villaBlock;
-
-  // If already contains a prefix like 'Villa', 'Unit', 'Flat', 'Apt', 'Tower', 'Block', '#'
-  const hasPrefix = /^(villa|unit|flat|apt|apartment|tower|block|#)/i.test(strUnit);
-
-  if (hasPrefix) {
-    if (blockOrTower && !strUnit.toLowerCase().includes(String(blockOrTower).toLowerCase())) {
-      return `${blockOrTower} • ${strUnit}`;
+  if (user) {
+    // 1. Security / Guard persona check
+    const roleLower = (user.role || (Array.isArray(user.roles) ? user.roles[0] : '') || '').toLowerCase();
+    if (roleLower.includes('guard') || roleLower.includes('security')) {
+      const gateVal = user.gate || user.assignedGate || user.gateName;
+      if (gateVal) return String(gateVal);
+      return 'Gate 01';
     }
-    return strUnit;
+
+    // 2. Check direct unit fields on user session object
+    const rawUnit =
+      user.villaNumber ||
+      user.activeVillaNumber ||
+      user.unitNumber ||
+      user.activeUnitNumber ||
+      user.unitName ||
+      user.assignedVilla ||
+      user.flatNumber ||
+      user.apartmentNumber ||
+      user.villa ||
+      user.unit;
+
+    let candidateUnit = rawUnit;
+
+    // 3. Check accessible units array if available
+    if (!candidateUnit && Array.isArray(user.accessibleUnits) && user.accessibleUnits.length > 0) {
+      candidateUnit =
+        user.accessibleUnits[0]?.villaNumber ||
+        user.accessibleUnits[0]?.unitNumber ||
+        user.accessibleUnits[0]?.name ||
+        user.accessibleUnits[0]?.villaName;
+    }
+
+    // 4. Check available workspaces
+    if (!candidateUnit && Array.isArray(user.availableWorkspaces) && user.availableWorkspaces.length > 0) {
+      for (const w of user.availableWorkspaces) {
+        if (w.villaNumber || w.unitNumber) {
+          candidateUnit = w.villaNumber || w.unitNumber;
+          break;
+        }
+      }
+    }
+
+    if (candidateUnit !== undefined && candidateUnit !== null && String(candidateUnit).trim() !== '') {
+      const strUnit = String(candidateUnit).trim();
+      const blockOrTower = user.block || user.blockOrBuilding || user.tower || user.building || user.villaBlock;
+      const hasPrefix = /^(villa|unit|flat|apt|apartment|tower|block|#)/i.test(strUnit);
+
+      if (hasPrefix) {
+        if (blockOrTower && !strUnit.toLowerCase().includes(String(blockOrTower).toLowerCase())) {
+          return `${blockOrTower} • ${strUnit}`;
+        }
+        return strUnit;
+      }
+
+      if (blockOrTower) {
+        return `${blockOrTower} - #${strUnit}`;
+      }
+
+      return `Villa ${strUnit}`;
+    }
   }
 
-  // Format with block/tower if present, otherwise default to Villa {number}
-  if (blockOrTower) {
-    return `${blockOrTower} - #${strUnit}`;
-  }
-
-  return `Villa ${strUnit}`;
+  // 5. Fallback suitable villa number
+  return 'Villa 101';
 };
 
 export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
@@ -189,11 +189,11 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
         </Text>
       </View>
 
-      {/* Right: Location / Villa Badge Pill */}
+      {/* Right: Location / Villa Badge Pill adopting theme with map icon */}
       {dynamicLocation ? (
-        <View className="flex-row items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300/70 dark:border-amber-700/60 px-3 py-1.5 rounded-full shadow-2xs">
-          <MapPin size={13} color="#F59E0B" />
-          <Text className="text-[12px] font-extrabold font-sans text-amber-800 dark:text-amber-300">
+        <View className="flex-row items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/35 px-3 py-1.5 rounded-full shadow-2xs">
+          <MapPin size={13} color="#FF6A00" strokeWidth={2.4} />
+          <Text className="text-[12px] font-bold font-sans text-foreground">
             {dynamicLocation}
           </Text>
         </View>

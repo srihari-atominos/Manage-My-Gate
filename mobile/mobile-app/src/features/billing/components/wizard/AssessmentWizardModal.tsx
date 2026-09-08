@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { View, Modal, ScrollView, Alert, Platform, StatusBar } from 'react-native';
+import { View, Modal, ScrollView, Alert, Platform, StatusBar, KeyboardAvoidingView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 import { Text } from '@/components/ui/text';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { AssessmentFlowHeader } from './AssessmentFlowHeader';
@@ -40,6 +41,7 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
   onSuccess,
 }) => {
   const insets = useSafeAreaInsets();
+  const { colorScheme } = useColorScheme();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   const {
@@ -247,14 +249,21 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
       statusBarTranslucent
       onRequestClose={handleModalClose}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      <View
-        className="flex-1 bg-card flex-col"
-        style={{
-          paddingTop: Math.max(insets.top, 16),
-          paddingBottom: Math.max(insets.bottom, 12),
-        }}
+      <StatusBar
+        barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={colorScheme === 'dark' ? '#09090b' : '#ffffff'}
+      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
       >
+        <View
+          className="flex-1 bg-card flex-col"
+          style={{
+            paddingTop: Math.max(insets.top, 16),
+            paddingBottom: Math.max(insets.bottom, 12),
+          }}
+        >
         {/* Header */}
           <AssessmentFlowHeader
             stepTitle={currentStepTitle}
@@ -377,6 +386,7 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
             loading={isSubmitting}
           />
         </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

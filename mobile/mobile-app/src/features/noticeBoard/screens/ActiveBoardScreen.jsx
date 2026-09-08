@@ -144,44 +144,44 @@ export default function ActiveBoardScreen() {
         loading={false}
       >
         <View className="flex-1 bg-background">
-          <View className="px-4 pt-3 pb-2 border-b border-border/40 bg-card z-50" style={{ zIndex: 50 }}>
-            <NoticeBoardFilters
-              search={localSearch || ''}
-              filters={filters}
-              sort={sort}
-              onSearchChange={handleSearchChange}
-              onFiltersChange={handleFiltersChange}
-              onSortChange={setSort}
-              onReset={handleResetFilters}
-              hideStatusFilter={true}
-              showNoticeTypeFilter={true}
-            />
-          </View>
-
-          <View className="flex-1 z-0">
-            {loading && notices.length === 0 ? (
-              <NoticeBoardLoadingSkeleton />
-            ) : (
-              <PaginatedList
-                data={notices}
-                renderItem={renderNoticeItem}
-                keyExtractor={(item) => item._id}
-                loading={loading}
-                onRefresh={handleRefresh}
-                onLoadMore={handleLoadMore}
-                pagination={{
-                  currentPage: pagination.currentPage,
-                  totalPages: pagination.totalPages,
-                  totalRecords: pagination.totalRecords || notices.length,
-                  limit: pagination.limit || 10,
-                }}
-                emptyIcon="Megaphone"
+          {loading && notices.length === 0 ? (
+            <NoticeBoardLoadingSkeleton />
+          ) : (
+            <PaginatedList
+              data={notices}
+              renderItem={renderNoticeItem}
+              keyExtractor={(item) => item._id}
+              loading={loading}
+              onRefresh={handleRefresh}
+              onLoadMore={handleLoadMore}
+              pagination={{
+                currentPage: pagination.currentPage,
+                totalPages: pagination.totalPages,
+                totalRecords: pagination.totalRecords || notices.length,
+                limit: pagination.limit || 10,
+              }}
+              ListHeaderComponent={
+                <View className="pt-3 pb-2 mb-1">
+                  <NoticeBoardFilters
+                    search={localSearch || ''}
+                    filters={filters}
+                    sort={sort}
+                    onSearchChange={handleSearchChange}
+                    onFiltersChange={handleFiltersChange}
+                    onSortChange={setSort}
+                    onReset={handleResetFilters}
+                    hideStatusFilter={true}
+                    showNoticeTypeFilter={true}
+                  />
+                </View>
+              }
+              emptyIcon="Megaphone"
               emptyTitle={t('no_notices', 'No Notices Available')}
               emptySubtitle={t('check_back_later', 'Check back later for community updates and announcements.')}
-              contentContainerClassName="px-4 pt-3 pb-28"
+              contentContainerClassName="px-4 pb-28"
+              contentContainerStyle={{ paddingBottom: 110 }}
             />
           )}
-          </View>
         </View>
       </ScreenShell>
     </ErrorBoundary>

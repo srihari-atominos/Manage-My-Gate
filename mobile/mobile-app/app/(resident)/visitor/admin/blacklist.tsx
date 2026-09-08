@@ -99,7 +99,7 @@ export default function AdminBlacklistScreen() {
             totalRecords: filteredBlacklist.length,
             limit: 50,
           }}
-          onLoadMore={() => {}}
+          onLoadMore={handleRefresh}
           loading={status === 'loading'}
           onRefresh={handleRefresh}
           ListHeaderComponent={renderHeader()}

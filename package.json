@@ -13,9 +13,12 @@
     "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend && npm install --legacy-peer-deps --prefix mobile/mobile-app"
   },
   "dependencies": {
+    "expo": "^57.0.20",
     "twilio": "^6.0.2"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "@types/react": "~19.2.4",
+    "concurrently": "^10.0.5",
+    "typescript": "~6.0.3"
   }
 }

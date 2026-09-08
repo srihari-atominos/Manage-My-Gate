@@ -69,9 +69,9 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
         {/* Top Badges Row */}
         <View className="absolute top-3 inset-x-3 flex-row justify-between items-center z-10">
           {/* Category Pill */}
-          <View className="bg-black/60 px-3 py-1 rounded-full flex-row items-center gap-1.5 border border-white/20 shadow-xs">
+          <View className="bg-black/60 px-3 py-1 rounded-full flex-row items-center gap-1.5 border border-white/20 shadow-xs max-w-[65%] shrink">
             <Sparkles size={11} color="#f59e0b" />
-            <Text className="text-xs font-bold text-white uppercase tracking-wider">
+            <Text className="text-xs font-bold text-white uppercase tracking-wider shrink truncate" numberOfLines={1}>
               {category}
             </Text>
           </View>
@@ -98,13 +98,13 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
       {/* 2. Card Content & Metadata Body */}
       <View className="p-4">
         {/* Title & Location */}
-        <View className="mb-2">
-          <Text className="text-lg font-extrabold text-foreground tracking-tight">
+        <View className="mb-2 min-w-0">
+          <Text className="text-lg font-extrabold text-foreground tracking-tight shrink truncate" numberOfLines={1}>
             {item.name}
           </Text>
           <View className="flex-row items-center gap-1 mt-1">
-            <MapPin size={13} className="text-muted-foreground" />
-            <Text className="text-xs font-medium text-muted-foreground">
+            <MapPin size={13} className="text-muted-foreground shrink-0" />
+            <Text className="text-xs font-medium text-muted-foreground shrink truncate" numberOfLines={1}>
               {item.location || 'Community Center'}
             </Text>
           </View>

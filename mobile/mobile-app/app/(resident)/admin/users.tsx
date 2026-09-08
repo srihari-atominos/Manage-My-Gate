@@ -331,6 +331,7 @@ export default function UserManagementScreen() {
           />
         ) : (
           <FlatList
+            style={{ flex: 1 }}
             data={users}
             keyExtractor={(item) => item.id || item._id || item.email}
             renderItem={({ item }) => (
@@ -343,6 +344,13 @@ export default function UserManagementScreen() {
               />
             )}
             contentContainerClassName="p-2.5 pb-28"
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 110 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            scrollEventThrottle={16}
+            alwaysBounceVertical={true}
+            bounces={true}
+            showsVerticalScrollIndicator={false}
             ListFooterComponent={renderPaginationFooter}
             refreshControl={
               <RefreshControl

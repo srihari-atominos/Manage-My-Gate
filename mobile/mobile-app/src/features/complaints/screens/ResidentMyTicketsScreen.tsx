@@ -150,8 +150,14 @@ export function ResidentMyTicketsScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingBottom: 40 }}
-          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadData} tintColor="#6366f1" />}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 110 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          scrollEventThrottle={16}
+          alwaysBounceVertical={true}
+          bounces={true}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadData} tintColor="#FF6A00" colors={['#FF6A00']} />}
         >
           {/* SECTION 1: SEARCH BAR */}
           <SearchFilterBar

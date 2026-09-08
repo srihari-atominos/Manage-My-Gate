@@ -11,16 +11,28 @@ const generateUUID = (): string => {
 };
 
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 const getDefaultBaseUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  // Auto-detect Mac host IP from Expo bundler for physical iPhone/Android
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+      return `http://${ip}:5002/api`;
+    }
+  }
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:5002/api';
   }
-  return 'http://localhost:5002/api';
+  return 'http://192.168.0.106:5002/api';
 };
 
 const apiClient = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL || getDefaultBaseUrl(),
+  baseURL: getDefaultBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

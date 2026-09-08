@@ -7,10 +7,10 @@ import { WalletState } from '../types';
 
 export const fetchWalletBalance = createAsyncThunk(
   'wallet/fetchWalletBalance',
-  async (_, { rejectWithValue }) => {
+  async (params: { page?: number; limit?: number } = {}, { rejectWithValue }) => {
     try {
-      const data = await billingService.getWalletBalance();
-      return data;
+      const data = await billingService.getWalletBalance(params);
+      return { ...data, requestedParams: params };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || error.message || 'Failed to fetch wallet balance'
@@ -52,6 +52,12 @@ const initialState: WalletState = {
   balance: 0,
   activePasses: [],
   transactionHistory: [],
+  pagination: {
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    limit: 10,
+  },
   isLoading: false,
   error: null,
 };
@@ -87,7 +93,26 @@ export const walletSlice = createSlice({
               ? action.payload
               : state.balance;
           state.activePasses = action.payload.activePasses || state.activePasses;
-          state.transactionHistory = action.payload.transactionHistory || state.transactionHistory;
+
+          const newHistory = action.payload.transactionHistory || action.payload.transactions || [];
+          const isAppend = (action.payload.requestedParams?.page || 1) > 1;
+
+          if (isAppend) {
+            state.transactionHistory = [...(state.transactionHistory || []), ...newHistory];
+          } else {
+            state.transactionHistory = newHistory;
+          }
+
+          if (action.payload.pagination) {
+            state.pagination = action.payload.pagination;
+          } else {
+            state.pagination = {
+              currentPage: action.payload.requestedParams?.page || 1,
+              totalPages: action.payload.totalPages || 1,
+              totalRecords: action.payload.totalRecords || (state.transactionHistory || []).length,
+              limit: action.payload.requestedParams?.limit || 10,
+            };
+          }
         }
       })
       .addCase(fetchWalletBalance.rejected, (state, action) => {

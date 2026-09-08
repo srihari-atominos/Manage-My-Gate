@@ -85,7 +85,7 @@ export function ResidentPaymentHistoryScreen() {
           totalRecords: filteredInvoices.length,
           limit: 50,
         }}
-        onLoadMore={() => {}}
+        onLoadMore={handleRefresh}
         onRefresh={handleRefresh}
         loading={loadingStates.fetchDues}
         ListHeaderComponent={

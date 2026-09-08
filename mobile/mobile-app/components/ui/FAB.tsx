@@ -116,5 +116,9 @@ export const FAB = React.forwardRef<View, FABProps>(
 
 FAB.displayName = 'FAB';
 
+export const FABSpacer: React.FC<{ className?: string }> = ({ className }) => (
+  <View className={cn('h-24', className)} />
+);
+
 export { fabVariants, fabTextVariants };
 export default FAB;

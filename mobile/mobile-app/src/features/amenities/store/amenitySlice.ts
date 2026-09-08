@@ -583,34 +583,66 @@ const amenitySlice = createSlice({
       })
       .addCase(fetchAmenitiesThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        const page = action.meta.arg?.page || 1;
         const payload = action.payload?.data || action.payload;
         let list: any[] = [];
         if (Array.isArray(payload)) {
           list = payload;
           state.pagination = {
-            currentPage: 1,
-            totalPages: 1,
+            currentPage: page,
+            totalPages: Math.max(1, Math.ceil(payload.length / (action.meta.arg?.limit || 20))),
             totalRecords: payload.length,
-            limit: payload.length || 10,
+            limit: action.meta.arg?.limit || 20,
           };
         } else if (payload && typeof payload === 'object') {
           list = payload.docs || payload.amenities || payload.items || [];
           state.pagination = {
-            currentPage: payload.page || payload.currentPage || 1,
+            currentPage: payload.page || payload.currentPage || page,
             totalPages: payload.totalPages || payload.pages || 1,
             totalRecords: payload.totalDocs || payload.totalRecords || payload.total || list.length,
-            limit: payload.limit || 10,
+            limit: payload.limit || action.meta.arg?.limit || 20,
           };
         }
-        if (list.length === 0) {
+
+        const categoryFilter = action.meta.arg?.category;
+        const searchFilter = action.meta.arg?.search;
+        const hasFilters = (categoryFilter && categoryFilter !== 'All') || (searchFilter && searchFilter.trim() !== '');
+
+        if (list.length === 0 && !hasFilters && page === 1) {
           list = MOCK_LUXURY_AMENITIES;
         }
-        state.amenities = list.map(normalizeAmenity);
+
+        const normalizedList = list.map(normalizeAmenity);
+        if (page > 1) {
+          state.amenities = [...state.amenities, ...normalizedList];
+        } else {
+          state.amenities = normalizedList.length > 0
+            ? normalizedList
+            : (hasFilters
+                ? MOCK_LUXURY_AMENITIES.map(normalizeAmenity).filter((a) => {
+                    const cat = (a.category || a.type || '').toLowerCase();
+                    const selCat = (categoryFilter || 'all').toLowerCase();
+                    const matchCat = !categoryFilter || selCat === 'all' || cat === selCat || cat.includes(selCat);
+                    const q = (searchFilter || '').toLowerCase().trim();
+                    const matchQ = !q || a.name.toLowerCase().includes(q);
+                    return matchCat && matchQ;
+                  })
+                : MOCK_LUXURY_AMENITIES.map(normalizeAmenity));
+        }
       })
       .addCase(fetchAmenitiesThunk.rejected, (state, action) => {
         state.loading = false;
+        const categoryFilter = (action.meta?.arg as any)?.category;
+        const searchFilter = (action.meta?.arg as any)?.search;
         if (state.amenities.length === 0) {
-          state.amenities = MOCK_LUXURY_AMENITIES;
+          state.amenities = MOCK_LUXURY_AMENITIES.map(normalizeAmenity).filter((a) => {
+            const cat = (a.category || a.type || '').toLowerCase();
+            const selCat = (categoryFilter || 'all').toLowerCase();
+            const matchCat = !categoryFilter || selCat === 'all' || cat === selCat || cat.includes(selCat);
+            const q = (searchFilter || '').toLowerCase().trim();
+            const matchQ = !q || a.name.toLowerCase().includes(q);
+            return matchCat && matchQ;
+          });
         }
         state.error = (action.payload as string) || null;
       })

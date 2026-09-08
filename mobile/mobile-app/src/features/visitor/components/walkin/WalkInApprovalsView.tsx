@@ -53,7 +53,7 @@ export const WalkInApprovalsView: React.FC = () => {
           totalRecords: walkIns?.pendingList?.length || 0,
           limit: 20,
         }}
-        onLoadMore={() => {}}
+        onLoadMore={handleRefresh}
         onRefresh={handleRefresh}
         refreshing={refreshing}
         loading={isLoading}

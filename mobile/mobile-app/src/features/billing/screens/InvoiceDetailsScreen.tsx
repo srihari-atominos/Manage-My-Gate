@@ -263,6 +263,7 @@ export function InvoiceDetailsScreen() {
           <ScrollView
             className="flex-1 px-4 pt-2"
             contentContainerClassName="gap-4 pb-28"
+            contentContainerStyle={{ paddingBottom: 120 }}
             refreshControl={
               <RefreshControl
                 refreshing={loadingStates.fetchDues || fallbackLoading}

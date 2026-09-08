@@ -58,7 +58,7 @@ export function ScreenShell({
   className,
   enableHeaderDoubleTap = true,
   scrollable = false,
-  showBottomNav = false,
+  showBottomNav = true,
   hideBottomNav = false,
 }: ScreenShellProps) {
   const router = useRouter();
@@ -223,16 +223,19 @@ export function ScreenShell({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }}
+            alwaysBounceVertical={true}
+            scrollEventThrottle={16}
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingBottom: (showBottomNav && !hideBottomNav) ? Math.max(insets.bottom + 85, 110) : Math.max(insets.bottom, 24),
+            }}
           >
             {children}
           </ScrollView>
         ) : (
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-            <View className="flex-1 bg-background">
-              {children}
-            </View>
-          </TouchableWithoutFeedback>
+          <View className="flex-1 bg-background">
+            {children}
+          </View>
         )}
       </KeyboardAvoidingView>
 

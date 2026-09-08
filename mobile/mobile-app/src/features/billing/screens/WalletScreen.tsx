@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, ScrollView, RefreshControl, Alert } from 'react-native';
+import { View, ScrollView, RefreshControl, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/src/store/store';
@@ -50,6 +50,19 @@ export function WalletScreen() {
   const handleRefresh = useCallback(() => {
     loadWallet();
   }, [loadWallet]);
+
+  const pagination = walletState?.pagination || {
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: history.length,
+    limit: 10,
+  };
+
+  const handleLoadMore = useCallback(() => {
+    if (pagination && pagination.currentPage < pagination.totalPages) {
+      dispatch(fetchWalletBalance({ page: pagination.currentPage + 1, limit: pagination.limit || 10 }));
+    }
+  }, [dispatch, pagination]);
 
   // Derived top-up amount
   const topUpAmount = useMemo(() => {
@@ -136,13 +149,8 @@ export function WalletScreen() {
                 className="mb-2.5"
               />
             )}
-            pagination={{
-              currentPage: 1,
-              totalPages: 1,
-              totalRecords: history.length,
-              limit: 50,
-            }}
-            onLoadMore={() => {}}
+            pagination={pagination}
+            onLoadMore={handleLoadMore}
             onRefresh={handleRefresh}
             loading={isLoading}
             ListHeaderComponent={
@@ -175,87 +183,89 @@ export function WalletScreen() {
           onClose={() => setShowTopUpSheet(false)}
           title="Add Money to Digital Wallet"
         >
-          <View className="py-2 gap-4">
-            <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Select Top-Up Amount
-            </Text>
-
-            {/* Quick Denomination Presets */}
-            <View className="flex-row gap-2.5">
-              {[500, 1000, 2000].map((preset) => {
-                const isSelected = selectedPreset === preset;
-                return (
-                  <Button
-                    key={preset}
-                    variant={isSelected ? 'default' : 'outline'}
-                    onPress={() => setSelectedPreset(preset)}
-                    className="flex-1 h-12 rounded-xl"
-                  >
-                    <Text className={`font-extrabold text-sm ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
-                      + ₹{preset.toLocaleString('en-IN')}
-                    </Text>
-                  </Button>
-                );
-              })}
-            </View>
-
-            {/* Custom Top-Up Preset Option */}
-            <View className="gap-2">
-              <Button
-                variant={selectedPreset === 'CUSTOM' ? 'default' : 'outline'}
-                onPress={() => setSelectedPreset('CUSTOM')}
-                className="w-full h-11 rounded-xl"
-              >
-                <Text className={`font-bold text-xs ${selectedPreset === 'CUSTOM' ? 'text-primary-foreground' : 'text-foreground'}`}>
-                  Enter Custom Top-Up Amount
-                </Text>
-              </Button>
-
-              {selectedPreset === 'CUSTOM' ? (
-                <TextInput
-                  label="Custom Amount (₹)"
-                  value={customAmountStr}
-                  onChangeText={setCustomAmountStr}
-                  placeholder="Enter amount (e.g. 1500)"
-                  keyboardType="numeric"
-                  inputClassName="font-bold text-base"
-                />
-              ) : null}
-            </View>
-
-            {/* Expected Balance Preview */}
-            <View className="bg-muted/40 border border-border/60 rounded-xl p-3.5 flex-row items-center justify-between">
-              <View>
-                <Text className="text-xs text-muted-foreground">Top-Up Amount</Text>
-                <Text className="text-base font-extrabold text-status-success">
-                  + ₹{topUpAmount.toLocaleString('en-IN')}
-                </Text>
-              </View>
-              <View className="items-end">
-                <Text className="text-xs text-muted-foreground">Balance After Top-Up</Text>
-                <Text className="text-base font-bold text-foreground">
-                  ₹{expectedBalance.toLocaleString('en-IN')}
-                </Text>
-              </View>
-            </View>
-
-            {/* Submit Top-Up Button */}
-            <Button
-              variant="default"
-              size="lg"
-              className="w-full flex-row items-center justify-center bg-status-success active:bg-status-success/90 mt-2"
-              disabled={isTopUpInvalid || isProcessingTopUp}
-              loading={isProcessingTopUp}
-              onPress={handleProceedTopUp}
-              accessibilityRole="button"
-              accessibilityLabel={`Proceed to Top-Up ₹${topUpAmount.toLocaleString('en-IN')} via Razorpay`}
-            >
-              <Text className="font-bold text-base text-primary-foreground me-1">
-                Proceed to Top-Up • ₹{topUpAmount.toLocaleString('en-IN')}
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="w-full">
+            <View className="py-2 gap-4">
+              <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Select Top-Up Amount
               </Text>
-              <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
-            </Button>
-          </View>
+
+              {/* Quick Denomination Presets */}
+              <View className="flex-row gap-2.5">
+                {[500, 1000, 2000].map((preset) => {
+                  const isSelected = selectedPreset === preset;
+                  return (
+                    <Button
+                      key={preset}
+                      variant={isSelected ? 'default' : 'outline'}
+                      onPress={() => setSelectedPreset(preset)}
+                      className="flex-1 h-12 rounded-xl"
+                    >
+                      <Text className={`font-extrabold text-sm ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
+                        + ₹{preset.toLocaleString('en-IN')}
+                      </Text>
+                    </Button>
+                  );
+                })}
+              </View>
+
+              {/* Custom Top-Up Preset Option */}
+              <View className="gap-2">
+                <Button
+                  variant={selectedPreset === 'CUSTOM' ? 'default' : 'outline'}
+                  onPress={() => setSelectedPreset('CUSTOM')}
+                  className="w-full h-11 rounded-xl"
+                >
+                  <Text className={`font-bold text-xs ${selectedPreset === 'CUSTOM' ? 'text-primary-foreground' : 'text-foreground'}`}>
+                    Enter Custom Top-Up Amount
+                  </Text>
+                </Button>
+
+                {selectedPreset === 'CUSTOM' ? (
+                  <TextInput
+                    label="Custom Amount (₹)"
+                    value={customAmountStr}
+                    onChangeText={setCustomAmountStr}
+                    placeholder="Enter amount (e.g. 1500)"
+                    keyboardType="numeric"
+                    inputClassName="font-bold text-base"
+                  />
+                ) : null}
+              </View>
+
+              {/* Expected Balance Preview */}
+              <View className="bg-muted/40 border border-border/60 rounded-xl p-3.5 flex-row items-center justify-between">
+                <View>
+                  <Text className="text-xs text-muted-foreground">Top-Up Amount</Text>
+                  <Text className="text-base font-extrabold text-status-success">
+                    + ₹{topUpAmount.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+                <View className="items-end">
+                  <Text className="text-xs text-muted-foreground">Balance After Top-Up</Text>
+                  <Text className="text-base font-bold text-foreground">
+                    ₹{expectedBalance.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Submit Top-Up Button */}
+              <Button
+                variant="default"
+                size="lg"
+                className="w-full flex-row items-center justify-center bg-status-success active:bg-status-success/90 mt-2"
+                disabled={isTopUpInvalid || isProcessingTopUp}
+                loading={isProcessingTopUp}
+                onPress={handleProceedTopUp}
+                accessibilityRole="button"
+                accessibilityLabel={`Proceed to Top-Up ₹${topUpAmount.toLocaleString('en-IN')} via Razorpay`}
+              >
+                <Text className="font-bold text-base text-primary-foreground me-1">
+                  Proceed to Top-Up • ₹{topUpAmount.toLocaleString('en-IN')}
+                </Text>
+                <Icon as={ChevronRight} size={18} className="text-primary-foreground" />
+              </Button>
+            </View>
+          </KeyboardAvoidingView>
         </BottomSheet>
 
         {/* Razorpay WebView Checkout Modal for Top-Up */}

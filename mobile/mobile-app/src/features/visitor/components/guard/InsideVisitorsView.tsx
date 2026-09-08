@@ -71,7 +71,7 @@ export const InsideVisitorsView: React.FC = () => {
           totalRecords: activeVisitors.length,
           limit: 50,
         }}
-        onLoadMore={() => {}}
+        onLoadMore={handleRefresh}
         onRefresh={handleRefresh}
         refreshing={refreshing}
         loading={activeVisitorsStatus === 'loading' && !refreshing && activeVisitors.length === 0}

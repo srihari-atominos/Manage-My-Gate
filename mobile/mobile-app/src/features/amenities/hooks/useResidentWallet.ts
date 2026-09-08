@@ -105,6 +105,7 @@ export function useResidentWallet() {
     handleCloseCancel,
     handleConfirmCancel,
     handleRefresh,
+    handleLoadMore: handleRefresh,
     clearStatus: () => dispatch(clearWalletStatus()),
   };
 }

@@ -127,21 +127,7 @@ export function BillingLedgerScreen() {
           </View>
         ) : null}
 
-        {/* Unified Filter Pills (Row 1) & Search Input (Row 2) */}
-        <View className="px-4 pt-3 pb-1">
-          <SearchFilterBar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search resident, unit, or invoice number..."
-            sortOptions={FILTER_PILLS.map((p) => ({ label: p.label, value: p.id }))}
-            currentSort={statusFilter}
-            onSortChange={(val) => setStatusFilter(val as any)}
-            variant="default"
-            className="px-0 py-0 border-0"
-          />
-        </View>
-
-        {/* Paginated Invoice Cards List */}
+        {/* Paginated Invoice Cards List with Full-Screen Header Scroll */}
         <PaginatedList<Invoice>
           data={invoicesList}
           renderItem={(inv) => (
@@ -155,10 +141,25 @@ export function BillingLedgerScreen() {
           onLoadMore={handleLoadMore}
           onRefresh={handleRefresh}
           loading={loadingStates.fetchGrid}
+          ListHeaderComponent={
+            <View className="pt-3 pb-2">
+              <SearchFilterBar
+                searchValue={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Search resident, unit, or invoice number..."
+                sortOptions={FILTER_PILLS.map((p) => ({ label: p.label, value: p.id }))}
+                currentSort={statusFilter}
+                onSortChange={(val) => setStatusFilter(val as any)}
+                variant="default"
+                className="px-0 py-0 border-0"
+              />
+            </View>
+          }
           emptyIcon="Receipt"
           emptyTitle="No Invoices Found"
           emptySubtitle={emptySubtitle}
-          contentContainerClassName="px-4 py-2"
+          contentContainerClassName="px-4 py-2 pb-28"
+          contentContainerStyle={{ paddingBottom: 110 }}
         />
 
         {/* Quick Actions / Review Details BottomSheet */}

@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import {
   View,
-  TouchableOpacity,
   Platform,
   Pressable,
+  LayoutChangeEvent,
 } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { useRouter, usePathname } from 'expo-router';
@@ -16,15 +16,18 @@ import {
   ShieldCheck,
   User,
 } from 'lucide-react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  Easing,
+  withSpring,
+  withSequence,
+  interpolate,
+  Extrapolation,
+  runOnJS,
 } from 'react-native-reanimated';
-import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { cn } from '@/lib/utils';
-import { useTranslation } from '@/src/utils/i18n';
 
 export type MainTabKey = 'dashboard' | 'community' | 'all-features' | 'security' | 'profile';
 
@@ -32,8 +35,7 @@ interface TabItem {
   key: MainTabKey;
   label: string;
   route: string;
-  icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
-  isCenter?: boolean;
+  icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number; style?: any }>;
 }
 
 const TAB_ITEMS: TabItem[] = [
@@ -54,7 +56,6 @@ const TAB_ITEMS: TabItem[] = [
     label: 'View All',
     route: '/(resident)/all-features',
     icon: LayoutGrid,
-    isCenter: true,
   },
   {
     key: 'security',
@@ -70,186 +71,86 @@ const TAB_ITEMS: TabItem[] = [
   },
 ];
 
-const BRAND_ORANGE = '#FF6A00';
+const ACTIVE_ORANGE = '#FF6A00';
 
-interface StandardTabButtonProps {
-  item: TabItem;
-  isActive: boolean;
-  isDark: boolean;
-  isIOS: boolean;
-  onPress: () => void;
+export interface BottomNavigationBarProps {
+  scrollY?: Animated.SharedValue<number>;
+  isMinimized?: boolean;
 }
 
-const StandardTabButton: React.FC<StandardTabButtonProps> = ({
+interface InsetTabButtonProps {
+  item: TabItem;
+  isActive: boolean;
+  onPress: () => void;
+  isIOS: boolean;
+  isDark: boolean;
+}
+
+const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   item,
   isActive,
+  onPress,
   isDark,
   isIOS,
-  onPress,
 }) => {
   const IconComponent = item.icon;
-  const zoomScale = useSharedValue(isActive ? 1.08 : 1.0);
+  const pressScale = useSharedValue(1.0);
 
-  useEffect(() => {
-    zoomScale.value = withTiming(isActive ? 1.08 : 1.0, {
-      duration: 150,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [isActive, zoomScale]);
-
-  const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: zoomScale.value }],
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value }],
   }));
 
-  const inactiveColor = isDark ? '#9CA3AF' : '#8E8E93';
-  const activeColor = BRAND_ORANGE;
+  const handlePressIn = () => {
+    // Zoom IN on press
+    pressScale.value = withSpring(1.16, { damping: 11, stiffness: 280 });
+  };
 
-  const content = (
-    <View className="items-center justify-center py-1">
-      <Animated.View style={animatedIconStyle} className="items-center justify-center">
-        <IconComponent
-          size={20}
-          color={isActive ? activeColor : inactiveColor}
-          strokeWidth={isActive ? 2.4 : 1.8}
-        />
-      </Animated.View>
+  const handlePressOut = () => {
+    pressScale.value = withSpring(1.0, { damping: 13, stiffness: 220 });
+  };
 
-      <Text
-        style={{ color: isActive ? activeColor : inactiveColor }}
-        className={cn(
-          'text-[10px] font-sans tracking-tight mt-1 text-center',
-          isActive ? 'font-bold' : 'font-medium'
-        )}
-        numberOfLines={1}
-      >
-        {item.label}
-      </Text>
-    </View>
-  );
-
-  if (isIOS) {
-    return (
-      <Pressable
-        onPress={onPress}
-        className="py-1 items-center justify-center h-[52px] select-none w-full"
-        accessibilityRole="tab"
-        accessibilityState={{ selected: isActive }}
-        accessibilityLabel={item.label}
-      >
-        {content}
-      </Pressable>
-    );
-  }
+  const activeColor = ACTIVE_ORANGE;
+  const inactiveColor = isDark ? '#D4D4D8' : (isIOS ? '#0F172A' : '#374151');
+  const itemColor = isActive ? activeColor : inactiveColor;
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
-      activeOpacity={0.7}
-      className="py-1 items-center justify-center h-[52px] w-full"
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      className="flex-1 items-center justify-center h-full select-none z-10"
       accessibilityRole="tab"
       accessibilityState={{ selected: isActive }}
       accessibilityLabel={item.label}
     >
-      {content}
-    </TouchableOpacity>
-  );
-};
-
-interface CenterElevatedButtonProps {
-  item: TabItem;
-  isActive: boolean;
-  isDark: boolean;
-  isIOS: boolean;
-  onPress: () => void;
-}
-
-const CenterElevatedButton: React.FC<CenterElevatedButtonProps> = ({
-  item,
-  isActive,
-  isDark,
-  isIOS,
-  onPress,
-}) => {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withTiming(0.92, { duration: 90 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withTiming(1, { duration: 120 });
-  };
-
-  const content = (
-    <View className="items-center justify-center -mt-6">
-      {/* Elevated Circular Action Button */}
-      <Animated.View
-        style={[
-          animatedStyle,
-          {
-            shadowColor: BRAND_ORANGE,
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.38,
-            shadowRadius: 10,
-            elevation: 8,
-          },
-        ]}
-        className="w-[50px] h-[50px] rounded-full bg-[#FF6A00] items-center justify-center border-2 border-card"
-      >
-        <LayoutGrid size={22} color="#FFFFFF" strokeWidth={2.4} />
+      <Animated.View style={animatedStyle} className="items-center justify-center py-1">
+        <IconComponent
+          size={22}
+          color={itemColor}
+          strokeWidth={isActive ? 2.4 : (isIOS ? 2.0 : 1.8)}
+          style={{ opacity: isActive ? 1.0 : (isIOS ? 0.90 : 0.80) }}
+        />
+        <Text
+          style={{
+            color: itemColor,
+            opacity: isActive ? 1.0 : (isIOS ? 0.90 : 0.80),
+          }}
+          className={cn(
+            'text-[10px] font-sans tracking-tight mt-1 text-center',
+            isActive ? 'font-bold' : (isIOS ? 'font-bold' : 'font-semibold')
+          )}
+          numberOfLines={1}
+        >
+          {item.label}
+        </Text>
       </Animated.View>
-
-      {/* Label underneath */}
-      <Text
-        style={{ color: isActive ? BRAND_ORANGE : isDark ? '#9CA3AF' : '#64748B' }}
-        className={cn(
-          'text-[10px] font-sans tracking-tight mt-1 text-center',
-          isActive ? 'font-bold' : 'font-semibold'
-        )}
-        numberOfLines={1}
-      >
-        {item.label}
-      </Text>
-    </View>
-  );
-
-  if (isIOS) {
-    return (
-      <Pressable
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        className="items-center justify-center z-20 w-full"
-        accessibilityRole="tab"
-        accessibilityState={{ selected: isActive }}
-        accessibilityLabel="View All Modules"
-      >
-        {content}
-      </Pressable>
-    );
-  }
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      activeOpacity={0.85}
-      className="items-center justify-center z-20 w-full"
-      accessibilityRole="tab"
-      accessibilityState={{ selected: isActive }}
-      accessibilityLabel="View All Modules"
-    >
-      {content}
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
-export const BottomNavigationBar: React.FC = () => {
+export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
+  scrollY,
+}) => {
   const router = useRouter();
   const pathname = usePathname() || '';
   const insets = useSafeAreaInsets();
@@ -257,13 +158,13 @@ export const BottomNavigationBar: React.FC = () => {
   const isDark = colorScheme === 'dark';
   const isIOS = Platform.OS === 'ios';
 
-  // Determine active tab from pathname
+  const [containerWidth, setContainerWidth] = useState(0);
+
   const activeTab: MainTabKey = useMemo(() => {
-    if (pathname.includes('/all-features')) return 'all-features';
     if (pathname.includes('/visitor')) return 'security';
-    if (pathname.includes('/notices') || pathname.includes('/directory') || pathname.includes('/polls')) return 'community';
+    if (pathname.includes('/notices') || pathname.includes('/directory') || pathname.includes('/polls') || pathname.includes('/notes')) return 'community';
     if (pathname.includes('/profile') || pathname.includes('/settings')) return 'profile';
-    if (pathname.includes('/dashboard') || pathname === '/' || pathname === '/(resident)') return 'dashboard';
+    if (pathname.includes('/all-features') || pathname.includes('/amenities') || pathname.includes('/billing') || pathname.includes('/complaints') || pathname.includes('/admin')) return 'all-features';
     return 'dashboard';
   }, [pathname]);
 
@@ -275,9 +176,70 @@ export const BottomNavigationBar: React.FC = () => {
 
   const isNavigatingRef = useRef(false);
 
-  const handleTabPress = (item: TabItem) => {
-    setSelectedTabKey(item.key);
+  const barAnimatedStyle = useAnimatedStyle(() => {
+    if (scrollY) {
+      const scale = interpolate(
+        scrollY.value,
+        [0, 60, 150],
+        [1.0, 0.95, 0.90],
+        Extrapolation.CLAMP
+      );
+      const translateY = interpolate(
+        scrollY.value,
+        [0, 80],
+        [0, 6],
+        Extrapolation.CLAMP
+      );
+      return {
+        transform: [{ scale }, { translateY }],
+      };
+    }
+    return {};
+  });
 
+  const horizontalPadding = 6;
+  const availableWidth = containerWidth > 0 ? containerWidth - (horizontalPadding * 2) : 0;
+  const tabWidth = availableWidth > 0 ? availableWidth / TAB_ITEMS.length : 0;
+
+  const activeIndex = useMemo(() => {
+    const idx = TAB_ITEMS.findIndex((item) => item.key === selectedTabKey);
+    return idx >= 0 ? idx : 0;
+  }, [selectedTabKey]);
+
+  const slideX = useSharedValue(0);
+  const pillScaleX = useSharedValue(1.0);
+  const tabWidthShared = useSharedValue(0);
+  const dragStartX = useSharedValue(0);
+  const isDraggingShared = useSharedValue(false);
+
+  const FAST_SPRING = useMemo(
+    () => ({
+      damping: 26,
+      stiffness: 420,
+      mass: 0.45,
+    }),
+    []
+  );
+
+  useEffect(() => {
+    if (!isDraggingShared.value && tabWidth > 0) {
+      slideX.value = withSpring(activeIndex * tabWidth, FAST_SPRING);
+      pillScaleX.value = withSequence(
+        withTiming(1.08, { duration: 60 }),
+        withSpring(1.0, { damping: 16, stiffness: 350 })
+      );
+    }
+  }, [activeIndex, tabWidth, slideX, pillScaleX, isDraggingShared, FAST_SPRING]);
+
+  const slidingPillStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: slideX.value },
+      { scaleX: pillScaleX.value },
+    ],
+    width: tabWidth,
+  }));
+
+  const navigateToTab = useCallback((item: TabItem) => {
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
 
@@ -289,77 +251,226 @@ export const BottomNavigationBar: React.FC = () => {
       } finally {
         setTimeout(() => {
           isNavigatingRef.current = false;
-        }, 150);
+        }, 120);
       }
-    }, 60);
+    }, 16);
+  }, [router]);
+
+  const handleTabPress = useCallback((item: TabItem) => {
+    if (isDraggingShared.value) return;
+    if (item.key === selectedTabKey) return;
+
+    // Trigger instant slide without waiting for useEffect
+    const targetIdx = TAB_ITEMS.findIndex((t) => t.key === item.key);
+    if (targetIdx >= 0 && tabWidth > 0) {
+      slideX.value = withSpring(targetIdx * tabWidth, FAST_SPRING);
+      pillScaleX.value = withSequence(
+        withTiming(1.08, { duration: 60 }),
+        withSpring(1.0, { damping: 16, stiffness: 350 })
+      );
+    }
+
+    setSelectedTabKey(item.key);
+    navigateToTab(item);
+  }, [isDraggingShared, selectedTabKey, tabWidth, slideX, pillScaleX, FAST_SPRING, navigateToTab]);
+
+  const onDragEnd = useCallback((targetIndex: number) => {
+    const item = TAB_ITEMS[targetIndex];
+    if (item) {
+      setSelectedTabKey(item.key);
+      navigateToTab(item);
+    }
+  }, [navigateToTab]);
+
+  const onHoverTab = useCallback((hoveredIndex: number) => {
+    const item = TAB_ITEMS[hoveredIndex];
+    if (item) {
+      setSelectedTabKey(item.key);
+    }
+  }, []);
+
+  const panGesture = useMemo(() => {
+    return Gesture.Pan()
+      .activeOffsetX([-5, 5])
+      .failOffsetY([-12, 12])
+      .onStart(() => {
+        'worklet';
+        isDraggingShared.value = true;
+        dragStartX.value = slideX.value;
+        pillScaleX.value = withTiming(1.12, { duration: 40 });
+      })
+      .onUpdate((event) => {
+        'worklet';
+        if (tabWidthShared.value <= 0) return;
+        const maxX = (TAB_ITEMS.length - 1) * tabWidthShared.value;
+        const nextX = Math.min(Math.max(dragStartX.value + event.translationX, 0), maxX);
+        slideX.value = nextX;
+
+        const currentHovered = Math.min(
+          Math.max(Math.round(nextX / tabWidthShared.value), 0),
+          TAB_ITEMS.length - 1
+        );
+        runOnJS(onHoverTab)(currentHovered);
+      })
+      .onEnd(() => {
+        'worklet';
+        isDraggingShared.value = false;
+        pillScaleX.value = withSpring(1.0, { damping: 16, stiffness: 350 });
+        if (tabWidthShared.value <= 0) return;
+        const targetIndex = Math.min(
+          Math.max(Math.round(slideX.value / tabWidthShared.value), 0),
+          TAB_ITEMS.length - 1
+        );
+        slideX.value = withSpring(targetIndex * tabWidthShared.value, {
+          damping: 26,
+          stiffness: 420,
+          mass: 0.45,
+        });
+        runOnJS(onDragEnd)(targetIndex);
+      });
+  }, [slideX, pillScaleX, tabWidthShared, dragStartX, isDraggingShared, onDragEnd, onHoverTab]);
+
+  const handleLayout = (e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    if (w > 0 && w !== containerWidth) {
+      setContainerWidth(w);
+      const computedTabWidth = (w - (horizontalPadding * 2)) / TAB_ITEMS.length;
+      tabWidthShared.value = computedTabWidth;
+    }
   };
+
+  const bottomInset = Math.max(insets.bottom + 8, isIOS ? 20 : 16);
 
   return (
     <View
       pointerEvents="box-none"
       style={{
-        paddingBottom: Math.max(insets.bottom, isIOS ? 12 : 8),
+        bottom: bottomInset,
       }}
-      className="absolute bottom-0 left-0 right-0 items-center justify-center px-4 z-50 pointer-events-box-none"
+      className="absolute left-0 right-0 items-center justify-center px-4 z-50 pointer-events-box-none"
     >
-      {/* Floating 5-Item Navigation Bar with Elevated Center Slot */}
-      <View
-        style={{
-          backgroundColor: isIOS
-            ? isDark
-              ? 'rgba(22, 23, 27, 0.94)'
-              : 'rgba(255, 255, 255, 0.96)'
-            : isDark
-            ? '#18181B'
-            : '#FFFFFF',
-          borderColor: isDark
-            ? 'rgba(255, 255, 255, 0.12)'
-            : 'rgba(0, 0, 0, 0.08)',
-          borderWidth: 1,
-          borderRadius: 36,
-          elevation: isIOS ? 0 : 12,
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: isDark ? 0.55 : 0.12,
-          shadowRadius: 20,
-        }}
-        className="w-full max-w-[410px] h-[64px] px-2 py-1 flex-row items-center justify-between relative overflow-visible"
-      >
-        {/* 5 Symmetrical Tab Items */}
-        {TAB_ITEMS.map((item) => {
-          const isActive = selectedTabKey === item.key;
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          onLayout={handleLayout}
+          style={[
+            barAnimatedStyle,
+            {
+              backgroundColor: isDark
+                ? isIOS
+                  ? 'rgba(15, 17, 23, 0.35)'
+                  : 'rgba(24, 26, 32, 0.78)'
+                : isIOS
+                ? 'rgba(255, 255, 255, 0.28)'
+                : 'rgba(255, 255, 255, 0.74)',
+              borderColor: isDark
+                ? isIOS
+                  ? 'rgba(255, 255, 255, 0.25)'
+                  : 'rgba(255, 255, 255, 0.22)'
+                : isIOS
+                ? 'rgba(255, 255, 255, 0.75)'
+                : 'rgba(255, 255, 255, 0.75)',
+              borderTopColor: isDark
+                ? isIOS
+                  ? 'rgba(255, 255, 255, 0.50)'
+                  : 'rgba(255, 255, 255, 0.45)'
+                : isIOS
+                ? 'rgba(255, 255, 255, 0.95)'
+                : 'rgba(255, 255, 255, 0.95)',
+              borderBottomColor: isDark
+                ? isIOS
+                  ? 'rgba(255, 255, 255, 0.15)'
+                  : 'rgba(255, 255, 255, 0.12)'
+                : isIOS
+                ? 'rgba(255, 255, 255, 0.35)'
+                : 'rgba(0, 0, 0, 0.06)',
+              borderWidth: 1.2,
+              borderRadius: 30,
+              elevation: isIOS ? 0 : 8,
+              shadowColor: '#000000',
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: isDark ? (isIOS ? 0.35 : 0.45) : (isIOS ? 0.08 : 0.12),
+              shadowRadius: isIOS ? 25 : 20,
+            },
+          ]}
+          className="w-full max-w-[410px] h-[64px] px-1.5 flex-row items-center justify-between relative overflow-hidden"
+        >
+          {/* Glossy Upper Half Reflection Sheen */}
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '44%',
+              backgroundColor: isDark
+                ? 'rgba(255, 255, 255, 0.06)'
+                : (isIOS ? 'rgba(255, 255, 255, 0.30)' : 'rgba(255, 255, 255, 0.24)'),
+              borderTopLeftRadius: 30,
+              borderTopRightRadius: 30,
+            }}
+            pointerEvents="none"
+          />
 
-          if (item.isCenter) {
-            return (
-              <View key={item.key} className="flex-1 items-center justify-center overflow-visible">
-                <CenterElevatedButton
-                  item={item}
-                  isActive={isActive}
-                  isDark={isDark}
-                  isIOS={isIOS}
-                  onPress={() => handleTabPress(item)}
-                />
-              </View>
-            );
-          }
+          {/* Glossy Specular Top Highlight Line */}
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 16,
+              right: 16,
+              height: 1.5,
+              backgroundColor: isDark
+                ? 'rgba(255, 255, 255, 0.40)'
+                : 'rgba(255, 255, 255, 0.95)',
+              borderRadius: 1,
+            }}
+            pointerEvents="none"
+          />
 
-          return (
-            <View key={item.key} className="flex-1 items-center justify-center">
-              <StandardTabButton
-                item={item}
-                isActive={isActive}
-                isDark={isDark}
-                isIOS={isIOS}
-                onPress={() => handleTabPress(item)}
-              />
-            </View>
-          );
-        })}
-      </View>
+          {tabWidth > 0 && (
+            <Animated.View
+              style={[
+                slidingPillStyle,
+                {
+                  position: 'absolute',
+                  left: horizontalPadding,
+                  top: 6,
+                  bottom: 6,
+                  borderRadius: 22,
+                  backgroundColor: isDark
+                    ? 'rgba(255, 106, 0, 0.22)'
+                    : (isIOS ? 'rgba(255, 106, 0, 0.18)' : 'rgba(255, 106, 0, 0.14)'),
+                  borderWidth: 1,
+                  borderColor: isDark
+                    ? 'rgba(255, 106, 0, 0.45)'
+                    : (isIOS ? 'rgba(255, 106, 0, 0.38)' : 'rgba(255, 106, 0, 0.30)'),
+                  borderTopColor: isDark
+                    ? 'rgba(255, 138, 61, 0.65)'
+                    : (isIOS ? 'rgba(255, 138, 61, 0.70)' : 'rgba(255, 138, 61, 0.55)'),
+                  shadowColor: ACTIVE_ORANGE,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: isDark ? 0.35 : 0.18,
+                  shadowRadius: 6,
+                },
+              ]}
+              pointerEvents="none"
+            />
+          )}
+
+          {TAB_ITEMS.map((item) => (
+            <InsetTabButton
+              key={item.key}
+              item={item}
+              isActive={selectedTabKey === item.key}
+              onPress={() => handleTabPress(item)}
+              isIOS={isIOS}
+              isDark={isDark}
+            />
+          ))}
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 };
 
 export default BottomNavigationBar;
-
-

@@ -542,7 +542,7 @@ export function ResidentRaiseTicketScreen() {
       subtitle="Report plumbing, electrical, carpentry or common area issues"
       iconName="PlusCircle"
     >
-      <KeyboardAvoidingShell className="bg-background">
+      <KeyboardAvoidingShell scrollable={false} className="bg-background">
         {/* TOP SUB-HEADER BAR WITH ALIGNED BACK, BADGE & CLOSE */}
         <View className="flex-row items-center justify-between px-4 py-3 bg-card border-b border-border/60">
           <TouchableOpacity
@@ -583,7 +583,7 @@ export function ResidentRaiseTicketScreen() {
         </View>
 
         {/* MAIN FORM SCROLL AREA */}
-        <ScrollView className="flex-1 px-4 py-4" contentContainerStyle={{ paddingBottom: 95 }}>
+        <ScrollView className="flex-1 px-4 py-4" contentContainerStyle={{ paddingBottom: 130 }}>
           {error ? (
             <View className="mb-3">
               <ErrorBanner message={error} onDismiss={clearErrors} />

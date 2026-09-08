@@ -252,6 +252,7 @@ export default function RoleBuilderScreen() {
           />
         ) : (
           <FlatList
+            style={{ flex: 1 }}
             data={filteredRoles}
             keyExtractor={(item) => item.id || item._id || String(Math.random())}
             renderItem={({ item }) => (
@@ -262,6 +263,13 @@ export default function RoleBuilderScreen() {
               />
             )}
             contentContainerClassName="p-2.5 pb-28"
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 110 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            scrollEventThrottle={16}
+            alwaysBounceVertical={true}
+            bounces={true}
+            showsVerticalScrollIndicator={false}
             ListFooterComponent={renderPaginationFooter}
             refreshControl={
               <RefreshControl

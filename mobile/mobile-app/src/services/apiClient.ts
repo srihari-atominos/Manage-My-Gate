@@ -10,22 +10,30 @@ const generateUUID = (): string => {
   });
 };
 
-import { Platform } from 'react-native';
-
-const getApiBaseUrl = () => {
-  let url = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:5002/api/v1' : 'http://localhost:5002/api/v1');
-  if (Platform.OS === 'android' && url.includes('localhost')) {
-    url = url.replace('localhost', '10.0.2.2');
+const getDefaultBaseUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
   }
-  return url;
+  // Auto-detect Mac LAN IP from Expo bundler host for physical iOS/Android
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+      return `http://${ip}:5002/api/v1`;
+    }
+  }
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:5002/api/v1';
+  }
+  return 'http://localhost:5002/api/v1';
 };
 
 const apiClient = axios.create({
-  baseURL: getApiBaseUrl(),
+  baseURL: getDefaultBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 8000,
+  timeout: 30000,
   withCredentials: true,
 });
 

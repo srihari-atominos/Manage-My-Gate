@@ -43,7 +43,12 @@ export function WalletHeroCard({
       </View>
 
       {/* Main Balance Display */}
-      <Text className="text-3xl font-extrabold text-foreground tracking-tight mb-4">
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        className="text-3xl font-extrabold text-foreground tracking-tight mb-4"
+      >
         {formattedBalance}
       </Text>
 

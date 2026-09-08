@@ -1,9 +1,11 @@
 import * as React from 'react';
-import { View, ScrollView, BackHandler, TouchableOpacity } from 'react-native';
+import { View, BackHandler, TouchableOpacity } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+} from 'react-native-reanimated';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ShieldCheck, ChevronRight } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
 import MobileHeader from '@/components/navigation/MobileHeader';
 import RoleBasedGreeting from '@/components/dashboard/RoleBasedGreeting';
 import HeroBanner from '@/components/dashboard/HeroBanner';
@@ -27,6 +29,13 @@ export default function DashboardScreen() {
   } = useQuickActions();
 
   const insets = useSafeAreaInsets();
+  const scrollY = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   // Hardware Back Button Handler for Dashboard
   React.useEffect(() => {
@@ -108,8 +117,10 @@ export default function DashboardScreen() {
       {/* Top Navigation Header */}
       <MobileHeader />
 
-      {/* Main Dashboard Scrollable Content */}
-      <ScrollView 
+      {/* Main Dashboard Scrollable Content with Animated Scroll Minimization */}
+      <Animated.ScrollView 
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         className="flex-1 px-4 pt-1"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -131,55 +142,11 @@ export default function DashboardScreen() {
             onOpenViewMore={() => router.push('/(resident)/all-features' as any)}
             onTilePress={handleTilePress}
           />
-
-
-          {/* Security & Gate Control Live Monitoring Section */}
-          <View className="gap-2 my-1">
-            <View className="flex-row items-center justify-between px-1">
-              <Text className="text-[17px] font-bold font-sans text-foreground tracking-tight">
-                {t('security_gate_control', 'Security & Gate Control')}
-              </Text>
-              <Text className="text-[11.5px] font-bold font-sans text-[#FF6A00]">
-                {t('active_monitoring', 'Active Monitoring')}
-              </Text>
-            </View>
-
-            <View className="bg-card border border-border/80 dark:border-border/60 rounded-2xl p-3.5 flex-row items-center justify-between shadow-2xs">
-              <View className="flex-row items-center gap-3 flex-1 pr-2">
-                <View className="w-11 h-11 rounded-[15px] bg-emerald-50 dark:bg-emerald-950/40 items-center justify-center border border-emerald-300/40 dark:border-emerald-700/40">
-                  <ShieldCheck size={22} color="#10B981" />
-                </View>
-
-                <View className="flex-1">
-                  <View className="flex-row items-center gap-1.5">
-                    <Text className="text-[13px] font-bold font-sans text-foreground">
-                      Main Entrance Gate 01
-                    </Text>
-                    <View className="w-2 h-2 rounded-full bg-emerald-500" />
-                  </View>
-                  <Text className="text-[11px] font-medium font-sans text-muted-foreground mt-0.5" numberOfLines={1}>
-                    No pending visitor verifications
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => router.push('/(resident)/visitor' as any)}
-                activeOpacity={0.8}
-                className="bg-slate-900 dark:bg-slate-100 px-3 py-1.5 rounded-full flex-row items-center gap-1 shadow-2xs"
-              >
-                <Text className="text-[11px] font-bold font-sans text-white dark:text-slate-900">
-                  Passes
-                </Text>
-                <ChevronRight size={12} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
-          </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
-      {/* Down Bar Navigation */}
-      <BottomNavigationBar />
+      {/* Down Bar Navigation with Animated Minimization & Touch Zoom Effects */}
+      <BottomNavigationBar scrollY={scrollY} />
 
       {/* Customise Dashboard Slide-Up Sheet Modal */}
       <CustomiseSheetModal

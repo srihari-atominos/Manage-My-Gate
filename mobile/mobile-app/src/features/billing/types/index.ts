@@ -112,6 +112,7 @@ export interface WalletState {
   balance: number;
   activePasses?: any[];
   transactionHistory?: any[];
+  pagination?: InvoicesGridPagination;
   isLoading: boolean;
   error: string | null;
 }

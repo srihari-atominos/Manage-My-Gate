@@ -119,7 +119,7 @@ export function ResidentMyDuesScreen() {
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: totalPortfolioDue > 0 ? 140 : 100 }}
+          contentContainerStyle={{ paddingBottom: totalPortfolioDue > 0 ? 150 : 120 }}
           refreshControl={
             <RefreshControl
               refreshing={loadingStates.fetchDues}

@@ -25,6 +25,7 @@ export default function ResidentWalletScreen() {
     handleCloseTopUp,
     handleTopUpSubmit,
     handleRefresh,
+    handleLoadMore,
   } = useResidentWallet();
 
   const [search, setSearch] = React.useState('');
@@ -104,7 +105,7 @@ export default function ResidentWalletScreen() {
             />
           )}
           pagination={{ currentPage: 1, totalPages: 1, totalRecords: filteredTransactions.length, limit: 50 }}
-          onLoadMore={() => {}}
+          onLoadMore={handleLoadMore}
           onRefresh={handleRefresh}
           loading={loading}
           ListHeaderComponent={renderHeader()}

@@ -37,8 +37,16 @@ export const VirtualizedList = <T extends any>({
     <FlatList
       data={data}
       className={cn('flex-1', className)}
+      style={{ flex: 1 }}
+      contentContainerStyle={[{ flexGrow: 1 }, props.contentContainerStyle]}
       ListEmptyComponent={EmptyComponent}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      scrollEventThrottle={16}
+      alwaysBounceVertical={true}
+      bounces={true}
+      overScrollMode="always"
       initialNumToRender={10}
       maxToRenderPerBatch={10}
       windowSize={5}

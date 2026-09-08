@@ -24,6 +24,7 @@ export default function AmenityMaintenanceScheduleScreen() {
     setDeleteTargetTask,
     scheduling,
     loadData,
+    handleLoadMore,
     handleOpenCreateModal,
     handleOpenEditModal,
     handleCloseModal,
@@ -76,7 +77,7 @@ export default function AmenityMaintenanceScheduleScreen() {
             totalRecords: maintenanceList.length,
             limit: 50,
           }}
-          onLoadMore={() => {}}
+          onLoadMore={handleLoadMore}
           onRefresh={loadData}
           loading={loading}
           emptyIcon="CircleCheck"

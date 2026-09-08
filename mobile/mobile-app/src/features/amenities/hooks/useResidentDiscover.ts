@@ -49,14 +49,36 @@ export function useResidentDiscover() {
     loadCatalog(1);
   }, [loadCatalog]);
 
+  const filteredAmenities = useMemo(() => {
+    return amenities.filter((item) => {
+      const cat = (item.category || item.type || '').toLowerCase().trim();
+      const selCat = (selectedCategory || 'All').toLowerCase().trim();
+
+      const matchesCategory =
+        selCat === 'all' ||
+        cat === selCat ||
+        cat.includes(selCat) ||
+        selCat.includes(cat);
+
+      const q = (searchQuery || '').toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        (item.name && item.name.toLowerCase().includes(q)) ||
+        (item.description && item.description.toLowerCase().includes(q)) ||
+        (item.location && item.location.toLowerCase().includes(q));
+
+      return matchesCategory && matchesSearch;
+    });
+  }, [amenities, selectedCategory, searchQuery]);
+
   const stats = useMemo(() => {
     let activeCount = 0;
     let maintenanceCount = 0;
 
-    amenities.forEach((a) => {
+    filteredAmenities.forEach((a) => {
       const st = (a.status || '').toLowerCase();
       const currentSt = (a.currentStatus || '').toLowerCase();
-      if (st === 'active') {
+      if (st === 'active' || currentSt === 'available') {
         activeCount++;
       } else if (st === 'maintenance' || currentSt === 'under maintenance') {
         maintenanceCount++;
@@ -64,11 +86,20 @@ export function useResidentDiscover() {
     });
 
     return {
-      totalCount: amenities.length,
+      totalCount: filteredAmenities.length,
       activeCount,
       maintenanceCount,
     };
-  }, [amenities]);
+  }, [filteredAmenities]);
+
+  const activePagination = useMemo(() => {
+    return {
+      currentPage: pagination?.currentPage || 1,
+      totalPages: Math.max(1, Math.ceil(filteredAmenities.length / (pagination?.limit || 20))),
+      totalRecords: filteredAmenities.length,
+      limit: pagination?.limit || 20,
+    };
+  }, [pagination, filteredAmenities.length]);
 
   const handleCategorySelect = (category: string) => {
     dispatch(setSelectedCategory(category));
@@ -101,11 +132,11 @@ export function useResidentDiscover() {
   };
 
   return {
-    amenities,
+    amenities: filteredAmenities,
     categories,
     selectedCategory,
     searchQuery,
-    pagination,
+    pagination: activePagination,
     stats,
     selectedAmenityPreview,
     setSelectedAmenityPreview,
