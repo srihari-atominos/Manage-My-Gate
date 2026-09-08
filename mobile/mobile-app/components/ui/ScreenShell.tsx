@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Pressable, TouchableOpacity, ScrollView, BackHandler, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as LucideIcons from 'lucide-react-native';
 import { ChevronLeft, AlertCircle, Compass } from 'lucide-react-native';
@@ -12,6 +12,7 @@ import { RoleSwitchModal } from '../navigation/RoleSwitchModal';
 import { VillaSwitchModal } from '../navigation/VillaSwitchModal';
 import { GlobalNavModal } from '../navigation/GlobalNavModal';
 import { BottomNavigationBar } from '../navigation/BottomNavigationBar';
+import { useBottomNavScroll } from '../navigation/BottomNavScrollContext';
 
 export interface ScreenShellProps {
   title: string;
@@ -48,11 +49,17 @@ export function ScreenShell({
   className,
   enableHeaderDoubleTap = true,
   scrollable = false,
-  showBottomNav = false,
+  showBottomNav = true,
   hideBottomNav = false,
 }: ScreenShellProps) {
   const router = useRouter();
+  const pathname = usePathname() || '';
   const insets = useSafeAreaInsets();
+  const { scrollHandlerProps } = useBottomNavScroll();
+
+  const isProfileScreen = pathname.includes('/profile');
+  const isAuthScreen = pathname.includes('/(auth)') || pathname.includes('/login') || pathname.includes('/signup');
+  const shouldShowBottomNav = showBottomNav && !hideBottomNav && !isProfileScreen && !isAuthScreen;
 
   const [showGlobalNavModal, setShowGlobalNavModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -209,7 +216,8 @@ export function ScreenShell({
           <ScrollView 
             className="flex-1"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }}
+            {...scrollHandlerProps}
+            contentContainerStyle={{ paddingBottom: shouldShowBottomNav ? 110 : Math.max(insets.bottom, 24) }}
           >
             {children}
           </ScrollView>
@@ -246,7 +254,7 @@ export function ScreenShell({
       />
 
       {/* Down Bar Navigation */}
-      {showBottomNav && !hideBottomNav && <BottomNavigationBar />}
+      {shouldShowBottomNav && <BottomNavigationBar />}
     </View>
   );
 }

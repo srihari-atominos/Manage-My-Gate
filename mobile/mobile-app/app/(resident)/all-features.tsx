@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, TouchableOpacity, ScrollView, TextInput, BackHandler } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import {
   SlidersHorizontal,
   RotateCcw,
   Layers,
+  Sparkles,
 } from 'lucide-react-native';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import ActionTile from '@/components/dashboard/ActionTile';
@@ -18,14 +19,16 @@ import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
-import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
+import { ALL_AVAILABLE_FEATURES, REAL_APP_FEATURES, AppFeatureItem } from '@/src/features/dashboard/dashboardCatalog';
 import { isFeatureAllowedForUser, checkIsAdmin } from '@/src/utils/rbac';
 import { useTranslation } from '@/src/utils/i18n';
+import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
 
 export default function AllFeaturesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ category?: string }>();
   const { t, tCategoryName, tFeatureName, tFeatureSubtitle } = useTranslation();
+  const { scrollHandlerProps } = useBottomNavScroll();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [customiseOpen, setCustomiseOpen] = useState(false);
@@ -34,6 +37,8 @@ export default function AllFeaturesScreen() {
   
   const { user } = useAuth();
   const { featureCatalog, allFeaturesList, activeQuickActions, saveQuickActions } = useQuickActions();
+
+  const isAdminRole = checkIsAdmin(user);
 
   // Smart Back Button Handler: Clears category filter first, then search query, then navigates back to Home/Dashboard
   const handleBackPress = useCallback(() => {
@@ -53,7 +58,6 @@ export default function AllFeaturesScreen() {
     return true;
   }, [selectedCategoryKey, searchQuery, router]);
 
-  // Hardware / Gesture Back Button Listener
   useFocusEffect(
     useCallback(() => {
       const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
@@ -100,15 +104,12 @@ export default function AllFeaturesScreen() {
     await saveQuickActions(selectedIds);
   };
 
-  const isAdminRole = checkIsAdmin(user);
-
-  const filteredAvailableFeatures = React.useMemo(() => {
+  const filteredAvailableFeatures = useMemo(() => {
     if (!isAdminRole) return allFeaturesList;
     return allFeaturesList.filter(
       (item) => item.id !== 'visitor_resident_passes' && item.id !== 'visitor_passes'
     );
   }, [allFeaturesList, isAdminRole]);
-  const activeCategory = featureCatalog?.find(cat => cat.categoryKey === selectedCategoryKey);
 
   return (
     <ScreenShell
@@ -128,7 +129,7 @@ export default function AllFeaturesScreen() {
         </TouchableOpacity>
       }
     >
-      <ScrollView className="flex-1 px-4 pt-3" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 px-4 pt-3" showsVerticalScrollIndicator={false} {...scrollHandlerProps}>
         <View className="gap-4 pb-12 max-w-md mx-auto w-full">
           {/* Search All Features Bar */}
           <View className="flex-row items-center bg-card border border-border rounded-2xl px-3.5 py-3 shadow-xs">

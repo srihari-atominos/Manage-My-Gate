@@ -15,8 +15,8 @@ export function usePushNotifications() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const currentTokenRef = useRef<string | null>(null);
-  const notificationListenerRef = useRef<Notifications.Subscription | null>(null);
-  const responseListenerRef = useRef<Notifications.Subscription | null>(null);
+  const notificationListenerRef = useRef<any>(null);
+  const responseListenerRef = useRef<any>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -63,13 +63,13 @@ export function usePushNotifications() {
     if (Platform.OS === 'web') return;
 
     // 1. Triggered whenever a notification is received while the app is foregrounded
-    notificationListenerRef.current = Notifications.addNotificationReceivedListener((notification) => {
-      console.log('[usePushNotifications] Notification received in foreground:', notification.request.content.title);
+    notificationListenerRef.current = Notifications.addNotificationReceivedListener((notification: any) => {
+      console.log('[usePushNotifications] Notification received in foreground:', notification?.request?.content?.title);
     });
 
     // 2. Triggered whenever a user taps on or interacts with a notification banner
-    responseListenerRef.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
+    responseListenerRef.current = Notifications.addNotificationResponseReceivedListener((response: any) => {
+      const data = response?.notification?.request?.content?.data;
       console.log('[usePushNotifications] User tapped notification with data:', data);
 
       const targetRoute = mapActionUrlToMobileRoute(
