@@ -1,425 +1,296 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, ScrollView, Modal, Pressable, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useDispatch } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
+import { ListCard } from '@/components/ui/ListCard';
+import { DetailRow } from '@/components/ui/DetailRow';
 import { TextInput } from '@/components/forms/TextInput';
 import { SuccessToast } from '@/components/feedback/SuccessToast';
 import { SheetGrabHandle } from '@/components/ui/SheetGrabHandle';
-import { ProfileHeaderCard, VerifyEmailOtpModal } from '@/src/features/profile/components';
+import { VillaSwitchModal } from '@/components/navigation/VillaSwitchModal';
+import { OrgSwitchModal } from '@/components/navigation/OrgSwitchModal';
+import { RoleSwitchModal } from '@/components/navigation/RoleSwitchModal';
+import { ProfileHeaderCard } from '@/src/features/profile/components/ProfileHeaderCard';
 import { useProfile } from '@/src/features/profile/hooks/useProfile';
-import authService from '@/src/features/auth/services/authService';
-import { updateProfileThunk } from '@/src/features/auth/store/authSlice';
 import { useTranslation } from '@/src/utils/i18n';
-import { Save, Camera, Image as ImageIcon, FileUp } from 'lucide-react-native';
+import authService from '@/src/features/auth/services/authService';
+import { LogOut, Save, Building2, Home, ShieldCheck, Settings, Camera, Image as ImageIcon, FileUp } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 
-interface SelectedAvatarFile {
-  uri: string;
-  name?: string;
-  type?: string;
-  file?: any;
-}
-
 export default function ProfileScreen() {
   const router = useRouter();
-  const dispatch = useDispatch();
   const { t, tRole } = useTranslation();
   const {
     user,
     dynamicUnit,
     dynamicCommunity,
     dynamicRole,
+    emergencyContact,
+    saving,
+    successMessage,
+    villaModalOpen,
+    orgModalOpen,
+    roleModalOpen,
+    setVillaModalOpen,
+    setOrgModalOpen,
+    setRoleModalOpen,
+    updateEmergencyContact,
+    logout,
   } = useProfile();
 
-  // Profile editable fields
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
-  const [selectedAvatarFile, setSelectedAvatarFile] = useState<SelectedAvatarFile | null>(null);
+  const [contactName, setContactName] = useState(emergencyContact.name);
+  const [contactPhone, setContactPhone] = useState(emergencyContact.phone);
+
+  // Avatar upload states
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarSuccess, setAvatarSuccess] = useState<string | null>(null);
 
-  const [profileSaving, setProfileSaving] = useState(false);
-  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const handleSaveContact = () => {
+    updateEmergencyContact({
+      name: contactName,
+      phone: contactPhone,
+    });
+  };
 
-  // Email verification OTP modal state
-  const [showEmailOtpModal, setShowEmailOtpModal] = useState(false);
-  const [pendingNewEmail, setPendingNewEmail] = useState('');
-  const [emailOtpLoading, setEmailOtpLoading] = useState(false);
-  const [emailOtpResending, setEmailOtpResending] = useState(false);
-  const [emailOtpError, setEmailOtpError] = useState<string | null>(null);
-  const [devOtpCode, setDevOtpCode] = useState<string | null>(null);
+  const displayName = user?.name || (user?.email ? user.email.split('@')[0] : t('logged_in_resident', 'Resident User'));
 
-  useEffect(() => {
-    if (user) {
-      const uAny = user as any;
-      setName(user.name || user.username || uAny.fullName || (user.email ? user.email.split('@')[0] : ''));
-      setEmail(user.email || uAny.emailAddress || '');
-      setPhone(user.phone || uAny.phoneNumber || uAny.mobile || '');
-      if (user.avatar || uAny.avatarUrl) {
-        setAvatarUri(user.avatar || uAny.avatarUrl);
-      }
-    }
-  }, [user]);
+  const handleBackToDashboard = () => {
+    router.replace('/(resident)/dashboard' as any);
+  };
 
-  // 1. Live Camera Access
-  const handleTakePhoto = async () => {
-    setShowPhotoOptions(false);
+  const uploadAvatarFile = async (uri: string, name?: string, type?: string) => {
     try {
+      setAvatarUploading(true);
+      const formData = new FormData();
       if (Platform.OS === 'web') {
-        const result = await ImagePicker.launchCameraAsync({
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.85,
-        });
-        if (!result.canceled && result.assets && result.assets.length > 0) {
-          const asset = result.assets[0];
-          setAvatarUri(asset.uri);
-          setSelectedAvatarFile({
-            uri: asset.uri,
-            name: asset.fileName || `camera_${Date.now()}.jpg`,
-            type: asset.mimeType || 'image/jpeg',
-            file: (asset as any).file,
-          });
-        }
-        return;
+        const res = await fetch(uri);
+        const blob = await res.blob();
+        formData.append('avatar', blob, name || 'avatar.jpg');
+      } else {
+        formData.append('avatar', {
+          uri,
+          name: name || 'avatar.jpg',
+          type: type || 'image/jpeg',
+        } as any);
       }
 
-      const permResult = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permResult.granted) {
-        Alert.alert(
-          t('permission_required', 'Permission Required'),
-          t('camera_perm_desc', 'Camera access is needed to capture a profile photo.')
-        );
+      await authService.updateProfile(formData);
+      setAvatarUri(uri);
+      setAvatarSuccess(t('avatar_updated_success', 'Profile photo updated successfully'));
+      setTimeout(() => setAvatarSuccess(null), 3000);
+    } catch (err: any) {
+      console.warn('Avatar upload failed:', err);
+      // Fallback local update
+      setAvatarUri(uri);
+    } finally {
+      setAvatarUploading(false);
+      setShowPhotoOptions(false);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t('permission_needed', 'Permission Needed'), t('camera_permission_denied', 'Camera permission is required to take a photo.'));
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.85,
+        quality: 0.8,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        setAvatarUri(asset.uri);
-        setSelectedAvatarFile({
-          uri: asset.uri,
-          name: asset.fileName || `camera_${Date.now()}.jpg`,
-          type: asset.mimeType || 'image/jpeg',
-        });
+        await uploadAvatarFile(asset.uri, asset.fileName || 'camera.jpg', asset.mimeType || 'image/jpeg');
       }
     } catch (err) {
-      console.warn('Error taking photo with camera:', err);
+      console.warn('Camera launch failed:', err);
     }
   };
 
-  // 2. Photo Gallery
   const handleChooseFromGallery = async () => {
-    setShowPhotoOptions(false);
     try {
-      const permResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permResult.granted) {
-        Alert.alert(
-          t('permission_required', 'Permission Required'),
-          t('gallery_perm_desc', 'Photo library access is needed to select a profile photo.')
-        );
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t('permission_needed', 'Permission Needed'), t('gallery_permission_denied', 'Photo library permission is required to select photos.'));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.85,
+        quality: 0.8,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        setAvatarUri(asset.uri);
-        setSelectedAvatarFile({
-          uri: asset.uri,
-          name: asset.fileName || `avatar_${Date.now()}.jpg`,
-          type: asset.mimeType || 'image/jpeg',
-          file: (asset as any).file,
-        });
+        await uploadAvatarFile(asset.uri, asset.fileName || 'gallery.jpg', asset.mimeType || 'image/jpeg');
       }
     } catch (err) {
-      console.warn('Error picking image from gallery:', err);
+      console.warn('Gallery picker failed:', err);
     }
   };
 
-  // 3. Document / File Picker
   const handlePickDocument = async () => {
-    setShowPhotoOptions(false);
     try {
-      if (Platform.OS === 'web') {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/jpeg,image/png,image/webp';
-        input.onchange = (e: any) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            const objectUrl = URL.createObjectURL(file);
-            setAvatarUri(objectUrl);
-            setSelectedAvatarFile({
-              uri: objectUrl,
-              name: file.name,
-              type: file.type || 'image/jpeg',
-              file: file,
-            });
-          }
-        };
-        input.click();
-        return;
-      }
-
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/jpeg', 'image/png', 'image/webp'],
+        type: ['image/*'],
         copyToCacheDirectory: true,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        setAvatarUri(asset.uri);
-        setSelectedAvatarFile({
-          uri: asset.uri,
-          name: asset.name || `doc_${Date.now()}.jpg`,
-          type: asset.mimeType || 'image/jpeg',
-        });
+        await uploadAvatarFile(asset.uri, asset.name, asset.mimeType || 'image/jpeg');
       }
     } catch (err) {
-      console.warn('Error picking document file:', err);
+      console.warn('Document picker failed:', err);
     }
   };
-
-  const executeProfileUpdate = async (emailToUpdate?: string, emailOtp?: string) => {
-    setProfileSaving(true);
-    setProfileSuccess(null);
-    try {
-      let payload: any;
-      if (selectedAvatarFile) {
-        const formData = new FormData();
-        formData.append('name', name.trim());
-        formData.append('phone', phone.trim());
-        if (emailToUpdate && emailOtp) {
-          formData.append('email', emailToUpdate);
-          formData.append('emailOtp', emailOtp);
-        }
-
-        if (Platform.OS === 'web') {
-          if (selectedAvatarFile.file) {
-            formData.append('avatar', selectedAvatarFile.file, selectedAvatarFile.name || 'avatar.jpg');
-          } else if (selectedAvatarFile.uri.startsWith('blob:') || selectedAvatarFile.uri.startsWith('data:')) {
-            const response = await fetch(selectedAvatarFile.uri);
-            const blob = await response.blob();
-            formData.append('avatar', blob, selectedAvatarFile.name || 'avatar.jpg');
-          }
-        } else {
-          formData.append('avatar', {
-            uri: selectedAvatarFile.uri,
-            name: selectedAvatarFile.name || 'avatar.jpg',
-            type: selectedAvatarFile.type || 'image/jpeg',
-          } as any);
-        }
-        payload = formData;
-      } else {
-        payload = {
-          name: name.trim(),
-          phone: phone.trim(),
-          ...(emailToUpdate && emailOtp ? { email: emailToUpdate, emailOtp } : {}),
-        };
-      }
-
-      const res = await dispatch(updateProfileThunk(payload) as any);
-      if (res.meta.requestStatus === 'fulfilled') {
-        setProfileSuccess(
-          emailToUpdate
-            ? t('profile_and_email_updated', 'Profile & email updated successfully!')
-            : t('profile_updated', 'Profile updated successfully!')
-        );
-        setSelectedAvatarFile(null);
-        if (emailToUpdate) {
-          setShowEmailOtpModal(false);
-          setPendingNewEmail('');
-          setEmailOtpError(null);
-        }
-        setTimeout(() => setProfileSuccess(null), 3500);
-        return true;
-      } else {
-        const err = res.payload || t('failed_to_update_profile', 'Failed to update profile');
-        if (emailToUpdate) {
-          setEmailOtpError(String(err));
-        } else {
-          Alert.alert(t('error', 'Error'), String(err));
-        }
-        return false;
-      }
-    } catch (error: any) {
-      const msg = error?.message || t('failed_to_update_profile', 'Failed to update profile');
-      if (emailToUpdate) {
-        setEmailOtpError(msg);
-      } else {
-        Alert.alert(t('error', 'Error'), msg);
-      }
-      return false;
-    } finally {
-      setProfileSaving(false);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    if (!name.trim()) {
-      Alert.alert(t('validation_error', 'Validation Error'), t('name_required', 'Please enter your name.'));
-      return;
-    }
-
-    const trimmedEmail = email.trim().toLowerCase();
-    const currentEmail = (user?.email || '').trim().toLowerCase();
-
-    // Check email format if provided
-    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      Alert.alert(t('validation_error', 'Validation Error'), t('invalid_email', 'Please enter a valid email address.'));
-      return;
-    }
-
-    // If user has changed their email address, request verification OTP
-    if (trimmedEmail && trimmedEmail !== currentEmail) {
-      setProfileSaving(true);
-      setEmailOtpError(null);
-      try {
-        const otpRes = await authService.requestEmailChangeOtp(trimmedEmail);
-        const data = (otpRes as any)?.data || (otpRes as any)?.data?.data || otpRes;
-        if (data?.devCode) {
-          setDevOtpCode(data.devCode);
-        } else {
-          setDevOtpCode(null);
-        }
-        setPendingNewEmail(trimmedEmail);
-        setShowEmailOtpModal(true);
-      } catch (err: any) {
-        const errorMsg = err?.response?.data?.message || err?.message || t('failed_send_otp', 'Failed to send verification OTP');
-        Alert.alert(t('error', 'Error'), errorMsg);
-      } finally {
-        setProfileSaving(false);
-      }
-      return;
-    }
-
-    // Email unchanged, update other fields directly
-    await executeProfileUpdate();
-  };
-
-  const handleVerifyEmailOtp = async (otp: string) => {
-    setEmailOtpLoading(true);
-    setEmailOtpError(null);
-    try {
-      await executeProfileUpdate(pendingNewEmail, otp);
-    } finally {
-      setEmailOtpLoading(false);
-    }
-  };
-
-  const handleResendEmailOtp = async () => {
-    setEmailOtpResending(true);
-    setEmailOtpError(null);
-    try {
-      const otpRes = await authService.requestEmailChangeOtp(pendingNewEmail);
-      const data = (otpRes as any)?.data || (otpRes as any)?.data?.data || otpRes;
-      if (data?.devCode) {
-        setDevOtpCode(data.devCode);
-      }
-    } catch (err: any) {
-      const errorMsg = err?.response?.data?.message || err?.message || t('failed_send_otp', 'Failed to resend OTP');
-      setEmailOtpError(errorMsg);
-    } finally {
-      setEmailOtpResending(false);
-    }
-  };
-
-  const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(resident)/dashboard' as any);
-    }
-  };
-
-  const displayName = name || user?.name || (user?.email ? user.email.split('@')[0] : t('logged_in_resident', 'Resident User'));
 
   return (
     <ScreenShell
       title={t('user_profile_account_title', 'User Profile & Account')}
-      subtitle={t('edit_profile_subtitle', 'Update personal details & profile photo')}
+      subtitle={t('user_profile_account_subtitle', 'Manage identity, unit binding & emergency contacts')}
       iconName="User"
       showBackButton={true}
-      onBackPress={handleBack}
+      onBackPress={handleBackToDashboard}
       hideBottomNav={true}
     >
       <ScrollView
         className="flex-1"
-        contentContainerClassName="p-4 gap-4 pb-8"
+        contentContainerClassName="p-4 gap-5 pb-8"
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
       >
-        {/* Profile Hero Header Card with Avatar & Live Camera / Photo Trigger */}
+        {/* Profile Hero Header Card */}
         <ProfileHeaderCard
           name={displayName}
-          email={email || user?.email}
-          phone={phone || user?.phone}
+          email={user?.email}
+          phone={user?.phone || (user as any)?.phoneNumber}
           unitName={dynamicUnit}
           roleName={tRole(dynamicRole, dynamicRole)}
           communityName={dynamicCommunity}
-          avatarUrl={avatarUri}
-          showCameraBadge={true}
+          status={t('active_resident', 'Active Resident')}
+          avatarUrl={avatarUri || user?.avatar || (user as any)?.avatarUrl}
           onAvatarPress={() => setShowPhotoOptions(true)}
+          showCameraBadge={true}
         />
 
-        {/* Section: Personal Details & Edit Form */}
+        {avatarSuccess && <SuccessToast message={avatarSuccess} />}
+
+        {/* Identity & Account Details */}
         <View className="gap-2">
           <Text className="text-xs font-bold text-muted-foreground uppercase px-1">
-            {t('personal_details', 'Personal Details')}
+            {t('account_details_header', 'Account Details')}
+          </Text>
+
+          <View className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+            <DetailRow label={t('resident_name', 'Resident Name')} value={displayName} />
+            <DetailRow label={t('email_address_label', 'Email Address')} value={user?.email || t('not_provided', 'Not Provided')} />
+            <DetailRow label={t('phone_number_label', 'Phone Number')} value={user?.phone || (user as any)?.phoneNumber || t('not_provided', 'Not Provided')} />
+            <DetailRow label={t('active_unit_label', 'Active Unit')} value={dynamicUnit} />
+            <DetailRow label={t('community_workspace_label', 'Community Workspace')} value={dynamicCommunity} />
+            <DetailRow label={t('role_persona_label', 'Role Persona')} value={tRole(dynamicRole, dynamicRole)} />
+          </View>
+        </View>
+
+        {/* Context Switchers Section */}
+        <View className="gap-2">
+          <Text className="text-xs font-bold text-muted-foreground uppercase px-1">
+            {t('context_switchers_header', 'Context Switchers')}
+          </Text>
+
+          <View className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+            <ListCard
+              variant="row"
+              title={t('switch_villa_unit_title', 'Switch Villa Unit')}
+              subtitle={dynamicUnit}
+              leftIcon={Home}
+              showChevron={true}
+              onPress={() => setVillaModalOpen(true)}
+            />
+
+            <ListCard
+              variant="row"
+              title={t('switch_community_org_title', 'Switch Community Org')}
+              subtitle={dynamicCommunity}
+              leftIcon={Building2}
+              showChevron={true}
+              onPress={() => setOrgModalOpen(true)}
+            />
+
+            <ListCard
+              variant="row"
+              title={t('switch_role_persona_title', 'Switch Role Persona')}
+              subtitle={tRole(dynamicRole, dynamicRole)}
+              leftIcon={ShieldCheck}
+              showChevron={true}
+              onPress={() => setRoleModalOpen(true)}
+            />
+
+            <ListCard
+              variant="row"
+              title={t('app_settings', 'Settings & Preferences')}
+              subtitle={t('settings_subtitle', 'Appearance, themes & notifications')}
+              leftIcon={Settings}
+              showChevron={true}
+              isLastItem={true}
+              onPress={() => router.push('/(resident)/settings' as any)}
+            />
+          </View>
+        </View>
+
+        {/* Emergency Contacts Section */}
+        <View className="gap-2">
+          <Text className="text-xs font-bold text-muted-foreground uppercase px-1">
+            {t('emergency_contacts_header', 'Emergency Contacts')}
           </Text>
 
           <View className="bg-card border border-border rounded-2xl p-4 shadow-xs gap-3.5">
             <TextInput
-              label={t('full_name', 'Full Name')}
-              placeholder="e.g. Naveen"
-              value={name}
-              onChangeText={setName}
+              label={t('emergency_contact_name_label', 'Emergency Contact Name')}
+              placeholder="e.g. Fatima Al-Mansoor"
+              value={contactName}
+              onChangeText={setContactName}
             />
 
             <TextInput
-              label={t('email_address', 'Email Address')}
-              placeholder="e.g. user@example.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-            />
-
-            <TextInput
-              label={t('phone_number', 'Phone Number')}
-              placeholder="e.g. +91 9876543210"
+              label={t('emergency_contact_phone_label', 'Emergency Contact Phone')}
+              placeholder="e.g. +971 50 987 6543"
               keyboardType="phone-pad"
-              value={phone}
-              onChangeText={setPhone}
+              value={contactPhone}
+              onChangeText={setContactPhone}
             />
 
-            {profileSuccess && <SuccessToast message={profileSuccess} />}
+            {successMessage && <SuccessToast message={successMessage} />}
 
             <Button
-              variant="default"
-              size="default"
-              loading={profileSaving}
+              variant="secondary"
+              size="sm"
+              loading={saving}
               leftIcon={Save}
-              onPress={handleSaveProfile}
-              className="mt-1 h-12 rounded-xl"
-              textClassName="font-bold text-sm"
+              onPress={handleSaveContact}
+              className="mt-1 bg-primary/10 border border-primary/20"
+              textClassName="text-primary font-semibold text-xs"
             >
-              {t('save_profile_changes', 'Save Profile Changes')}
+              {t('save_emergency_contact_btn', 'Save Emergency Contact')}
             </Button>
           </View>
         </View>
+
+        {/* Sign Out Action */}
+        <Button
+          variant="destructive"
+          leftIcon={LogOut}
+          onPress={logout}
+          className="h-12 w-full mt-2 rounded-xl"
+          textClassName="font-bold text-sm"
+        >
+          {t('sign_out', 'Sign Out')}
+        </Button>
       </ScrollView>
 
       {/* Photo Picker Options Bottom Sheet Modal */}
@@ -436,7 +307,7 @@ export default function ProfileScreen() {
             <Text className="text-base font-bold text-foreground text-center py-2">
               {t('profile_photo_options', 'Update Profile Photo')}
             </Text>
-            <View className="px-5 pb-5 gap-2.5">
+            <View className="px-5 pb-6 gap-2.5">
               {/* Option 1: Live Camera */}
               <Pressable
                 onPress={handleTakePhoto}
@@ -505,20 +376,25 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {/* Email Verification OTP Modal */}
-      <VerifyEmailOtpModal
-        visible={showEmailOtpModal}
-        email={pendingNewEmail}
-        onClose={() => {
-          setShowEmailOtpModal(false);
-          setEmailOtpError(null);
-        }}
-        onVerify={handleVerifyEmailOtp}
-        onResend={handleResendEmailOtp}
-        loading={emailOtpLoading}
-        resending={emailOtpResending}
-        errorMessage={emailOtpError}
-        devCode={devOtpCode}
+      {/* Context Modals */}
+      <VillaSwitchModal
+        visible={villaModalOpen}
+        onClose={() => setVillaModalOpen(false)}
+        activeVilla={dynamicUnit}
+        onSelectVilla={() => setVillaModalOpen(false)}
+        communityName={dynamicCommunity}
+      />
+
+      <OrgSwitchModal
+        visible={orgModalOpen}
+        onClose={() => setOrgModalOpen(false)}
+        activeCommunity={dynamicCommunity}
+        onSelectCommunity={() => setOrgModalOpen(false)}
+      />
+
+      <RoleSwitchModal
+        visible={roleModalOpen}
+        onClose={() => setRoleModalOpen(false)}
       />
     </ScreenShell>
   );
