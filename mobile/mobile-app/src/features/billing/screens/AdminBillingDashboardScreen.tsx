@@ -160,7 +160,7 @@ export function AdminBillingDashboardScreen() {
     {
       id: 'wallet',
       name: 'Digital Wallet',
-      route: '/(resident)/billing/wallet',
+      route: '/(resident)/wallet',
       iconName: 'Wallet',
       colorBg: 'bg-cyan-500/10',
       colorIcon: '#06b6d4',

@@ -1,30 +1,21 @@
-import fromBillingReducer, {
+/**
+ * Backward compatibility re-export.
+ * The authoritative Digital Wallet feature has been decoupled to `@/src/features/wallet`.
+ */
+import { createAsyncThunk } from '@reduxjs/toolkit';
+import walletReducer, {
   fetchWalletBalance,
   createWalletRazorpayOrder,
   verifyWalletPayment,
   topUpWalletDirect,
   syncWalletBalance,
   clearWalletError,
-} from '../../billing/store/walletSlice';
+} from '../../wallet/store/walletSlice';
 
-export type { WalletState } from '../../billing/types';
+export * from '../../wallet/store/walletSlice';
+export * from '../../wallet/types';
 
-export interface WalletTransaction {
-  _id: string;
-  id?: string;
-  transactionId?: string;
-  type: 'CREDIT' | 'DEBIT' | 'Credit' | 'Debit';
-  amount: number;
-  description: string;
-  referenceId?: string;
-  paymentStatus?: string;
-  paymentMethod?: string;
-  createdAt: string;
-}
-
-import { createAsyncThunk } from '@reduxjs/toolkit';
-
-// Seamless backward-compatible aliases for Amenities components
+// Backward-compatible aliases for legacy Amenities components
 export const fetchWalletThunk = fetchWalletBalance;
 export const topUpWalletThunk = createAsyncThunk(
   'wallet/topUpWalletThunk',
@@ -39,13 +30,4 @@ export const topUpWalletThunk = createAsyncThunk(
 );
 export const clearWalletStatus = clearWalletError;
 
-export {
-  fetchWalletBalance,
-  createWalletRazorpayOrder,
-  verifyWalletPayment,
-  topUpWalletDirect,
-  syncWalletBalance,
-  clearWalletError,
-};
-
-export default fromBillingReducer;
+export default walletReducer;

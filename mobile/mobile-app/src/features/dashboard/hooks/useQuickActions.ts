@@ -120,6 +120,7 @@ export const useQuickActions = () => {
         'complaints_helpdesk': ['complaints'],
         'notice_board_polls': ['notices'],
         'financial_billing': ['billing'],
+        'digital_wallet': ['billing', 'amenities', 'wallet'],
         'administration_security': ['administration_security']
       };
       
@@ -139,12 +140,8 @@ export const useQuickActions = () => {
           if (item.id === 'admin_workspace_settings') return true;
           
           // 1. RBAC Filtering
-          if (item.permission && userPermissions.length > 0) {
-            const hasAccess = userPermissions.includes('owner:*') || 
-                              userPermissions.includes('admin:*') || 
-                              userPermissions.includes('platform:super_admin') ||
-                              userPermissions.includes(item.permission);
-            if (!hasAccess) return false;
+          if (!isFeatureAllowedForUser(item, user)) {
+            return false;
           }
 
           // 2. Module Filtering

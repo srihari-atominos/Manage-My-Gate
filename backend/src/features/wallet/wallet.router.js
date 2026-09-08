@@ -7,11 +7,13 @@ const router = express.Router();
 
 router.use(isAuthenticated);
 
-// Resident route to get their own wallet
-router.get('/', authorizeAnyPermission(['billing:wallet', 'amenities:wallet']), getMyWallet);
-router.post('/add-money', authorizeAnyPermission(['billing:wallet', 'amenities:wallet']), addMoney);
-router.post('/pay-invoice', authorizeAnyPermission(['billing:wallet', 'amenities:wallet']), payInvoice);
-router.post('/create-order', authorizeAnyPermission(['billing:wallet', 'amenities:wallet']), createOrder);
-router.post('/verify-payment', authorizeAnyPermission(['billing:wallet', 'amenities:wallet']), verifyPayment);
+const WALLET_PERMISSIONS = ['wallet:access', 'wallet:manage', 'billing:wallet', 'amenities:wallet'];
+
+// Route to get current user's wallet
+router.get('/', authorizeAnyPermission(WALLET_PERMISSIONS), getMyWallet);
+router.post('/add-money', authorizeAnyPermission(WALLET_PERMISSIONS), addMoney);
+router.post('/pay-invoice', authorizeAnyPermission(WALLET_PERMISSIONS), payInvoice);
+router.post('/create-order', authorizeAnyPermission(WALLET_PERMISSIONS), createOrder);
+router.post('/verify-payment', authorizeAnyPermission(WALLET_PERMISSIONS), verifyPayment);
 
 export default router;

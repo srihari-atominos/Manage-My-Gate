@@ -63,7 +63,7 @@ export function ResidentMyDuesScreen() {
   };
 
   const handleOpenWalletScreen = () => {
-    router.push('/(resident)/billing/wallet' as any);
+    router.push('/(resident)/wallet' as any);
   };
 
   const handleOpenPaymentHistory = () => {

@@ -38,5 +38,9 @@
   {
     "feature": "workspaces",
     "actions": ["read", "update"]
+  },
+  {
+    "feature": "wallet",
+    "actions": ["access", "recharge", "manage"]
   }
 ]

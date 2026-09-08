@@ -100,7 +100,7 @@ export function PaymentCheckoutSheet({
 
   const handleOpenWalletRecharge = () => {
     onClose();
-    router.push('/(resident)/billing/wallet' as any);
+    router.push('/(resident)/wallet' as any);
   };
 
   const handleInitiatePayment = () => {

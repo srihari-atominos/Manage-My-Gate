@@ -119,7 +119,7 @@ export function MobileQuickNavHub({ searchQuery = '' }: MobileQuickNavHubProps) 
     {
       id: 'wallet',
       name: 'Digital Wallet',
-      route: '/(resident)/amenities/wallet',
+      route: '/(resident)/wallet',
       iconName: 'WalletCards',
       badge: formatRevenueBadge(walletBalance),
       badgeColor: 'bg-emerald-500',

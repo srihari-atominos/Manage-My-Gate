@@ -120,6 +120,9 @@ const PERMISSION_SYNONYMS: Record<string, string[]> = {
   'billing:action_center': ['billing:action_center', 'billing:dashboard', 'billing:view', 'billing:read', 'billing'],
   'billing:assessment_manager': ['billing:assessment_manager', 'billing:dashboard', 'billing'],
 
+  // Digital Wallet
+  'wallet:access': ['wallet:access', 'wallet.access', 'wallet:read', 'wallet', 'amenities:wallet', 'billing:wallet'],
+
   // Administration & Security
   'villas:read': ['villas:read', 'villas.read', 'villas:view', 'villas', 'units:read', 'admin_villas'],
   'users:read': ['users:read', 'users.read', 'users:view', 'users'],
@@ -197,10 +200,9 @@ const FALLBACK_RESIDENT_FEATURE_IDS = new Set([
   'visitor_resident_passes',
   'billing_dashboard',
   'billing_my_dues',
-  'billing_wallet',
+  'digital_wallet',
   'amenities_discover',
   'amenities_my_booking',
-  'amenities_wallet',
   'complaints_raise_ticket',
   'complaints_track_requests',
   'notices_active_board',
@@ -210,9 +212,9 @@ const FALLBACK_RESIDENT_FEATURE_IDS = new Set([
 const FALLBACK_RESIDENT_PERMISSIONS = new Set([
   'visitor:resident',
   'billing:action_center',
+  'wallet:access',
   'amenities:discover',
   'amenities:my_booking',
-  'amenities:wallet',
   'complaints:raise_ticket',
   'complaints:track_requests',
   'notices:active_board',

@@ -78,6 +78,10 @@ export default function AllFeaturesScreen() {
       router.navigate('/(resident)/admin/billing/assessments' as any);
       return;
     }
+    if (tileId === 'digital_wallet') {
+      router.navigate('/(resident)/wallet' as any);
+      return;
+    }
     let feature = allFeaturesList.find((item) => item.id === tileId);
     if (!feature) {
       feature = (ALL_AVAILABLE_FEATURES as any[]).find((item) => item.id === tileId);
@@ -183,6 +187,7 @@ export default function AllFeaturesScreen() {
                   complaints_helpdesk: { icon: 'ListTodo', subtitle: 'Issues & SLA Helpdesk', color: '#7C3AED' },
                   notice_board_polls: { icon: 'Megaphone', subtitle: 'Broadcasts & Resident Polls', color: '#DB2777' },
                   financial_billing: { icon: 'CreditCard', subtitle: 'Dues, Invoices & Accounts', color: '#0D9488' },
+                  digital_wallet: { icon: 'WalletCards', subtitle: 'Prepaid Wallet & Top-Up', color: '#10B981' },
                   administration_security: { icon: 'UserRoundCog', subtitle: 'Staff, RBAC & Settings', color: '#D97706' },
                 };
 

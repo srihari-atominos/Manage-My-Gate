@@ -81,7 +81,7 @@ export const GlobalNavModal: React.FC<GlobalNavModalProps> = ({ visible, onClose
       items: [
         { id: 'a-discover', labelKey: 'feature_amenities_discover_name', defaultLabel: 'Discover Amenities', route: '/(resident)/amenities/discover', icon: Building2, color: '#14b8a6' },
         { id: 'a-bookings', labelKey: 'feature_amenities_my_booking_name', defaultLabel: 'My Booking Passes', route: '/(resident)/amenities/my-bookings', icon: Calendar, color: '#6366f1' },
-        { id: 'a-wallet', labelKey: 'feature_amenities_wallet_name', defaultLabel: 'Amenity Wallet', route: '/(resident)/amenities/wallet', icon: Wallet, color: '#06b6d4' },
+        { id: 'a-wallet', labelKey: 'feature_digital_wallet_name', defaultLabel: 'Digital Wallet', route: '/(resident)/wallet', icon: Wallet, color: '#10b981' },
         { id: 'a-scanner', labelKey: 'feature_amenities_scanner_name', defaultLabel: 'QR Scanner', route: '/(resident)/amenities/scanner', icon: QrCode, color: '#a855f7' },
       ],
     },
