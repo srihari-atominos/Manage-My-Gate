@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, Modal, TouchableOpacity, ScrollView, Dimensions, StyleSheet } from 'react-native';
+import { View, Modal, TouchableOpacity, ScrollView, Dimensions, StyleSheet, Text } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,7 +8,6 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
-import { Text } from '@/components/ui/text';
 import { Sparkles } from 'lucide-react-native';
 import CustomiseDeckZone from './CustomiseDeckZone';
 import CustomiseAvailableZone, { AvailableFeatureCardItem } from './CustomiseAvailableZone';
