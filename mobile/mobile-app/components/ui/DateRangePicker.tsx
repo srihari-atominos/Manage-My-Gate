@@ -14,9 +14,9 @@ import {
   X,
   Check,
 } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { cn } from '@/lib/utils';
+import { Text } from './text';
+import { Icon } from './icon';
+import { cn } from '../../lib/utils';
 
 // Note: For native system date pickers, install: npx expo install @react-native-community/datetimepicker
 let DateTimePickerComponent: any = null;

@@ -2,7 +2,7 @@ import * as React from 'react';
 import { TextInput, View, Text, TouchableOpacity, TextInputProps } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 
 export interface InputProps extends TextInputProps {
   label?: string;

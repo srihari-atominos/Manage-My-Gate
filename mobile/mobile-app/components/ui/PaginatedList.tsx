@@ -1,7 +1,7 @@
-import { Icon } from '@/components/ui/icon';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Icon } from './icon';
+import { Skeleton } from './Skeleton';
+import { Text } from './text';
+import { cn } from '../../lib/utils';
 import * as LucideIcons from 'lucide-react-native';
 import { Inbox } from 'lucide-react-native';
 import * as React from 'react';

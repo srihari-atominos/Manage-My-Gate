@@ -10,7 +10,7 @@ import {
   Platform,
   Keyboard,
 } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { Text } from './text';
 import { X } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
 

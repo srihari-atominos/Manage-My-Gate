@@ -1,10 +1,10 @@
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Text } from './text';
+import { cn } from '../../lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { useColorScheme } from 'nativewind';
 import * as React from 'react';
 import { View } from 'react-native';
-import { useTranslation } from '@/src/utils/i18n';
+import { useTranslation } from '../../src/utils/i18n';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,

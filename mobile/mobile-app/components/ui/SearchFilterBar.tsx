@@ -9,9 +9,9 @@ import {
 import { useColorScheme } from 'nativewind';
 import { Search, X, SlidersHorizontal } from 'lucide-react-native';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Text } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { cn } from '@/lib/utils';
+import { Text } from './text';
+import { Icon } from './icon';
+import { cn } from '../../lib/utils';
 import { getStatusTabStyle } from './statusTabColors';
 
 export interface SortOption {

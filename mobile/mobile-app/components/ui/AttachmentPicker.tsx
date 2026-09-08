@@ -3,10 +3,10 @@ import { View, Pressable, Alert, AlertButton, Platform, Image as RNImage } from 
 import { Image, FileText, X, Plus } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { Text } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { cn } from '@/lib/utils';
-import apiClient from '@/src/services/apiClient';
+import { Text } from './text';
+import { Icon } from './icon';
+import { cn } from '../../lib/utils';
+import apiClient from '../../src/services/apiClient';
 
 export interface Attachment {
   uri?: string;
@@ -43,7 +43,7 @@ function isImageFile(type?: string, name?: string): boolean {
   return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'svg'].includes(ext || '');
 }
 
-import { getImageUrl as getAbsoluteUrl } from '@/src/utils/imageUrl';
+import { getImageUrl as getAbsoluteUrl } from '../../src/utils/imageUrl';
 
 export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
   (

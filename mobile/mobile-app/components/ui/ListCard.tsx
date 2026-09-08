@@ -3,10 +3,10 @@ import { View, Pressable, Platform, Image } from 'react-native';
 import * as LucideIcons from 'lucide-react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
-import { Text } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
-import { cn } from '@/lib/utils';
+import { Text } from './text';
+import { Icon } from './icon';
+import { StatusBadge, type StatusVariant } from './StatusBadge';
+import { cn } from '../../lib/utils';
 
 export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeof Pressable>, 'title'> {
   title: string;
@@ -31,7 +31,7 @@ export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeo
   className?: string;
 }
 
-import { i18n } from '@/src/utils/i18n';
+import { i18n } from '../../src/utils/i18n';
 
 export function formatRelativeTime(date: string | Date): string {
   if (!date) return '';

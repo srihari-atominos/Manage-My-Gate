@@ -1,5 +1,5 @@
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Text } from './text';
+import { cn } from '../../lib/utils';
 import { cva } from 'class-variance-authority';
 import * as React from 'react';
 import { View } from 'react-native';
