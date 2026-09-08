@@ -12,9 +12,6 @@ const generateUUID = (): string => {
   });
 };
 
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
-
 export const getApiBaseUrl = () => {
   let url = process.env.EXPO_PUBLIC_API_URL;
   if (!url) {
