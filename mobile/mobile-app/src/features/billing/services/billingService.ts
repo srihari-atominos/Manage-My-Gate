@@ -18,9 +18,12 @@ export const billingService = {
 
   /**
    * Fetch personal outstanding dues for a resident.
+   * @param communityId - Optional active community ID
    */
-  async getMyDues(): Promise<any> {
-    const response: any = await apiClient.get('/invoices/my-dues');
+  async getMyDues(communityId?: string): Promise<any> {
+    const response: any = await apiClient.get('/invoices/my-dues', {
+      params: communityId ? { communityId } : undefined,
+    });
     const body = response?.success !== undefined ? response : response?.data;
     return body?.data || body;
   },
@@ -72,6 +75,20 @@ export const billingService = {
   },
 
   /**
+   * Upload payment proof document / image.
+   * @param formData
+   */
+  async uploadProof(formData: any): Promise<{ url: string }> {
+    const response: any = await apiClient.post('/invoices/upload-proof', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    const body = response?.success !== undefined ? response : response?.data;
+    return body?.data || body;
+  },
+
+  /**
    * Record an offline payment for verification.
    * @param invoiceId
    * @param payload
@@ -89,7 +106,15 @@ export const billingService = {
    */
   async approveInvoiceOffline(
     invoiceId: string,
-    payload?: { amount?: number; settlementType?: 'FULL' | 'CUSTOM' }
+    payload?: {
+      amount?: number;
+      settlementType?: 'FULL' | 'CUSTOM';
+      paymentMethod?: string;
+      paymentReference?: string;
+      reference?: string;
+      notes?: string;
+      paymentScreenshot?: string;
+    }
   ): Promise<any> {
     const response: any = await apiClient.patch(`/invoices/${invoiceId}/approve`, payload || {});
     const body = response?.success !== undefined ? response : response?.data;
@@ -191,12 +216,14 @@ export const billingService = {
   async verifyWalletPayment(paymentData: any): Promise<any> {
     const formattedPayload = {
       ...paymentData,
+      paymentId: paymentData?.paymentId || paymentData?.payment_id,
+      payment_id: paymentData?.paymentId || paymentData?.payment_id,
       amount: paymentData?.amount,
       razorpay_order_id: paymentData?.razorpay_order_id || paymentData?.razorpayOrderId || paymentData?.orderId,
-      razorpay_payment_id: paymentData?.razorpay_payment_id || paymentData?.razorpayPaymentId || paymentData?.paymentId,
+      razorpay_payment_id: paymentData?.razorpay_payment_id || paymentData?.razorpayPaymentId,
       razorpay_signature: paymentData?.razorpay_signature || paymentData?.razorpaySignature,
       razorpayOrderId: paymentData?.razorpay_order_id || paymentData?.razorpayOrderId || paymentData?.orderId,
-      razorpayPaymentId: paymentData?.razorpay_payment_id || paymentData?.razorpayPaymentId || paymentData?.paymentId,
+      razorpayPaymentId: paymentData?.razorpay_payment_id || paymentData?.razorpayPaymentId,
       razorpaySignature: paymentData?.razorpay_signature || paymentData?.razorpaySignature,
     };
     const response: any = await apiClient.post('/wallet/verify-payment', formattedPayload);
@@ -241,6 +268,31 @@ export const billingService = {
    */
   async deleteAssessment(assessmentId: string): Promise<any> {
     const response: any = await apiClient.delete(`/assessments/${assessmentId}`);
+    const body = response?.success !== undefined ? response : response?.data;
+    return body?.data || body;
+  },
+
+  /**
+   * Send an in-app reminder notification to the resident for an individual invoice.
+   * @param invoiceId
+   */
+  async sendInvoiceReminder(invoiceId: string): Promise<any> {
+    const response: any = await apiClient.post(`/invoices/${invoiceId}/send-reminder`);
+    const body = response?.success !== undefined ? response : response?.data;
+    return body?.data || body;
+  },
+
+  /**
+   * Send an in-app reminder notification to a resident for their overall dues portfolio.
+   * @param payload
+   */
+  async notifyResidentPortfolio(payload: {
+    residentUserId: string;
+    residentName?: string;
+    totalDue: number;
+    units?: string[];
+  }): Promise<any> {
+    const response: any = await apiClient.post('/invoices/notify-resident', payload);
     const body = response?.success !== undefined ? response : response?.data;
     return body?.data || body;
   },

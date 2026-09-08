@@ -11,17 +11,65 @@ export interface KPICardProps {
   value: string | number;
   variant?: 'default' | 'primary' | 'secondary' | 'accent' | 'muted' | 'success' | 'info' | 'warning' | 'destructive';
   iconName?: string;
-  iconColor?: string;   // hex color for icon
-  bgColor?: string;     // hex color for card bg
+  iconColor?: string;
+  bgColor?: string;
   trend?: { direction: 'up' | 'down'; value: string };
   subtitle?: string;
   onPress?: () => void;
   className?: string;
 }
 
+const variantStyles: Record<string, { card: string; iconContainer: string; iconColor: string }> = {
+  default: {
+    card: 'bg-card border-border/80',
+    iconContainer: 'bg-primary/15',
+    iconColor: '#6366f1',
+  },
+  primary: {
+    card: 'bg-primary/10 border-primary/20',
+    iconContainer: 'bg-primary',
+    iconColor: '#ffffff',
+  },
+  success: {
+    card: 'bg-emerald-500/10 border-emerald-500/20',
+    iconContainer: 'bg-emerald-500',
+    iconColor: '#ffffff',
+  },
+  destructive: {
+    card: 'bg-destructive/10 border-destructive/20',
+    iconContainer: 'bg-destructive',
+    iconColor: '#ffffff',
+  },
+  warning: {
+    card: 'bg-amber-500/10 border-amber-500/20',
+    iconContainer: 'bg-amber-500',
+    iconColor: '#ffffff',
+  },
+  info: {
+    card: 'bg-sky-500/10 border-sky-500/20',
+    iconContainer: 'bg-sky-500',
+    iconColor: '#ffffff',
+  },
+  secondary: {
+    card: 'bg-secondary/40 border-border/70',
+    iconContainer: 'bg-secondary',
+    iconColor: '#64748b',
+  },
+  accent: {
+    card: 'bg-purple-500/10 border-purple-500/20',
+    iconContainer: 'bg-purple-500',
+    iconColor: '#ffffff',
+  },
+  muted: {
+    card: 'bg-muted/40 border-border/50',
+    iconContainer: 'bg-muted',
+    iconColor: '#94a3b8',
+  },
+};
+
 const kpiCardVariants = cva(
   cn(
-    'w-[150px] rounded-2xl p-3.5 border border-border/80 bg-card justify-between active:bg-secondary/60',
+    'w-[150px] rounded-2xl p-3.5 border justify-between active:bg-secondary/60',
     Platform.select({
       web: 'transition-all duration-200 hover:border-border cursor-pointer select-none',
     })
@@ -38,31 +86,14 @@ const kpiCardVariants = cva(
   }
 );
 
-function getBgWithOpacity(color?: string, opacity: number = 0.12): string | undefined {
-  if (!color) return undefined;
-  const trimmed = color.trim();
-  if (trimmed.startsWith('#')) {
-    let hex = trimmed.slice(1);
-    if (hex.length === 3) {
-      hex = hex.split('').map((c) => c + c).join('');
-    }
-    if (hex.length === 6) {
-      const r = parseInt(hex.substring(0, 2), 16);
-      const g = parseInt(hex.substring(2, 4), 16);
-      const b = parseInt(hex.substring(4, 6), 16);
-      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-    }
-  }
-  return trimmed;
-}
-
 const KPICard = React.forwardRef<View, KPICardProps>(
   (
     {
       title,
       value,
+      variant = 'default',
       iconName,
-      iconColor = '#3b82f6',
+      iconColor,
       bgColor,
       trend,
       subtitle,
@@ -82,17 +113,17 @@ const KPICard = React.forwardRef<View, KPICardProps>(
       );
     }, [iconName]);
 
-    const activeColorForBg = bgColor || (iconName ? iconColor : undefined);
-    const computedBg = getBgWithOpacity(activeColorForBg, 0.12);
+    const activeStyle = variantStyles[variant] || variantStyles.default;
+    const effectiveIconColor = iconColor || activeStyle.iconColor;
 
     return (
       <Pressable
         ref={ref}
         onPress={onPress}
         disabled={!onPress}
-        style={computedBg ? { backgroundColor: computedBg } : undefined}
         className={cn(
           kpiCardVariants(),
+          activeStyle.card,
           onPress && 'active:opacity-75',
           className
         )}
@@ -101,10 +132,12 @@ const KPICard = React.forwardRef<View, KPICardProps>(
         <View className="flex-row items-center justify-between mb-2">
           {IconComponent ? (
             <View
-              className="w-8 h-8 rounded-full items-center justify-center"
-              style={{ backgroundColor: iconColor }}
+              className={cn(
+                'w-8 h-8 rounded-full items-center justify-center',
+                activeStyle.iconContainer
+              )}
             >
-              <IconComponent size={16} color="#ffffff" />
+              <IconComponent size={16} color={effectiveIconColor} />
             </View>
           ) : (
             <View />
@@ -164,3 +197,4 @@ const KPICard = React.forwardRef<View, KPICardProps>(
 KPICard.displayName = 'KPICard';
 
 export { KPICard, kpiCardVariants };
+export default KPICard;

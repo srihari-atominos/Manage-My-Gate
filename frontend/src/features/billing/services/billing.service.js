@@ -138,6 +138,14 @@ export const billingService = {
     }
     return await apiClient.post('/payments/verify-signature', formattedPayload)
   },
+
+  /**
+   * Send reminder notification to all configured residents of the invoice.
+   * @param {string} invoiceId
+   */
+  async sendInvoiceReminder(invoiceId) {
+    return await apiClient.post(`/invoices/${invoiceId}/send-reminder`)
+  },
 }
 
 export default billingService

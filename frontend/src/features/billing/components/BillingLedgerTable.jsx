@@ -5,7 +5,7 @@ import { useDispatch } from 'react-redux'
 import { CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CButton } from '@coreui/react'
 import BillingLedgerRow from './BillingLedgerRow.jsx'
 import OfflineSettleModal from './OfflineSettleModal.jsx'
-import { triggerInvoiceGenerationThunk } from '../store/billingSlice.js'
+import { triggerInvoiceGenerationThunk, sendInvoiceReminderThunk } from '../store/billingSlice.js'
 
 /**
  * BillingLedgerTable
@@ -22,6 +22,7 @@ const BillingLedgerTable = memo(
     onPageChange,
     onSettleOffline,
     onApproveOffline,
+    onSendReminder,
   }) => {
     const dispatch = useDispatch()
     const [search, setSearch] = useState('')
@@ -97,6 +98,25 @@ const BillingLedgerTable = memo(
         setSettleAmount('')
       }
     }
+
+    const handleSendReminder = useCallback(
+      async (invoiceId) => {
+        try {
+          if (onSendReminder) {
+            await onSendReminder(invoiceId)
+          } else {
+            const res = await dispatch(sendInvoiceReminderThunk(invoiceId))
+            if (res && typeof res.unwrap === 'function') {
+              await res.unwrap()
+            }
+          }
+          toast.success('Reminder notification sent to configured resident(s)!')
+        } catch (err) {
+          toast.error('Failed to send reminder: ' + (err?.message || err || 'Unknown error'))
+        }
+      },
+      [dispatch, onSendReminder],
+    )
 
     const handleSearchChange = (e) => {
       setSearch(e.target.value)
@@ -223,6 +243,7 @@ const BillingLedgerTable = memo(
                     invoice={inv}
                     onMarkPaid={handleMarkPaid}
                     onOfflineSettle={handleOfflineSettle}
+                    onSendReminder={handleSendReminder}
                   />
                 ))
               )}

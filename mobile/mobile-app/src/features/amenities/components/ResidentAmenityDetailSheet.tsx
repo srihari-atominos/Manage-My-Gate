@@ -60,7 +60,7 @@ export function ResidentAmenityDetailSheet({
 
         {/* Title Header */}
         <View className="flex-row items-center justify-between mb-3 bg-card p-3 rounded-xl border border-border">
-          <View className="flex-1 mr-2">
+          <View className="flex-1 me-2">
             <Text className="text-base font-bold text-foreground">{amenity.name}</Text>
             <Text variant="muted" className="text-xs text-muted-foreground">
               {category} • {amenity.location || 'Community Zone'}

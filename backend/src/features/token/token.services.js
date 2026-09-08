@@ -10,13 +10,19 @@ export class TokenService {
    * @param {import('mongoose').ClientSession} [session]
    * @returns {Promise<{ invitationToken: string }>} Unhashed token
    */
-  async generateInvitationToken(userId, orgId = null, session = null) {
+  async generateInvitationToken(userId, orgId = null, session = null, invitationSource = 'WEB') {
     let actualOrgId = orgId;
     let actualSession = session;
+    let actualSource = invitationSource;
 
     if (orgId && typeof orgId === 'object' && orgId.constructor && orgId.constructor.name === 'ClientSession') {
       actualSession = orgId;
       actualOrgId = null;
+    }
+
+    if (session && typeof session === 'string' && ['WEB', 'APP'].includes(session.toUpperCase())) {
+      actualSource = session.toUpperCase();
+      actualSession = null;
     }
 
     const rawToken = crypto.randomBytes(32).toString('hex');
@@ -28,11 +34,12 @@ export class TokenService {
         orgId: actualOrgId,
         token: hashedToken,
         type: 'INVITATION',
+        invitationSource: ['WEB', 'APP'].includes(actualSource?.toUpperCase()) ? actualSource.toUpperCase() : 'WEB',
       },
       actualSession
     );
 
-    return { invitationToken: rawToken };
+    return { invitationToken: rawToken, invitationSource: actualSource };
   }
 
   /**
@@ -81,6 +88,7 @@ export class TokenService {
             orgId: outbox.payload.orgId || user.orgId || null,
             token: unhashedToken,
             type: 'INVITATION',
+            invitationSource: outbox.payload.invitationSource || 'WEB',
           };
         }
       }
@@ -101,6 +109,7 @@ export class TokenService {
             orgId: user.orgId || null,
             token: unhashedToken,
             type: 'INVITATION',
+            invitationSource: 'WEB',
           };
         }
       }
@@ -134,13 +143,28 @@ export class TokenService {
 
     if (tokenDoc && tokenDoc._id) {
       try {
-        await tokenRepository.deleteOne({ _id: tokenDoc._id }, session);
+        await tokenRepository.updateOne(
+          { _id: tokenDoc._id },
+          { $set: { used: true, usedAt: new Date() } },
+          session
+        );
       } catch (err) {
-        // Non-blocking cleanup error
+        try {
+          await tokenRepository.deleteOne({ _id: tokenDoc._id }, session);
+        } catch (_) {}
       }
     }
 
     return { userId, orgId, tokenDoc };
+  }
+
+  /**
+   * Revokes or deletes tokens by query.
+   * @param {Object} query
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async deleteTokens(query, session = null) {
+    return await tokenRepository.deleteMany(query, session);
   }
 }
 

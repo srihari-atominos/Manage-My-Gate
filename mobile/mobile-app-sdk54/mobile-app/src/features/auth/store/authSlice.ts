@@ -48,17 +48,37 @@ export const normalizeUser = (user: any): User | null => {
     (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.id)) ||
     '';
 
+  const canonicalVillaId =
+    extractId(user.activeVillaId) ||
+    extractId(user.villaId) ||
+    extractId(user.villa?._id) ||
+    extractId(user.villa?.id) ||
+    (Array.isArray(user.accessibleUnits) && extractId(user.accessibleUnits[0]?.villaId)) ||
+    (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.villaId)) ||
+    '';
+
   const orgName = user.organizationName || user.orgName || user.activeOrganizationName || user.organization?.name || '';
-  const vNum = user.villaNumber || user.activeVillaNumber || user.unitNumber || '';
+  const vNum =
+    user.villaNumber ||
+    user.activeVillaNumber ||
+    user.unitNumber ||
+    user.villa?.unitNumber ||
+    user.villa?.villaNumber ||
+    (Array.isArray(user.accessibleUnits) && (user.accessibleUnits[0]?.villaNumber || user.accessibleUnits[0]?.unitNumber)) ||
+    (Array.isArray(user.availableWorkspaces) && (user.availableWorkspaces[0]?.villaNumber || user.availableWorkspaces[0]?.unitNumber)) ||
+    '';
 
   return {
     ...user,
     id: canonicalId,
     _id: canonicalId || user._id,
     orgId: canonicalOrgId,
+    activeOrgId: canonicalOrgId,
     orgName,
     organizationName: orgName,
     activeOrganizationName: orgName,
+    villaId: canonicalVillaId,
+    activeVillaId: canonicalVillaId,
     villaNumber: vNum,
     activeVillaNumber: vNum,
     unitNumber: vNum,
@@ -419,10 +439,13 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
 
     const { fetchQuickActionsThunk, resetQuickActionsForContext } = require('../../dashboard/dashboardSlice');
     dispatch(resetQuickActionsForContext());
+    const targetVId = cleanPayload.targetVillaId || user?.activeVillaId || user?.villaId;
+    const targetVNum = user?.activeVillaNumber || user?.villaNumber || user?.unitNumber;
     dispatch(
       fetchQuickActionsThunk({
         orgId: user?.activeOrgId || user?.orgId || cleanPayload.targetOrgId,
-        villaId: user?.activeVillaId || user?.villaId || user?.activeVillaNumber || user?.unitNumber || cleanPayload.targetVillaId,
+        villaId: targetVId,
+        villaNumber: targetVNum,
       })
     );
 

@@ -36,8 +36,8 @@ export const offlineSettleSchema = [
 
   body('paymentMethod')
     .optional()
-    .isIn(['BANK_TRANSFER', 'NEFT', 'UPI'])
-    .withMessage('Payment method must be BANK_TRANSFER, NEFT, or UPI'),
+    .isIn(['BANK_TRANSFER', 'NEFT', 'UPI', 'CHEQUE', 'CASH', 'DEMAND_DRAFT'])
+    .withMessage('Payment method must be BANK_TRANSFER, NEFT, UPI, CHEQUE, CASH, or DEMAND_DRAFT'),
 
   body('amountPaid')
     .optional()
@@ -58,6 +58,12 @@ export const offlineSettleSchema = [
     .optional()
     .isString()
     .withMessage('Payment screenshot must be a valid file reference or string'),
+
+  body('payerNotes')
+    .optional()
+    .isString()
+    .withMessage('Payer notes must be a string')
+    .trim(),
 ];
 
 export const approveInvoiceSchema = [
@@ -80,8 +86,8 @@ export const approveInvoiceSchema = [
 
   body('paymentMethod')
     .optional()
-    .isIn(['BANK_TRANSFER', 'CASH', 'NEFT', 'UPI', 'CHEQUE'])
-    .withMessage('Payment method must be BANK_TRANSFER, CASH, NEFT, UPI, or CHEQUE'),
+    .isIn(['BANK_TRANSFER', 'CASH', 'NEFT', 'UPI', 'CHEQUE', 'DEMAND_DRAFT'])
+    .withMessage('Payment method must be BANK_TRANSFER, CASH, NEFT, UPI, CHEQUE, or DEMAND_DRAFT'),
 
   body('paymentReference')
     .optional()
@@ -99,6 +105,11 @@ export const approveInvoiceSchema = [
     .optional()
     .isString()
     .trim(),
+
+  body('paymentScreenshot')
+    .optional()
+    .isString()
+    .withMessage('Payment screenshot must be a valid file reference or string'),
 ];
 
 export const rejectOfflineSchema = [
@@ -140,7 +151,7 @@ export const recordCashPaymentSchema = [
 
   body('paymentMethod')
     .optional()
-    .isIn(['CASH', 'BANK_TRANSFER', 'NEFT', 'UPI', 'CHEQUE']),
+    .isIn(['CASH', 'BANK_TRANSFER', 'NEFT', 'UPI', 'CHEQUE', 'DEMAND_DRAFT']),
 
   body('reference')
     .optional()

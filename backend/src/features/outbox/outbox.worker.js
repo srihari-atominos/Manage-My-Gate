@@ -36,7 +36,7 @@ class OutboxWorker {
         const event = await OutboxEvent.findOneAndUpdate(
           { status: 'PENDING' },
           { $set: { status: 'PROCESSING' } },
-          { new: true, sort: { createdAt: 1 } }
+          { returnDocument: 'after', sort: { createdAt: 1 } }
         );
         if (!event) break; // No more pending events found
         eventsToProcess.push(event);

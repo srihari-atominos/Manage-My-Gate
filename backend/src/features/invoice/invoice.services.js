@@ -8,6 +8,7 @@ import Invoice from './invoice.model.js';
 import HttpError from '../../utils/httpError.utils.js';
 import logger, { loggerStorage } from '../../utils/logger.utils.js';
 import paymentService from '../payment/payment.service.js';
+import notificationService from '../notification/notification.service.js';
 
 export class InvoiceService {
   /**
@@ -105,22 +106,23 @@ export class InvoiceService {
         baseAmount = (calc.ratePerSqFt || 0) * (unit.floorAreaSqFt || 0);
       } else if (calc.type === 'TIERED_BHK') {
         const uType = (unit.type || '').toLowerCase().trim();
+        const tr = calc.tieredRates || {};
         if (['studio'].includes(uType)) {
-          baseAmount = calc.tieredRates.studio || 0;
+          baseAmount = Number(tr.studio) || 0;
         } else if (['bhk1', '1bhk', '1bha', '1-bhk', '1 bhk'].includes(uType)) {
-          baseAmount = calc.tieredRates.bhk1 || 0;
+          baseAmount = Number(tr.bhk1) || 0;
         } else if (['bhk2', '2bhk', '2bha', '2-bhk', '2 bhk', 'apartment'].includes(uType)) {
-          baseAmount = calc.tieredRates.bhk2 || 0;
+          baseAmount = Number(tr.bhk2) || 0;
         } else if (['bhk3', '3bhk', '3bha', '3-bhk', '3 bhk'].includes(uType)) {
-          baseAmount = calc.tieredRates.bhk3 || 0;
+          baseAmount = Number(tr.bhk3) || 0;
         } else if (['bhk4', '4bhk', '4bha', '4-bhk', '4 bhk', 'villa'].includes(uType)) {
-          baseAmount = calc.tieredRates.bhk4 || 0;
+          baseAmount = Number(tr.bhk4) || 0;
         } else if (['penthouse'].includes(uType)) {
-          baseAmount = calc.tieredRates.penthouse || 0;
+          baseAmount = Number(tr.penthouse) || 0;
         } else if (['duplex'].includes(uType)) {
-          baseAmount = calc.tieredRates.duplex || 0;
+          baseAmount = Number(tr.duplex) || 0;
         } else {
-          baseAmount = calc.tieredRates.bhk2 || 0; // fallback standard
+          baseAmount = Number(tr.bhk2) || 0; // fallback standard
         }
       }
 
@@ -260,8 +262,14 @@ export class InvoiceService {
 
           // 4. Emit custom event payload
           invoiceEventEmitter.emit(INVOICE_GENERATED, {
+            _id: invoiceObj._id,
             invoiceId: invoiceObj._id,
+            targetUserId: invoiceObj.targetUserId,
+            unitId: invoiceObj.unitId,
+            communityId: assessment.communityId,
+            billingPeriodString: defaultPeriodString,
             amount: invoiceObj.totalAmount || invoiceObj.totalDue,
+            totalDue: invoiceObj.totalAmount || invoiceObj.totalDue,
             targetPhone: targetUser?.contactSettings?.phone || targetUser?.phone || '',
             userName: targetUser?.name || targetUser?.username || 'Resident',
             paymentLink: paymentLink
@@ -482,9 +490,9 @@ export class InvoiceService {
   }
 
   /**
-   * Settle payment with offline Bank Transfer.
+   * Settle payment with offline payment request.
    */
-  async logOfflinePayment(invoiceId, offlineReference, amount, paymentMethod = 'BANK_TRANSFER', paymentDate = null, paymentScreenshot = null) {
+  async logOfflinePayment(invoiceId, offlineReference, amount, paymentMethod = 'BANK_TRANSFER', paymentDate = null, paymentScreenshot = null, payerNotes = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info('logOfflinePayment called', { invoiceId, offlineReference, amount, paymentMethod, correlationId });
 
@@ -504,15 +512,26 @@ export class InvoiceService {
       throw new Error('An offline payment for this invoice is already pending verification.');
     }
 
-    // Check duplicate payment reference if reference is provided
     const effectiveMethod = (paymentMethod || 'BANK_TRANSFER').toUpperCase();
-    const isCash = effectiveMethod === 'CASH';
-    const effectiveRef = offlineReference || (isCash
-      ? `CASH-REQ-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`
-      : `BANK-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`);
+    if (effectiveMethod !== 'CASH' && (!offlineReference || !String(offlineReference).trim())) {
+      throw new HttpError(400, `Payment reference number or transaction UTR is required for ${effectiveMethod}.`);
+    }
 
-    if (offlineReference) {
-      const duplicateRef = await Payment.findOne({ paymentReference: offlineReference, status: { $ne: 'REJECTED' } });
+    const prefixMap = {
+      CASH: 'CASH',
+      CHEQUE: 'CHQ',
+      UPI: 'UPI',
+      DEMAND_DRAFT: 'DD',
+      NEFT: 'NEFT',
+      BANK_TRANSFER: 'BANK',
+    };
+    const prefix = prefixMap[effectiveMethod] || 'OFFLINE';
+
+    const cleanRef = offlineReference ? String(offlineReference).trim() : '';
+    const effectiveRef = cleanRef || `${prefix}-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    if (cleanRef) {
+      const duplicateRef = await Payment.findOne({ paymentReference: cleanRef, status: { $ne: 'REJECTED' } });
       if (duplicateRef) {
         throw new Error('This payment reference number has already been submitted.');
       }
@@ -520,7 +539,7 @@ export class InvoiceService {
 
     const updatePayload = {
       offlineReference: effectiveRef,
-      paymentMethod: isCash ? 'CASH' : 'BANK_TRANSFER',
+      paymentMethod: effectiveMethod,
     };
     if (amount) {
       updatePayload.offlineAmount = amount;
@@ -530,6 +549,9 @@ export class InvoiceService {
     }
     if (paymentScreenshot) {
       updatePayload.paymentScreenshot = paymentScreenshot;
+    }
+    if (payerNotes) {
+      updatePayload.payerNotes = payerNotes;
     }
 
     const updated = await invoiceRepository.updateStatusWithLock(
@@ -558,10 +580,11 @@ export class InvoiceService {
         amount: amount || result.totalAmount,
         status: 'VERIFICATION_PENDING',
         paymentCategory: 'OFFLINE',
-        paymentMethod: isCash ? 'CASH' : 'BANK_TRANSFER',
+        paymentMethod: effectiveMethod,
         paymentReference: effectiveRef,
         paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
         proofDocument: paymentScreenshot || null,
+        payerNotes: payerNotes || null,
         gateway: 'offline',
         gatewayTransactionId: effectiveRef,
       });
@@ -574,8 +597,10 @@ export class InvoiceService {
       communityId: result.orgId || result.communityId,
       residentName: result.targetUserId ? `${result.targetUserId.firstName || ''} ${result.targetUserId.lastName || result.targetUserId.username || ''}`.trim() : 'Resident',
       reference: effectiveRef,
-      paymentMethod: isCash ? 'CASH' : 'BANK_TRANSFER',
-      amount: amount || result.totalAmount
+      paymentMethod: effectiveMethod,
+      amount: amount || result.totalAmount,
+      payerNotes: payerNotes || null,
+      paymentScreenshot: paymentScreenshot || null,
     });
 
     return result;
@@ -627,16 +652,29 @@ export class InvoiceService {
 
     const paymentMethod = (options?.paymentMethod || invoice.paymentMethod || 'BANK_TRANSFER').toUpperCase();
     const isCash = paymentMethod === 'CASH';
-    const offlineReference = options?.paymentReference || options?.reference || invoice.offlineReference || (isCash ? `CASH-${Date.now()}` : `BANK-${Date.now()}`);
+    const prefixMap = {
+      CASH: 'CASH',
+      CHEQUE: 'CHQ',
+      UPI: 'UPI',
+      DEMAND_DRAFT: 'DD',
+      NEFT: 'NEFT',
+      BANK_TRANSFER: 'BANK',
+    };
+    const methodPrefix = prefixMap[paymentMethod] || 'OFFLINE';
+    const rawProvidedRef = options?.paymentReference || options?.reference || invoice.offlineReference;
+    const cleanRef = rawProvidedRef ? String(rawProvidedRef).trim() : '';
+    if (paymentMethod !== 'CASH' && !cleanRef) {
+      throw new HttpError(400, `Payment reference number or transaction UTR is required for ${paymentMethod}.`);
+    }
+    const offlineReference = cleanRef || `${methodPrefix}-${Date.now()}`;
 
     const newOutstanding = Math.max(0, Math.round((remainingDue - amountToApply) * 100) / 100);
     const finalStatus = newOutstanding > 0 ? 'PARTIALLY_PAID' : 'PAID';
 
-    // Generate unique receipt number (CASH-YYYY-XXXXXX or BANK-YYYY-XXXXXX)
+    // Generate unique receipt number (METHOD-YYYY-XXXXXX)
     const yearStr = new Date().getFullYear();
     const randSeq = Math.floor(100000 + Math.random() * 900000);
-    const receiptPrefix = isCash ? 'CASH' : 'BANK';
-    const receiptNumber = `${receiptPrefix}-${yearStr}-${randSeq}`;
+    const receiptNumber = `${methodPrefix}-${yearStr}-${randSeq}`;
 
     const updated = await invoiceRepository.updateStatusWithLock(
       invoiceId,
@@ -647,6 +685,8 @@ export class InvoiceService {
         amount: amountToApply,
         paymentMethod: paymentMethod,
         offlineReference: offlineReference,
+        payerNotes: options?.notes || invoice.payerNotes,
+        paymentScreenshot: options?.paymentScreenshot || invoice.paymentScreenshot,
       }
     );
 
@@ -658,9 +698,16 @@ export class InvoiceService {
         payment.amount = amountToApply;
         payment.verifiedBy = adminUserId || null;
         payment.verifiedAt = new Date();
+        payment.receivedBy = payment.receivedBy || adminUserId || null;
         payment.processedBy = adminUserId || null;
         payment.receiptNumber = receiptNumber;
         payment.paymentMethod = paymentMethod;
+        if (options?.notes) {
+          payment.payerNotes = options.notes;
+        }
+        if (options?.paymentScreenshot) {
+          payment.proofDocument = options.paymentScreenshot;
+        }
         await payment.save();
       } else {
         await Payment.create({
@@ -680,26 +727,39 @@ export class InvoiceService {
           receiptNumber: receiptNumber,
           verifiedBy: adminUserId || null,
           verifiedAt: new Date(),
+          receivedBy: adminUserId || null,
           processedBy: adminUserId || null,
-          gateway: 'offline'
+          proofDocument: options?.paymentScreenshot || invoice.paymentScreenshot || null,
+          payerNotes: options?.notes || invoice.payerNotes || null,
+          gateway: 'offline',
         });
       }
     } catch (err) {
       logger.error('Failed to create/update Payment record during approval:', err);
     }
 
+    const methodLabels = {
+      CASH: 'Cash',
+      CHEQUE: 'Cheque',
+      UPI: 'UPI Transfer',
+      DEMAND_DRAFT: 'Demand Draft',
+      BANK_TRANSFER: 'Bank transfer',
+      NEFT: 'NEFT',
+    };
+    const methodLabel = methodLabels[paymentMethod] || paymentMethod;
+
     // Append to audit history
     try {
       await Invoice.findByIdAndUpdate(invoice._id, {
         $push: {
           auditHistory: {
-            action: isCash ? 'CASH_PAYMENT_VERIFIED' : 'BANK_TRANSFER_VERIFIED',
-            details: `${isCash ? 'Cash' : 'Bank transfer'} payment of ₹${amountToApply} approved (${finalStatus}). Receipt #${receiptNumber}. Remaining due: ₹${newOutstanding}`,
+            action: `${paymentMethod}_PAYMENT_VERIFIED`,
+            details: `${methodLabel} payment of ₹${amountToApply} approved (${finalStatus}). Receipt #${receiptNumber}. Remaining due: ₹${newOutstanding}`,
             performedBy: adminUserId,
             source: 'ADMIN_PANEL',
-            date: new Date()
-          }
-        }
+            date: new Date(),
+          },
+        },
       });
     } catch (auditErr) {
       logger.warn('Failed to append audit history for payment approval:', auditErr);
@@ -1024,14 +1084,16 @@ export class InvoiceService {
 
   /**
    * Fetch portfolio dues and compliance info for a persona.
+   * @param {object} userContext - Current authenticated user context
+   * @param {string} [communityId] - Optional Community / Organization ID to scope dues
    */
-  async getUserDuesOverview(userContext) {
+  async getUserDuesOverview(userContext, communityId = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
     const resolvedUserId = userContext.id || userContext._id;
-    logger.info('getUserDuesOverview called', { userId: resolvedUserId, correlationId });
+    logger.info('getUserDuesOverview called', { userId: resolvedUserId, communityId, correlationId });
 
-    const personalDues = await invoiceRepository.getUserPortfolioDues(resolvedUserId);
-    const recentInvoices = await invoiceRepository.getUserRecentInvoices(resolvedUserId);
+    const personalDues = await invoiceRepository.getUserPortfolioDues(resolvedUserId, communityId);
+    const recentInvoices = await invoiceRepository.getUserRecentInvoices(resolvedUserId, communityId);
 
     const secondaryCompliance = [];
 
@@ -1047,8 +1109,8 @@ export class InvoiceService {
     }
 
     if (isOwner) {
-      // Find units owned by this user
-      const ownedUnits = await villaService.getUnitsByOwner(resolvedUserId);
+      // Find units owned by this user (scoped to communityId if provided)
+      const ownedUnits = await villaService.getUnitsByOwner(resolvedUserId, communityId);
       
       for (const unit of ownedUnits) {
         // Find if occupied by tenant
@@ -1062,12 +1124,16 @@ export class InvoiceService {
             logger.warn(`Tenant details not resolved for user ${tenant.userId}`);
           }
 
-          // Fetch outstanding unpaid tenant invoices for this unit
-          const tenantInvoices = await Invoice.find({
+          // Fetch outstanding unpaid tenant invoices for this unit (scoped to communityId if provided)
+          const tenantInvoiceQuery = {
             unitId: unit._id,
             targetUserId: tenant.userId,
             status: { $in: ['UNPAID', 'VERIFICATION_PENDING'] },
-          });
+          };
+          if (communityId) {
+            tenantInvoiceQuery.communityId = communityId;
+          }
+          const tenantInvoices = await Invoice.find(tenantInvoiceQuery);
 
           for (const inv of tenantInvoices) {
             secondaryCompliance.push({
@@ -1130,6 +1196,136 @@ export class InvoiceService {
       throw new HttpError(404, 'Invoice not found');
     }
     return invoice;
+  }
+
+  /**
+   * Send an in-app reminder notification to the resident for an individual invoice.
+   * @param {string} invoiceId - Invoice ID
+   * @param {string} adminUserId - Admin user ID
+   * @param {string} orgId - Community / Organization ID
+   * @returns {Promise<object>}
+   */
+  async sendInvoiceReminder(invoiceId, adminUserId, orgId) {
+    const invoice = await this.getInvoiceById(invoiceId);
+
+    // Tenant isolation check
+    if (orgId && invoice.communityId?.toString() !== orgId.toString()) {
+      throw new HttpError(403, 'Unauthorized access to this invoice');
+    }
+
+    if (invoice.status === 'PAID') {
+      throw new HttpError(400, 'Invoice is already marked as PAID');
+    }
+
+    if (!invoice.targetUserId) {
+      throw new HttpError(400, 'No resident user assigned to this invoice');
+    }
+
+    // Determine unit representation and gather all configured resident recipients
+    let unitStr = 'your unit';
+    const recipientUserIds = new Set();
+    if (invoice.targetUserId) {
+      recipientUserIds.add(invoice.targetUserId.toString());
+    }
+
+    if (invoice.unitId && (invoice.communityId || orgId)) {
+      try {
+        const unit = await villaService.getUnitById(invoice.unitId, invoice.communityId || orgId);
+        if (unit?.unitNumber) {
+          unitStr = `Unit ${unit.unitNumber}`;
+        }
+        if (unit?.ownerId) {
+          recipientUserIds.add(unit.ownerId.toString());
+        }
+        if (unit?.primaryResidentId) {
+          recipientUserIds.add(unit.primaryResidentId.toString());
+        }
+        if (Array.isArray(unit?.residents)) {
+          unit.residents.forEach((r) => {
+            const uid = r.userId?._id || r.userId;
+            if (uid && (!r.moveOutDate || new Date(r.moveOutDate) > new Date())) {
+              recipientUserIds.add(uid.toString());
+            }
+          });
+        }
+      } catch (e) {
+        // Continue with default unit string and primary targetUserId
+      }
+    } else if (invoice.snapshot?.unitDetails?.unitNumber) {
+      unitStr = `Unit ${invoice.snapshot.unitDetails.unitNumber}`;
+    }
+
+    const dueAmount = invoice.outstandingAmount ?? invoice.totalDue ?? invoice.totalAmount ?? 0;
+    const formattedAmount = Number(dueAmount).toLocaleString('en-IN');
+    const invoiceNo = invoice.invoiceNumber || invoice._id;
+
+    const title = `Payment Reminder: Invoice #${invoiceNo}`;
+    const body = `A maintenance payment of ₹${formattedAmount} is pending for ${unitStr}. Tap to view invoice and pay now.`;
+    const actionUrl = `/(resident)/billing/invoice/${invoice._id}`;
+
+    const createdNotificationIds = [];
+    for (const recipientId of recipientUserIds) {
+      try {
+        const notification = await notificationService.createNotification({
+          recipientId,
+          senderId: adminUserId,
+          title,
+          body,
+          actionUrl,
+          type: 'WARNING',
+        });
+        createdNotificationIds.push(notification._id);
+      } catch (notifErr) {
+        logger.warn(`Failed to dispatch reminder to resident ${recipientId}:`, notifErr);
+      }
+    }
+
+    invoice.reminderCount = (invoice.reminderCount || 0) + 1;
+    invoice.lastReminderSentAt = new Date();
+    await invoice.save();
+
+    return {
+      success: true,
+      message: `Reminder notification sent to ${createdNotificationIds.length} configured resident(s)`,
+      recipientsCount: createdNotificationIds.length,
+      notificationIds: createdNotificationIds,
+    };
+  }
+
+  /**
+   * Send an in-app reminder notification to a resident for their overall dues portfolio.
+   * @param {object} payload - { residentUserId, residentName, totalDue, units }
+   * @param {string} adminUserId - Admin user ID
+   * @param {string} orgId - Community / Organization ID
+   * @returns {Promise<object>}
+   */
+  async notifyResidentPortfolio(payload, adminUserId, orgId) {
+    const { residentUserId, totalDue, units = [] } = payload || {};
+    if (!residentUserId || residentUserId === 'unassigned') {
+      throw new HttpError(400, 'Valid resident user ID is required to send notification');
+    }
+
+    const unitsStr = Array.isArray(units) && units.length > 0 ? units.join(', ') : 'your units';
+    const formattedAmount = Number(totalDue || 0).toLocaleString('en-IN');
+
+    const title = 'Maintenance Dues Reminder';
+    const body = `Your outstanding maintenance balance across units (${unitsStr}) is ₹${formattedAmount}. Tap to view details and settle your dues.`;
+    const actionUrl = '/(resident)/billing/my-dues';
+
+    const notification = await notificationService.createNotification({
+      recipientId: residentUserId,
+      senderId: adminUserId,
+      title,
+      body,
+      actionUrl,
+      type: 'WARNING',
+    });
+
+    return {
+      success: true,
+      message: 'Portfolio reminder notification sent successfully',
+      notificationId: notification._id,
+    };
   }
 }
 

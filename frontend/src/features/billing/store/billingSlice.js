@@ -122,6 +122,19 @@ export const rejectOfflineSettlement = createAsyncThunk(
   },
 )
 
+export const sendInvoiceReminderThunk = createAsyncThunk(
+  'billing/sendInvoiceReminderThunk',
+  async (invoiceId, { rejectWithValue }) => {
+    try {
+      const response = await billingService.sendInvoiceReminder(invoiceId)
+      const body = response?.success !== undefined ? response : response?.data
+      return body?.data || body
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to send invoice reminder')
+    }
+  },
+)
+
 export const recordCashPaymentThunk = createAsyncThunk(
   'billing/recordCashPaymentThunk',
   async ({ invoiceId, amount }, { rejectWithValue }) => {

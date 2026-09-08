@@ -81,7 +81,7 @@ export const WorkspaceModulesForm = () => {
                 module.enabled ? 'bg-card border-primary/30' : 'bg-muted/30 border-border/50'
               }`}
             >
-              <View className="flex-row items-center gap-4 flex-1 pr-4">
+              <View className="flex-row items-center gap-4 flex-1 pe-4">
                 <View className={`w-12 h-12 rounded-2xl items-center justify-center ${colorBg}`}>
                   <FeatureIcon iconName={iconName} size={24} color={colorIcon} />
                 </View>

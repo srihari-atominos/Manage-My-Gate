@@ -33,6 +33,10 @@ export interface Invoice {
   status: InvoiceStatus;
   paymentMethod?: string;
   offlineReference?: string | null;
+  offlineAmount?: number | null;
+  paymentDate?: string | null;
+  paymentScreenshot?: string | null;
+  payerNotes?: string | null;
   items?: InvoiceItem[];
   createdAt?: string;
   updatedAt?: string;
@@ -46,6 +50,8 @@ export interface BillingKPIs {
   inTransitGateway: number;
   totalUnpaidArrears: number;
   pendingOffline?: number;
+  pendingOfflineAmount?: number;
+  pendingOfflineCount?: number;
 }
 
 export interface UnitDueBreakdown {
@@ -93,6 +99,9 @@ export interface OfflineSettlementPayload {
   paymentMethod: string;
   offlineAmount?: number;
   amount?: number;
+  paymentDate?: string;
+  paymentScreenshot?: string;
+  payerNotes?: string;
 }
 
 export interface RazorpayOrderPayload {
@@ -117,13 +126,14 @@ export interface WalletState {
   activePasses?: any[];
   transactionHistory?: any[];
   transactions?: any[];
+  isPaymentGatewayConfigured?: boolean;
   loading?: boolean;
   isLoading: boolean;
   error: string | null;
 }
 
 export interface BillingState {
-  kpis: BillingKPIs;
+  kpis: BillingKPIs | null;
   activeDues: ActiveDues;
   invoicesList: any[];
   statusCounts: Record<string, number>;

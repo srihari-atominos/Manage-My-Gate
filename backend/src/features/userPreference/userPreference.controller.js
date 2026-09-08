@@ -10,7 +10,8 @@ class UserPreferenceController {
       const userId = req.user?._id || req.user?.id;
       const context = {
         orgId: req.query?.orgId || req.user?.orgId || '',
-        villaId: req.query?.villaId || req.user?.villaId || req.user?.villaNumber || '',
+        villaId: req.query?.villaId || (req.query?.villaNumber ? '' : (req.user?.villaId || '')),
+        villaNumber: req.query?.villaNumber || req.user?.villaNumber || req.user?.activeVillaNumber || req.user?.unitNumber || '',
       };
       const data = await userPreferenceService.getUserPreferences(userId, context);
 
@@ -31,10 +32,11 @@ class UserPreferenceController {
   async updateQuickActions(req, res, next) {
     try {
       const userId = req.user?._id || req.user?.id;
-      const { activeQuickActions, orgId, villaId } = req.body;
+      const { activeQuickActions, orgId, villaId, villaNumber } = req.body;
       const context = {
         orgId: orgId || req.user?.orgId || '',
-        villaId: villaId || req.user?.villaId || req.user?.villaNumber || '',
+        villaId: villaId || req.user?.villaId || '',
+        villaNumber: villaNumber || req.user?.villaNumber || req.user?.activeVillaNumber || req.user?.unitNumber || '',
       };
 
       const data = await userPreferenceService.updateQuickActions(userId, activeQuickActions, context);

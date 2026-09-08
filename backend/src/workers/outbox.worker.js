@@ -53,24 +53,9 @@ const DEFAULT_PROVISIONING_BODY = `
  * Handle USER_INVITED event type
  */
 async function handleUserInvited(payload) {
-  const { email, orgId, invitationToken } = payload;
-  const inviteLink = generateInviteLink(invitationToken);
-
-  // 1. Fetch organization's customized user_invitation email template
-  const template = await messageTemplateService.getTemplateByPurpose(orgId, 'email', 'user_invitation');
-
-  const subject = template?.subject || 'You are invited to join the Workspace';
-  const bodyTemplate = template?.body || DEFAULT_INVITE_BODY;
-
-  // 2. Compile variables
-  const compiledSubject = subject.replace(/{{invite_link}}/g, inviteLink);
-  const compiledBody = bodyTemplate.replace(/{{invite_link}}/g, inviteLink);
-
-  // 3. Send email using sendEmail helper (handles org SMTP & fallback automatically)
-  const sent = await sendEmail(orgId, email, compiledSubject, compiledBody);
-  if (!sent) {
-    logger.warn(`[handleUserInvited] SMTP not configured or credentials missing for email delivery to ${email}. Activation Link: ${inviteLink}`);
-  }
+  // USER_INVITED emails are dispatched immediately with rich branded templates in user.listeners.js upon creation.
+  // Skipping duplicate dispatch in outbox worker to ensure users receive only one email matching their platform (APP or WEB).
+  logger.info(`[Outbox Worker] USER_INVITED event already handled by user domain listener for ${payload?.email}. Skipping duplicate email dispatch.`);
 }
 
 /**
@@ -162,7 +147,7 @@ export async function processOutboxEvents() {
     const event = await OutboxEvent.findOneAndUpdate(
       { status: 'PENDING' },
       { $set: { status: 'PROCESSING' } },
-      { sort: { createdAt: 1 }, new: true }
+      { sort: { createdAt: 1 }, returnDocument: 'after' }
     );
 
     // If no more pending events found, terminate batch run

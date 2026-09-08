@@ -51,8 +51,8 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
     // 1. Extract from accessibleUnits
     if (userAny?.accessibleUnits && Array.isArray(userAny.accessibleUnits)) {
       userAny.accessibleUnits.forEach((u: any, idx: number) => {
-        const uId = u.villaId || u.id || String(idx + 1);
-        const uNum = u.villaNumber || u.unitNumber || `Villa ${idx + 1}`;
+        const uId = u.villaId || u.id || `unit-${idx + 1}`;
+        const uNum = u.villaNumber || u.unitNumber;
         if (uNum) {
           unitsMap.set(uId, {
             id: uId,
@@ -64,7 +64,22 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
       });
     }
 
-    // 2. Extract from availableWorkspaces matching current active organization
+    // 2. Extract from primary user unit context (if not already mapped)
+    const primaryUnitNum = userAny?.villaNumber || userAny?.activeVillaNumber || userAny?.unitNumber;
+    const primaryUnitId = userAny?.villaId || userAny?.activeVillaId;
+    if (primaryUnitNum) {
+      const pKey = primaryUnitId || primaryUnitNum;
+      if (!unitsMap.has(pKey)) {
+        unitsMap.set(pKey, {
+          id: primaryUnitId || pKey,
+          unitNumber: primaryUnitNum,
+          block: userAny?.villaBlock || '',
+          residencyType: userAny?.residentType || 'Resident',
+        });
+      }
+    }
+
+    // 3. Extract from availableWorkspaces matching current active organization
     const workspaces = userAny?.availableWorkspaces || reduxWorkspaces;
     if (Array.isArray(workspaces)) {
       workspaces.forEach((w: any, idx: number) => {
@@ -84,32 +99,8 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
       });
     }
 
-    // 3. Fallback to DUMMY_VILLAS matching active community context
-    if (unitsMap.size <= 1) {
-      const { DUMMY_VILLAS } = require('../../src/features/villa/store/villaSlice');
-      const isEmerald = communityName.toLowerCase().includes('emerald') || activeOrgId === '650000000000000000000002';
-      const isSkyline = communityName.toLowerCase().includes('skyline') || communityName.toLowerCase().includes('apartment') || activeOrgId === '650000000000000000000003';
-      
-      const filtered = DUMMY_VILLAS.filter((v: any) => {
-        if (isEmerald) return v.blockOrBuilding?.includes('Emerald Valley');
-        if (isSkyline) return v.blockOrBuilding?.startsWith('Block');
-        return v.blockOrBuilding?.includes('Palm Meadows') || v.blockOrBuilding === 'Phase 1';
-      });
-
-      filtered.forEach((v: any) => {
-        if (!unitsMap.has(v._id)) {
-          unitsMap.set(v._id, {
-            id: v._id,
-            unitNumber: v.unitNumber,
-            block: v.blockOrBuilding || '',
-            residencyType: v.primaryResident ? 'Resident' : 'Vacant',
-          });
-        }
-      });
-    }
-
     return Array.from(unitsMap.values());
-  }, [user, reduxWorkspaces, activeOrgId, communityName]);
+  }, [user, reduxWorkspaces, activeOrgId]);
 
   const handleSelect = (unit: VillaUnit) => {
     // 1. Immediately reset quick actions in Redux so previous villa actions do not persist
@@ -134,15 +125,16 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
     }
     if (Object.keys(payload).length > 0) {
       dispatch(switchWorkspaceContextThunk(payload));
+    } else {
+      // 4. Fetch the quick actions specifically scoped to this unit and organization
+      dispatch(
+        fetchQuickActionsThunk({
+          orgId: activeOrgId,
+          villaId: unit.id,
+          villaNumber: unit.unitNumber,
+        })
+      );
     }
-
-    // 4. Fetch the quick actions specifically scoped to this unit and organization
-    dispatch(
-      fetchQuickActionsThunk({
-        orgId: activeOrgId,
-        villaId: unit.id || unit.unitNumber,
-      })
-    );
 
     onSelectVilla(unit.unitNumber);
     onClose();

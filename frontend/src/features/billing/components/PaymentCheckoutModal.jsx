@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
+import { useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import {
   CModal,
@@ -57,6 +58,10 @@ export const PaymentCheckoutModal = ({
   const [scriptLoading, setScriptLoading] = useState(false)
   const [localError, setLocalError] = useState(null)
 
+  const isPaymentGatewayConfigured = useSelector(
+    (state) => state.wallet?.isPaymentGatewayConfigured !== false,
+  )
+
   const totalDue = invoice?.totalDue ?? invoice?.amount ?? 0
   const paidAmount = invoice?.paidAmount ?? 0
   const invoiceOutstanding = invoice?.outstandingAmount !== undefined
@@ -70,6 +75,12 @@ export const PaymentCheckoutModal = ({
       setCustomAmount(maxAmount)
     }
   }, [invoice, maxAmount])
+
+  useEffect(() => {
+    if (!isPaymentGatewayConfigured && paymentMethod === 'RAZORPAY') {
+      setPaymentMethod(walletBalance >= customAmount ? 'WALLET' : 'OFFLINE')
+    }
+  }, [isPaymentGatewayConfigured, paymentMethod, walletBalance, customAmount])
 
   if (!invoice) return null
 
@@ -310,33 +321,56 @@ export const PaymentCheckoutModal = ({
 
         {/* Option 2: Razorpay Online */}
         <div
-          className={`p-3 border rounded mb-3 cursor-pointer text-start transition-all ${
-            paymentMethod === 'RAZORPAY' ? 'border-primary bg-primary bg-opacity-10' : ''
+          className={`p-3 border rounded mb-3 text-start transition-all ${
+            !isPaymentGatewayConfigured
+              ? 'opacity-50 bg-light'
+              : paymentMethod === 'RAZORPAY'
+                ? 'border-primary bg-primary bg-opacity-10 cursor-pointer'
+                : 'cursor-pointer'
           }`}
-          onClick={() => setPaymentMethod('RAZORPAY')}
+          onClick={() => {
+            if (isPaymentGatewayConfigured) setPaymentMethod('RAZORPAY')
+          }}
         >
-          <div className="d-flex align-items-center gap-3">
-            <CFormCheck
-              type="radio"
-              name="paymentMethod"
-              id="method-razorpay"
-              checked={paymentMethod === 'RAZORPAY'}
-              onChange={() => setPaymentMethod('RAZORPAY')}
-            />
-            <div className="d-flex align-items-center gap-2">
-              <CIcon icon={cilCreditCard} size="lg" className="text-primary" />
-              <div>
-                <div className="fw-semibold">
-                  {t('billing.checkout.razorpayOptionTitle', 'Razorpay (Cards, UPI, Net Banking)')}
-                </div>
-                <div className="text-muted small">
-                  {t(
-                    'billing.checkout.razorpayOptionSub',
-                    'Instant online payment via official Razorpay SDK',
-                  )}
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center gap-3">
+              <CFormCheck
+                type="radio"
+                name="paymentMethod"
+                id="method-razorpay"
+                disabled={!isPaymentGatewayConfigured}
+                checked={paymentMethod === 'RAZORPAY'}
+                onChange={() => {
+                  if (isPaymentGatewayConfigured) setPaymentMethod('RAZORPAY')
+                }}
+              />
+              <div className="d-flex align-items-center gap-2">
+                <CIcon icon={cilCreditCard} size="lg" className="text-primary" />
+                <div>
+                  <div className="fw-semibold">
+                    {t('billing.checkout.razorpayOptionTitle', 'Razorpay (Cards, UPI, Net Banking)')}
+                  </div>
+                  <div className="text-muted small">
+                    {isPaymentGatewayConfigured
+                      ? t(
+                          'billing.checkout.razorpayOptionSub',
+                          'Instant online payment via official Razorpay SDK',
+                        )
+                      : t(
+                          'billing.checkout.gatewayNotConfiguredSub',
+                          'Online gateway has not been configured by community management',
+                        )}
+                  </div>
                 </div>
               </div>
             </div>
+
+            {!isPaymentGatewayConfigured && (
+              <CBadge color="secondary" className="d-flex align-items-center gap-1">
+                <CIcon icon={cilWarning} size="sm" />
+                {t('billing.checkout.unavailableBadge', 'Unavailable')}
+              </CBadge>
+            )}
           </div>
         </div>
 
@@ -386,7 +420,10 @@ export const PaymentCheckoutModal = ({
           color="primary"
           onClick={handleCheckoutSubmit}
           disabled={
-            isLoading || scriptLoading || (paymentMethod === 'WALLET' && isWalletInsufficient)
+            isLoading ||
+            scriptLoading ||
+            (paymentMethod === 'WALLET' && isWalletInsufficient) ||
+            (paymentMethod === 'RAZORPAY' && !isPaymentGatewayConfigured)
           }
         >
           {isLoading || scriptLoading ? (

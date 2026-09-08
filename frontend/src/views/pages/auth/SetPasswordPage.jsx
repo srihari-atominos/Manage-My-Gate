@@ -276,8 +276,12 @@ const SetPasswordPage = () => {
                         <CIcon icon={cilUser} />
                       </span>
                       <CFormInput
+                        id="email"
+                        name="email"
                         type="email"
                         value={emailParam}
+                        autoComplete="username"
+                        readOnly
                         disabled
                         className="bg-light border-start-0"
                       />
@@ -292,12 +296,15 @@ const SetPasswordPage = () => {
                         <CIcon icon={cilLockLocked} />
                       </span>
                       <CFormInput
+                        id="new-password"
+                        name="new-password"
                         type={showPassword ? 'text' : 'password'}
                         placeholder="Enter new password (min. 6 chars)"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         minLength={6}
+                        autoComplete="new-password"
                         className="border-start-0 border-end-0"
                       />
                       <button
@@ -318,12 +325,15 @@ const SetPasswordPage = () => {
                         <CIcon icon={cilLockLocked} />
                       </span>
                       <CFormInput
+                        id="confirm-password"
+                        name="confirm-password"
                         type={showConfirmPassword ? 'text' : 'password'}
                         placeholder="Re-enter password to confirm"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
                         minLength={6}
+                        autoComplete="new-password"
                         className="border-start-0 border-end-0"
                       />
                       <button

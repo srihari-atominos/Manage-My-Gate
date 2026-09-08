@@ -154,6 +154,7 @@ router.post('/login', authLimiter, validate(loginRules), authController.login);
  *         description: Invalid token or validation error.
  */
 router.post('/accept-invite', validate(acceptInviteRules), authController.acceptInvite);
+router.post('/reject-invite', authController.rejectInvite);
 
 /**
  * @swagger

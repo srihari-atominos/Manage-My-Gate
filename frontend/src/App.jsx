@@ -34,6 +34,8 @@ const Login = React.lazy(() => import('./views/pages/login/Login'))
 const Register = React.lazy(() => import('./views/pages/register/Register'))
 const AcceptInvitePage = React.lazy(() => import('./views/pages/acceptInvite/AcceptInvitePage'))
 const InviteHandler = React.lazy(() => import('./views/pages/invite/InviteHandler'))
+const WebInviteHandler = React.lazy(() => import('./views/pages/invite/WebInviteHandler'))
+const AppInviteHandler = React.lazy(() => import('./views/pages/invite/AppInviteHandler'))
 const Page404 = React.lazy(() => import('./views/pages/page404/Page404'))
 const Page500 = React.lazy(() => import('./views/pages/page500/Page500'))
 const GetStarted = React.lazy(() => import('./views/pages/getStarted/GetStarted'))
@@ -71,6 +73,12 @@ const App = () => {
   const storedTheme = useSelector((state) => state.ui.theme)
 
   useEffect(() => {
+    // If URL contains a hash route (legacy #/invite... or #/set-password...), translate to clean pathname
+    if (window.location.hash && window.location.hash.startsWith('#/')) {
+      const targetPath = window.location.hash.slice(1)
+      window.history.replaceState(null, '', targetPath)
+    }
+
     const urlParams = new URLSearchParams(window.location.href.split('?')[1])
     const theme = urlParams.get('theme') && urlParams.get('theme').match(/^[A-Za-z0-9\s]+/)[0]
     if (theme) {
@@ -148,6 +156,11 @@ const App = () => {
               name="Accept Invitation Page"
               element={<AcceptInvitePage />}
             />
+            <Route exact path="/invite/web/:token" name="Web Invite Handler" element={<WebInviteHandler />} />
+            <Route exact path="/invite/web" name="Web Invite Handler" element={<WebInviteHandler />} />
+            <Route exact path="/invite/app/:token" name="App Invite Handler" element={<AppInviteHandler />} />
+            <Route exact path="/invite/app" name="App Invite Handler" element={<AppInviteHandler />} />
+            <Route exact path="/invite/:token" name="Invite Handler" element={<InviteHandler />} />
             <Route exact path="/invite" name="Invite Handler" element={<InviteHandler />} />
             <Route exact path="/pay/:id" name="Payment Checkout" element={<PublicCheckoutPage />} />
             <Route exact path="/pay" name="Payment Checkout" element={<PublicCheckoutPage />} />

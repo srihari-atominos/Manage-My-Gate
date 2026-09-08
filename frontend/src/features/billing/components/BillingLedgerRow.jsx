@@ -40,7 +40,7 @@ const StatusBadge = memo(({ status, paymentMethod }) => {
 })
 StatusBadge.displayName = 'StatusBadge'
 
-export const BillingLedgerRow = memo(({ invoice, onMarkPaid, onOfflineSettle }) => (
+export const BillingLedgerRow = memo(({ invoice, onMarkPaid, onOfflineSettle, onSendReminder }) => (
   <tr className="billing-ledger__row">
     <td className="billing-ledger__cell">
       <span className="billing-ledger__invoice-num">{invoice.invoiceNumber}</span>
@@ -87,6 +87,17 @@ export const BillingLedgerRow = memo(({ invoice, onMarkPaid, onOfflineSettle }) 
         <i className="fa-solid fa-handshake me-1" />
         Settle
       </button>
+      {invoice.status !== 'PAID' && onSendReminder && (
+        <button
+          type="button"
+          className="billing-ledger__action-btn billing-ledger__action-btn--secondary ms-1"
+          onClick={() => onSendReminder(invoice._id)}
+          title="Send Reminder Notification"
+        >
+          <i className="fa-solid fa-bell me-1 text-warning" />
+          Remind
+        </button>
+      )}
     </td>
   </tr>
 ))
@@ -97,6 +108,7 @@ BillingLedgerRow.propTypes = {
   invoice: PropTypes.object.isRequired,
   onMarkPaid: PropTypes.func.isRequired,
   onOfflineSettle: PropTypes.func.isRequired,
+  onSendReminder: PropTypes.func,
 }
 
 export default BillingLedgerRow

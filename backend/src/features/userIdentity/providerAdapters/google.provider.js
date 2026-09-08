@@ -11,9 +11,14 @@ export class GoogleProvider {
    */
   async verifyToken(token) {
     try {
+      const validAudiences = [
+        config.sso.googleClientId,
+        config.sso.googleAndroidClientId,
+      ].filter(Boolean);
+
       const ticket = await googleClient.verifyIdToken({
         idToken: token,
-        audience: config.sso.googleClientId,
+        audience: validAudiences,
       });
       return ticket.getPayload();
     } catch (error) {

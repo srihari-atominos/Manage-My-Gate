@@ -16,7 +16,7 @@ import '../styles/_amenities.scss'
 const ResidentWalletView = () => {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { activePasses, transactionHistory, balance, loading, error, loadWallet, cancelPass } =
+  const { activePasses, transactionHistory, balance, isPaymentGatewayConfigured, loading, error, loadWallet, cancelPass } =
     useResidentWallet()
   const [showAddMoney, setShowAddMoney] = useState(false)
 
@@ -119,6 +119,7 @@ const ResidentWalletView = () => {
         isOpen={showAddMoney}
         onClose={() => setShowAddMoney(false)}
         walletBalance={balance}
+        isPaymentGatewayConfigured={isPaymentGatewayConfigured}
         onSuccess={handleRechargeSuccess}
         user={user}
       />

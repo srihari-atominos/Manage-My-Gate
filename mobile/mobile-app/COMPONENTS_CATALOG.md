@@ -2,7 +2,7 @@
 
 > **AUTHORITATIVE CATALOG FOR DEVELOPERS & AI AGENTS**  
 > **Target Folder**: `mobile/mobile-app/components/`  
-> **Total Cataloged Components**: 116 Components across 12 Categories  
+> **Total Cataloged Components**: 118 Components across 12 Categories  
 > **Mandate**: ALL developers and AI agents (Antigravity, Cursor, Windsurf, Copilot, etc.) MUST strictly reuse these components when building mobile views and screens. Inline re-creation of UI primitives is strictly forbidden.
 
 ---
@@ -11,13 +11,13 @@
 
 | Category Directory | Count | Key Purpose & Responsibilities | Import Path Alias & Barrel Export |
 | :--- | :---: | :--- | :--- |
-| **`components/ui/`** | 23 | Atomic UI primitives, list cards, status badges, screen shells | `@/components/ui` or `@/components` |
+| **`components/ui/`** | 24 | Atomic UI primitives, list cards, status badges, screen shells | `@/components/ui` or `@/components` |
 | **`components/common/`** | 25 | Generic reusable components (Buttons, Avatars, Modals, Pickers) | `@/components/common` or `@/components` |
 | **`components/forms/`** | 10 | Form input fields, selects, sliders, toggles, OTP inputs | `@/components/forms` or `@/components` |
 | **`components/feedback/`** | 7 | Action sheets, empty states, error banners, loader skeletons | `@/components/feedback` or `@/components` |
 | **`components/layout/`** | 8 | Safe area wrappers, keyboard avoiding shells, grid rows, spacers | `@/components/layout` or `@/components` |
 | **`components/navigation/`** | 6 | Headers, context switchers (Org, Villa, Role, Profile modals) | `@/components/navigation` or `@/components` |
-| **`components/hardware/`** | 5 | Device hardware integration UI (QR Scanner, NFC, Printer, Torch) | `@/components/hardware` or `@/components` |
+| **`components/hardware/`** | 6 | Device hardware integration UI (QR Scanner, NFC, Printer, Torch) | `@/components/hardware` or `@/components` |
 | **`components/data/`** | 8 | Data visualization grids, audit timelines, virtualized lists | `@/components/data` or `@/components` |
 | **`components/dashboard/`** | 8 | Hero banners, action tiles, customizable deck zones, quick grids | `@/components/dashboard` or `@/components` |
 | **`components/auth/`** | 5 | Biometric login buttons, password strength meters, OTP inputs | `@/components/auth` or `@/components` |
@@ -45,6 +45,7 @@
 | **`StatusBadge`** | `StatusBadge.tsx` | Status pill component. Accepts `variant` (`success`, `warning`, `danger`, `info`, `neutral`, `critical`) and optional pulsing `dot`. |
 | **`ListCard`** | `ListCard.tsx` | Card container for items in list screens. Supports title, subtitle, icon, status badge, action buttons, and touch handlers. |
 | **`PaginatedList`** | `PaginatedList.tsx` | High-performance list renderer with built-in pull-to-refresh, pagination, and empty state support. |
+| **`QRCodeView`** | `QRCodeView.tsx` | Standard-compliant vector SVG QR Code matrix encoder and presentation view. Accepts `value`, `size`, and `caption`. |
 | **`KPICard`** | `KPICard.tsx` | Card displaying key performance indicators, numbers, trend arrows, and icon highlights. |
 | **`KPIRow`** | `KPIRow.tsx` | Horizontally aligned row container for grouping multiple KPICards. |
 | **`DetailSection`** | `DetailSection.tsx` | Card or container grouping detailed key-value metadata rows. |
@@ -164,6 +165,7 @@
 | Component Name | File | Primary Purpose & Key Props |
 | :--- | :--- | :--- |
 | **`QRScannerOverlay`**| `QRScannerOverlay.tsx` | Camera viewfinder overlay for scanning visitor QR passes. |
+| **`QRScannerModal`**  | `QRScannerModal.tsx`   | Standard hardware camera scanner modal with overlay, torch toggle, and manual input. Accepts `visible`, `onClose`, `onScanCode`, `title`, `instruction`. |
 | **`NFCScanIndicator`**| `NFCScanIndicator.tsx` | Animated ripple indicator for scanning NFC guard patrol tags. |
 | **`PrinterStatusBadge`**| `PrinterStatusBadge.tsx` | Thermal receipt printer connection status badge. |
 | **`FlashlightToggle`**| `FlashlightToggle.tsx` | Camera flash / torch toggle button. |

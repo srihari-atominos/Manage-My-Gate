@@ -159,7 +159,7 @@ export default function ResidentPassesScreen() {
                 adminViewScope === 'ALL' ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
-              All Estate Passes
+              All Passes
             </Text>
           </TouchableOpacity>
 

@@ -3,6 +3,7 @@ import visitorPassController from './visitorPass.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
 import { createPassRules, updatePassStatusRules } from './visitorPass.validator.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
 
@@ -10,7 +11,7 @@ const router = Router();
 router.get('/public/:token', visitorPassController.getPublicPass);
 router.get('/public/code/:code', visitorPassController.getPublicPass);
 
-router.use(isAuthenticated);
+router.use(isAuthenticated, tenantContext);
 
 router.post('/', validate(createPassRules), visitorPassController.create);
 router.get('/code/:code', visitorPassController.getByCode);

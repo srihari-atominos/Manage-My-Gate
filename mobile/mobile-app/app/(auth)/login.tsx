@@ -76,7 +76,7 @@ interface PhoneFormValues {
 export default function LoginScreen() {
   const { user, login: performLogin, requestOtp, loading, error, isAuthenticated, otpSent, clearStatus } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
-  const params = useLocalSearchParams<{ intent?: string; email?: string }>();
+  const params = useLocalSearchParams<{ intent?: string; email?: string; inviteToken?: string; token?: string }>();
   const isCreateOrgIntent =
     params.intent === 'create-org' ||
     params.intent === 'create' ||
@@ -215,7 +215,7 @@ export default function LoginScreen() {
   const basicForm = useForm<BasicAuthFormValues>({
     resolver: yupResolver(basicAuthSchema),
     defaultValues: {
-      login: '',
+      login: params.email ? decodeURIComponent(params.email) : '',
       password: '',
     },
   });
@@ -230,9 +230,9 @@ export default function LoginScreen() {
 
   React.useEffect(() => {
     if (params.email) {
-      basicForm.setValue('login', params.email);
+      basicForm.setValue('login', decodeURIComponent(params.email));
     }
-  }, [params.email]);
+  }, [params.email, basicForm]);
 
   React.useEffect(() => {
     clearStatus();
@@ -293,26 +293,35 @@ export default function LoginScreen() {
 
   // Handle Basic Auth Submit
   const onBasicSubmit = async (data: BasicAuthFormValues) => {
-    // Invoke Google / Browser Credential Management API to trigger Google Password Manager save prompt
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'PasswordCredential' in window && (navigator as any)?.credentials) {
-      try {
-        // @ts-ignore
-        const cred = new window.PasswordCredential({
-          id: data.login.trim(),
-          password: data.password,
-          name: data.login.trim(),
-        });
-        await (navigator as any).credentials.store(cred);
-      } catch (e) {
-        // Safe fallback if dismissed or unsupported
-      }
-    }
+    const activeInviteToken = params.inviteToken || params.token || (
+      typeof window !== 'undefined' && window.location?.href
+        ? (window.location.href.match(/[\/?&](?:inviteToken|token|code)=([^&#]+)/i)?.[1] || undefined)
+        : undefined
+    );
 
     await savePreferences();
-    await performLogin({
+    const resultAction: any = await performLogin({
       login: data.login.trim(),
       password: data.password,
+      ...(activeInviteToken ? { inviteToken: activeInviteToken } : {}),
     });
+
+    // Invoke Google / Browser Credential Management API only upon successful login on Web
+    if (resultAction && (resultAction.meta?.requestStatus === 'fulfilled' || (!resultAction.error && !resultAction.payload?.error))) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && 'PasswordCredential' in window && (navigator as any)?.credentials?.store) {
+        try {
+          // @ts-ignore
+          const cred = new window.PasswordCredential({
+            id: data.login.trim(),
+            password: data.password,
+            name: data.login.trim(),
+          });
+          await (navigator as any).credentials.store(cred);
+        } catch (e) {
+          // Safe fallback if dismissed or unsupported
+        }
+      }
+    }
   };
 
   // Handle Phone OTP Submit
@@ -469,9 +478,11 @@ export default function LoginScreen() {
                               placeholderTextColor="#94A3B8"
                               autoCapitalize="none"
                               autoCorrect={false}
+                              keyboardType="email-address"
                               autoComplete="username"
                               textContentType="username"
                               importantForAutofill="yes"
+                              accessibilityLabel="Email or Username"
                               returnKeyType="next"
                               onSubmitEditing={() => passwordInputRef.current?.focus()}
                               blurOnSubmit={false}
@@ -522,9 +533,10 @@ export default function LoginScreen() {
                               secureTextEntry={!showPassword}
                               autoCapitalize="none"
                               autoCorrect={false}
-                              autoComplete="current-password"
+                              autoComplete={Platform.select({ web: 'current-password', default: 'password' })}
                               textContentType="password"
                               importantForAutofill="yes"
+                              accessibilityLabel="Password"
                               returnKeyType="go"
                               onSubmitEditing={basicForm.handleSubmit(onBasicSubmit)}
                               className={cnText(
@@ -717,6 +729,8 @@ export default function LoginScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
+
+
             </Animated.View>
           </View>
         </ScrollView>

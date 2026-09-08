@@ -58,21 +58,34 @@ export const useQuickActions = () => {
   const userPermissions = authUser?.permissions || [];
   const currentUserId = authUser?._id || authUser?.id;
   const activeOrgId = authUser?.activeOrgId || authUser?.orgId || authUser?.organizationId;
-  const activeVilla = authUser?.villaId || authUser?.activeVillaNumber || authUser?.unitNumber || authUser?.villaNumber;
+  const activeVillaId = authUser?.activeVillaId || authUser?.villaId;
+  const activeVillaNum = authUser?.activeVillaNumber || authUser?.villaNumber || authUser?.unitNumber;
 
   useEffect(() => {
     if (isAuthenticated && currentUserId) {
-      dispatch(fetchQuickActionsThunk({ orgId: activeOrgId, villaId: activeVilla }));
+      dispatch(
+        fetchQuickActionsThunk({
+          orgId: activeOrgId,
+          villaId: activeVillaId,
+          villaNumber: activeVillaNum,
+        })
+      );
       loadWorkspaceModules('current');
     }
-  }, [dispatch, isAuthenticated, currentUserId, activeOrgId, activeVilla, loadWorkspaceModules]);
+  }, [dispatch, isAuthenticated, currentUserId, activeOrgId, activeVillaId, activeVillaNum, loadWorkspaceModules]);
 
   const loadQuickActions = useCallback(() => {
     if (isAuthenticated) {
-      dispatch(fetchQuickActionsThunk({ orgId: activeOrgId, villaId: activeVilla }));
+      dispatch(
+        fetchQuickActionsThunk({
+          orgId: activeOrgId,
+          villaId: activeVillaId,
+          villaNumber: activeVillaNum,
+        })
+      );
       loadWorkspaceModules('current');
     }
-  }, [dispatch, isAuthenticated, activeOrgId, activeVilla, loadWorkspaceModules]);
+  }, [dispatch, isAuthenticated, activeOrgId, activeVillaId, activeVillaNum, loadWorkspaceModules]);
 
   const saveQuickActions = useCallback(
     async (selectedIds: string[]) => {
@@ -80,12 +93,13 @@ export const useQuickActions = () => {
         updateQuickActionsThunk({
           activeQuickActions: selectedIds,
           orgId: activeOrgId,
-          villaId: activeVilla,
+          villaId: activeVillaId,
+          villaNumber: activeVillaNum,
         })
       );
       return result;
     },
-    [dispatch, activeOrgId, activeVilla]
+    [dispatch, activeOrgId, activeVillaId, activeVillaNum]
   );
 
   const clearError = useCallback(() => {

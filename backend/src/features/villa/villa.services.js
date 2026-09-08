@@ -362,7 +362,7 @@ export class VillaService {
     return await villaRepository.findByUnitNumber(unitNumber, orgId, session);
   }
 
-  async bulkUploadVillasAndResidents(villasArray, orgId) {
+  async bulkUploadVillasAndResidents(villasArray, orgId, invitationSource = 'WEB') {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info(`bulkUploadVillasAndResidents request received`, { orgId, count: villasArray?.length, correlationId });
 
@@ -439,7 +439,7 @@ export class VillaService {
               finalRoleName = normalizedResidentType;
             }
 
-            await userService.inviteUser(trimmedEmail, orgId, villa._id, normalizedResidentType, finalRoleName, phone, name);
+            await userService.inviteUser(trimmedEmail, orgId, villa._id, normalizedResidentType, finalRoleName, phone, name, invitationSource);
             userInvited = true;
           } catch (err) {
             inviteError = err.message || 'User invitation failed';
@@ -791,15 +791,26 @@ export class VillaService {
     return await Villa.find({ orgId }).session(session);
   }
 
-  async getUnitsByOwner(ownerId, session = null) {
-    return await Villa.find({
+  async getUnitsByOwner(ownerId, orgId = null, session = null) {
+    let effectiveOrgId = orgId;
+    let effectiveSession = session;
+    if (orgId && typeof orgId === 'object' && orgId.constructor && orgId.constructor.name === 'ClientSession') {
+      effectiveSession = orgId;
+      effectiveOrgId = null;
+    }
+
+    const query = {
       residents: {
         $elemMatch: {
           userId: ownerId,
           residencyType: { $in: ['Resident Owner', 'Non-Resident Owner'] }
         }
       }
-    }).session(session);
+    };
+    if (effectiveOrgId) {
+      query.orgId = effectiveOrgId;
+    }
+    return await Villa.find(query).session(effectiveSession);
   }
 
   async getUnitsByResidentUserIds(userIds, session = null) {
@@ -862,11 +873,13 @@ export class VillaService {
     }
   }
 
-  async assignResidentToVilla(villaId, userId, residencyType, session = null) {
+  async assignResidentToVilla(villaId, userId, residencyType, session = null, orgId = null) {
     const correlationId = loggerStorage.getStore() || 'N/A';
     logger.info(`assignResidentToVilla request received`, { villaId, userId, residencyType, correlationId });
 
-    const villa = await Villa.findById(villaId).session(session);
+    const query = { _id: villaId };
+    if (orgId) query.orgId = orgId;
+    const villa = await Villa.findOne(query).session(session);
     if (villa) {
       const alreadyAssigned = villa.residents.some(r => String(r.userId) === String(userId));
       if (!alreadyAssigned) {

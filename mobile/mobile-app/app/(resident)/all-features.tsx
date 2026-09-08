@@ -132,7 +132,7 @@ export default function AllFeaturesScreen() {
         <View className="gap-4 pb-12 max-w-md mx-auto w-full">
           {/* Search All Features Bar */}
           <View className="flex-row items-center bg-card border border-border rounded-2xl px-3.5 py-3 shadow-xs">
-            <Search size={18} color="#172B70" className="mr-2.5 shrink-0" />
+            <Search size={18} color="#172B70" className="me-2.5 shrink-0" />
             <TextInput
               placeholder={t('search', 'Search all features...')}
               placeholderTextColor="#64748B"

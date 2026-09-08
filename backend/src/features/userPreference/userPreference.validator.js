@@ -29,4 +29,9 @@ export const updateQuickActionsRules = [
     .isString()
     .trim()
     .withMessage('villaId must be a string'),
+  body('villaNumber')
+    .optional()
+    .isString()
+    .trim()
+    .withMessage('villaNumber must be a string'),
 ];
