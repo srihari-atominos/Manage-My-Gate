@@ -12,6 +12,7 @@ import { useTranslation } from '@/src/utils/i18n';
 import { Wallet, CreditCard, Receipt, ChevronRight, CheckCircle2, ShieldAlert, Clock, Landmark, Zap, QrCode } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { UnitDueBreakdown, InvoiceStatus, Invoice } from '../types';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { OfflineSettleSheet } from '../components/OfflineSettleSheet';
@@ -21,6 +22,13 @@ import { InvoiceQRModal } from '../components/InvoiceQRModal';
 export function ResidentMyDuesScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const residentVillaNumber =
+    (user as any)?.villaNumber ||
+    (user as any)?.activeVillaNumber ||
+    (user as any)?.unitNumber ||
+    '';
+
   const {
     activeDues,
     walletBalance,
@@ -37,6 +45,8 @@ export function ResidentMyDuesScreen() {
   const [checkoutInvoice, setCheckoutInvoice] = useState<Invoice | null>(null);
   const [offlineInvoice, setOfflineInvoice] = useState<Invoice | null>(null);
   const [receiptInvoice, setReceiptInvoice] = useState<any | null>(null);
+  const [receiptAmount, setReceiptAmount] = useState<number | undefined>(undefined);
+  const [receiptMethod, setReceiptMethod] = useState<string | undefined>(undefined);
   const [qrInvoice, setQrInvoice] = useState<Invoice | null>(null);
 
   // Load resident dues & wallet balance on screen mount
@@ -79,7 +89,8 @@ export function ResidentMyDuesScreen() {
     return {
       _id: invId,
       invoiceNumber: firstDue.invoiceNumber || invId,
-      unitNumber: firstDue.unitNumber,
+      unitNumber: firstDue.unitNumber || residentVillaNumber,
+      assessmentName: firstDue.assessmentName,
       billingPeriodString: firstDue.billingPeriodString,
       totalDue: firstDue.totalDue,
       paidAmount: firstDue.paidAmount ?? 0,
@@ -249,7 +260,8 @@ export function ResidentMyDuesScreen() {
                   const mappedInvoice: Invoice = {
                     _id: invoiceId,
                     invoiceNumber: invNo,
-                    unitNumber: item.unitNumber,
+                    unitNumber: item.unitNumber || residentVillaNumber,
+                    assessmentName: item.assessmentName,
                     billingPeriodString: periodStr,
                     totalDue,
                     paidAmount,
@@ -392,11 +404,38 @@ export function ResidentMyDuesScreen() {
               outstandingAmount: amount || inv.outstandingAmount || inv.totalDue || 0,
             });
           }}
-          onPaymentSuccess={(result) => {
+          onPaymentSuccess={(result: any, amountPaid?: number, paymentMethod?: string) => {
             loadResidentDues();
-            if (result || checkoutInvoice) {
-              setReceiptInvoice(result || checkoutInvoice);
-            }
+            const paid =
+              amountPaid !== undefined && amountPaid !== null && Number(amountPaid) > 0
+                ? Number(amountPaid)
+                : Number(result?.amountPaid || result?.paidAmount || checkoutInvoice?.paidAmount || 0);
+
+            const total = Number(checkoutInvoice?.totalDue || checkoutInvoice?.totalAmount || result?.totalDue || 0);
+            const remaining =
+              result?.outstandingAmount !== undefined
+                ? Number(result.outstandingAmount)
+                : Math.max(0, total - paid);
+
+            const isFull = remaining <= 0.01;
+
+            const receiptData = {
+              ...(checkoutInvoice || {}),
+              ...(result || {}),
+              invoiceNumber: result?.invoiceNumber || checkoutInvoice?.invoiceNumber || result?.invoice?.invoiceNumber || checkoutInvoice?._id,
+              unitNumber: result?.unitNumber || checkoutInvoice?.unitNumber || residentVillaNumber,
+              assessmentName: result?.assessmentName || checkoutInvoice?.assessmentName || result?.invoice?.assessmentName,
+              totalDue: total,
+              totalAmount: total,
+              paidAmount: paid,
+              amountPaid: paid,
+              outstandingAmount: remaining,
+              status: isFull ? 'PAID' : 'PARTIALLY_PAID',
+              paymentMethod: paymentMethod || result?.paymentMethod || 'Online Payment',
+            };
+            setReceiptInvoice(receiptData);
+            setReceiptAmount(paid);
+            setReceiptMethod(paymentMethod || 'Online Payment');
           }}
         />
 
@@ -415,6 +454,8 @@ export function ResidentMyDuesScreen() {
         <PaymentReceiptModal
           visible={!!receiptInvoice}
           invoice={receiptInvoice}
+          amountPaid={receiptAmount}
+          paymentMethod={receiptMethod}
           onClose={() => setReceiptInvoice(null)}
         />
 

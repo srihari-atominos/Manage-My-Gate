@@ -169,10 +169,21 @@ export class PaymentService {
 
         logger.info('Payment signature verification successful', { paymentId: payment._id, orderId });
 
+        let settledInvoice = null;
+        if (payment.referenceType === 'Invoice' && payment.referenceId) {
+          try {
+            const invoiceService = (await import('../invoice/invoice.services.js')).default;
+            settledInvoice = await invoiceService.getInvoiceById(payment.referenceId);
+          } catch (err) {
+            logger.warn('Could not fetch settled invoice in verifyPaymentSignature:', err.message);
+          }
+        }
+
         return {
           success: true,
           message: 'Payment verified successfully',
           payment,
+          invoice: settledInvoice,
         };
       } else {
         payment.status = 'failed';

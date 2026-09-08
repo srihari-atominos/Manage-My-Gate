@@ -13,8 +13,16 @@ export const usePermission = (feature, action) => {
 
   if (!user) return false
 
-  // Bypass checks for Super Admin and Platform Super Admin roles
-  if (user.role === 'Super Admin' || user.role === 'Platform Super Admin') return true
+  // Bypass checks for Super Admin, Community Admin, and Admin roles
+  const roleUpper = (user.role || '').toUpperCase()
+  if (
+    ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(user.role) ||
+    roleUpper.includes('ADMIN') ||
+    roleUpper.includes('SUPER') ||
+    user.isPlatform
+  ) {
+    return true
+  }
 
   const requiredPermission = `${feature}:${action}`
   return !!(user.permissions && user.permissions.includes(requiredPermission))

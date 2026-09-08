@@ -113,10 +113,11 @@ export const authorizePermission = (feature, action) => {
           }
         }
       }
-      // Super Admin and Community Admin bypass all permission checks
-      const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
+      // Super Admin, Community Admin, and Admin roles bypass all permission checks
+      const roleUpper = (req.user.role || '').toUpperCase();
+      const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role) ||
+        roleUpper.includes('ADMIN') || roleUpper.includes('SUPER') || req.user.isPlatform;
       if (isFullAdmin) {
-        console.log(`[RBAC DEBUG] User ${req.user.username} is ${req.user.role}. Bypassing check.`);
         return next();
       }
 
@@ -157,8 +158,20 @@ export const authorizeAnyPermission = (permissionsArray) => {
       if (!req.user) {
         throw new HttpError(401, 'Unauthorized. Authentication required.');
       }
-      const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
+      const roleUpper = (req.user.role || '').toUpperCase();
+      const isFullAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role) ||
+        roleUpper.includes('ADMIN') || roleUpper.includes('SUPER') || req.user.isPlatform;
       if (isFullAdmin) {
+        return next();
+      }
+
+      // Allow family members and all resident variations to access wallet operations
+      const isResidentOrFamily = [
+        'Resident', 'Resident Owner', 'Resident Tenant', 'Family Member', 'Family', 'Tenant', 'Owner'
+      ].includes(req.user.role) || (req.user.residencyType && ['Family Member', 'Family', 'Tenant', 'Resident Owner', 'Owner'].includes(req.user.residencyType));
+
+      const isWalletRoute = permissionsArray.some(p => typeof p === 'string' && p.includes('wallet'));
+      if (isResidentOrFamily && isWalletRoute) {
         return next();
       }
 

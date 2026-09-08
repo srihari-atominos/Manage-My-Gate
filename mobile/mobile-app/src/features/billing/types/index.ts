@@ -26,6 +26,7 @@ export interface Invoice {
   billingPeriodString?: string;
   dueDate?: string;
   totalDue?: number;
+  totalAmount?: number;
   paidAmount?: number;
   outstandingAmount?: number;
   amount?: number;
