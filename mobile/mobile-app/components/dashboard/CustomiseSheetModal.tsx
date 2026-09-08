@@ -11,7 +11,7 @@ import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { Sparkles } from 'lucide-react-native';
 import CustomiseDeckZone from './CustomiseDeckZone';
 import CustomiseAvailableZone, { AvailableFeatureCardItem } from './CustomiseAvailableZone';
-import FeatureIcon from '@/components/ui/FeatureIcon';
+import FeatureIcon from '../ui/FeatureIcon';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { isFeatureAllowedForUser, getDefaultQuickActionsForUser } from '@/src/utils/rbac';
 import { useTranslation } from '@/src/utils/i18n';

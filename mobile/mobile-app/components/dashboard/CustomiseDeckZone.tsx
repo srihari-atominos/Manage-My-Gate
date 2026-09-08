@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
 import { X, Plus, ChevronLeft, ChevronRight, ArrowDown } from 'lucide-react-native';
-import FeatureIcon from '@/components/ui/FeatureIcon';
+import FeatureIcon from '../ui/FeatureIcon';
 import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
 import { useTranslation } from '@/src/utils/i18n';
 

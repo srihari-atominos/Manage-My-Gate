@@ -1,9 +1,8 @@
 import React from 'react';
-import { View, ScrollView, TouchableOpacity } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { View, ScrollView, TouchableOpacity, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, Clock, ShieldCheck, Zap } from 'lucide-react-native';
-import FeatureIcon from '@/components/ui/FeatureIcon';
+import FeatureIcon from '../ui/FeatureIcon';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenShell } from '@/components/ui/ScreenShell';

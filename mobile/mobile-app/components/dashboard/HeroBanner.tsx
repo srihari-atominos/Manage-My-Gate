@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { View, ScrollView, Dimensions, TouchableOpacity, Text } from 'react-native';
 import { ArrowRight, Sparkles, Megaphone, ShieldCheck, Building2, Coins } from 'lucide-react-native';
 import { useTranslation } from '@/src/utils/i18n';
 
