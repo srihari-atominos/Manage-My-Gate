@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import {
   View,
+  Text,
   Platform,
   Pressable,
   LayoutChangeEvent,
 } from 'react-native';
-import { Text } from '@/components/ui/text';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
@@ -26,8 +26,10 @@ import Animated, {
   interpolate,
   Extrapolation,
   runOnJS,
+  Easing,
 } from 'react-native-reanimated';
 import { cn } from '@/lib/utils';
+import { useBottomNavScroll } from './BottomNavScrollContext';
 
 export type MainTabKey = 'dashboard' | 'community' | 'all-features' | 'security' | 'profile';
 
@@ -74,7 +76,7 @@ const TAB_ITEMS: TabItem[] = [
 const ACTIVE_ORANGE = '#FF6A00';
 
 export interface BottomNavigationBarProps {
-  scrollY?: Animated.SharedValue<number>;
+  scrollY?: any;
   isMinimized?: boolean;
 }
 
@@ -84,6 +86,7 @@ interface InsetTabButtonProps {
   onPress: () => void;
   isIOS: boolean;
   isDark: boolean;
+  isCompact: boolean;
 }
 
 const InsetTabButton: React.FC<InsetTabButtonProps> = ({
@@ -92,16 +95,40 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
   onPress,
   isDark,
   isIOS,
+  isCompact,
 }) => {
   const IconComponent = item.icon;
   const pressScale = useSharedValue(1.0);
+  const compactScale = useSharedValue(isCompact ? 0.9 : 1.0);
+  const labelOpacity = useSharedValue(isCompact ? 0 : 1.0);
+  const labelHeight = useSharedValue(isCompact ? 0 : 13);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pressScale.value }],
+  useEffect(() => {
+    compactScale.value = withTiming(isCompact ? 0.9 : 1.0, {
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+    });
+    labelOpacity.value = withTiming(isCompact ? 0 : 1.0, {
+      duration: 160,
+    });
+    labelHeight.value = withTiming(isCompact ? 0 : 13, {
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [isCompact, compactScale, labelOpacity, labelHeight]);
+
+  const animatedIconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value * compactScale.value }],
+  }));
+
+  const animatedLabelStyle = useAnimatedStyle(() => ({
+    opacity: labelOpacity.value,
+    height: labelHeight.value,
+    marginTop: labelOpacity.value > 0.1 ? 2 : 0,
+    overflow: 'hidden',
   }));
 
   const handlePressIn = () => {
-    // Zoom IN on press
     pressScale.value = withSpring(1.16, { damping: 11, stiffness: 280 });
   };
 
@@ -123,26 +150,28 @@ const InsetTabButton: React.FC<InsetTabButtonProps> = ({
       accessibilityState={{ selected: isActive }}
       accessibilityLabel={item.label}
     >
-      <Animated.View style={animatedStyle} className="items-center justify-center py-1">
+      <Animated.View style={animatedIconStyle} className="items-center justify-center py-0.5">
         <IconComponent
-          size={22}
+          size={isCompact ? 19 : 22}
           color={itemColor}
           strokeWidth={isActive ? 2.4 : (isIOS ? 2.0 : 1.8)}
           style={{ opacity: isActive ? 1.0 : (isIOS ? 0.90 : 0.80) }}
         />
-        <Text
-          style={{
-            color: itemColor,
-            opacity: isActive ? 1.0 : (isIOS ? 0.90 : 0.80),
-          }}
-          className={cn(
-            'text-[10px] font-sans tracking-tight mt-1 text-center',
-            isActive ? 'font-bold' : (isIOS ? 'font-bold' : 'font-semibold')
-          )}
-          numberOfLines={1}
-        >
-          {item.label}
-        </Text>
+        <Animated.View style={animatedLabelStyle} className="items-center justify-center">
+          <Text
+            style={{
+              color: itemColor,
+              opacity: isActive ? 1.0 : (isIOS ? 0.90 : 0.80),
+            }}
+            className={cn(
+              'text-[10px] font-sans tracking-tight text-center',
+              isActive ? 'font-bold' : (isIOS ? 'font-bold' : 'font-semibold')
+            )}
+            numberOfLines={1}
+          >
+            {item.label}
+          </Text>
+        </Animated.View>
       </Animated.View>
     </Pressable>
   );
@@ -157,8 +186,18 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const isIOS = Platform.OS === 'ios';
+  const { isCompact } = useBottomNavScroll();
 
   const [containerWidth, setContainerWidth] = useState(0);
+
+  const containerHeight = useSharedValue(isCompact ? 46 : 64);
+
+  useEffect(() => {
+    containerHeight.value = withTiming(isCompact ? 46 : 64, {
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [isCompact, containerHeight]);
 
   const activeTab: MainTabKey = useMemo(() => {
     if (pathname.includes('/visitor')) return 'security';
@@ -177,6 +216,10 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   const isNavigatingRef = useRef(false);
 
   const barAnimatedStyle = useAnimatedStyle(() => {
+    const baseStyle: any = {
+      height: containerHeight.value,
+    };
+
     if (scrollY) {
       const scale = interpolate(
         scrollY.value,
@@ -190,11 +233,9 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
         [0, 6],
         Extrapolation.CLAMP
       );
-      return {
-        transform: [{ scale }, { translateY }],
-      };
+      baseStyle.transform = [{ scale }, { translateY }];
     }
-    return {};
+    return baseStyle;
   });
 
   const horizontalPadding = 6;
@@ -434,8 +475,8 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
                 {
                   position: 'absolute',
                   left: horizontalPadding,
-                  top: 6,
-                  bottom: 6,
+                  top: isCompact ? 3 : 6,
+                  bottom: isCompact ? 3 : 6,
                   borderRadius: 22,
                   backgroundColor: isDark
                     ? 'rgba(255, 106, 0, 0.22)'
@@ -465,6 +506,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
               onPress={() => handleTabPress(item)}
               isIOS={isIOS}
               isDark={isDark}
+              isCompact={isCompact}
             />
           ))}
         </Animated.View>

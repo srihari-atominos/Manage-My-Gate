@@ -55,10 +55,11 @@ export default function ProfileScreen() {
       subtitle={t('user_profile_account_subtitle', 'Manage identity, unit binding & emergency contacts')}
       iconName="User"
       showBackButton={true}
+      hideBottomNav={true}
     >
       <ScrollView
         className="flex-1"
-        contentContainerClassName="p-4 gap-5 pb-28"
+        contentContainerClassName="p-4 gap-5 pb-6"
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Hero Header Card */}

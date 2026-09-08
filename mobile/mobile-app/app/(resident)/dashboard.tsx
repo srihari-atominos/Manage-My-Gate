@@ -3,6 +3,7 @@ import { View, BackHandler, TouchableOpacity } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
+  runOnJS,
 } from 'react-native-reanimated';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +13,7 @@ import HeroBanner from '@/components/dashboard/HeroBanner';
 import QuickActionsGrid from '@/components/dashboard/QuickActionsGrid';
 import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
 import BottomNavigationBar from '@/components/navigation/BottomNavigationBar';
+import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
 import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 import { useTranslation } from '@/src/utils/i18n';
@@ -20,6 +22,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const [customiseOpen, setCustomiseOpen] = React.useState(false);
+  const { handleScroll } = useBottomNavScroll();
 
   const {
     activeQuickActions,
@@ -34,6 +37,7 @@ export default function DashboardScreen() {
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
+      runOnJS(handleScroll)(event as any);
     },
   });
 

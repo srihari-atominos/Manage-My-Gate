@@ -1,4 +1,6 @@
 import axios, { InternalAxiosRequestConfig } from 'axios';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import storage from '../utils/storage';
 
 // A pure JavaScript UUID v4 generator to prevent Expo native crypto errors

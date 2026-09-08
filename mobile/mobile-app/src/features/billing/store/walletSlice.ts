@@ -5,12 +5,12 @@ import { WalletState } from '../types';
 
 
 
-export const fetchWalletBalance = createAsyncThunk(
+export const fetchWalletBalance = createAsyncThunk<any, { page?: number; limit?: number } | void>(
   'wallet/fetchWalletBalance',
-  async (params: { page?: number; limit?: number } = {}, { rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     try {
-      const data = await billingService.getWalletBalance(params);
-      return { ...data, requestedParams: params };
+      const data = await billingService.getWalletBalance(params || {});
+      return { ...data, requestedParams: params || {} };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || error.message || 'Failed to fetch wallet balance'

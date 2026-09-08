@@ -281,7 +281,6 @@ export default function NotificationsScreen() {
               ? t('caught_up_subtitle', 'You have caught up with all unread notifications!')
               : t('no_notifications_desc', 'Gate alerts, booking updates and broadcasts will appear here.')
           }
-          contentContainerClassName="pb-16"
         />
       </View>
     </ScreenShell>

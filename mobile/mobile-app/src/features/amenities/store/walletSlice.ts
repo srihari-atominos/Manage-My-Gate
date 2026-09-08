@@ -17,6 +17,12 @@ export interface WalletState {
   currency: string;
   transactions: WalletTransaction[];
   transactionHistory?: WalletTransaction[];
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    totalRecords: number;
+    limit: number;
+  };
   loading: boolean;
   isLoading?: boolean;
   toppingUp: boolean;
