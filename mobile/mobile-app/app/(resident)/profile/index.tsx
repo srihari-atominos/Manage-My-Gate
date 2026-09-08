@@ -49,12 +49,17 @@ export default function ProfileScreen() {
 
   const displayName = user?.name || (user?.email ? user.email.split('@')[0] : t('logged_in_resident', 'Resident User'));
 
+  const handleBackToDashboard = () => {
+    router.replace('/(resident)/dashboard' as any);
+  };
+
   return (
     <ScreenShell
       title={t('user_profile_account_title', 'User Profile & Account')}
       subtitle={t('user_profile_account_subtitle', 'Manage identity, unit binding & emergency contacts')}
       iconName="User"
       showBackButton={true}
+      onBackPress={handleBackToDashboard}
       hideBottomNav={true}
     >
       <ScrollView

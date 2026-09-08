@@ -384,7 +384,6 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
 
   if (!isIOS) {
     // Native Android Bottom Navigation Bar (Material 3 style, edge-to-edge docked)
-    const androidBarHeight = isCompact ? 52 : 62;
     const androidBottomPad = Math.max(insets.bottom, 6);
 
     return (
@@ -399,26 +398,23 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
           zIndex: 50,
         }}
       >
-        <Animated.View
-          style={[
-            barAnimatedStyle,
-            {
-              width: '100%',
-              height: androidBarHeight + androidBottomPad,
-              paddingBottom: androidBottomPad,
-              backgroundColor: isDark ? '#15171E' : '#FFFFFF',
-              borderTopWidth: 1,
-              borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
-              elevation: 12,
-              shadowColor: '#000000',
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: isDark ? 0.35 : 0.08,
-              shadowRadius: 8,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-around',
-            },
-          ]}
+        <View
+          style={{
+            width: '100%',
+            height: 60 + androidBottomPad,
+            paddingBottom: androidBottomPad,
+            backgroundColor: isDark ? '#15171E' : '#FFFFFF',
+            borderTopWidth: 1,
+            borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+            elevation: 8,
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: isDark ? 0.35 : 0.08,
+            shadowRadius: 6,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
         >
           {TAB_ITEMS.map((item) => {
             const IconComponent = item.icon;
@@ -440,14 +436,20 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
                   borderless: true,
                   radius: 28,
                 }}
-                className="flex-1 items-center justify-center h-full select-none"
+                style={{
+                  flex: 1,
+                  height: '100%',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingVertical: 4,
+                }}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: isActive }}
                 accessibilityLabel={item.label}
               >
                 <View
                   style={{
-                    width: 52,
+                    width: 48,
                     height: 28,
                     borderRadius: 14,
                     backgroundColor: isActive
@@ -460,28 +462,27 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
                   }}
                 >
                   <IconComponent
-                    size={isCompact ? 18 : 21}
+                    size={21}
                     color={itemColor}
                     strokeWidth={isActive ? 2.3 : 1.8}
                   />
                 </View>
-                {!isCompact && (
-                  <Text
-                    style={{
-                      color: itemColor,
-                      fontSize: 11,
-                      marginTop: 2,
-                      fontWeight: isActive ? '700' : '500',
-                    }}
-                    numberOfLines={1}
-                  >
-                    {item.label}
-                  </Text>
-                )}
+                <Text
+                  style={{
+                    color: itemColor,
+                    fontSize: 10.5,
+                    marginTop: 2,
+                    fontWeight: isActive ? '700' : '500',
+                    textAlign: 'center',
+                  }}
+                  numberOfLines={1}
+                >
+                  {item.label}
+                </Text>
               </Pressable>
             );
           })}
-        </Animated.View>
+        </View>
       </View>
     );
   }

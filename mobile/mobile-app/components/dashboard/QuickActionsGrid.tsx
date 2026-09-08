@@ -76,8 +76,8 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
       </View>
 
 
-      {/* Exactly 6 Feature Cards in Clean 2-Column Grid (3 rows x 2 columns) */}
-      <View className="flex-row flex-wrap -mx-1.5">
+      {/* Exactly 6 Feature Cards in Clean 3-Column Grid (2 rows x 3 columns) */}
+      <View className="flex-row flex-wrap gap-2.5 justify-start">
         {displayFeatures.map((tile) => {
           const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === tile.id);
           const iconName = meta?.iconName || tile.iconName;
@@ -90,10 +90,10 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({
           return (
             <ActionTile
               key={tile.id}
-              containerClassName="w-1/2 px-1.5 py-1.5"
+              containerClassName="w-[31%]"
               iconBgColor={colorBg}
               iconShapeClass={iconShapeClass}
-              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={24} />}
+              icon={<FeatureIcon iconName={iconName} color={colorIcon} size={20} />}
               label={tFeatureName(tile.id, meta?.name || tile.name)}
               subtitle={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
               metaValue={tFeatureSubtitle(tile.id, meta?.subtitle || tile.subtitle)}
