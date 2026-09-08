@@ -12,16 +12,16 @@ import { Sparkles } from 'lucide-react-native';
 import CustomiseDeckZone from './CustomiseDeckZone';
 import CustomiseAvailableZone, { AvailableFeatureCardItem } from './CustomiseAvailableZone';
 import FeatureIcon from '../ui/FeatureIcon';
-import { useAuth } from '@/src/features/auth/hooks/useAuth';
-import { isFeatureAllowedForUser, getDefaultQuickActionsForUser } from '@/src/utils/rbac';
-import { useTranslation } from '@/src/utils/i18n';
+import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser, getDefaultQuickActionsForUser } from '../../src/utils/rbac';
+import { useTranslation } from '../../src/utils/i18n';
 import {
   ALL_AVAILABLE_FEATURES,
   REAL_APP_FEATURES,
   DEFAULT_5_QUICK_ACTIONS,
   AppFeatureItem,
   getRoleDefaultQuickActions,
-} from '@/src/features/dashboard/dashboardCatalog';
+} from '../../src/features/dashboard/dashboardCatalog';
 
 export { ALL_AVAILABLE_FEATURES, REAL_APP_FEATURES, AppFeatureItem };
 

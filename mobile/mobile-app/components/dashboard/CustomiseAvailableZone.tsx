@@ -2,8 +2,8 @@ import React, { useMemo } from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
 import { Check, Plus, GripVertical } from 'lucide-react-native';
 import FeatureIcon from '../ui/FeatureIcon';
-import { ALL_AVAILABLE_FEATURES, AppFeatureItem } from '@/src/features/dashboard/dashboardCatalog';
-import { useTranslation } from '@/src/utils/i18n';
+import { ALL_AVAILABLE_FEATURES, AppFeatureItem } from '../../src/features/dashboard/dashboardCatalog';
+import { useTranslation } from '../../src/utils/i18n';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 
 export type AvailableFeatureCardItem = AppFeatureItem;

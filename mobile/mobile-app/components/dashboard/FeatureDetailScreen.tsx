@@ -5,7 +5,7 @@ import { ArrowLeft, CheckCircle2, Clock, ShieldCheck, Zap } from 'lucide-react-n
 import FeatureIcon from '../ui/FeatureIcon';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScreenShell } from '@/components/ui/ScreenShell';
+import { ScreenShell } from '../ui/ScreenShell';
 
 interface FeatureDetailScreenProps {
   title: string;

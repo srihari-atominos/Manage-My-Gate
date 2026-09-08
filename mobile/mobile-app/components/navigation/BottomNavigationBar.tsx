@@ -28,7 +28,7 @@ import Animated, {
   runOnJS,
   Easing,
 } from 'react-native-reanimated';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 import { useBottomNavScroll } from './BottomNavScrollContext';
 
 export type MainTabKey = 'dashboard' | 'community' | 'all-features' | 'security' | 'profile';

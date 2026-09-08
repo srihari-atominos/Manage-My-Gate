@@ -3,11 +3,11 @@ import { View, TouchableOpacity, Text } from 'react-native';
 import { SlidersHorizontal } from 'lucide-react-native';
 import FeatureIcon from '../ui/FeatureIcon';
 import ActionTile from './ActionTile';
-import { FeatureItem } from '@/src/features/dashboard/dashboardService';
-import { useAuth } from '@/src/features/auth/hooks/useAuth';
-import { ALL_AVAILABLE_FEATURES, DEFAULT_6_QUICK_ACTIONS } from '@/src/features/dashboard/dashboardCatalog';
-import { isFeatureAllowedForUser, getDefaultQuickActionsForUser } from '@/src/utils/rbac';
-import { useTranslation } from '@/src/utils/i18n';
+import { FeatureItem } from '../../src/features/dashboard/dashboardService';
+import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { ALL_AVAILABLE_FEATURES, DEFAULT_6_QUICK_ACTIONS } from '../../src/features/dashboard/dashboardCatalog';
+import { isFeatureAllowedForUser, getDefaultQuickActionsForUser } from '../../src/utils/rbac';
+import { useTranslation } from '../../src/utils/i18n';
 
 interface QuickActionsGridProps {
   activeFeatureIds?: string[];
