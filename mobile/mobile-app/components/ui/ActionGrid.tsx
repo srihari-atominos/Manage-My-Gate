@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as LucideIcons from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Text } from './text';
+import { cn } from '../../lib/utils';
 
 export interface ActionGridItem {
   id: string;

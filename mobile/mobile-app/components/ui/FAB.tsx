@@ -8,9 +8,9 @@ import Animated, {
 import * as LucideIcons from 'lucide-react-native';
 import { Plus } from 'lucide-react-native';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Text, TextClassContext } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { cn } from '@/lib/utils';
+import { Text, TextClassContext } from './text';
+import { Icon } from './icon';
+import { cn } from '../../lib/utils';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 

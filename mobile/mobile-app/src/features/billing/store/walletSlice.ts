@@ -5,7 +5,7 @@ import { WalletState } from '../types';
 
 
 
-export const fetchWalletBalance = createAsyncThunk(
+export const fetchWalletBalance = createAsyncThunk<any, { page?: number; limit?: number } | void>(
   'wallet/fetchWalletBalance',
   async (params: { page?: number; limit?: number } | void = {}, { rejectWithValue }) => {
     try {

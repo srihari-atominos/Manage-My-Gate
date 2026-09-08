@@ -10,18 +10,19 @@ import {
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as LucideIcons from 'lucide-react-native';
 import { ChevronLeft, AlertCircle, Compass } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { cn } from '@/lib/utils';
+import { Text } from './text';
+import { Icon } from './icon';
+import { Skeleton } from './Skeleton';
+import { cn } from '../../lib/utils';
 import { RoleSwitchModal } from '../navigation/RoleSwitchModal';
 import { VillaSwitchModal } from '../navigation/VillaSwitchModal';
 import { GlobalNavModal } from '../navigation/GlobalNavModal';
 import { BottomNavigationBar } from '../navigation/BottomNavigationBar';
+import { useBottomNavScroll } from '../navigation/BottomNavScrollContext';
 
 export interface ScreenShellProps {
   title: string;
@@ -62,7 +63,12 @@ export function ScreenShell({
   hideBottomNav = false,
 }: ScreenShellProps) {
   const router = useRouter();
+  const pathname = usePathname() || '';
   const insets = useSafeAreaInsets();
+  const { scrollHandlerProps } = useBottomNavScroll();
+
+  const isProfileScreen = pathname.includes('/profile');
+  const shouldShowBottomNav = showBottomNav && !hideBottomNav && !isProfileScreen;
 
   const [showGlobalNavModal, setShowGlobalNavModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -224,10 +230,10 @@ export function ScreenShell({
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             alwaysBounceVertical={true}
-            scrollEventThrottle={16}
+            {...scrollHandlerProps}
             contentContainerStyle={{
               flexGrow: 1,
-              paddingBottom: (showBottomNav && !hideBottomNav) ? Math.max(insets.bottom + 85, 110) : Math.max(insets.bottom, 24),
+              paddingBottom: shouldShowBottomNav ? Math.max(insets.bottom + 85, 110) : Math.max(insets.bottom, 24),
             }}
           >
             {children}
@@ -260,7 +266,7 @@ export function ScreenShell({
       />
 
       {/* Down Bar Navigation */}
-      {showBottomNav && !hideBottomNav && <BottomNavigationBar />}
+      {shouldShowBottomNav && <BottomNavigationBar />}
     </View>
   );
 }

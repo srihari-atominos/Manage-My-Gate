@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, TouchableOpacity, ScrollView, TextInput, BackHandler } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { View, TouchableOpacity, ScrollView, TextInput, BackHandler, Text } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import {
@@ -21,11 +20,13 @@ import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
 import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
 import { isFeatureAllowedForUser, checkIsAdmin } from '@/src/utils/rbac';
 import { useTranslation } from '@/src/utils/i18n';
+import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
 
 export default function AllFeaturesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ category?: string }>();
   const { t, tCategoryName, tFeatureName, tFeatureSubtitle } = useTranslation();
+  const { scrollHandlerProps } = useBottomNavScroll();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [customiseOpen, setCustomiseOpen] = useState(false);
@@ -131,7 +132,8 @@ export default function AllFeaturesScreen() {
       <ScrollView
         className="flex-1 px-4 pt-3"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        {...scrollHandlerProps}
+        contentContainerStyle={{ paddingBottom: 110 }}
       >
         <View className="gap-4 pb-8 max-w-md mx-auto w-full">
           {/* Search All Features Bar */}

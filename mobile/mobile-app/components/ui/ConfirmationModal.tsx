@@ -2,10 +2,10 @@ import * as React from 'react';
 import { Modal, Platform, View } from 'react-native';
 import { AlertTriangle, Info, CheckCircle2 } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
-import { Button } from '@/components/ui/button';
-import { Icon } from '@/components/ui/icon';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Button } from './button';
+import { Icon } from './icon';
+import { Text } from './text';
+import { cn } from '../../lib/utils';
 
 export type ConfirmationVariant = 'danger' | 'warning' | 'info' | 'success';
 

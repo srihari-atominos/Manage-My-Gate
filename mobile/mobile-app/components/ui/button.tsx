@@ -1,6 +1,6 @@
 import React from 'react';
-import { Text, TextClassContext } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Text, TextClassContext } from './text';
+import { cn } from '../../lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { ActivityIndicator, Platform, Pressable } from 'react-native';
 

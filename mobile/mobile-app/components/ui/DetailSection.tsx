@@ -1,6 +1,6 @@
-import { Icon } from '@/components/ui/icon';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Icon } from './icon';
+import { Text } from './text';
+import { cn } from '../../lib/utils';
 import { cva } from 'class-variance-authority';
 import * as LucideIcons from 'lucide-react-native';
 import { ChevronDown } from 'lucide-react-native';

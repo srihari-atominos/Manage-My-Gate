@@ -1,10 +1,9 @@
 import React, { useMemo } from 'react';
-import { View } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { View, Text } from 'react-native';
 import { MapPin } from 'lucide-react-native';
-import { useAuth } from '@/src/features/auth/hooks/useAuth';
-import { getUserRoleName } from '@/src/utils/rbac';
-import { useTranslation } from '@/src/utils/i18n';
+import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { getUserRoleName } from '../../src/utils/rbac';
+import { useTranslation } from '../../src/utils/i18n';
 
 export interface RoleBasedGreetingProps {
   unitName?: string | null;

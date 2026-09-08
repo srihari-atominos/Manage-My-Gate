@@ -353,10 +353,11 @@ export default function ProfileScreen() {
       iconName="User"
       showBackButton={true}
       onBackPress={handleBack}
+      hideBottomNav={true}
     >
       <ScrollView
         className="flex-1"
-        contentContainerClassName="p-4 gap-4 pb-28"
+        contentContainerClassName="p-4 gap-4 pb-8"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >

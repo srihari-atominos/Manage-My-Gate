@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, ScrollView, Platform } from 'react-native';
 import { KPICard, type KPICardProps } from './KPICard';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { cn } from '@/lib/utils';
+import { Skeleton } from './Skeleton';
+import { cn } from '../../lib/utils';
 
 export interface KPIDashboardStripProps {
   cards: KPICardProps[];

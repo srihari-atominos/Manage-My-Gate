@@ -1,9 +1,8 @@
 import React from 'react';
-import { View, Pressable } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { View, Pressable, Text } from 'react-native';
 import { ArrowUpRight, ChevronRight } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { useTranslation } from '@/src/utils/i18n';
+import { useTranslation } from '../../src/utils/i18n';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 

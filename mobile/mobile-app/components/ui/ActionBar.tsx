@@ -2,9 +2,9 @@ import * as React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
-import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Button } from './button';
+import { Text } from './text';
+import { cn } from '../../lib/utils';
 
 export interface ActionItem {
   label: string;
