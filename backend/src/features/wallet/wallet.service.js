@@ -80,23 +80,37 @@ class WalletService {
     return transaction;
   }
 
-  async addMoney(userId, orgId, amount, paymentMethod) {
+  async addMoney(userId, orgId, amount, paymentMethod = 'admin_adjustment', description = 'Wallet Recharge') {
+    const numericAmount = Number(amount);
+    let targetOrgId = orgId;
+    if (!targetOrgId) {
+      const wallet = await walletRepository.getWallet(userId, null);
+      targetOrgId = wallet.orgId;
+    }
+    if (!targetOrgId) {
+      try {
+        const Organization = (await import('../organization/organization.model.js')).default;
+        const defaultOrg = (await Organization.findOne({ status: 'Active' })) || (await Organization.findOne({}));
+        if (defaultOrg) targetOrgId = defaultOrg._id;
+      } catch (e) {}
+    }
+
     const transactionData = {
-      orgId,
+      orgId: targetOrgId,
       userId,
       type: 'Credit',
-      amount,
+      amount: numericAmount,
       paymentMethod,
       paymentStatus: 'success',
       referenceType: 'Recharge',
-      description: 'Wallet Recharge'
+      description
     };
 
     const transaction = await walletRepository.createTransaction(transactionData);
-    const updatedWallet = await walletRepository.updateBalance(userId, orgId, amount);
+    const updatedWallet = await walletRepository.updateBalance(userId, targetOrgId, numericAmount);
 
     walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, transaction);
-    walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet.balance });
+    walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId: targetOrgId, balance: updatedWallet.balance });
 
     return {
       ...(transaction.toObject ? transaction.toObject() : transaction),
@@ -128,8 +142,45 @@ class WalletService {
       // 1. Fetch invoice inside session via invoiceService (no direct model query)
       const invoice = await invoiceService.getInvoiceById(invoiceId, activeSession);
 
-      if (invoice.targetUserId.toString() !== userId.toString()) {
-        throw new HttpError(403, 'Unauthorized. Invoice does not belong to this user.');
+      let isAuthorized = invoice.targetUserId.toString() === userId.toString();
+
+      if (!isAuthorized) {
+        // Check if user is an admin or a family member / co-resident in the same unit/villa
+        try {
+          const User = (await import('../user/user.model.js')).default;
+          const userDoc = await User.findById(userId).session(activeSession);
+          const targetUserDoc = await User.findById(invoice.targetUserId).session(activeSession);
+
+          // If both share the same villaId
+          if (userDoc?.villaId && targetUserDoc?.villaId && userDoc.villaId.toString() === targetUserDoc.villaId.toString()) {
+            isAuthorized = true;
+          } else if (invoice.villaId && userDoc?.villaId && userDoc.villaId.toString() === invoice.villaId.toString()) {
+            isAuthorized = true;
+          } else {
+            // Check villa residents array
+            const Villa = (await import('../villa/villa.model.js')).default;
+            const targetVillaId = invoice.villaId || targetUserDoc?.villaId || userDoc?.villaId;
+            if (targetVillaId) {
+              const villaDoc = await Villa.findById(targetVillaId).session(activeSession);
+              if (villaDoc) {
+                const isResidentOrFamily = (villaDoc.residents || []).some(
+                  (r) => r.userId && r.userId.toString() === userId.toString()
+                );
+                const isPrimary = villaDoc.primaryResidentId && villaDoc.primaryResidentId.toString() === userId.toString();
+                const isOwner = villaDoc.ownerId && villaDoc.ownerId.toString() === userId.toString();
+                if (isResidentOrFamily || isPrimary || isOwner) {
+                  isAuthorized = true;
+                }
+              }
+            }
+          }
+        } catch (authErr) {
+          logger.warn('Failed family/co-resident verification in payInvoiceWithWallet:', authErr);
+        }
+      }
+
+      if (!isAuthorized) {
+        throw new HttpError(403, 'Unauthorized. Invoice does not belong to this user or their household.');
       }
 
       if (invoice.status === 'PAID') {
@@ -148,25 +199,39 @@ class WalletService {
       }
 
       // 2. Fetch wallet and verify balance
-      const wallet = await walletRepository.getWallet(userId, targetOrgId, activeSession);
+      let wallet = await walletRepository.getWallet(userId, targetOrgId, activeSession);
+      let payingUserId = userId;
+
+      // If family member's own wallet doesn't have enough balance, check if the household/targetUser wallet has enough balance
       if (!wallet || wallet.balance < amountDue) {
-        throw new HttpError(400, `Insufficient wallet balance. Total due is ₹${amountDue}, but current wallet balance is ₹${wallet ? wallet.balance : 0}.`);
+        if (invoice.targetUserId && invoice.targetUserId.toString() !== userId.toString()) {
+          const primaryWallet = await walletRepository.getWallet(invoice.targetUserId, targetOrgId, activeSession);
+          if (primaryWallet && primaryWallet.balance >= amountDue) {
+            wallet = primaryWallet;
+            payingUserId = invoice.targetUserId;
+          }
+        }
+      }
+
+      if (!wallet || wallet.balance < amountDue) {
+        throw new HttpError(400, `Insufficient wallet balance. Total due is ₹${amountDue}, but current available wallet balance is ₹${wallet ? wallet.balance : 0}.`);
       }
 
       // 3. Deduct balance from wallet
-      const updatedWallet = await walletRepository.updateBalance(userId, targetOrgId, -amountDue, activeSession);
+      const updatedWallet = await walletRepository.updateBalance(payingUserId, targetOrgId, -amountDue, activeSession);
 
       // 4. Create wallet debit transaction
+      const isFamilyPayment = payingUserId.toString() !== userId.toString();
       const walletTxn = await walletRepository.createTransaction({
         orgId: targetOrgId,
-        userId,
+        userId: payingUserId,
         type: 'Debit',
         amount: amountDue,
         paymentMethod: 'WALLET',
         paymentStatus: 'success',
         referenceType: 'Invoice',
         referenceId: invoice._id,
-        description: `Payment for Invoice #${invoice.invoiceNumber}`
+        description: `Payment for Invoice #${invoice.invoiceNumber}${isFamilyPayment ? ' (Paid by family member)' : ''}`
       }, activeSession);
 
       // 5. Settle Invoice using InvoiceService (passing session)
@@ -180,7 +245,7 @@ class WalletService {
       // 6. Record Payment entry for auditing via paymentService (no direct repository call)
       const paymentRecord = await paymentService.recordPayment({
         orgId: targetOrgId,
-        userId,
+        userId: payingUserId,
         referenceId: invoice._id,
         referenceType: 'Invoice',
         amount: amountDue,
@@ -199,7 +264,10 @@ class WalletService {
 
       // Emit decoupled Node events
       paymentEventEmitter.emit(PAYMENT_SUCCESS, paymentRecord);
-      walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId: targetOrgId, balance: updatedWallet.balance });
+      walletEventEmitter.emit(WALLET_UPDATED, { userId: payingUserId, orgId: targetOrgId, balance: updatedWallet.balance });
+      if (isFamilyPayment) {
+        walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId: targetOrgId, balance: updatedWallet.balance });
+      }
       walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, walletTxn);
 
       return {
@@ -247,11 +315,35 @@ class WalletService {
       numberOfPersons: b.numberOfPersons || 1
     }));
 
-    const transactionHistory = transactions.map(t => t.toObject());
+    let displayBalance = wallet.balance;
+    let transactionsList = transactions;
+
+    // If wallet balance is 0 or transactions are empty, check if this is a family member with a household wallet
+    try {
+      const User = (await import('../user/user.model.js')).default;
+      const userDoc = await User.findById(userId);
+      if (userDoc && userDoc.villaId) {
+        const Villa = (await import('../villa/villa.model.js')).default;
+        const villaDoc = await Villa.findById(userDoc.villaId);
+        if (villaDoc && villaDoc.primaryResidentId && String(villaDoc.primaryResidentId) !== String(userId)) {
+          const primaryWallet = await walletRepository.getWallet(villaDoc.primaryResidentId, orgId);
+          if (wallet.balance === 0 && primaryWallet && primaryWallet.balance > 0) {
+            displayBalance = primaryWallet.balance;
+          }
+          if (transactionsList.length === 0 && primaryWallet && primaryWallet.userId) {
+            transactionsList = await walletRepository.getTransactions(primaryWallet.userId, orgId);
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn('Failed to resolve household wallet for family member in getWalletData:', err);
+    }
+
+    const transactionHistory = transactionsList.map((t) => (t.toObject ? t.toObject() : t));
     const gateway = await this.getGatewayCredentials(orgId);
 
     return {
-      balance: wallet.balance,
+      balance: displayBalance,
       activePasses,
       transactionHistory,
       transactions: transactionHistory,
@@ -263,6 +355,8 @@ class WalletService {
   async getGatewayCredentials(orgId) {
     let credentials = {};
     let isConfigured = false;
+    
+    // 1. Try fetching from integrationHub for this org
     if (orgId) {
       try {
         const integrationHubService = (await import('../integrationHub/integrationHub.service.js')).default;
@@ -275,9 +369,39 @@ class WalletService {
         isConfigured = false;
       }
     }
-    const keyId = credentials?.keyId || credentials?.key_id || '';
-    const keySecret = credentials?.keySecret || credentials?.key_secret || '';
+
+    // 2. Try platform org if configured
+    if (!isConfigured && process.env.PLATFORM_ORG_ID) {
+      try {
+        const integrationHubService = (await import('../integrationHub/integrationHub.service.js')).default;
+        const platformConfigured = await integrationHubService.isProviderConfigured(process.env.PLATFORM_ORG_ID, 'razorpay');
+        if (platformConfigured) {
+          credentials = await integrationHubService.getDecryptedCredentials(process.env.PLATFORM_ORG_ID, 'razorpay');
+          isConfigured = true;
+        }
+      } catch (e) {}
+    }
+
+    // 3. Try global connection in integrationHub
+    if (!isConfigured) {
+      try {
+        const integrationHubService = (await import('../integrationHub/integrationHub.service.js')).default;
+        const globalConn = await integrationHubService.getGlobalConnectionByProvider('razorpay');
+        if (globalConn) {
+          credentials = await integrationHubService.getDecryptedCredentialsById(globalConn._id);
+          isConfigured = true;
+        }
+      } catch (e) {}
+    }
+
+    // 4. Try environment variables fallback
+    const keyId = credentials?.keyId || credentials?.key_id || process.env.RAZORPAY_KEY_ID || '';
+    const keySecret = credentials?.keySecret || credentials?.key_secret || process.env.RAZORPAY_KEY_SECRET || '';
     const isRealKey = !!(keyId && (keyId.startsWith('rzp_test_') || keyId.startsWith('rzp_live_')));
+    if (!isConfigured && isRealKey && keySecret) {
+      isConfigured = true;
+    }
+
     return {
       keyId,
       keySecret,
@@ -294,7 +418,21 @@ class WalletService {
     }
 
     const wallet = await walletRepository.getWallet(userId, orgId);
-    const targetOrgId = orgId || wallet.orgId;
+    let targetOrgId = orgId || wallet.orgId;
+
+    if (!targetOrgId) {
+      try {
+        const Organization = (await import('../organization/organization.model.js')).default;
+        const defaultOrg = (await Organization.findOne({ status: 'Active' })) || (await Organization.findOne({}));
+        if (defaultOrg && defaultOrg._id) {
+          targetOrgId = defaultOrg._id;
+        }
+      } catch (e) {}
+    }
+
+    if (!targetOrgId && process.env.PLATFORM_ORG_ID) {
+      targetOrgId = process.env.PLATFORM_ORG_ID;
+    }
 
     const gateway = await this.getGatewayCredentials(targetOrgId);
     if (!gateway.isConfigured) {

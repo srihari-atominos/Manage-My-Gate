@@ -21,7 +21,7 @@ export interface PaymentCheckoutSheetProps {
   onClose: () => void;
   invoice: Invoice | null;
   onOpenOfflineSheet?: (invoice: Invoice, amountToPay: number) => void;
-  onPaymentSuccess?: (result: any) => void;
+  onPaymentSuccess?: (result: any, amountPaid?: number, paymentMethod?: string) => void;
 }
 
 export function PaymentCheckoutSheet({
@@ -138,10 +138,33 @@ export function PaymentCheckoutSheet({
       const result = await processWalletPayment(invoice._id, amountToPay);
       setShowWalletConfirmModal(false);
       await loadResidentDues();
-      if (onPaymentSuccess) onPaymentSuccess(result);
+      const rawTotal = invoice.totalDue || invoice.totalAmount || (invoice as any).amount || totalDue;
+      const currentPaid = (invoice.paidAmount || 0) + amountToPay;
+      const calcRemaining = Math.max(0, remainingDue - amountToPay);
+      const isFull = calcRemaining <= 0.01;
+
+      const updatedReceiptData = {
+        ...(result?.invoice || {}),
+        ...invoice,
+        _id: invoice._id,
+        invoiceNumber: invoice.invoiceNumber || result?.invoice?.invoiceNumber || invoice._id,
+        unitNumber: invoice.unitNumber || result?.invoice?.unitNumber,
+        assessmentName: (invoice as any).assessmentName || result?.invoice?.snapshot?.assessmentName || result?.invoice?.assessmentName,
+        totalDue: rawTotal,
+        totalAmount: rawTotal,
+        paidAmount: currentPaid,
+        amountPaid: amountToPay,
+        outstandingAmount: calcRemaining,
+        status: (isFull ? 'PAID' : 'PARTIALLY_PAID') as any,
+        paymentMethod: 'Digital Wallet',
+      };
+      if (onPaymentSuccess) {
+        onPaymentSuccess(updatedReceiptData, amountToPay, 'Digital Wallet');
+      } else {
+        router.push(`/(resident)/billing/invoice/${invoice._id}` as any);
+        Alert.alert('Payment Successful!', `Settled ₹${amountToPay.toLocaleString('en-IN')} via Digital Wallet for Invoice #${invNo}.`);
+      }
       onClose();
-      router.push(`/(resident)/billing/invoice/${invoice._id}` as any);
-      Alert.alert('Payment Successful!', `Settled ₹${amountToPay.toLocaleString('en-IN')} via Digital Wallet for Invoice #${invNo}.`);
     } catch (err: any) {
       setShowWalletConfirmModal(false);
       Alert.alert('Wallet Payment Failed', err.message || 'Transaction could not be completed.');
@@ -181,10 +204,33 @@ export function PaymentCheckoutSheet({
     try {
       const verifyResult = await confirmRazorpayPayment(payload);
       await loadResidentDues();
-      if (onPaymentSuccess) onPaymentSuccess(verifyResult);
+      const rawTotal = invoice.totalDue || invoice.totalAmount || (invoice as any).amount || totalDue;
+      const currentPaid = (invoice.paidAmount || 0) + amountToPay;
+      const calcRemaining = Math.max(0, remainingDue - amountToPay);
+      const isFull = calcRemaining <= 0.01;
+
+      const updatedReceiptData = {
+        ...(verifyResult?.invoice || {}),
+        ...invoice,
+        _id: invoice._id,
+        invoiceNumber: invoice.invoiceNumber || verifyResult?.invoice?.invoiceNumber || invoice._id,
+        unitNumber: invoice.unitNumber || verifyResult?.invoice?.unitNumber,
+        assessmentName: (invoice as any).assessmentName || verifyResult?.invoice?.snapshot?.assessmentName || verifyResult?.invoice?.assessmentName,
+        totalDue: rawTotal,
+        totalAmount: rawTotal,
+        paidAmount: currentPaid,
+        amountPaid: amountToPay,
+        outstandingAmount: calcRemaining,
+        status: (isFull ? 'PAID' : 'PARTIALLY_PAID') as any,
+        paymentMethod: 'Online Payment',
+      };
+      if (onPaymentSuccess) {
+        onPaymentSuccess(updatedReceiptData, amountToPay, 'Online Payment');
+      } else {
+        router.push(`/(resident)/billing/invoice/${invoice._id}` as any);
+        Alert.alert('Razorpay Payment Confirmed!', `Verified & settled ₹${amountToPay.toLocaleString('en-IN')} for Invoice #${invNo}.`);
+      }
       onClose();
-      router.push(`/(resident)/billing/invoice/${invoice._id}` as any);
-      Alert.alert('Razorpay Payment Confirmed!', `Verified & settled ₹${amountToPay.toLocaleString('en-IN')} for Invoice #${invNo}.`);
     } catch (err: any) {
       if (err?.code === 'NETWORK_ERROR' || err?.message?.includes('network')) {
         setShowUnknownStateAlert(true);

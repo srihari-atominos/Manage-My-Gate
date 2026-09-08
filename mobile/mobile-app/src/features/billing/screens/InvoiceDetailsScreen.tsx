@@ -40,6 +40,7 @@ import { billingService } from '../services/billingService';
 import { InvoiceStatus, Invoice } from '../types';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { OfflineSettleSheet } from '../components/OfflineSettleSheet';
+import { PaymentReceiptModal } from '../components/PaymentReceiptModal';
 import { InvoiceQRModal } from '../components/InvoiceQRModal';
 import { generateInvoiceHtml, exportInvoiceHtmlDocument } from '../utils/invoicePdfUtility';
 import { getImageUrl } from '@/src/utils/imageUrl';
@@ -127,6 +128,9 @@ export function InvoiceDetailsScreen() {
   const [isExporting, setIsExporting] = useState(false);
   const [fallbackInvoice, setFallbackInvoice] = useState<Invoice | null>(null);
   const [fallbackLoading, setFallbackLoading] = useState(false);
+  const [receiptInvoice, setReceiptInvoice] = useState<any | null>(null);
+  const [receiptAmount, setReceiptAmount] = useState<number | undefined>(undefined);
+  const [receiptMethod, setReceiptMethod] = useState<string | undefined>(undefined);
 
   const {
     activeDues,
@@ -599,6 +603,16 @@ export function InvoiceDetailsScreen() {
               <DetailRow label="Unit / Villa" value={unitStr} />
               <DetailRow label="Billing Cycle" value={periodStr} />
               <DetailRow label="Payment Status" value={statusLabel} />
+              {invoice?.createdAt || invoice?.date ? (
+                <DetailRow
+                  label="Created Date"
+                  value={new Date(invoice.createdAt || invoice.date!).toLocaleDateString([], {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                />
+              ) : null}
               {invoice?.paymentMethod ? (
                 <DetailRow label="Payment Method" value={methodMeta.label} />
               ) : null}
@@ -614,7 +628,7 @@ export function InvoiceDetailsScreen() {
         )}
 
         {/* Sticky Bottom Payment Action Bar */}
-        {!isPaid && !isCancelled && !isPendingVerification && remainingDue > 0 ? (
+        {!isPaid && !isCancelled && !isPendingVerification && remainingDue > 0 && !['Community Admin', 'Super Admin', 'Platform Super Admin', 'Finance Admin'].includes((user as any)?.role) ? (
           <View className="absolute bottom-0 left-0 right-0 bg-card/95 border-t border-border p-4 shadow-lg">
             <Button
               variant="default"
@@ -640,11 +654,41 @@ export function InvoiceDetailsScreen() {
             setOfflineAmount(amount);
             setShowOfflineSheet(true);
           }}
-          onPaymentSuccess={() => {
+          onPaymentSuccess={(result: any, amountPaid?: number, paymentMethod?: string) => {
             loadResidentDues();
             if (invoiceId) {
               billingService.getInvoiceById(invoiceId).then(setFallbackInvoice).catch(() => {});
             }
+            const paid =
+              amountPaid !== undefined && amountPaid !== null && Number(amountPaid) > 0
+                ? Number(amountPaid)
+                : Number(result?.amountPaid || result?.paidAmount || invoice?.paidAmount || 0);
+
+            const total = Number(invoice?.totalDue || invoice?.totalAmount || result?.totalDue || 0);
+            const remaining =
+              result?.outstandingAmount !== undefined
+                ? Number(result.outstandingAmount)
+                : Math.max(0, total - paid);
+
+            const isFull = remaining <= 0.01;
+
+            const receiptData = {
+              ...(invoice || {}),
+              ...(result || {}),
+              invoiceNumber: result?.invoiceNumber || invoice?.invoiceNumber || result?.invoice?.invoiceNumber || invoice?._id,
+              unitNumber: result?.unitNumber || invoice?.unitNumber || (user as any)?.villaNumber || (user as any)?.activeVillaNumber || (user as any)?.unitNumber,
+              assessmentName: result?.assessmentName || invoice?.assessmentName || result?.invoice?.assessmentName,
+              totalDue: total,
+              totalAmount: total,
+              paidAmount: paid,
+              amountPaid: paid,
+              outstandingAmount: remaining,
+              status: isFull ? 'PAID' : 'PARTIALLY_PAID',
+              paymentMethod: paymentMethod || result?.paymentMethod || 'Online Payment',
+            };
+            setReceiptInvoice(receiptData);
+            setReceiptAmount(paid);
+            setReceiptMethod(paymentMethod || 'Online Payment');
           }}
         />
 
@@ -660,6 +704,15 @@ export function InvoiceDetailsScreen() {
               billingService.getInvoiceById(invoiceId).then(setFallbackInvoice).catch(() => {});
             }
           }}
+        />
+
+        {/* Post-Payment Invoice Receipt & PDF Modal */}
+        <PaymentReceiptModal
+          visible={!!receiptInvoice}
+          invoice={receiptInvoice}
+          amountPaid={receiptAmount}
+          paymentMethod={receiptMethod}
+          onClose={() => setReceiptInvoice(null)}
         />
 
         {/* Invoice QR Pass Modal */}

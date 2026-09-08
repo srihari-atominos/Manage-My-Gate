@@ -56,7 +56,7 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
       markAsRead(id);
     }
     onClose();
-    const route = mapActionUrlToMobileRoute(notification.actionUrl, notification.type);
+    const route = mapActionUrlToMobileRoute(notification.actionUrl, notification.type, notification);
     router.push(route as any);
   };
 
@@ -84,6 +84,7 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
   const formatTimeAgo = (createdAtString?: string) => {
     if (!createdAtString) return 'Just now';
     const date = new Date(createdAtString);
+    if (isNaN(date.getTime())) return createdAtString;
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -91,8 +92,11 @@ export const NotificationSheetModal: React.FC<NotificationSheetModalProps> = ({
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
+    return date.toLocaleDateString([], {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   return (

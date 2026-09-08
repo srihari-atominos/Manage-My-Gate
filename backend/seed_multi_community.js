@@ -123,6 +123,8 @@ const ROLE_PERMISSIONS = {
     'notices:read',
     'visitor:resident',
     'complaints:raise_ticket', 'complaints:track_requests',
+    'amenities:discover', 'amenities:my_booking', 'amenities:wallet',
+    'billing:action_center',
   ],
 };
 

@@ -1,7 +1,7 @@
 /**
  * Maps incoming Web actionUrl or notification types to mobile Expo Router routes
  */
-export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string): string => {
+export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string, notificationMeta?: any): string => {
   if (!actionUrl) {
     // Fallback routes based on type
     switch (type) {
@@ -58,10 +58,19 @@ export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string): st
     const invId = cleanUrl.split('billing/invoice/')[1]?.split('?')[0]?.replace(/\/$/, '');
     return `/(resident)/billing/invoice/${invId}`;
   }
+  if (cleanUrl.includes('billing/ledger')) {
+    return `/(resident)/admin/billing/ledger${cleanUrl.includes('?') ? '?' + cleanUrl.split('?')[1] : ''}`;
+  }
   if (cleanUrl.includes('billing/my-dues') || cleanUrl.includes('my-dues')) {
     return '/(resident)/billing/my-dues';
   }
   if (cleanUrl.includes('billing')) {
+    // Intercept old admin payment verification notifications that go to generic billing
+    if (notificationMeta?.title && (notificationMeta.title.includes('Request') || notificationMeta.title.includes('Submitted'))) {
+      if (notificationMeta.body && notificationMeta.body.includes('payment for verification')) {
+        return `/(resident)/admin/billing/ledger?status=VERIFICATION_PENDING`;
+      }
+    }
     return '/(resident)/billing';
   }
   if (cleanUrl.includes('users')) {

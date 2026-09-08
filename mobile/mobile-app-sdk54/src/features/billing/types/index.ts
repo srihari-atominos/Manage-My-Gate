@@ -26,12 +26,18 @@ export interface Invoice {
   billingPeriodString?: string;
   dueDate?: string;
   totalDue?: number;
+  totalAmount?: number;
   paidAmount?: number;
+  outstandingAmount?: number;
   amount?: number;
   currency?: string;
   status: InvoiceStatus;
   paymentMethod?: string;
   offlineReference?: string | null;
+  offlineAmount?: number | null;
+  paymentDate?: string | null;
+  paymentScreenshot?: string | null;
+  payerNotes?: string | null;
   items?: InvoiceItem[];
   createdAt?: string;
   updatedAt?: string;
@@ -45,6 +51,8 @@ export interface BillingKPIs {
   inTransitGateway: number;
   totalUnpaidArrears: number;
   pendingOffline?: number;
+  pendingOfflineAmount?: number;
+  pendingOfflineCount?: number;
 }
 
 export interface UnitDueBreakdown {
@@ -53,6 +61,7 @@ export interface UnitDueBreakdown {
   invoiceNumber: string;
   unitId?: string;
   unitNumber?: string;
+  assessmentName?: string;
   totalDue: number;
   outstandingAmount?: number;
   paidAmount?: number;
@@ -76,11 +85,13 @@ export interface InvoicesGridPagination {
 }
 
 export interface InvoicesGridResponse {
-  data: Invoice[];
-  currentPage: number;
-  totalPages: number;
-  totalRecords: number;
-  limit: number;
+  data: any[];
+  statusCounts?: Record<string, number>;
+  currentPage?: number;
+  totalPages?: number;
+  totalRecords?: number;
+  limit?: number;
+  pagination?: InvoicesGridPagination;
 }
 
 export interface OfflineSettlementPayload {
@@ -89,6 +100,9 @@ export interface OfflineSettlementPayload {
   paymentMethod: string;
   offlineAmount?: number;
   amount?: number;
+  paymentDate?: string;
+  paymentScreenshot?: string;
+  payerNotes?: string;
 }
 
 export interface RazorpayOrderPayload {
@@ -112,14 +126,18 @@ export interface WalletState {
   balance: number;
   activePasses?: any[];
   transactionHistory?: any[];
+  transactions?: any[];
+  isPaymentGatewayConfigured?: boolean;
+  loading?: boolean;
   isLoading: boolean;
   error: string | null;
 }
 
 export interface BillingState {
-  kpis: BillingKPIs;
+  kpis: BillingKPIs | null;
   activeDues: ActiveDues;
-  invoicesList: Invoice[];
+  invoicesList: any[];
+  statusCounts: Record<string, number>;
   pagination: InvoicesGridPagination;
   loadingStates: {
     fetchKPIs: boolean;

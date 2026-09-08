@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { ListCard } from '@/components/ui/ListCard';
+import { ListCard, formatDate } from '@/components/ui/ListCard';
 import { getStatusVariant } from '@/components/ui/StatusBadge';
 import { Invoice } from '../types';
 
@@ -45,14 +45,13 @@ export function InvoiceCard({ invoice, onPress, className = '' }: InvoiceCardPro
     leftIcon = 'AlertCircle';
   }
 
-  let displayDate = invoice.billingPeriodString || invoice.date || '';
-  if (displayDate && typeof displayDate === 'string' && !invoice.billingPeriodString) {
-    const d = new Date(displayDate);
-    if (!isNaN(d.getTime())) {
-      displayDate = d.toLocaleDateString();
-    }
-  } else if ((displayDate as unknown) instanceof Date) {
-    displayDate = ((displayDate as unknown) as Date).toLocaleDateString();
+  // Prioritize actual creation timestamp (or date) to display the correct date when created (no time)
+  const createdTimestamp = invoice.createdAt || invoice.date;
+  let displayDate = '';
+  if (createdTimestamp) {
+    displayDate = formatDate(createdTimestamp);
+  } else if (invoice.billingPeriodString) {
+    displayDate = invoice.billingPeriodString;
   }
 
   return (

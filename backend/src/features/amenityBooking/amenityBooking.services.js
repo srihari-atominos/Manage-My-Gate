@@ -216,11 +216,36 @@ export class AmenityBookingService {
       const finalPaymentStatus = 'success';
       const finalPaymentMethod = bookingData.paymentMethod || 'WALLET';
 
+      let walletToUse = null;
+      let walletPayerId = userId;
+
       if (finalPaymentMethod.toUpperCase() === 'WALLET' && totalAmount > 0) {
         const walletRepository = (await import('../wallet/wallet.repository.js')).default;
-        const wallet = await walletRepository.getWallet(userId, orgId, sessionOpt);
-        if (!wallet || wallet.balance < totalAmount) {
-          throw new HttpError(400, `Insufficient wallet balance. Total due is ₹${totalAmount}, but current balance is ₹${wallet ? wallet.balance : 0}.`);
+        walletToUse = await walletRepository.getWallet(userId, orgId, sessionOpt);
+
+        // If personal wallet does not have enough balance, check household/primary resident wallet
+        if (!walletToUse || walletToUse.balance < totalAmount) {
+          try {
+            const User = (await import('../user/user.model.js')).default;
+            const userDoc = await User.findById(userId).session(sessionOpt);
+            if (userDoc && userDoc.villaId) {
+              const Villa = (await import('../villa/villa.model.js')).default;
+              const villaDoc = await Villa.findById(userDoc.villaId).session(sessionOpt);
+              if (villaDoc && villaDoc.primaryResidentId && String(villaDoc.primaryResidentId) !== String(userId)) {
+                const primaryWallet = await walletRepository.getWallet(villaDoc.primaryResidentId, orgId, sessionOpt);
+                if (primaryWallet && primaryWallet.balance >= totalAmount) {
+                  walletToUse = primaryWallet;
+                  walletPayerId = villaDoc.primaryResidentId;
+                }
+              }
+            }
+          } catch (err) {
+            logger.warn('Failed checking primary resident wallet for family amenity booking:', err);
+          }
+        }
+
+        if (!walletToUse || walletToUse.balance < totalAmount) {
+          throw new HttpError(400, `Insufficient wallet balance. Total due is ₹${totalAmount}, but current available balance is ₹${walletToUse ? walletToUse.balance : 0}.`);
         }
       }
 
@@ -260,18 +285,19 @@ export class AmenityBookingService {
       if (finalPaymentMethod.toUpperCase() === 'WALLET' && totalAmount > 0) {
         const walletRepository = (await import('../wallet/wallet.repository.js')).default;
         
-        updatedWallet = await walletRepository.updateBalance(userId, orgId, -totalAmount, sessionOpt);
+        updatedWallet = await walletRepository.updateBalance(walletPayerId, orgId, -totalAmount, sessionOpt);
         
+        const isFamilyMember = String(walletPayerId) !== String(userId);
         walletTxn = await walletRepository.createTransaction({
           orgId,
-          userId,
+          userId: walletPayerId,
           type: 'Debit',
           amount: totalAmount,
           paymentMethod: 'WALLET',
           paymentStatus: 'success',
           referenceType: 'AmenityBooking',
           referenceId: booking._id,
-          description: `Payment for Amenity Booking`
+          description: `Payment for Amenity Booking${isFamilyMember ? ' (Booked by family member)' : ''}`
         }, sessionOpt);
       }
 
@@ -282,7 +308,10 @@ export class AmenityBookingService {
 
       if (finalPaymentMethod.toUpperCase() === 'WALLET' && totalAmount > 0) {
          const { walletEventEmitter, WALLET_UPDATED, WALLET_TRANSACTION_CREATED } = await import('../wallet/wallet.events.js');
-         walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet?.balance });
+         walletEventEmitter.emit(WALLET_UPDATED, { userId: walletPayerId, orgId, balance: updatedWallet?.balance });
+         if (String(walletPayerId) !== String(userId)) {
+           walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId, balance: updatedWallet?.balance });
+         }
          if (walletTxn) {
            walletEventEmitter.emit(WALLET_TRANSACTION_CREATED, walletTxn);
          }

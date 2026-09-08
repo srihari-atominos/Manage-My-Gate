@@ -165,6 +165,20 @@ export class InvoiceRepository {
         },
       },
       {
+        $lookup: {
+          from: 'assessments',
+          localField: 'assessmentId',
+          foreignField: '_id',
+          as: 'assessment',
+        },
+      },
+      {
+        $unwind: {
+          path: '$assessment',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $group: {
           _id: '$targetUserId',
           totalPortfolioDue: { $sum: '$outstandingAmount' },
@@ -173,10 +187,20 @@ export class InvoiceRepository {
               invoiceId: '$_id',
               invoiceNumber: '$invoiceNumber',
               unitId: '$unitId',
-              unitNumber: '$unitInfo.unitNumber',
+              unitNumber: {
+                $ifNull: [
+                  '$unitInfo.unitNumber',
+                  { $ifNull: ['$snapshot.unitDetails.unitNumber', { $ifNull: ['$unitInfo.villaNumber', ''] }] }
+                ]
+              },
               floor: '$unitInfo.floor',
               type: '$unitInfo.type',
-              assessmentName: '$snapshot.assessmentName',
+              assessmentName: {
+                $ifNull: [
+                  '$snapshot.assessmentName',
+                  { $ifNull: ['$assessment.name', 'Community Maintenance Assessment'] }
+                ]
+              },
               residentName: '$snapshot.residentDetails.name',
               residentType: '$snapshot.residentDetails.residencyType',
               currentCharge: '$currentCharge',
@@ -239,6 +263,20 @@ export class InvoiceRepository {
         },
       },
       {
+        $lookup: {
+          from: 'assessments',
+          localField: 'assessmentId',
+          foreignField: '_id',
+          as: 'assessment',
+        },
+      },
+      {
+        $unwind: {
+          path: '$assessment',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $sort: { createdAt: -1 }
       },
       {
@@ -249,9 +287,19 @@ export class InvoiceRepository {
           invoiceId: '$_id',
           invoiceNumber: 1,
           unitId: 1,
-          unitNumber: '$unitInfo.unitNumber',
+          unitNumber: {
+            $ifNull: [
+              '$unitInfo.unitNumber',
+              { $ifNull: ['$snapshot.unitDetails.unitNumber', { $ifNull: ['$unitInfo.villaNumber', ''] }] }
+            ]
+          },
           type: '$unitInfo.type',
-          assessmentName: '$snapshot.assessmentName',
+          assessmentName: {
+            $ifNull: [
+              '$snapshot.assessmentName',
+              { $ifNull: ['$assessment.name', 'Community Maintenance Assessment'] }
+            ]
+          },
           residentName: '$snapshot.residentDetails.name',
           residentType: '$snapshot.residentDetails.residencyType',
           currentCharge: 1,
@@ -317,19 +365,29 @@ export class InvoiceRepository {
         invoice.payerNotes = paymentData.payerNotes;
       }
       
+      const totalInvoiceLiability =
+        Number(invoice.totalAmount) ||
+        Number(invoice.totalDue) ||
+        Number(invoice.currentCharge) ||
+        (Number(invoice.outstandingAmount || 0) + Number(invoice.paidAmount || 0)) ||
+        0;
+
+      const previousPaid = Number(invoice.paidAmount || 0);
+      const remainingBeforePayment = Math.max(0, totalInvoiceLiability - previousPaid);
+
       let applyAmount = 0;
-      if (paymentData.amount) {
+      if (paymentData.amount !== undefined && paymentData.amount !== null && Number(paymentData.amount) > 0) {
         applyAmount = Number(paymentData.amount);
-      } else if (!paymentData.amount && paymentData.paymentMethod !== 'WALLET') {
-        // Legacy fallback: if no amount provided, assume full payment of outstanding
-        applyAmount = invoice.outstandingAmount || invoice.totalAmount;
+      } else if (paymentData.paymentMethod !== 'WALLET') {
+        applyAmount = remainingBeforePayment;
       }
 
-      const remainingDue = Math.max(0, (invoice.totalAmount || 0) - (invoice.paidAmount || 0));
-      applyAmount = Math.min(applyAmount, remainingDue > 0 ? remainingDue : applyAmount);
+      applyAmount = Math.min(applyAmount, remainingBeforePayment > 0 ? remainingBeforePayment : applyAmount);
 
-      invoice.paidAmount = (invoice.paidAmount || 0) + applyAmount;
-      invoice.outstandingAmount = Math.max(0, Math.round(((invoice.totalAmount || 0) - invoice.paidAmount) * 100) / 100);
+      invoice.paidAmount = previousPaid + applyAmount;
+      invoice.totalAmount = totalInvoiceLiability;
+      invoice.totalDue = totalInvoiceLiability;
+      invoice.outstandingAmount = Math.max(0, Math.round((totalInvoiceLiability - invoice.paidAmount) * 100) / 100);
       
       if (invoice.outstandingAmount > 0.01) {
         invoice.status = 'PARTIALLY_PAID';
@@ -434,6 +492,10 @@ export class InvoiceRepository {
         { 'userInfo.phone': { $regex: q, $options: 'i' } },
         { 'snapshot.residentDetails.name': { $regex: q, $options: 'i' } },
       ];
+
+      if (mongoose.Types.ObjectId.isValid(q)) {
+        searchMatch.$or.push({ _id: new mongoose.Types.ObjectId(q) });
+      }
     }
 
     // 4. Block filtering

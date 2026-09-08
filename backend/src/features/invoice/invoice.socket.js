@@ -195,13 +195,14 @@ export const setupInvoiceSocketListeners = async () => {
           });
 
           for (const member of memberships) {
+            const invoiceId = payload.invoice?._id || payload.invoiceId || '';
             await notificationService.createNotification({
               recipientId: member.userId,
               orgId: payload.communityId || null,
               senderId: null,
               title: `New ${methodTitle} Request`,
               body: `${payload.residentName || 'Resident'} submitted a ₹${amtStr} ${methodTitle.toLowerCase()} payment for verification.`,
-              actionUrl: '/billing?tab=action-center',
+              actionUrl: `/billing/ledger?status=VERIFICATION_PENDING&invoiceId=${invoiceId}`,
               type: 'INFO',
             });
           }

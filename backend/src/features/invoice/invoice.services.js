@@ -1190,13 +1190,23 @@ export class InvoiceService {
    * Fetch invoice by ID with optional transaction session.
    */
   async getInvoiceById(invoiceId, session = null) {
-    const query = Invoice.findById(invoiceId);
+    const query = Invoice.findById(invoiceId)
+      .populate('unitId')
+      .populate('assessmentId')
+      .populate('targetUserId', 'name email username phone');
     if (session) query.session(session);
     const invoice = await query;
     if (!invoice) {
       throw new HttpError(404, 'Invoice not found');
     }
-    return invoice;
+    const invObj = invoice.toObject ? invoice.toObject() : invoice;
+    if (!invObj.assessmentName) {
+      invObj.assessmentName = invObj.snapshot?.assessmentName || invObj.assessmentId?.name || 'Community Maintenance Assessment';
+    }
+    if (!invObj.unitNumber) {
+      invObj.unitNumber = invObj.snapshot?.unitDetails?.unitNumber || invObj.unitId?.unitNumber || invObj.unitId?.villaNumber || '';
+    }
+    return invObj;
   }
 
   /**
