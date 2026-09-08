@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Modal, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Modal, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { X, Mail } from 'lucide-react-native';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
@@ -104,9 +104,14 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   }));
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 justify-end bg-black/50">
-        <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
+    <Modal visible={visible} transparent statusBarTranslucent={true} animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <Pressable className="flex-1" onPress={onClose} />
+          <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
           {/* Modal Header */}
           <View className="flex-row items-center justify-between pb-3 border-b border-border mb-4">
             <View className="flex-row items-center">
@@ -121,7 +126,11 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ flexGrow: 1 }}
+          >
             {errorMsg ? (
               <View className="p-3 mb-4 bg-destructive/10 border border-destructive/20 rounded-xl">
                 <Text className="text-xs text-destructive font-semibold text-start">{errorMsg}</Text>
@@ -199,8 +208,10 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
           </View>
         </View>
       </View>
-    </Modal>
-  );
+    </KeyboardAvoidingView>
+  </Modal>
+);
 };
 
 export default InviteUserModal;
+

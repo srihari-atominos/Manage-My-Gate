@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Modal, TouchableOpacity } from 'react-native';
+import { View, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Pressable } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
@@ -56,81 +56,89 @@ export const AdminBlacklistModal: React.FC<AdminBlacklistModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <View className="flex-1 bg-black/60 items-center justify-center p-4">
-        <View className="bg-background w-full rounded-2xl p-4 gap-3 border border-border shadow-lg max-w-md">
-          {/* Header */}
-          <View className="flex-row items-center justify-between border-b border-border pb-3">
-            <View className="flex-row items-center gap-2">
-              <ShieldAlert size={20} className="text-destructive" />
-              <Text className="text-base font-bold text-foreground">Blacklist Visitor</Text>
+    <Modal visible={visible} animationType="fade" transparent statusBarTranslucent={true} onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View className="flex-1 bg-black/60 items-center justify-center p-4">
+          <Pressable className="absolute inset-0" onPress={onClose} />
+          <View className="bg-background w-full rounded-2xl p-4 gap-3 border border-border shadow-lg max-w-md max-h-[90%]">
+            {/* Header */}
+            <View className="flex-row items-center justify-between border-b border-border pb-3">
+              <View className="flex-row items-center gap-2">
+                <ShieldAlert size={20} className="text-destructive" />
+                <Text className="text-base font-bold text-foreground">Blacklist Visitor</Text>
+              </View>
+              <TouchableOpacity onPress={onClose} className="p-1 rounded-full bg-muted">
+                <X size={16} className="text-muted-foreground" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={onClose} className="p-1 rounded-full bg-muted">
-              <X size={16} className="text-muted-foreground" />
-            </TouchableOpacity>
-          </View>
 
-          {error && (
-            <View className="p-2.5 bg-destructive/10 border border-destructive/20 rounded-xl">
-              <Text className="text-xs text-destructive font-medium">{error}</Text>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
+              {error && (
+                <View className="p-2.5 bg-destructive/10 border border-destructive/20 rounded-xl mb-2">
+                  <Text className="text-xs text-destructive font-medium">{error}</Text>
+                </View>
+              )}
+
+              {/* Form */}
+              <View className="gap-2.5">
+                <TextInput
+                  label="Visitor Name"
+                  required
+                  value={visitorName}
+                  onChangeText={setVisitorName}
+                  placeholder="e.g. John Doe"
+                />
+
+                <TextInput
+                  label="Phone Number"
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="e.g. 9876543210"
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                />
+
+                <TextInput
+                  label="National ID / Govt ID"
+                  value={idProofNumber}
+                  onChangeText={setIdProofNumber}
+                  placeholder="e.g. AADHAAR / DL Number"
+                />
+
+                <TextInput
+                  label="Blacklist Reason"
+                  required
+                  value={reason}
+                  onChangeText={setReason}
+                  placeholder="Describe reason for restricting entry..."
+                  multiline
+                  numberOfLines={3}
+                  inputClassName="min-h-[70px]"
+                />
+              </View>
+            </ScrollView>
+
+            {/* Actions */}
+            <View className="flex-row gap-2 pt-2 border-t border-border">
+              <Button variant="outline" className="flex-1" onPress={onClose} disabled={loading}>
+                <Text className="text-xs font-semibold">Cancel</Text>
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onPress={handleSubmit}
+                disabled={loading}
+                loading={loading}
+              >
+                <Text className="text-xs font-semibold text-destructive-foreground">Add to Blacklist</Text>
+              </Button>
             </View>
-          )}
-
-          {/* Form */}
-          <View className="gap-2.5">
-            <TextInput
-              label="Visitor Name"
-              required
-              value={visitorName}
-              onChangeText={setVisitorName}
-              placeholder="e.g. John Doe"
-            />
-
-            <TextInput
-              label="Phone Number"
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="e.g. 9876543210"
-              keyboardType="phone-pad"
-              maxLength={10}
-            />
-
-            <TextInput
-              label="National ID / Govt ID"
-              value={idProofNumber}
-              onChangeText={setIdProofNumber}
-              placeholder="e.g. AADHAAR / DL Number"
-            />
-
-            <TextInput
-              label="Blacklist Reason"
-              required
-              value={reason}
-              onChangeText={setReason}
-              placeholder="Describe reason for restricting entry..."
-              multiline
-              numberOfLines={3}
-              inputClassName="min-h-[70px]"
-            />
-          </View>
-
-          {/* Actions */}
-          <View className="flex-row gap-2 pt-2">
-            <Button variant="outline" className="flex-1" onPress={onClose} disabled={loading}>
-              <Text className="text-xs font-semibold">Cancel</Text>
-            </Button>
-            <Button
-              variant="destructive"
-              className="flex-1"
-              onPress={handleSubmit}
-              disabled={loading}
-              loading={loading}
-            >
-              <Text className="text-xs font-semibold text-destructive-foreground">Add to Blacklist</Text>
-            </Button>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

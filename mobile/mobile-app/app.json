@@ -36,6 +36,7 @@
       }
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.atominosconsulting.nahom",
       "versionCode": 9,
       "adaptiveIcon": {

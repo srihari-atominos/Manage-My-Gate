@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Modal, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Modal, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { TextInput } from '@/components/forms/TextInput';
@@ -121,9 +121,14 @@ export const CreateAssessmentModal: React.FC<CreateAssessmentModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleModalClose}>
-      <View className="flex-1 bg-black/60 justify-end">
-        <View className="bg-card border-t border-border rounded-t-3xl max-h-[92%] shadow-2xl overflow-hidden flex-col">
+    <Modal visible={visible} transparent statusBarTranslucent={true} animationType="slide" onRequestClose={handleModalClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View className="flex-1 bg-black/60 justify-end">
+          <Pressable className="flex-1" onPress={handleModalClose} />
+          <View className="bg-card border-t border-border rounded-t-3xl max-h-[85%] shadow-2xl overflow-hidden flex-col">
           {/* Modal Navigation Header */}
           <View className="flex-row items-center justify-between px-5 py-4 border-b border-border bg-card">
             <View className="flex-row items-center">
@@ -148,7 +153,12 @@ export const CreateAssessmentModal: React.FC<CreateAssessmentModalProps> = ({
           </View>
 
           {/* Form Scroll Area */}
-          <ScrollView className="flex-1 p-5 gap-4" showsVerticalScrollIndicator={false}>
+          <ScrollView
+            className="flex-1 p-5 gap-4"
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ flexGrow: 1 }}
+          >
             {errorMsg ? (
               <View className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 mb-2">
                 <Text className="text-xs font-bold text-destructive">{errorMsg}</Text>
@@ -243,7 +253,8 @@ export const CreateAssessmentModal: React.FC<CreateAssessmentModalProps> = ({
           </View>
         </View>
       </View>
-    </Modal>
+    </KeyboardAvoidingView>
+  </Modal>
   );
 };
 

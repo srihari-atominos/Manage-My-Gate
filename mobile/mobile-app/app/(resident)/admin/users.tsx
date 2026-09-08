@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, RefreshControl, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
+import { View, Text, FlatList, RefreshControl, ScrollView, TouchableOpacity, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Filter, Users, ChevronLeft, ChevronRight, Mail, UserPlus, Users2, Hash, X, Plus } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -404,42 +404,47 @@ export default function UserManagementScreen() {
       />
 
       {/* Quick Jump To Page Modal */}
-      <Modal visible={showPageJumpModal} transparent animationType="fade" onRequestClose={() => setShowPageJumpModal(false)}>
-        <View className="flex-1 justify-center items-center bg-black/50 p-4">
-          <View className="bg-card rounded-2xl p-5 border border-border w-full max-w-xs shadow-lg">
-            <View className="flex-row items-center justify-between pb-2 border-b border-border mb-3">
-              <View className="flex-row items-center">
-                <Hash size={18} color="#6366f1" className="me-2" />
-                <Text className="text-base font-bold text-foreground">{t('jump_to_page', 'Jump to Page')}</Text>
+      <Modal visible={showPageJumpModal} transparent statusBarTranslucent={true} animationType="fade" onRequestClose={() => setShowPageJumpModal(false)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View className="flex-1 justify-center items-center bg-black/50 p-4">
+            <View className="bg-card rounded-2xl p-5 border border-border w-full max-w-xs shadow-lg">
+              <View className="flex-row items-center justify-between pb-2 border-b border-border mb-3">
+                <View className="flex-row items-center">
+                  <Hash size={18} color="#6366f1" className="me-2" />
+                  <Text className="text-base font-bold text-foreground">{t('jump_to_page', 'Jump to Page')}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowPageJumpModal(false)}>
+                  <X size={16} color="#6b7280" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => setShowPageJumpModal(false)}>
-                <X size={16} color="#6b7280" />
-              </TouchableOpacity>
-            </View>
 
-            <Text className="text-xs text-muted-foreground mb-3 text-start">
-              {t('enter_page_number', 'Enter page number between')} <Text className="font-bold text-foreground">1</Text> {t('and_label', 'and')} <Text className="font-bold text-foreground">{totalPages}</Text>:
-            </Text>
+              <Text className="text-xs text-muted-foreground mb-3 text-start">
+                {t('enter_page_number', 'Enter page number between')} <Text className="font-bold text-foreground">1</Text> {t('and_label', 'and')} <Text className="font-bold text-foreground">{totalPages}</Text>:
+              </Text>
 
-            <TextInput
-              value={targetPageInput}
-              onChangeText={setTargetPageInput}
-              placeholder={`1 - ${totalPages}`}
-              keyboardType="number-pad"
-              autoFocus
-              className="mb-4"
-            />
+              <TextInput
+                value={targetPageInput}
+                onChangeText={setTargetPageInput}
+                placeholder={`1 - ${totalPages}`}
+                keyboardType="number-pad"
+                autoFocus
+                className="mb-4"
+              />
 
-            <View className="flex-row items-center justify-end gap-2">
-              <Button variant="outline" size="sm" onPress={() => setShowPageJumpModal(false)}>
-                {t('cancel', 'Cancel')}
-              </Button>
-              <Button variant="default" size="sm" onPress={handleExecutePageJump}>
-                {t('go_to_page', 'Go to Page')}
-              </Button>
+              <View className="flex-row items-center justify-end gap-2">
+                <Button variant="outline" size="sm" onPress={() => setShowPageJumpModal(false)}>
+                  {t('cancel', 'Cancel')}
+                </Button>
+                <Button variant="default" size="sm" onPress={handleExecutePageJump}>
+                  {t('go_to_page', 'Go to Page')}
+                </Button>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Delete User Confirmation Modal */}

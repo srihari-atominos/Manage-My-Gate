@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Modal, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -73,15 +73,16 @@ export const VerifyEmailOtpModal: React.FC<VerifyEmailOtpModalProps> = ({
     <Modal
       visible={visible}
       transparent={true}
+      statusBarTranslucent={true}
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View className="flex-1 justify-end bg-black/60">
-        <Pressable className="absolute inset-0" onPress={onClose} />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className="w-full"
-        >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View className="flex-1 justify-end bg-black/60">
+          <Pressable className="flex-1" onPress={onClose} />
           <View className="bg-card rounded-t-3xl overflow-hidden border-t border-border px-5 pb-8 pt-2">
             <SheetGrabHandle onClose={onClose} />
 
@@ -181,8 +182,8 @@ export const VerifyEmailOtpModal: React.FC<VerifyEmailOtpModalProps> = ({
               </Button>
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

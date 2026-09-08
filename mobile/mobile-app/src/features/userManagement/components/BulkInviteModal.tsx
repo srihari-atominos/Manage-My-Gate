@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform, Alert } from 'react-native';
+import { View, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform, Alert, KeyboardAvoidingView, Pressable } from 'react-native';
 import { X, Users, Upload, Plus, Trash2, CheckCircle2, AlertTriangle, FileSpreadsheet, Download, FileText } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -286,9 +286,14 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
   const validCount = rows.filter((r) => r.isValid).length;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 justify-end bg-black/50">
-        <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[90%] flex-col">
+    <Modal visible={visible} transparent statusBarTranslucent={true} animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <Pressable className="flex-1" onPress={onClose} />
+          <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%] flex-col">
           {/* Header */}
           <View className="flex-row items-center justify-between pb-3 border-b border-border mb-3">
             <View className="flex-row items-center">
@@ -350,7 +355,12 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
               ) : null}
 
               {/* Scrollable Content Area */}
-              <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ flexGrow: 1 }}
+                className="flex-1"
+              >
                 {loadingOptions ? (
                   <View className="py-8 items-center justify-center">
                     <ActivityIndicator size="small" color="#6366f1" />
@@ -507,8 +517,9 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
           )}
         </View>
       </View>
-    </Modal>
-  );
+    </KeyboardAvoidingView>
+  </Modal>
+);
 };
 
 export default BulkInviteModal;

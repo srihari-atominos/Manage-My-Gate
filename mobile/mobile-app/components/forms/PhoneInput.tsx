@@ -7,6 +7,8 @@ import {
   FlatList,
   Pressable,
   TextInput as RNTextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { ChevronDown, Check, Phone } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
@@ -139,56 +141,62 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       )}
 
       {/* Country Selection Modal */}
-      <Modal visible={isPickerVisible} transparent animationType="fade">
-        <Pressable
-          className="flex-1 bg-black/50 justify-center items-center p-4"
-          onPress={() => {
-            setIsPickerVisible(false);
-            setSearchQuery('');
-          }}
+      <Modal visible={isPickerVisible} transparent statusBarTranslucent={true} animationType="fade">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
           <Pressable
-            className="w-full max-w-sm bg-card border border-border rounded-2xl p-4 shadow-xl max-h-[440px]"
-            onPress={(e) => e.stopPropagation()}
+            className="flex-1 bg-black/50 justify-center items-center p-4"
+            onPress={() => {
+              setIsPickerVisible(false);
+              setSearchQuery('');
+            }}
           >
-            <Text className="text-base font-bold text-foreground mb-2 px-1">Select Country</Text>
-            
-            {/* Search Filter */}
-            <RNTextInput
-              className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground mb-3"
-              placeholder="Search country or code..."
-              placeholderTextColor="#94A3B8"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoCapitalize="none"
-            />
+            <Pressable
+              className="w-full max-w-sm bg-card border border-border rounded-2xl p-4 shadow-xl max-h-[440px]"
+              onPress={(e) => e.stopPropagation()}
+            >
+              <Text className="text-base font-bold text-foreground mb-2 px-1">Select Country</Text>
+              
+              {/* Search Filter */}
+              <RNTextInput
+                className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground mb-3"
+                placeholder="Search country or code..."
+                placeholderTextColor="#94A3B8"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCapitalize="none"
+              />
 
-            <FlatList
-              data={filteredCountries}
-              keyExtractor={(item) => item.code}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => handleCountrySelect(item)}
-                  className={cn(
-                    'flex-row items-center justify-between p-2.5 rounded-xl mb-1',
-                    selectedCountry.code === item.code ? 'bg-primary/10' : 'active:bg-muted'
-                  )}
-                >
-                  <View className="flex-row items-center">
-                    <Text className="text-2xl me-3">{item.flag}</Text>
-                    <View>
-                      <Text className="text-sm font-semibold text-foreground">{item.name}</Text>
-                      <Text className="text-xs text-muted-foreground">{item.dialCode}</Text>
+              <FlatList
+                data={filteredCountries}
+                keyExtractor={(item) => item.code}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    onPress={() => handleCountrySelect(item)}
+                    className={cn(
+                      'flex-row items-center justify-between p-2.5 rounded-xl mb-1',
+                      selectedCountry.code === item.code ? 'bg-primary/10' : 'active:bg-muted'
+                    )}
+                  >
+                    <View className="flex-row items-center">
+                      <Text className="text-2xl me-3">{item.flag}</Text>
+                      <View>
+                        <Text className="text-sm font-semibold text-foreground">{item.name}</Text>
+                        <Text className="text-xs text-muted-foreground">{item.dialCode}</Text>
+                      </View>
                     </View>
-                  </View>
-                  {selectedCountry.code === item.code && (
-                    <Check size={18} className="text-primary" />
-                  )}
-                </TouchableOpacity>
-              )}
-            />
+                    {selectedCountry.code === item.code && (
+                      <Check size={18} className="text-primary" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
