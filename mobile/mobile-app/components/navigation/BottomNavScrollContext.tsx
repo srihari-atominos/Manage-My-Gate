@@ -4,9 +4,9 @@ import { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 interface BottomNavScrollContextType {
   isCompact: boolean;
   setIsCompact: (compact: boolean) => void;
-  handleScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  handleScroll: (event: any) => void;
   scrollHandlerProps: {
-    onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+    onScroll: (event: any) => void;
     scrollEventThrottle: number;
   };
 }
@@ -30,6 +30,18 @@ export const subscribeGlobalBottomNavCompact = (listener: (compact: boolean) => 
   };
 };
 
+const extractScrollY = (event: any): number => {
+  if (typeof event === 'number') return event;
+  if (!event) return 0;
+  if (typeof event.nativeEvent?.contentOffset?.y === 'number') {
+    return event.nativeEvent.contentOffset.y;
+  }
+  if (typeof event.contentOffset?.y === 'number') {
+    return event.contentOffset.y;
+  }
+  return 0;
+};
+
 export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isCompact, setIsCompactState] = useState<boolean>(globalIsCompact);
   const lastScrollY = useRef<number>(0);
@@ -40,8 +52,8 @@ export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = 
   }, []);
 
   const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const currentY = event.nativeEvent.contentOffset.y;
+    (event: any) => {
+      const currentY = extractScrollY(event);
       const delta = currentY - lastScrollY.current;
 
       // Always expand when pulled to the top of the screen
@@ -95,8 +107,8 @@ export const useBottomNavScroll = () => {
     });
   }, []);
 
-  const handleLocalScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const currentY = event.nativeEvent.contentOffset.y;
+  const handleLocalScroll = useCallback((event: any) => {
+    const currentY = extractScrollY(event);
     const delta = currentY - localLastY.current;
 
     if (currentY <= 15) {

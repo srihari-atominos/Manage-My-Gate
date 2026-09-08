@@ -37,7 +37,7 @@ export default function DashboardScreen() {
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
-      runOnJS(handleScroll)(event as any);
+      runOnJS(handleScroll)(event.contentOffset.y);
     },
   });
 
