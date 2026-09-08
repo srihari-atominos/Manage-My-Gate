@@ -48,6 +48,7 @@ const apiClient = axios.create({
   baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
+    'X-Client-Type': 'APP',
   },
   timeout: 30000,
   withCredentials: true,
@@ -111,6 +112,7 @@ apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     // Generate and inject a unique Request Correlation ID
     config.headers['X-Request-ID'] = generateUUID();
+    config.headers['X-Client-Type'] = 'APP';
 
     try {
       const state = store ? (store.getState() as any) : null;

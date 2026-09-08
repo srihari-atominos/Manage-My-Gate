@@ -22,30 +22,65 @@ const app = express();
 app.use(correlationIdMiddleware);
 app.use(httpLoggerMiddleware);
 
+const defaultAllowedHeaders = [
+  'Content-Type',
+  'Authorization',
+  'X-Request-ID',
+  'x-request-id',
+  'X-Client-Type',
+  'x-client-type',
+  'X-Client-Source',
+  'x-client-source',
+  'x-organization-id',
+  'X-Organization-ID',
+  'x-org-id',
+  'X-Org-ID',
+  'x-role',
+  'X-Role',
+  'x-villa-id',
+  'X-Villa-ID',
+  'X-User-ID',
+  'x-user-id',
+  'x-idempotency-key',
+  'X-Idempotency-Key',
+  'x-gateway-event-id',
+  'X-Gateway-Event-ID',
+  'Accept',
+  'Origin',
+  'X-Requested-With',
+  'x-requested-with'
+];
+
 // Set up CORS
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, postman)
-    if (!origin) return callback(null, true);
-    
-    // In development mode, allow any localhost, 127.0.0.1, [::1], or private IP subnet origins
-    const isDev = config.nodeEnv === 'development';
-    const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/i.test(origin);
-    
-    if (
-      isLocal ||
-      (isDev && isLocal) ||
-      config.cors.allowedOrigins.indexOf(origin) !== -1 ||
-      config.cors.allowedOrigins.includes('*')
-    ) {
-      callback(null, true);
-    } else {
-      callback(null, false);
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'x-organization-id', 'x-role', 'x-villa-id', 'X-User-ID', 'x-user-id', 'Accept', 'Origin']
+app.use(cors((req, callback) => {
+  const reqHeaders = req.headers['access-control-request-headers'];
+  const extraHeaders = reqHeaders ? reqHeaders.split(',').map((h) => h.trim()) : [];
+
+  callback(null, {
+    origin: (origin, cb) => {
+      // Allow requests with no origin (like mobile apps, curl, postman)
+      if (!origin) return cb(null, true);
+      
+      // In development mode, allow any localhost, 127.0.0.1, [::1], or private IP subnet origins
+      const isDev = config.nodeEnv === 'development';
+      const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/i.test(origin);
+      
+      if (
+        isLocal ||
+        (isDev && isLocal) ||
+        config.cors.allowedOrigins.indexOf(origin) !== -1 ||
+        config.cors.allowedOrigins.includes('*')
+      ) {
+        cb(null, true);
+      } else {
+        cb(null, false);
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [...new Set([...defaultAllowedHeaders, ...extraHeaders])],
+    exposedHeaders: ['X-Request-ID', 'x-request-id']
+  });
 }));
 
 // Set up Helmet with CSP disabled for frontend integrations and allow popups for Google OAuth

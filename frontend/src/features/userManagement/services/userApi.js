@@ -34,8 +34,11 @@ export const fetchUsers = async ({
  * @returns {Promise<Object>} The newly created user object.
  */
 export const inviteUser = async (inviteData) => {
-  const payload = typeof inviteData === 'string' ? { email: inviteData } : inviteData
-  const response = await apiClient.post('/users/invite', payload)
+  const base = typeof inviteData === 'string' ? { email: inviteData } : inviteData
+  const payload = { ...base, invitationSource: 'WEB' }
+  const response = await apiClient.post('/users/invite', payload, {
+    headers: { 'X-Client-Type': 'WEB' },
+  })
   return response.data
 }
 
@@ -74,6 +77,14 @@ export const updateUserRoles = async (userId, roles, villaId = null) => {
  * @returns {Promise<Object>}
  */
 export const bulkInviteUsers = async (invitations) => {
-  const response = await apiClient.post('/users/bulk-invite', { invitations })
+  const payload = invitations.map((inv) => ({
+    ...inv,
+    invitationSource: 'WEB',
+  }))
+  const response = await apiClient.post(
+    '/users/bulk-invite',
+    { invitations: payload, invitationSource: 'WEB' },
+    { headers: { 'X-Client-Type': 'WEB' } }
+  )
   return response.data
 }

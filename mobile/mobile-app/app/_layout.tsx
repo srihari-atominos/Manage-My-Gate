@@ -39,7 +39,7 @@ function AuthRouteGuard() {
   const { setColorScheme } = useColorScheme();
   const segments = useSegments();
   const router = useRouter();
-  const searchParams = useGlobalSearchParams<{ intent?: string; token?: string }>();
+  const searchParams = useGlobalSearchParams<{ intent?: string; token?: string; code?: string; [key: string]: any }>();
   const rootNavigationState = useRootNavigationState();
 
   // Initialize global real-time Socket.io engine
@@ -89,25 +89,40 @@ function AuthRouteGuard() {
     const isRoot = !firstSegment || firstSegment === 'index';
     const u = user as any;
 
-    const hasTokenParam = !!searchParams?.token;
+    const isExplicitNonInviteAuthRoute = inAuthGroup && currentRoute && currentRoute !== 'accept-invite';
+
+    const hasTokenParam = !!(searchParams?.token || searchParams?.code);
     const isWebInviteUrl =
       typeof window !== 'undefined' &&
       typeof window.location !== 'undefined' &&
-      window.location?.href &&
-      (window.location.href.includes('invite') || window.location.href.includes('token=') || window.location.hash.includes('invite'));
+      window.location?.pathname &&
+      (window.location.pathname.startsWith('/invite/') ||
+       window.location.pathname === '/accept-invite' ||
+       window.location.pathname.startsWith('/(auth)/accept-invite'));
 
     const isInviteRoute =
-      hasTokenParam ||
-      isWebInviteUrl ||
-      firstSegment === 'invite' ||
-      firstSegment === 'accept-invite' ||
-      (inAuthGroup && currentRoute === 'accept-invite');
+      !isExplicitNonInviteAuthRoute &&
+      (firstSegment === 'invite' ||
+        firstSegment === 'accept-invite' ||
+        (inAuthGroup && currentRoute === 'accept-invite') ||
+        (isRoot && (hasTokenParam || isWebInviteUrl)));
 
     if (isInviteRoute) {
+      if (firstSegment === 'invite') {
+        // Let the dedicated /invite routes (such as /invite/app/[token]) resolve their parameters and redirect cleanly
+        return;
+      }
       if (firstSegment !== '(auth)' || currentRoute !== 'accept-invite') {
+        let tokenToPass = searchParams?.token || searchParams?.code;
+        if (!tokenToPass && typeof window !== 'undefined' && window.location?.href) {
+          const match = window.location.href.match(/[\/?&](?:token|code)=([^&#]+)|\/invite\/(?:app|web)\/([^/?&#]+)/i);
+          if (match) {
+            tokenToPass = match[1] || match[2];
+          }
+        }
         router.replace({
           pathname: '/(auth)/accept-invite',
-          params: searchParams,
+          params: { ...searchParams, ...(tokenToPass ? { token: tokenToPass } : {}) },
         });
       }
       return;

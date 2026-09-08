@@ -1,5 +1,6 @@
 import visitorLogService from './visitorLog.service.js';
 import visitorPassTokenService from '../visitorPassToken/visitorPassToken.service.js';
+import HttpError from '../../utils/httpError.utils.js';
 
 export class VisitorLogController {
   /**
@@ -72,7 +73,10 @@ export class VisitorLogController {
    */
   async getInside(req, res, next) {
     try {
-      const orgId = req.params.orgId || req.headers['x-organization-id'] || req.user?.orgId || req.user?.organizationId;
+      const orgId = req.params.orgId || req.tenant?.orgId;
+      if (!req.tenant?.isPlatform && req.tenant?.orgId && String(req.tenant.orgId) !== String(orgId)) {
+        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
+      }
       const data = await visitorLogService.getActiveLogsInside(orgId);
       res.success(data, 'Active logs retrieved successfully');
     } catch (error) {
@@ -86,6 +90,9 @@ export class VisitorLogController {
   async getPending(req, res, next) {
     try {
       const { orgId } = req.params;
+      if (!req.tenant?.isPlatform && req.tenant?.orgId && String(req.tenant.orgId) !== String(orgId)) {
+        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
+      }
       const userId = req.user.id;
       
       const residentIdFilter = ['GUARD', 'SECURITY', 'ADMIN', 'MANAGER'].includes(req.user.role) ? null : userId;
@@ -103,6 +110,9 @@ export class VisitorLogController {
   async getHistory(req, res, next) {
     try {
       const { orgId } = req.params;
+      if (!req.tenant?.isPlatform && req.tenant?.orgId && String(req.tenant.orgId) !== String(orgId)) {
+        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
+      }
       const skip = parseInt(req.query.skip, 10) || 0;
       const limit = parseInt(req.query.limit, 10) || 10;
       

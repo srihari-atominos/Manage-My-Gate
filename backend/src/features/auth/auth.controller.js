@@ -52,7 +52,8 @@ export class AuthController {
   async validateInvite(req, res, next) {
     try {
       const token = req.query.token;
-      const data = await authService.validateInvite(token);
+      const email = req.query.email;
+      const data = await authService.validateInvite(token, email);
       res.success(data, 'Invitation token validated successfully');
     } catch (error) {
       next(error);
@@ -72,6 +73,16 @@ export class AuthController {
       }
 
       res.success(data, 'Invitation accepted and account activated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async rejectInvite(req, res, next) {
+    try {
+      const { token, email } = req.body;
+      const data = await authService.rejectInvitation(token, email);
+      res.success(data, 'Invitation rejected successfully');
     } catch (error) {
       next(error);
     }
@@ -287,16 +298,6 @@ export class AuthController {
       const { email } = req.query;
       const data = await authService.checkAccountStatus(email);
       res.success(data, 'Account status fetched successfully.');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async validateInvite(req, res, next) {
-    try {
-      const { token } = req.query;
-      const data = await authService.validateInvite(token);
-      res.success(data, 'Invitation token is valid.');
     } catch (error) {
       next(error);
     }

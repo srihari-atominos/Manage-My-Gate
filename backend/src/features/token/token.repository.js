@@ -28,6 +28,25 @@ export class TokenRepository {
   async deleteOne(query, session) {
     return await Token.deleteOne(query).session(session || null);
   }
+
+  /**
+   * Updates a single token document.
+   * @param {Object} query
+   * @param {Object} update
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async updateOne(query, update, session) {
+    return await Token.updateOne(query, update).session(session || null);
+  }
+
+  /**
+   * Deletes multiple token documents matching query.
+   * @param {Object} query
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async deleteMany(query, session) {
+    return await Token.deleteMany(query, session ? { session } : undefined);
+  }
 }
 
 export default new TokenRepository();

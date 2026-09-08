@@ -211,8 +211,20 @@ async function runWalletSecurityTests() {
 
     const webhookPaymentId = `pay_webhook_${Date.now()}`;
 
+    const runInTransactionIfSupported = async (fn) => {
+      try {
+        await mongoose.connection.transaction(fn);
+      } catch (err) {
+        if (err.message && err.message.includes('Transaction numbers are only allowed on a replica set member')) {
+          await fn(null);
+        } else {
+          throw err;
+        }
+      }
+    };
+
     // Razorpay Webhook fires asynchronously
-    await mongoose.connection.transaction(async (session) => {
+    await runInTransactionIfSupported(async (session) => {
       await walletService.handleWebhookRecharge(webhookPaymentRecord, webhookPaymentId, session);
       webhookPaymentRecord.status = 'success';
       webhookPaymentRecord.gatewayTransactionId = webhookPaymentId;
@@ -236,7 +248,7 @@ async function runWalletSecurityTests() {
     // --------------------------------------------------------------------------
     console.log('\n--- Test 5: Duplicate Webhook Delivery Idempotency ---');
     // Razorpay resends webhook event
-    await mongoose.connection.transaction(async (session) => {
+    await runInTransactionIfSupported(async (session) => {
       await walletService.handleWebhookRecharge(webhookPaymentUpdated, webhookPaymentId, session);
     });
 

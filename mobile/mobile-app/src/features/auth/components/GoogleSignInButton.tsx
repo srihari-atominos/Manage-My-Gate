@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { Button } from '@/components/ui/button';
-import { Text, View } from 'react-native';
+import { Text, View, Alert } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '../hooks/useAuth';
 import { router } from 'expo-router';
@@ -14,8 +14,15 @@ WebBrowser.maybeCompleteAuthSession();
 const DEFAULT_GOOGLE_CLIENT_ID = '610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com';
 const DEFAULT_GOOGLE_ANDROID_CLIENT_ID = '610778456829-6g1bvqtplfrgva93sbdsvgbuqmkpr203.apps.googleusercontent.com';
 
-export function GoogleSignInButton() {
-  const { loginWithGoogle, loading } = useAuth();
+export interface GoogleSignInButtonProps {
+  inviteToken?: string;
+  onSuccess?: (data: any) => void;
+  onError?: (error: any) => void;
+}
+
+export function GoogleSignInButton({ inviteToken, onSuccess, onError }: GoogleSignInButtonProps = {}) {
+  const { loginWithGoogle, acceptSsoInvite, loading } = useAuth();
+  const [submitting, setSubmitting] = React.useState(false);
   const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
@@ -29,34 +36,84 @@ export function GoogleSignInButton() {
     if (response?.type === 'success') {
       const idToken = response.params?.id_token || response.authentication?.idToken;
       if (idToken) {
-        loginWithGoogle(idToken).then((res: any) => {
-          if (res?.payload?.isNewUser) {
-            const googleData = res.payload.googleData || {};
-            router.push({
-              pathname: '/(auth)/register',
-              params: {
-                email: googleData.email || '',
-                name: googleData.name || '',
-                isGoogleSso: 'true',
-              },
-            });
-          }
-        });
+        setSubmitting(true);
+        if (inviteToken) {
+          acceptSsoInvite({
+            inviteToken,
+            ssoCredential: idToken,
+            provider: 'google',
+          })
+            .then((res: any) => {
+              if (res?.meta?.requestStatus === 'rejected' || res?.error) {
+                const errMsg = (res.payload as string) || res.error?.message || 'Failed to accept invitation via Google';
+                if (onError) onError(errMsg);
+                else Alert.alert('Google Sign-In Failed', errMsg);
+                return;
+              }
+              if (onSuccess) {
+                onSuccess(res?.payload || res);
+              } else {
+                router.replace('/(resident)/dashboard');
+              }
+            })
+            .catch((err: any) => {
+              const errMsg = err?.response?.data?.message || err?.message || 'Failed to accept invitation via Google';
+              if (onError) onError(errMsg);
+              else Alert.alert('Google Sign-In Failed', errMsg);
+            })
+            .finally(() => setSubmitting(false));
+        } else {
+          loginWithGoogle(idToken)
+            .then((res: any) => {
+              if (res?.meta?.requestStatus === 'rejected' || res?.error) {
+                const errMsg = (res.payload as string) || res.error?.message || 'Google sign in failed';
+                if (onError) onError(errMsg);
+                else Alert.alert('Google Sign-In Failed', errMsg);
+                return;
+              }
+              if (res?.payload?.isNewUser) {
+                const googleData = res.payload.googleData || {};
+                router.push({
+                  pathname: '/(auth)/register',
+                  params: {
+                    email: googleData.email || '',
+                    name: googleData.name || '',
+                    isGoogleSso: 'true',
+                  },
+                });
+              } else {
+                if (onSuccess) {
+                  onSuccess(res?.payload || res);
+                } else {
+                  router.replace('/(resident)/dashboard');
+                }
+              }
+            })
+            .catch((err: any) => {
+              if (onError) onError(err);
+            })
+            .finally(() => setSubmitting(false));
+        }
       } else {
         console.warn('[GoogleSignIn] Success response received but ID Token missing:', response);
       }
     } else if (response?.type === 'error') {
       console.error('[GoogleSignIn] Auth Session Error:', response.error);
+      const errMsg = response.error?.message || 'Google authentication failed';
+      if (onError) onError(errMsg);
+      else Alert.alert('Google Sign-In Error', errMsg);
     }
-  }, [response, loginWithGoogle]);
+  }, [response, inviteToken, acceptSsoInvite, loginWithGoogle, onSuccess, onError]);
+
+  const isLoading = loading || submitting;
 
   return (
     <Button
       variant="outline"
       className="h-12 w-full rounded-xl flex-row items-center justify-center bg-card border border-border px-3"
       onPress={() => promptAsync()}
-      disabled={!request || loading}
-      loading={loading}
+      disabled={!request || isLoading}
+      loading={isLoading}
     >
       <View className="me-2 shrink-0">
         <Svg width="18" height="18" viewBox="0 0 48 48">

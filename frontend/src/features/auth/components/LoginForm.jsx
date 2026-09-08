@@ -281,6 +281,18 @@ export const LoginForm = () => {
         })
         
         if (res?.success) {
+          if (typeof window !== 'undefined' && window.PasswordCredential && navigator.credentials?.store) {
+            try {
+              const cred = new window.PasswordCredential({
+                id: data.login.trim(),
+                password: data.password,
+                name: data.login.trim(),
+              })
+              await navigator.credentials.store(cred)
+            } catch (credErr) {
+              // Non-blocking fallback for browsers/environments where credential store is restricted
+            }
+          }
           handlePostAuthRedirect()
         } else if (res?.error) {
           const backendErrorMessage = typeof res.error === 'string' ? res.error : (res.error?.message || 'Login failed')
@@ -323,10 +335,6 @@ export const LoginForm = () => {
         </CAlert>
 
         <CForm onSubmit={handleSubmit(onSubmit)}>
-          {/* Fake fields to intercept Chrome's aggressive autofill */}
-          <input type="text" name="fakeusernameremembered" style={{ opacity: 0, position: 'absolute', zIndex: -1, width: 0, height: 0 }} tabIndex="-1" aria-hidden="true" autoComplete="off" />
-          <input type="password" name="fakepasswordremembered" style={{ opacity: 0, position: 'absolute', zIndex: -1, width: 0, height: 0 }} tabIndex="-1" aria-hidden="true" autoComplete="new-password" />
-
           <div style={styles.logoContainer}>
             <div style={styles.logoBox}>
               M
@@ -452,13 +460,19 @@ export const LoginForm = () => {
                     <CIcon icon={cilUser} style={styles.icon} />
                   </CInputGroupText>
                   <CFormInput
+                    id="username"
                     style={styles.input}
                     placeholder={
                       loginMethod === 'password'
                         ? t('auth.login.usernamePlaceholder', 'Email Address')
                         : t('auth.login.emailPlaceholder', 'Email Address')
                     }
-                    autoComplete="off"
+                    autoComplete="username"
+                    aria-label={
+                      loginMethod === 'password'
+                        ? t('auth.login.usernamePlaceholder', 'Email Address')
+                        : t('auth.login.emailPlaceholder', 'Email Address')
+                    }
                     disabled={loading || otpSent}
                     autoFocus
                     maxLength={255}
@@ -489,10 +503,12 @@ export const LoginForm = () => {
                   <CIcon icon={cilLockLocked} style={styles.icon} />
                 </CInputGroupText>
                 <CFormInput
+                  id="password"
                   style={styles.input}
                   type={showPassword ? 'text' : 'password'}
                   placeholder={t('auth.login.passwordPlaceholder', 'Password')}
-                  autoComplete="new-password"
+                  autoComplete="current-password"
+                  aria-label={t('auth.login.passwordPlaceholder', 'Password')}
                   disabled={loading}
                   {...register('password', {
                     required:

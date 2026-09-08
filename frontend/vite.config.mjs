@@ -7,7 +7,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig(() => {
   return {
-    base: './',
+    base: '/',
     build: {
       outDir: 'build',
     },

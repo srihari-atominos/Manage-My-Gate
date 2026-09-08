@@ -1,1 +1,0 @@
-const axios = require('axios'); async function test() { try { const res = await axios.get('http://localhost:5002/api/v1/visitor-pass/code/OLA Driver', { headers: { 'x-organization-id': '6a6efd60f62f21f2b26eb9a0' } }); console.log('SUCCESS:', res.data); } catch(e) { console.log('ERROR:', e.response ? e.response.data : e.message); } } test();

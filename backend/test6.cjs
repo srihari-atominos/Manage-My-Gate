@@ -1,1 +1,0 @@
-const mongoose = require('mongoose'); mongoose.connect('mongodb://localhost:27017/database_name').then(async () => { const passes = await mongoose.connection.collection('visitorpasses').find({'visitorDetails.name': { $regex: /OLA Driver/i }}).toArray(); console.log('Found with name:', passes.length); process.exit(0); }).catch(console.error);

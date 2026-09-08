@@ -47,6 +47,28 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "managemygate.e3esg.com",
+              "pathPrefix": "/invite/app"
+            },
+            {
+              "scheme": "managemygate",
+              "host": "invite",
+              "pathPrefix": "/app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "web": {

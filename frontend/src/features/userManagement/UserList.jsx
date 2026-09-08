@@ -73,8 +73,7 @@ const UserList = () => {
       const response = await inviteUser(inviteData)
       const token = response.invitationToken
       if (token) {
-        const clientUrl = window.location.origin + window.location.pathname
-        const inviteLink = `${clientUrl}#/invite?token=${token}`
+        const inviteLink = response.inviteLink || `${window.location.origin}/invite/web/${token}`
         toast(
           (t) => (
             <div className="d-flex align-items-center gap-2">

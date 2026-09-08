@@ -22,6 +22,19 @@ const tokenSchema = new mongoose.Schema(
       enum: ['INVITATION', 'RESET'],
       required: [true, 'Token type is required'],
     },
+    invitationSource: {
+      type: String,
+      enum: ['WEB', 'APP'],
+      default: 'WEB',
+    },
+    used: {
+      type: Boolean,
+      default: false,
+    },
+    usedAt: {
+      type: Date,
+      default: null,
+    },
     createdAt: {
       type: Date,
       default: Date.now,
