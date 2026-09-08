@@ -269,7 +269,7 @@ export const MOCK_LUXURY_AMENITIES: Amenity[] = [
 ];
 
 const initialState: AmenityState = {
-  amenities: MOCK_LUXURY_AMENITIES,
+  amenities: [],
   maintenanceList: [],
   selectedCategory: 'All',
   searchQuery: '',
@@ -278,7 +278,7 @@ const initialState: AmenityState = {
   pagination: {
     currentPage: 1,
     totalPages: 1,
-    totalRecords: MOCK_LUXURY_AMENITIES.length,
+    totalRecords: 0,
     limit: 10,
   },
   loading: false,
