@@ -54,6 +54,17 @@ export default function PollDashboardScreen() {
 
   const currentState = getCurrentState();
 
+  const handleLoadMore = useCallback(() => {
+    const page = (currentState as any).page || 1;
+    const totalPages = (currentState as any).totalPages || 1;
+    if (page < totalPages) {
+      const nextParams = { page: page + 1, limit: 20 };
+      if (activeTab === 'active') loadActivePolls(nextParams);
+      else if (activeTab === 'closed') loadClosedPolls(nextParams);
+      else if (activeTab === 'my') loadMyPolls(nextParams);
+    }
+  }, [activeTab, currentState, loadActivePolls, loadClosedPolls, loadMyPolls]);
+
   const handleVote = async (pollId: string, optionIndex: number) => {
     try {
       await submitVote(pollId, optionIndex);
@@ -172,7 +183,7 @@ export default function PollDashboardScreen() {
             totalRecords: (currentState as any).total || currentState.data.length,
             limit: 20,
           }}
-          onLoadMore={() => {}}
+          onLoadMore={handleLoadMore}
           onRefresh={() => loadData(activeTab)}
           loading={currentState.loading && currentState.data.length === 0}
           ListHeaderComponent={renderHeader()}

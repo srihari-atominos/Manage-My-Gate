@@ -188,7 +188,7 @@ export const useQuickActions = () => {
     return (ALL_AVAILABLE_FEATURES as FeatureItem[]).filter(item => isFeatureAllowedForUser(item, user));
   }, [featureCatalog, user]);
 
-  // Role-filtered active quick action IDs (max 5)
+  // Role-filtered active quick action IDs (strictly permitted, max 6)
   const effectiveQuickActionIds = useMemo<string[]>(() => {
     const defaultIds = getDefaultQuickActionsForUser(user);
     const hasCustomized = Array.isArray(activeQuickActions) && activeQuickActions.length > 0;
@@ -199,9 +199,9 @@ export const useQuickActions = () => {
       return item ? isFeatureAllowedForUser(item, user) : false;
     });
 
-    // If user explicitly configured their quick actions, strictly respect their choice (up to 5)
-    if (hasCustomized) {
-      return allowedIds.slice(0, 5);
+    // If user explicitly configured their quick actions or has allowed candidate actions, take up to 6
+    if (allowedIds.length > 0) {
+      return allowedIds.slice(0, 6);
     }
 
     // Otherwise, for fresh uncustomized defaults:
@@ -211,14 +211,15 @@ export const useQuickActions = () => {
     });
 
     if (permittedDefaults.length > 0) {
-      return permittedDefaults.slice(0, 5);
+      return permittedDefaults.slice(0, 6);
     }
 
     const allPermitted = allFeaturesList.map((item) => item.id);
-    return Array.from(new Set(allPermitted)).slice(0, 5);
+    return Array.from(new Set(allPermitted)).slice(0, 6);
   }, [activeQuickActions, user, allFeaturesList]);
 
-  // Equipped active quick action items (slots 1 through 5)
+
+  // Equipped active quick action items (slots 1 through 6)
   const equippedFeatures = useMemo<FeatureItem[]>(() => {
     const itemMap = new Map<string, FeatureItem>();
     allFeaturesList.forEach((item) => itemMap.set(item.id, item));
@@ -231,8 +232,9 @@ export const useQuickActions = () => {
     return effectiveQuickActionIds
       .map((id: string) => itemMap.get(id))
       .filter((item: FeatureItem | undefined): item is FeatureItem => Boolean(item && isFeatureAllowedForUser(item!, user)))
-      .slice(0, 5);
+      .slice(0, 6);
   }, [effectiveQuickActionIds, allFeaturesList, user]);
+
 
   return {
     activeQuickActions: effectiveQuickActionIds,

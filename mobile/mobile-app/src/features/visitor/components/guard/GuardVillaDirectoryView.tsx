@@ -11,7 +11,7 @@ import { Villa } from '@/src/features/villa/store/villaSlice';
 import { Phone, Search, Building2, User, Home } from 'lucide-react-native';
 
 export const GuardVillaDirectoryView: React.FC = () => {
-  const { villas, loading, fetchVillas } = useVilla();
+  const { villas, pagination, loading, fetchVillas } = useVilla();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'Occupied' | 'Vacant'>('ALL');
   const [refreshing, setRefreshing] = useState(false);
@@ -25,6 +25,12 @@ export const GuardVillaDirectoryView: React.FC = () => {
     await fetchVillas({ limit: 100 });
     setRefreshing(false);
   }, [fetchVillas]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (pagination && pagination.currentPage < pagination.totalPages) {
+      await fetchVillas({ page: pagination.currentPage + 1, limit: pagination.rowsPerPage || 50 });
+    }
+  }, [pagination, fetchVillas]);
 
   const filteredVillas = useMemo(() => {
     if (!Array.isArray(villas)) return [];
@@ -102,12 +108,12 @@ export const GuardVillaDirectoryView: React.FC = () => {
       <PaginatedList<Villa>
         data={filteredVillas}
         pagination={{
-          currentPage: 1,
-          totalPages: 1,
-          totalRecords: filteredVillas.length,
-          limit: 100,
+          currentPage: pagination.currentPage,
+          totalPages: pagination.totalPages,
+          totalRecords: pagination.totalRecords || filteredVillas.length,
+          limit: pagination.rowsPerPage || 100,
         }}
-        onLoadMore={() => {}}
+        onLoadMore={handleLoadMore}
         onRefresh={handleRefresh}
         refreshing={refreshing}
         loading={loading && !refreshing && filteredVillas.length === 0}

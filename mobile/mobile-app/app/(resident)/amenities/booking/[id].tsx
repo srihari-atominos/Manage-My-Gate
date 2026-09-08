@@ -56,7 +56,16 @@ export default function AmenitySlotWizardScreen() {
       loading={loading && !currentAmenity}
       error={error && !isOCCError ? error : null}
     >
-      <ScrollView className="flex-1 px-4 pt-2" contentContainerClassName="pb-6">
+      <ScrollView
+        className="flex-1 px-4 pt-2"
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        scrollEventThrottle={16}
+        alwaysBounceVertical={true}
+        bounces={true}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 110 }}
+      >
         {/* OCC Conflict Alert Banner */}
         {isOCCError ? (
           <View className="mb-4 bg-amber-500/10 border border-amber-500/40 p-4 rounded-2xl">
@@ -147,7 +156,7 @@ export default function AmenitySlotWizardScreen() {
         {/* Guests Count Selector */}
         {currentAmenity?.pricing?.pricingType !== 'daily' ? (
           <View className="bg-card p-4 rounded-2xl border border-border my-3 flex-row items-center justify-between">
-            <View>
+            <View className="flex-1 me-3">
               <Text className="font-semibold text-sm text-foreground">Guests Count</Text>
               <Text variant="muted" className="text-xs text-muted-foreground mt-0.5">
                 Number of attendees for this slot

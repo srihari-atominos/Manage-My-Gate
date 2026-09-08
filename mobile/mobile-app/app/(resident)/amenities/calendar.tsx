@@ -25,6 +25,7 @@ export default function ResidentAmenityCalendarScreen() {
     currentAmenity,
     setSelectedAmenityId,
     handleRefresh,
+    handleLoadMore,
     navigateDate,
     setToday,
     handleDateChange,
@@ -117,7 +118,7 @@ export default function ResidentAmenityCalendarScreen() {
             totalRecords: slots.length,
             limit: 50,
           }}
-          onLoadMore={() => {}}
+          onLoadMore={handleLoadMore}
           onRefresh={handleRefresh}
           loading={slotsLoading && slots.length === 0}
           ListHeaderComponent={renderHeader()}

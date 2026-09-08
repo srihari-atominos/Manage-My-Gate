@@ -1,5 +1,15 @@
 import React from 'react';
-import { View, Modal, TouchableOpacity, Pressable, ScrollView, Dimensions } from 'react-native';
+import {
+  View,
+  Modal,
+  TouchableOpacity,
+  Pressable,
+  ScrollView,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+} from 'react-native';
 import { Text } from '@/components/ui/text';
 import { X } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
@@ -37,18 +47,26 @@ function BottomSheet({
   const sheetMaxHeight = Math.round(screenHeight * 0.88);
   const scrollMaxHeight = sheetMaxHeight - 65;
 
+  const handleClose = () => {
+    Keyboard.dismiss();
+    onClose();
+  };
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
-      <View className="flex-1 justify-end">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1 justify-end"
+      >
         {/* Backdrop */}
         <Pressable 
           className="absolute inset-0 bg-black/60" 
-          onPress={onClose} 
+          onPress={handleClose} 
         />
         
         {/* Content Box */}
@@ -64,7 +82,7 @@ function BottomSheet({
             <View className={bottomSheetHeaderVariants()}>
               <Text className={bottomSheetTitleVariants()}>{title}</Text>
               <TouchableOpacity
-                onPress={onClose}
+                onPress={handleClose}
                 activeOpacity={0.7}
                 className="p-1.5 rounded-full bg-secondary border border-border/60"
               >
@@ -82,11 +100,12 @@ function BottomSheet({
             alwaysBounceVertical={false}
             nestedScrollEnabled={true}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
           >
             {children}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -128,8 +128,12 @@ export default function AllFeaturesScreen() {
         </TouchableOpacity>
       }
     >
-      <ScrollView className="flex-1 px-4 pt-3" showsVerticalScrollIndicator={false}>
-        <View className="gap-4 pb-12 max-w-md mx-auto w-full">
+      <ScrollView
+        className="flex-1 px-4 pt-3"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        <View className="gap-4 pb-8 max-w-md mx-auto w-full">
           {/* Search All Features Bar */}
           <View className="flex-row items-center bg-card border border-border rounded-2xl px-3.5 py-3 shadow-xs">
             <Search size={18} color="#172B70" className="me-2.5 shrink-0" />

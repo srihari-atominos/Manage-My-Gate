@@ -176,7 +176,7 @@ export function ComplaintDashboardScreen() {
 
         <ScrollView
           className="flex-1 px-4 pt-3"
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: 110 }}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadData} tintColor="#6366f1" />}
         >
           {/* Master Search Bar */}

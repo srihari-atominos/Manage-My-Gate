@@ -51,7 +51,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
     return getDefaultQuickActionsForUser(user);
   }, [user]);
 
-  // Sanitize incoming IDs to ensure only valid current catalog items allowed for this user are retained (max 5)
+  // Sanitize incoming IDs to ensure only valid current catalog items allowed for this user are retained (max 6)
   const sanitizedActiveIds = useMemo(() => {
     if (!activeFeatureIds || activeFeatureIds.length === 0) {
       return defaultRoleQuickActions;
@@ -59,7 +59,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
     const valid = activeFeatureIds.filter((id) => {
       const item = ALL_AVAILABLE_FEATURES.find((f) => f.id === id);
       return item && isFeatureAllowedForUser(item, user);
-    }).slice(0, 5);
+    }).slice(0, 6);
     return valid.length > 0 ? valid : defaultRoleQuickActions;
   }, [activeFeatureIds, defaultRoleQuickActions, user]);
 
@@ -77,7 +77,7 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   const toggleSelect = (id: string) => {
     if (selectedIds.includes(id)) {
       setSelectedIds((prev) => prev.filter((item) => item !== id));
-    } else if (selectedIds.length < 5) {
+    } else if (selectedIds.length < 6) {
       setSelectedIds((prev) => [...prev, id]);
     } else {
       // If already at 5, replace the last item with the newly chosen one so customization is frictionless
@@ -87,19 +87,20 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   };
 
   const handleSave = () => {
-    if (onSave) onSave(selectedIds.slice(0, 5));
+    if (onSave) onSave(selectedIds.slice(0, 6));
     onClose();
   };
 
-  // Active selected items (up to 5, strictly permitted)
+  // Active selected items (up to 6, strictly permitted)
   const activeItems = useMemo(() => {
     return selectedIds
       .map((id) => ALL_AVAILABLE_FEATURES.find((f) => f.id === id))
       .filter((item): item is typeof ALL_AVAILABLE_FEATURES[0] =>
         Boolean(item && isFeatureAllowedForUser(item, user))
       )
-      .slice(0, 5);
+      .slice(0, 6);
   }, [selectedIds, user]);
+
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

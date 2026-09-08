@@ -25,12 +25,13 @@ export const ScrollContainer = ({
       contentContainerStyle={[
         { paddingBottom: withBottomInset ? Math.max(insets.bottom, 24) : 0 },
       ]}
+      contentContainerClassName={cn('p-4', contentClassName)}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       {...props}
     >
-      <ScrollView className={cn('p-4', contentClassName)}>
-        {children}
-      </ScrollView>
+      {children}
     </ScrollView>
   );
 };

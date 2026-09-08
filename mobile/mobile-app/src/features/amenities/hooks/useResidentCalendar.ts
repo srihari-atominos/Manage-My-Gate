@@ -124,6 +124,7 @@ export function useResidentCalendar() {
     setSelectedAmenityId,
     setSelectedSlot,
     handleRefresh,
+    handleLoadMore: handleRefresh,
     navigateDate,
     setToday,
     handleDateChange,

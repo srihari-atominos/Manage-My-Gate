@@ -33,6 +33,7 @@
     "clsx": "^2.1.1",
     "dijkstrajs": "^1.0.1",
     "expo": "~54.0.0",
+    "expo-asset": "~12.0.13",
     "expo-auth-session": "~7.0.11",
     "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.14",

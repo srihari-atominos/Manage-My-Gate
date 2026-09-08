@@ -7,10 +7,11 @@ import { WalletState } from '../types';
 
 export const fetchWalletBalance = createAsyncThunk(
   'wallet/fetchWalletBalance',
-  async (_, { rejectWithValue }) => {
+  async (params: { page?: number; limit?: number } | void = {}, { rejectWithValue }) => {
     try {
-      const data = await billingService.getWalletBalance();
-      return data;
+      const queryParams = params || {};
+      const data = await billingService.getWalletBalance(queryParams);
+      return { ...data, requestedParams: queryParams };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || error.message || 'Failed to fetch wallet balance'
@@ -69,6 +70,12 @@ const initialState: WalletState = {
   transactionHistory: [],
   transactions: [],
   isPaymentGatewayConfigured: false,
+  pagination: {
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    limit: 10,
+  },
   isLoading: false,
   loading: false,
   error: null,
@@ -109,10 +116,29 @@ export const walletSlice = createSlice({
               : state.balance;
           const history = action.payload.transactionHistory || action.payload.transactions || state.transactionHistory || [];
           state.activePasses = action.payload.activePasses || state.activePasses;
-          state.transactionHistory = history;
-          state.transactions = history;
+          const newHistory = action.payload.transactionHistory || action.payload.transactions || [];
+          const isAppend = (action.payload.requestedParams?.page || 1) > 1;
+
+          if (isAppend) {
+            state.transactionHistory = [...(state.transactionHistory || []), ...newHistory];
+          } else {
+            state.transactionHistory = newHistory.length > 0 ? newHistory : history;
+          }
+          state.transactions = state.transactionHistory;
+
           if (action.payload.isPaymentGatewayConfigured !== undefined) {
             state.isPaymentGatewayConfigured = action.payload.isPaymentGatewayConfigured;
+          }
+
+          if (action.payload.pagination) {
+            state.pagination = action.payload.pagination;
+          } else {
+            state.pagination = {
+              currentPage: action.payload.requestedParams?.page || 1,
+              totalPages: action.payload.totalPages || 1,
+              totalRecords: action.payload.totalRecords || (state.transactionHistory || []).length,
+              limit: action.payload.requestedParams?.limit || 10,
+            };
           }
         }
       })

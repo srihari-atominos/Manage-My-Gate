@@ -25,6 +25,8 @@ export default function AdminAmenityMasterScreen() {
   const {
     amenities,
     filteredAmenities,
+    pagination,
+    handleLoadMore,
     search,
     setSearch,
     selectedCategory,
@@ -141,8 +143,8 @@ export default function AdminAmenityMasterScreen() {
               onDelete={(a) => setDeleteTarget(a)}
             />
           )}
-          pagination={{ currentPage: 1, totalPages: 1, totalRecords: filteredAmenities.length, limit: 50 }}
-          onLoadMore={() => {}}
+          pagination={pagination || { currentPage: 1, totalPages: 1, totalRecords: filteredAmenities.length, limit: 50 }}
+          onLoadMore={handleLoadMore}
           onRefresh={loadData}
           loading={loading && amenities.length === 0}
           ListHeaderComponent={renderHeader()}

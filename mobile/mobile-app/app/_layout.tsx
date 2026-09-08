@@ -18,7 +18,6 @@ import {
   HankenGrotesk_600SemiBold,
   HankenGrotesk_700Bold,
 } from '@expo-google-fonts/hanken-grotesk';
-import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import storage from '../src/utils/storage';
 import i18n from '../src/utils/i18n';
 import * as SplashScreen from 'expo-splash-screen';
@@ -189,16 +188,16 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <Provider store={store}>
-          <BottomSheetModalProvider>
-            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <View className={colorScheme === 'dark' ? 'dark flex-1 bg-background' : 'flex-1 bg-background'}>
+          <Provider store={store}>
+            <BottomSheetModalProvider>
               <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
               <Stack screenOptions={{ headerShown: false }} />
               <AuthRouteGuard />
               <PortalHost />
-            </ThemeProvider>
-          </BottomSheetModalProvider>
-        </Provider>
+            </BottomSheetModalProvider>
+          </Provider>
+        </View>
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );

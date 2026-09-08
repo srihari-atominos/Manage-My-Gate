@@ -99,7 +99,9 @@
           "cameraPermission": "ManageMyGate requires camera access to scan visitor QR passes and verify amenity tickets."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-sharing",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

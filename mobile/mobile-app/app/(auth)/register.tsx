@@ -14,7 +14,7 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
-import { MicrosoftSignInButton } from '../../src/features/auth/components/MicrosoftSignInButton';
+import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 import { sessionStore } from '@/src/utils/storage';
 
@@ -323,7 +323,7 @@ export default function RegisterScreen() {
                   <GoogleSignInButton />
                 </View>
                 <View className="flex-1">
-                  <MicrosoftSignInButton />
+                  <AppleSignInButton />
                 </View>
               </View>
 

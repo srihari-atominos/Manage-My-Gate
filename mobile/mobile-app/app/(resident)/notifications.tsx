@@ -220,40 +220,7 @@ export default function NotificationsScreen() {
         ) : null
       }
     >
-      <View className="flex-1 px-4 pt-3">
-        {/* Filter Tabs (All / Unread) */}
-        <View className="flex-row items-center gap-2 mb-3 pb-1">
-          <TouchableOpacity
-            onPress={() => setActiveTab('all')}
-            className={`px-4 py-1.5 rounded-full border ${
-              getStatusTabStyle('all', activeTab === 'all').containerClass
-            }`}
-          >
-            <Text
-              className={`text-xs font-bold ${
-                getStatusTabStyle('all', activeTab === 'all').textClass
-              }`}
-            >
-              {t('all', 'All')} ({items.length})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveTab('unread')}
-            className={`px-4 py-1.5 rounded-full border ${
-              getStatusTabStyle('warning', activeTab === 'unread').containerClass
-            }`}
-          >
-            <Text
-              className={`text-xs font-bold ${
-                getStatusTabStyle('warning', activeTab === 'unread').textClass
-              }`}
-            >
-              {t('unread', 'Unread')} ({unreadCount})
-            </Text>
-          </TouchableOpacity>
-        </View>
-
+      <View className="flex-1 bg-background">
         {/* Full-Page Paginated List with Infinity Scroll & Pull to Refresh */}
         <PaginatedList<NotificationItemData>
           data={filteredItems}
@@ -268,6 +235,41 @@ export default function NotificationsScreen() {
           onRefresh={handleRefresh}
           loading={loading}
           refreshing={refreshing}
+          ListHeaderComponent={
+            <View className="flex-row items-center gap-2 pt-3 mb-3 pb-1">
+              <TouchableOpacity
+                onPress={() => setActiveTab('all')}
+                className={`px-4 py-1.5 rounded-full border ${
+                  getStatusTabStyle('all', activeTab === 'all').containerClass
+                }`}
+              >
+                <Text
+                  className={`text-xs font-bold ${
+                    getStatusTabStyle('all', activeTab === 'all').textClass
+                  }`}
+                >
+                  {t('all', 'All')} ({items.length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setActiveTab('unread')}
+                className={`px-4 py-1.5 rounded-full border ${
+                  getStatusTabStyle('warning', activeTab === 'unread').containerClass
+                }`}
+              >
+                <Text
+                  className={`text-xs font-bold ${
+                    getStatusTabStyle('warning', activeTab === 'unread').textClass
+                  }`}
+                >
+                  {t('unread', 'Unread')} ({unreadCount})
+                </Text>
+              </TouchableOpacity>
+            </View>
+          }
+          contentContainerClassName="px-4 pb-28"
+          contentContainerStyle={{ paddingBottom: 110 }}
           emptyIcon="Bell"
           emptyTitle={
             activeTab === 'unread'
@@ -279,7 +281,6 @@ export default function NotificationsScreen() {
               ? t('caught_up_subtitle', 'You have caught up with all unread notifications!')
               : t('no_notifications_desc', 'Gate alerts, booking updates and broadcasts will appear here.')
           }
-          contentContainerClassName="pb-16"
         />
       </View>
     </ScreenShell>

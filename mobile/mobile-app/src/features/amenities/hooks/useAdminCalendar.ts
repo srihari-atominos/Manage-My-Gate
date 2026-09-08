@@ -41,7 +41,7 @@ export function useAdminCalendar() {
   const [submittingManual, setSubmittingManual] = useState<boolean>(false);
   const [submittingCancel, setSubmittingCancel] = useState<boolean>(false);
 
-  const { adminBookings, loading, error } = useSelector((state: RootState) => state.amenityBookings);
+  const { adminBookings, pagination, loading, error } = useSelector((state: RootState) => state.amenityBookings);
   const { amenities } = useSelector((state: RootState) => state.amenities);
 
   // Date Bounds Calculation for API requests
@@ -206,10 +206,39 @@ export function useAdminCalendar() {
     }
   };
 
+  const handleLoadMore = useCallback(() => {
+    if (pagination && pagination.currentPage < pagination.totalPages) {
+      dispatch(
+        fetchAdminCalendarThunk({
+          date: selectedDate,
+          startDate: dateBounds.startDate,
+          endDate: dateBounds.endDate,
+          amenityId: selectedAmenityId,
+          status: statusFilter,
+          search: searchQuery,
+          paymentStatus: paymentStatusFilter,
+          page: pagination.currentPage + 1,
+        } as any)
+      );
+    }
+  }, [
+    dispatch,
+    pagination,
+    selectedDate,
+    dateBounds.startDate,
+    dateBounds.endDate,
+    selectedAmenityId,
+    statusFilter,
+    searchQuery,
+    paymentStatusFilter,
+  ]);
+
   return {
     adminBookings,
     filteredBookings,
     amenities,
+    pagination,
+    handleLoadMore,
     viewMode,
     setViewMode,
     currentDate,

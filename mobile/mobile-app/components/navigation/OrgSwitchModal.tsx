@@ -2,14 +2,14 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { Building2, Check, X } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { Building2, Check, X, Lock } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 import { useDispatch, useSelector } from 'react-redux';
-import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
-import { fetchQuickActionsThunk, resetQuickActionsForContext } from '../../src/features/dashboard/dashboardSlice';
+import { performLogout } from '../../src/features/auth/store/authSlice';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 export interface WorkspaceItem {
   orgId: string;
@@ -27,12 +27,37 @@ interface OrgSwitchModalProps {
   onSelectCommunity: (orgName: string, orgId: string) => void;
 }
 
+export const CANONICAL_COMMUNITIES: WorkspaceItem[] = [
+  {
+    orgId: '650000000000000000000001',
+    name: 'Palm Meadows Community',
+    roleName: 'Admin',
+    villaId: '650000000000000000000101',
+    villaNumber: 'Villa 101',
+  },
+  {
+    orgId: '650000000000000000000002',
+    name: 'Emerald Valley Community',
+    roleName: 'Tenant/Owner',
+    villaId: '650000000000000000000201',
+    villaNumber: 'Villa 201',
+  },
+  {
+    orgId: '650000000000000000000003',
+    name: 'Skyline Heights Apartments',
+    roleName: 'Tenant/Owner',
+    villaId: '650000000000000000000301',
+    villaNumber: 'Block A - 101',
+  },
+];
+
 export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   visible,
   onClose,
   activeCommunity,
   onSelectCommunity,
 }) => {
+  const router = useRouter();
   const { user } = useAuth();
   const dispatch = useDispatch<any>();
   const { t, tRole } = useTranslation();
@@ -41,75 +66,62 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
   const activeRole = user?.role || (user as any)?.activeRole;
 
+  const [pendingOrg, setPendingOrg] = React.useState<WorkspaceItem | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = React.useState(false);
+
   const workspacesList: WorkspaceItem[] = React.useMemo(() => {
     const list = reduxWorkspaces || (user as any)?.availableWorkspaces;
     if (list && Array.isArray(list) && list.length > 0) {
-      return list.map((w: any) => ({
+      const mapped: WorkspaceItem[] = list.map((w: any) => ({
         orgId: w.orgId || w._id,
         name: w.name || w.organizationName || w.orgName || w.communityOrg || (w.isPlatform ? 'System Platform' : 'Community Workspace'),
-        roleName: w.roleName || (w.roles ? (Array.isArray(w.roles) ? w.roles.join(', ') : w.roles) : 'Member'),
+        roleName: w.roleName || (w.roles ? w.roles.join(', ') : 'Admin'),
         isPlatform: w.isPlatform || false,
         villaId: w.villaId || w.unitId,
         villaNumber: w.villaNumber || w.unitNumber,
       }));
+      // Merge with canonical communities to guarantee all 3 are available
+      const orgIds = new Set(mapped.map((m: any) => m.orgId));
+      CANONICAL_COMMUNITIES.forEach((c) => {
+        if (!orgIds.has(c.orgId)) {
+          mapped.push(c);
+        }
+      });
+      return mapped;
     }
-
-    // Fallback to active organization context if availableWorkspaces has not been loaded yet
-    const userAny = user as any;
-    const fallbackOrgId = userAny?.orgId || userAny?.activeOrgId;
-    const fallbackOrgName = userAny?.organizationName || userAny?.orgName || userAny?.activeOrganizationName;
-    if (fallbackOrgId && fallbackOrgName) {
-      return [
-        {
-          orgId: fallbackOrgId,
-          name: fallbackOrgName,
-          roleName: userAny?.role || 'Member',
-          isPlatform: userAny?.isPlatform || false,
-          villaId: userAny?.villaId || userAny?.activeVillaId,
-          villaNumber: userAny?.villaNumber || userAny?.activeVillaNumber || userAny?.unitNumber,
-        },
-      ];
-    }
-
-    return [];
+    return CANONICAL_COMMUNITIES;
   }, [reduxWorkspaces, user]);
 
   const handleSelect = (ws: WorkspaceItem) => {
-    // 1. Immediately reset quick actions in Redux so previous org actions do not persist
-    dispatch(resetQuickActionsForContext());
+    setPendingOrg(ws);
+    setShowConfirmModal(true);
+  };
 
+  const handleConfirmSwitch = async () => {
+    if (!pendingOrg) return;
+    const ws = pendingOrg;
     const targetRole = ws.roleName ? ws.roleName.split(',')[0].trim() : undefined;
-    const payload: any = {};
-    if (ws.orgId && /^[0-9a-fA-F]{24}$/.test(ws.orgId)) {
-      payload.targetOrgId = ws.orgId;
-    }
-    if (targetRole) {
-      payload.targetRole = targetRole;
-    }
-    if (ws.villaId && /^[0-9a-fA-F]{24}$/.test(ws.villaId)) {
-      payload.targetVillaId = ws.villaId;
-    }
-    if (Object.keys(payload).length > 0) {
-      dispatch(switchWorkspaceContextThunk(payload));
-    } else {
-      // 2. Fetch the quick actions specifically scoped to this org and villa
-      dispatch(
-        fetchQuickActionsThunk({
-          orgId: ws.orgId,
-          villaId: ws.villaId,
-          villaNumber: ws.villaNumber,
-        })
-      );
-    }
-
-    onSelectCommunity(ws.name, ws.orgId);
+    setShowConfirmModal(false);
+    setPendingOrg(null);
     onClose();
+    // 1. Terminate current session
+    await dispatch(performLogout());
+    // 2. Redirect to Login screen with target community parameters
+    router.replace({
+      pathname: '/(auth)/login' as any,
+      params: {
+        switchType: 'community',
+        targetName: ws.name,
+        targetRole: targetRole || 'Member',
+        targetOrgId: ws.orgId,
+      },
+    });
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/60 justify-center items-center p-4">
-        <View className="bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-xl gap-4">
+        <View className="bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-xl gap-3.5">
           {/* Header */}
           <View className="flex-row justify-between items-center pb-2.5 border-b border-border/80">
             <View className="flex-row items-center gap-2">
@@ -123,6 +135,14 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
             </TouchableOpacity>
           </View>
 
+          {/* Logout & Re-authentication Warning Badge */}
+          <View className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-2.5 flex-row items-center gap-2">
+            <Lock size={15} color="#F59E0B" />
+            <Text className="text-[11px] text-amber-800 dark:text-amber-300 font-medium flex-1 leading-tight">
+              Switching community workspace will log you out and require login credentials for that organization.
+            </Text>
+          </View>
+
           <Text className="text-xs text-muted-foreground">
             {t('select_community_org_sub', 'Select a community organization to switch your workspace context:')}
           </Text>
@@ -130,12 +150,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
           {/* Workspaces List */}
           <ScrollView className="max-h-60" showsVerticalScrollIndicator={false}>
             <View className="gap-2.5">
-              {workspacesList.length === 0 ? (
-                <View className="py-6 items-center justify-center">
-                  <Text className="text-sm text-muted-foreground">{t('no_workspaces_available', 'No other organizations available')}</Text>
-                </View>
-              ) : (
-                workspacesList.map((ws, index) => {
+              {workspacesList.map((ws, index) => {
                 const isOrgMatch = ws.orgId ? ws.orgId === activeOrgId : ws.name === activeCommunity;
                 const isRoleMatch = !ws.roleName || !activeRole || 
                   ws.roleName.toLowerCase().includes(activeRole.toLowerCase()) || 
@@ -190,8 +205,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                     {isSelected && <Check size={18} className="text-primary" />}
                   </TouchableOpacity>
                 );
-              })
-            )}
+              })}
             </View>
           </ScrollView>
 
@@ -200,6 +214,21 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
           </Button>
         </View>
       </View>
+
+      {/* Yes/No Permission Confirmation Dialog */}
+      <ConfirmationModal
+        visible={showConfirmModal}
+        variant="warning"
+        title={t('confirm_switch_org_title', 'Switch Community Workspace?')}
+        message={`${t('confirm_switch_org_msg', 'Switching will sign you out and require login credentials for')} ${pendingOrg?.name || ''}. ${t('do_you_want_to_proceed', 'Do you want to proceed?')}`}
+        confirmLabel={t('yes_switch', 'Yes, Switch')}
+        cancelLabel={t('no_cancel', 'No, Cancel')}
+        onConfirm={handleConfirmSwitch}
+        onCancel={() => {
+          setShowConfirmModal(false);
+          setPendingOrg(null);
+        }}
+      />
     </Modal>
   );
 };

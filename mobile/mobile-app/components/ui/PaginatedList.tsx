@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import * as LucideIcons from 'lucide-react-native';
 import { Inbox } from 'lucide-react-native';
 import * as React from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, View, StyleProp, ViewStyle } from 'react-native';
 
 export interface PaginatedListProps<T> {
   data: T[];
@@ -21,6 +21,7 @@ export interface PaginatedListProps<T> {
   ListHeaderComponent?: React.ReactNode;
   keyExtractor?: (item: T, index: number) => string;
   contentContainerClassName?: string;
+  contentContainerStyle?: StyleProp<ViewStyle>;
 }
 
 const getEmptyIconComponent = (iconName?: string): LucideIcons.LucideIcon => {
@@ -47,20 +48,23 @@ export function PaginatedList<T>({
   ListHeaderComponent,
   keyExtractor,
   contentContainerClassName,
+  contentContainerStyle,
 }: PaginatedListProps<T>) {
   const onEndReachedCalledDuringMomentum = React.useRef(false);
 
+  const currentPage = pagination?.currentPage ?? (pagination as any)?.page ?? 1;
+  const totalPages = pagination?.totalPages ?? 1;
+
   React.useEffect(() => {
-    if (!loading) {
-      onEndReachedCalledDuringMomentum.current = false;
-    }
-  }, [loading, pagination.currentPage]);
+    onEndReachedCalledDuringMomentum.current = false;
+  }, [loading, data.length, currentPage]);
 
   const handleEndReached = () => {
     if (
       !onEndReachedCalledDuringMomentum.current &&
       !loading &&
-      pagination.currentPage < pagination.totalPages
+      !refreshing &&
+      currentPage < totalPages
     ) {
       onEndReachedCalledDuringMomentum.current = true;
       onLoadMore();
@@ -68,6 +72,10 @@ export function PaginatedList<T>({
   };
 
   const handleMomentumScrollBegin = () => {
+    onEndReachedCalledDuringMomentum.current = false;
+  };
+
+  const handleScrollBeginDrag = () => {
     onEndReachedCalledDuringMomentum.current = false;
   };
 
@@ -105,10 +113,10 @@ export function PaginatedList<T>({
   };
 
   const renderFooter = () => {
-    if (loading && data.length > 0 && pagination.currentPage < pagination.totalPages) {
+    if (loading && data.length > 0 && currentPage < totalPages) {
       return (
         <View className="py-4 items-center justify-center">
-          <ActivityIndicator size="small" className="text-primary" />
+          <ActivityIndicator size="small" color="#FF6A00" />
         </View>
       );
     }
@@ -118,7 +126,7 @@ export function PaginatedList<T>({
   const renderEmptyOrSkeleton = () => {
     if (loading && data.length === 0) {
       return (
-        <View className="p-4">
+        <View className="p-4 flex-1 justify-center">
           <Skeleton variant="listItem" count={5} />
         </View>
       );
@@ -127,7 +135,7 @@ export function PaginatedList<T>({
     if (!loading && data.length === 0) {
       const IconComponent = getEmptyIconComponent(emptyIcon);
       return (
-        <View className="flex-1 justify-center items-center p-6">
+        <View className="flex-1 justify-center items-center p-6 min-h-[300px]">
           <Icon as={IconComponent} size={48} className="text-muted-foreground/60" />
           <Text className="text-center mt-4 text-muted-foreground font-sans font-bold text-[18px]">
             {emptyTitle}
@@ -147,18 +155,36 @@ export function PaginatedList<T>({
   return (
     <FlatList
       className="flex-1"
+      style={{ flex: 1 }}
       data={data}
       renderItem={({ item, index }) => renderItemProp(item, index) as React.ReactElement | null}
       keyExtractor={keyExtractor || defaultKeyExtractor}
       onEndReached={handleEndReached}
-      onEndReachedThreshold={0.5}
+      onEndReachedThreshold={0.4}
       onMomentumScrollBegin={handleMomentumScrollBegin}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      onScrollBeginDrag={handleScrollBeginDrag}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      scrollEventThrottle={16}
+      alwaysBounceVertical={true}
+      bounces={true}
+      overScrollMode="always"
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled={true}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#FF6A00"
+          colors={['#FF6A00']}
+        />
+      }
       ListHeaderComponent={ListHeaderComponent as React.ReactElement | undefined}
       ListFooterComponent={renderFooter}
       ListEmptyComponent={renderEmptyOrSkeleton}
+      contentContainerStyle={[{ flexGrow: 1 }, contentContainerStyle]}
       contentContainerClassName={cn(
-        data.length === 0 && 'flex-grow justify-center',
+        data.length === 0 && 'justify-center',
         contentContainerClassName
       )}
     />

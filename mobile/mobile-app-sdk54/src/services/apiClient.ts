@@ -11,9 +11,22 @@ const generateUUID = (): string => {
 };
 
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 export const getApiBaseUrl = () => {
-  let url = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:5002/api/v1' : 'http://localhost:5002/api/v1');
+  let url = process.env.EXPO_PUBLIC_API_URL;
+  if (!url) {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        url = `http://${ip}:5002/api/v1`;
+      }
+    }
+  }
+  if (!url) {
+    url = Platform.OS === 'android' ? 'http://10.0.2.2:5002/api/v1' : 'http://localhost:5002/api/v1';
+  }
   if (Platform.OS === 'android' && url.includes('localhost')) {
     url = url.replace('localhost', '10.0.2.2');
   }
@@ -26,6 +39,8 @@ export const getApiBaseUrl = () => {
   }
   return url;
 };
+
+export const getDefaultBaseUrl = getApiBaseUrl;
 
 export const getSocketBaseUrl = () => {
   let socketUrl =

@@ -119,6 +119,7 @@ export default function DiscoverAmenitiesScreen() {
           emptyTitle="No Amenities Found"
           emptySubtitle="Try adjusting your search query or category filter."
           contentContainerClassName="px-4 pt-3 pb-28"
+          contentContainerStyle={{ paddingBottom: 110 }}
         />
       </View>
 

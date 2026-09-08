@@ -57,13 +57,23 @@ export const normalizeUser = (user: any): User | null => {
     (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.villaId)) ||
     '';
 
-  const orgName = user.organizationName || user.orgName || user.activeOrganizationName || user.organization?.name || '';
+  const orgName =
+    user.organizationName ||
+    user.orgName ||
+    user.activeOrganizationName ||
+    user.organization?.name ||
+    (Array.isArray(user.availableWorkspaces) && user.availableWorkspaces[0]?.name) ||
+    '';
+
   const vNum =
     user.villaNumber ||
     user.activeVillaNumber ||
     user.unitNumber ||
     user.villa?.unitNumber ||
     user.villa?.villaNumber ||
+    user.activeUnitNumber ||
+    user.apartmentNumber ||
+    user.flatNumber ||
     (Array.isArray(user.accessibleUnits) && (user.accessibleUnits[0]?.villaNumber || user.accessibleUnits[0]?.unitNumber)) ||
     (Array.isArray(user.availableWorkspaces) && (user.availableWorkspaces[0]?.villaNumber || user.availableWorkspaces[0]?.unitNumber)) ||
     '';
@@ -732,6 +742,62 @@ const authSlice = createSlice({
         storage.setItem('user', JSON.stringify(updated)).catch(() => {});
       }
     },
+    setActiveVillaUnit: (
+      state,
+      action: PayloadAction<{ villaNumber: string; block?: string; villaId?: string }>
+    ) => {
+      if (state.user) {
+        const { villaNumber, block, villaId } = action.payload;
+        const updated = {
+          ...state.user,
+          villaNumber,
+          activeVillaNumber: villaNumber,
+          unitNumber: villaNumber,
+          ...(block !== undefined ? { villaBlock: block, block } : {}),
+          ...(villaId !== undefined ? { activeVillaId: villaId, villaId } : {}),
+        };
+        state.user = normalizeUser(updated);
+        if (state.user) {
+          storage.setItem('user', JSON.stringify(state.user)).catch(() => {});
+        }
+      }
+    },
+    setActiveCommunityOrg: (
+      state,
+      action: PayloadAction<{ orgId?: string; orgName: string }>
+    ) => {
+      if (state.user) {
+        const { orgId, orgName } = action.payload;
+        const updated = {
+          ...state.user,
+          orgName,
+          organizationName: orgName,
+          activeOrganizationName: orgName,
+          ...(orgId ? { orgId, activeOrgId: orgId } : {}),
+        };
+        state.user = normalizeUser(updated);
+        if (state.user) {
+          storage.setItem('user', JSON.stringify(state.user)).catch(() => {});
+        }
+      }
+    },
+    setActiveRolePersona: (
+      state,
+      action: PayloadAction<{ role: string }>
+    ) => {
+      if (state.user) {
+        const { role } = action.payload;
+        const updated = {
+          ...state.user,
+          role,
+          activeRole: role,
+        };
+        state.user = normalizeUser(updated);
+        if (state.user) {
+          storage.setItem('user', JSON.stringify(state.user)).catch(() => {});
+        }
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -1104,5 +1170,8 @@ export const {
   updateTokenAndUser,
   updateUserProfile,
   setActiveUnitContext,
+  setActiveVillaUnit,
+  setActiveCommunityOrg,
+  setActiveRolePersona,
 } = authSlice.actions;
 export default authSlice.reducer;

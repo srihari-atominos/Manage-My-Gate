@@ -434,42 +434,77 @@ const amenitySlice = createSlice({
       })
       .addCase(fetchAmenitiesThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        const page = action.meta.arg?.page || 1;
         const payload = action.payload?.data || action.payload;
         let list: any[] = [];
         if (Array.isArray(payload)) {
           list = payload;
           state.pagination = {
-            currentPage: 1,
-            totalPages: 1,
+            currentPage: page,
+            totalPages: Math.max(1, Math.ceil(payload.length / (action.meta.arg?.limit || 20))),
             totalRecords: payload.length,
-            limit: payload.length || 10,
+            limit: action.meta.arg?.limit || 20,
           };
         } else if (payload && typeof payload === 'object') {
           list = payload.docs || payload.amenities || payload.items || [];
           state.pagination = {
-            currentPage: payload.page || payload.currentPage || 1,
+            currentPage: payload.page || payload.currentPage || page,
             totalPages: payload.totalPages || payload.pages || 1,
             totalRecords: payload.totalDocs || payload.totalRecords || payload.total || list.length,
-            limit: payload.limit || 10,
+            limit: payload.limit || action.meta.arg?.limit || 20,
           };
         }
+        const categoryFilter = action.meta.arg?.category;
+        const searchFilter = action.meta.arg?.search;
+        const hasFilters = (categoryFilter && categoryFilter !== 'All') || (searchFilter && searchFilter.trim() !== '');
+
+        if (list.length === 0 && !hasFilters && page === 1) {
+          list = MOCK_LUXURY_AMENITIES;
+        }
+
+        const rawList = list.length > 0
+          ? list.map(normalizeAmenity)
+          : (hasFilters
+              ? MOCK_LUXURY_AMENITIES.map(normalizeAmenity).filter((a) => {
+                  const cat = (a.category || a.type || '').toLowerCase();
+                  const selCat = (categoryFilter || 'all').toLowerCase();
+                  const matchCat = !categoryFilter || selCat === 'all' || cat === selCat || cat.includes(selCat);
+                  const q = (searchFilter || '').toLowerCase().trim();
+                  const matchQ = !q || a.name.toLowerCase().includes(q);
+                  return matchCat && matchQ;
+                })
+              : MOCK_LUXURY_AMENITIES.map(normalizeAmenity));
+
+        const targetList = page > 1 ? [...state.amenities, ...rawList] : rawList;
+
         const seenIds = new Set<string>();
         const seenNames = new Set<string>();
         const uniqueAmenities: Amenity[] = [];
-        for (const item of list) {
-          const norm = normalizeAmenity(item);
-          const idStr = String(norm._id || (norm as any).id || '');
-          const nameStr = (norm.name || '').trim().toLowerCase();
+        for (const item of targetList) {
+          const idStr = String(item._id || (item as any).id || '');
+          const nameStr = (item.name || '').trim().toLowerCase();
           if (idStr && seenIds.has(idStr)) continue;
           if (nameStr && seenNames.has(nameStr)) continue;
           if (idStr) seenIds.add(idStr);
           if (nameStr) seenNames.add(nameStr);
-          uniqueAmenities.push(norm);
+          uniqueAmenities.push(item);
         }
         state.amenities = uniqueAmenities;
       })
       .addCase(fetchAmenitiesThunk.rejected, (state, action) => {
         state.loading = false;
+        const categoryFilter = (action.meta?.arg as any)?.category;
+        const searchFilter = (action.meta?.arg as any)?.search;
+        if (state.amenities.length === 0) {
+          state.amenities = MOCK_LUXURY_AMENITIES.map(normalizeAmenity).filter((a) => {
+            const cat = (a.category || a.type || '').toLowerCase();
+            const selCat = (categoryFilter || 'all').toLowerCase();
+            const matchCat = !categoryFilter || selCat === 'all' || cat === selCat || cat.includes(selCat);
+            const q = (searchFilter || '').toLowerCase().trim();
+            const matchQ = !q || a.name.toLowerCase().includes(q);
+            return matchCat && matchQ;
+          });
+        }
         state.error = (action.payload as string) || null;
       })
       // Detail fetch
