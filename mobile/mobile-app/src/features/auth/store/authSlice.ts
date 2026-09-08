@@ -798,7 +798,6 @@ const authSlice = createSlice({
         if (state.user) {
           storage.setItem('user', JSON.stringify(state.user)).catch(() => {});
         }
->>>>>>> premium/UI/Mobile
       }
     },
   },

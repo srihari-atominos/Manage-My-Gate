@@ -47,9 +47,6 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
   const activeVillaId = (user as any)?.villaId;
 
-  const [pendingUnit, setPendingUnit] = React.useState<VillaUnit | null>(null);
-  const [showConfirmModal, setShowConfirmModal] = React.useState(false);
-
   const userUnits: VillaUnit[] = React.useMemo(() => {
     const userAny = user as any;
     const unitsMap = new Map<string, VillaUnit>();
@@ -252,21 +249,6 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
           </Button>
         </View>
       </View>
-
-      {/* Yes/No Permission Confirmation Dialog */}
-      <ConfirmationModal
-        visible={showConfirmModal}
-        variant="warning"
-        title={t('confirm_switch_unit_title', 'Switch Property Unit?')}
-        message={`${t('confirm_switch_unit_msg', 'Switching will sign you out and require login credentials for')} ${pendingUnit?.unitNumber || ''}. ${t('do_you_want_to_proceed', 'Do you want to proceed?')}`}
-        confirmLabel={t('yes_switch', 'Yes, Switch')}
-        cancelLabel={t('no_cancel', 'No, Cancel')}
-        onConfirm={handleConfirmSwitch}
-        onCancel={() => {
-          setShowConfirmModal(false);
-          setPendingUnit(null);
-        }}
-      />
     </Modal>
   );
 };

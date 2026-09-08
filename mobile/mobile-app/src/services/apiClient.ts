@@ -12,8 +12,6 @@ const generateUUID = (): string => {
   });
 };
 
-import { Platform } from 'react-native';
-
 export const getApiBaseUrl = () => {
   if (process.env.EXPO_PUBLIC_API_URL) {
     let url = process.env.EXPO_PUBLIC_API_URL;

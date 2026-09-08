@@ -463,7 +463,6 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
             isLastStep={isLastStep}
             loading={isSubmitting}
           />
-        </View>
       </KeyboardAvoidingView>
     </View>
   );

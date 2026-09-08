@@ -280,12 +280,16 @@ export function BillingLedgerScreen() {
                 />
               );
             }}
-          emptyIcon="Receipt"
-          emptyTitle="No Records Found"
-          emptySubtitle={emptySubtitle}
-          contentContainerClassName="px-4 py-2 pb-28"
-          contentContainerStyle={{ paddingBottom: 110 }}
-        />
+            pagination={pagination}
+            onLoadMore={handleLoadMore}
+            onRefresh={handleRefresh}
+            loading={loadingStates.fetchGrid}
+            emptyIcon="Receipt"
+            emptyTitle="No Records Found"
+            emptySubtitle={emptySubtitle}
+            contentContainerClassName="px-4 py-2 pb-28"
+            contentContainerStyle={{ paddingBottom: 110 }}
+          />
 
         {/* Advanced Filter Drawer */}
         <LedgerFilterDrawer

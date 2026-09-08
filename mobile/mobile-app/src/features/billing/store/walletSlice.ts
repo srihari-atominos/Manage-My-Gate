@@ -139,7 +139,6 @@ export const walletSlice = createSlice({
               limit: action.payload.requestedParams?.limit || 10,
             };
           }
-          }
         }
       })
       .addCase(fetchWalletBalance.rejected, (state, action) => {

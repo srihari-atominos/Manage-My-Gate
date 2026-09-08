@@ -115,22 +115,6 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
       })
     );
   };
-    onSelectCommunity(ws.name, ws.orgId);
-    onClose();
-
-    // 3. Dispatch backend workspace context sync in background without logout
-    try {
-      await dispatch(
-        switchWorkspaceContextThunk({
-          targetOrgId: ws.orgId,
-          targetRole: targetRole,
-          targetVillaId: ws.villaId,
-        })
-      );
-    } catch (e) {
-      console.warn('Background workspace context sync error:', e);
-    }
-  };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>

@@ -127,7 +127,6 @@ export default function DashboardScreen() {
         scrollEventThrottle={16}
         className="flex-1 px-4 pt-1"
         showsVerticalScrollIndicator={false}
-        {...scrollHandlerProps}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) + 110 }}
