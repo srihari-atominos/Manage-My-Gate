@@ -382,11 +382,117 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
 
   const bottomInset = Math.max(insets.bottom + 8, isIOS ? 20 : 16);
 
+  if (!isIOS) {
+    // Native Android Bottom Navigation Bar (Material 3 style, edge-to-edge docked)
+    const androidBarHeight = isCompact ? 52 : 62;
+    const androidBottomPad = Math.max(insets.bottom, 6);
+
+    return (
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          width: '100%',
+          zIndex: 50,
+        }}
+      >
+        <Animated.View
+          style={[
+            barAnimatedStyle,
+            {
+              width: '100%',
+              height: androidBarHeight + androidBottomPad,
+              paddingBottom: androidBottomPad,
+              backgroundColor: isDark ? '#15171E' : '#FFFFFF',
+              borderTopWidth: 1,
+              borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+              elevation: 12,
+              shadowColor: '#000000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: isDark ? 0.35 : 0.08,
+              shadowRadius: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-around',
+            },
+          ]}
+        >
+          {TAB_ITEMS.map((item) => {
+            const IconComponent = item.icon;
+            const isActive = selectedTabKey === item.key;
+            const activeColor = ACTIVE_ORANGE;
+            const inactiveColor = isDark ? '#9CA3AF' : '#64748B';
+            const itemColor = isActive ? activeColor : inactiveColor;
+
+            return (
+              <Pressable
+                key={item.key}
+                onPress={() => {
+                  if (item.key === selectedTabKey) return;
+                  setSelectedTabKey(item.key);
+                  navigateToTab(item);
+                }}
+                android_ripple={{
+                  color: 'rgba(255, 106, 0, 0.15)',
+                  borderless: true,
+                  radius: 28,
+                }}
+                className="flex-1 items-center justify-center h-full select-none"
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+                accessibilityLabel={item.label}
+              >
+                <View
+                  style={{
+                    width: 52,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: isActive
+                      ? isDark
+                        ? 'rgba(255, 106, 0, 0.22)'
+                        : 'rgba(255, 106, 0, 0.14)'
+                      : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <IconComponent
+                    size={isCompact ? 18 : 21}
+                    color={itemColor}
+                    strokeWidth={isActive ? 2.3 : 1.8}
+                  />
+                </View>
+                {!isCompact && (
+                  <Text
+                    style={{
+                      color: itemColor,
+                      fontSize: 11,
+                      marginTop: 2,
+                      fontWeight: isActive ? '700' : '500',
+                    }}
+                    numberOfLines={1}
+                  >
+                    {item.label}
+                  </Text>
+                )}
+              </Pressable>
+            );
+          })}
+        </Animated.View>
+      </View>
+    );
+  }
+
+  // Native iOS Floating Glass Capsule
   return (
     <View
       pointerEvents="box-none"
       style={{
         bottom: bottomInset,
+        width: '100%',
       }}
       className="absolute left-0 right-0 items-center justify-center px-4 z-50 pointer-events-box-none"
     >
@@ -396,6 +502,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
           style={[
             barAnimatedStyle,
             {
+              width: '100%',
               backgroundColor: isDark
                 ? isIOS
                   ? 'rgba(15, 17, 23, 0.35)'
