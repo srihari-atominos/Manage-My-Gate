@@ -26,7 +26,7 @@ const DEFAULT_INVITE_BODY = `
 userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId }) => {
   try {
     const inviteLink = generateInviteLink(invitationToken, invitationSource);
-    const rejectInviteLink = `${inviteLink}&action=reject`;
+    const rejectInviteLink = `${inviteLink}${inviteLink.includes('?') ? '&' : '?'}action=reject`;
 
     // 1. Fetch organization name for branded invite presentation
     let communityName = 'ManageMyGate';

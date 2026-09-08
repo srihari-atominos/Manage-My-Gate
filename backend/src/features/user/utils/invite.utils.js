@@ -52,21 +52,36 @@ export const resolveInvitationSource = (req) => {
  */
 export const generateInviteLink = (invitationToken, invitationSource = 'WEB') => {
   const source = String(invitationSource || 'WEB').toUpperCase();
+  const defaultProductionBaseUrl = 'https://managemygate.e3esg.com';
+
+  const isLocalhost = (url) => !url || /localhost|127\.0\.0\.1|::1/i.test(url);
 
   if (source === 'APP' || source === 'MOBILE') {
-    const rawAppUrl =
-      process.env.APP_CLIENT_URL ||
-      (process.env.CLIENT_URL && process.env.CLIENT_URL.includes('8081') ? process.env.CLIENT_URL : null) ||
-      'http://localhost:8081';
-    const baseUrl = rawAppUrl.replace(/\/+$/, '');
+    let rawAppUrl = process.env.APP_CLIENT_URL;
+
+    if (!rawAppUrl && process.env.CLIENT_URL && !isLocalhost(process.env.CLIENT_URL)) {
+      rawAppUrl = process.env.CLIENT_URL;
+    }
+
+    if (!rawAppUrl) {
+      rawAppUrl = defaultProductionBaseUrl;
+    }
+
+    const baseUrl = rawAppUrl.trim().replace(/\/+$/, '');
     return `${baseUrl}/invite/app/${invitationToken}`;
   }
 
-  const rawWebUrl =
-    process.env.WEB_CLIENT_URL ||
-    (process.env.CLIENT_URL && !process.env.CLIENT_URL.includes('8081') ? process.env.CLIENT_URL : null) ||
-    'http://localhost:3004';
-  const baseUrl = rawWebUrl.replace(/\/+$/, '');
+  let rawWebUrl = process.env.WEB_CLIENT_URL;
+
+  if (!rawWebUrl && process.env.CLIENT_URL && !isLocalhost(process.env.CLIENT_URL)) {
+    rawWebUrl = process.env.CLIENT_URL;
+  }
+
+  if (!rawWebUrl) {
+    rawWebUrl = defaultProductionBaseUrl;
+  }
+
+  const baseUrl = rawWebUrl.trim().replace(/\/+$/, '');
   return `${baseUrl}/invite/web/${invitationToken}`;
 };
 
