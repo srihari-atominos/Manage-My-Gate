@@ -87,7 +87,7 @@ export function VoterListBottomSheet({
     
     return (
       <View className="flex-row items-center p-3 bg-card border border-border rounded-lg mb-2">
-        <View className="bg-primary/10 p-2 rounded-full mr-3">
+        <View className="bg-primary/10 p-2 rounded-full me-3">
           <User size={16} className="text-primary" />
         </View>
         <View className="flex-1">

@@ -25,7 +25,7 @@ export interface AttachmentPickerProps {
   onAdd: (files: Attachment[]) => void;
   onRemove: (index: number) => void;
   maxFiles?: number;
-  accept?: 'images' | 'documents' | 'all';
+  accept?: 'images' | 'documents' | 'images-and-pdf' | 'all';
   className?: string;
 }
 
@@ -71,6 +71,8 @@ export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
           input.accept = 'image/*';
         } else if (accept === 'documents') {
           input.accept = '.pdf,.doc,.docx,.xls,.xlsx,.txt';
+        } else if (accept === 'images-and-pdf') {
+          input.accept = 'image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf';
         } else {
           input.accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt';
         }
@@ -84,6 +86,11 @@ export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
 
             for (let i = 0; i < filesToSelect; i++) {
               const file = files[i];
+              const ext = file.name ? file.name.split('.').pop()?.toLowerCase() : '';
+              if (accept === 'images-and-pdf' && !['jpg', 'jpeg', 'png', 'webp', 'pdf'].includes(ext || '')) {
+                Alert.alert('Unsupported File', 'Only image files (JPG, PNG, WEBP) and PDF documents are allowed.');
+                continue;
+              }
               const fileObj = {
                 uri: URL.createObjectURL(file),
                 name: file.name,
@@ -94,7 +101,9 @@ export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
               };
               fileList.push(fileObj);
             }
-            onAdd(fileList);
+            if (fileList.length > 0) {
+              onAdd(fileList);
+            }
           }
         };
         input.click();
@@ -108,7 +117,7 @@ export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
         try {
           if (isDoc) {
             const result = await DocumentPicker.getDocumentAsync({
-              type: '*/*',
+              type: accept === 'images-and-pdf' ? 'application/pdf' : '*/*',
               multiple: maxFiles > 1,
             });
             if (!result.canceled && result.assets) {
@@ -165,7 +174,7 @@ export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
 
       const buttons: AlertButton[] = [];
 
-      if (accept === 'images' || accept === 'all') {
+      if (accept === 'images' || accept === 'images-and-pdf' || accept === 'all') {
         buttons.push({
           text: 'Take Photo',
           onPress: () => handleSelect('Take Photo', false),
@@ -176,9 +185,9 @@ export const AttachmentPicker = React.forwardRef<View, AttachmentPickerProps>(
         });
       }
 
-      if (accept === 'documents' || accept === 'all') {
+      if (accept === 'documents' || accept === 'images-and-pdf' || accept === 'all') {
         buttons.push({
-          text: 'Choose Document',
+          text: accept === 'images-and-pdf' ? 'Choose PDF Document' : 'Choose Document',
           onPress: () => handleSelect('Choose Document', true),
         });
       }

@@ -1,23 +1,24 @@
 import React, { useEffect, useState } from 'react'
-import { useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { CSpinner, CAlert, CCard, CCardBody, CContainer, CRow, CCol } from '@coreui/react'
 import apiClient from '../../../services/apiClient.js'
 
 /**
  * InviteHandler Component
  *
- * Intercepts incoming /#/invite?token=... links, validates the token
+ * Intercepts incoming /#/invite?token=... or /invite/:token links, validates the token
  * with the backend, and routes the user based on whether they already exist:
  * - Existing users -> /login?invite_token=...&email=...
  * - New pending users -> /accept-invite?token=...
  */
 const InviteHandler = () => {
+  const { token: routeToken } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const token = searchParams.get('token')
+  const token = routeToken || searchParams.get('token')
 
   useEffect(() => {
     if (!token) {
@@ -39,11 +40,16 @@ const InviteHandler = () => {
         const data = response.data?.data || response.data
 
         if (data && data.valid) {
+          if (String(data.invitationSource || '').toUpperCase() === 'APP') {
+            navigate(`/invite/app/${token}`, { replace: true })
+            return
+          }
+
           if (data.isExisting) {
             const encodedEmail = encodeURIComponent(data.email || '')
             navigate(`/login?invite_token=${token}&email=${encodedEmail}`, { replace: true })
           } else {
-            navigate(`/accept-invite?token=${token}`, { replace: true })
+            navigate(`/invite/web/${token}`, { replace: true })
           }
         } else {
           setError('Invalid or expired invitation token.')

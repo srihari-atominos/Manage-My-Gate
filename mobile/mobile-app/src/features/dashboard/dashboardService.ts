@@ -34,11 +34,12 @@ export interface UserPreferencesResponse {
 }
 
 export const fetchQuickActions = async (
-  context?: { orgId?: string; villaId?: string }
+  context?: { orgId?: string; villaId?: string; villaNumber?: string }
 ): Promise<UserPreferencesResponse> => {
   const params: any = {};
   if (context?.orgId) params.orgId = context.orgId;
   if (context?.villaId) params.villaId = context.villaId;
+  if (context?.villaNumber) params.villaNumber = context.villaNumber;
 
   const response = await apiClient.get('/users/preferences', { params });
   const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
@@ -48,11 +49,12 @@ export const fetchQuickActions = async (
 
 export const updateQuickActions = async (
   activeQuickActions: string[],
-  context?: { orgId?: string; villaId?: string }
+  context?: { orgId?: string; villaId?: string; villaNumber?: string }
 ): Promise<UserPreferencesResponse> => {
   const payload: any = { activeQuickActions };
   if (context?.orgId) payload.orgId = context.orgId;
   if (context?.villaId) payload.villaId = context.villaId;
+  if (context?.villaNumber) payload.villaNumber = context.villaNumber;
 
   const response = await apiClient.patch('/users/preferences/quick-actions', payload);
   const body = response && (response as any).success !== undefined ? response : (response as any)?.data;

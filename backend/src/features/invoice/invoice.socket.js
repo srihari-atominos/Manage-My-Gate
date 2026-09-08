@@ -2,6 +2,22 @@ import { getIO } from '../../config/socket.js';
 import logger from '../../utils/logger.utils.js';
 
 /**
+ * Helper to normalize friendly payment method name for notifications.
+ */
+const getFriendlyPaymentMethod = (rawMethod) => {
+  const method = (rawMethod || '').toUpperCase();
+  switch (method) {
+    case 'CASH': return 'Cash';
+    case 'CHEQUE': return 'Cheque';
+    case 'UPI': return 'UPI Transfer';
+    case 'DEMAND_DRAFT': return 'Demand Draft';
+    case 'NEFT': return 'NEFT Transfer';
+    case 'BANK_TRANSFER': return 'Bank Transfer';
+    default: return 'Offline Payment';
+  }
+};
+
+/**
  * Helper to populate user and unit details, and extract communityId for an invoice.
  */
 const prepareInvoicePayload = async (payload) => {
@@ -145,8 +161,8 @@ export const setupInvoiceSocketListeners = async () => {
         const Role = (await import('../role/role.model.js')).default;
         const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
         
-        const isCash = payload.paymentMethod === 'CASH' || payload.invoice?.paymentMethod === 'CASH';
-        const methodLabel = isCash ? 'cash payment request' : 'bank transfer';
+        const methodStr = payload.paymentMethod || payload.invoice?.paymentMethod || 'OFFLINE';
+        const methodTitle = getFriendlyPaymentMethod(methodStr);
         const amtStr = (payload.amount || payload.invoice?.offlineAmount || payload.invoice?.totalAmount || 0).toLocaleString('en-IN');
 
         // Notify resident
@@ -155,8 +171,8 @@ export const setupInvoiceSocketListeners = async () => {
           await notificationService.createNotification({
             recipientId: resUserId,
             senderId: null,
-            title: isCash ? 'Cash Payment Submitted' : 'Payment Submitted',
-            body: `Your ₹${amtStr} ${methodLabel} has been submitted for verification.`,
+            title: `${methodTitle} Submitted`,
+            body: `Your ₹${amtStr} ${methodTitle.toLowerCase()} request has been submitted for verification.`,
             actionUrl: '/billing?tab=action-center',
             type: 'INFO',
           });
@@ -179,8 +195,8 @@ export const setupInvoiceSocketListeners = async () => {
             await notificationService.createNotification({
               recipientId: member.userId,
               senderId: null,
-              title: isCash ? 'New Cash Payment Request' : 'New Bank Transfer',
-              body: `${payload.residentName || 'Resident'} submitted a ₹${amtStr} ${isCash ? 'cash' : 'bank transfer'} payment for verification.`,
+              title: `New ${methodTitle} Request`,
+              body: `${payload.residentName || 'Resident'} submitted a ₹${amtStr} ${methodTitle.toLowerCase()} payment for verification.`,
               actionUrl: '/billing?tab=action-center',
               type: 'INFO',
             });
@@ -199,7 +215,8 @@ export const setupInvoiceSocketListeners = async () => {
       if (!payload || !payload.targetUserId) return;
       const targetUserId = payload.targetUserId._id || payload.targetUserId;
       const userRoom = `user:${targetUserId}`;
-      const isCash = (payload.paymentMethod || '').toUpperCase() === 'CASH';
+      const methodStr = payload.paymentMethod || payload.invoice?.paymentMethod || 'OFFLINE';
+      const methodTitle = getFriendlyPaymentMethod(methodStr);
       const amtStr = (payload.paidAmount || payload.totalAmount || 0).toLocaleString('en-IN');
 
       try {
@@ -213,8 +230,8 @@ export const setupInvoiceSocketListeners = async () => {
       await notificationService.createNotification({
         recipientId: targetUserId,
         senderId: null,
-        title: isCash ? 'Cash Payment Approved' : 'Payment Verified',
-        body: `Your ₹${amtStr} ${isCash ? 'cash' : 'bank transfer'} payment has been verified. Status: ${payload.status}. Receipt: ${payload.receiptNumber || 'Generated'}`,
+        title: `${methodTitle} Verified`,
+        body: `Your ₹${amtStr} ${methodTitle.toLowerCase()} payment has been verified. Status: ${payload.status}. Receipt: ${payload.receiptNumber || 'Generated'}`,
         actionUrl: '/billing?tab=action-center',
         type: 'SUCCESS',
       });

@@ -4,6 +4,7 @@ import * as AuthSession from 'expo-auth-session';
 import { Button } from '@/components/ui/button';
 import { Text, Alert } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
+import { router } from 'expo-router';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -13,8 +14,15 @@ const discovery = {
   tokenEndpoint: `https://login.microsoftonline.com/${process.env.EXPO_PUBLIC_MICROSOFT_TENANT_ID || 'common'}/oauth2/v2.0/token`,
 };
 
-export function MicrosoftSignInButton() {
-  const { loginWithMicrosoft, loading } = useAuth();
+export interface MicrosoftSignInButtonProps {
+  inviteToken?: string;
+  onSuccess?: (data: any) => void;
+  onError?: (error: any) => void;
+}
+
+export function MicrosoftSignInButton({ inviteToken, onSuccess, onError }: MicrosoftSignInButtonProps = {}) {
+  const { loginWithMicrosoft, acceptSsoInvite, loading } = useAuth();
+  const [submitting, setSubmitting] = React.useState(false);
 
   const redirectUri = AuthSession.makeRedirectUri({
     scheme: 'managemygate',
@@ -56,34 +64,97 @@ export function MicrosoftSignInButton() {
             console.log("Extracted Token:", tokenToUse ? "Token Found!" : "No Token Found!");
             
             if (tokenToUse) {
-              loginWithMicrosoft(tokenToUse)
-                .catch((err: any) => {
-                  console.error("Backend Error:", err);
-                  Alert.alert('Microsoft Login Failed', typeof err === 'string' ? err : (err.message || 'Unknown error. Please check your network connection or try again.'));
-                });
+              setSubmitting(true);
+              if (inviteToken) {
+                acceptSsoInvite({
+                  inviteToken,
+                  ssoCredential: tokenToUse,
+                  provider: 'microsoft',
+                })
+                  .then((res: any) => {
+                    if (res?.meta?.requestStatus === 'rejected' || res?.error) {
+                      const errMsg = (res.payload as string) || res.error?.message || 'Failed to accept invitation via Microsoft';
+                      if (onError) onError(errMsg);
+                      else Alert.alert('Microsoft Sign-In Failed', errMsg);
+                      return;
+                    }
+                    if (onSuccess) {
+                      onSuccess(res?.payload || res);
+                    } else {
+                      router.replace('/(resident)/dashboard');
+                    }
+                  })
+                  .catch((err: any) => {
+                    console.error("Backend Error:", err);
+                    const errMsg = err?.response?.data?.message || err?.message || 'Failed to accept invitation via Microsoft';
+                    if (onError) onError(errMsg);
+                    else Alert.alert('Microsoft Sign-In Failed', errMsg);
+                  })
+                  .finally(() => setSubmitting(false));
+              } else {
+                loginWithMicrosoft(tokenToUse)
+                  .then((res: any) => {
+                    if (res?.meta?.requestStatus === 'rejected' || res?.error) {
+                      const errMsg = (res.payload as string) || res.error?.message || 'Microsoft login failed';
+                      if (onError) onError(errMsg);
+                      else Alert.alert('Microsoft Login Failed', errMsg);
+                      return;
+                    }
+                    if (res?.payload?.isNewUser) {
+                      const msData = res.payload.googleData || {};
+                      router.push({
+                        pathname: '/(auth)/register',
+                        params: {
+                          email: msData.email || '',
+                          name: msData.name || '',
+                          isMicrosoftSso: 'true',
+                        },
+                      });
+                    } else {
+                      if (onSuccess) {
+                        onSuccess(res?.payload || res);
+                      } else {
+                        router.replace('/(resident)/dashboard');
+                      }
+                    }
+                  })
+                  .catch((err: any) => {
+                    console.error("Backend Error:", err);
+                    const errMsg = typeof err === 'string' ? err : (err.message || 'Unknown error occurred.');
+                    if (onError) onError(errMsg);
+                    else Alert.alert('Microsoft Login Failed', errMsg);
+                  })
+                  .finally(() => setSubmitting(false));
+              }
             } else {
               console.warn("Token exchange succeeded but no token was returned:", tokenResponse);
             }
           })
           .catch((err: any) => {
             console.error("Token Exchange Error:", err);
-            Alert.alert('Microsoft Login Error', 'Failed to exchange authorization code for token.');
+            const errMsg = 'Failed to exchange authorization code for token.';
+            if (onError) onError(errMsg);
+            else Alert.alert('Microsoft Login Error', errMsg);
           });
       } else {
         console.warn("Login success but no code or codeVerifier was found:", response.params);
       }
     } else if (response?.type === 'error') {
       console.error("Auth Session Error:", response.error);
-      Alert.alert('Microsoft Login Error', response.error?.message || 'Authentication session failed.');
+      const errMsg = response.error?.message || 'Authentication session failed.';
+      if (onError) onError(errMsg);
+      else Alert.alert('Microsoft Login Error', errMsg);
     }
-  }, [response, request, loginWithMicrosoft]);
+  }, [response, request, inviteToken, acceptSsoInvite, loginWithMicrosoft, onSuccess, onError, redirectUri]);
+
+  const isLoading = loading || submitting;
 
   return (
     <Button
       className="h-12 w-full rounded-xl flex-row items-center justify-center bg-[#2f2f2f] dark:bg-[#1f1f1f] border border-border px-3"
       onPress={() => promptAsync()}
-      disabled={!request || loading}
-      loading={loading}
+      disabled={!request || isLoading}
+      loading={isLoading}
     >
       <Text className="text-white text-base me-2 shrink-0">❖</Text>
       <Text className="text-white font-semibold text-sm">Microsoft</Text>

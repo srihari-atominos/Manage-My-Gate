@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, ScrollView, RefreshControl, Alert, Pressable, TouchableOpacity, Modal } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { DetailSection } from '@/components/ui/DetailSection';
@@ -13,6 +13,7 @@ import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
+import { FAB } from '@/components/ui/FAB';
 import { SlidersHorizontal, Play, Send, ShieldAlert, Landmark, Calendar, Layers, CheckCircle2, Clock, Plus, Trash2, Pencil, Filter, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
@@ -20,6 +21,7 @@ import billingService from '../services/billingService';
 import { AssessmentWizardModal } from '../components/wizard';
 import { AssessmentRuleCard } from '../components/AssessmentRuleCard';
 import { AssessmentDetailModal } from '../components/AssessmentDetailModal';
+import { checkIsAdmin } from '@/src/utils/rbac';
 
 function extractPeriodFromTitle(title?: string, billingCycle?: string): string | null {
   if (!title) return null;
@@ -119,17 +121,25 @@ function shiftPeriod(current: string, billingCycle: string, delta: number): stri
 
 export function AssessmentManagementScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ create?: string; ruleId?: string }>();
   const { loadingStates, error, triggerManualRun, resetBillingError, activeOrgId } = useBilling();
 
   useBillingSocket();
 
   // Permission check from auth state (memoized boolean selector to avoid new reference warnings)
   const hasAssessmentPermission = useSelector((state: any) => {
-    const role = state.auth?.user?.role || '';
-    if (role === 'SuperAdmin' || role === 'Admin') return true;
-    const permissions = state.auth?.user?.permissions;
+    const user = state.auth?.user;
+    if (!user) return false;
+    if (checkIsAdmin(user)) return true;
+    const role = (user.role || '').toLowerCase();
+    if (role === 'superadmin' || role === 'admin' || role === 'accountant' || role === 'treasury') return true;
+    const permissions = user.permissions;
     if (!Array.isArray(permissions)) return false;
-    return permissions.includes('billing:assessment_manager') || permissions.includes('*');
+    return (
+      permissions.includes('billing:assessment_manager') ||
+      permissions.includes('billing:dashboard') ||
+      permissions.includes('*')
+    );
   });
 
   const [assessments, setAssessments] = useState<any[]>([]);
@@ -188,6 +198,14 @@ export function AssessmentManagementScreen() {
   useEffect(() => {
     fetchAssessments();
   }, [fetchAssessments]);
+
+  // Handle incoming deep link or query param to open Create Rule
+  useEffect(() => {
+    if (params.create === 'true') {
+      setAssessmentToEdit(null);
+      setShowCreateModal(true);
+    }
+  }, [params.create]);
 
   const handleOpenRunModal = (assessment: any) => {
     setSelectedAssessment(assessment);
@@ -313,7 +331,7 @@ export function AssessmentManagementScreen() {
   };
 
   return (
-    <>
+    <View className="flex-1 bg-background relative">
       <ScreenShell
         title="Assessment Management"
         subtitle={!hasAssessmentPermission ? 'Access Restricted' : 'Maintenance calculation formulas & billing runs'}
@@ -402,7 +420,7 @@ export function AssessmentManagementScreen() {
         {/* ── SCROLLABLE CARDS AREA ────────────────────────────────────────── */}
         <ScrollView
           className="flex-1 bg-background"
-          contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 16 }}
+          contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 16, paddingBottom: 120 }}
           refreshControl={
             <RefreshControl refreshing={isLoading} onRefresh={fetchAssessments} colors={['#6366f1']} />
           }
@@ -492,10 +510,12 @@ export function AssessmentManagementScreen() {
         }}
         onRun={(r) => handleOpenRunModal(r)}
         onEdit={(r) => {
+          setShowDetailModal(false);
           setAssessmentToEdit(r);
           setShowCreateModal(true);
         }}
         onDelete={(r) => {
+          setShowDetailModal(false);
           setAssessmentToDelete(r);
           setShowDeleteConfirmModal(true);
         }}
@@ -690,7 +710,19 @@ export function AssessmentManagementScreen() {
           setAssessmentToDelete(null);
         }}
       />
-    </>
+
+      {/* Floating Action Button for Easy Mobile Rule Creation */}
+      {hasAssessmentPermission && !showCreateModal && (
+        <FAB
+          iconName="Plus"
+          label="Create Rule"
+          onPress={() => {
+            setAssessmentToEdit(null);
+            setShowCreateModal(true);
+          }}
+        />
+      )}
+    </View>
   );
 }
 

@@ -21,12 +21,16 @@ export const DEFAULT_QUICK_ACTIONS = [
 export const getUserQuickActionsStorageKey = (
   userId?: string | null,
   orgId?: string | null,
-  villaId?: string | null
+  villaId?: string | null,
+  villaNumber?: string | null
 ) => {
   if (userId && typeof userId === 'string' && userId.trim()) {
     const cleanUser = userId.trim();
-    const cleanOrg = orgId && typeof orgId === 'string' && orgId.trim() ? orgId.trim() : 'default';
-    const cleanVilla = villaId && typeof villaId === 'string' && villaId.trim() ? villaId.trim() : 'default';
+    const cleanOrg = orgId && typeof orgId === 'string' && orgId.trim() ? orgId.trim() : 'no_org';
+    const cleanVilla =
+      (villaId && typeof villaId === 'string' && villaId.trim()) ||
+      (villaNumber && typeof villaNumber === 'string' && villaNumber.trim()) ||
+      'no_villa';
     return `user_quick_actions_${cleanUser}_${cleanOrg}_${cleanVilla}`;
   }
   return null;
@@ -35,12 +39,14 @@ export const getUserQuickActionsStorageKey = (
 export interface FetchQuickActionsPayload {
   orgId?: string | null;
   villaId?: string | null;
+  villaNumber?: string | null;
 }
 
 export interface UpdateQuickActionsPayload {
   activeQuickActions: string[];
   orgId?: string | null;
   villaId?: string | null;
+  villaNumber?: string | null;
 }
 
 export interface DashboardState {
@@ -74,9 +80,10 @@ export const fetchQuickActionsThunk = createAsyncThunk<
     const authUser = (state as any).auth?.user;
     const userId = authUser?._id || authUser?.id;
     const orgId = contextPayload?.orgId || authUser?.activeOrgId || authUser?.orgId || authUser?.organizationId;
-    const villaId = contextPayload?.villaId || authUser?.villaId || authUser?.activeVillaNumber || authUser?.unitNumber || authUser?.villaNumber;
+    const villaId = contextPayload?.villaId || authUser?.activeVillaId || authUser?.villaId;
+    const villaNumber = contextPayload?.villaNumber || authUser?.activeVillaNumber || authUser?.villaNumber || authUser?.unitNumber;
 
-    const userStorageKey = getUserQuickActionsStorageKey(userId, orgId, villaId);
+    const userStorageKey = getUserQuickActionsStorageKey(userId, orgId, villaId, villaNumber);
 
     // Clean up any stale un-scoped device storage key from previous legacy versions
     storage.removeItem('user_quick_actions').catch(() => {});
@@ -86,6 +93,7 @@ export const fetchQuickActionsThunk = createAsyncThunk<
       .fetchQuickActions({
         orgId: orgId ? String(orgId) : undefined,
         villaId: villaId ? String(villaId) : undefined,
+        villaNumber: villaNumber ? String(villaNumber) : undefined,
       })
       .catch(() => null);
 
@@ -140,9 +148,10 @@ export const updateQuickActionsThunk = createAsyncThunk<
 
     const activeQuickActions = Array.isArray(arg) ? arg : arg.activeQuickActions;
     const orgId = !Array.isArray(arg) && arg.orgId ? arg.orgId : (authUser?.activeOrgId || authUser?.orgId || authUser?.organizationId);
-    const villaId = !Array.isArray(arg) && arg.villaId ? arg.villaId : (authUser?.villaId || authUser?.activeVillaNumber || authUser?.unitNumber || authUser?.villaNumber);
+    const villaId = !Array.isArray(arg) && arg.villaId ? arg.villaId : (authUser?.activeVillaId || authUser?.villaId);
+    const villaNumber = !Array.isArray(arg) && arg.villaNumber ? arg.villaNumber : (authUser?.activeVillaNumber || authUser?.villaNumber || authUser?.unitNumber);
 
-    const userStorageKey = getUserQuickActionsStorageKey(userId, orgId, villaId);
+    const userStorageKey = getUserQuickActionsStorageKey(userId, orgId, villaId, villaNumber);
 
     // 1. Persist locally under THIS user's scoped context key
     if (userStorageKey) {
@@ -154,6 +163,7 @@ export const updateQuickActionsThunk = createAsyncThunk<
       .updateQuickActions(activeQuickActions, {
         orgId: orgId ? String(orgId) : undefined,
         villaId: villaId ? String(villaId) : undefined,
+        villaNumber: villaNumber ? String(villaNumber) : undefined,
       })
       .catch((err) => {
         console.warn('[Dashboard] Backend quick action sync non-critical warning:', err?.message);
@@ -191,12 +201,15 @@ export const dashboardSlice = createSlice({
     },
     setActiveQuickActionsLocal: (
       state,
-      action: PayloadAction<{ actions: string[]; userId?: string } | string[]>
+      action: PayloadAction<{ actions: string[]; userId?: string; orgId?: string; villaId?: string; villaNumber?: string } | string[]>
     ) => {
       const actions = Array.isArray(action.payload) ? action.payload : action.payload.actions;
       const userId = Array.isArray(action.payload) ? undefined : action.payload.userId;
+      const orgId = Array.isArray(action.payload) ? undefined : action.payload.orgId;
+      const villaId = Array.isArray(action.payload) ? undefined : action.payload.villaId;
+      const villaNumber = Array.isArray(action.payload) ? undefined : action.payload.villaNumber;
       state.activeQuickActions = actions;
-      const userKey = getUserQuickActionsStorageKey(userId);
+      const userKey = getUserQuickActionsStorageKey(userId, orgId, villaId, villaNumber);
       if (userKey) {
         storage.setItem(userKey, JSON.stringify(actions)).catch(() => {});
       }
@@ -211,9 +224,9 @@ export const dashboardSlice = createSlice({
       })
       .addCase(fetchQuickActionsThunk.fulfilled, (state, action) => {
         state.loading = false;
-        if (action.payload?.activeQuickActions) {
-          state.activeQuickActions = action.payload.activeQuickActions;
-        }
+        state.activeQuickActions = Array.isArray(action.payload?.activeQuickActions)
+          ? action.payload.activeQuickActions
+          : [];
         if (action.payload?.featureCatalog) {
           state.featureCatalog = action.payload.featureCatalog;
         }
@@ -264,10 +277,9 @@ export const dashboardSlice = createSlice({
         state.updating = false;
         state.error = null;
       })
-      .addCase('auth/switchWorkspaceContext/fulfilled', (state) => {
+      .addCase('auth/switchWorkspaceContext/pending', (state) => {
         state.activeQuickActions = [];
-        state.loading = false;
-        state.updating = false;
+        state.loading = true;
         state.error = null;
       });
   },

@@ -170,6 +170,7 @@ export const CreateAssessmentModal: React.FC<CreateAssessmentModalProps> = ({
               value={type}
               onValueChange={setType}
               placeholder="Select Type"
+              inline
             />
 
             {/* Billing Cycle Dropdown */}
@@ -179,6 +180,7 @@ export const CreateAssessmentModal: React.FC<CreateAssessmentModalProps> = ({
               value={billingCycle}
               onValueChange={setBillingCycle}
               placeholder="Select Billing Cycle"
+              inline
             />
 
             {/* Generation Day */}
@@ -197,6 +199,7 @@ export const CreateAssessmentModal: React.FC<CreateAssessmentModalProps> = ({
               value={calculationType}
               onValueChange={setCalculationType}
               placeholder="Select Calculation Method"
+              inline
             />
 
             {/* Assessment Rate or Amount */}

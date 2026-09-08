@@ -88,7 +88,7 @@ export function PollCard({
         <View className="flex-row justify-between items-center flex-wrap gap-2">
           <View className="flex-row items-center gap-2 flex-wrap">
             <View className="flex-row items-center bg-muted/50 px-2 py-1 rounded border border-border/50">
-              <Text className="text-[10px] text-muted-foreground mr-1">{getVisibilityIcon()}</Text>
+              <Text className="text-[10px] text-muted-foreground me-1">{getVisibilityIcon()}</Text>
               <Text className="text-[10px] text-muted-foreground font-semibold">
                 {poll.visibility || 'Everyone'}
               </Text>
@@ -191,7 +191,7 @@ export function PollCard({
                 className="bg-green-50 border-green-200 h-8 px-2"
               >
                 <Icon as={Globe} size={12} color="#16a34a" />
-                <Text className="text-[10px] text-green-700 font-bold uppercase ml-1">Publish</Text>
+                <Text className="text-[10px] text-green-700 font-bold uppercase ms-1">Publish</Text>
               </Button>
             )}
 
@@ -203,7 +203,7 @@ export function PollCard({
                 className="bg-amber-50 border-amber-200 h-8 px-2"
               >
                 <Icon as={XCircle} size={12} color="#d97706" />
-                <Text className="text-[10px] text-amber-700 font-bold uppercase ml-1">Close</Text>
+                <Text className="text-[10px] text-amber-700 font-bold uppercase ms-1">Close</Text>
               </Button>
             )}
 
@@ -215,7 +215,7 @@ export function PollCard({
                 className="bg-blue-50 border-blue-200 h-8 px-2"
               >
                 <Icon as={CheckCircle} size={12} color="#2563eb" />
-                <Text className="text-[10px] text-blue-700 font-bold uppercase ml-1">Reopen</Text>
+                <Text className="text-[10px] text-blue-700 font-bold uppercase ms-1">Reopen</Text>
               </Button>
             )}
 
@@ -227,7 +227,7 @@ export function PollCard({
                 className="bg-red-50 border-red-200 h-8 px-2"
               >
                 <Icon as={Trash2} size={12} color="#dc2626" />
-                <Text className="text-[10px] text-red-700 font-bold uppercase ml-1">Delete</Text>
+                <Text className="text-[10px] text-red-700 font-bold uppercase ms-1">Delete</Text>
               </Button>
             )}
 
@@ -239,7 +239,7 @@ export function PollCard({
                 className="bg-primary/10 border-primary/20 h-8 px-2"
               >
                 <Icon as={Users} size={12} className="text-primary" />
-                <Text className="text-[10px] text-primary font-bold uppercase ml-1">Voters</Text>
+                <Text className="text-[10px] text-primary font-bold uppercase ms-1">Voters</Text>
               </Button>
             )}
           </View>

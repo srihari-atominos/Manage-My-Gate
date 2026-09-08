@@ -81,7 +81,7 @@ export const DirectoryNoteComposer = ({
             {/* Active Note Banner inside Composer */}
             {myActiveNote ? (
               <View className="bg-primary/10 border border-primary/20 rounded-2xl p-3 flex-row items-center justify-between">
-                <View className="flex-1 pr-2">
+                <View className="flex-1 pe-2">
                   <View className="flex-row items-center justify-between">
                     <Text className="text-[10px] font-bold text-primary uppercase">
                       {t('active_community_note', 'Active Community Note')}
@@ -221,7 +221,7 @@ export const DirectoryNoteComposer = ({
                     <View key={note._id || note.id} className="bg-muted/40 border border-border/50 rounded-2xl p-3 gap-2">
                       {/* Top Header Row */}
                       <View className="flex-row items-center justify-between">
-                        <View className="flex-row items-center gap-2 flex-1 pr-2">
+                        <View className="flex-row items-center gap-2 flex-1 pe-2">
                           <View className="w-8 h-8 rounded-full bg-primary/20 items-center justify-center">
                             <Text className="text-xs font-bold text-primary">{initial}</Text>
                           </View>

@@ -338,6 +338,10 @@ export default function SignupScreen() {
                           placeholderTextColor="#94A3B8"
                           keyboardType="email-address"
                           autoCapitalize="none"
+                          autoComplete="email"
+                          textContentType="emailAddress"
+                          importantForAutofill="yes"
+                          accessibilityLabel="Email Address"
                           returnKeyType="next"
                           onSubmitEditing={() => unitInputRef.current?.focus()}
                           blurOnSubmit={false}
@@ -422,6 +426,10 @@ export default function SignupScreen() {
                           placeholderTextColor="#94A3B8"
                           secureTextEntry={!showPassword}
                           autoCapitalize="none"
+                          autoComplete={Platform.select({ web: 'new-password', default: 'password-new' })}
+                          textContentType="newPassword"
+                          importantForAutofill="yes"
+                          accessibilityLabel="Create a password"
                           returnKeyType="next"
                           onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
                           blurOnSubmit={false}
@@ -471,6 +479,10 @@ export default function SignupScreen() {
                           placeholderTextColor="#94A3B8"
                           secureTextEntry={!showConfirmPassword}
                           autoCapitalize="none"
+                          autoComplete={Platform.select({ web: 'new-password', default: 'password-new' })}
+                          textContentType="newPassword"
+                          importantForAutofill="yes"
+                          accessibilityLabel="Confirm Password"
                           returnKeyType="go"
                           onSubmitEditing={handleSubmit(onSubmit)}
                           className={cnText(

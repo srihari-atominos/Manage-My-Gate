@@ -66,6 +66,8 @@ export const STATUS_VARIANT_MAP: Record<string, StatusVariant> = {
   PENDING: 'warning',
   REVOKED: 'danger',
   EXPIRED: 'neutral',
+  REJECTED: 'danger',
+  Rejected: 'danger',
   // Billing
   PAID: 'success',
   UNPAID: 'danger',

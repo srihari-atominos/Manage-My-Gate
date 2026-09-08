@@ -1,5 +1,6 @@
 import userService from './user.services.js'
 import HttpError from '../../utils/httpError.utils.js'
+import { generateInviteLink, resolveInvitationSource } from './utils/invite.utils.js'
 import fs from 'fs'
 
 export class UserController {
@@ -48,7 +49,22 @@ export class UserController {
     try {
       const { email, phone, villaId, residentType, roleName } = req.body;
       const orgId = req.tenant.orgId;
-      const { user, invitationToken } = await userService.inviteUser(email, orgId, villaId, residentType, roleName, phone);
+
+      const invitationSource = resolveInvitationSource(req);
+
+      const { user, invitationToken, membership } = await userService.inviteUser(
+        email,
+        orgId,
+        villaId,
+        residentType,
+        roleName,
+        phone,
+        '',
+        invitationSource
+      );
+
+      const inviteLink = generateInviteLink(invitationToken, invitationSource);
+
       const formatted = {
         id: user._id,
         username: user.username,
@@ -56,14 +72,16 @@ export class UserController {
         phone: user.phone || '',
         email: user.email,
         role: roleName || '',
-        status: user.status || 'Pending',
+        status: membership?.status || 'Pending',
         villaId: villaId || null,
         residentType: residentType || 'None',
         invitationToken,
-      }
-      res.success(formatted, 'User invited successfully', 201)
+        invitationSource,
+        inviteLink,
+      };
+      res.success(formatted, 'User invited successfully', 201);
     } catch (error) {
-      next(error)
+      next(error);
     }
   }
 
@@ -148,7 +166,10 @@ export class UserController {
     try {
       const { invitations } = req.body;
       const orgId = req.tenant.orgId;
-      const result = await userService.bulkInviteUsers(invitations, orgId);
+
+      const defaultSource = resolveInvitationSource(req);
+
+      const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource);
       res.success(result, 'Bulk invitation process completed');
     } catch (error) {
       next(error);

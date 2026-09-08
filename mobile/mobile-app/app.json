@@ -7,13 +7,22 @@
     "icon": "./assets/images/icon.png",
     "scheme": [
       "mobile-app",
-      "managemygate"
+      "managemygate",
+      "com.atominosconsulting.nahom"
     ],
     "userInterfaceStyle": "automatic",
     "jsEngine": "hermes",
     "assetBundlePatterns": [
       "**/*"
     ],
+    "updates": {
+      "url": "https://u.expo.dev/94a573d9-5e93-4827-8fbd-605e0ef3a50a",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
@@ -30,6 +39,7 @@
     },
     "android": {
       "package": "com.atominosconsulting.nahom",
+      "versionCode": 8,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -37,6 +47,28 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "managemygate.e3esg.com",
+              "pathPrefix": "/invite/app"
+            },
+            {
+              "scheme": "managemygate",
+              "host": "invite",
+              "pathPrefix": "/app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "web": {

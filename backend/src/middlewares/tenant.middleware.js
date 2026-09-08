@@ -51,9 +51,8 @@ export const tenantContext = (optionsOrReq, res, next) => {
 
         // If target tenant context orgId does not match user's active token orgId, verify membership
         if (userOrgIdStr && requestedOrgIdStr && userOrgIdStr !== requestedOrgIdStr) {
-          const isAdminRole = ['Super Admin', 'Platform Admin', 'Platform Super Admin', 'SUPER_ADMIN', 'PLATFORM_ADMIN', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
-          if (isAdminRole || userIsPlatform) {
-            console.log(`[TENANT DEBUG] Admin operating across workspace. Header: ${requestedOrgIdStr}, Token: ${userOrgIdStr}`);
+          if (userIsPlatform) {
+            console.log(`[TENANT DEBUG] Platform Admin operating across workspace. Header: ${requestedOrgIdStr}, Token: ${userOrgIdStr}`);
           } else {
             const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
             const userId = req.user.id || req.user._id;

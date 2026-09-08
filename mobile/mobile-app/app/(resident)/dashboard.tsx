@@ -7,12 +7,14 @@ import HeroBanner from '@/components/dashboard/HeroBanner';
 import QuickActionsGrid from '@/components/dashboard/QuickActionsGrid';
 import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
 import BottomNavigationBar from '@/components/navigation/BottomNavigationBar';
+import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
 import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
 import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const [customiseOpen, setCustomiseOpen] = React.useState(false);
+  const { scrollHandlerProps } = useBottomNavScroll();
 
   const {
     activeQuickActions,
@@ -103,6 +105,7 @@ export default function DashboardScreen() {
       <ScrollView 
         className="flex-1 px-4 pt-2"
         showsVerticalScrollIndicator={false}
+        {...scrollHandlerProps}
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 72 }}
       >
         <View className="gap-2 max-w-md mx-auto w-full">

@@ -128,10 +128,26 @@ export class UserService {
     const currentSession = session || localSession;
     try {
       await this.getUserById(id, currentSession); // Throws if user doesn't exist
+      if (updateData.email && updateData.email.trim()) {
+        const normalizedEmail = updateData.email.trim().toLowerCase();
+        const existingEmailUser = await userRepository.findByEmail(normalizedEmail, currentSession);
+        if (existingEmailUser && existingEmailUser._id.toString() !== id.toString()) {
+          throw new HttpError(409, `User with email '${updateData.email}' already exists.`);
+        }
+        updateData.email = normalizedEmail;
+      }
+      if (updateData.username && updateData.username.trim()) {
+        const normalizedUsername = updateData.username.trim();
+        const existingUsernameUser = await userRepository.findByUsername(normalizedUsername, currentSession);
+        if (existingUsernameUser && existingUsernameUser._id.toString() !== id.toString()) {
+          throw new HttpError(409, `User with username '${updateData.username}' already exists.`);
+        }
+        updateData.username = normalizedUsername;
+      }
       if (updateData.phone && updateData.phone.trim()) {
         const existingPhoneUser = await userRepository.findByPhone(updateData.phone.trim(), currentSession);
         if (existingPhoneUser && existingPhoneUser._id.toString() !== id.toString()) {
-          throw new HttpError(400, `User with phone number '${updateData.phone}' already exists.`);
+          throw new HttpError(409, `User with phone number '${updateData.phone}' already exists.`);
         }
       }
       const updatedUser = await userRepository.update(id, updateData, currentSession);
@@ -169,6 +185,10 @@ export class UserService {
       if (user.email) techOrConditions.push({ email: user.email });
       await Technician.deleteMany({ orgId, $or: techOrConditions }).session(session);
 
+      // Clean up invitation tokens for this user in this organization
+      const tokenService = (await import('../token/token.services.js')).default;
+      await tokenService.deleteTokens({ userId: id, orgId }, session);
+
       // Check if user has any OTHER community memberships left across the platform
       const remainingMemberships = await orgMembershipService.getUserMemberships(id, session);
       const remainingCommunityMemberships = remainingMemberships.filter(m => {
@@ -182,6 +202,7 @@ export class UserService {
         await userRepository.delete(id, session);
         await orgMembershipService.deleteMembershipsByUserId(id, session);
         await Technician.deleteMany({ $or: techOrConditions }).session(session);
+        await tokenService.deleteTokens({ userId: id }, session);
         
         // Clean up linked SSO identities
         const userIdentityService = (await import('../userIdentity/userIdentity.services.js')).default;
@@ -225,12 +246,23 @@ export class UserService {
     }
   }
 
-  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null, phone = '', name = '') {
+  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null, phone = '', name = '', invitationSource = 'WEB') {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
       const trimmedEmail = email.trim().toLowerCase();
       const existing = await userRepository.findByEmail(trimmedEmail, session);
+
+      // Check if membership already exists in this organization
+      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+      const existingMembership = existing ? await orgMembershipService.getMembership(existing._id, orgId, session) : null;
+
+      if (existing) {
+        // Block re-inviting an already active member of this community
+        if (existingMembership && existingMembership.status === 'Active') {
+          throw new HttpError(409, `User with email '${trimmedEmail}' is already an active member of this community.`);
+        }
+      }
 
       let phoneToAssign = phone ? phone.trim() : '';
       if (phoneToAssign) {
@@ -270,15 +302,6 @@ export class UserService {
         }
       }
 
-      // Check if membership already exists
-      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
-      const existingMembership = await orgMembershipService.getMembership(user._id, orgId, session);
-      if (existingMembership && existingMembership.status !== 'Pending') {
-        if (!villaId) {
-          throw new HttpError(400, 'User is already an active member of this community.');
-        }
-      }
-
       // Resolve roles if roleName is provided
       let roleIds = [];
       let calculatedResidentType = residentType;
@@ -288,8 +311,8 @@ export class UserService {
         role = await roleService.getRoleByName(roleName, orgId, session);
         if (role) {
           roleIds.push(role._id);
-          // If residentType is missing or 'None', default it directly to the dynamic role name
-          if (!calculatedResidentType || calculatedResidentType === 'None') {
+          // If residentType is missing or 'None' and user is assigned to a unit, default it to the role name
+          if (villaId && (!calculatedResidentType || calculatedResidentType === 'None')) {
             calculatedResidentType = role.name;
           }
         } else {
@@ -304,6 +327,12 @@ export class UserService {
       }
 
       if (villaId) {
+        const villaService = (await import('../villa/villa.services.js')).default;
+        const targetVilla = await villaService.getUnitById(villaId, orgId, session);
+        if (!targetVilla) {
+          throw new HttpError(400, `Unit with ID '${villaId}' not found in this community.`);
+        }
+
         const unitIndex = membershipUnits.findIndex(u => u.villaId && u.villaId.toString() === villaId.toString());
         if (unitIndex > -1) {
           membershipUnits[unitIndex].residentType = calculatedResidentType;
@@ -323,6 +352,7 @@ export class UserService {
         rootResidentType = calculatedResidentType;
       }
 
+      let membership = null;
       if (existingMembership) {
         // Update the existing membership with new role, villa, and resident type details (explicitly Pending status until accepted)
         if (roleIds.length > 0) {
@@ -333,11 +363,11 @@ export class UserService {
         existingMembership.residentType = rootResidentType;
         existingMembership.units = membershipUnits;
         existingMembership.status = 'Pending';
-        await existingMembership.save({ session });
+        membership = await existingMembership.save({ session });
       } else {
         // Create membership with villa association and roles (explicitly Pending status)
         const initialUnits = villaId ? [{ villaId, residentType: calculatedResidentType }] : [];
-        await orgMembershipService.createMembership({
+        membership = await orgMembershipService.createMembership({
           userId: user._id,
           orgId,
           roleIds,
@@ -349,8 +379,8 @@ export class UserService {
         }, session);
       }
 
-      // Sync user profile with villa and residencyType
-      const userResidencyType = roleName || calculatedResidentType || 'None';
+      // Sync user profile with villa and residencyType (keep None if no villa assigned)
+      const userResidencyType = rootVillaId ? (calculatedResidentType || roleName || 'None') : 'None';
 
       // Dynamically calculate a baseSystemType for mitigation/recommendation
       let baseSystemType = 'Tenant';
@@ -389,20 +419,22 @@ export class UserService {
         // RECOMMENDATION: Eventually update the InvoiceService and other strict-string services
         // to check role.isTenantRole or a baseSystemType classification (calculated as: ${baseSystemType})
         // rather than strictly matching residencyType strings like 'Tenant' or 'Resident Owner'.
-        await villaService.assignResidentToVilla(villaId, user._id, userResidencyType, session);
+        await villaService.assignResidentToVilla(villaId, user._id, userResidencyType, session, orgId);
       }
 
       // Always generate an invitationToken with orgId (for both new and existing users)
       const tokenService = (await import('../token/token.services.js')).default;
-      const result = await tokenService.generateInvitationToken(user._id, orgId, session);
+      // Clean up previous unconsumed invitation tokens for this user in this organization
+      await tokenService.deleteTokens({ userId: user._id, orgId, type: 'INVITATION' }, session);
+      const result = await tokenService.generateInvitationToken(user._id, orgId, session, invitationSource);
       const invitationToken = result.invitationToken;
 
-      // Insert transactional outbox event for async email processing
+      // Insert transactional outbox event for auditing & token resolution fallback
       const OutboxEvent = (await import('../outbox/outboxEvent.model.js')).default;
       const outboxEvent = new OutboxEvent({
         eventType: 'USER_INVITED',
-        payload: { email: trimmedEmail, orgId, invitationToken },
-        status: 'PENDING',
+        payload: { email: trimmedEmail, orgId, invitationToken, invitationSource },
+        status: 'COMPLETED',
       });
       await outboxEvent.save({ session });
 
@@ -414,10 +446,18 @@ export class UserService {
       await session.commitTransaction();
       
       // Dispatch events for email delivery and real-time frontend syncing
-      userEvents.emit('USER_INVITED', { email: trimmedEmail, orgId, invitationToken });
-      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'invited' });
+      userEvents.emit('USER_INVITED', {
+        email: trimmedEmail,
+        orgId,
+        invitationToken,
+        invitationSource,
+        villaId: rootVillaId || villaId,
+        roleName: roleName || (role ? role.name : null),
+        userId: user._id,
+      });
+      userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'invited', invitationSource });
 
-      return { user, invitationToken };
+      return { user, invitationToken, invitationSource, membership };
     } catch (error) {
       await session.abortTransaction();
       throw error;
@@ -674,15 +714,16 @@ export class UserService {
     }
   }
 
-  async bulkInviteUsers(invitations, orgId) {
+  async bulkInviteUsers(invitations, orgId, defaultSource = 'WEB') {
     const successes = [];
     const failures = [];
 
     const villaService = (await import('../villa/villa.services.js')).default;
 
     for (const invite of invitations) {
-      const { email, residentType = 'None', roleName, villaNumber, villaId: payloadVillaId } = invite;
+      const { email, residentType = 'None', roleName, villaNumber, villaId: payloadVillaId, invitationSource: itemSource } = invite;
       const trimmedEmail = email ? email.trim().toLowerCase() : '';
+      const source = (itemSource || defaultSource || 'WEB').toUpperCase();
 
       try {
         if (!trimmedEmail) {
@@ -701,13 +742,14 @@ export class UserService {
         }
 
         // Call the single inviteUser logic
-        await this.inviteUser(trimmedEmail, orgId, villaId, residentType, roleName);
+        await this.inviteUser(trimmedEmail, orgId, villaId, residentType, roleName, '', '', source);
 
         successes.push({
           email: trimmedEmail,
           status: 'Invited',
           role: roleName,
           villaNumber: villaNumber || '',
+          invitationSource: source,
         });
       } catch (error) {
         failures.push({
@@ -715,6 +757,7 @@ export class UserService {
           error: error.message || 'Invitation failed',
           role: roleName || '',
           villaNumber: villaNumber || '',
+          invitationSource: source,
         });
       }
     }

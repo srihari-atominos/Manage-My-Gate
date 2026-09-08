@@ -48,17 +48,37 @@ export const normalizeUser = (user: any): User | null => {
     (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.id)) ||
     '';
 
+  const canonicalVillaId =
+    extractId(user.activeVillaId) ||
+    extractId(user.villaId) ||
+    extractId(user.villa?._id) ||
+    extractId(user.villa?.id) ||
+    (Array.isArray(user.accessibleUnits) && extractId(user.accessibleUnits[0]?.villaId)) ||
+    (Array.isArray(user.availableWorkspaces) && extractId(user.availableWorkspaces[0]?.villaId)) ||
+    '';
+
   const orgName = user.organizationName || user.orgName || user.activeOrganizationName || user.organization?.name || '';
-  const vNum = user.villaNumber || user.activeVillaNumber || user.unitNumber || '';
+  const vNum =
+    user.villaNumber ||
+    user.activeVillaNumber ||
+    user.unitNumber ||
+    user.villa?.unitNumber ||
+    user.villa?.villaNumber ||
+    (Array.isArray(user.accessibleUnits) && (user.accessibleUnits[0]?.villaNumber || user.accessibleUnits[0]?.unitNumber)) ||
+    (Array.isArray(user.availableWorkspaces) && (user.availableWorkspaces[0]?.villaNumber || user.availableWorkspaces[0]?.unitNumber)) ||
+    '';
 
   return {
     ...user,
     id: canonicalId,
     _id: canonicalId || user._id,
     orgId: canonicalOrgId,
+    activeOrgId: canonicalOrgId,
     orgName,
     organizationName: orgName,
     activeOrganizationName: orgName,
+    villaId: canonicalVillaId,
+    activeVillaId: canonicalVillaId,
     villaNumber: vNum,
     activeVillaNumber: vNum,
     unitNumber: vNum,
@@ -322,6 +342,65 @@ export const acceptInviteThunk = createAsyncThunk(
   }
 );
 
+export const acceptSsoInviteThunk = createAsyncThunk(
+  'auth/acceptSsoInvite',
+  async (
+    {
+      inviteToken,
+      ssoCredential,
+      provider,
+    }: {
+      inviteToken: string;
+      ssoCredential: string;
+      provider: 'google' | 'microsoft';
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await authService.acceptSsoInvite({ inviteToken, ssoCredential, provider });
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      if (body && body.success === false) {
+        return rejectWithValue(body.message || 'Failed to accept invitation via SSO');
+      }
+
+      const innerData = body?.data || body;
+      const authToken = innerData?.token;
+      const refreshToken = innerData?.refreshToken;
+      const rawUser = innerData?.user;
+      const user = normalizeUser(rawUser);
+
+      if (authToken) await storage.setItem('token', authToken);
+      if (refreshToken) await storage.setItem('refreshToken', refreshToken);
+      if (user) await storage.setItem('user', JSON.stringify(user));
+      if (innerData?.availableWorkspaces) {
+        await storage.setItem('availableWorkspaces', JSON.stringify(innerData.availableWorkspaces));
+      }
+
+      return { ...innerData, user } as any;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to accept invitation via SSO'
+      );
+    }
+  }
+);
+
+export const rejectInviteThunk = createAsyncThunk(
+  'auth/rejectInvite',
+  async ({ token, email }: { token: string; email?: string }, { rejectWithValue }) => {
+    try {
+      const response = await authService.rejectInvite({ token, email });
+      const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+      if (body && body.success === false) {
+        return rejectWithValue(body.message || 'Failed to reject invitation');
+      }
+      return body?.data || body;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to reject invitation');
+    }
+  }
+);
+
 
 
 export const requestOtp = createAsyncThunk(
@@ -419,10 +498,13 @@ export const switchWorkspaceContextThunk = createAsyncThunk<
 
     const { fetchQuickActionsThunk, resetQuickActionsForContext } = require('../../dashboard/dashboardSlice');
     dispatch(resetQuickActionsForContext());
+    const targetVId = cleanPayload.targetVillaId || user?.activeVillaId || user?.villaId;
+    const targetVNum = user?.activeVillaNumber || user?.villaNumber || user?.unitNumber;
     dispatch(
       fetchQuickActionsThunk({
         orgId: user?.activeOrgId || user?.orgId || cleanPayload.targetOrgId,
-        villaId: user?.activeVillaId || user?.villaId || user?.activeVillaNumber || user?.unitNumber || cleanPayload.targetVillaId,
+        villaId: targetVId,
+        villaNumber: targetVNum,
       })
     );
 
@@ -782,6 +864,25 @@ const authSlice = createSlice({
       .addCase(acceptInviteThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to accept invitation';
+      })
+      // Accept SSO Invitation
+      .addCase(acceptSsoInviteThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMsg = null;
+      })
+      .addCase(acceptSsoInviteThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.token = action.payload?.token || action.payload?.data?.token || null;
+        state.refreshToken = action.payload?.refreshToken || action.payload?.data?.refreshToken || null;
+        const rawUser = action.payload?.user || action.payload?.data?.user || null;
+        state.user = normalizeUser(rawUser);
+        state.isAuthenticated = !!(state.token && state.user?.id);
+        state.successMsg = action.payload?.message || 'Invitation accepted via SSO successfully!';
+      })
+      .addCase(acceptSsoInviteThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) || 'Failed to accept invitation via SSO';
       })
       // Request OTP
       .addCase(requestOtp.pending, (state) => {

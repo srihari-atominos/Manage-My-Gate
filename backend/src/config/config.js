@@ -79,6 +79,7 @@ export const config = {
   avatarUploadPath: process.env.AVATAR_UPLOAD_PATH || 'uploads/avatars',
   sso: {
     googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+    googleAndroidClientId: process.env.GOOGLE_ANDROID_CLIENT_ID || '',
     googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     microsoftClientId: process.env.MICROSOFT_CLIENT_ID || '',
     microsoftTenantId: process.env.MICROSOFT_TENANT_ID || '',

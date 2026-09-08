@@ -7,6 +7,7 @@ import {
   registerUserThunk,
   verifyRegistrationThunk,
   acceptInviteThunk,
+  acceptSsoInviteThunk,
   createWorkspaceThunk,
   updateOrganizationFeaturesThunk,
   requestOtp,
@@ -74,6 +75,13 @@ export const useAuth = () => {
   const handleAcceptInvite = useCallback(
     (token: string, password: string) => {
       return dispatch ? dispatch(acceptInviteThunk({ token, password })) : Promise.resolve();
+    },
+    [dispatch]
+  );
+
+  const handleAcceptSsoInvite = useCallback(
+    (payload: { inviteToken: string; ssoCredential: string; provider: 'google' | 'microsoft' }) => {
+      return dispatch ? dispatch(acceptSsoInviteThunk(payload)) : Promise.resolve();
     },
     [dispatch]
   );
@@ -167,6 +175,7 @@ export const useAuth = () => {
     register: handleRegister,
     verifyRegistration: handleVerifyRegistration,
     acceptInvite: handleAcceptInvite,
+    acceptSsoInvite: handleAcceptSsoInvite,
     createWorkspace: handleCreateWorkspace,
     updateOrganizationFeatures: handleUpdateOrganizationFeatures,
     checkOrganizationName: handleCheckOrganizationName,

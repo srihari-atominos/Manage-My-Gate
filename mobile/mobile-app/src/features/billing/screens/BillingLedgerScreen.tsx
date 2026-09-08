@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Pressable, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
@@ -25,6 +25,13 @@ import { useBillingSocket } from '../hooks/useBillingSocket';
 
 export function BillingLedgerScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ status?: string }>();
+  const initialStatus =
+    params.status &&
+    ['ALL', 'VERIFICATION_PENDING', 'OVERDUE', 'UNPAID', 'PARTIALLY_PAID', 'PAID'].includes(params.status)
+      ? params.status
+      : 'ALL';
+
   const {
     invoicesList,
     statusCounts,
@@ -41,10 +48,19 @@ export function BillingLedgerScreen() {
   // Socket sync for real-time ledger updates
   useBillingSocket();
 
-  // Permission check from auth state (memoized boolean selector to avoid new reference warnings)
+  // Permission check from auth state
   const hasLedgerPermission = useSelector((state: any) => {
     const role = state.auth?.user?.role || '';
-    if (role === 'SuperAdmin' || role === 'Admin') return true;
+    const adminRoles = [
+      'Super Admin',
+      'Platform Super Admin',
+      'Community Admin',
+      'Admin',
+      'SuperAdmin',
+      'Finance Manager',
+      'Finance Admin',
+    ];
+    if (adminRoles.includes(role)) return true;
     const permissions = state.auth?.user?.permissions;
     if (!Array.isArray(permissions)) return false;
     return (
@@ -55,7 +71,17 @@ export function BillingLedgerScreen() {
   });
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
+
+  // Sync if route params change while mounted
+  useEffect(() => {
+    if (
+      params.status &&
+      ['ALL', 'VERIFICATION_PENDING', 'OVERDUE', 'UNPAID', 'PARTIALLY_PAID', 'PAID'].includes(params.status)
+    ) {
+      setStatusFilter(params.status);
+    }
+  }, [params.status]);
   const [groupMode, setGroupMode] = useState<LedgerGroupingMode>('flat');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [settleInvoice, setSettleInvoice] = useState<Invoice | null>(null);

@@ -54,6 +54,13 @@ export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string): st
   if (cleanUrl.includes('notices/board') || cleanUrl.includes('notice-board')) {
     return '/(resident)/notices';
   }
+  if (cleanUrl.includes('billing/invoice/')) {
+    const invId = cleanUrl.split('billing/invoice/')[1]?.split('?')[0]?.replace(/\/$/, '');
+    return `/(resident)/billing/invoice/${invId}`;
+  }
+  if (cleanUrl.includes('billing/my-dues') || cleanUrl.includes('my-dues')) {
+    return '/(resident)/billing/my-dues';
+  }
   if (cleanUrl.includes('billing')) {
     return '/(resident)/billing';
   }

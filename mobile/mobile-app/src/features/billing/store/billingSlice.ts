@@ -120,32 +120,14 @@ export const DEFAULT_MOCK_INVOICES: Invoice[] = [
 ];
 
 const initialState: BillingState = {
-  kpis: {
-    grossDemand: 184500,
-    grossDemandCount: 42,
-    totalCollected: 142000,
-    inTransitGateway: 12500,
-    totalUnpaidArrears: 30000,
-    pendingOffline: 2,
-  },
+  kpis: null,
   activeDues: {
-    totalPortfolioDue: 4850,
-    unitBreakdown: [
-      {
-        invoiceId: 'inv_mock_01',
-        invoiceNumber: 'INV-2026-0901',
-        unitId: 'unit_a402',
-        unitNumber: 'A-402',
-        totalDue: 4850,
-        billingPeriodString: 'September 2026',
-        status: 'UNPAID',
-        dueDate: '2026-09-15T00:00:00.000Z',
-      },
-    ],
+    totalPortfolioDue: 0,
+    unitBreakdown: [],
     secondaryCompliance: [],
-    recentInvoices: DEFAULT_MOCK_INVOICES,
+    recentInvoices: [],
   },
-  invoicesList: DEFAULT_MOCK_INVOICES,
+  invoicesList: [],
   statusCounts: {
     ALL: 0,
     VERIFICATION_PENDING: 0,
@@ -157,7 +139,7 @@ const initialState: BillingState = {
   pagination: {
     currentPage: 1,
     totalPages: 1,
-    totalRecords: DEFAULT_MOCK_INVOICES.length,
+    totalRecords: 0,
     limit: 10,
   },
   loadingStates: {
@@ -185,9 +167,17 @@ export const fetchAdminKPIs = createAsyncThunk(
 
 export const fetchMyDues = createAsyncThunk(
   'billing/fetchMyDues',
-  async (_, { rejectWithValue }) => {
+  async (communityId: string | undefined, { rejectWithValue, getState }) => {
     try {
-      const data = await billingService.getMyDues();
+      const state: any = getState();
+      const targetCommunityId =
+        communityId ||
+        state?.workspace?.activeOrganizationId ||
+        state?.auth?.activeOrganizationId ||
+        state?.auth?.user?.activeOrganizationId ||
+        state?.auth?.user?.orgId ||
+        state?.auth?.user?.communityId;
+      const data = await billingService.getMyDues(targetCommunityId);
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch personal dues');
@@ -242,7 +232,23 @@ export const triggerInvoiceGenerationThunk = createAsyncThunk(
 export const submitOfflineSettlement = createAsyncThunk(
   'billing/submitOfflineSettlement',
   async (
-    { invoiceId, offlineReference, paymentMethod, amount }: { invoiceId: string; offlineReference: string; paymentMethod: string; amount?: number },
+    {
+      invoiceId,
+      offlineReference,
+      paymentMethod,
+      amount,
+      paymentDate,
+      paymentScreenshot,
+      payerNotes,
+    }: {
+      invoiceId: string;
+      offlineReference: string;
+      paymentMethod: string;
+      amount?: number;
+      paymentDate?: string;
+      paymentScreenshot?: string;
+      payerNotes?: string;
+    },
     { rejectWithValue }
   ) => {
     try {
@@ -252,6 +258,9 @@ export const submitOfflineSettlement = createAsyncThunk(
         paymentMethod,
         offlineAmount: amount,
         amount,
+        paymentDate,
+        paymentScreenshot,
+        payerNotes,
       });
       return data;
     } catch (error: any) {
@@ -263,12 +272,34 @@ export const submitOfflineSettlement = createAsyncThunk(
 export const clearOfflineSettlement = createAsyncThunk(
   'billing/clearOfflineSettlement',
   async (
-    payload: string | { invoiceId: string; amount?: number; settlementType?: 'FULL' | 'CUSTOM' },
+    payload:
+      | string
+      | {
+          invoiceId: string;
+          amount?: number;
+          settlementType?: 'FULL' | 'CUSTOM';
+          paymentMethod?: string;
+          paymentReference?: string;
+          reference?: string;
+          notes?: string;
+          paymentScreenshot?: string;
+        },
     { rejectWithValue }
   ) => {
     try {
       const invoiceId = typeof payload === 'string' ? payload : payload.invoiceId;
-      const opts = typeof payload === 'string' ? undefined : { amount: payload.amount, settlementType: payload.settlementType };
+      const opts =
+        typeof payload === 'string'
+          ? undefined
+          : {
+              amount: payload.amount,
+              settlementType: payload.settlementType,
+              paymentMethod: payload.paymentMethod,
+              paymentReference: payload.paymentReference,
+              reference: payload.reference,
+              notes: payload.notes,
+              paymentScreenshot: payload.paymentScreenshot,
+            };
       const data = await billingService.approveInvoiceOffline(invoiceId, opts);
       return data;
     } catch (error: any) {
@@ -338,7 +369,7 @@ export const billingSlice = createSlice({
     clearInvoicesGrid: (state) => {
       state.invoicesList = [];
       state.pagination = { ...initialState.pagination };
-      state.kpis = { ...initialState.kpis };
+      state.kpis = null;
       state.activeDues = { ...initialState.activeDues };
     },
   },
@@ -351,7 +382,7 @@ export const billingSlice = createSlice({
       })
       .addCase(fetchAdminKPIs.fulfilled, (state, action) => {
         state.loadingStates.fetchKPIs = false;
-        state.kpis = action.payload || initialState.kpis;
+        state.kpis = action.payload || null;
       })
       .addCase(fetchAdminKPIs.rejected, (state, action) => {
         state.loadingStates.fetchKPIs = false;
@@ -505,7 +536,7 @@ export const billingSlice = createSlice({
       .addCase('auth/switchWorkspaceContext/fulfilled', (state) => {
         state.invoicesList = [];
         state.pagination = { ...initialState.pagination };
-        state.kpis = { ...initialState.kpis };
+        state.kpis = null;
         state.activeDues = { ...initialState.activeDues };
       });
   },

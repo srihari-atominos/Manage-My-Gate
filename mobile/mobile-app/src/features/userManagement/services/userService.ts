@@ -35,6 +35,7 @@ export interface InviteUserData {
   villaId?: string | null;
   residentType?: string;
   roleName?: string | null;
+  invitationSource?: 'WEB' | 'APP';
 }
 
 export interface BulkInviteData {
@@ -63,7 +64,8 @@ export const fetchUsers = async (params: FetchUsersParams = {}) => {
  * Invite a new user
  */
 export const inviteUser = async (inviteData: InviteUserData) => {
-  const response: any = await apiClient.post('/users/invite', inviteData);
+  const payload = { ...inviteData, invitationSource: 'APP' as const };
+  const response: any = await apiClient.post('/users/invite', payload);
   return response.data || response;
 };
 
@@ -71,7 +73,11 @@ export const inviteUser = async (inviteData: InviteUserData) => {
  * Bulk invite multiple users
  */
 export const bulkInviteUsers = async (invitations: InviteUserData[]) => {
-  const response: any = await apiClient.post('/users/bulk-invite', { invitations });
+  const formatted = invitations.map((inv) => ({ ...inv, invitationSource: 'APP' as const }));
+  const response: any = await apiClient.post('/users/bulk-invite', {
+    invitations: formatted,
+    invitationSource: 'APP',
+  });
   return response.data || response;
 };
 

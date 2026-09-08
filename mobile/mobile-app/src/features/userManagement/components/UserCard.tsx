@@ -24,9 +24,13 @@ export const UserCard: React.FC<UserCardProps> = ({
   const { t } = useTranslation();
   const isSelf = user.id === currentUserId || user._id === currentUserId;
   const isPending = user.status === 'Pending' || user.status === 'Pending Verification';
-  const displayStatus = isPending ? 'Pending' : user.status || 'Active';
+  const isRejected = user.status === 'Rejected';
+  const displayStatus = isRejected ? 'Rejected' : isPending ? 'Pending' : user.status || 'Active';
 
   const mapStatusVariant = (status: string): StatusVariant => {
+    if (status === 'Rejected') {
+      return 'danger';
+    }
     if (status === 'Pending' || status === 'Pending Verification') {
       return 'warning';
     }

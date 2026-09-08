@@ -12,6 +12,18 @@ export const acceptInvite = async ({ token, email, password }: any) => {
   return await apiClient.post('/auth/accept-invite', { token, email, password });
 };
 
+export const acceptSsoInvite = async (payload: {
+  inviteToken: string;
+  ssoCredential: string;
+  provider: 'google' | 'microsoft';
+}) => {
+  return await apiClient.post('/auth/accept-invite/sso', payload);
+};
+
+export const rejectInvite = async ({ token, email }: { token: string; email?: string }) => {
+  return await apiClient.post('/auth/reject-invite', { token, email });
+};
+
 export const verifyRegistration = async (email: string, code: string) => {
   return await apiClient.post('/auth/register/verify', { email, code });
 };
@@ -106,6 +118,8 @@ export default {
   register,
   verifyRegistration,
   acceptInvite,
+  acceptSsoInvite,
+  rejectInvite,
   loginWithGoogle,
   loginWithMicrosoft,
   initiatePhoneLogin,

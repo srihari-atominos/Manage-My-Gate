@@ -91,7 +91,7 @@ export default function AdminCommunityPassesScreen() {
 
   const renderHeader = () => (
     <View className="gap-3 mb-3">
-      {/* Admin Scope Switcher (All Estate Passes vs Community Only) */}
+      {/* Admin Scope Switcher (All Passes vs Community Only) */}
       <View className="p-1 bg-muted/60 rounded-2xl flex-row gap-1">
         <TouchableOpacity
           onPress={() => {
@@ -113,7 +113,7 @@ export default function AdminCommunityPassesScreen() {
               adminViewScope === 'ALL' ? 'text-primary' : 'text-muted-foreground'
             }`}
           >
-            All Estate Passes
+            All Passes
           </Text>
         </TouchableOpacity>
 

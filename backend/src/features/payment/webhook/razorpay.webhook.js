@@ -134,6 +134,13 @@ export const handleRazorpayWebhook = async (req, res, next) => {
             payload,
             session
           );
+        } else if (paymentRecord.referenceType === 'WalletRecharge' || paymentRecord.referenceType === 'Wallet') {
+          const walletService = (await import('../../wallet/wallet.service.js')).default;
+          await walletService.handleWebhookRecharge(
+            paymentRecord,
+            razorpayPaymentId,
+            session
+          );
         }
 
         // Shared logic: update the Payment record's status to 'success', call await payment.save({ session }), and commit the transaction.

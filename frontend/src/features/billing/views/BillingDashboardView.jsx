@@ -24,6 +24,7 @@ const BillingDashboardView = memo(({ onRunBillingClick }) => {
     changeTablePage,
     settleOffline,
     approveOffline,
+    sendReminder,
   } = billingData
 
   useEffect(() => {
@@ -73,6 +74,7 @@ const BillingDashboardView = memo(({ onRunBillingClick }) => {
         onPageChange={changeTablePage}
         onSettleOffline={settleOffline}
         onApproveOffline={approveOffline}
+        onSendReminder={sendReminder}
       />
     </div>
   )

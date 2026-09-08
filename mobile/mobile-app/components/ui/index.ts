@@ -13,6 +13,7 @@ export * from './KPIDashboardStrip';
 export * from './KPIRow';
 export * from './ListCard';
 export * from './PaginatedList';
+export * from './QRCodeView';
 export * from './ScreenShell';
 export * from './SearchFilterBar';
 export * from './Skeleton';

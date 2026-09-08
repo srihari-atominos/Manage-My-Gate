@@ -8,6 +8,7 @@ import {
   submitOfflineSettlement,
   clearOfflineSettlement,
   rejectOfflineSettlement,
+  sendInvoiceReminderThunk,
   recordCashPaymentThunk,
   fetchCashCollectionsThunk,
   searchCashEligibleThunk,
@@ -152,6 +153,13 @@ export const useBilling = () => {
     [dispatch],
   )
 
+  const sendReminder = useCallback(
+    (invoiceId) => {
+      return dispatch(sendInvoiceReminderThunk(invoiceId)).unwrap()
+    },
+    [dispatch],
+  )
+
   const resetBillingError = useCallback(() => {
     dispatch(clearBillingError())
   }, [dispatch])
@@ -176,6 +184,7 @@ export const useBilling = () => {
     settleOffline,
     approveOffline,
     rejectOffline,
+    sendReminder,
     recordCash,
     fetchCollections,
     searchCashEligibleInvoices,

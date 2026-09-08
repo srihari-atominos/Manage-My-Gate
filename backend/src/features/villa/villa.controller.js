@@ -167,7 +167,9 @@ export class VillaController {
     try {
       const orgId = req.tenant.orgId;
       const { villas } = req.body;
-      const result = await villaService.bulkUploadVillasAndResidents(villas, orgId);
+      const { resolveInvitationSource } = await import('../user/utils/invite.utils.js');
+      const invitationSource = resolveInvitationSource(req);
+      const result = await villaService.bulkUploadVillasAndResidents(villas, orgId, invitationSource);
       res.success(result, 'Bulk unit upload process completed');
     } catch (error) {
       next(error);

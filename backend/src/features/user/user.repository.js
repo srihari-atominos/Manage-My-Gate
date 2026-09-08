@@ -6,11 +6,15 @@ export class UserRepository {
   }
 
   async findByEmail(email, session) {
-    return await User.findOne({ email }).session(session || null);
+    if (!email) return null;
+    const normalized = String(email).trim().toLowerCase();
+    return await User.findOne({ email: normalized }).session(session || null);
   }
 
   async findByUsername(username, session) {
-    return await User.findOne({ username }).session(session || null);
+    if (!username) return null;
+    const normalized = String(username).trim();
+    return await User.findOne({ username: { $regex: new RegExp(`^${normalized}$`, 'i') } }).session(session || null);
   }
 
   /**

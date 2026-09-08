@@ -27,30 +27,6 @@ interface OrgSwitchModalProps {
   onSelectCommunity: (orgName: string, orgId: string) => void;
 }
 
-export const CANONICAL_COMMUNITIES: WorkspaceItem[] = [
-  {
-    orgId: '650000000000000000000001',
-    name: 'Palm Meadows Community',
-    roleName: 'Admin',
-    villaId: '650000000000000000000101',
-    villaNumber: 'Villa 101',
-  },
-  {
-    orgId: '650000000000000000000002',
-    name: 'Emerald Valley Community',
-    roleName: 'Tenant/Owner',
-    villaId: '650000000000000000000201',
-    villaNumber: 'Villa 201',
-  },
-  {
-    orgId: '650000000000000000000003',
-    name: 'Skyline Heights Apartments',
-    roleName: 'Tenant/Owner',
-    villaId: '650000000000000000000301',
-    villaNumber: 'Block A - 101',
-  },
-];
-
 export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   visible,
   onClose,
@@ -68,24 +44,34 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   const workspacesList: WorkspaceItem[] = React.useMemo(() => {
     const list = reduxWorkspaces || (user as any)?.availableWorkspaces;
     if (list && Array.isArray(list) && list.length > 0) {
-      const mapped: WorkspaceItem[] = list.map((w: any) => ({
+      return list.map((w: any) => ({
         orgId: w.orgId || w._id,
         name: w.name || w.organizationName || w.orgName || w.communityOrg || (w.isPlatform ? 'System Platform' : 'Community Workspace'),
-        roleName: w.roleName || (w.roles ? w.roles.join(', ') : 'Admin'),
+        roleName: w.roleName || (w.roles ? (Array.isArray(w.roles) ? w.roles.join(', ') : w.roles) : 'Member'),
         isPlatform: w.isPlatform || false,
         villaId: w.villaId || w.unitId,
         villaNumber: w.villaNumber || w.unitNumber,
       }));
-      // Merge with canonical communities to guarantee all 3 are available
-      const orgIds = new Set(mapped.map((m: any) => m.orgId));
-      CANONICAL_COMMUNITIES.forEach((c) => {
-        if (!orgIds.has(c.orgId)) {
-          mapped.push(c);
-        }
-      });
-      return mapped;
     }
-    return CANONICAL_COMMUNITIES;
+
+    // Fallback to active organization context if availableWorkspaces has not been loaded yet
+    const userAny = user as any;
+    const fallbackOrgId = userAny?.orgId || userAny?.activeOrgId;
+    const fallbackOrgName = userAny?.organizationName || userAny?.orgName || userAny?.activeOrganizationName;
+    if (fallbackOrgId && fallbackOrgName) {
+      return [
+        {
+          orgId: fallbackOrgId,
+          name: fallbackOrgName,
+          roleName: userAny?.role || 'Member',
+          isPlatform: userAny?.isPlatform || false,
+          villaId: userAny?.villaId || userAny?.activeVillaId,
+          villaNumber: userAny?.villaNumber || userAny?.activeVillaNumber || userAny?.unitNumber,
+        },
+      ];
+    }
+
+    return [];
   }, [reduxWorkspaces, user]);
 
   const handleSelect = (ws: WorkspaceItem) => {
@@ -105,15 +91,16 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
     }
     if (Object.keys(payload).length > 0) {
       dispatch(switchWorkspaceContextThunk(payload));
+    } else {
+      // 2. Fetch the quick actions specifically scoped to this org and villa
+      dispatch(
+        fetchQuickActionsThunk({
+          orgId: ws.orgId,
+          villaId: ws.villaId,
+          villaNumber: ws.villaNumber,
+        })
+      );
     }
-
-    // 2. Fetch the quick actions specifically scoped to this org and villa
-    dispatch(
-      fetchQuickActionsThunk({
-        orgId: ws.orgId,
-        villaId: ws.villaId || ws.villaNumber,
-      })
-    );
 
     onSelectCommunity(ws.name, ws.orgId);
     onClose();
@@ -143,7 +130,12 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
           {/* Workspaces List */}
           <ScrollView className="max-h-60" showsVerticalScrollIndicator={false}>
             <View className="gap-2.5">
-              {workspacesList.map((ws, index) => {
+              {workspacesList.length === 0 ? (
+                <View className="py-6 items-center justify-center">
+                  <Text className="text-sm text-muted-foreground">{t('no_workspaces_available', 'No other organizations available')}</Text>
+                </View>
+              ) : (
+                workspacesList.map((ws, index) => {
                 const isOrgMatch = ws.orgId ? ws.orgId === activeOrgId : ws.name === activeCommunity;
                 const isRoleMatch = !ws.roleName || !activeRole || 
                   ws.roleName.toLowerCase().includes(activeRole.toLowerCase()) || 
@@ -198,7 +190,8 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                     {isSelected && <Check size={18} className="text-primary" />}
                   </TouchableOpacity>
                 );
-              })}
+              })
+            )}
             </View>
           </ScrollView>
 

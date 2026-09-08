@@ -21,40 +21,57 @@ class UserPreferenceRepository {
   }
 
   /**
-   * Find user preferences by userId and context (orgId, villaId)
+   * Find user preferences by userId and context (orgId, villaId, villaNumber)
    * @param {string} userId 
-   * @param {{ orgId?: string, villaId?: string }} [context] 
+   * @param {{ orgId?: string, villaId?: string, villaNumber?: string }} [context] 
    * @param {import('mongoose').ClientSession} [session] 
    */
   async findByUserIdAndContext(userId, context = {}, session = null) {
     const doc = await this.findByUserId(userId, session);
     const orgId = context?.orgId ? String(context.orgId).trim() : '';
     const villaId = context?.villaId ? String(context.villaId).trim() : '';
+    const villaNumber = context?.villaNumber ? String(context.villaNumber).trim() : '';
 
     if (!doc) {
       return { activeQuickActions: null, isCustomized: false, doc: null };
     }
 
-    // If context is specified, check scopedPreferences
-    if (orgId || villaId) {
+    // If context is specified, check scopedPreferences with strict isolation
+    if (orgId || villaId || villaNumber) {
       const scopedList = Array.isArray(doc.scopedPreferences) ? doc.scopedPreferences : [];
-      
-      // 1. Exact match for both orgId and villaId
-      const exactMatch = scopedList.find(
-        (sp) => (sp.orgId || '') === orgId && (sp.villaId || '') === villaId
-      );
-      if (exactMatch && Array.isArray(exactMatch.activeQuickActions) && exactMatch.activeQuickActions.length > 0) {
+
+      // 1. Villa-specific scope
+      if (villaId || villaNumber) {
+        const villaMatch = scopedList.find((sp) => {
+          if (orgId && (sp.orgId || '') !== orgId) {
+            return false;
+          }
+          const vIdMatch = villaId && ((sp.villaId || '') === villaId || (sp.villaNumber || '') === villaId);
+          const vNumMatch = villaNumber && ((sp.villaNumber || '') === villaNumber || (sp.villaId || '') === villaNumber);
+          return Boolean(vIdMatch || vNumMatch);
+        });
+
+        if (villaMatch && Array.isArray(villaMatch.activeQuickActions) && villaMatch.activeQuickActions.length > 0) {
+          return {
+            activeQuickActions: villaMatch.activeQuickActions,
+            isCustomized: true,
+            doc,
+          };
+        }
+
+        // Context specified for this specific villa, but not yet customized.
+        // Strictly return null so role defaults are calculated for THIS villa without leakage.
         return {
-          activeQuickActions: exactMatch.activeQuickActions,
-          isCustomized: true,
+          activeQuickActions: null,
+          isCustomized: false,
           doc,
         };
       }
 
-      // 2. Org-level match if villaId has no specific override
-      if (villaId && orgId) {
+      // 2. Org-only scope (no villa context, e.g. platform or org administrator)
+      if (orgId) {
         const orgMatch = scopedList.find(
-          (sp) => (sp.orgId || '') === orgId && (!sp.villaId || sp.villaId === '')
+          (sp) => (sp.orgId || '') === orgId && (!sp.villaId || sp.villaId === '') && (!sp.villaNumber || sp.villaNumber === '')
         );
         if (orgMatch && Array.isArray(orgMatch.activeQuickActions) && orgMatch.activeQuickActions.length > 0) {
           return {
@@ -63,14 +80,13 @@ class UserPreferenceRepository {
             doc,
           };
         }
-      }
 
-      // Context specified but not yet customized for this specific villa/org
-      return {
-        activeQuickActions: null,
-        isCustomized: false,
-        doc,
-      };
+        return {
+          activeQuickActions: null,
+          isCustomized: false,
+          doc,
+        };
+      }
     }
 
     // Global / fallback context
@@ -85,45 +101,53 @@ class UserPreferenceRepository {
    * Upsert activeQuickActions array for a user with optional workspace context
    * @param {string} userId 
    * @param {string[]} activeQuickActions 
-   * @param {{ orgId?: string, villaId?: string }} [context] 
+   * @param {{ orgId?: string, villaId?: string, villaNumber?: string }} [context] 
    * @param {import('mongoose').ClientSession} [session] 
    */
   async upsertQuickActions(userId, activeQuickActions, context = {}, session = null) {
     const orgId = context?.orgId ? String(context.orgId).trim() : '';
     const villaId = context?.villaId ? String(context.villaId).trim() : '';
+    const villaNumber = context?.villaNumber ? String(context.villaNumber).trim() : '';
 
     let doc = await this.findByUserId(userId, session);
 
     if (!doc) {
       doc = new UserPreference({
         userId,
-        activeQuickActions,
+        activeQuickActions: DEFAULT_ACTIVE_QUICK_ACTIONS,
         scopedPreferences: [],
       });
     }
 
-    if (orgId || villaId) {
+    if (orgId || villaId || villaNumber) {
       if (!Array.isArray(doc.scopedPreferences)) {
         doc.scopedPreferences = [];
       }
 
-      const existingIndex = doc.scopedPreferences.findIndex(
-        (sp) => (sp.orgId || '') === orgId && (sp.villaId || '') === villaId
-      );
+      const existingIndex = doc.scopedPreferences.findIndex((sp) => {
+        if (orgId && (sp.orgId || '') !== orgId) return false;
+
+        if (villaId || villaNumber) {
+          const vIdMatch = villaId && ((sp.villaId || '') === villaId || (sp.villaNumber || '') === villaId);
+          const vNumMatch = villaNumber && ((sp.villaNumber || '') === villaNumber || (sp.villaId || '') === villaNumber);
+          return Boolean(vIdMatch || vNumMatch);
+        }
+
+        return (!sp.villaId || sp.villaId === '') && (!sp.villaNumber || sp.villaNumber === '');
+      });
 
       if (existingIndex >= 0) {
         doc.scopedPreferences[existingIndex].activeQuickActions = activeQuickActions;
+        if (villaId) doc.scopedPreferences[existingIndex].villaId = villaId;
+        if (villaNumber) doc.scopedPreferences[existingIndex].villaNumber = villaNumber;
+        if (orgId) doc.scopedPreferences[existingIndex].orgId = orgId;
       } else {
         doc.scopedPreferences.push({
           orgId,
           villaId,
+          villaNumber,
           activeQuickActions,
         });
-      }
-
-      // Keep root activeQuickActions populated as fallback if empty
-      if (!doc.activeQuickActions || doc.activeQuickActions.length === 0) {
-        doc.activeQuickActions = activeQuickActions;
       }
     } else {
       doc.activeQuickActions = activeQuickActions;

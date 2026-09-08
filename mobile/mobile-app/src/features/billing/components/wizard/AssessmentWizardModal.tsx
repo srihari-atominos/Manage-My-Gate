@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Modal, ScrollView, Alert, Platform, StatusBar } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, ScrollView, Alert, Platform, StatusBar, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
@@ -162,17 +162,56 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
 
     // Step 3 Validation
     if (currentStepIndex === 2) {
+      const isPositiveNumeric = (val: string) => /^\d+(\.\d+)?$/.test(val.trim());
+
       if (calcMethod === 'FLAT_RATE') {
+        if (!flatAmount || !isPositiveNumeric(flatAmount)) {
+          setFormError('Please enter a valid numeric flat amount greater than 0 (words and letters are not allowed).');
+          return;
+        }
         const num = Number(flatAmount);
-        if (isNaN(num) || num <= 0) {
+        if (num <= 0) {
           setFormError('Please enter a valid flat amount greater than 0.');
           return;
         }
       }
+
       if (calcMethod === 'PER_SQ_FT') {
+        if (!ratePerSqFt || !isPositiveNumeric(ratePerSqFt)) {
+          setFormError('Please enter a valid numeric rate per square foot greater than 0 (words and letters are not allowed).');
+          return;
+        }
         const num = Number(ratePerSqFt);
-        if (isNaN(num) || num <= 0) {
+        if (num <= 0) {
           setFormError('Please enter a valid rate per square foot greater than 0.');
+          return;
+        }
+      }
+
+      if (calcMethod === 'TIERED_BHK') {
+        const entries = Object.entries(tieredRates || {});
+        let hasAtLeastOnePositiveRate = false;
+
+        for (const [field, rateStr] of entries) {
+          const str = String(rateStr || '').trim();
+          if (str) {
+            if (!isPositiveNumeric(str)) {
+              setFormError(`Invalid rate entered for layout "${field}": only numbers are allowed (words and letters are not permitted).`);
+              return;
+            }
+            const val = Number(str);
+            if (val < 0) {
+              setFormError(`Rate for layout "${field}" cannot be negative.`);
+              return;
+            }
+            if (val > 0) {
+              hasAtLeastOnePositiveRate = true;
+            }
+          }
+        }
+
+        if (!hasAtLeastOnePositiveRate) {
+          setFormError('Please enter a valid fee amount greater than 0 for at least one building layout type.');
           return;
         }
       }
@@ -244,35 +283,43 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
   }, [currentStepIndex, handleModalClose, setFormError]);
 
   // Reset step to 0 whenever modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
       setCurrentStepIndex(0);
       setFormError(null);
     }
   }, [visible, setFormError]);
 
+  // Hardware Back Button Handler for Android / Mobile devices
+  useEffect(() => {
+    if (!visible) return;
+
+    const onHardwareBack = () => {
+      handleBackStep();
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+    return () => subscription.remove();
+  }, [visible, handleBackStep]);
+
+  if (!visible) return null;
+
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === WIZARD_STEPS.length - 1;
   const currentStepTitle = WIZARD_STEPS[currentStepIndex]?.title || '';
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="fullScreen"
-      statusBarTranslucent
-      onRequestClose={handleModalClose}
+    <View
+      className="absolute inset-0 z-50 bg-card flex-col"
+      style={{
+        paddingTop: Math.max(insets.top, 16),
+        paddingBottom: Math.max(insets.bottom, 12),
+      }}
     >
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      <View
-        className="flex-1 bg-card flex-col"
-        style={{
-          paddingTop: Math.max(insets.top, 16),
-          paddingBottom: Math.max(insets.bottom, 12),
-        }}
-      >
-        {/* Header */}
-          <AssessmentFlowHeader
+      {/* Header */}
+      <AssessmentFlowHeader
             stepTitle={currentStepTitle}
             currentStep={currentStepIndex}
             totalSteps={WIZARD_STEPS.length}
@@ -408,7 +455,6 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
             loading={isSubmitting}
           />
         </View>
-    </Modal>
   );
 };
 

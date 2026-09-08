@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import * as userService from '../services/userService';
 import { UserData, InviteUserData } from '../services/userService';
 
-export const STATUS_OPTIONS = ['Active', 'Inactive', 'Pending'];
+export const STATUS_OPTIONS = ['Active', 'Inactive', 'Pending', 'Rejected'];
 
 export interface UserManagementState {
   users: UserData[];
@@ -155,7 +155,7 @@ export const inviteUserAsync = createAsyncThunk(
       const response = await userService.inviteUser(inviteData);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to invite user');
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to invite user');
     }
   }
 );
@@ -167,7 +167,7 @@ export const bulkInviteUsersAsync = createAsyncThunk(
       const response = await userService.bulkInviteUsers(invitations);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to bulk invite users');
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to bulk invite users');
     }
   }
 );

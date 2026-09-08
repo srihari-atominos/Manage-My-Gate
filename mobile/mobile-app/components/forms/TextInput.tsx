@@ -20,6 +20,7 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
   (
     {
       label,
+      required,
       error,
       leftIcon,
       rightIcon,
@@ -53,6 +54,9 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(
         {Boolean(label) && (
           <Text className={cn('mb-1.5 text-sm font-medium text-foreground', labelClassName)}>
             {label}
+            {required && !label?.includes('*') && (
+              <Text className="text-destructive font-bold"> *</Text>
+            )}
           </Text>
         )}
         <View

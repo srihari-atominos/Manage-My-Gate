@@ -112,7 +112,7 @@ export const StaffDetailsStep: React.FC<StaffDetailsStepProps> = ({
           isIdProofPass ? 'bg-primary/10 border-primary' : 'bg-card border-border'
         }`}
       >
-        <View className="flex-row items-center gap-3 flex-1 pr-2">
+        <View className="flex-row items-center gap-3 flex-1 pe-2">
           <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
             <ShieldCheck size={20} className="text-primary" />
           </View>

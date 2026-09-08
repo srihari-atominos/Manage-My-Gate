@@ -83,7 +83,11 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       setSelectedVillaId('');
       onClose();
     } catch (err: any) {
-      setErrorMsg(typeof err === 'string' ? err : err?.message || 'Failed to send invitation');
+      const msg =
+        typeof err === 'string'
+          ? err
+          : err?.response?.data?.message || err?.message || 'Failed to send invitation';
+      setErrorMsg(msg);
     } finally {
       setSubmitting(false);
     }

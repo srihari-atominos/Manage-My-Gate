@@ -19,20 +19,19 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
   const dispatch = useDispatch<any>();
   const { t, tRole } = useTranslation();
 
-  // The 3 standard canonical roles: Admin, Tenant/Owner, Security
-  const canonicalRoles = ['Admin', 'Tenant/Owner', 'Security'];
-
   const roles: string[] = React.useMemo(() => {
-    if (!user) return canonicalRoles;
+    if (!user) return [];
     const userAny = user as any;
     if (userAny.roles && Array.isArray(userAny.roles) && userAny.roles.length > 0) {
-      const merged = Array.from(new Set([...userAny.roles, ...canonicalRoles]));
-      return merged;
+      return Array.from(new Set(userAny.roles.filter(Boolean)));
     }
-    return canonicalRoles;
+    if (userAny.role) {
+      return [userAny.role];
+    }
+    return [];
   }, [user]);
 
-  const activeRole = user?.role || roles[0] || 'Admin';
+  const activeRole = user?.role || roles[0] || '';
 
   const handleSelectRole = (selectedRole: string) => {
     dispatch(switchWorkspaceContextThunk({ targetRole: selectedRole }));
@@ -66,7 +65,12 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
           {/* Roles List */}
           <ScrollView className="max-h-60">
             <View className="gap-2.5">
-              {roles.map((role, idx) => {
+              {roles.length === 0 ? (
+                <View className="py-6 items-center justify-center">
+                  <Text className="text-sm text-muted-foreground">{t('no_roles_available', 'No other roles available')}</Text>
+                </View>
+              ) : (
+                roles.map((role, idx) => {
                 const isSelected = role === activeRole;
                 const localizedRole = tRole(role, role);
                 return (
@@ -108,7 +112,8 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
                     {isSelected && <Check size={18} className="text-primary" />}
                   </TouchableOpacity>
                 );
-              })}
+              })
+            )}
             </View>
           </ScrollView>
 

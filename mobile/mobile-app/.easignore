@@ -13,3 +13,6 @@ jest/
 .expo/
 dist/
 web-build/
+
+# Ignore iOS native directory for Android cloud CNG compilation
+ios/

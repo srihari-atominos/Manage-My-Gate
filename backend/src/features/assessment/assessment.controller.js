@@ -22,7 +22,7 @@ export class AssessmentController {
   async update(req, res, next) {
     try {
       const { id } = req.params;
-      const data = await assessmentService.updateAssessment(id, req.body);
+      const data = await assessmentService.updateAssessment(id, req.body, req.tenant.orgId);
       
       let message = 'Assessment template updated successfully';
       if (data.hasActiveInvoices) {
@@ -57,7 +57,7 @@ export class AssessmentController {
   async delete(req, res, next) {
     try {
       const { id } = req.params;
-      const result = await assessmentService.deleteAssessment(id);
+      const result = await assessmentService.deleteAssessment(id, req.tenant.orgId);
       res.success(result, result.message);
     } catch (error) {
       next(error);
@@ -70,7 +70,8 @@ export class AssessmentController {
   async run(req, res, next) {
     try {
       const { id } = req.params;
-      const data = await assessmentService.runBilling(id, req.tenant.orgId);
+      const billingPeriodString = req.body?.billingPeriodString || null;
+      const data = await assessmentService.runBilling(id, req.tenant.orgId, billingPeriodString);
       res.success(data, 'Manual billing run completed successfully');
     } catch (error) {
       next(error);

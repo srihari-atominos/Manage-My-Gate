@@ -3,10 +3,11 @@ import visitorLogController from './visitorLog.controller.js';
 import { validate } from '../../middlewares/validator.middleware.js';
 import { preApprovedEntryRules, walkInRequestRules, resolveWalkInRules } from './visitorLog.validator.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
+import tenantContext from '../../middlewares/tenant.middleware.js';
 
 const router = Router();
 
-router.use(isAuthenticated);
+router.use(isAuthenticated, tenantContext);
 
 router.post('/pre-approved', validate(preApprovedEntryRules), visitorLogController.logPreApproved);
 router.post('/walk-in', validate(walkInRequestRules), visitorLogController.initiateWalkIn);

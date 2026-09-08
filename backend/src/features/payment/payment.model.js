@@ -20,7 +20,7 @@ const paymentSchema = new mongoose.Schema({
   referenceType: {
     type: String,
     default: 'Invoice',
-    enum: ['AmenityBooking', 'MaintenanceFee', 'Invoice', 'INQUIRY_PAYMENT', 'Inquiry', 'PlatformOrder', 'Quote', 'Other']
+    enum: ['AmenityBooking', 'MaintenanceFee', 'Invoice', 'INQUIRY_PAYMENT', 'Inquiry', 'PlatformOrder', 'Quote', 'WalletRecharge', 'Wallet', 'Other']
   },
   type: {
     type: String,
@@ -84,6 +84,10 @@ const paymentSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  payerNotes: {
+    type: String,
+    default: null
+  },
   receivedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -96,8 +100,10 @@ const paymentSchema = new mongoose.Schema({
   },
   receiptNumber: {
     type: String,
-    default: null,
-    index: { unique: true, sparse: true }
+    index: {
+      unique: true,
+      partialFilterExpression: { receiptNumber: { $type: 'string' } }
+    }
   },
   rejectionReason: {
     type: String,
@@ -110,8 +116,10 @@ const paymentSchema = new mongoose.Schema({
   },
   gatewayTransactionId: {
     type: String,
-    default: null,
-    index: { unique: true, sparse: true }
+    index: {
+      unique: true,
+      partialFilterExpression: { gatewayTransactionId: { $type: 'string' } }
+    }
   },
   paymentMethod: {
     type: String,

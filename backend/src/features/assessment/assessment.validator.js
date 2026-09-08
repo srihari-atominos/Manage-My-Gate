@@ -2,10 +2,12 @@ import { body } from 'express-validator';
 
 export const createAssessmentSchema = [
   body('communityId')
-    .notEmpty()
-    .withMessage('Community ID is required')
-    .isMongoId()
-    .withMessage('Community ID must be a valid Mongo ObjectId'),
+    .custom((value, { req }) => {
+      const orgId = value || req.headers?.['x-organization-id'] || req.tenant?.orgId;
+      if (!orgId) throw new Error('Community ID is required');
+      if (!/^[0-9a-fA-F]{24}$/.test(String(orgId))) throw new Error('Community ID must be a valid Mongo ObjectId');
+      return true;
+    }),
 
   body('villaId')
     .optional({ nullable: true })
@@ -95,18 +97,39 @@ export const createAssessmentSchema = [
 
   body('calculationMethod.flatAmount')
     .optional()
-    .isNumeric()
-    .withMessage('Flat amount must be a number'),
+    .isFloat({ min: 0 })
+    .withMessage('Flat amount must be a non-negative number'),
 
   body('calculationMethod.ratePerSqFt')
     .optional()
-    .isNumeric()
-    .withMessage('Rate per square foot must be a number'),
+    .isFloat({ min: 0 })
+    .withMessage('Rate per square foot must be a non-negative number'),
 
   body('calculationMethod.tieredRates')
     .optional()
-    .isObject()
-    .withMessage('Tiered rates must be an object'),
+    .custom((tieredRates, { req }) => {
+      if (typeof tieredRates !== 'object' || tieredRates === null) {
+        throw new Error('Tiered rates must be an object');
+      }
+      const allowedKeys = ['studio', 'bhk1', 'bhk2', 'bhk3', 'bhk4', 'penthouse', 'duplex'];
+      for (const [key, value] of Object.entries(tieredRates)) {
+        if (!allowedKeys.includes(key)) {
+          throw new Error(`Invalid building layout type '${key}'. Allowed types are: ${allowedKeys.join(', ')}`);
+        }
+        const num = Number(value);
+        if (typeof value === 'boolean' || isNaN(num) || !Number.isFinite(num) || num < 0) {
+          throw new Error(`Rate for layout '${key}' must be a valid non-negative number. Words and letters are not allowed.`);
+        }
+      }
+      if (req.body?.calculationMethod?.type === 'TIERED_BHK') {
+        const values = Object.values(tieredRates).map(Number);
+        const hasPositiveRate = values.some((v) => v > 0);
+        if (!hasPositiveRate) {
+          throw new Error('For tiered BHK calculation, at least one building layout rate must be greater than 0');
+        }
+      }
+      return true;
+    }),
 ];
 
 export const updateAssessmentSchema = [
@@ -205,6 +228,11 @@ export const updateAssessmentSchema = [
     .isMongoId()
     .withMessage('Each Target Role ID must be a valid Mongo ObjectId'),
 
+  body('isActive')
+    .optional()
+    .isBoolean()
+    .withMessage('isActive must be a boolean'),
+
   body('calculationMethod.type')
     .optional()
     .isIn(['FLAT_RATE', 'PER_SQ_FT', 'TIERED_BHK'])
@@ -212,16 +240,30 @@ export const updateAssessmentSchema = [
 
   body('calculationMethod.flatAmount')
     .optional()
-    .isNumeric()
-    .withMessage('Flat amount must be a number'),
+    .isFloat({ min: 0 })
+    .withMessage('Flat amount must be a non-negative number'),
 
   body('calculationMethod.ratePerSqFt')
     .optional()
-    .isNumeric()
-    .withMessage('Rate per square foot must be a number'),
+    .isFloat({ min: 0 })
+    .withMessage('Rate per square foot must be a non-negative number'),
 
   body('calculationMethod.tieredRates')
     .optional()
-    .isObject()
-    .withMessage('Tiered rates must be an object'),
+    .custom((tieredRates, { req }) => {
+      if (typeof tieredRates !== 'object' || tieredRates === null) {
+        throw new Error('Tiered rates must be an object');
+      }
+      const allowedKeys = ['studio', 'bhk1', 'bhk2', 'bhk3', 'bhk4', 'penthouse', 'duplex'];
+      for (const [key, value] of Object.entries(tieredRates)) {
+        if (!allowedKeys.includes(key)) {
+          throw new Error(`Invalid building layout type '${key}'. Allowed types are: ${allowedKeys.join(', ')}`);
+        }
+        const num = Number(value);
+        if (typeof value === 'boolean' || isNaN(num) || !Number.isFinite(num) || num < 0) {
+          throw new Error(`Rate for layout '${key}' must be a valid non-negative number. Words and letters are not allowed.`);
+        }
+      }
+      return true;
+    }),
 ];

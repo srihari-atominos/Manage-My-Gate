@@ -56,7 +56,10 @@ const Login = () => {
               <label className="block text-sm font-medium text-slate-700">Email address</label>
               <div className="mt-1">
                 <input
+                  id="email"
+                  name="email"
                   type="email"
+                  autoComplete="username"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -70,7 +73,10 @@ const Login = () => {
               <label className="block text-sm font-medium text-slate-700">Password</label>
               <div className="mt-1">
                 <input
+                  id="password"
+                  name="password"
                   type="password"
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

@@ -113,15 +113,15 @@ export const DUMMY_BLOCKS = [
 ];
 
 const initialState: VillaState = {
-  villas: DUMMY_VILLAS,
+  villas: [],
   currentVilla: null,
-  blocks: DUMMY_BLOCKS,
+  blocks: [],
   blocksLoading: false,
   stats: {
-    total: DUMMY_VILLAS.length,
-    occupied: DUMMY_VILLAS.filter((v) => v.status === 'Occupied').length,
-    vacant: DUMMY_VILLAS.filter((v) => v.status === 'Vacant').length,
-    maintenance: DUMMY_VILLAS.filter((v) => v.status === 'Under Maintenance').length,
+    total: 0,
+    occupied: 0,
+    vacant: 0,
+    maintenance: 0,
   },
   filters: {
     search: '',
@@ -130,8 +130,8 @@ const initialState: VillaState = {
   },
   pagination: {
     currentPage: 1,
-    totalPages: Math.ceil(DUMMY_VILLAS.length / 10),
-    totalRecords: DUMMY_VILLAS.length,
+    totalPages: 1,
+    totalRecords: 0,
     rowsPerPage: 10,
   },
   loading: false,
@@ -347,18 +347,18 @@ const villaSlice = createSlice({
           pag = resPayload.pagination || resPayload;
         }
 
-        state.villas = list.length > 0 ? list : DUMMY_VILLAS;
+        state.villas = list || [];
         if (pag && typeof pag === 'object') {
           state.pagination = {
             currentPage: pag.page || pag.currentPage || 1,
-            totalPages: pag.totalPages || Math.ceil(state.villas.length / 10),
-            totalRecords: pag.totalDocs || pag.totalRecords || pag.total || state.villas.length,
+            totalPages: pag.totalPages || Math.ceil((pag.totalDocs || pag.totalRecords || state.villas.length || 1) / 10),
+            totalRecords: pag.totalDocs ?? pag.totalRecords ?? pag.total ?? state.villas.length,
             rowsPerPage: pag.limit || pag.rowsPerPage || state.pagination.rowsPerPage,
           };
         } else {
           state.pagination = {
             currentPage: 1,
-            totalPages: Math.ceil(state.villas.length / 10),
+            totalPages: Math.ceil(state.villas.length / 10) || 1,
             totalRecords: state.villas.length,
             rowsPerPage: 10,
           };
@@ -366,11 +366,6 @@ const villaSlice = createSlice({
       })
       .addCase(getVillas.rejected, (state, action) => {
         state.loading = false;
-        if (state.villas.length === 0) {
-          state.villas = DUMMY_VILLAS;
-          state.pagination.totalRecords = DUMMY_VILLAS.length;
-          state.pagination.totalPages = Math.ceil(DUMMY_VILLAS.length / 10);
-        }
         state.error = (action.payload as string) || 'Failed to load villas';
       })
 

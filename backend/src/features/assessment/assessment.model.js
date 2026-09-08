@@ -4,7 +4,7 @@ const assessmentSchema = new mongoose.Schema(
   {
     communityId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Community',
+      ref: 'Organization',
       required: [true, 'Community ID is required'],
       index: true,
     },
@@ -116,19 +116,21 @@ const assessmentSchema = new mongoose.Schema(
       flatAmount: {
         type: Number,
         default: 0,
+        min: [0, 'Flat amount cannot be negative'],
       },
       ratePerSqFt: {
         type: Number,
         default: 0,
+        min: [0, 'Rate per square foot cannot be negative'],
       },
       tieredRates: {
-        studio: { type: Number, default: 0 },
-        bhk1: { type: Number, default: 0 },
-        bhk2: { type: Number, default: 0 },
-        bhk3: { type: Number, default: 0 },
-        bhk4: { type: Number, default: 0 },
-        penthouse: { type: Number, default: 0 },
-        duplex: { type: Number, default: 0 },
+        studio: { type: Number, default: 0, min: [0, 'Tier rate cannot be negative'] },
+        bhk1: { type: Number, default: 0, min: [0, 'Tier rate cannot be negative'] },
+        bhk2: { type: Number, default: 0, min: [0, 'Tier rate cannot be negative'] },
+        bhk3: { type: Number, default: 0, min: [0, 'Tier rate cannot be negative'] },
+        bhk4: { type: Number, default: 0, min: [0, 'Tier rate cannot be negative'] },
+        penthouse: { type: Number, default: 0, min: [0, 'Tier rate cannot be negative'] },
+        duplex: { type: Number, default: 0, min: [0, 'Tier rate cannot be negative'] },
       },
     },
     isActive: {

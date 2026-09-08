@@ -43,12 +43,12 @@ export class InvoiceRepository {
     const result = await Invoice.aggregate([
       {
         $match: {
+          isDeleted: { $ne: true },
           $or: [
             { communityId: { $in: communityMatchCandidates } },
             { orgId: { $in: communityMatchCandidates } },
-            { communityId: { $exists: false } }
-          ]
-        }
+          ],
+        },
       },
       {
         $lookup: {
@@ -65,35 +65,45 @@ export class InvoiceRepository {
         },
       },
       {
-        $match: {
-          $or: [
-            { communityId: { $in: communityMatchCandidates } },
-            { orgId: { $in: communityMatchCandidates } },
-            { 'assessment.communityId': { $in: communityMatchCandidates } }
-          ]
+        $addFields: {
+          totalDueFallback: {
+            $ifNull: ['$totalAmount', { $ifNull: ['$totalDue', { $ifNull: ['$currentCharge', 0] }] }],
+          },
+          paidFallback: {
+            $ifNull: ['$paidAmount', 0],
+          },
+          outstandingFallback: {
+            $ifNull: ['$outstandingAmount', { $ifNull: ['$totalDue', { $ifNull: ['$totalAmount', 0] }] }],
+          },
         },
       },
       {
         $facet: {
           grossDemand: [
             { $match: { status: { $ne: 'CANCELLED' } } },
-            { $group: { _id: null, total: { $sum: '$totalDue' }, count: { $sum: 1 } } },
+            { $group: { _id: null, total: { $sum: '$totalDueFallback' }, count: { $sum: 1 } } },
           ],
           totalCollected: [
-            { $match: { status: 'PAID', paid_at: { $ne: null } } },
-            { $group: { _id: null, total: { $sum: '$totalDue' } } },
+            { $match: { status: { $in: ['PAID', 'PARTIALLY_PAID'] } } },
+            { $group: { _id: null, total: { $sum: '$paidFallback' } } },
           ],
           inTransitGateway: [
-            { $match: { status: 'PAID', paid_at: { $ne: null }, settled_at: null } },
-            { $group: { _id: null, total: { $sum: '$totalDue' } } },
+            { $match: { status: 'PAID', settled_at: null, paymentMethod: { $nin: ['CASH', 'BANK_TRANSFER', 'CHEQUE', 'DEMAND_DRAFT', 'NEFT', 'UPI'] } } },
+            { $group: { _id: null, total: { $sum: '$paidFallback' } } },
           ],
           pendingOffline: [
             { $match: { status: 'VERIFICATION_PENDING' } },
-            { $group: { _id: null, total: { $sum: '$totalDue' } } },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: { $ifNull: ['$offlineAmount', '$outstandingFallback'] } },
+                count: { $sum: 1 },
+              },
+            },
           ],
           totalUnpaidArrears: [
-            { $match: { status: 'UNPAID' } },
-            { $group: { _id: null, total: { $sum: '$totalDue' } } },
+            { $match: { status: { $in: ['UNPAID', 'OVERDUE', 'PARTIALLY_PAID'] } } },
+            { $group: { _id: null, total: { $sum: '$outstandingFallback' } } },
           ],
         },
       },
@@ -105,30 +115,40 @@ export class InvoiceRepository {
     const grossDemandCount = kpis?.grossDemand[0]?.count || 0;
     const totalCollected = kpis?.totalCollected[0]?.total || 0;
     const inTransitGateway = kpis?.inTransitGateway[0]?.total || 0;
-    const pendingOffline = kpis?.pendingOffline[0]?.total || 0;
+    const pendingOfflineAmount = kpis?.pendingOffline[0]?.total || 0;
+    const pendingOfflineCount = kpis?.pendingOffline[0]?.count || 0;
     const totalUnpaidArrears = kpis?.totalUnpaidArrears[0]?.total || 0;
 
     return {
       grossDemand,
       grossDemandCount,
       totalCollected,
-      inTransitGateway: inTransitGateway + pendingOffline,
+      inTransitGateway,
       totalUnpaidArrears,
+      pendingOffline: pendingOfflineAmount,
+      pendingOfflineAmount,
+      pendingOfflineCount,
     };
   }
 
   /**
    * Get outstanding dues grouped by targetUserId for portfolio summary.
    * @param {string} userId - User ID.
+   * @param {string} [communityId] - Optional Community/Organization ID.
    * @returns {Promise<{ _id: string, totalPortfolioDue: number, unitBreakdown: Array } | null>}
    */
-  async getUserPortfolioDues(userId) {
+  async getUserPortfolioDues(userId, communityId = null) {
+    const matchStage = {
+      targetUserId: new mongoose.Types.ObjectId(userId),
+      status: { $ne: 'PAID' },
+    };
+    if (communityId) {
+      matchStage.communityId = new mongoose.Types.ObjectId(communityId);
+    }
+
     const result = await Invoice.aggregate([
       {
-        $match: {
-          targetUserId: new mongoose.Types.ObjectId(userId),
-          status: { $ne: 'PAID' },
-        },
+        $match: matchStage,
       },
       {
         $lookup: {
@@ -172,6 +192,10 @@ export class InvoiceRepository {
               paid_at: '$paid_at',
               paymentMethod: '$paymentMethod',
               offlineReference: '$offlineReference',
+              offlineAmount: '$offlineAmount',
+              paymentDate: '$paymentDate',
+              paymentScreenshot: '$paymentScreenshot',
+              payerNotes: '$payerNotes',
             },
           },
         },
@@ -184,15 +208,21 @@ export class InvoiceRepository {
   /**
    * Get recent invoice history for a user.
    * @param {string} userId - User ID.
+   * @param {string} [communityId] - Optional Community/Organization ID.
    * @returns {Promise<Array>}
    */
-  async getUserRecentInvoices(userId) {
+  async getUserRecentInvoices(userId, communityId = null) {
+    const matchStage = {
+      targetUserId: new mongoose.Types.ObjectId(userId),
+      isDeleted: false,
+    };
+    if (communityId) {
+      matchStage.communityId = new mongoose.Types.ObjectId(communityId);
+    }
+
     return await Invoice.aggregate([
       {
-        $match: {
-          targetUserId: new mongoose.Types.ObjectId(userId),
-          isDeleted: false
-        }
+        $match: matchStage,
       },
       {
         $lookup: {
@@ -236,7 +266,11 @@ export class InvoiceRepository {
           createdAt: 1,
           paid_at: 1,
           paymentMethod: 1,
-          offlineReference: 1
+          offlineReference: 1,
+          offlineAmount: 1,
+          paymentDate: 1,
+          paymentScreenshot: 1,
+          payerNotes: 1
         }
       }
     ]);
@@ -256,9 +290,10 @@ export class InvoiceRepository {
       ? { $or: [{ _id: invoiceId }, { invoiceNumber: invoiceId }] }
       : { invoiceNumber: invoiceId };
 
+    const activeSession = session && typeof session.inTransaction === 'function' && session.inTransaction() ? session : null;
     const query = Invoice.findOne(filter);
-    if (session) {
-      query.session(session);
+    if (activeSession) {
+      query.session(activeSession);
     }
     const invoice = await query;
 
@@ -270,12 +305,17 @@ export class InvoiceRepository {
       throw new HttpError(409, 'Invoice is already paid and cannot be updated');
     }
 
-    invoice.status = newStatus;
     if (newStatus === 'PAID' || newStatus === 'PARTIALLY_PAID') {
       invoice.paid_at = paymentData.paid_at || new Date();
       invoice.settled_at = paymentData.settled_at || null;
       invoice.paymentMethod = paymentData.paymentMethod || invoice.paymentMethod || null;
       invoice.offlineReference = paymentData.offlineReference || invoice.offlineReference || null;
+      if (paymentData.paymentScreenshot !== undefined) {
+        invoice.paymentScreenshot = paymentData.paymentScreenshot;
+      }
+      if (paymentData.payerNotes !== undefined) {
+        invoice.payerNotes = paymentData.payerNotes;
+      }
       
       let applyAmount = 0;
       if (paymentData.amount) {
@@ -291,19 +331,34 @@ export class InvoiceRepository {
       invoice.paidAmount = (invoice.paidAmount || 0) + applyAmount;
       invoice.outstandingAmount = Math.max(0, Math.round(((invoice.totalAmount || 0) - invoice.paidAmount) * 100) / 100);
       
+      if (invoice.outstandingAmount > 0.01) {
+        invoice.status = 'PARTIALLY_PAID';
+      } else {
+        invoice.status = 'PAID';
+        invoice.outstandingAmount = 0;
+      }
+
       // Reset offline amount since it has been processed
       invoice.offlineAmount = 0;
     } else if (newStatus === 'CANCELLED') {
+      invoice.status = newStatus;
       invoice.paid_at = null;
       invoice.settled_at = null;
       invoice.paymentMethod = null;
       invoice.offlineReference = null;
     } else if (newStatus === 'VERIFICATION_PENDING') {
+      invoice.status = newStatus;
       if (paymentData.offlineReference !== undefined) invoice.offlineReference = paymentData.offlineReference;
       if (paymentData.offlineAmount !== undefined) invoice.offlineAmount = paymentData.offlineAmount;
+      if (paymentData.paymentMethod !== undefined) invoice.paymentMethod = paymentData.paymentMethod;
+      if (paymentData.paymentDate !== undefined) invoice.paymentDate = paymentData.paymentDate;
+      if (paymentData.paymentScreenshot !== undefined) invoice.paymentScreenshot = paymentData.paymentScreenshot;
+      if (paymentData.payerNotes !== undefined) invoice.payerNotes = paymentData.payerNotes;
+    } else {
+      invoice.status = newStatus;
     }
 
-    return await invoice.save(session ? { session } : undefined);
+    return await invoice.save(activeSession ? { session: activeSession } : undefined);
   }
 
   /**
@@ -353,7 +408,11 @@ export class InvoiceRepository {
 
     // 2. Payment Method filtering
     if (paymentMethod && paymentMethod !== 'ALL') {
-      matchConditions.paymentMethod = paymentMethod;
+      if (paymentMethod === 'NEFT' || paymentMethod === 'BANK_TRANSFER') {
+        matchConditions.paymentMethod = { $in: ['BANK_TRANSFER', 'NEFT'] };
+      } else {
+        matchConditions.paymentMethod = paymentMethod;
+      }
     }
 
     // 3. Omnisearch matching
@@ -493,6 +552,10 @@ export class InvoiceRepository {
                       createdAt: '$createdAt',
                       paymentMethod: '$paymentMethod',
                       offlineReference: '$offlineReference',
+                      offlineAmount: '$offlineAmount',
+                      paymentDate: '$paymentDate',
+                      paymentScreenshot: '$paymentScreenshot',
+                      payerNotes: '$payerNotes',
                     },
                   },
                 },
@@ -613,7 +676,12 @@ export class InvoiceRepository {
                       paidAmount: { $ifNull: ['$paidAmount', 0] },
                       outstandingAmount: { $ifNull: ['$outstandingAmount', 0] },
                       status: '$status',
+                      paymentMethod: '$paymentMethod',
                       offlineReference: '$offlineReference',
+                      offlineAmount: '$offlineAmount',
+                      paymentDate: '$paymentDate',
+                      paymentScreenshot: '$paymentScreenshot',
+                      payerNotes: '$payerNotes',
                     },
                   },
                 },
@@ -677,6 +745,7 @@ export class InvoiceRepository {
                 offlineAmount: 1,
                 paymentDate: 1,
                 paymentScreenshot: 1,
+                payerNotes: 1,
                 rejectionReason: 1,
               },
             },

@@ -20,7 +20,7 @@ export const ProgressBar = ({
   let rawProgress = Number(progress);
   if (isNaN(rawProgress) || !isFinite(rawProgress)) {
     rawProgress = 0;
-  } else if (rawProgress <= 1 && rawProgress > 0) {
+  } else if (rawProgress < 1 && rawProgress > 0) {
     // If passed as decimal (e.g. 0.75), convert to percentage
     rawProgress = rawProgress * 100;
   }

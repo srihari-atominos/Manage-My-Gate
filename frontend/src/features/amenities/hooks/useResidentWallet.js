@@ -10,6 +10,7 @@ export const useResidentWallet = () => {
     balance: 0,
     activePasses: [],
     transactionHistory: [],
+    isPaymentGatewayConfigured: true,
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -25,6 +26,7 @@ export const useResidentWallet = () => {
         balance: response?.balance || 0,
         activePasses: response?.activePasses || [],
         transactionHistory: response?.transactionHistory || [],
+        isPaymentGatewayConfigured: response?.isPaymentGatewayConfigured !== false,
       })
     } catch (err) {
       setError(err.message || 'Failed to load wallet')
@@ -103,6 +105,7 @@ export const useResidentWallet = () => {
     activePasses: walletData.activePasses,
     transactionHistory: walletData.transactionHistory,
     balance: walletData.balance,
+    isPaymentGatewayConfigured: walletData.isPaymentGatewayConfigured,
     loading: isLoading,
     error,
     loadWallet,

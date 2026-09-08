@@ -9,13 +9,14 @@ import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { useTranslation } from '@/src/utils/i18n';
-import { Wallet, CreditCard, Receipt, ChevronRight, CheckCircle2, ShieldAlert, Clock, Landmark, Zap } from 'lucide-react-native';
+import { Wallet, CreditCard, Receipt, ChevronRight, CheckCircle2, ShieldAlert, Clock, Landmark, Zap, QrCode } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import { UnitDueBreakdown, InvoiceStatus, Invoice } from '../types';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { OfflineSettleSheet } from '../components/OfflineSettleSheet';
 import { PaymentReceiptModal } from '../components/PaymentReceiptModal';
+import { InvoiceQRModal } from '../components/InvoiceQRModal';
 
 export function ResidentMyDuesScreen() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export function ResidentMyDuesScreen() {
   const [checkoutInvoice, setCheckoutInvoice] = useState<Invoice | null>(null);
   const [offlineInvoice, setOfflineInvoice] = useState<Invoice | null>(null);
   const [receiptInvoice, setReceiptInvoice] = useState<any | null>(null);
+  const [qrInvoice, setQrInvoice] = useState<Invoice | null>(null);
 
   // Load resident dues & wallet balance on screen mount
   useEffect(() => {
@@ -291,6 +293,17 @@ export function ResidentMyDuesScreen() {
 
                         <View className="flex-row items-center gap-2">
                           <Button
+                            variant="outline"
+                            size="sm"
+                            onPress={() => setQrInvoice(mappedInvoice)}
+                            accessibilityLabel={`Show QR for invoice ${invNo}`}
+                            className="px-2.5"
+                          >
+                            <Icon as={QrCode} size={14} className="text-primary me-1" />
+                            <Text className="text-xs font-semibold text-primary">QR</Text>
+                          </Button>
+
+                          <Button
                             variant="secondary"
                             size="sm"
                             onPress={() => handleViewInvoiceDetails(invoiceId)}
@@ -391,6 +404,7 @@ export function ResidentMyDuesScreen() {
         <OfflineSettleSheet
           visible={!!offlineInvoice}
           invoice={offlineInvoice}
+          initialAmount={(offlineInvoice as any)?.outstandingAmount ?? offlineInvoice?.totalDue}
           onClose={() => setOfflineInvoice(null)}
           onSettlementSubmitted={(result) => {
             loadResidentDues();
@@ -405,6 +419,13 @@ export function ResidentMyDuesScreen() {
           visible={!!receiptInvoice}
           invoice={receiptInvoice}
           onClose={() => setReceiptInvoice(null)}
+        />
+
+        {/* Invoice QR Pass Modal */}
+        <InvoiceQRModal
+          visible={!!qrInvoice}
+          invoice={qrInvoice}
+          onClose={() => setQrInvoice(null)}
         />
       </View>
     </ScreenShell>

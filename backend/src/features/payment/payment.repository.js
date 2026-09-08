@@ -1,6 +1,10 @@
 import Payment from './payment.model.js';
 
-export class PaymentRepository {
+class PaymentRepository {
+  _getActiveSession(session) {
+    return session && typeof session.inTransaction === 'function' && session.inTransaction() ? session : null;
+  }
+
   async getPaymentStats(orgId) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -75,19 +79,22 @@ export class PaymentRepository {
   }
 
   async createPayment(data, session = null) {
+    const activeSession = this._getActiveSession(session);
     const payment = new Payment(data);
-    return await payment.save(session ? { session } : undefined);
+    return await payment.save(activeSession ? { session: activeSession } : undefined);
   }
 
   async findByGatewayTransactionId(gatewayTransactionId, session = null) {
+    const activeSession = this._getActiveSession(session);
     const query = Payment.findOne({ gatewayTransactionId });
-    if (session) query.session(session);
+    if (activeSession) query.session(activeSession);
     return await query;
   }
 
   async findById(paymentId, session = null) {
+    const activeSession = this._getActiveSession(session);
     const query = Payment.findById(paymentId);
-    if (session) query.session(session);
+    if (activeSession) query.session(activeSession);
     return await query;
   }
 

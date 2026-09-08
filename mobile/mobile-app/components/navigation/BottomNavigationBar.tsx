@@ -3,7 +3,6 @@ import {
   View,
   TouchableOpacity,
   Platform,
-  LayoutChangeEvent,
   Pressable,
 } from 'react-native';
 import { Text } from '@/components/ui/text';
@@ -20,9 +19,11 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withSpring,
   Easing,
 } from 'react-native-reanimated';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { useBottomNavScroll } from './BottomNavScrollContext';
 import { cn } from '@/lib/utils';
 
 export type MainTabKey = 'dashboard' | 'visitor' | 'amenities' | 'billing';
@@ -72,6 +73,7 @@ interface TabButtonProps {
   isActive: boolean;
   isDark: boolean;
   isIOS: boolean;
+  isCompact: boolean;
   onPress: () => void;
 }
 
@@ -80,10 +82,14 @@ const TabButton: React.FC<TabButtonProps> = ({
   isActive,
   isDark,
   isIOS,
+  isCompact,
   onPress,
 }) => {
   const IconComponent = item.icon;
   const zoomScale = useSharedValue(isActive ? 1.12 : 1.0);
+  const compactScale = useSharedValue(isCompact ? 0.9 : 1.0);
+  const labelOpacity = useSharedValue(isCompact ? 0 : 1.0);
+  const labelHeight = useSharedValue(isCompact ? 0 : 13);
 
   useEffect(() => {
     zoomScale.value = withTiming(isActive ? 1.12 : 1.0, {
@@ -92,8 +98,29 @@ const TabButton: React.FC<TabButtonProps> = ({
     });
   }, [isActive, zoomScale]);
 
+  useEffect(() => {
+    compactScale.value = withTiming(isCompact ? 0.9 : 1.0, {
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+    });
+    labelOpacity.value = withTiming(isCompact ? 0 : 1.0, {
+      duration: 160,
+    });
+    labelHeight.value = withTiming(isCompact ? 0 : 13, {
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [isCompact, compactScale, labelOpacity, labelHeight]);
+
   const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: zoomScale.value }],
+    transform: [{ scale: zoomScale.value * compactScale.value }],
+  }));
+
+  const animatedLabelStyle = useAnimatedStyle(() => ({
+    opacity: labelOpacity.value,
+    height: labelHeight.value,
+    marginTop: labelOpacity.value > 0.1 ? 2 : 0,
+    overflow: 'hidden',
   }));
 
   const inactiveIconColor = isDark ? '#9CA3AF' : '#8E8E93';
@@ -103,35 +130,39 @@ const TabButton: React.FC<TabButtonProps> = ({
   const textColor = isActive ? ACTIVE_ORANGE : inactiveTextColor;
 
   const content = (
-    <View className="items-center justify-center py-1">
+    <View className="items-center justify-center py-0.5">
       {/* Icon Area */}
       <Animated.View style={animatedIconStyle} className="items-center justify-center">
         <IconComponent
-          size={isActive ? 22 : 21}
+          size={isActive ? (isCompact ? 20 : 22) : (isCompact ? 19 : 21)}
           color={iconColor}
           strokeWidth={isActive ? 2.3 : 1.9}
         />
       </Animated.View>
 
-      {/* Label Underneath (Inside the full active capsule) */}
-      <Text
-        style={{ color: textColor }}
-        className={cn(
-          'text-[10px] font-sans tracking-tight mt-1 text-center',
-          isActive ? 'font-bold' : 'font-medium'
-        )}
-        numberOfLines={1}
-      >
-        {item.label}
-      </Text>
+      {/* Label Underneath (Smoothly shrinks and fades out in compact mode) */}
+      <Animated.View style={animatedLabelStyle} className="items-center justify-center">
+        <Text
+          style={{ color: textColor }}
+          className={cn(
+            'text-[10px] font-sans tracking-tight text-center',
+            isActive ? 'font-bold' : 'font-medium'
+          )}
+          numberOfLines={1}
+        >
+          {item.label}
+        </Text>
+      </Animated.View>
     </View>
   );
+
+  const buttonHeight = isCompact ? 'h-[40px]' : 'h-[52px]';
 
   if (isIOS) {
     return (
       <Pressable
         onPress={onPress}
-        className="py-1 items-center justify-center h-[52px] z-10 select-none w-full"
+        className={cn("py-0.5 items-center justify-center z-10 select-none w-full", buttonHeight)}
         accessibilityRole="tab"
         accessibilityState={{ selected: isActive }}
         accessibilityLabel={item.label}
@@ -145,7 +176,7 @@ const TabButton: React.FC<TabButtonProps> = ({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
-      className="py-1 items-center justify-center h-[52px] z-10 w-full"
+      className={cn("py-0.5 items-center justify-center z-10 w-full", buttonHeight)}
       accessibilityRole="tab"
       accessibilityState={{ selected: isActive }}
       accessibilityLabel={item.label}
@@ -163,6 +194,7 @@ export const BottomNavigationBar: React.FC = () => {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const isIOS = Platform.OS === 'ios';
+  const { isCompact } = useBottomNavScroll();
 
   // Dynamic Billing route based on user roles / permissions
   const billingRoute = useMemo(() => {
@@ -204,6 +236,16 @@ export const BottomNavigationBar: React.FC = () => {
   const shiftOffset = useSharedValue(globalLastActiveX >= 0 ? globalLastActiveX : 0);
   const capsuleWidthValue = useSharedValue(globalLastCapsuleWidth > 0 ? globalLastCapsuleWidth : 72);
   const isInitializedRef = useRef(globalLastActiveX >= 0);
+
+  // Shared animated value for outer container height
+  const containerHeight = useSharedValue(isCompact ? 46 : 64);
+
+  useEffect(() => {
+    containerHeight.value = withTiming(isCompact ? 46 : 64, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [isCompact, containerHeight]);
 
   const animateToTab = (index: number) => {
     const layout = tabLayoutsRef.current[index];
@@ -251,6 +293,10 @@ export const BottomNavigationBar: React.FC = () => {
     width: capsuleWidthValue.value,
   }));
 
+  const animatedContainerStyle = useAnimatedStyle(() => ({
+    height: containerHeight.value,
+  }));
+
   const isNavigatingRef = useRef(false);
 
   const handleTabPress = (item: TabItem, index: number) => {
@@ -276,9 +322,9 @@ export const BottomNavigationBar: React.FC = () => {
       } finally {
         setTimeout(() => {
           isNavigatingRef.current = false;
-        }, 150);
+        }, 120);
       }
-    }, 120);
+    }, 80);
   };
 
   return (
@@ -289,28 +335,31 @@ export const BottomNavigationBar: React.FC = () => {
       }}
       className="absolute bottom-0 left-0 right-0 items-center justify-center px-4 z-50"
     >
-      {/* Floating Pill Navigation Container */}
-      <View
-        style={{
-          backgroundColor: isIOS
-            ? isDark
-              ? 'rgba(22, 23, 27, 0.92)'
-              : 'rgba(255, 255, 255, 0.94)'
-            : isDark
-            ? '#18181B'
-            : '#FFFFFF',
-          borderColor: isDark
-            ? 'rgba(255, 255, 255, 0.12)'
-            : 'rgba(0, 0, 0, 0.08)',
-          borderWidth: 1,
-          borderRadius: 36,
-          elevation: isIOS ? 0 : 12,
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: isDark ? 0.55 : 0.12,
-          shadowRadius: 20,
-        }}
-        className="w-full max-w-[400px] h-[64px] px-3 py-1 flex-row items-center justify-between relative overflow-hidden"
+      {/* Floating Pill Navigation Container with Animated Height */}
+      <Animated.View
+        style={[
+          animatedContainerStyle,
+          {
+            backgroundColor: isIOS
+              ? isDark
+                ? 'rgba(22, 23, 27, 0.92)'
+                : 'rgba(255, 255, 255, 0.94)'
+              : isDark
+              ? '#18181B'
+              : '#FFFFFF',
+            borderColor: isDark
+              ? 'rgba(255, 255, 255, 0.12)'
+              : 'rgba(0, 0, 0, 0.08)',
+            borderWidth: 1,
+            borderRadius: 36,
+            elevation: isIOS ? 0 : 12,
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: isDark ? 0.55 : 0.12,
+            shadowRadius: 20,
+          },
+        ]}
+        className="w-full max-w-[400px] px-3 py-1 flex-row items-center justify-between relative overflow-hidden"
       >
         {/* Persistent Single Animated Sliding Capsule (Encloses BOTH Icon and Label) */}
         <Animated.View
@@ -318,8 +367,8 @@ export const BottomNavigationBar: React.FC = () => {
             animatedCapsuleStyle,
             {
               position: 'absolute',
-              top: 6,
-              bottom: 6,
+              top: isCompact ? 4 : 6,
+              bottom: isCompact ? 4 : 6,
               borderRadius: 24,
               backgroundColor: isDark
                 ? 'rgba(255, 106, 0, 0.18)'
@@ -349,14 +398,16 @@ export const BottomNavigationBar: React.FC = () => {
               isActive={selectedTabKey === item.key}
               isDark={isDark}
               isIOS={isIOS}
+              isCompact={isCompact}
               onPress={() => handleTabPress(item, index)}
             />
           </View>
         ))}
-      </View>
+      </Animated.View>
     </View>
   );
 };
 
 export default BottomNavigationBar;
+
 

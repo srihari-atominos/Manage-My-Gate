@@ -9,6 +9,7 @@ const router = express.Router();
 router.use('/webhook', webhookRouter);
 
 // Order creation, verification, and refund endpoints
+router.get('/status', isAuthenticated, paymentController.getGatewayStatus);
 router.post('/create-order', isAuthenticated, paymentController.createOrder);
 router.post('/verify-signature', isAuthenticated, paymentController.verifySignature);
 router.post('/refund', isAuthenticated, paymentController.refund);

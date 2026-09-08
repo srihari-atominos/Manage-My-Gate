@@ -141,7 +141,7 @@ export const DeliveryValidityStep: React.FC<DeliveryValidityStepProps> = ({
                       : 'bg-card border-border'
                   }`}
                 >
-                  <View className="gap-0.5 flex-1 pr-2">
+                  <View className="gap-0.5 flex-1 pe-2">
                     <Text
                       className={`text-sm font-bold ${
                         isSelected ? 'text-primary' : 'text-foreground'

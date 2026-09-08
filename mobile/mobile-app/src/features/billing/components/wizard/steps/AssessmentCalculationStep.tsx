@@ -32,6 +32,15 @@ interface TieredRatesMap {
   duplex: string;
 }
 
+const sanitizeNumericInput = (text: string): string => {
+  let cleaned = text.replace(/[^0-9.]/g, '');
+  const parts = cleaned.split('.');
+  if (parts.length > 2) {
+    cleaned = parts[0] + '.' + parts.slice(1).join('');
+  }
+  return cleaned;
+};
+
 interface AssessmentCalculationStepProps {
   calcMethod: string;
   onChangeCalcMethod: (val: string) => void;
@@ -82,7 +91,7 @@ export const AssessmentCalculationStep: React.FC<AssessmentCalculationStepProps>
             placeholder="e.g. 2500"
             keyboardType="decimal-pad"
             value={flatAmount}
-            onChangeText={onChangeFlatAmount}
+            onChangeText={(text) => onChangeFlatAmount(sanitizeNumericInput(text))}
           />
           <Text className="text-[11px] text-muted-foreground mt-1">
             Every targeted villa or resident unit will be charged this exact amount.
@@ -101,7 +110,7 @@ export const AssessmentCalculationStep: React.FC<AssessmentCalculationStepProps>
             placeholder="e.g. 3.50"
             keyboardType="decimal-pad"
             value={ratePerSqFt}
-            onChangeText={onChangeRatePerSqFt}
+            onChangeText={(text) => onChangeRatePerSqFt(sanitizeNumericInput(text))}
           />
           <Text className="text-[11px] text-muted-foreground mt-1">
             Calculated as Rate (₹/sqft) × Villa Unit Super Built-up Area (sq.ft).
@@ -116,7 +125,7 @@ export const AssessmentCalculationStep: React.FC<AssessmentCalculationStepProps>
             Floorplan Tiered BHK Rates (₹)
           </Text>
           <Text className="text-xs text-muted-foreground">
-            Set custom flat fee amounts based on the unit layout type.
+            Set custom flat fee amounts based on the building layout type. Words and letters are automatically stripped.
           </Text>
 
           <View className="flex-row flex-wrap gap-2.5 mt-1">
@@ -127,9 +136,9 @@ export const AssessmentCalculationStep: React.FC<AssessmentCalculationStepProps>
                   <Text className="text-xs font-extrabold text-foreground mb-1">{item.label}</Text>
                   <TextInput
                     placeholder="₹ 0"
-                    keyboardType="number-pad"
+                    keyboardType="decimal-pad"
                     value={tieredRates[fieldKey]}
-                    onChangeText={(text) => onChangeTieredRate(fieldKey, text)}
+                    onChangeText={(text) => onChangeTieredRate(fieldKey, sanitizeNumericInput(text))}
                   />
                 </View>
               );

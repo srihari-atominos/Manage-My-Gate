@@ -58,6 +58,9 @@ export class VisitorPassController {
   async getByOrgPaginated(req, res, next) {
     try {
       const { orgId } = req.params;
+      if (!req.tenant?.isPlatform && req.tenant?.orgId && String(req.tenant.orgId) !== String(orgId)) {
+        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
+      }
       const skip = parseInt(req.query.skip, 10) || 0;
       const limit = parseInt(req.query.limit, 10) || 10;
       const search = req.query.search;

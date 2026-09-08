@@ -153,5 +153,8 @@ export function bytesToBase64(bytes: Uint8Array): string {
   if (typeof (globalThis as any).btoa === 'function') {
     return (globalThis as any).btoa(binary);
   }
-  return Buffer.from(bytes).toString('base64');
+  if (typeof (globalThis as any).Buffer !== 'undefined') {
+    return (globalThis as any).Buffer.from(bytes).toString('base64');
+  }
+  return '';
 }

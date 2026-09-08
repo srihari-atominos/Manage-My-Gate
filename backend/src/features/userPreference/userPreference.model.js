@@ -20,6 +20,10 @@ const scopedPreferenceSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    villaNumber: {
+      type: String,
+      default: '',
+    },
     activeQuickActions: {
       type: [String],
       validate: [

@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import invoiceService from './invoice.services.js';
+import HttpError from '../../utils/httpError.utils.js';
 
 export class InvoiceController {
   /**
@@ -7,8 +8,17 @@ export class InvoiceController {
    */
   async getMyDues(req, res, next) {
     try {
-      // req.user contains the authenticated user context
-      const data = await invoiceService.getUserDuesOverview(req.user);
+      // Resolve optional communityId from query, x-organization-id header, or tenant context
+      const communityId =
+        req.query.communityId ||
+        req.headers['x-organization-id'] ||
+        req.tenant?.orgId ||
+        req.user?.activeOrganizationId ||
+        req.user?.orgId ||
+        req.user?.communityId ||
+        null;
+
+      const data = await invoiceService.getUserDuesOverview(req.user, communityId);
       res.success(data, 'Outstanding dues retrieved successfully');
     } catch (error) {
       next(error);
@@ -42,16 +52,31 @@ export class InvoiceController {
   }
 
   /**
-   * Submit Bank Transfer payment for verification (Resident).
+   * Submit offline payment for verification (Resident).
    */
   async settleOffline(req, res, next) {
     try {
       const { id } = req.params;
-      const { paymentReference, offlineReference, amountPaid, amount, offlineAmount, paymentMethod, paymentDate, paymentScreenshot } = req.body;
+      const { paymentReference, offlineReference, amountPaid, amount, offlineAmount, paymentMethod, paymentDate, paymentScreenshot, payerNotes } = req.body;
       const refToUse = paymentReference || offlineReference;
       const amountToUse = amountPaid !== undefined ? amountPaid : (offlineAmount !== undefined ? offlineAmount : amount);
-      const data = await invoiceService.logOfflinePayment(id, refToUse, amountToUse, paymentMethod || 'BANK_TRANSFER', paymentDate, paymentScreenshot);
-      res.success(data, 'Bank transfer payment details submitted successfully and pending verification.');
+      const data = await invoiceService.logOfflinePayment(id, refToUse, amountToUse, paymentMethod || 'BANK_TRANSFER', paymentDate, paymentScreenshot, payerNotes);
+      res.success(data, 'Offline payment details submitted successfully and pending verification.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Upload offline payment proof attachment (receipt / screenshot / cheque).
+   */
+  async uploadProof(req, res, next) {
+    try {
+      if (!req.file) {
+        throw new HttpError(400, 'No proof document file uploaded');
+      }
+      const fileUrl = `/uploads/invoices/${req.file.filename}`;
+      res.success({ url: fileUrl }, 'Payment proof uploaded successfully', 201);
     } catch (error) {
       next(error);
     }
@@ -64,8 +89,16 @@ export class InvoiceController {
     try {
       const { id } = req.params;
       const adminUserId = req.user?.id || req.user?._id;
-      const { amount, settlementType } = req.body || {};
-      const data = await invoiceService.approveOfflinePayment(id, adminUserId, { amount, settlementType });
+      const { amount, settlementType, paymentMethod, paymentReference, reference, notes, paymentScreenshot } = req.body || {};
+      const data = await invoiceService.approveOfflinePayment(id, adminUserId, {
+        amount,
+        settlementType,
+        paymentMethod,
+        paymentReference,
+        reference,
+        notes,
+        paymentScreenshot,
+      });
       res.success(data, 'Offline payment verified and confirmed successfully.');
     } catch (error) {
       next(error);
@@ -240,6 +273,35 @@ export class InvoiceController {
       const invoiceId = req.params.id;
       // Stub: Expire old link, generate new, update invoice, dispatch event
       res.status(501).json({ message: 'Payment link regeneration not yet implemented in this phase' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Send an in-app reminder to resident for an individual invoice.
+   */
+  async sendInvoiceReminder(req, res, next) {
+    try {
+      const { id } = req.params;
+      const adminUserId = req.user?._id;
+      const orgId = req.tenant?.orgId;
+      const result = await invoiceService.sendInvoiceReminder(id, adminUserId, orgId);
+      res.success(result, 'Invoice reminder sent successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Send an in-app portfolio reminder to resident for their total dues.
+   */
+  async notifyResidentPortfolio(req, res, next) {
+    try {
+      const adminUserId = req.user?._id;
+      const orgId = req.tenant?.orgId;
+      const result = await invoiceService.notifyResidentPortfolio(req.body, adminUserId, orgId);
+      res.success(result, 'Resident reminder sent successfully');
     } catch (error) {
       next(error);
     }

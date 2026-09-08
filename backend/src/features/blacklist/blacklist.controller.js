@@ -1,4 +1,5 @@
 import blacklistService from './blacklist.service.js';
+import HttpError from '../../utils/httpError.utils.js';
 
 export class BlacklistController {
   /**
@@ -7,10 +8,14 @@ export class BlacklistController {
   async create(req, res, next) {
     try {
       const { orgId, name, phone, plate, reason } = req.body;
+      const targetOrgId = req.tenant?.orgId || orgId;
+      if (!req.tenant?.isPlatform && req.tenant?.orgId && orgId && String(req.tenant.orgId) !== String(orgId)) {
+        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
+      }
       const createdById = req.user?.id || req.body.createdById; // fallback if session inject is missing in test
       
       const data = await blacklistService.createBlacklistEntry({
-        orgId,
+        orgId: targetOrgId,
         name,
         phone,
         plate,
@@ -43,6 +48,9 @@ export class BlacklistController {
   async getByOrgPaginated(req, res, next) {
     try {
       const { orgId } = req.params;
+      if (!req.tenant?.isPlatform && req.tenant?.orgId && String(req.tenant.orgId) !== String(orgId)) {
+        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
+      }
       const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 10;
       const skip = (page - 1) * limit;
@@ -60,6 +68,9 @@ export class BlacklistController {
   async checkMatch(req, res, next) {
     try {
       const { orgId } = req.params;
+      if (!req.tenant?.isPlatform && req.tenant?.orgId && String(req.tenant.orgId) !== String(orgId)) {
+        throw new HttpError(403, 'Forbidden. Active workspace context does not match the requested organization.');
+      }
       const { name, phone, plate } = req.query;
       
       const match = await blacklistService.checkMatch(orgId, { name, phone, plate });

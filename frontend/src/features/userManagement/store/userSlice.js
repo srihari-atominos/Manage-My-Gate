@@ -31,7 +31,7 @@ export const inviteUserAsync = createAsyncThunk(
       const response = await userApi.inviteUser(inviteData)
       return response
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to invite user')
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to invite user')
     }
   },
 )
@@ -43,7 +43,7 @@ export const bulkInviteUsersAsync = createAsyncThunk(
       const response = await userApi.bulkInviteUsers(invitations)
       return response
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to bulk invite users')
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to bulk invite users')
     }
   },
 )

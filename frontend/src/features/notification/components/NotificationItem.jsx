@@ -145,6 +145,8 @@ export const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClose
       finalActionUrl = '/complaints'
     } else if (finalActionUrl === '/tenant/platform-crm/enquiries' || finalActionUrl.includes('platform-crm/enquiries')) {
       finalActionUrl = '/super-admin/crm'
+    } else if (finalActionUrl.includes('billing')) {
+      finalActionUrl = '/billing?tab=action-center'
     } else if (finalActionUrl.startsWith('#/')) {
       finalActionUrl = finalActionUrl.replace('#', '')
     }

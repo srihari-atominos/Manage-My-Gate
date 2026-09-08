@@ -378,7 +378,11 @@ export default function LoginScreen() {
                               placeholderTextColor="#94A3B8"
                               autoCapitalize="none"
                               autoCorrect={false}
+                              keyboardType="email-address"
                               autoComplete="username"
+                              textContentType="username"
+                              importantForAutofill="yes"
+                              accessibilityLabel="Email or Username"
                               returnKeyType="next"
                               onSubmitEditing={() => passwordInputRef.current?.focus()}
                               blurOnSubmit={false}
@@ -425,7 +429,10 @@ export default function LoginScreen() {
                               secureTextEntry={!showPassword}
                               autoCapitalize="none"
                               autoCorrect={false}
-                              autoComplete="password"
+                              autoComplete={Platform.select({ web: 'current-password', default: 'password' })}
+                              textContentType="password"
+                              importantForAutofill="yes"
+                              accessibilityLabel="Password"
                               returnKeyType="go"
                               onSubmitEditing={basicForm.handleSubmit(onBasicSubmit)}
                               className={cnText(

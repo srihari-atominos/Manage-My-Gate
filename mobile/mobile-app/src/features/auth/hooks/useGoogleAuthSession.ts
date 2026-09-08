@@ -1,4 +1,4 @@
-﻿import * as React from 'react';
+import * as React from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
@@ -9,25 +9,21 @@ import { Alert } from 'react-native';
 WebBrowser.maybeCompleteAuthSession();
 
 const DEFAULT_GOOGLE_CLIENT_ID = '610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com';
+const DEFAULT_GOOGLE_ANDROID_CLIENT_ID = '610778456829-6g1bvqtplfrgva93sbdsvgbuqmkpr203.apps.googleusercontent.com';
 
 export function useGoogleAuthSession() {
   const { loginWithGoogle, loading } = useAuth();
   const [authInProgress, setAuthInProgress] = React.useState(false);
 
   const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
-  const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || googleClientId;
+  const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || DEFAULT_GOOGLE_ANDROID_CLIENT_ID;
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || googleClientId;
-
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'managemygate',
-  });
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: googleClientId,
     webClientId: googleClientId,
     iosClientId,
     androidClientId,
-    redirectUri,
   });
 
   React.useEffect(() => {
