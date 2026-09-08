@@ -229,8 +229,8 @@ export class AuthService {
     const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
     const memberships = await orgMembershipService.getUserMemberships(user._id);
 
-    // Active memberships (where organization status is Active and membership status is Active, Pending, or missing for legacy documents)
-    const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active' && (m.status === 'Active' || m.status === 'Pending' || !m.status));
+    // Active memberships strictly (organization status is Active and membership status is Active, or missing for legacy documents)
+    const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active' && (m.status === 'Active' || !m.status));
 
     let selectedMembership = null;
     const targetOrgIdStr = targetOrgId ? targetOrgId.toString() : null;
@@ -576,6 +576,27 @@ export class AuthService {
         targetOrgIdFromInvite = orgId;
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
         await orgMembershipService.updateStatus(user._id, orgId, 'Active');
+
+        // Assign resident to villa upon accepting invitation during login
+        const updatedMembership = await orgMembershipService.getMembershipWithVilla(user._id, orgId);
+        if (updatedMembership) {
+          const villaService = (await import('../villa/villa.services.js')).default;
+          if (updatedMembership.units && updatedMembership.units.length > 0) {
+            for (const unit of updatedMembership.units) {
+              if (unit.villaId) {
+                const vId = unit.villaId._id || unit.villaId;
+                await villaService.assignResidentToVilla(vId, user._id, unit.residentType || 'Resident', null, orgId);
+              }
+            }
+          } else if (updatedMembership.villaId) {
+            const vId = updatedMembership.villaId._id || updatedMembership.villaId;
+            await villaService.assignResidentToVilla(vId, user._id, updatedMembership.residentType || 'Resident', null, orgId);
+          }
+        }
+
+        const Technician = (await import('../technician/technician.model.js')).default;
+        await Technician.findOneAndUpdate({ userId: user._id, orgId }, { status: 'Active' }).catch(() => null);
+
         userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
         userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
       } catch (tokenError) {
@@ -697,14 +718,41 @@ export class AuthService {
         }
       }
 
-      const { hashPassword } = await import('../../utils/crypto.utils.js');
-      const hashedPassword = await hashPassword(password);
-
-      // Perform user activation via user service
-      await userService.activateUser(user._id, hashedPassword, session);
+      if (password) {
+        const { hashPassword } = await import('../../utils/crypto.utils.js');
+        const hashedPassword = await hashPassword(password);
+        await userService.activateUser(user._id, hashedPassword, session);
+      } else {
+        if (!user.password) {
+          throw new HttpError(400, 'Password is required to activate a new account.');
+        }
+        if (user.status !== 'Active') {
+          const UserRepository = (await import('../user/user.repository.js')).default;
+          await UserRepository.update(user._id, { status: 'Active', emailVerified: true }, session);
+        }
+      }
 
       // Update OrgMembership status to Active for this organization or user
       await orgMembershipService.updateStatus(user._id, orgId || null, 'Active', session).catch(() => null);
+
+      // Assign resident to villa upon accepting invitation
+      if (orgId) {
+        const membership = await orgMembershipService.getMembershipWithVilla(user._id, orgId, session);
+        if (membership) {
+          const villaService = (await import('../villa/villa.services.js')).default;
+          if (membership.units && membership.units.length > 0) {
+            for (const unit of membership.units) {
+              if (unit.villaId) {
+                const vId = unit.villaId._id || unit.villaId;
+                await villaService.assignResidentToVilla(vId, user._id, unit.residentType || 'Resident', session, orgId);
+              }
+            }
+          } else if (membership.villaId) {
+            const vId = membership.villaId._id || membership.villaId;
+            await villaService.assignResidentToVilla(vId, user._id, membership.residentType || 'Resident', session, orgId);
+          }
+        }
+      }
 
       if (orgId) {
         const Technician = (await import('../technician/technician.model.js')).default;
@@ -793,6 +841,12 @@ export class AuthService {
 
       // Update OrgMembership status to Rejected for this organization
       await orgMembershipService.updateStatus(user._id, orgId || null, 'Rejected', session).catch(() => null);
+
+      // Ensure user is removed from any villa in this organization
+      if (orgId) {
+        const villaService = (await import('../villa/villa.services.js')).default;
+        await villaService.removeUserFromAllVillasInOrg(user._id, orgId, session).catch(() => null);
+      }
 
       await session.commitTransaction();
 
@@ -1620,6 +1674,22 @@ export class AuthService {
       if (orgId) {
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
         await orgMembershipService.updateStatus(userId, orgId, 'Active', session);
+
+        const membership = await orgMembershipService.getMembershipWithVilla(userId, orgId, session);
+        if (membership) {
+          const villaService = (await import('../villa/villa.services.js')).default;
+          if (membership.units && membership.units.length > 0) {
+            for (const unit of membership.units) {
+              if (unit.villaId) {
+                const vId = unit.villaId._id || unit.villaId;
+                await villaService.assignResidentToVilla(vId, userId, unit.residentType || 'Resident', session, orgId);
+              }
+            }
+          } else if (membership.villaId) {
+            const vId = membership.villaId._id || membership.villaId;
+            await villaService.assignResidentToVilla(vId, userId, membership.residentType || 'Resident', session, orgId);
+          }
+        }
 
         const Technician = (await import('../technician/technician.model.js')).default;
         await Technician.findOneAndUpdate({ userId, orgId }, { status: 'Active' }).session(session);

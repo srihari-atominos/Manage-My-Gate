@@ -2,11 +2,10 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { Home, Check, X, Building2, Lock, ShieldAlert } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { Home, Check, X, Building2 } from 'lucide-react-native';
 
 import { useDispatch, useSelector } from 'react-redux';
-import { performLogout } from '../../src/features/auth/store/authSlice';
+import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
 
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
@@ -37,7 +36,6 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   communityName = '',
   onOpenOrgModal,
 }) => {
-  const router = useRouter();
   const { user } = useAuth();
   const dispatch = useDispatch<any>();
   const { t, tRole } = useTranslation();
@@ -48,6 +46,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
 
   const [pendingUnit, setPendingUnit] = React.useState<VillaUnit | null>(null);
   const [showConfirmModal, setShowConfirmModal] = React.useState(false);
+  const [isSwitching, setIsSwitching] = React.useState(false);
 
   const userUnits: VillaUnit[] = React.useMemo(() => {
     const userAny = user as any;
@@ -89,32 +88,8 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
       });
     }
 
-    // 3. Fallback to DUMMY_VILLAS matching active community context
-    if (unitsMap.size <= 1) {
-      const { DUMMY_VILLAS } = require('../../src/features/villa/store/villaSlice');
-      const isEmerald = communityName.toLowerCase().includes('emerald') || activeOrgId === '650000000000000000000002';
-      const isSkyline = communityName.toLowerCase().includes('skyline') || communityName.toLowerCase().includes('apartment') || activeOrgId === '650000000000000000000003';
-      
-      const filtered = DUMMY_VILLAS.filter((v: any) => {
-        if (isEmerald) return v.blockOrBuilding?.includes('Emerald Valley');
-        if (isSkyline) return v.blockOrBuilding?.startsWith('Block');
-        return v.blockOrBuilding?.includes('Palm Meadows') || v.blockOrBuilding === 'Phase 1';
-      });
-
-      filtered.forEach((v: any) => {
-        if (!unitsMap.has(v._id)) {
-          unitsMap.set(v._id, {
-            id: v._id,
-            unitNumber: v.unitNumber,
-            block: v.blockOrBuilding || '',
-            residencyType: v.primaryResident ? 'Resident' : 'Vacant',
-          });
-        }
-      });
-    }
-
     return Array.from(unitsMap.values());
-  }, [user, reduxWorkspaces, activeOrgId, communityName]);
+  }, [user, reduxWorkspaces, activeOrgId]);
 
   const handleSelect = (unit: VillaUnit) => {
     setPendingUnit(unit);
@@ -124,21 +99,29 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   const handleConfirmSwitch = async () => {
     if (!pendingUnit) return;
     const unit = pendingUnit;
-    setShowConfirmModal(false);
-    setPendingUnit(null);
-    onClose();
-    // 1. Terminate current session
-    await dispatch(performLogout());
-    // 2. Redirect to Login screen with target context parameters
-    router.replace({
-      pathname: '/(auth)/login' as any,
-      params: {
-        switchType: 'villa',
-        targetName: unit.unitNumber,
-        targetCommunity: communityName,
-        targetRole: unit.residencyType || 'Resident',
-      },
-    });
+    setIsSwitching(true);
+    try {
+      const switchPayload: { targetVillaId?: string; targetOrgId?: string } = {};
+      if (unit.id && typeof unit.id === 'string' && /^[0-9a-fA-F]{24}$/.test(unit.id.trim())) {
+        switchPayload.targetVillaId = unit.id.trim();
+      }
+      if (activeOrgId && typeof activeOrgId === 'string' && /^[0-9a-fA-F]{24}$/.test(activeOrgId.trim())) {
+        switchPayload.targetOrgId = activeOrgId.trim();
+      }
+      await dispatch(switchWorkspaceContextThunk(switchPayload)).unwrap();
+      onSelectVilla(unit.unitNumber);
+      setShowConfirmModal(false);
+      setPendingUnit(null);
+      onClose();
+    } catch (err) {
+      console.warn('Failed to switch property unit via backend, applying local selection:', err);
+      onSelectVilla(unit.unitNumber);
+      setShowConfirmModal(false);
+      setPendingUnit(null);
+      onClose();
+    } finally {
+      setIsSwitching(false);
+    }
   };
 
   return (
@@ -156,14 +139,6 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
             <TouchableOpacity onPress={onClose} activeOpacity={0.7} className="p-1.5 rounded-full bg-secondary">
               <X size={16} className="text-muted-foreground" />
             </TouchableOpacity>
-          </View>
-
-          {/* Logout & Re-authentication Warning Badge */}
-          <View className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-2.5 flex-row items-center gap-2">
-            <Lock size={15} color="#F59E0B" />
-            <Text className="text-[11px] text-amber-800 dark:text-amber-300 font-medium flex-1 leading-tight">
-              Switching property units will log you out and require login credentials for that unit.
-            </Text>
           </View>
 
           <Text className="text-xs text-muted-foreground">
@@ -257,16 +232,18 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
         </View>
       </View>
 
-      {/* Yes/No Permission Confirmation Dialog */}
+      {/* Yes/No Switch Confirmation Dialog */}
       <ConfirmationModal
         visible={showConfirmModal}
-        variant="warning"
+        variant="info"
+        loading={isSwitching}
         title={t('confirm_switch_unit_title', 'Switch Property Unit?')}
-        message={`${t('confirm_switch_unit_msg', 'Switching will sign you out and require login credentials for')} ${pendingUnit?.unitNumber || ''}. ${t('do_you_want_to_proceed', 'Do you want to proceed?')}`}
+        message={`${t('confirm_switch_unit_msg', 'Are you sure you want to switch active unit to')} ${pendingUnit?.unitNumber || ''}?`}
         confirmLabel={t('yes_switch', 'Yes, Switch')}
         cancelLabel={t('no_cancel', 'No, Cancel')}
         onConfirm={handleConfirmSwitch}
         onCancel={() => {
+          if (isSwitching) return;
           setShowConfirmModal(false);
           setPendingUnit(null);
         }}

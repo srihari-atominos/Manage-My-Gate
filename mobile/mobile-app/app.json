@@ -20,9 +20,7 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
@@ -39,7 +37,7 @@
     },
     "android": {
       "package": "com.atominosconsulting.nahom",
-      "versionCode": 8,
+      "versionCode": 9,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -100,7 +98,6 @@
         }
       ],
       "expo-secure-store",
-      "expo-sharing",
       "expo-asset"
     ],
     "experiments": {

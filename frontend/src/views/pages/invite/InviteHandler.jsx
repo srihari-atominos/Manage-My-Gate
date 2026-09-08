@@ -45,12 +45,7 @@ const InviteHandler = () => {
             return
           }
 
-          if (data.isExisting) {
-            const encodedEmail = encodeURIComponent(data.email || '')
-            navigate(`/login?invite_token=${token}&email=${encodedEmail}`, { replace: true })
-          } else {
-            navigate(`/invite/web/${token}`, { replace: true })
-          }
+          navigate(`/invite/web/${token}`, { replace: true })
         } else {
           setError('Invalid or expired invitation token.')
           setLoading(false)

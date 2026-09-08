@@ -80,8 +80,7 @@ export const acceptInviteRules = [
     .isEmail()
     .trim(),
   body('password')
-    .notEmpty()
-    .withMessage('Password is required')
+    .optional({ nullable: true, checkFalsy: true })
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters long')
     .matches(passwordRegex)

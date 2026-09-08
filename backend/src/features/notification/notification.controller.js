@@ -7,14 +7,15 @@ import HttpError from '../../utils/httpError.utils.js';
  */
 export class NotificationController {
   /**
-   * Fetch paginated notifications for the logged-in user.
+   * Fetch paginated notifications for the logged-in user, scoped by active workspace organization.
    */
   async getUserNotifications(req, res, next) {
     try {
       const userId = req.user.id;
+      const orgId = req.headers['x-organization-id'] || req.user?.orgId || req.tenant?.orgId || null;
       const { page, limit } = req.query;
 
-      const data = await notificationService.getUserNotifications(userId, page, limit);
+      const data = await notificationService.getUserNotifications(userId, page, limit, orgId);
       res.success(data, 'Notifications retrieved successfully');
     } catch (error) {
       next(error);
@@ -37,13 +38,14 @@ export class NotificationController {
   }
 
   /**
-   * Mark all unread notifications of the user as read.
+   * Mark all unread notifications of the user as read for the active workspace.
    */
   async markAllAsRead(req, res, next) {
     try {
       const userId = req.user.id;
+      const orgId = req.headers['x-organization-id'] || req.user?.orgId || req.tenant?.orgId || null;
 
-      const data = await notificationService.markAllAsRead(userId);
+      const data = await notificationService.markAllAsRead(userId, orgId);
       res.success(data, 'All notifications marked as read successfully');
     } catch (error) {
       next(error);

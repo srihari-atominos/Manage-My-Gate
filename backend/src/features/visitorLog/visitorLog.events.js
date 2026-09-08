@@ -16,6 +16,7 @@ visitorLogEvents.on('walk_in_pending', (log) => {
   if (log.residentId) {
     notificationService.createNotification({
       recipientId: log.residentId,
+      orgId: log.orgId || null,
       senderId: log.guardId,
       title: 'Gate Approval Required',
       body: `Visitor "${log.snapshot?.visitorName || 'Walk-in'}" is waiting at the gate.`,
@@ -36,6 +37,7 @@ visitorLogEvents.on('walk_in_resolved', (log) => {
     const isApproved = log.logStatus === 'INSIDE';
     notificationService.createNotification({
       recipientId: log.guardId,
+      orgId: log.orgId || null,
       senderId: log.residentId,
       title: isApproved ? 'Walk-in Entry Approved' : 'Walk-in Entry Denied',
       body: `Walk-in request for visitor "${log.snapshot?.visitorName || 'Walk-in'}" has been ${isApproved ? 'approved' : 'denied'} by host.`,
@@ -52,6 +54,7 @@ visitorLogEvents.on('log_created', (log) => {
   if (log.residentId) {
     notificationService.createNotification({
       recipientId: log.residentId,
+      orgId: log.orgId || null,
       senderId: log.guardId,
       title: 'Visitor Checked In',
       body: `Visitor "${log.snapshot?.visitorName || 'Guest'}" has checked in and entered the premises.`,
@@ -68,6 +71,7 @@ visitorLogEvents.on('log_checked_out', (log) => {
   if (log.residentId) {
     notificationService.createNotification({
       recipientId: log.residentId,
+      orgId: log.orgId || null,
       senderId: log.guardId,
       title: 'Visitor Checked Out',
       body: `Visitor "${log.snapshot?.visitorName || 'Guest'}" has checked out and departed.`,

@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import useAuthRouting from '../hooks/useAuthRouting.js'
 import useAuth from '../hooks/useAuth.js'
-import { loginWithGoogle } from '../store/authSlice.js'
+import { loginWithGoogle, acceptInvitation } from '../store/authSlice.js'
 import ForgotPasswordModal from './ForgotPasswordModal.jsx'
 import { GoogleLogin } from '@react-oauth/google'
 import { useMsal } from '@azure/msal-react'
@@ -161,11 +161,26 @@ export const LoginForm = () => {
   }, [emailParam, passwordParam, reset, setValue])
 
   // Automatically handle routing updates post-authentication
+  const inviteAcceptedRef = useRef(false)
   useEffect(() => {
     if (isAuthenticated) {
-      handlePostAuthRedirect()
+      if (inviteTokenParam && !inviteAcceptedRef.current) {
+        inviteAcceptedRef.current = true
+        dispatch(acceptInvitation({ token: inviteTokenParam }))
+          .unwrap()
+          .then(() => {
+            toast.success('Workspace invitation accepted!')
+            navigate('/dashboard', { replace: true })
+          })
+          .catch((err) => {
+            console.warn('Invite token processing:', err)
+            handlePostAuthRedirect()
+          })
+      } else {
+        handlePostAuthRedirect()
+      }
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, inviteTokenParam])
 
   // Handle OTP countdown timer
   useEffect(() => {
@@ -292,6 +307,9 @@ export const LoginForm = () => {
             } catch (credErr) {
               // Non-blocking fallback for browsers/environments where credential store is restricted
             }
+          }
+          if (inviteTokenParam) {
+            inviteAcceptedRef.current = true
           }
           handlePostAuthRedirect()
         } else if (res?.error) {

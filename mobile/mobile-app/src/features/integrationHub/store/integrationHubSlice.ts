@@ -65,28 +65,11 @@ export const DUMMY_CATALOG: ProviderCatalogItem[] = [
   },
 ];
 
-export const DUMMY_CONNECTIONS: IntegrationConnection[] = [
-  {
-    id: 'conn-1',
-    provider: 'stripe',
-    accountLabel: 'Primary Stripe Live Gateway',
-    status: 'connected',
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'conn-2',
-    provider: 'twillio',
-    accountLabel: 'Gate Security SMS Dispatcher',
-    status: 'connected',
-    createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-  },
-];
+export const DUMMY_CONNECTIONS: IntegrationConnection[] = [];
 
 const initialState: IntegrationHubState = {
   catalog: DUMMY_CATALOG,
-  connections: DUMMY_CONNECTIONS,
+  connections: [],
   selectedProvider: 'all',
   isLoading: false,
   isSubmitting: false,
@@ -94,7 +77,7 @@ const initialState: IntegrationHubState = {
   pagination: {
     currentPage: 1,
     totalPages: 1,
-    totalRecords: DUMMY_CONNECTIONS.length,
+    totalRecords: 0,
     rowsPerPage: 20,
   },
 };

@@ -1,27 +1,15 @@
-import axios from 'axios';
+import apiClient, { getApiBaseUrl } from '../../services/apiClient';
 import { Visitor } from './visitorSlice';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const getUrl = () => getApiBaseUrl();
 
 export const visitorApi = {
   getWalkIns: async (): Promise<Visitor[]> => {
     try {
-      // const response = await axios.get(`${API_URL}/visitors/walk-ins`);
-      // return response.data;
-      
-      // Mock data for UI development
-      return [
-        {
-          id: 'v1',
-          name: 'John Doe',
-          purpose: 'Delivery',
-          status: 'pending',
-          arrivalTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ];
+      const response = await apiClient.get<Visitor[]>('/visitors/walk-ins').catch(() => null);
+      return response?.data || [];
     } catch (error) {
-      console.error('Error fetching walk-ins', error);
-      throw error;
+      return [];
     }
   },
   

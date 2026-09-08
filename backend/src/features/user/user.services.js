@@ -411,16 +411,14 @@ export class UserService {
         }
       }
 
-      await userRepository.update(user._id, { villaId: rootVillaId, residencyType: userResidencyType }, session);
-
-      // Add to Villa residents array via villa service to respect boundaries
-      if (villaId) {
-        const villaService = (await import('../villa/villa.services.js')).default;
-        // RECOMMENDATION: Eventually update the InvoiceService and other strict-string services
-        // to check role.isTenantRole or a baseSystemType classification (calculated as: ${baseSystemType})
-        // rather than strictly matching residencyType strings like 'Tenant' or 'Resident Owner'.
-        await villaService.assignResidentToVilla(villaId, user._id, userResidencyType, session, orgId);
+      // Only initialize user residencyType on global profile if new user
+      if (!existing && rootVillaId) {
+        await userRepository.update(user._id, { residencyType: userResidencyType }, session);
       }
+
+      // NOTE: Villa assignment (assignResidentToVilla) and villa occupancy status update
+      // are strictly deferred until the user accepts the invitation (via accept-invite or login).
+      // This guarantees that pending invitations do not reserve or occupy villas prematurely.
 
       // Always generate an invitationToken with orgId (for both new and existing users)
       const tokenService = (await import('../token/token.services.js')).default;

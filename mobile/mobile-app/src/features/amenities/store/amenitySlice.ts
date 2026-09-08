@@ -454,28 +454,8 @@ const amenitySlice = createSlice({
             limit: payload.limit || action.meta.arg?.limit || 20,
           };
         }
-        const categoryFilter = action.meta.arg?.category;
-        const searchFilter = action.meta.arg?.search;
-        const hasFilters = (categoryFilter && categoryFilter !== 'All') || (searchFilter && searchFilter.trim() !== '');
-
-        if (list.length === 0 && !hasFilters && page === 1) {
-          list = MOCK_LUXURY_AMENITIES;
-        }
-
-        const rawList = list.length > 0
-          ? list.map(normalizeAmenity)
-          : (hasFilters
-              ? MOCK_LUXURY_AMENITIES.map(normalizeAmenity).filter((a) => {
-                  const cat = (a.category || a.type || '').toLowerCase();
-                  const selCat = (categoryFilter || 'all').toLowerCase();
-                  const matchCat = !categoryFilter || selCat === 'all' || cat === selCat || cat.includes(selCat);
-                  const q = (searchFilter || '').toLowerCase().trim();
-                  const matchQ = !q || a.name.toLowerCase().includes(q);
-                  return matchCat && matchQ;
-                })
-              : MOCK_LUXURY_AMENITIES.map(normalizeAmenity));
-
-        const targetList = page > 1 ? [...state.amenities, ...rawList] : rawList;
+        const normalizedList = list.map(normalizeAmenity);
+        const targetList = page > 1 ? [...state.amenities, ...normalizedList] : normalizedList;
 
         const seenIds = new Set<string>();
         const seenNames = new Set<string>();
@@ -493,18 +473,6 @@ const amenitySlice = createSlice({
       })
       .addCase(fetchAmenitiesThunk.rejected, (state, action) => {
         state.loading = false;
-        const categoryFilter = (action.meta?.arg as any)?.category;
-        const searchFilter = (action.meta?.arg as any)?.search;
-        if (state.amenities.length === 0) {
-          state.amenities = MOCK_LUXURY_AMENITIES.map(normalizeAmenity).filter((a) => {
-            const cat = (a.category || a.type || '').toLowerCase();
-            const selCat = (categoryFilter || 'all').toLowerCase();
-            const matchCat = !categoryFilter || selCat === 'all' || cat === selCat || cat.includes(selCat);
-            const q = (searchFilter || '').toLowerCase().trim();
-            const matchQ = !q || a.name.toLowerCase().includes(q);
-            return matchCat && matchQ;
-          });
-        }
         state.error = (action.payload as string) || null;
       })
       // Detail fetch

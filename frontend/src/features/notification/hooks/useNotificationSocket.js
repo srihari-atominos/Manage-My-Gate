@@ -13,7 +13,8 @@ import { addRealTimeNotification } from '../store/notificationSlice.js'
  */
 export const useNotificationSocket = (userId) => {
   const dispatch = useDispatch()
-  const { token } = useSelector((state) => state.auth || {})
+  const { token, user } = useSelector((state) => state.auth || {})
+  const activeOrgId = user?.orgId || user?.organizationId
 
   useEffect(() => {
     if (!userId || !token) {
@@ -39,6 +40,17 @@ export const useNotificationSocket = (userId) => {
     socket.on('connect', joinRoom)
 
     socket.on('INCOMING_NOTIFICATION', (payload) => {
+      // Community Isolation: Ignore real-time notifications belonging to another organization
+      // Invitations (type === 'INVITATION') and global notifications (orgId === null) are always accepted.
+      if (
+        payload?.orgId &&
+        activeOrgId &&
+        String(payload.orgId) !== String(activeOrgId) &&
+        payload.type !== 'INVITATION'
+      ) {
+        return
+      }
+
       dispatch(addRealTimeNotification(payload))
     })
 
@@ -46,7 +58,7 @@ export const useNotificationSocket = (userId) => {
       socket.off('INCOMING_NOTIFICATION')
       socket.disconnect()
     }
-  }, [userId, token, dispatch])
+  }, [userId, token, activeOrgId, dispatch])
 }
 
 export default useNotificationSocket

@@ -11,183 +11,14 @@ export interface DirectoryState {
   refreshing: boolean;
   error: string | null;
 }
-
-export const DUMMY_MEMBERS: DirectoryMember[] = [
-  {
-    id: 'dummy-1',
-    userId: 'user-dummy-1',
-    name: 'Arun Kumar',
-    role: 'management',
-    designation: 'Admin (Palm Meadows)',
-    unitNumber: 'Villa 101',
-    phone: '+919876543210',
-    email: 'arun.kumar@community.org',
-    intercomNumber: '101',
-    avatarUrl: null,
-    isOnline: true,
-    allowDirectoryMessages: true,
-    showPhoneInDirectory: true,
-    allowIntercomCalls: true,
-    interests: ['Badminton 🏸', 'Coffee & Chat ☕', 'Fitness 🏋️'],
-  },
-  {
-    id: 'dummy-2',
-    userId: 'user-dummy-2',
-    name: 'Priya Sharma',
-    role: 'resident',
-    designation: 'Tenant/Owner (Palm Meadows)',
-    unitNumber: 'Villa 102',
-    phone: '+919876543211',
-    email: 'priya.sharma@community.org',
-    intercomNumber: '102',
-    avatarUrl: null,
-    isOnline: true,
-    allowDirectoryMessages: true,
-    showPhoneInDirectory: true,
-    allowIntercomCalls: true,
-    interests: ['Book Club 📚', 'Gardening 🌱', 'Coffee & Chat ☕'],
-  },
-  {
-    id: 'dummy-3',
-    userId: 'user-dummy-3',
-    name: 'Vikram Mehta',
-    role: 'resident',
-    designation: 'Tenant/Owner (Palm Meadows)',
-    unitNumber: 'Villa 103',
-    phone: '+919876543212',
-    email: 'vikram.mehta@community.org',
-    intercomNumber: '103',
-    avatarUrl: null,
-    isOnline: false,
-    allowDirectoryMessages: true,
-    showPhoneInDirectory: true,
-    allowIntercomCalls: true,
-    interests: ['Tennis 🎾', 'Swimming 🏊', 'Finance 📈'],
-  },
-  {
-    id: 'dummy-4',
-    userId: 'user-dummy-4',
-    name: 'Dr. Meera Reddy',
-    role: 'resident',
-    designation: 'Tenant/Owner (Palm Meadows)',
-    unitNumber: 'Villa 104',
-    phone: '+919876543216',
-    email: 'meera.reddy@community.org',
-    intercomNumber: '104',
-    avatarUrl: null,
-    isOnline: true,
-    allowDirectoryMessages: true,
-    showPhoneInDirectory: true,
-    allowIntercomCalls: true,
-    interests: ['Healthcare 🩺', 'Running 🏃‍♀️', 'Volunteering 🤝'],
-  },
-  {
-    id: 'dummy-5',
-    userId: 'user-dummy-5',
-    name: 'Sunita Rao',
-    role: 'resident',
-    designation: 'Tenant/Owner (Palm Meadows)',
-    unitNumber: 'Villa 105',
-    phone: '+919876543218',
-    email: 'sunita.rao@accounts.org',
-    intercomNumber: '105',
-    avatarUrl: null,
-    isOnline: true,
-    allowDirectoryMessages: true,
-    showPhoneInDirectory: true,
-    allowIntercomCalls: true,
-    interests: ['Auditing 📊', 'Badminton 🏸', 'Baking 🧁'],
-  },
-  {
-    id: 'dummy-6',
-    userId: 'user-dummy-6',
-    name: 'Rohan Patel',
-    role: 'resident',
-    designation: 'Tenant/Owner (Emerald Valley)',
-    unitNumber: 'Villa 201',
-    phone: '+919876543217',
-    email: 'rohan.patel@community.org',
-    intercomNumber: '201',
-    avatarUrl: null,
-    isOnline: false,
-    allowDirectoryMessages: true,
-    showPhoneInDirectory: false,
-    allowIntercomCalls: true,
-    interests: ['Cycling 🚴', 'Tech & Coding 💻'],
-  },
-  {
-    id: 'dummy-7',
-    userId: 'user-dummy-7',
-    name: 'Ananya Roy',
-    role: 'resident',
-    designation: 'Tenant/Owner (Emerald Valley)',
-    unitNumber: 'Villa 202',
-    phone: '+919876543213',
-    email: 'ananya.roy@community.org',
-    intercomNumber: '202',
-    avatarUrl: null,
-    isOnline: true,
-    allowDirectoryMessages: true,
-    showPhoneInDirectory: true,
-    allowIntercomCalls: true,
-    interests: ['Yoga 🧘', 'Music 🎵', 'Art & Craft 🎨'],
-  },
-  {
-    id: 'dummy-8',
-    userId: 'user-dummy-8',
-    name: 'David D\'Souza',
-    role: 'management',
-    designation: 'Admin (Emerald Valley)',
-    unitNumber: 'Villa 203',
-    phone: '+919876543219',
-    email: 'david.dsouza@facility.org',
-    intercomNumber: '203',
-    avatarUrl: null,
-    isOnline: true,
-    allowDirectoryMessages: true,
-    showPhoneInDirectory: true,
-    allowIntercomCalls: true,
-  },
-  {
-    id: 'dummy-9',
-    userId: 'user-dummy-9',
-    name: 'Suresh Nair',
-    role: 'resident',
-    designation: 'Tenant/Owner (Skyline Heights)',
-    unitNumber: 'Block A - 101',
-    phone: '+919876543215',
-    email: 'suresh.nair@maintenance.org',
-    intercomNumber: '301',
-    avatarUrl: null,
-    isOnline: true,
-    allowDirectoryMessages: true,
-    showPhoneInDirectory: true,
-    allowIntercomCalls: true,
-  },
-  {
-    id: 'dummy-10',
-    userId: 'user-dummy-10',
-    name: 'Rajesh Verma',
-    role: 'security',
-    designation: 'Security (Skyline Heights & Gate)',
-    unitNumber: 'Block B - 101',
-    phone: '+919876543214',
-    email: 'rajesh.verma@security.org',
-    intercomNumber: '99',
-    avatarUrl: null,
-    isOnline: true,
-    allowDirectoryMessages: true,
-    showPhoneInDirectory: true,
-    allowIntercomCalls: true,
-  },
-];
+export const DUMMY_MEMBERS: DirectoryMember[] = [];
 
 const initialState: DirectoryState = {
-  members: DUMMY_MEMBERS,
+  members: [],
   pagination: {
     currentPage: 1,
     totalPages: 1,
-    totalRecords: DUMMY_MEMBERS.length,
+    totalRecords: 0,
     limit: 50,
   },
   searchQuery: '',
@@ -211,12 +42,13 @@ export const fetchDirectory = createAsyncThunk(
         limit: params?.limit || 50,
       });
       return {
-        ...response,
+        data: response.data || [],
+        pagination: response.pagination,
         page: params?.page || 1,
         refreshing: params?.refreshing || false,
       };
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message || 'Failed to fetch directory');
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch directory');
     }
   }
 );
@@ -233,7 +65,7 @@ const directorySlice = createSlice({
       state.pagination.currentPage = 1;
     },
     resetDirectoryState(state) {
-      state.members = DUMMY_MEMBERS;
+      state.members = [];
       state.pagination = initialState.pagination;
       state.error = null;
     },
@@ -253,7 +85,7 @@ const directorySlice = createSlice({
         state.refreshing = false;
 
         const payload = action.payload || {};
-        const safeData = Array.isArray(payload.data) && payload.data.length > 0 ? payload.data : DUMMY_MEMBERS;
+        const safeData = Array.isArray(payload.data) ? payload.data : [];
         const page = payload.page || 1;
 
         if (page === 1) {
@@ -276,7 +108,6 @@ const directorySlice = createSlice({
       .addCase(fetchDirectory.rejected, (state, action) => {
         state.loading = false;
         state.refreshing = false;
-        state.members = DUMMY_MEMBERS;
         state.error = action.payload as string;
       });
   },

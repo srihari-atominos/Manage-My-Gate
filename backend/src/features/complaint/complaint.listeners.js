@@ -25,6 +25,7 @@ async function notifyRole(orgId, roleName, title, body, actionUrl) {
       if (member.userId) {
         await notificationService.createNotification({
           recipientId: member.userId,
+          orgId,
           title,
           body,
           actionUrl,
@@ -46,6 +47,7 @@ complaintEvents.on('complaint.created', async ({ orgId, complaint }) => {
   try {
     await notificationService.createNotification({
       recipientId: complaint.residentId,
+      orgId,
       title: 'Complaint Submitted Successfully',
       body: `Your complaint (${complaint.complaintNumber}) has been submitted successfully.`,
       actionUrl: `/complaints`,
@@ -71,6 +73,7 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
       try {
         await notificationService.createNotification({
           recipientId: techId,
+          orgId,
           title: 'New Complaint Assignment Request',
           body: `You have a new assignment pending acceptance: ${complaint.complaintNumber}.`,
           actionUrl: `/admin/complaints/assignee`,
@@ -87,6 +90,7 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
     try {
       await notificationService.createNotification({
         recipientId: techIdStr,
+        orgId,
         title: 'New Complaint Assignment',
         body: `You have been directly assigned to complaint: ${complaint.complaintNumber}.`,
         actionUrl: `/admin/complaints/assignee`,
@@ -113,6 +117,7 @@ complaintEvents.on('complaint.assigned', async ({ orgId, complaint, adminId, pre
     try {
       await notificationService.createNotification({
         recipientId: complaint.residentId,
+        orgId,
         title: 'Technician Assigned',
         body: `Your complaint (${complaint.complaintNumber}) has been assigned to ${complaint.assignedTechnicianName || complaint.vendor}.`,
         actionUrl: `/complaints`,
@@ -130,6 +135,7 @@ complaintEvents.on('complaint.updated', async ({ orgId, complaint, action, previ
     try {
       await notificationService.createNotification({
         recipientId: complaint.residentId,
+        orgId,
         title, body,
         actionUrl: `/complaints`,
         type: 'INFO'
@@ -153,6 +159,7 @@ complaintEvents.on('complaint.updated', async ({ orgId, complaint, action, previ
           try {
             await notificationService.createNotification({
               recipientId: techId,
+              orgId,
               title: 'Assignment No Longer Available',
               body: `The complaint (${complaint.complaintNumber}) has already been accepted by another technician.`,
               actionUrl: `/admin/complaints/assignee`,

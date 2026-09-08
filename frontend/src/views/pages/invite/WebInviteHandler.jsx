@@ -20,10 +20,14 @@ import { cilLockLocked, cilUser, cilHome, cilShieldAlt } from '@coreui/icons'
 import apiClient from '../../../services/apiClient.js'
 import toast from 'react-hot-toast'
 
+import { useDispatch } from 'react-redux'
+import { acceptInvitation } from '../../../features/auth/store/authSlice.js'
+
 export const WebInviteHandler = () => {
   const { token: routeToken } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const dispatch = useDispatch()
 
   const token = routeToken || searchParams.get('token') || ''
 
@@ -54,13 +58,6 @@ export const WebInviteHandler = () => {
 
         if (data && data.valid) {
           setInviteData(data)
-          if (data.isExisting) {
-            toast('Your account already exists. Please sign in to access this workspace.')
-            navigate(`/login?invite_token=${token}&email=${encodeURIComponent(data.email || '')}`, {
-              replace: true,
-            })
-            return
-          }
         } else {
           setError('This invitation link is invalid or has expired.')
         }
@@ -82,6 +79,22 @@ export const WebInviteHandler = () => {
     }
   }, [token, navigate])
 
+  const handleAcceptExisting = async () => {
+    setSubmitting(true)
+    setValidationError('')
+
+    try {
+      await dispatch(acceptInvitation({ token })).unwrap()
+      toast.success(`Welcome to ${inviteData?.orgName || 'your community'}!`)
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to accept invitation. Please try again.'
+      setValidationError(msg)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setValidationError('')
@@ -99,16 +112,11 @@ export const WebInviteHandler = () => {
     setSubmitting(true)
 
     try {
-      await apiClient.post('/auth/accept-invite', {
-        token,
-        password,
-        email: inviteData?.email,
-      })
-
-      toast.success('Account activated successfully! Please sign in.')
-      navigate(`/login?email=${encodeURIComponent(inviteData?.email || '')}`, { replace: true })
+      await dispatch(acceptInvitation({ token, password })).unwrap()
+      toast.success('Account activated successfully! Welcome to your community.')
+      navigate('/dashboard', { replace: true })
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to activate account. Please try again.'
+      const msg = typeof err === 'string' ? err : err?.message || 'Failed to activate account. Please try again.'
       setValidationError(msg)
     } finally {
       setSubmitting(false)
@@ -220,85 +228,124 @@ export const WebInviteHandler = () => {
                   </div>
                 </div>
 
-                <h5 className="fw-bold mb-3 text-dark">Create your password</h5>
-
                 {validationError ? (
                   <CAlert color="danger" className="mb-3 py-2 small">
                     {validationError}
                   </CAlert>
                 ) : null}
 
-                <CForm onSubmit={handleSubmit}>
-                  <div className="mb-3">
-                    <label className="form-label small fw-semibold text-muted">New Password *</label>
-                    <CInputGroup>
-                      <CInputGroupText className="bg-light">
-                        <CIcon icon={cilLockLocked} />
-                      </CInputGroupText>
-                      <CFormInput
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
+                {inviteData?.isExisting ? (
+                  <div>
+                    <CAlert color="info" className="mb-4">
+                      <strong>Existing Account Detected:</strong> Your account is already registered. You do not need to create a new password. Click below to accept the invitation and activate access to this workspace.
+                    </CAlert>
+
+                    <CButton
+                      type="button"
+                      color="success"
+                      className="w-100 py-2 fw-bold text-white rounded-3 mb-3"
+                      disabled={submitting}
+                      onClick={handleAcceptExisting}
+                    >
+                      {submitting ? (
+                        <>
+                          <CSpinner size="sm" className="me-2" />
+                          Joining Community...
+                        </>
+                      ) : (
+                        `Accept Invitation & Join ${inviteData?.orgName || 'Community'}`
+                      )}
+                    </CButton>
+
+                    <div className="text-center mt-3 pt-2 border-top">
+                      <small className="text-muted">
+                        Prefer to sign in with your password?{' '}
+                        <Link
+                          to={`/login?invite_token=${token}&email=${encodeURIComponent(inviteData?.email || '')}`}
+                          className="text-primary fw-semibold text-decoration-none"
+                        >
+                          Sign In
+                        </Link>
+                      </small>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <h5 className="fw-bold mb-3 text-dark">Create your password</h5>
+
+                    <CForm onSubmit={handleSubmit}>
+                      <div className="mb-3">
+                        <label className="form-label small fw-semibold text-muted">New Password *</label>
+                        <CInputGroup>
+                          <CInputGroupText className="bg-light">
+                            <CIcon icon={cilLockLocked} />
+                          </CInputGroupText>
+                          <CFormInput
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            minLength={6}
+                          />
+                          <CButton
+                            type="button"
+                            color="light"
+                            variant="outline"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? 'Hide' : 'Show'}
+                          </CButton>
+                        </CInputGroup>
+                        <small className="text-muted" style={{ fontSize: '0.75rem' }}>
+                          At least 6 characters required.
+                        </small>
+                      </div>
+
+                      <div className="mb-4">
+                        <label className="form-label small fw-semibold text-muted">Confirm Password *</label>
+                        <CInputGroup>
+                          <CInputGroupText className="bg-light">
+                            <CIcon icon={cilLockLocked} />
+                          </CInputGroupText>
+                          <CFormInput
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="••••••••"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required
+                            minLength={6}
+                          />
+                        </CInputGroup>
+                      </div>
+
                       <CButton
-                        type="button"
-                        color="light"
-                        variant="outline"
-                        onClick={() => setShowPassword(!showPassword)}
+                        type="submit"
+                        color="primary"
+                        className="w-100 py-2 fw-bold rounded-3"
+                        disabled={submitting || !password || !confirmPassword}
                       >
-                        {showPassword ? 'Hide' : 'Show'}
+                        {submitting ? (
+                          <>
+                            <CSpinner size="sm" className="me-2" />
+                            Activating Account...
+                          </>
+                        ) : (
+                          'Set Password & Activate Account'
+                        )}
                       </CButton>
-                    </CInputGroup>
-                    <small className="text-muted" style={{ fontSize: '0.75rem' }}>
-                      At least 6 characters required.
-                    </small>
+                    </CForm>
+
+                    <div className="text-center mt-4 pt-2 border-top">
+                      <small className="text-muted">
+                        Already completed password setup?{' '}
+                        <Link to="/login" className="text-primary fw-semibold text-decoration-none">
+                          Sign In
+                        </Link>
+                      </small>
+                    </div>
                   </div>
-
-                  <div className="mb-4">
-                    <label className="form-label small fw-semibold text-muted">Confirm Password *</label>
-                    <CInputGroup>
-                      <CInputGroupText className="bg-light">
-                        <CIcon icon={cilLockLocked} />
-                      </CInputGroupText>
-                      <CFormInput
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
-                    </CInputGroup>
-                  </div>
-
-                  <CButton
-                    type="submit"
-                    color="primary"
-                    className="w-100 py-2 fw-bold rounded-3"
-                    disabled={submitting || !password || !confirmPassword}
-                  >
-                    {submitting ? (
-                      <>
-                        <CSpinner size="sm" className="me-2" />
-                        Activating Account...
-                      </>
-                    ) : (
-                      'Set Password & Activate Account'
-                    )}
-                  </CButton>
-                </CForm>
-
-                <div className="text-center mt-4 pt-2 border-top">
-                  <small className="text-muted">
-                    Already completed password setup?{' '}
-                    <Link to="/login" className="text-primary fw-semibold text-decoration-none">
-                      Sign In
-                    </Link>
-                  </small>
-                </div>
+                )}
               </CCardBody>
             </CCard>
           </CCol>

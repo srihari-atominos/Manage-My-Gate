@@ -16,6 +16,7 @@ export const dispatchIncomingNotification = (recipientId, notification) => {
     const payload = {
       id: notification._id.toString(),
       recipientId: notification.recipientId.toString(),
+      orgId: notification.orgId ? notification.orgId.toString() : null,
       senderId: notification.senderId ? notification.senderId.toString() : null,
       title: notification.title,
       body: notification.body,

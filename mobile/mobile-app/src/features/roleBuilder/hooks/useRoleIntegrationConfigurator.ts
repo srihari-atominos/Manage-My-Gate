@@ -26,15 +26,7 @@ export const PROVIDERS: ProviderItem[] = [
   { id: 'razorpay', name: 'Razorpay', icon: '💳' },
 ];
 
-export const MOCK_CONNECTIONS: IntegrationConnection[] = [
-  { id: 'smtp_conn_prod', provider: 'smtp', accountLabel: 'Primary Community Mailer (SMTP)', status: 'connected' },
-  { id: 'twilio_conn_main', provider: 'twilio', accountLabel: 'Gate OTP SMS Gateway (Twilio)', status: 'connected' },
-  { id: 'openai_conn_v1', provider: 'openai', accountLabel: 'Resident Assistant Assistant (OpenAI)', status: 'connected' },
-  { id: 'razorpay_conn_main', provider: 'razorpay', accountLabel: 'Main Society Gateway (Razorpay)', status: 'connected' },
-  { id: 'firebase_conn_push', provider: 'firebase', accountLabel: 'FCM Mobile Notifications', status: 'connected' },
-  { id: 'resend_conn_billing', provider: 'resend', accountLabel: 'Billing Invoices Dispatch (Resend)', status: 'connected' },
-  { id: 'banking_conn_hdfc', provider: 'banking', accountLabel: 'Society HDFC Escrow Account', status: 'connected' },
-];
+export const MOCK_CONNECTIONS: IntegrationConnection[] = [];
 
 export const useRoleIntegrationConfigurator = (
   isOpen: boolean,
@@ -49,7 +41,7 @@ export const useRoleIntegrationConfigurator = (
   const [tempMappings, setTempMappings] = useState<Record<string, string>>({});
 
   const connections: IntegrationConnection[] =
-    storeConnections && storeConnections.length > 0 ? storeConnections : MOCK_CONNECTIONS;
+    storeConnections && storeConnections.length > 0 ? storeConnections : [];
 
   useEffect(() => {
     if (isOpen) {

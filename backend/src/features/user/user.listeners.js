@@ -66,10 +66,11 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
         const descStr = detailStr ? ` (${detailStr})` : '';
         await notificationService.createNotification({
           recipientId: targetUserId,
+          orgId,
           title: `Invitation to ${communityName}`,
           body: `You have been invited to join ${communityName}${descStr}. Tap to Accept or Reject this invitation.`,
           actionUrl: inviteLink,
-          type: 'INFO',
+          type: 'INVITATION',
         });
       }
     } catch (notifErr) {

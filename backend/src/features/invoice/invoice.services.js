@@ -876,6 +876,7 @@ export class InvoiceService {
       if (targetUserId) {
         await notificationService.createNotification({
           recipientId: targetUserId,
+          orgId: invoice.orgId || null,
           senderId: adminUserId || null,
           title: 'Offline Payment Rejected',
           body: `Your offline payment submission for invoice #${invoice.invoiceNumber || invoice._id} was rejected${reason ? `: ${reason}` : '.'}`,
@@ -1268,6 +1269,7 @@ export class InvoiceService {
       try {
         const notification = await notificationService.createNotification({
           recipientId,
+          orgId: invoice.orgId || null,
           senderId: adminUserId,
           title,
           body,
@@ -1314,6 +1316,7 @@ export class InvoiceService {
 
     const notification = await notificationService.createNotification({
       recipientId: residentUserId,
+      orgId: orgId || null,
       senderId: adminUserId,
       title,
       body,

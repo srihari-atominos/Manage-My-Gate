@@ -43,17 +43,29 @@ export class NotificationRepository {
 
   /**
    * Fetch paginated user notifications along with unread counts using a single aggregate pipeline with $facet.
+   * Scoped by recipientId and optionally orgId to isolate community notifications.
    * @param {string} userId - User's ID
    * @param {number} skip - Number of records to skip
    * @param {number} limit - Maximum number of records to return
    * @param {mongoose.ClientSession} [session] - Optional Mongoose session
+   * @param {string} [orgId=null] - Optional organization ID to scope community notifications
    * @returns {Promise<object>} Object containing notifications array, totalCount, and unreadCount
    */
-  async findNotificationsWithMetadata(userId, skip, limit, session) {
+  async findNotificationsWithMetadata(userId, skip, limit, session, orgId = null) {
     const userIdObj = new mongoose.Types.ObjectId(userId);
 
+    const matchStage = { recipientId: userIdObj };
+    if (orgId && mongoose.Types.ObjectId.isValid(orgId)) {
+      const orgIdObj = new mongoose.Types.ObjectId(orgId);
+      matchStage.$or = [
+        { orgId: orgIdObj },
+        { orgId: null },
+        { type: 'INVITATION' },
+      ];
+    }
+
     const pipeline = [
-      { $match: { recipientId: userIdObj } },
+      { $match: matchStage },
       {
         $facet: {
           metadata: [
@@ -87,16 +99,26 @@ export class NotificationRepository {
   }
 
   /**
-   * Mark all unread notifications for a specific user as read.
+   * Mark all unread notifications for a specific user as read, scoped by orgId.
    * @param {string} userId - The user's ID
    * @param {Date} readAt - Date when marked as read
    * @param {mongoose.ClientSession} [session] - Optional Mongoose session
+   * @param {string} [orgId=null] - Optional organization ID to isolate read action
    * @returns {Promise<object>} The update operation result (e.g. modifiedCount)
    */
-  async markAllAsRead(userId, readAt, session) {
+  async markAllAsRead(userId, readAt, session, orgId = null) {
     const userIdObj = new mongoose.Types.ObjectId(userId);
+    const filter = { recipientId: userIdObj, isRead: false };
+    if (orgId && mongoose.Types.ObjectId.isValid(orgId)) {
+      const orgIdObj = new mongoose.Types.ObjectId(orgId);
+      filter.$or = [
+        { orgId: orgIdObj },
+        { orgId: null },
+        { type: 'INVITATION' },
+      ];
+    }
     return await Notification.updateMany(
-      { recipientId: userIdObj, isRead: false },
+      filter,
       { $set: { isRead: true, readAt } },
       { session }
     );
