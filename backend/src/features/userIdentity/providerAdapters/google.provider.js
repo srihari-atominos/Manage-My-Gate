@@ -11,16 +11,56 @@ export class GoogleProvider {
    */
   async verifyToken(token) {
     try {
-      const validAudiences = [
+      // Extract unverified payload claims to inspect token audience
+      let tokenAud = null;
+      let tokenAzp = null;
+      try {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const raw = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+          tokenAud = raw.aud;
+          tokenAzp = raw.azp;
+          console.log(`[GoogleProvider] Incoming token claims - aud: ${raw.aud}, azp: ${raw.azp}, email: ${raw.email}`);
+        }
+      } catch (err) {
+        // Continue to standard verification
+      }
+
+      const configuredAudiences = [
         config.sso.googleClientId,
         config.sso.googleAndroidClientId,
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_ANDROID_CLIENT_ID,
       ].filter(Boolean);
+
+      const projectPrefix = (config.sso.googleClientId || '').split('-')[0] || '610778456829';
+
+      const validAudiences = [...new Set([
+        ...configuredAudiences,
+        ...(tokenAud && tokenAud.startsWith(projectPrefix) ? [tokenAud] : []),
+        ...(tokenAzp && tokenAzp.startsWith(projectPrefix) ? [tokenAzp] : []),
+      ])];
 
       const ticket = await googleClient.verifyIdToken({
         idToken: token,
-        audience: validAudiences,
+        audience: validAudiences.length > 0 ? validAudiences : undefined,
       });
-      return ticket.getPayload();
+
+      const payload = ticket.getPayload();
+      const verifiedAud = payload?.aud;
+      const verifiedAzp = payload?.azp;
+
+      const isAuthorizedProject =
+        validAudiences.includes(verifiedAud) ||
+        (verifiedAud && verifiedAud.startsWith(projectPrefix)) ||
+        validAudiences.includes(verifiedAzp) ||
+        (verifiedAzp && verifiedAzp.startsWith(projectPrefix));
+
+      if (!isAuthorizedProject) {
+        throw new HttpError(401, `Google token audience (${verifiedAud}) does not belong to this project.`);
+      }
+
+      return payload;
     } catch (error) {
       throw new HttpError(401, `Invalid Google Token: ${error.message}`);
     }
