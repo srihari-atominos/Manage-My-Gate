@@ -92,29 +92,30 @@ export function parseAndValidateAppBarcode(scannedText: string): ValidatedAppBar
   const raw = scannedText.trim();
 
   // 1. Compact MMG protocol: MMG:{TYPE}:{CODE}[:{PASS_ID}][:{VISITOR_NAME}]
-  const prefixMatch = raw.match(
-    /^MMG[:\-_](GUEST|GROUP|CAB|DELIVERY|SERVICE|STAFF|AUTO|TAXI|VISITOR|RESIDENT|AMENITY|VIS|RES)[:\-_]([a-zA-Z0-9_\-]+)(?:[:\-_]([a-zA-Z0-9_\-]+))?(?:[:\-_]([a-zA-Z0-9_\-.]+))?$/i
-  );
-  if (prefixMatch) {
-    let rawType = prefixMatch[1].toUpperCase();
-    if (rawType === 'VIS' || rawType === 'VISITOR') rawType = 'GUEST';
-    if (rawType === 'STAFF') rawType = 'SERVICE';
-    if (rawType === 'AUTO' || rawType === 'TAXI') rawType = 'CAB';
-    if (rawType === 'RES') rawType = 'RESIDENT';
+  if (/^MMG[:\-_]/i.test(raw)) {
+    const parts = raw.split(/[:\-_]/);
+    if (parts.length >= 3) {
+      let rawType = parts[1].toUpperCase();
+      if (rawType === 'VIS' || rawType === 'VISITOR') rawType = 'GUEST';
+      if (rawType === 'STAFF') rawType = 'SERVICE';
+      if (rawType === 'AUTO' || rawType === 'TAXI') rawType = 'CAB';
+      if (rawType === 'RES') rawType = 'RESIDENT';
 
-    const code = prefixMatch[2];
-    const passId = prefixMatch[3] || code;
-    const rawName = prefixMatch[4] ? prefixMatch[4].replace(/_/g, ' ') : undefined;
-    const meta = PASS_TYPE_META[rawType] || PASS_TYPE_META.GUEST;
+      const code = parts[2];
+      const rawId = parts[3];
+      const passId = rawId && /^[0-9a-fA-F]{24}$/.test(rawId) ? rawId : undefined;
+      const rawName = parts.length > 4 ? parts.slice(4).join(' ').replace(/_/g, ' ') : undefined;
+      const meta = PASS_TYPE_META[rawType] || PASS_TYPE_META.GUEST;
 
-    return {
-      isValid: true,
-      type: rawType as AppBarcodeType,
-      typeLabel: meta.label,
-      code,
-      passId,
-      visitorName: rawName,
-    };
+      return {
+        isValid: true,
+        type: rawType as AppBarcodeType,
+        typeLabel: meta.label,
+        code,
+        passId,
+        visitorName: rawName,
+      };
+    }
   }
 
   // 2. JSON payload: {"app":"ManageMyGate", ...}
@@ -125,7 +126,10 @@ export function parseAndValidateAppBarcode(scannedText: string): ValidatedAppBar
         parsed.app === 'ManageMyGate' ||
         parsed.app === 'MMG' ||
         parsed.signature === 'MMG' ||
-        parsed.appId === 'manage-my-gate'
+        parsed.appId === 'manage-my-gate' ||
+        parsed.code ||
+        parsed.passCode ||
+        parsed.passId
       ) {
         let typeStr = (parsed.type || parsed.passType || 'GUEST').toUpperCase();
         if (typeStr === 'VIS' || typeStr === 'VISITOR') typeStr = 'GUEST';
@@ -133,9 +137,10 @@ export function parseAndValidateAppBarcode(scannedText: string): ValidatedAppBar
         if (typeStr === 'AUTO' || typeStr === 'TAXI') typeStr = 'CAB';
 
         const code = String(
-          parsed.code || parsed.bookingId || parsed.passId || parsed._id || parsed.id || ''
+          parsed.code || parsed.passCode || parsed.bookingId || ''
         );
-        const passId = String(parsed.passId || parsed.bookingId || parsed._id || code);
+        const parsedId = String(parsed.passId || parsed._id || parsed.id || '');
+        const passId = /^[0-9a-fA-F]{24}$/.test(parsedId) ? parsedId : undefined;
         const visitorName = parsed.visitorName || parsed.residentName || parsed.name || undefined;
         const meta = PASS_TYPE_META[typeStr] || PASS_TYPE_META.GUEST;
 
@@ -143,7 +148,7 @@ export function parseAndValidateAppBarcode(scannedText: string): ValidatedAppBar
           isValid: true,
           type: typeStr as AppBarcodeType,
           typeLabel: meta.label,
-          code,
+          code: code || parsedId,
           passId,
           visitorName,
         };
@@ -153,18 +158,44 @@ export function parseAndValidateAppBarcode(scannedText: string): ValidatedAppBar
     }
   }
 
-  // 3. Manual 6-digit numeric pass code fallback (e.g. guard types PIN)
-  if (/^\d{6}$/.test(raw)) {
+  // 3. Direct pass code, invoice number, or booking reference
+  // e.g. "849201", "PASS-849201", "INV-2026-01", "68b123456789012345678901"
+  if (/^(?:PASS[-_]?)?[a-zA-Z0-9]{4,32}$/i.test(raw) || /^INV[-_]?[a-zA-Z0-9_\-]+$/i.test(raw)) {
+    const cleanCode = raw.replace(/^PASS[-_]?/i, '').trim();
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(cleanCode);
     return {
       isValid: true,
       type: 'GUEST',
-      typeLabel: 'Guest Pass',
-      code: raw,
-      passId: raw,
+      typeLabel: 'Visitor Pass',
+      code: cleanCode,
+      passId: isObjectId ? cleanCode : undefined,
     };
   }
 
-  // 4. Strict Rejection of Foreign / External Barcodes
+  // 4. URL format containing pass code or ID query parameter
+  if (raw.includes('?') || raw.includes('/')) {
+    let extracted = '';
+    const match = raw.match(/[?&](?:code|token|passId|id)=([^&#]+)/i);
+    if (match && match[1]) {
+      extracted = match[1];
+    } else {
+      const parts = raw.split('/');
+      extracted = parts[parts.length - 1] || '';
+    }
+    extracted = extracted.replace(/^PASS[-_]?/i, '').trim();
+    if (extracted && /^[a-zA-Z0-9_\-]{4,32}$/.test(extracted)) {
+      const isObjectId = /^[0-9a-fA-F]{24}$/.test(extracted);
+      return {
+        isValid: true,
+        type: 'GUEST',
+        typeLabel: 'Visitor Pass',
+        code: extracted,
+        passId: isObjectId ? extracted : undefined,
+      };
+    }
+  }
+
+  // 5. Strict Rejection of Foreign / External Barcodes
   return {
     isValid: false,
     errorMessage:

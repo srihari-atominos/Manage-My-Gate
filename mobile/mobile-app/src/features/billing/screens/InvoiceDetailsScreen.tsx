@@ -598,6 +598,16 @@ export function InvoiceDetailsScreen() {
               <DetailRow label="Unit / Villa" value={unitStr} />
               <DetailRow label="Billing Cycle" value={periodStr} />
               <DetailRow label="Payment Status" value={statusLabel} />
+              {invoice?.createdAt || invoice?.date ? (
+                <DetailRow
+                  label="Created Date"
+                  value={new Date(invoice.createdAt || invoice.date!).toLocaleDateString([], {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                />
+              ) : null}
               {invoice?.paymentMethod ? (
                 <DetailRow label="Payment Method" value={methodMeta.label} />
               ) : null}
@@ -613,7 +623,7 @@ export function InvoiceDetailsScreen() {
         )}
 
         {/* Sticky Bottom Payment Action Bar */}
-        {!isPaid && !isCancelled && !isPendingVerification && remainingDue > 0 ? (
+        {!isPaid && !isCancelled && !isPendingVerification && remainingDue > 0 && !['Community Admin', 'Super Admin', 'Platform Super Admin', 'Finance Admin'].includes((user as any)?.role) ? (
           <View className="absolute bottom-0 left-0 right-0 bg-card/95 border-t border-border p-4 shadow-lg">
             <Button
               variant="default"

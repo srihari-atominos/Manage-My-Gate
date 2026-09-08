@@ -63,61 +63,7 @@ const performInvoiceSync = (state: BillingState, updatedInvoice: any) => {
   }
 };
 
-export const DEFAULT_MOCK_INVOICES: Invoice[] = [
-  {
-    _id: 'inv_mock_01',
-    invoiceNumber: 'INV-2026-0901',
-    unitNumber: 'A-402',
-    unitId: 'unit_a402',
-    amount: 4850,
-    totalDue: 4850,
-    billingPeriodString: 'September 2026',
-    status: 'UNPAID',
-    dueDate: '2026-09-15T00:00:00.000Z',
-    createdAt: '2026-09-01T00:00:00.000Z',
-    items: [
-      { description: 'Quarterly Maintenance Levy', amount: 3500 },
-      { description: 'Sinking Fund Contribution', amount: 800 },
-      { description: 'Clubhouse & Amenity Subscription', amount: 550 },
-    ],
-  },
-  {
-    _id: 'inv_mock_02',
-    invoiceNumber: 'INV-2026-0801',
-    unitNumber: 'A-402',
-    unitId: 'unit_a402',
-    amount: 4850,
-    totalDue: 0,
-    billingPeriodString: 'August 2026',
-    status: 'PAID',
-    dueDate: '2026-08-15T00:00:00.000Z',
-    createdAt: '2026-08-01T00:00:00.000Z',
-    updatedAt: '2026-08-10T14:32:00.000Z',
-    items: [
-      { description: 'Quarterly Maintenance Levy', amount: 3500 },
-      { description: 'Sinking Fund Contribution', amount: 800 },
-      { description: 'Clubhouse & Amenity Subscription', amount: 550 },
-    ],
-  },
-  {
-    _id: 'inv_mock_03',
-    invoiceNumber: 'INV-2026-0701',
-    unitNumber: 'A-402',
-    unitId: 'unit_a402',
-    amount: 5200,
-    totalDue: 0,
-    billingPeriodString: 'July 2026',
-    status: 'PAID',
-    dueDate: '2026-07-15T00:00:00.000Z',
-    createdAt: '2026-07-01T00:00:00.000Z',
-    updatedAt: '2026-07-12T10:15:00.000Z',
-    items: [
-      { description: 'Quarterly Maintenance Levy', amount: 3500 },
-      { description: 'Sinking Fund Contribution', amount: 800 },
-      { description: 'DG Generator Backup Diesel Surcharge', amount: 900 },
-    ],
-  },
-];
+export const DEFAULT_MOCK_INVOICES: Invoice[] = [];
 
 const initialState: BillingState = {
   kpis: null,

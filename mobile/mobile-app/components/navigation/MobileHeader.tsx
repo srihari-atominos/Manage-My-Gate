@@ -163,7 +163,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
       markAsRead(notifId);
     }
     if (notification.actionUrl) {
-      const route = mapActionUrlToMobileRoute(notification.actionUrl, notification.type);
+      const route = mapActionUrlToMobileRoute(notification.actionUrl, notification.type, notification);
       router.push(route as any);
     } else {
       router.push('/(resident)/notifications' as any);

@@ -434,6 +434,10 @@ export class InvoiceRepository {
         { 'userInfo.phone': { $regex: q, $options: 'i' } },
         { 'snapshot.residentDetails.name': { $regex: q, $options: 'i' } },
       ];
+
+      if (mongoose.Types.ObjectId.isValid(q)) {
+        searchMatch.$or.push({ _id: new mongoose.Types.ObjectId(q) });
+      }
     }
 
     // 4. Block filtering

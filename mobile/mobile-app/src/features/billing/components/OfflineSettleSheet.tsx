@@ -31,7 +31,7 @@ import {
 import { useBilling } from '../hooks/useBilling';
 import { billingService } from '../services/billingService';
 import { Invoice } from '../types';
-import { generateInvoiceHtml, exportInvoiceHtmlDocument } from '../utils/invoicePdfUtility';
+
 
 export type OfflinePaymentType = 'BANK_TRANSFER' | 'UPI' | 'CHEQUE' | 'CASH' | 'DEMAND_DRAFT';
 
@@ -117,7 +117,7 @@ export function OfflineSettleSheet({
 
   // Post-submission PDF state
   const [submittedResult, setSubmittedResult] = useState<any | null>(null);
-  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+
 
   // Derived figures
   const totalDue = invoice?.totalDue ?? invoice?.amount ?? 0;
@@ -255,32 +255,7 @@ export function OfflineSettleSheet({
     }
   };
 
-  // PDF Actions
-  const handlePdfAction = async (action: 'download' | 'print') => {
-    try {
-      setIsExportingPdf(true);
-      const targetInvoice = {
-        ...invoice,
-        paidAmount: (invoice.paidAmount || 0) + amountToSubmit,
-        outstandingAmount: remainingAfterPayment,
-        status: remainingAfterPayment === 0 ? 'PAID' : 'PARTIALLY_PAID',
-        paymentMethod,
-        offlineReference: offlineReference.trim() || 'OFFLINE-SUBMISSION',
-      };
 
-      const html = generateInvoiceHtml(targetInvoice, {
-        communityName,
-        residentName: residentStr,
-      });
-
-      const filename = `Invoice_${invNo}_${paymentMethod}.html`;
-      await exportInvoiceHtmlDocument(html, filename, `Invoice Statement #${invNo}`, { action });
-      setIsExportingPdf(false);
-    } catch (pdfErr: any) {
-      setIsExportingPdf(false);
-      Alert.alert('PDF Generation Failed', pdfErr?.message || 'Unable to generate invoice PDF.');
-    }
-  };
 
   const handleDone = () => {
     onClose();
@@ -320,40 +295,7 @@ export function OfflineSettleSheet({
                 </View>
               </View>
 
-              {/* PDF Actions CTA */}
-              <View className="bg-card border border-border rounded-xl p-4 gap-3">
-                <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Invoice & Statement Documents
-                </Text>
 
-                <View className="flex-row gap-2.5">
-                  <Button
-                    variant="outline"
-                    size="default"
-                    className="flex-1 flex-row items-center justify-center gap-2 border-primary/40 bg-primary/10"
-                    onPress={() => handlePdfAction('print')}
-                    disabled={isExportingPdf}
-                    accessibilityRole="button"
-                    accessibilityLabel="View PDF Invoice"
-                  >
-                    <Icon as={Printer} size={16} className="text-primary" />
-                    <Text className="text-primary font-bold text-sm">View PDF</Text>
-                  </Button>
-
-                  <Button
-                    variant="default"
-                    size="default"
-                    className="flex-1 flex-row items-center justify-center gap-2 bg-primary"
-                    onPress={() => handlePdfAction('download')}
-                    disabled={isExportingPdf}
-                    accessibilityRole="button"
-                    accessibilityLabel="Download PDF Invoice"
-                  >
-                    <Icon as={Download} size={16} className="text-primary-foreground" />
-                    <Text className="text-primary-foreground font-bold text-sm">Download PDF</Text>
-                  </Button>
-                </View>
-              </View>
 
               <Button
                 variant="secondary"

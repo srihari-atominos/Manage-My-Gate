@@ -408,9 +408,6 @@ export function ResidentMyDuesScreen() {
           onClose={() => setOfflineInvoice(null)}
           onSettlementSubmitted={(result) => {
             loadResidentDues();
-            if (result || offlineInvoice) {
-              setReceiptInvoice(result || offlineInvoice);
-            }
           }}
         />
 

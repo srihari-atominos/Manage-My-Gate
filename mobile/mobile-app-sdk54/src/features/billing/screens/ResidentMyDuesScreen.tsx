@@ -8,15 +8,19 @@ import { Button } from '@/components/common/Button';
 import { StatusBadge, getStatusVariant } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
-import { Wallet, CreditCard, Receipt, ChevronRight, CheckCircle2, ShieldAlert, Clock, Landmark, Zap } from 'lucide-react-native';
+import { useTranslation } from '@/src/utils/i18n';
+import { Wallet, CreditCard, Receipt, ChevronRight, CheckCircle2, ShieldAlert, Clock, Landmark, Zap, QrCode } from 'lucide-react-native';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
 import { UnitDueBreakdown, InvoiceStatus, Invoice } from '../types';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { OfflineSettleSheet } from '../components/OfflineSettleSheet';
+import { PaymentReceiptModal } from '../components/PaymentReceiptModal';
+import { InvoiceQRModal } from '../components/InvoiceQRModal';
 
 export function ResidentMyDuesScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const {
     activeDues,
     walletBalance,
@@ -32,6 +36,8 @@ export function ResidentMyDuesScreen() {
   // Modal sheet state
   const [checkoutInvoice, setCheckoutInvoice] = useState<Invoice | null>(null);
   const [offlineInvoice, setOfflineInvoice] = useState<Invoice | null>(null);
+  const [receiptInvoice, setReceiptInvoice] = useState<any | null>(null);
+  const [qrInvoice, setQrInvoice] = useState<Invoice | null>(null);
 
   // Load resident dues & wallet balance on screen mount
   useEffect(() => {
@@ -76,6 +82,8 @@ export function ResidentMyDuesScreen() {
       unitNumber: firstDue.unitNumber,
       billingPeriodString: firstDue.billingPeriodString,
       totalDue: firstDue.totalDue,
+      paidAmount: firstDue.paidAmount ?? 0,
+      outstandingAmount: firstDue.outstandingAmount ?? Math.max(0, firstDue.totalDue - (firstDue.paidAmount ?? 0)),
       status: firstDue.status,
     } as Invoice;
   };
@@ -96,8 +104,8 @@ export function ResidentMyDuesScreen() {
 
   return (
     <ScreenShell
-      title="Personal Dues"
-      subtitle="Manage & settle your unit maintenance liabilities"
+      title={t('feature_billing_my_dues_name', 'Personal Dues')}
+      subtitle={t('feature_billing_my_dues_sub', 'Manage & settle your unit maintenance liabilities')}
       iconName="CreditCard"
       loading={loadingStates.fetchDues && duesList.length === 0}
     >
@@ -116,7 +124,8 @@ export function ResidentMyDuesScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: totalPortfolioDue > 0 ? 140 : 100 }}
           refreshControl={
             <RefreshControl
               refreshing={loadingStates.fetchDues}
@@ -226,8 +235,12 @@ export function ResidentMyDuesScreen() {
                   const invNo = item.invoiceNumber || invoiceId || '—';
                   const unitStr = item.unitNumber ? `Villa ${item.unitNumber}` : 'Villa Unit';
                   const periodStr = item.billingPeriodString || 'Current Month';
-                  const dueAmount = item.totalDue || 0;
-                  const formattedDue = `₹${dueAmount.toLocaleString('en-IN')}`;
+                  const totalDue = item.totalDue || 0;
+                  const paidAmount = item.paidAmount || 0;
+                  const remainingDue = item.outstandingAmount !== undefined
+                    ? item.outstandingAmount
+                    : Math.max(0, totalDue - paidAmount);
+                  const formattedDue = `₹${remainingDue.toLocaleString('en-IN')}`;
 
                   const statusVariant = getStatusVariant(item.status);
                   const statusLabel = item.status ? item.status.replace(/_/g, ' ') : 'UNPAID';
@@ -238,7 +251,9 @@ export function ResidentMyDuesScreen() {
                     invoiceNumber: invNo,
                     unitNumber: item.unitNumber,
                     billingPeriodString: periodStr,
-                    totalDue: dueAmount,
+                    totalDue,
+                    paidAmount,
+                    outstandingAmount: remainingDue,
                     status: item.status,
                   } as Invoice;
 
@@ -257,10 +272,10 @@ export function ResidentMyDuesScreen() {
                           </View>
                           <View className="flex-1">
                             <Text className="text-foreground font-bold text-base truncate">
-                              {invNo}
+                              {item.assessmentName || 'Maintenance Assessment'}
                             </Text>
-                            <Text className="text-muted-foreground text-xs font-medium">
-                              {unitStr} • {periodStr}
+                            <Text className="text-muted-foreground text-xs font-medium mt-0.5">
+                              #{invNo} • {unitStr} • {periodStr}
                             </Text>
                           </View>
                         </View>
@@ -277,6 +292,17 @@ export function ResidentMyDuesScreen() {
                         </View>
 
                         <View className="flex-row items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onPress={() => setQrInvoice(mappedInvoice)}
+                            accessibilityLabel={`Show QR for invoice ${invNo}`}
+                            className="px-2.5"
+                          >
+                            <Icon as={QrCode} size={14} className="text-primary me-1" />
+                            <Text className="text-xs font-semibold text-primary">QR</Text>
+                          </Button>
+
                           <Button
                             variant="secondary"
                             size="sm"
@@ -366,8 +392,11 @@ export function ResidentMyDuesScreen() {
               outstandingAmount: amount || inv.outstandingAmount || inv.totalDue || 0,
             });
           }}
-          onPaymentSuccess={() => {
+          onPaymentSuccess={(result) => {
             loadResidentDues();
+            if (result || checkoutInvoice) {
+              setReceiptInvoice(result || checkoutInvoice);
+            }
           }}
         />
 
@@ -375,10 +404,25 @@ export function ResidentMyDuesScreen() {
         <OfflineSettleSheet
           visible={!!offlineInvoice}
           invoice={offlineInvoice}
+          initialAmount={(offlineInvoice as any)?.outstandingAmount ?? offlineInvoice?.totalDue}
           onClose={() => setOfflineInvoice(null)}
-          onSettlementSubmitted={() => {
+          onSettlementSubmitted={(result) => {
             loadResidentDues();
           }}
+        />
+
+        {/* Post-Payment Invoice Receipt & PDF Modal */}
+        <PaymentReceiptModal
+          visible={!!receiptInvoice}
+          invoice={receiptInvoice}
+          onClose={() => setReceiptInvoice(null)}
+        />
+
+        {/* Invoice QR Pass Modal */}
+        <InvoiceQRModal
+          visible={!!qrInvoice}
+          invoice={qrInvoice}
+          onClose={() => setQrInvoice(null)}
         />
       </View>
     </ScreenShell>

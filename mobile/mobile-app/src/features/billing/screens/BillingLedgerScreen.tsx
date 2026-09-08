@@ -25,7 +25,7 @@ import { useBillingSocket } from '../hooks/useBillingSocket';
 
 export function BillingLedgerScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ status?: string }>();
+  const params = useLocalSearchParams<{ status?: string; invoiceId?: string }>();
   const initialStatus =
     params.status &&
     ['ALL', 'VERIFICATION_PENDING', 'OVERDUE', 'UNPAID', 'PARTIALLY_PAID', 'PAID'].includes(params.status)
@@ -87,6 +87,17 @@ export function BillingLedgerScreen() {
   const [settleInvoice, setSettleInvoice] = useState<Invoice | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+
+  // Auto-open invoice if navigated with invoiceId
+  useEffect(() => {
+    if (params.invoiceId && groupMode === 'flat' && !loadingStates.fetchGrid && invoicesList.length > 0) {
+      const targetInvoice = invoicesList.find((inv: any) => inv._id === params.invoiceId);
+      if (targetInvoice) {
+        setSelectedInvoice(targetInvoice);
+        router.setParams({ invoiceId: '' });
+      }
+    }
+  }, [params.invoiceId, groupMode, loadingStates.fetchGrid, invoicesList, router]);
 
   // Advanced filters state
   const [activeFilters, setActiveFilters] = useState<LedgerFilterValues>({
