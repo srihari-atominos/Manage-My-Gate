@@ -68,7 +68,8 @@ export function ScreenShell({
   const { scrollHandlerProps } = useBottomNavScroll();
 
   const isProfileScreen = pathname.includes('/profile');
-  const shouldShowBottomNav = showBottomNav && !hideBottomNav && !isProfileScreen;
+  const isAuthScreen = pathname.includes('/(auth)') || pathname.includes('/login') || pathname.includes('/signup');
+  const shouldShowBottomNav = showBottomNav && !hideBottomNav && !isProfileScreen && !isAuthScreen;
 
   const [showGlobalNavModal, setShowGlobalNavModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
