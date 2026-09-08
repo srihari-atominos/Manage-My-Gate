@@ -151,6 +151,7 @@ export function useAdminMaintenance() {
     setDeleteTargetTask,
     scheduling,
     loadData,
+    handleLoadMore: loadData,
     handleOpenCreateModal,
     handleOpenEditModal,
     handleCloseModal,

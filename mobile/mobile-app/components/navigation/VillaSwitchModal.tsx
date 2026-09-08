@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { Home, Check, X, Building2 } from 'lucide-react-native';
+import { Home, Check, X, Building2, Lock, ShieldAlert } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { switchWorkspaceContextThunk, setActiveUnitContext } from '../../src/features/auth/store/authSlice';
@@ -10,6 +11,7 @@ import { fetchQuickActionsThunk, resetQuickActionsForContext } from '../../src/f
 
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 interface VillaUnit {
   id: string;
@@ -36,6 +38,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   communityName = '',
   onOpenOrgModal,
 }) => {
+  const router = useRouter();
   const { user } = useAuth();
   const dispatch = useDispatch<any>();
   const { t, tRole } = useTranslation();
@@ -43,6 +46,9 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
 
   const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
   const activeVillaId = (user as any)?.villaId;
+
+  const [pendingUnit, setPendingUnit] = React.useState<VillaUnit | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = React.useState(false);
 
   const userUnits: VillaUnit[] = React.useMemo(() => {
     const userAny = user as any;
@@ -103,10 +109,9 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   }, [user, reduxWorkspaces, activeOrgId]);
 
   const handleSelect = (unit: VillaUnit) => {
-    // 1. Immediately reset quick actions in Redux so previous villa actions do not persist
+    // 1. Reset quick actions and set active unit context
     dispatch(resetQuickActionsForContext());
 
-    // 2. Set active unit context synchronously in Redux and persistent storage
     dispatch(
       setActiveUnitContext({
         villaId: unit.id,
@@ -115,7 +120,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
       })
     );
 
-    // 3. Dispatch backend workspace switch if valid ObjectId
+    // 2. Dispatch backend workspace switch if valid ObjectId
     const payload: any = {};
     if (unit.id && /^[0-9a-fA-F]{24}$/.test(unit.id)) {
       payload.targetVillaId = unit.id;
@@ -125,16 +130,15 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
     }
     if (Object.keys(payload).length > 0) {
       dispatch(switchWorkspaceContextThunk(payload));
-    } else {
-      // 4. Fetch the quick actions specifically scoped to this unit and organization
-      dispatch(
-        fetchQuickActionsThunk({
-          orgId: activeOrgId,
-          villaId: unit.id,
-          villaNumber: unit.unitNumber,
-        })
-      );
     }
+
+    dispatch(
+      fetchQuickActionsThunk({
+        orgId: activeOrgId,
+        villaId: unit.id,
+        villaNumber: unit.unitNumber,
+      })
+    );
 
     onSelectVilla(unit.unitNumber);
     onClose();
@@ -143,7 +147,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/60 justify-center items-center p-4">
-        <View className="bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-xl gap-4">
+        <View className="bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-xl gap-3.5">
           {/* Header */}
           <View className="flex-row justify-between items-center pb-2 border-b border-border">
             <View className="flex-row items-center gap-2">
@@ -156,6 +160,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
               <X size={16} className="text-muted-foreground" />
             </TouchableOpacity>
           </View>
+
 
           <Text className="text-xs text-muted-foreground">
             {t('select_property_unit_context', 'Select a property unit context in')} <Text className="font-bold text-foreground">{communityName}</Text>:
@@ -247,6 +252,21 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
           </Button>
         </View>
       </View>
+
+      {/* Yes/No Permission Confirmation Dialog */}
+      <ConfirmationModal
+        visible={showConfirmModal}
+        variant="warning"
+        title={t('confirm_switch_unit_title', 'Switch Property Unit?')}
+        message={`${t('confirm_switch_unit_msg', 'Switching will sign you out and require login credentials for')} ${pendingUnit?.unitNumber || ''}. ${t('do_you_want_to_proceed', 'Do you want to proceed?')}`}
+        confirmLabel={t('yes_switch', 'Yes, Switch')}
+        cancelLabel={t('no_cancel', 'No, Cancel')}
+        onConfirm={handleConfirmSwitch}
+        onCancel={() => {
+          setShowConfirmModal(false);
+          setPendingUnit(null);
+        }}
+      />
     </Modal>
   );
 };

@@ -1,6 +1,6 @@
 import { KPICard, type KPICardProps } from './KPICard';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { cn } from '@/lib/utils';
+import { Skeleton } from './Skeleton';
+import { cn } from '../../lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 import { Platform, ScrollView, View } from 'react-native';

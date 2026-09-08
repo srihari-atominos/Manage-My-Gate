@@ -434,23 +434,24 @@ const amenitySlice = createSlice({
       })
       .addCase(fetchAmenitiesThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        const page = action.meta.arg?.page || 1;
         const payload = action.payload?.data || action.payload;
         let list: any[] = [];
         if (Array.isArray(payload)) {
           list = payload;
           state.pagination = {
-            currentPage: 1,
-            totalPages: 1,
+            currentPage: page,
+            totalPages: Math.max(1, Math.ceil(payload.length / (action.meta.arg?.limit || 20))),
             totalRecords: payload.length,
-            limit: payload.length || 10,
+            limit: action.meta.arg?.limit || 20,
           };
         } else if (payload && typeof payload === 'object') {
           list = payload.docs || payload.amenities || payload.items || [];
           state.pagination = {
-            currentPage: payload.page || payload.currentPage || 1,
+            currentPage: payload.page || payload.currentPage || page,
             totalPages: payload.totalPages || payload.pages || 1,
             totalRecords: payload.totalDocs || payload.totalRecords || payload.total || list.length,
-            limit: payload.limit || 10,
+            limit: payload.limit || action.meta.arg?.limit || 20,
           };
         }
         const seenIds = new Set<string>();

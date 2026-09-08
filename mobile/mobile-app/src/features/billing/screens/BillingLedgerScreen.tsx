@@ -244,50 +244,47 @@ export function BillingLedgerScreen() {
           <PaginatedList<any>
             data={invoicesList}
             keyExtractor={ledgerKeyExtractor}
-          renderItem={(item) => {
-            if (groupMode === 'unit') {
+            renderItem={(item) => {
+              if (groupMode === 'unit') {
+                return (
+                  <UnitLedgerGroupCard
+                    key={item._id || item.unitNumber}
+                    unitGroup={item}
+                    onSelectInvoice={(inv) => setSelectedInvoice(inv)}
+                  />
+                );
+              }
+              if (groupMode === 'resident') {
+                return (
+                  <ResidentLedgerGroupCard
+                    key={item._id || item.residentName}
+                    residentGroup={item}
+                    onSelectInvoice={(inv) => setSelectedInvoice(inv)}
+                  />
+                );
+              }
+              if (groupMode === 'cycle') {
+                return (
+                  <CycleLedgerGroupCard
+                    key={`${item.billingPeriodString}_${item.assessmentName}`}
+                    cycleGroup={item}
+                    onSelectInvoice={(inv) => setSelectedInvoice(inv)}
+                  />
+                );
+              }
               return (
-                <UnitLedgerGroupCard
-                  key={item._id || item.unitNumber}
-                  unitGroup={item}
-                  onSelectInvoice={(inv) => setSelectedInvoice(inv)}
+                <InvoiceCard
+                  key={item._id || item.invoiceNumber}
+                  invoice={item}
+                  onPress={() => setSelectedInvoice(item)}
                 />
               );
-            }
-            if (groupMode === 'resident') {
-              return (
-                <ResidentLedgerGroupCard
-                  key={item._id || item.residentName}
-                  residentGroup={item}
-                  onSelectInvoice={(inv) => setSelectedInvoice(inv)}
-                />
-              );
-            }
-            if (groupMode === 'cycle') {
-              return (
-                <CycleLedgerGroupCard
-                  key={`${item.billingPeriodString}_${item.assessmentName}`}
-                  cycleGroup={item}
-                  onSelectInvoice={(inv) => setSelectedInvoice(inv)}
-                />
-              );
-            }
-            return (
-              <InvoiceCard
-                key={item._id || item.invoiceNumber}
-                invoice={item}
-                onPress={() => setSelectedInvoice(item)}
-              />
-            );
-          }}
-          pagination={pagination}
-          onLoadMore={handleLoadMore}
-          onRefresh={handleRefresh}
-          loading={loadingStates.fetchGrid}
+            }}
           emptyIcon="Receipt"
           emptyTitle="No Records Found"
           emptySubtitle={emptySubtitle}
-          contentContainerClassName="px-4 py-2"
+          contentContainerClassName="px-4 py-2 pb-28"
+          contentContainerStyle={{ paddingBottom: 110 }}
         />
 
         {/* Advanced Filter Drawer */}

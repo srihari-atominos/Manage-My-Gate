@@ -6,6 +6,8 @@ import {
   KeyboardAvoidingViewProps,
   ScrollViewProps,
   View,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { cn } from '../../lib/utils';
 
@@ -29,6 +31,7 @@ export const KeyboardAvoidingShell = ({
   const content = scrollable ? (
     <ScrollView
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ flexGrow: 1 }}
       className={contentContainerClassName}
@@ -37,9 +40,11 @@ export const KeyboardAvoidingShell = ({
       {children}
     </ScrollView>
   ) : (
-    <View className={cn('flex-1', contentContainerClassName)}>
-      {children}
-    </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View className={cn('flex-1', contentContainerClassName)}>
+        {children}
+      </View>
+    </TouchableWithoutFeedback>
   );
 
   return (

@@ -3,10 +3,14 @@ import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { Building2, Check, X } from 'lucide-react-native';
-import { router } from 'expo-router';
 
 import { useDispatch, useSelector } from 'react-redux';
-import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
+import {
+  setActiveCommunityOrg,
+  setActiveRolePersona,
+  setActiveVillaUnit,
+  switchWorkspaceContextThunk,
+} from '../../src/features/auth/store/authSlice';
 import { fetchQuickActionsThunk, resetQuickActionsForContext } from '../../src/features/dashboard/dashboardSlice';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
@@ -74,42 +78,64 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
     return [];
   }, [reduxWorkspaces, user]);
 
-  const handleSelect = (ws: WorkspaceItem) => {
-    // 1. Immediately reset quick actions in Redux so previous org actions do not persist
+  const handleSelect = async (ws: WorkspaceItem) => {
+    // 1. Reset quick actions and update active context locally in Redux
     dispatch(resetQuickActionsForContext());
-
     const targetRole = ws.roleName ? ws.roleName.split(',')[0].trim() : undefined;
-    const payload: any = {};
-    if (ws.orgId && /^[0-9a-fA-F]{24}$/.test(ws.orgId)) {
-      payload.targetOrgId = ws.orgId;
-    }
+    
+    dispatch(setActiveCommunityOrg({ orgId: ws.orgId, orgName: ws.name }));
     if (targetRole) {
-      payload.targetRole = targetRole;
+      dispatch(setActiveRolePersona({ role: targetRole }));
     }
-    if (ws.villaId && /^[0-9a-fA-F]{24}$/.test(ws.villaId)) {
-      payload.targetVillaId = ws.villaId;
-    }
-    if (Object.keys(payload).length > 0) {
-      dispatch(switchWorkspaceContextThunk(payload));
-    } else {
-      // 2. Fetch the quick actions specifically scoped to this org and villa
-      dispatch(
-        fetchQuickActionsThunk({
-          orgId: ws.orgId,
-          villaId: ws.villaId,
-          villaNumber: ws.villaNumber,
-        })
-      );
+    if (ws.villaNumber) {
+      dispatch(setActiveVillaUnit({ villaNumber: ws.villaNumber, villaId: ws.villaId }));
     }
 
+    // 2. Notify parent callback & close modal
     onSelectCommunity(ws.name, ws.orgId);
     onClose();
+
+    // 3. Dispatch backend workspace context sync in background
+    try {
+      const payload: any = { targetOrgId: ws.orgId };
+      if (targetRole) payload.targetRole = targetRole;
+      if (ws.villaId && /^[0-9a-fA-F]{24}$/.test(ws.villaId)) {
+        payload.targetVillaId = ws.villaId;
+      }
+      await dispatch(switchWorkspaceContextThunk(payload));
+    } catch (e) {
+      console.warn('Background workspace context sync error:', e);
+    }
+
+    dispatch(
+      fetchQuickActionsThunk({
+        orgId: ws.orgId,
+        villaId: ws.villaId,
+        villaNumber: ws.villaNumber,
+      })
+    );
+  };
+    onSelectCommunity(ws.name, ws.orgId);
+    onClose();
+
+    // 3. Dispatch backend workspace context sync in background without logout
+    try {
+      await dispatch(
+        switchWorkspaceContextThunk({
+          targetOrgId: ws.orgId,
+          targetRole: targetRole,
+          targetVillaId: ws.villaId,
+        })
+      );
+    } catch (e) {
+      console.warn('Background workspace context sync error:', e);
+    }
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/60 justify-center items-center p-4">
-        <View className="bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-xl gap-4">
+        <View className="bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-xl gap-3.5">
           {/* Header */}
           <View className="flex-row justify-between items-center pb-2.5 border-b border-border/80">
             <View className="flex-row items-center gap-2">

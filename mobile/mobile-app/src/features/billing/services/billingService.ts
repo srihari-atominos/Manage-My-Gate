@@ -183,8 +183,8 @@ export const billingService = {
   /**
    * Fetch digital wallet balance and details.
    */
-  async getWalletBalance(): Promise<any> {
-    const response: any = await apiClient.get('/wallet');
+  async getWalletBalance(params: Record<string, any> = {}): Promise<any> {
+    const response: any = await apiClient.get('/wallet', { params });
     const body = response?.success !== undefined ? response : response?.data;
     return body?.data || body;
   },

@@ -100,7 +100,7 @@ export const GuardWalkInStatusView: React.FC = () => {
           totalRecords: filteredItems.length,
           limit: 20,
         }}
-        onLoadMore={() => {}}
+        onLoadMore={handleRefresh}
         onRefresh={handleRefresh}
         refreshing={refreshing}
         loading={walkIns?.status === 'loading' && !refreshing && items.length === 0}

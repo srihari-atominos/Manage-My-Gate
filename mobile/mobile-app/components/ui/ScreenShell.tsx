@@ -1,13 +1,23 @@
 import React, { useState, useRef } from 'react';
-import { View, Pressable, TouchableOpacity, ScrollView, BackHandler, Platform } from 'react-native';
+import {
+  View,
+  Pressable,
+  TouchableOpacity,
+  ScrollView,
+  BackHandler,
+  Keyboard,
+  Platform,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+} from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as LucideIcons from 'lucide-react-native';
 import { ChevronLeft, AlertCircle, Compass } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { cn } from '@/lib/utils';
+import { Text } from './text';
+import { Icon } from './icon';
+import { Skeleton } from './Skeleton';
+import { cn } from '../../lib/utils';
 import { RoleSwitchModal } from '../navigation/RoleSwitchModal';
 import { VillaSwitchModal } from '../navigation/VillaSwitchModal';
 import { GlobalNavModal } from '../navigation/GlobalNavModal';
@@ -209,22 +219,34 @@ export function ScreenShell({
       ) : null}
 
       {/* Main content area */}
-      <View className="flex-1 bg-background">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+        className="flex-1 bg-background"
+      >
         {loading && !hasChildren ? (
           <Skeleton variant="listItem" count={5} />
         ) : scrollable ? (
           <ScrollView 
             className="flex-1"
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            alwaysBounceVertical={true}
             {...scrollHandlerProps}
-            contentContainerStyle={{ paddingBottom: shouldShowBottomNav ? 110 : Math.max(insets.bottom, 24) }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingBottom: shouldShowBottomNav ? Math.max(insets.bottom + 85, 110) : Math.max(insets.bottom, 24),
+            }}
           >
             {children}
           </ScrollView>
         ) : (
-          children
+          <View className="flex-1 bg-background">
+            {children}
+          </View>
         )}
-      </View>
+      </KeyboardAvoidingView>
 
       {/* Global Easy Navigation Modal (Triggered from Compass Icon Button) */}
       <GlobalNavModal
@@ -236,10 +258,6 @@ export function ScreenShell({
       <RoleSwitchModal
         visible={showRoleModal}
         onClose={() => setShowRoleModal(false)}
-        onSelectRole={() => {
-          setShowRoleModal(false);
-          setShowVillaModal(true);
-        }}
       />
 
       {/* Villa Unit Context Switcher Modal */}
@@ -247,10 +265,7 @@ export function ScreenShell({
         visible={showVillaModal}
         onClose={() => setShowVillaModal(false)}
         activeVilla={selectedVilla}
-        onSelectVilla={(v) => {
-          setSelectedVilla(v);
-          setShowVillaModal(false);
-        }}
+        onSelectVilla={(v) => setSelectedVilla(v)}
       />
 
       {/* Down Bar Navigation */}

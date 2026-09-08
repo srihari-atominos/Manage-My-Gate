@@ -10,6 +10,7 @@ import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
 import { MicrosoftSignInButton } from '../../src/features/auth/components/MicrosoftSignInButton';
+import { AppleSignInButton } from '../../src/features/auth/components/AppleSignInButton';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
@@ -488,11 +489,7 @@ export default function AcceptInviteScreen() {
                     />
                   </View>
                   <View className="flex-1">
-                    <MicrosoftSignInButton
-                      inviteToken={currentInviteToken}
-                      onSuccess={handleSsoSuccess}
-                      onError={handleSsoError}
-                    />
+                    <AppleSignInButton />
                   </View>
                 </View>
 

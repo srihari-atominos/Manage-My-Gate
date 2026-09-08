@@ -25,6 +25,8 @@ export default function AdminAmenityCalendarScreen() {
     adminBookings,
     filteredBookings,
     amenities,
+    pagination,
+    handleLoadMore,
     viewMode,
     setViewMode,
     selectedDate,
@@ -222,13 +224,13 @@ export default function AdminAmenityCalendarScreen() {
         <PaginatedList<AmenityBooking>
           data={filteredBookings}
           renderItem={renderBookingItem}
-          pagination={{
+          pagination={pagination || {
             currentPage: 1,
             totalPages: 1,
             totalRecords: filteredBookings.length,
             limit: 50,
           }}
-          onLoadMore={() => {}}
+          onLoadMore={handleLoadMore}
           onRefresh={loadData}
           loading={loading}
           ListHeaderComponent={renderHeader()}

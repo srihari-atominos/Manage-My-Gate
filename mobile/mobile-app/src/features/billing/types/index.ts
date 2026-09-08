@@ -128,6 +128,7 @@ export interface WalletState {
   transactions?: any[];
   isPaymentGatewayConfigured?: boolean;
   loading?: boolean;
+  pagination?: InvoicesGridPagination;
   isLoading: boolean;
   error: string | null;
 }

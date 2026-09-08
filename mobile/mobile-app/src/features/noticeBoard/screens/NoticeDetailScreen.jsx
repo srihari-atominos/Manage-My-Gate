@@ -106,7 +106,7 @@ function NoticeDetailContent() {
 
   return (
     <View className="flex-1 bg-background">
-      <ScrollContainer contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollContainer contentContainerStyle={{ paddingBottom: 125 }}>
         <View className="p-4">
           {/* Header Badges */}
           <View className="flex-row flex-wrap gap-2 mb-3">

@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { View, Pressable, Platform } from 'react-native';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Text } from './text';
+import { cn } from '../../lib/utils';
 import { getStatusSemanticType, getStatusTabStyle } from './statusTabColors';
 
 const tabBarVariants = cva('flex-row mx-4 my-2', {

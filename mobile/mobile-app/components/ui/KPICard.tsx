@@ -1,5 +1,5 @@
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Text } from './text';
+import { cn } from '../../lib/utils';
 import { cva } from 'class-variance-authority';
 import * as LucideIcons from 'lucide-react-native';
 import { TrendingDown, TrendingUp } from 'lucide-react-native';
@@ -168,6 +168,8 @@ const KPICard = React.forwardRef<View, KPICardProps>(
         <Text
           className="text-[20px] font-bold font-sans text-foreground tracking-tight"
           numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
         >
           {value}
         </Text>

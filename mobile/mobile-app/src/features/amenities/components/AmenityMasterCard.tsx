@@ -71,9 +71,9 @@ export const AmenityMasterCard: React.FC<AmenityMasterCardProps> = ({
           {/* Top Badges Row */}
           <View className="absolute top-3 inset-x-3 flex-row justify-between items-center z-10">
             {/* Category Pill */}
-            <View className="bg-black/60 px-3 py-1 rounded-full flex-row items-center gap-1.5 border border-white/20 shadow-xs">
+            <View className="bg-black/60 px-3 py-1 rounded-full flex-row items-center gap-1.5 border border-white/20 shadow-xs max-w-[65%] shrink">
               <Sparkles size={11} color="#f59e0b" />
-              <Text className="text-xs font-bold text-white uppercase tracking-wider">
+              <Text className="text-xs font-bold text-white uppercase tracking-wider shrink truncate" numberOfLines={1}>
                 {category}
               </Text>
             </View>

@@ -5,12 +5,12 @@ import { WalletState } from '../types';
 
 
 
-export const fetchWalletBalance = createAsyncThunk(
+export const fetchWalletBalance = createAsyncThunk<any, { page?: number; limit?: number } | void>(
   'wallet/fetchWalletBalance',
-  async (_, { rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     try {
-      const data = await billingService.getWalletBalance();
-      return data;
+      const data = await billingService.getWalletBalance(params || {});
+      return { ...data, requestedParams: params || {} };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || error.message || 'Failed to fetch wallet balance'
@@ -66,9 +66,15 @@ export const topUpWalletDirect = createAsyncThunk(
 const initialState: WalletState = {
   balance: 0,
   activePasses: [],
-  transactionHistory: [],
   transactions: [],
+  transactionHistory: [],
   isPaymentGatewayConfigured: false,
+  pagination: {
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    limit: 10,
+  },
   isLoading: false,
   loading: false,
   error: null,
@@ -109,10 +115,30 @@ export const walletSlice = createSlice({
               : state.balance;
           const history = action.payload.transactionHistory || action.payload.transactions || state.transactionHistory || [];
           state.activePasses = action.payload.activePasses || state.activePasses;
-          state.transactionHistory = history;
-          state.transactions = history;
+          const newHistory = action.payload.transactionHistory || action.payload.transactions || [];
+          const isAppend = (action.payload.requestedParams?.page || 1) > 1;
+
+          if (isAppend) {
+            state.transactionHistory = [...(state.transactionHistory || []), ...newHistory];
+          } else {
+            state.transactionHistory = newHistory;
+          }
+          state.transactions = state.transactionHistory;
+
           if (action.payload.isPaymentGatewayConfigured !== undefined) {
             state.isPaymentGatewayConfigured = action.payload.isPaymentGatewayConfigured;
+          }
+
+          if (action.payload.pagination) {
+            state.pagination = action.payload.pagination;
+          } else {
+            state.pagination = {
+              currentPage: action.payload.requestedParams?.page || 1,
+              totalPages: action.payload.totalPages || 1,
+              totalRecords: action.payload.totalRecords || (state.transactionHistory || []).length,
+              limit: action.payload.requestedParams?.limit || 10,
+            };
+          }
           }
         }
       })

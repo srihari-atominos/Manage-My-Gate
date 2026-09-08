@@ -14,7 +14,7 @@ import {
 
 export const useAmenityMaster = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { amenities, loading, error } = useSelector((state: RootState) => state.amenities);
+  const { amenities, pagination, loading, error } = useSelector((state: RootState) => state.amenities);
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -32,6 +32,12 @@ export const useAmenityMaster = () => {
   const loadData = useCallback(() => {
     dispatch(fetchAmenitiesThunk({}));
   }, [dispatch]);
+
+  const handleLoadMore = useCallback(() => {
+    if (pagination && pagination.currentPage < pagination.totalPages) {
+      dispatch(fetchAmenitiesThunk({ page: pagination.currentPage + 1 } as any));
+    }
+  }, [dispatch, pagination]);
 
   useEffect(() => {
     loadData();
@@ -158,6 +164,8 @@ export const useAmenityMaster = () => {
   return {
     amenities,
     filteredAmenities,
+    pagination,
+    handleLoadMore,
     search,
     setSearch,
     selectedCategory,

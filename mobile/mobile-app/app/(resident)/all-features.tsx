@@ -129,8 +129,13 @@ export default function AllFeaturesScreen() {
         </TouchableOpacity>
       }
     >
-      <ScrollView className="flex-1 px-4 pt-3" showsVerticalScrollIndicator={false} {...scrollHandlerProps}>
-        <View className="gap-4 pb-12 max-w-md mx-auto w-full">
+      <ScrollView
+        className="flex-1 px-4 pt-3"
+        showsVerticalScrollIndicator={false}
+        {...scrollHandlerProps}
+        contentContainerStyle={{ paddingBottom: 110 }}
+      >
+        <View className="gap-4 pb-8 max-w-md mx-auto w-full">
           {/* Search All Features Bar */}
           <View className="flex-row items-center bg-card border border-border rounded-2xl px-3.5 py-3 shadow-xs">
             <Search size={18} color="#172B70" className="me-2.5 shrink-0" />
@@ -207,7 +212,7 @@ export default function AllFeaturesScreen() {
                       className="px-0 py-1"
                     />
 
-                    <View className="flex-row flex-wrap gap-y-2.5 -mx-1">
+                    <View className="flex-row flex-wrap gap-2.5 justify-start">
                       {displayedItems.map((item) => {
                         const meta = ALL_AVAILABLE_FEATURES.find((f) => f.id === item.id);
                         const iconName = meta?.iconName || item.iconName;
@@ -218,10 +223,10 @@ export default function AllFeaturesScreen() {
                         return (
                           <ActionTile
                             key={item.id}
-                            containerClassName="w-1/3 px-1"
+                            containerClassName="w-[31%]"
                             iconBgColor={colorBg}
                             iconShapeClass={iconShapeClass}
-                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={28} />}
+                            icon={<FeatureIcon iconName={iconName} color={colorIcon} size={20} />}
                             label={tFeatureName(item.id, meta?.name || item.name)}
                             subtitle={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}
                             metaValue={tFeatureSubtitle(item.id, meta?.subtitle || item.subtitle)}

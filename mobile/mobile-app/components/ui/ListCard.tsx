@@ -3,10 +3,10 @@ import { View, Pressable, Platform, Image } from 'react-native';
 import * as LucideIcons from 'lucide-react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
-import { Text } from '@/components/ui/text';
-import { Icon } from '@/components/ui/icon';
-import { StatusBadge, type StatusVariant } from '@/components/ui/StatusBadge';
-import { cn } from '@/lib/utils';
+import { Text } from './text';
+import { Icon } from './icon';
+import { StatusBadge, type StatusVariant } from './StatusBadge';
+import { cn } from '../../lib/utils';
 
 export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeof Pressable>, 'title'> {
   title: string;
@@ -31,7 +31,7 @@ export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeo
   className?: string;
 }
 
-import { i18n } from '@/src/utils/i18n';
+import { i18n } from '../../src/utils/i18n';
 
 export function formatRelativeTime(date: string | Date): string {
   if (!date) return '';
@@ -124,17 +124,17 @@ const ListCard = React.forwardRef<View, ListCardProps>(
         ) : null}
 
         {/* Middle Details */}
-        <View className="flex-1 justify-center min-w-0">
-          <Text variant="default" className={cn("font-semibold text-[15px] font-sans tracking-tight", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
+        <View className="flex-1 shrink min-w-0 justify-center">
+          <Text variant="default" className={cn("font-semibold text-[15px] font-sans tracking-tight shrink truncate", backgroundImage ? "text-white" : "text-foreground")} numberOfLines={1}>
             {title}
           </Text>
           {subtitle ? (
-            <Text variant="muted" numberOfLines={1} className={cn("mt-0.5 text-[13px] font-sans font-medium", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
+            <Text variant="muted" numberOfLines={1} className={cn("mt-0.5 text-[13px] font-sans font-medium shrink truncate", backgroundImage ? "text-white/80" : "text-muted-foreground")}>
               {subtitle}
             </Text>
           ) : null}
           {timestamp ? (
-            <Text variant="muted" className={cn("text-[11px] font-sans mt-0.5", backgroundImage ? "text-white/60" : "text-muted-foreground/80")}>
+            <Text variant="muted" className={cn("text-[11px] font-sans mt-0.5 shrink truncate", backgroundImage ? "text-white/60" : "text-muted-foreground/80")} numberOfLines={1}>
               {formatRelativeTime(timestamp)}
             </Text>
           ) : null}

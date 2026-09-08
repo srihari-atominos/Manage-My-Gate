@@ -93,13 +93,13 @@ interface VisitorPassState {
 }
 
 const initialState: VisitorPassState = {
-  passes: DEFAULT_MOCK_VISITOR_PASSES,
+  passes: [],
   activePass: null,
   activeVisitors: [],
   activeVisitorsStatus: 'idle',
   dashboard: {
-    recentPasses: DEFAULT_MOCK_VISITOR_PASSES,
-    activePassesCount: DEFAULT_MOCK_VISITOR_PASSES.length,
+    recentPasses: [],
+    activePassesCount: 0,
     pendingWalkIns: [],
     status: 'idle',
     error: null,
@@ -111,13 +111,13 @@ const initialState: VisitorPassState = {
     error: null,
   },
   admin: {
-    communityPasses: DEFAULT_MOCK_VISITOR_PASSES,
+    communityPasses: [],
     blacklist: [],
     analytics: null,
     pagination: {
       currentPage: 1,
       totalPages: 1,
-      totalRecords: DEFAULT_MOCK_VISITOR_PASSES.length,
+      totalRecords: 0,
       limit: 10,
     },
     status: 'idle',

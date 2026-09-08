@@ -31,17 +31,23 @@ export const QuantitySelector = ({
   };
 
   return (
-    <View className={cn('flex-row items-center rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900', className)}>
+    <View
+      className={cn(
+        'flex-row items-center h-10 rounded-xl border border-border bg-card overflow-hidden shrink-0',
+        className
+      )}
+    >
       <Pressable
         onPress={handleDecrement}
         disabled={value <= min}
-        className={cn('p-2', value <= min && 'opacity-50')}
+        className={cn('w-10 h-10 items-center justify-center active:bg-secondary', value <= min && 'opacity-40')}
+        accessibilityLabel="Decrease count"
       >
-        <Minus size={16} className="text-slate-700 dark:text-slate-300" />
+        <Minus size={16} className="text-foreground" />
       </Pressable>
       
-      <View className="w-10 items-center justify-center border-l border-r border-slate-200 dark:border-slate-800 h-full">
-        <Text className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+      <View className="w-11 h-10 items-center justify-center border-x border-border bg-muted/20">
+        <Text className="text-sm font-bold text-foreground">
           {value}
         </Text>
       </View>
@@ -49,9 +55,10 @@ export const QuantitySelector = ({
       <Pressable
         onPress={handleIncrement}
         disabled={value >= max}
-        className={cn('p-2', value >= max && 'opacity-50')}
+        className={cn('w-10 h-10 items-center justify-center active:bg-secondary', value >= max && 'opacity-40')}
+        accessibilityLabel="Increase count"
       >
-        <Plus size={16} className="text-slate-700 dark:text-slate-300" />
+        <Plus size={16} className="text-foreground" />
       </Pressable>
     </View>
   );

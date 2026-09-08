@@ -59,57 +59,20 @@ export interface VillaState {
 }
 
 export const DUMMY_VILLAS: Villa[] = [
-  // ── Community 1: Palm Meadows Community (10 Villas) ───────────────────
-  { _id: '650000000000000000000101', unitNumber: 'Villa 101', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2400, status: 'Occupied', type: '3BHK Luxury Villa', primaryResident: { name: 'Arun Kumar', email: 'arun.kumar@community.org', phone: '+919876543210' } },
-  { _id: '650000000000000000000102', unitNumber: 'Villa 102', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2400, status: 'Occupied', type: '3BHK Luxury Villa', primaryResident: { name: 'Priya Sharma', email: 'priya.sharma@community.org', phone: '+919876543211' } },
-  { _id: '650000000000000000000103', unitNumber: 'Villa 103', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2800, status: 'Occupied', type: '4BHK Grand Villa', primaryResident: { name: 'Vikram Mehta', email: 'vikram.mehta@community.org', phone: '+919876543212' } },
-  { _id: '650000000000000000000104', unitNumber: 'Villa 104', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2800, status: 'Occupied', type: '4BHK Grand Villa', primaryResident: { name: 'Dr. Meera Reddy', email: 'meera.reddy@community.org', phone: '+919876543216' } },
-  { _id: '650000000000000000000105', unitNumber: 'Villa 105', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2400, status: 'Occupied', type: '3BHK Luxury Villa', primaryResident: { name: 'Sunita Rao', email: 'sunita.rao@accounts.org', phone: '+919876543218' } },
-  { _id: '650000000000000000000106', unitNumber: 'Villa 106', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2400, status: 'Vacant', type: '3BHK Luxury Villa' },
-  { _id: '650000000000000000000107', unitNumber: 'Villa 107', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2800, status: 'Vacant', type: '4BHK Grand Villa' },
-  { _id: '650000000000000000000108', unitNumber: 'Villa 108', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2400, status: 'Under Maintenance', type: '3BHK Luxury Villa' },
-  { _id: '650000000000000000000109', unitNumber: 'Villa 109', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 1, squareFeetArea: 2800, status: 'Vacant', type: '4BHK Grand Villa' },
-  { _id: '650000000000000000000110', unitNumber: 'Villa 110', blockOrBuilding: 'Palm Meadows - Phase 1', floor: 2, squareFeetArea: 3400, status: 'Vacant', type: '5BHK Presidential Villa' },
-
-  // ── Community 2: Emerald Valley Community (10 Villas) ─────────────────
-  { _id: '650000000000000000000201', unitNumber: 'Villa 201', blockOrBuilding: 'Emerald Valley - North Wing', floor: 1, squareFeetArea: 2600, status: 'Occupied', type: '3BHK Lakeview Villa', primaryResident: { name: 'Rohan Patel', email: 'rohan.patel@community.org', phone: '+919876543217' } },
-  { _id: '650000000000000000000202', unitNumber: 'Villa 202', blockOrBuilding: 'Emerald Valley - North Wing', floor: 1, squareFeetArea: 2600, status: 'Occupied', type: '3BHK Lakeview Villa', primaryResident: { name: 'Ananya Roy', email: 'ananya.roy@community.org', phone: '+919876543213' } },
-  { _id: '650000000000000000000203', unitNumber: 'Villa 203', blockOrBuilding: 'Emerald Valley - North Wing', floor: 1, squareFeetArea: 3000, status: 'Occupied', type: '4BHK Royal Villa', primaryResident: { name: 'David D\'Souza', email: 'david.dsouza@facility.org', phone: '+919876543219' } },
-  { _id: '650000000000000000000204', unitNumber: 'Villa 204', blockOrBuilding: 'Emerald Valley - North Wing', floor: 1, squareFeetArea: 3000, status: 'Vacant', type: '4BHK Royal Villa' },
-  { _id: '650000000000000000000205', unitNumber: 'Villa 205', blockOrBuilding: 'Emerald Valley - North Wing', floor: 1, squareFeetArea: 2600, status: 'Vacant', type: '3BHK Lakeview Villa' },
-  { _id: '650000000000000000000206', unitNumber: 'Villa 206', blockOrBuilding: 'Emerald Valley - South Wing', floor: 1, squareFeetArea: 2600, status: 'Vacant', type: '3BHK Lakeview Villa' },
-  { _id: '650000000000000000000207', unitNumber: 'Villa 207', blockOrBuilding: 'Emerald Valley - South Wing', floor: 1, squareFeetArea: 3000, status: 'Vacant', type: '4BHK Royal Villa' },
-  { _id: '650000000000000000000208', unitNumber: 'Villa 208', blockOrBuilding: 'Emerald Valley - South Wing', floor: 1, squareFeetArea: 3000, status: 'Under Maintenance', type: '4BHK Royal Villa' },
-  { _id: '650000000000000000000209', unitNumber: 'Villa 209', blockOrBuilding: 'Emerald Valley - South Wing', floor: 1, squareFeetArea: 2600, status: 'Vacant', type: '3BHK Lakeview Villa' },
-  { _id: '650000000000000000000210', unitNumber: 'Villa 210', blockOrBuilding: 'Emerald Valley - South Wing', floor: 2, squareFeetArea: 3600, status: 'Vacant', type: '5BHK Pinnacle Villa' },
-
-  // ── Apartment: Skyline Heights Apartments (10 Blocks) ─────────────────
-  { _id: '650000000000000000000301', unitNumber: 'Block A - 101', blockOrBuilding: 'Block A', floor: 1, squareFeetArea: 1600, status: 'Occupied', type: '2BHK Apartment', primaryResident: { name: 'Suresh Nair', email: 'suresh.nair@maintenance.org', phone: '+919876543215' } },
-  { _id: '650000000000000000000302', unitNumber: 'Block B - 101', blockOrBuilding: 'Block B', floor: 1, squareFeetArea: 1600, status: 'Occupied', type: '2BHK Apartment', primaryResident: { name: 'Rajesh Verma', email: 'rajesh.verma@security.org', phone: '+919876543214' } },
-  { _id: '650000000000000000000303', unitNumber: 'Block C - 101', blockOrBuilding: 'Block C', floor: 1, squareFeetArea: 1900, status: 'Vacant', type: '3BHK Apartment' },
-  { _id: '650000000000000000000304', unitNumber: 'Block D - 101', blockOrBuilding: 'Block D', floor: 1, squareFeetArea: 1900, status: 'Vacant', type: '3BHK Apartment' },
-  { _id: '650000000000000000000305', unitNumber: 'Block E - 101', blockOrBuilding: 'Block E', floor: 1, squareFeetArea: 1600, status: 'Vacant', type: '2BHK Apartment' },
-  { _id: '650000000000000000000306', unitNumber: 'Block F - 101', blockOrBuilding: 'Block F', floor: 1, squareFeetArea: 1600, status: 'Vacant', type: '2BHK Apartment' },
-  { _id: '650000000000000000000307', unitNumber: 'Block G - 101', blockOrBuilding: 'Block G', floor: 1, squareFeetArea: 1900, status: 'Vacant', type: '3BHK Apartment' },
-  { _id: '650000000000000000000308', unitNumber: 'Block H - 101', blockOrBuilding: 'Block H', floor: 1, squareFeetArea: 1900, status: 'Under Maintenance', type: '3BHK Apartment' },
-  { _id: '650000000000000000000309', unitNumber: 'Block I - 101', blockOrBuilding: 'Block I', floor: 1, squareFeetArea: 1600, status: 'Vacant', type: '2BHK Apartment' },
-  { _id: '650000000000000000000310', unitNumber: 'Block J - 101', blockOrBuilding: 'Block J', floor: 10, squareFeetArea: 2800, status: 'Vacant', type: '4BHK Penthouse' },
+  {
+    _id: '650000000000000000000101',
+    unitNumber: 'Villa 101',
+    blockOrBuilding: 'Phase 1',
+    floor: 1,
+    squareFeetArea: 2400,
+    status: 'Occupied',
+    type: '3BHK Luxury Villa',
+    primaryResident: { name: 'Srihari', email: 'srihari@community.org', phone: '+919876543210' },
+  },
 ];
 
 export const DUMMY_BLOCKS = [
-  'Palm Meadows - Phase 1',
-  'Emerald Valley - North Wing',
-  'Emerald Valley - South Wing',
-  'Block A',
-  'Block B',
-  'Block C',
-  'Block D',
-  'Block E',
-  'Block F',
-  'Block G',
-  'Block H',
-  'Block I',
-  'Block J',
+  'Phase 1',
 ];
 
 const initialState: VillaState = {

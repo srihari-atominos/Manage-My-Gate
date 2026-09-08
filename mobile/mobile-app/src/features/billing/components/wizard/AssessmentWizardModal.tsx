@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, ScrollView, Alert, Platform, StatusBar, BackHandler } from 'react-native';
+import { View, ScrollView, Alert, Platform, StatusBar, BackHandler, KeyboardAvoidingView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 import { Text } from '@/components/ui/text';
 import { ErrorBanner } from '@/components/feedback/ErrorBanner';
 import { AssessmentFlowHeader } from './AssessmentFlowHeader';
@@ -40,6 +41,7 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
   onSuccess,
 }) => {
   const insets = useSafeAreaInsets();
+  const { colorScheme } = useColorScheme();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   const {
@@ -317,9 +319,16 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
         paddingBottom: Math.max(insets.bottom, 12),
       }}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      {/* Header */}
-      <AssessmentFlowHeader
+      <StatusBar
+        barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={colorScheme === 'dark' ? '#09090b' : '#ffffff'}
+      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1"
+      >
+        {/* Header */}
+        <AssessmentFlowHeader
             stepTitle={currentStepTitle}
             currentStep={currentStepIndex}
             totalSteps={WIZARD_STEPS.length}
@@ -455,6 +464,8 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
             loading={isSubmitting}
           />
         </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 

@@ -346,6 +346,10 @@ export default function ProfileScreen() {
 
   const displayName = name || user?.name || (user?.email ? user.email.split('@')[0] : t('logged_in_resident', 'Resident User'));
 
+  const handleBackToDashboard = () => {
+    router.replace('/(resident)/dashboard' as any);
+  };
+
   return (
     <ScreenShell
       title={t('user_profile_account_title', 'User Profile & Account')}
@@ -358,7 +362,7 @@ export default function ProfileScreen() {
     >
       <ScrollView
         className="flex-1"
-        contentContainerClassName="p-4 gap-4 pb-6"
+        contentContainerClassName="p-4 gap-5 pb-6"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >

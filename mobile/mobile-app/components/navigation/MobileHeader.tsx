@@ -187,14 +187,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         style={{ paddingTop: Math.max(insets.top, 16) }}
         className="bg-card border-b border-border px-4 pb-3 flex-row items-center justify-between shadow-xs"
       >
-        {/* Left Section: Community Context Pill */}
+        {/* Left Section: Community / Villa Context Pill */}
         <TouchableOpacity
           onPress={handleContextPress}
           activeOpacity={canSwitchContext ? 0.8 : 1}
           disabled={!canSwitchContext}
-          className="flex-row items-center gap-2 max-w-[55%] bg-secondary border border-border/80 px-3 py-1.5 rounded-full shadow-xs"
+          className="flex-row items-center gap-2 flex-1 max-w-[65%] me-2 bg-secondary border border-border/80 px-3 py-2 rounded-full shadow-xs"
         >
-          <View className="p-1.5 rounded-full bg-primary items-center justify-center border border-primary/30">
+          <View className="p-1.5 rounded-full bg-primary items-center justify-center border border-primary/30 shrink-0">
             {hasUnit ? (
               <Home size={12} color="#FFFFFF" />
             ) : (
@@ -202,18 +202,36 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             )}
           </View>
 
-          <Text
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-            ellipsizeMode="tail"
-            className="text-[13px] font-bold font-sans text-foreground flex-1 tracking-tight"
-          >
-            {headerTextString}
-          </Text>
+          <View className="flex-1 flex-row items-center overflow-hidden">
+            {hasUnit && activeVilla ? (
+              <>
+                <Text
+                  numberOfLines={1}
+                  className="text-[13px] font-black font-sans text-foreground shrink-0"
+                >
+                  {activeVilla}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  className="text-[11.5px] font-medium font-sans text-muted-foreground flex-1 ms-1"
+                >
+                  • {activeCommunity || 'Community'}
+                </Text>
+              </>
+            ) : (
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                className="text-[13px] font-bold font-sans text-foreground flex-1"
+              >
+                {activeCommunity || 'Community Workspace'}
+              </Text>
+            )}
+          </View>
 
           {canSwitchContext ? (
-            <ChevronDown size={13} className="text-muted-foreground flex-shrink-0" />
+            <ChevronDown size={13} className="text-muted-foreground shrink-0" />
           ) : null}
         </TouchableOpacity>
 
