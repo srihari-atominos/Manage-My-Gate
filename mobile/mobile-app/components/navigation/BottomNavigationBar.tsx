@@ -216,10 +216,21 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
 
   const isNavigatingRef = useRef(false);
 
+  const navTranslateY = useSharedValue(0);
+
+  useEffect(() => {
+    navTranslateY.value = withTiming(isCompact ? (isIOS ? 120 : 90) : 0, {
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [isCompact, isIOS]);
+
   const barAnimatedStyle = useAnimatedStyle(() => {
     const baseStyle: any = {
       height: containerHeight.value,
     };
+
+    const transforms: any[] = [{ translateY: navTranslateY.value }];
 
     if (scrollY) {
       const scale = interpolate(
@@ -228,14 +239,16 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
         [1.0, 0.95, 0.90],
         Extrapolation.CLAMP
       );
-      const translateY = interpolate(
+      const scrollYTranslate = interpolate(
         scrollY.value,
         [0, 80],
         [0, 6],
         Extrapolation.CLAMP
       );
-      baseStyle.transform = [{ scale }, { translateY }];
+      transforms.push({ scale }, { translateY: scrollYTranslate });
     }
+
+    baseStyle.transform = transforms;
     return baseStyle;
   });
 
@@ -388,16 +401,19 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
     const androidBottomPad = Math.max(insets.bottom, 6);
 
     return (
-      <View
+      <Animated.View
         pointerEvents="box-none"
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          width: '100%',
-          zIndex: 50,
-        }}
+        style={[
+          {
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            width: '100%',
+            zIndex: 50,
+            transform: [{ translateY: navTranslateY.value }],
+          },
+        ]}
       >
         <View
           style={{
@@ -484,7 +500,7 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
             );
           })}
         </View>
-      </View>
+      </Animated.View>
     );
   }
 

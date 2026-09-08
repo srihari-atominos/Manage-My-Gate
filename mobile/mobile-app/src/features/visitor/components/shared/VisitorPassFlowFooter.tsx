@@ -1,5 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react-native';
@@ -23,11 +24,15 @@ export const VisitorPassFlowFooter: React.FC<VisitorPassFlowFooterProps> = ({
   loading = false,
   disabled = false,
 }) => {
+  const insets = useSafeAreaInsets();
   const defaultNextLabel = isLastStep ? 'Generate Visitor Pass' : 'Continue';
   const labelText = nextLabel || defaultNextLabel;
 
   return (
-    <View className="bg-card border-t border-border p-4 pb-6 flex-row items-center gap-3">
+    <View
+      style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+      className="bg-card border-t border-border p-4 flex-row items-center gap-3 z-30"
+    >
       {canGoBack && onBack ? (
         <Button
           variant="outline"
