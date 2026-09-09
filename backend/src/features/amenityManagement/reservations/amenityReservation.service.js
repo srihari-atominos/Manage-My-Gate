@@ -846,10 +846,10 @@ export class AmenityReservationService {
       if (activeHold && status === 'PAID') {
         // Underpayment guard for active hold
         if (paymentAmount !== undefined && paymentAmount !== null) {
-          const facility = await amenityFacilityRepository.findById(activeHold.facilityId, session);
+          const facility = await amenityFacilityRepository.findById(activeHold.facilityId, authoritativeOrgId || activeHold.orgId, session);
           if (facility) {
             const pricing = pricingService.calculateReservationPrice({
-              pricingConfig: facility.pricing,
+              pricingConfig: facility.pricingConfig || facility.pricing,
               requestedStartDateTime: activeHold.requestedStartDateTime,
               requestedEndDateTime: activeHold.requestedEndDateTime,
               headcount: activeHold.headcount,

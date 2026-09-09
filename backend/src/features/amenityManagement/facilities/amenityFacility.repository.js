@@ -19,9 +19,15 @@ export class AmenityFacilityRepository {
    * @param {mongoose.ClientSession} [session]
    */
   async findById(facilityId, orgId, session) {
+    let actualOrgId = orgId;
+    let actualSession = session;
+    if (orgId && typeof orgId === 'object' && typeof orgId.inTransaction === 'function') {
+      actualSession = orgId;
+      actualOrgId = undefined;
+    }
     const filter = { _id: facilityId, isDeleted: false };
-    if (orgId) filter.orgId = orgId;
-    return AmenityFacility.findOne(filter).session(session || null);
+    if (actualOrgId) filter.orgId = actualOrgId;
+    return AmenityFacility.findOne(filter).session(actualSession || null);
   }
 
   /**

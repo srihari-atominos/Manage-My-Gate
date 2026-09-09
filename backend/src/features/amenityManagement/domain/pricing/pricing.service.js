@@ -77,6 +77,22 @@ export class PricingService {
       currency,
     };
   }
+
+  /**
+   * Alias for calculatePricingSnapshot supporting alternative parameter shapes.
+   *
+   * @param {Object} params
+   * @returns {Object}
+   */
+  calculateReservationPrice(params = {}) {
+    return this.calculatePricingSnapshot({
+      pricingConfig: params.pricingConfig || params.pricing || {},
+      startDateTime: params.startDateTime || params.requestedStartDateTime,
+      endDateTime: params.endDateTime || params.requestedEndDateTime,
+      headcount: params.headcount,
+      quantity: params.quantity,
+    });
+  }
 }
 
 export const pricingService = new PricingService();

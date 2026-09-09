@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import HttpError from '../../../../utils/httpError.utils.js';
 import amenityFacilityRepository from '../../facilities/amenityFacility.repository.js';
 import amenityResourceRepository from '../../resources/amenityResource.repository.js';
@@ -47,6 +48,45 @@ export class AvailabilityService {
         effectiveStartDateTime: start,
         effectiveEndDateTime: end,
       };
+    }
+
+    // 1b. Operating Hours Envelope Check (interpreted in facility's configured IANA timezone)
+    // Multi-day room resources (guest houses/transit rooms) represent overnight stays and are not bounded by intraday operating hours.
+    if (facility.archetype !== 'ROOM_RESOURCE' && facility.operatingHours && facility.operatingHours.length > 0) {
+      const tz = facility.timezone || 'UTC';
+      const mStart = moment(start).tz(tz);
+      const mEnd = moment(end).tz(tz);
+      const dayOfWeek = mStart.day();
+      const dayRule = facility.operatingHours.find((h) => h.dayOfWeek === dayOfWeek);
+
+      if (!dayRule || !dayRule.isOpen) {
+        return {
+          isAvailable: false,
+          reason: 'Facility is closed on this day',
+          effectiveStartDateTime: start,
+          effectiveEndDateTime: end,
+        };
+      }
+
+      const [openHour, openMin] = dayRule.openTime.split(':').map(Number);
+      const [closeHour, closeMin] = dayRule.closeTime.split(':').map(Number);
+      const openMinutes = openHour * 60 + openMin;
+      const closeMinutes = closeHour * 60 + closeMin;
+
+      const startMinutes = mStart.hour() * 60 + mStart.minute();
+      let endMinutes = mEnd.hour() * 60 + mEnd.minute();
+      if (mEnd.format('YYYY-MM-DD') !== mStart.format('YYYY-MM-DD')) {
+        endMinutes += 24 * 60;
+      }
+
+      if (startMinutes < openMinutes || endMinutes > closeMinutes) {
+        return {
+          isAvailable: false,
+          reason: `Requested time is outside facility operating hours (${dayRule.openTime} - ${dayRule.closeTime})`,
+          effectiveStartDateTime: start,
+          effectiveEndDateTime: end,
+        };
+      }
     }
 
     // 2. Fetch Resource if provided

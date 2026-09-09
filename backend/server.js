@@ -18,6 +18,10 @@ import complaintCron from './src/features/complaint/complaint.cron.js';
 import assessmentCron from './src/features/assessment/utils/assessmentCron.js';
 import userCron from './src/features/user/user.cron.js';
 import outboxWorker from './src/workers/outbox.worker.js';
+import {
+  amenityHoldExpirationWorker,
+  amenityOutboxWorker,
+} from './src/features/amenityManagement/index.js';
 
 const initCronJobs = () => {
   if (config.nodeEnv !== 'test') {
@@ -32,6 +36,13 @@ const startServer = async () => {
   try {
     initCronJobs();
     outboxWorker.init();
+
+    if (config.nodeEnv !== 'test') {
+      amenityHoldExpirationWorker.initWorker();
+      amenityOutboxWorker.initWorker();
+      logger.info('Amenity Management Background Workers Initialized');
+    }
+
     // 1. Connect the database FIRST
     await connectToDb();
 
@@ -60,6 +71,12 @@ const startServer = async () => {
 
     const shutdown = (signal) => {
       logger.info(`Received ${signal}, shutting down server...`);
+      try {
+        amenityHoldExpirationWorker.stopWorker();
+        amenityOutboxWorker.stopWorker();
+      } catch (err) {
+        logger.error('Error stopping amenity workers during shutdown:', err);
+      }
       server.close(() => {
         logger.info('HTTP server closed successfully.');
         if (signal === 'SIGUSR2') {

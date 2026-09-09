@@ -70,6 +70,11 @@ const amenityOutboxEventSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    processingStartedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -81,6 +86,11 @@ const amenityOutboxEventSchema = new mongoose.Schema(
 amenityOutboxEventSchema.index(
   { status: 1, nextRetryAt: 1 },
   { name: 'idx_amenity_outbox_polling' }
+);
+
+amenityOutboxEventSchema.index(
+  { status: 1, processingStartedAt: 1 },
+  { name: 'idx_amenity_outbox_stale_processing' }
 );
 
 amenityOutboxEventSchema.index(

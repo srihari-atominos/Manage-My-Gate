@@ -184,3 +184,20 @@ export {
   amenityPaymentController,
 } from './payments/amenityPayment.controller.js';
 
+// ==========================================
+// Workers & Operational Infrastructure (Phase 4D)
+// ==========================================
+export {
+  AmenityOutboxService,
+  amenityOutboxService,
+} from './outbox/amenityOutbox.service.js';
+export {
+  AmenityHoldExpirationWorker,
+  amenityHoldExpirationWorker,
+} from './workers/amenityHoldExpiration.worker.js';
+export {
+  AmenityOutboxWorker,
+  amenityOutboxWorker,
+} from './workers/amenityOutbox.worker.js';
+export { AMENITY_WORKER_CONFIG } from './config/amenityWorker.config.js';
+

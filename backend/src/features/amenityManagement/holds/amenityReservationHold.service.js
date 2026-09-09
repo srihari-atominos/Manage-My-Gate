@@ -60,7 +60,7 @@ export class AmenityReservationHoldService {
       quantity = 1,
       holdType = 'STANDARD',
       holdDurationMinutes = 10,
-      quotaLimit = 240,
+      quotaLimit = null,
     },
     session
   ) {
@@ -106,12 +106,15 @@ export class AmenityReservationHoldService {
 
     // 4. Reserve Household Quota
     const requestedUnits = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60));
+    const effectiveQuotaLimit =
+      Number(quotaLimit) ||
+      (facility.archetype === 'ROOM_RESOURCE' ? Math.max(10080, requestedUnits) : 240);
     await amenityQuotaAllocationService.reserveQuota(
       {
         orgId,
         unitId,
         facilityId,
-        quotaLimit,
+        quotaLimit: effectiveQuotaLimit,
         requestedUnits,
         date: start,
       },
