@@ -133,3 +133,54 @@ export {
   AmenityManagementSocket,
   amenityManagementSocket,
 } from './amenityManagement.socket.js';
+
+// Routers
+export { default as amenityManagementRouter } from './amenityManagement.router.js';
+export { default as amenityFacilityRouter } from './facilities/amenityFacility.router.js';
+export { default as amenityResourceRouter } from './resources/amenityResource.router.js';
+export { default as availabilityRouter } from './domain/availability/availability.router.js';
+export { default as pricingRouter } from './domain/pricing/pricing.router.js';
+export { default as amenityReservationHoldRouter } from './holds/amenityReservationHold.router.js';
+export { default as amenityReservationRouter } from './reservations/amenityReservation.router.js';
+export { default as amenityAccessPassRouter } from './passes/amenityAccessPass.router.js';
+export { default as amenityMaintenanceBlockRouter } from './maintenance/amenityMaintenanceBlock.router.js';
+export { default as amenityPaymentRouter } from './payments/amenityPayment.router.js';
+
+// Controllers
+export {
+  AmenityFacilityController,
+  amenityFacilityController,
+} from './facilities/amenityFacility.controller.js';
+export {
+  AmenityResourceController,
+  amenityResourceController,
+} from './resources/amenityResource.controller.js';
+export {
+  AvailabilityController,
+  availabilityController,
+} from './domain/availability/availability.controller.js';
+export {
+  PricingController,
+  pricingController,
+} from './domain/pricing/pricing.controller.js';
+export {
+  AmenityReservationHoldController,
+  amenityReservationHoldController,
+} from './holds/amenityReservationHold.controller.js';
+export {
+  AmenityReservationController,
+  amenityReservationController,
+} from './reservations/amenityReservation.controller.js';
+export {
+  AmenityAccessPassController,
+  amenityAccessPassController,
+} from './passes/amenityAccessPass.controller.js';
+export {
+  AmenityMaintenanceBlockController,
+  amenityMaintenanceBlockController,
+} from './maintenance/amenityMaintenanceBlock.controller.js';
+export {
+  AmenityPaymentController,
+  amenityPaymentController,
+} from './payments/amenityPayment.controller.js';
+
