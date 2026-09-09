@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Pressable, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSelector } from 'react-redux';
@@ -22,6 +22,7 @@ import { CycleLedgerGroupCard } from '../components/grouping/CycleLedgerGroupCar
 import { Invoice } from '../types';
 import { useBilling } from '../hooks/useBilling';
 import { useBillingSocket } from '../hooks/useBillingSocket';
+import { parseAndValidateAppBarcode } from '@/src/utils/appBarcodeProtocol';
 
 export function BillingLedgerScreen() {
   const router = useRouter();
@@ -99,6 +100,28 @@ export function BillingLedgerScreen() {
     }
   }, [params.invoiceId, groupMode, loadingStates.fetchGrid, invoicesList, router]);
 
+  const lastScannedCodeRef = useRef<string>('');
+
+  // Auto-open invoice when scanned code matches an invoice in the fetched list
+  useEffect(() => {
+    if (lastScannedCodeRef.current && groupMode === 'flat' && !loadingStates.fetchGrid && invoicesList.length > 0) {
+      const matchTerm = lastScannedCodeRef.current.toLowerCase();
+      const targetInvoice = invoicesList.find((inv: any) =>
+        String(inv.invoiceNumber || '').toLowerCase() === matchTerm ||
+        String(inv._id || '').toLowerCase() === matchTerm ||
+        String(inv.id || '').toLowerCase() === matchTerm ||
+        String(inv.offlineReference || '').toLowerCase() === matchTerm
+      );
+      if (targetInvoice) {
+        setSelectedInvoice(targetInvoice);
+        lastScannedCodeRef.current = '';
+      } else if (invoicesList.length === 1 && search.trim()) {
+        setSelectedInvoice(invoicesList[0]);
+        lastScannedCodeRef.current = '';
+      }
+    }
+  }, [invoicesList, groupMode, loadingStates.fetchGrid, search]);
+
   // Advanced filters state
   const [activeFilters, setActiveFilters] = useState<LedgerFilterValues>({
     startDate: '',
@@ -107,6 +130,42 @@ export function BillingLedgerScreen() {
     block: 'ALL',
     paymentMethod: 'ALL',
   });
+
+  const handleScannedCode = useCallback(
+    (scannedCode: string) => {
+      if (!scannedCode) return;
+      setShowScanner(false);
+
+      const parsed = parseAndValidateAppBarcode(scannedCode);
+      const targetCode = (parsed.isValid && (parsed.code || parsed.passId))
+        ? (parsed.code || parsed.passId || '').trim()
+        : scannedCode.replace(/^[#]/, '').trim();
+
+      lastScannedCodeRef.current = targetCode;
+
+      // 1. Reset all restrictive filters so the scanned record is always returned
+      setStatusFilter('ALL');
+      setGroupMode('flat');
+      setActiveFilters({
+        startDate: '',
+        endDate: '',
+        datePreset: 'ALL_TIME',
+        block: 'ALL',
+        paymentMethod: 'ALL',
+      });
+
+      // 2. Set search to the extracted clean invoice number / ID
+      setSearch(targetCode);
+
+      // 3. Immediately query backend with status ALL
+      changeTablePage(1, {
+        search: targetCode,
+        status: 'ALL',
+        groupBy: 'none',
+      });
+    },
+    [changeTablePage]
+  );
 
   // Calculate active filter count for badge
   const activeFilterCount = useMemo(() => {
@@ -322,10 +381,7 @@ export function BillingLedgerScreen() {
         <LedgerQRScannerModal
           visible={showScanner}
           onClose={() => setShowScanner(false)}
-          onScanCode={(scannedCode) => {
-            setSearch(scannedCode);
-            setShowScanner(false);
-          }}
+          onScanCode={handleScannedCode}
         />
 
         {/* Quick Actions / Review Details BottomSheet */}

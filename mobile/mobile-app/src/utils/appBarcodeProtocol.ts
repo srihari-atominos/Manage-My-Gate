@@ -19,7 +19,8 @@ export type AppBarcodeType =
   | 'SERVICE'
   | 'VISITOR'
   | 'RESIDENT'
-  | 'AMENITY';
+  | 'AMENITY'
+  | 'INVOICE';
 
 export interface ValidatedAppBarcode {
   isValid: boolean;
@@ -43,6 +44,7 @@ export const PASS_TYPE_META: Record<
   VISITOR: { label: 'Visitor Pass', icon: 'UserCheck', badgeVariant: 'success' },
   RESIDENT: { label: 'Resident Pass', icon: 'BadgeCheck', badgeVariant: 'info' },
   AMENITY: { label: 'Amenity Access', icon: 'Building2', badgeVariant: 'success' },
+  INVOICE: { label: 'Invoice / Receipt', icon: 'Receipt', badgeVariant: 'info' },
 };
 
 /**
@@ -75,9 +77,9 @@ export function encodeAppBarcode(
 /**
  * Validates whether a scanned barcode string originated from Manage-My-Gate.
  * Accepts:
- *   1. All MMG invitation types: GUEST, GROUP, CAB, DELIVERY, SERVICE, AMENITY, RESIDENT.
- *   2. JSON payload: {"app":"ManageMyGate", "type":"...", "visitorName":"...", ...}
- *   3. Manual 6-digit numeric PIN fallback entered into the manual bar.
+ *   1. All MMG invitation & invoice types: GUEST, GROUP, CAB, DELIVERY, SERVICE, AMENITY, RESIDENT, INVOICE.
+ *   2. JSON payload: {"app":"ManageMyGate", "type":"...", "code":"...", ...}
+ *   3. Direct pass code, invoice number, or booking reference fallback.
  * Rejects:
  *   Any external/foreign barcode (supermarket EAN/UPC, URLs, random QR codes).
  */
@@ -93,24 +95,26 @@ export function parseAndValidateAppBarcode(scannedText: string): ValidatedAppBar
 
   // 1. Compact MMG protocol: MMG:{TYPE}:{CODE}[:{PASS_ID}][:{VISITOR_NAME}]
   if (/^MMG[:\-_]/i.test(raw)) {
-    const parts = raw.split(/[:\-_]/);
-    if (parts.length >= 3) {
-      let rawType = parts[1].toUpperCase();
+    const withoutPrefix = raw.replace(/^MMG[:\-_]/i, '');
+    const parts = withoutPrefix.split(':');
+    if (parts.length >= 2) {
+      let rawType = parts[0].toUpperCase().trim();
       if (rawType === 'VIS' || rawType === 'VISITOR') rawType = 'GUEST';
       if (rawType === 'STAFF') rawType = 'SERVICE';
       if (rawType === 'AUTO' || rawType === 'TAXI') rawType = 'CAB';
       if (rawType === 'RES') rawType = 'RESIDENT';
+      if (rawType === 'INV' || rawType === 'BILL' || rawType === 'BILLING') rawType = 'INVOICE';
 
-      const code = parts[2];
-      const rawId = parts[3];
+      const code = parts[1]?.trim();
+      const rawId = parts[2]?.trim();
       const passId = rawId && /^[0-9a-fA-F]{24}$/.test(rawId) ? rawId : undefined;
-      const rawName = parts.length > 4 ? parts.slice(4).join(' ').replace(/_/g, ' ') : undefined;
+      const rawName = parts.length > 3 ? parts.slice(3).join(' ').replace(/_/g, ' ').trim() : undefined;
       const meta = PASS_TYPE_META[rawType] || PASS_TYPE_META.GUEST;
 
       return {
         isValid: true,
         type: rawType as AppBarcodeType,
-        typeLabel: meta.label,
+        typeLabel: meta?.label || 'Gate Pass',
         code,
         passId,
         visitorName: rawName,
@@ -118,7 +122,7 @@ export function parseAndValidateAppBarcode(scannedText: string): ValidatedAppBar
     }
   }
 
-  // 2. JSON payload: {"app":"ManageMyGate", ...}
+  // 2. JSON payload: {"app":"ManageMyGate", ...} or {"invoiceNumber": "...", ...}
   if (raw.startsWith('{') && raw.endsWith('}')) {
     try {
       const parsed = JSON.parse(raw);
@@ -127,27 +131,30 @@ export function parseAndValidateAppBarcode(scannedText: string): ValidatedAppBar
         parsed.app === 'MMG' ||
         parsed.signature === 'MMG' ||
         parsed.appId === 'manage-my-gate' ||
+        parsed.invoiceNumber ||
+        parsed.invoiceId ||
         parsed.code ||
         parsed.passCode ||
         parsed.passId
       ) {
-        let typeStr = (parsed.type || parsed.passType || 'GUEST').toUpperCase();
+        let typeStr = (parsed.type || parsed.passType || (parsed.invoiceNumber ? 'INVOICE' : 'GUEST')).toUpperCase().trim();
         if (typeStr === 'VIS' || typeStr === 'VISITOR') typeStr = 'GUEST';
         if (typeStr === 'STAFF') typeStr = 'SERVICE';
         if (typeStr === 'AUTO' || typeStr === 'TAXI') typeStr = 'CAB';
+        if (typeStr === 'INV' || typeStr === 'BILL' || typeStr === 'BILLING') typeStr = 'INVOICE';
 
         const code = String(
-          parsed.code || parsed.passCode || parsed.bookingId || ''
+          parsed.invoiceNumber || parsed.invoiceNo || parsed.code || parsed.passCode || parsed.bookingId || ''
         );
-        const parsedId = String(parsed.passId || parsed._id || parsed.id || '');
+        const parsedId = String(parsed.invoiceId || parsed.passId || parsed._id || parsed.id || '');
         const passId = /^[0-9a-fA-F]{24}$/.test(parsedId) ? parsedId : undefined;
         const visitorName = parsed.visitorName || parsed.residentName || parsed.name || undefined;
-        const meta = PASS_TYPE_META[typeStr] || PASS_TYPE_META.GUEST;
+        const meta = PASS_TYPE_META[typeStr] || (typeStr === 'INVOICE' ? PASS_TYPE_META.INVOICE : PASS_TYPE_META.GUEST);
 
         return {
           isValid: true,
           type: typeStr as AppBarcodeType,
-          typeLabel: meta.label,
+          typeLabel: meta?.label || 'Gate Pass',
           code: code || parsedId,
           passId,
           visitorName,
@@ -158,15 +165,23 @@ export function parseAndValidateAppBarcode(scannedText: string): ValidatedAppBar
     }
   }
 
-  // 3. Direct pass code, invoice number, or booking reference
-  // e.g. "849201", "PASS-849201", "INV-2026-01", "68b123456789012345678901"
-  if (/^(?:PASS[-_]?)?[a-zA-Z0-9]{4,32}$/i.test(raw) || /^INV[-_]?[a-zA-Z0-9_\-]+$/i.test(raw)) {
-    const cleanCode = raw.replace(/^PASS[-_]?/i, '').trim();
+  // 3. Direct pass code, invoice number, or booking reference (with or without #)
+  // e.g. "849201", "PASS-849201", "INV-2026-0001", "#INV-2026-0001", "68b123456789012345678901", UUID
+  const unhashed = raw.replace(/^#+/, '').trim();
+  const isInvoiceFormat = /^INV[-_]?[a-zA-Z0-9_\-]+$/i.test(unhashed) || /^BILL[-_]?[a-zA-Z0-9_\-]+$/i.test(unhashed);
+  const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(unhashed);
+  const isPassFormat = /^(?:PASS[-_]?)?[a-zA-Z0-9]{4,36}$/i.test(unhashed);
+
+  if (isInvoiceFormat || isUUID || isPassFormat) {
+    const cleanCode = unhashed.replace(/^PASS[-_]?/i, '').trim();
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(cleanCode);
+    const type: AppBarcodeType = isInvoiceFormat ? 'INVOICE' : 'GUEST';
+    const typeLabel = isInvoiceFormat ? 'Invoice / Receipt' : 'Visitor Pass';
+
     return {
       isValid: true,
-      type: 'GUEST',
-      typeLabel: 'Visitor Pass',
+      type,
+      typeLabel,
       code: cleanCode,
       passId: isObjectId ? cleanCode : undefined,
     };
@@ -175,20 +190,24 @@ export function parseAndValidateAppBarcode(scannedText: string): ValidatedAppBar
   // 4. URL format containing pass code or ID query parameter
   if (raw.includes('?') || raw.includes('/')) {
     let extracted = '';
-    const match = raw.match(/[?&](?:code|token|passId|id)=([^&#]+)/i);
+    const match = raw.match(/[?&](?:code|token|passId|invoiceNumber|invoiceId|id)=([^&#]+)/i);
     if (match && match[1]) {
-      extracted = match[1];
+      extracted = decodeURIComponent(match[1]).trim();
     } else {
       const parts = raw.split('/');
-      extracted = parts[parts.length - 1] || '';
+      extracted = parts[parts.length - 1]?.split('?')[0] || '';
     }
-    extracted = extracted.replace(/^PASS[-_]?/i, '').trim();
-    if (extracted && /^[a-zA-Z0-9_\-]{4,32}$/.test(extracted)) {
+    extracted = extracted.replace(/^[#]/, '').replace(/^PASS[-_]?/i, '').trim();
+    if (extracted && /^[a-zA-Z0-9_\-]{4,36}$/.test(extracted)) {
       const isObjectId = /^[0-9a-fA-F]{24}$/.test(extracted);
+      const isInvoiceUrl = raw.toLowerCase().includes('invoice') || raw.toLowerCase().includes('billing') || /^INV[-_]?/i.test(extracted);
+      const type: AppBarcodeType = isInvoiceUrl ? 'INVOICE' : 'GUEST';
+      const typeLabel = isInvoiceUrl ? 'Invoice / Receipt' : 'Visitor Pass';
+
       return {
         isValid: true,
-        type: 'GUEST',
-        typeLabel: 'Visitor Pass',
+        type,
+        typeLabel,
         code: extracted,
         passId: isObjectId ? extracted : undefined,
       };

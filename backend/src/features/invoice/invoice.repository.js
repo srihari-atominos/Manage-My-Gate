@@ -473,28 +473,95 @@ export class InvoiceRepository {
       }
     }
 
-    // 3. Omnisearch matching
+    // 3. Omnisearch matching with robust barcode/QR protocol handling
     const searchMatch = {};
-    if (search && search.trim()) {
-      const q = search.trim();
-      searchMatch.$or = [
-        { invoiceNumber: { $regex: q, $options: 'i' } },
-        { offlineReference: { $regex: q, $options: 'i' } },
-        { billingPeriodString: { $regex: q, $options: 'i' } },
-        { 'snapshot.assessmentName': { $regex: q, $options: 'i' } },
-        { 'assessment.name': { $regex: q, $options: 'i' } },
-        { 'unitInfo.unitNumber': { $regex: q, $options: 'i' } },
-        { 'snapshot.unitDetails.unitNumber': { $regex: q, $options: 'i' } },
-        { 'unitInfo.blockOrBuilding': { $regex: q, $options: 'i' } },
-        { 'userInfo.name': { $regex: q, $options: 'i' } },
-        { 'userInfo.username': { $regex: q, $options: 'i' } },
-        { 'userInfo.email': { $regex: q, $options: 'i' } },
-        { 'userInfo.phone': { $regex: q, $options: 'i' } },
-        { 'snapshot.residentDetails.name': { $regex: q, $options: 'i' } },
-      ];
+    const candidateTerms = new Set();
+    let isSpecificInvoiceSearch = false;
 
-      if (mongoose.Types.ObjectId.isValid(q)) {
-        searchMatch.$or.push({ _id: new mongoose.Types.ObjectId(q) });
+    if (search && search.trim()) {
+      const rawQ = search.trim();
+      candidateTerms.add(rawQ);
+
+      // Strip leading #
+      if (rawQ.startsWith('#')) {
+        candidateTerms.add(rawQ.replace(/^#+/, '').trim());
+      }
+
+      // Handle MMG barcode protocol: MMG:TYPE:CODE[:ID][:NAME]
+      if (/^MMG[:\-_]/i.test(rawQ)) {
+        const withoutPrefix = rawQ.replace(/^MMG[:\-_]/i, '');
+        const parts = withoutPrefix.split(':');
+        parts.forEach((p) => {
+          const cleanP = p.trim().replace(/_/g, ' ');
+          if (cleanP) candidateTerms.add(cleanP);
+        });
+      }
+
+      // Handle JSON payload
+      if (rawQ.startsWith('{') && rawQ.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(rawQ);
+          if (parsed.invoiceNumber) candidateTerms.add(String(parsed.invoiceNumber).trim());
+          if (parsed.code) candidateTerms.add(String(parsed.code).trim());
+          if (parsed.invoiceId) candidateTerms.add(String(parsed.invoiceId).trim());
+          if (parsed.id) candidateTerms.add(String(parsed.id).trim());
+          if (parsed._id) candidateTerms.add(String(parsed._id).trim());
+        } catch (_) {}
+      }
+
+      // Handle URL format: .../invoice/:id or ?id=...
+      if (rawQ.includes('/') || rawQ.includes('?')) {
+        const matchParam = rawQ.match(/[?&](?:code|invoiceNumber|invoiceId|id)=([^&#]+)/i);
+        if (matchParam && matchParam[1]) {
+          candidateTerms.add(decodeURIComponent(matchParam[1]).trim());
+        }
+        const lastSlash = rawQ.split('/').pop()?.split('?')[0]?.trim();
+        if (lastSlash && lastSlash.length >= 4) {
+          candidateTerms.add(decodeURIComponent(lastSlash));
+        }
+      }
+
+      const orConditions = [];
+
+      for (const term of candidateTerms) {
+        if (!term) continue;
+        const cleanTerm = term.trim();
+        if (!cleanTerm) continue;
+
+        // Check if query is looking for a specific invoice number or ID
+        if (
+          mongoose.Types.ObjectId.isValid(cleanTerm) ||
+          /^INV[-_]?[a-zA-Z0-9_\-]+$/i.test(cleanTerm) ||
+          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(cleanTerm)
+        ) {
+          isSpecificInvoiceSearch = true;
+        }
+
+        const escaped = cleanTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        orConditions.push(
+          { invoiceNumber: { $regex: escaped, $options: 'i' } },
+          { offlineReference: { $regex: escaped, $options: 'i' } },
+          { billingPeriodString: { $regex: escaped, $options: 'i' } },
+          { 'snapshot.assessmentName': { $regex: escaped, $options: 'i' } },
+          { 'assessment.name': { $regex: escaped, $options: 'i' } },
+          { 'unitInfo.unitNumber': { $regex: escaped, $options: 'i' } },
+          { 'snapshot.unitDetails.unitNumber': { $regex: escaped, $options: 'i' } },
+          { 'unitInfo.blockOrBuilding': { $regex: escaped, $options: 'i' } },
+          { 'userInfo.name': { $regex: escaped, $options: 'i' } },
+          { 'userInfo.username': { $regex: escaped, $options: 'i' } },
+          { 'userInfo.email': { $regex: escaped, $options: 'i' } },
+          { 'userInfo.phone': { $regex: escaped, $options: 'i' } },
+          { 'snapshot.residentDetails.name': { $regex: escaped, $options: 'i' } }
+        );
+
+        if (mongoose.Types.ObjectId.isValid(cleanTerm)) {
+          orConditions.push({ _id: new mongoose.Types.ObjectId(cleanTerm) });
+        }
+      }
+
+      if (orConditions.length > 0) {
+        searchMatch.$or = orConditions;
       }
     }
 
@@ -537,6 +604,7 @@ export class InvoiceRepository {
                 { communityId: { $in: communityMatchCandidates } },
                 { orgId: { $in: communityMatchCandidates } },
                 { 'assessment.communityId': { $in: communityMatchCandidates } },
+                { communityId: { $exists: false } },
               ],
             },
             matchConditions,
@@ -575,7 +643,9 @@ export class InvoiceRepository {
       },
     ];
 
-    const statusMatch = status && status !== 'ALL' ? [{ $match: { status } }] : [];
+    // If searching for a specific invoice number or ObjectId (e.g. from QR scan),
+    // allow matching across all statuses so the scanned record is never blocked by a status tab filter
+    const statusMatch = status && status !== 'ALL' && !isSpecificInvoiceSearch ? [{ $match: { status } }] : [];
 
     // --- GROUP BY: UNIT / VILLA ---
     if (groupBy === 'unit') {

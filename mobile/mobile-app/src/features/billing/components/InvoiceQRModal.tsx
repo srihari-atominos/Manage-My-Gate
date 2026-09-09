@@ -6,6 +6,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { StatusBadge, StatusVariant } from '@/components/ui/StatusBadge';
 import { QRCodeView } from '@/components/ui/QRCodeView';
 import { Building2, Receipt, ShieldCheck } from 'lucide-react-native';
+import { encodeAppBarcode } from '@/src/utils/appBarcodeProtocol';
 
 export interface InvoiceQRModalProps {
   visible: boolean;
@@ -33,6 +34,12 @@ export const InvoiceQRModal: React.FC<InvoiceQRModalProps> = ({
   if (!invoice) return null;
 
   const invNo = invoice.invoiceNumber || invoice.invoiceId || invoice._id || 'INV-UNKNOWN';
+  const qrCodeValue = encodeAppBarcode(
+    'INVOICE',
+    invNo,
+    invoice._id || invoice.invoiceId,
+    invoice.unitNumber ? `Villa_${invoice.unitNumber}` : undefined
+  );
   const unitStr = invoice.unitNumber ? `Villa ${invoice.unitNumber}` : 'Community Unit';
   const periodStr = invoice.billingPeriodString || 'Current Period';
   
@@ -87,7 +94,7 @@ export const InvoiceQRModal: React.FC<InvoiceQRModalProps> = ({
 
         {/* Vector SVG QR Code Container */}
         <QRCodeView
-          value={invNo}
+          value={qrCodeValue}
           size={190}
           caption={`Scan to verify #${invNo}`}
         />

@@ -1189,7 +1189,29 @@ export class InvoiceService {
    * Fetch invoice by ID with optional transaction session.
    */
   async getInvoiceById(invoiceId, session = null) {
-    const query = Invoice.findById(invoiceId)
+    if (!invoiceId) {
+      throw new HttpError(400, 'Invoice ID or number is required');
+    }
+
+    const cleanId = String(invoiceId).replace(/^[#]/, '').trim();
+
+    // Support lookup by MongoDB _id OR invoiceNumber (with/without # or MMG prefix)
+    const matchConditions = [];
+    if (mongoose.Types.ObjectId.isValid(cleanId)) {
+      matchConditions.push({ _id: new mongoose.Types.ObjectId(cleanId) });
+    }
+    matchConditions.push({ invoiceNumber: cleanId });
+
+    if (/^MMG[:\-_]/i.test(cleanId)) {
+      const parts = cleanId.replace(/^MMG[:\-_]/i, '').split(':');
+      if (parts[0]) matchConditions.push({ invoiceNumber: parts[0] });
+      if (parts[1]) matchConditions.push({ invoiceNumber: parts[1] });
+      if (parts[2] && mongoose.Types.ObjectId.isValid(parts[2])) {
+        matchConditions.push({ _id: new mongoose.Types.ObjectId(parts[2]) });
+      }
+    }
+
+    const query = Invoice.findOne({ $or: matchConditions })
       .populate('unitId')
       .populate('assessmentId')
       .populate('targetUserId', 'name email username phone');
