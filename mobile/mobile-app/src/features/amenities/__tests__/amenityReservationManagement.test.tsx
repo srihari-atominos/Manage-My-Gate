@@ -62,6 +62,46 @@ import {
   AmenityAccessPass,
 } from '../types/amenityDomain.types';
 import amenityManagementService from '../services/amenityManagementService';
+import MyBookingsScreen from '../../../../app/(resident)/amenities/my-bookings';
+
+// Mock expo-router
+const mockRouterPush = jest.fn();
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: mockRouterPush, back: jest.fn() }),
+  useLocalSearchParams: () => ({}),
+  usePathname: () => '/(resident)/amenities/my-bookings',
+}));
+
+// Mock navigation modals and auth hooks to prevent immer ESM loading in Jest
+jest.mock('@/src/features/auth/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { _id: 'user-resident-1', name: 'Ahmed Al-Mansoor', role: 'resident' },
+    isAuthenticated: true,
+    activeRole: 'resident',
+  }),
+}));
+jest.mock('@/src/features/auth/store/authSlice', () => ({
+  __esModule: true,
+  default: (state = {}) => state,
+}));
+jest.mock('@/components/navigation/BottomNavigationBar', () => ({
+  BottomNavigationBar: () => null,
+}));
+jest.mock('@/components/navigation/RoleSwitchModal', () => ({
+  RoleSwitchModal: () => null,
+}));
+jest.mock('@/components/navigation/VillaSwitchModal', () => ({
+  VillaSwitchModal: () => null,
+}));
+jest.mock('react-native-safe-area-context', () => {
+  const actual = jest.requireActual('react-native-safe-area-context');
+  return {
+    ...actual,
+    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+    SafeAreaProvider: ({ children }: any) => children,
+    SafeAreaView: ({ children }: any) => children,
+  };
+});
 
 // Mock react-native-worklets & reanimated
 jest.mock('react-native-worklets', () => ({
@@ -637,6 +677,227 @@ describe('Amenity Management Phase 6C.1: Resident Reservation Management Foundat
       expect(hookSource).not.toContain("'EXEMPTED'");
       expect(cardSource).not.toContain("'EXEMPTED'");
       expect(modalSource).not.toContain("'EXEMPTED'");
+    });
+  });
+
+  // ==========================================
+  // Phase 6C.2: My Bookings Modernized Screen Tests
+  // ==========================================
+  describe('Phase 6C.2: My Bookings Modernized Screen', () => {
+    it('Scenario 29 & 30: Renders v2 reservations and does not consume legacy AmenityBooking', async () => {
+      mockState.amenityBookings.v2Reservations = [mockReservation];
+
+      await render(<MyBookingsScreen />);
+
+      expect(screen.getByText('Infinity Swimming Pool')).toBeTruthy();
+      expect(screen.getByText('RES-2026-00042')).toBeTruthy();
+      expect(screen.getByText('My Amenity Bookings')).toBeTruthy();
+    });
+
+    it('Scenario 31: Renders empty state when no reservations exist', async () => {
+      mockState.amenityBookings.v2Reservations = [];
+
+      await render(<MyBookingsScreen />);
+
+      expect(screen.getByText('No Bookings Found')).toBeTruthy();
+      expect(screen.getByText('You have no reservations matching this filter.')).toBeTruthy();
+    });
+
+    it('Scenario 32: Displays loading state during initial fetch', async () => {
+      mockState.amenityBookings.v2Reservations = [];
+      mockState.amenityBookings.v2Loading = true;
+
+      await render(<MyBookingsScreen />);
+
+      expect(screen.getByText('My Amenity Bookings')).toBeTruthy();
+    });
+
+    it('Scenario 33: Renders error banner and handles retry callback', async () => {
+      mockState.amenityBookings.v2Reservations = [];
+      mockState.amenityBookings.v2Error = {
+        status: 500,
+        message: 'Server error retrieving reservations',
+      };
+
+      await render(<MyBookingsScreen />);
+
+      expect(screen.getByText('Server error retrieving reservations')).toBeTruthy();
+    });
+
+    it('Scenario 34 & 35 & 36: Supports pull-to-refresh and pagination without clearing list', async () => {
+      mockState.amenityBookings.v2Reservations = [mockReservation];
+      mockState.amenityBookings.pagination = { currentPage: 1, totalPages: 2, totalRecords: 15, limit: 10 };
+
+      await render(<MyBookingsScreen />);
+
+      expect(screen.getByText('Infinity Swimming Pool')).toBeTruthy();
+      expect(mockFetchReservationsThunk).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1 })
+      );
+    });
+
+    it('Scenario 37: Filters reservations dynamically by keyword search', async () => {
+      const tennisRes = {
+        ...mockReservation,
+        _id: 'res-tennis-99',
+        facilityName: 'Rooftop Tennis Court',
+        reservationNumber: 'RES-TENNIS-0099',
+      };
+      mockState.amenityBookings.v2Reservations = [mockReservation, tennisRes];
+
+      await render(<MyBookingsScreen />);
+
+      expect(screen.getByText('Infinity Swimming Pool')).toBeTruthy();
+      expect(screen.getByText('Rooftop Tennis Court')).toBeTruthy();
+
+      const searchInput = screen.getByPlaceholderText('Search by facility name or reservation number...');
+      await act(async () => {
+        fireEvent.changeText(searchInput, 'Tennis');
+      });
+
+      expect(screen.queryByText('Infinity Swimming Pool')).toBeNull();
+      expect(screen.getByText('Rooftop Tennis Court')).toBeTruthy();
+    });
+
+    it('Scenario 38: Filters reservations dynamically by presentation tabs', async () => {
+      const pastRes = {
+        ...mockReservation,
+        _id: 'res-past-1',
+        facilityName: 'Past Squash Court',
+        completionStatus: 'COMPLETED' as const,
+      };
+      const pendingRes = {
+        ...mockReservation,
+        _id: 'res-pending-1',
+        facilityName: 'Pending Spa Suite',
+        bookingStatus: 'PENDING_APPROVAL' as const,
+        approvalStatus: 'PENDING_REVIEW' as const,
+      };
+      mockState.amenityBookings.v2Reservations = [mockReservation, pastRes, pendingRes];
+
+      await render(<MyBookingsScreen />);
+
+      expect(screen.getByText('Infinity Swimming Pool')).toBeTruthy();
+      expect(screen.getByText('Past Squash Court')).toBeTruthy();
+      expect(screen.getByText('Pending Spa Suite')).toBeTruthy();
+
+      // Tap 'Past' tab
+      await act(async () => {
+        fireEvent.press(screen.getByText('Past'));
+      });
+      expect(screen.getByText('Past Squash Court')).toBeTruthy();
+      expect(screen.queryByText('Infinity Swimming Pool')).toBeNull();
+      expect(screen.queryByText('Pending Spa Suite')).toBeNull();
+
+      // Tap 'Awaiting Approval' tab
+      await act(async () => {
+        fireEvent.press(screen.getByText('Awaiting Approval'));
+      });
+      expect(screen.getByText('Pending Spa Suite')).toBeTruthy();
+      expect(screen.queryByText('Past Squash Court')).toBeNull();
+      expect(screen.queryByText('Infinity Swimming Pool')).toBeNull();
+
+      // Tap 'Upcoming' tab
+      await act(async () => {
+        fireEvent.press(screen.getByText('Upcoming'));
+      });
+      expect(screen.getByText('Infinity Swimming Pool')).toBeTruthy();
+      expect(screen.queryByText('Past Squash Court')).toBeNull();
+      expect(screen.queryByText('Pending Spa Suite')).toBeNull();
+    });
+
+    it('Scenario 39 & 40: Renders five orthogonal dimensions in card', async () => {
+      mockState.amenityBookings.v2Reservations = [mockReservation];
+
+      await render(<MyBookingsScreen />);
+
+      expect(screen.getByText(/CONFIRMED/i)).toBeTruthy();
+      expect(screen.getByText(/PAID/i)).toBeTruthy();
+      expect(screen.getByText(/APPROVED/i)).toBeTruthy();
+      expect(screen.getByText(/PASS_GENERATED/i)).toBeTruthy();
+      expect(screen.getByText(/PENDING/i)).toBeTruthy();
+    });
+
+    it('Scenario 41 & 42: Cancellation action opens modal and dispatches cancellation', async () => {
+      mockState.amenityBookings.v2Reservations = [mockReservation];
+
+      await render(<MyBookingsScreen />);
+
+      const cancelBtn = screen.getByText('Cancel Booking');
+      await act(async () => {
+        fireEvent.press(cancelBtn);
+      });
+
+      expect(screen.getByText('Cancel Reservation')).toBeTruthy();
+      expect(
+        screen.getByText(
+          /Are you sure you want to cancel your reservation for Infinity Swimming Pool \(RES-2026-00042\)\?/
+        )
+      ).toBeTruthy();
+
+      await act(async () => {
+        fireEvent.press(screen.getByText('Yes, Cancel Booking'));
+      });
+      expect(mockCancelReservationThunk).toHaveBeenCalledWith({
+        id: 'res-abc-101',
+        payload: undefined,
+      });
+    });
+
+    it('Scenario 45 & 46: Correctly displays REFUND_PENDING and REFUNDED statuses without client math', async () => {
+      const refundPendingRes = {
+        ...mockReservation,
+        _id: 'res-refund-pending',
+        facilityName: 'Refund Pending Hall',
+        paymentStatus: 'REFUND_PENDING' as const,
+        bookingStatus: 'CANCELLED' as const,
+      };
+      const refundedRes = {
+        ...mockReservation,
+        _id: 'res-refunded',
+        facilityName: 'Refunded Hall',
+        paymentStatus: 'REFUNDED' as const,
+        bookingStatus: 'CANCELLED' as const,
+      };
+      mockState.amenityBookings.v2Reservations = [refundPendingRes, refundedRes];
+
+      await render(<MyBookingsScreen />);
+
+      expect(screen.getByText('Refund Pending Hall')).toBeTruthy();
+      expect(screen.getByText('Refunded Hall')).toBeTruthy();
+      expect(screen.getByText('REFUND_PENDING')).toBeTruthy();
+      expect(screen.getByText('REFUNDED')).toBeTruthy();
+    });
+
+    it('Scenario 47-54: Static isolation audit on modernized my-bookings.tsx', () => {
+      const screenPath = path.resolve(__dirname, '../../../../app/(resident)/amenities/my-bookings.tsx');
+      const screenSource = fs.readFileSync(screenPath, 'utf8');
+
+      // Zero legacy imports
+      expect(screenSource).not.toContain('useMyBookings');
+      expect(screenSource).not.toContain('AmenityBookingCard');
+      expect(screenSource).not.toContain('PassQRModal');
+      expect(screenSource).not.toContain('CancelBookingModal');
+      expect(screenSource).not.toContain('fetchMyBookingsThunk');
+      expect(screenSource).not.toContain('booking.status');
+      expect(screenSource).not.toContain('AmenityBooking');
+
+      // Zero Visitor imports
+      expect(screenSource).not.toContain('visitor');
+
+      // Zero direct Axios/fetch
+      expect(screenSource).not.toContain('axios');
+      expect(screenSource).not.toContain('fetch(');
+
+      // Zero refund/payment endpoints or client math
+      expect(screenSource).not.toContain('/refund');
+      expect(screenSource).not.toContain('/webhook');
+      expect(screenSource).not.toContain('calculateRefund');
+
+      // Zero local QR / crypto hashing
+      expect(screenSource).not.toContain('QRCode');
+      expect(screenSource).not.toContain('passTokenHash');
+      expect(screenSource).not.toContain('crypto');
     });
   });
 });

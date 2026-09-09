@@ -21,7 +21,13 @@ import {
   clearV2Errors,
 } from '../store/amenityBookingSlice';
 
-export const RESERVATION_FILTER_TABS = ['All', 'Active', 'Pending', 'Past', 'Cancelled'] as const;
+export const RESERVATION_FILTER_TABS = [
+  'All',
+  'Upcoming',
+  'Awaiting Approval',
+  'Past',
+  'Cancelled',
+] as const;
 export type ReservationFilterTab = typeof RESERVATION_FILTER_TABS[number];
 
 export interface ReservationFilterParams {
@@ -144,9 +150,11 @@ export function useResidentReservations(initialParams: ReservationFilterParams =
           item.completionStatus === 'NO_SHOW' ||
           item.accessStatus === 'CHECKED_OUT';
 
-        switch (selectedTab) {
+        switch (selectedTab as string) {
+          case 'Upcoming':
           case 'Active':
-            return isBookingConfirmed && !isCompleted && !isBookingCancelled && !isAccessRevoked;
+            return isBookingConfirmed && !isApprovalPending && !isCompleted && !isBookingCancelled && !isAccessRevoked;
+          case 'Awaiting Approval':
           case 'Pending':
             return isApprovalPending || isPaymentPending;
           case 'Past':
