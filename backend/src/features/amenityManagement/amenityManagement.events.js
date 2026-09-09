@@ -1,0 +1,48 @@
+import { EventEmitter } from 'events';
+import amenityManagementSocket from './amenityManagement.socket.js';
+
+export const AMENITY_EVENTS = {
+  HOLD_CREATED: 'amenity:hold:created',
+  HOLD_EXPIRED: 'amenity:hold:expired',
+  RESERVATION_CONFIRMED: 'amenity:reservation:confirmed',
+  RESERVATION_CANCELLED: 'amenity:reservation:cancelled',
+  GATE_PASS_ISSUED: 'amenity:pass:issued',
+  APPROVAL_REQUESTED: 'amenity:approval:requested',
+  MAINTENANCE_SCHEDULED: 'amenity:maintenance:scheduled',
+  REFUND_DISPATCH_REQUIRED: 'amenity:refund:required',
+};
+
+class AmenityManagementEvents extends EventEmitter {}
+
+export const amenityManagementEvents = new AmenityManagementEvents();
+
+// Register real-time socket delivery listeners
+amenityManagementEvents.on(AMENITY_EVENTS.HOLD_CREATED, (payload) => {
+  amenityManagementSocket.dispatchHoldEvent(payload);
+});
+
+amenityManagementEvents.on(AMENITY_EVENTS.HOLD_EXPIRED, (payload) => {
+  amenityManagementSocket.dispatchHoldEvent(payload);
+});
+
+amenityManagementEvents.on(AMENITY_EVENTS.RESERVATION_CONFIRMED, (payload) => {
+  amenityManagementSocket.dispatchReservationEvent('RESERVATION_CONFIRMED', payload);
+});
+
+amenityManagementEvents.on(AMENITY_EVENTS.RESERVATION_CANCELLED, (payload) => {
+  amenityManagementSocket.dispatchReservationEvent('RESERVATION_CANCELLED', payload);
+});
+
+amenityManagementEvents.on(AMENITY_EVENTS.APPROVAL_REQUESTED, (payload) => {
+  amenityManagementSocket.dispatchReservationEvent('APPROVAL_REQUESTED', payload);
+});
+
+amenityManagementEvents.on(AMENITY_EVENTS.GATE_PASS_ISSUED, (payload) => {
+  amenityManagementSocket.dispatchPassEvent(payload);
+});
+
+amenityManagementEvents.on(AMENITY_EVENTS.MAINTENANCE_SCHEDULED, (payload) => {
+  amenityManagementSocket.dispatchMaintenanceEvent(payload);
+});
+
+export default amenityManagementEvents;
