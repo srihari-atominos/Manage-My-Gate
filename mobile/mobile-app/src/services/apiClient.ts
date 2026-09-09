@@ -12,8 +12,20 @@ const generateUUID = (): string => {
   });
 };
 
+export const PRODUCTION_API_URL = 'https://managemygate.e3esg.com/api/v1';
+export const PRODUCTION_SOCKET_URL = 'https://managemygate.e3esg.com';
+
 export const getApiBaseUrl = () => {
   let url = process.env.EXPO_PUBLIC_API_URL;
+
+  // In production builds, never allow local/LAN or emulator fallback IPs
+  if (!__DEV__) {
+    if (!url || /^(https?:\/\/)?(localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i.test(url)) {
+      return PRODUCTION_API_URL;
+    }
+    return url;
+  }
+
   if (!url) {
     const hostUri = Constants.expoConfig?.hostUri;
     if (hostUri) {
@@ -41,9 +53,21 @@ export const getApiBaseUrl = () => {
 export const getDefaultBaseUrl = getApiBaseUrl;
 
 export const getSocketBaseUrl = () => {
-  let socketUrl =
-    process.env.EXPO_PUBLIC_SOCKET_URL ||
-    (process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api.*$/, '') : 'http://localhost:5002');
+  let socketUrl = process.env.EXPO_PUBLIC_SOCKET_URL;
+
+  // In production builds, never allow local/LAN or emulator fallback socket URLs
+  if (!__DEV__) {
+    if (!socketUrl || /^(https?:\/\/)?(localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i.test(socketUrl)) {
+      return PRODUCTION_SOCKET_URL;
+    }
+    return socketUrl;
+  }
+
+  if (!socketUrl) {
+    socketUrl = process.env.EXPO_PUBLIC_API_URL
+      ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api.*$/, '')
+      : 'http://localhost:5002';
+  }
   if (Platform.OS === 'android' && socketUrl.includes('localhost')) {
     socketUrl = socketUrl.replace('localhost', '10.0.2.2');
   }
@@ -62,11 +86,13 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
     'X-Client-Type': 'APP',
   },
-  timeout: 30000,
+  timeout: 15000,
   withCredentials: true,
 });
 
-console.log(`[ApiClient] Configured baseURL: ${apiClient.defaults.baseURL}`);
+if (__DEV__) {
+  console.log(`[ApiClient] Configured baseURL: ${apiClient.defaults.baseURL}`);
+}
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -297,7 +323,7 @@ apiClient.interceptors.response.use(
         }
 
         const res = await axios.post(
-          `${apiClient.defaults.baseURL}/auth/refresh-token`,
+          `${getApiBaseUrl()}/auth/refresh-token`,
           { refreshToken },
           { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
         );

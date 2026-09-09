@@ -1,9 +1,8 @@
 import { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../../store/store';
 import { useAppSocket } from '../../../hooks/useAppSocket';
 import { mapBackendWalkInToApprovalItem } from '../utils/mapBackendWalkInToApprovalItem';
 import { selectActiveOrgId } from '../../auth/store/authSelectors';
+import { store } from '../../../store/store';
 import {
   walkInPendingReceived,
   walkInResolvedReceived,
@@ -11,58 +10,70 @@ import {
   fetchDashboardSummary,
 } from '../store/visitorPassSlice';
 
+let subscriberCount = 0;
+let boundSocket: any = null;
+
+const handleGateApprovalRequest = (log: any) => {
+  if (!log) return;
+  if (log.entryType && log.entryType !== 'WALK_IN') return;
+
+  console.log(`[Socket] Received GATE_APPROVAL_REQUEST for log ${log._id}`);
+  const mappedItem = mapBackendWalkInToApprovalItem(log);
+  store.dispatch(walkInPendingReceived({ mappedItem, rawLog: log }));
+};
+
+const handleGateApprovalResolved = (log: any) => {
+  if (!log || !log._id) return;
+  console.log(`[Socket] Received GATE_APPROVAL_RESOLVED for log ${log._id}`);
+  store.dispatch(walkInResolvedReceived({ id: log._id, rawLog: log }));
+};
+
+const handleConnect = () => {
+  console.log('[Socket] Socket reconnected: triggering background recovery fetch for pending walk-ins');
+  const orgId = selectActiveOrgId(store.getState());
+  if (orgId) {
+    store.dispatch(fetchPendingWalkIns(orgId));
+    store.dispatch(fetchDashboardSummary(orgId));
+  }
+};
+
 /**
  * Custom hook encapsulating real-time Socket.IO event listeners for Visitor Management.
  * Listens for backend events (GATE_APPROVAL_REQUEST & GATE_APPROVAL_RESOLVED),
  * updates Redux store idempotently, and triggers background REST recovery on reconnect.
+ * Deduplicates listener registration so that multiple components calling this hook share a single set of listeners.
  */
 export const useVisitorSocket = () => {
-  const dispatch = useDispatch<AppDispatch>();
   const { socket } = useAppSocket();
-
-  const activeOrgId = useSelector(selectActiveOrgId);
 
   useEffect(() => {
     if (!socket) return;
 
-    // 1. Handler for GATE_APPROVAL_REQUEST (Emitted to user:${residentId} when a guard submits a walk-in)
-    const handleGateApprovalRequest = (log: any) => {
-      if (!log) return;
-      if (log.entryType && log.entryType !== 'WALK_IN') return;
+    subscriberCount++;
 
-      console.log(`[Socket] Received GATE_APPROVAL_REQUEST for log ${log._id}`);
-      const mappedItem = mapBackendWalkInToApprovalItem(log);
-      dispatch(walkInPendingReceived({ mappedItem, rawLog: log }));
-    };
+    if (subscriberCount === 1 || boundSocket !== socket) {
+      if (boundSocket && boundSocket !== socket) {
+        boundSocket.off('GATE_APPROVAL_REQUEST', handleGateApprovalRequest);
+        boundSocket.off('GATE_APPROVAL_RESOLVED', handleGateApprovalResolved);
+        boundSocket.off('connect', handleConnect);
+      }
 
-    // 2. Handler for GATE_APPROVAL_RESOLVED (Emitted when a request is resolved)
-    const handleGateApprovalResolved = (log: any) => {
-      if (!log || !log._id) return;
-      console.log(`[Socket] Received GATE_APPROVAL_RESOLVED for log ${log._id}`);
-      dispatch(walkInResolvedReceived({ id: log._id, rawLog: log }));
-    };
+      socket.on('GATE_APPROVAL_REQUEST', handleGateApprovalRequest);
+      socket.on('GATE_APPROVAL_RESOLVED', handleGateApprovalResolved);
+      socket.on('connect', handleConnect);
+      boundSocket = socket;
+    }
 
-    // 3. Handler for Socket reconnect event -> triggers background REST synchronization
-    const handleConnect = () => {
-      console.log('[Socket] Socket reconnected: triggering background recovery fetch for pending walk-ins');
-      if (activeOrgId) {
-        dispatch(fetchPendingWalkIns(activeOrgId));
-        dispatch(fetchDashboardSummary(activeOrgId));
+    return () => {
+      subscriberCount = Math.max(0, subscriberCount - 1);
+      if (subscriberCount === 0 && boundSocket) {
+        boundSocket.off('GATE_APPROVAL_REQUEST', handleGateApprovalRequest);
+        boundSocket.off('GATE_APPROVAL_RESOLVED', handleGateApprovalResolved);
+        boundSocket.off('connect', handleConnect);
+        boundSocket = null;
       }
     };
-
-    // Register event listeners
-    socket.on('GATE_APPROVAL_REQUEST', handleGateApprovalRequest);
-    socket.on('GATE_APPROVAL_RESOLVED', handleGateApprovalResolved);
-    socket.on('connect', handleConnect);
-
-    // Lifecycle cleanup
-    return () => {
-      socket.off('GATE_APPROVAL_REQUEST', handleGateApprovalRequest);
-      socket.off('GATE_APPROVAL_RESOLVED', handleGateApprovalResolved);
-      socket.off('connect', handleConnect);
-    };
-  }, [socket, dispatch, activeOrgId]);
+  }, [socket]);
 };
 
 export default useVisitorSocket;

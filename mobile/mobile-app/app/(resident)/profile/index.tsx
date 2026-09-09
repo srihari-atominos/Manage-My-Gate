@@ -353,6 +353,7 @@ export default function ProfileScreen() {
       title={t('user_profile_account_title', 'User Profile & Account')}
       subtitle={t('edit_profile_subtitle', 'Update personal details & profile photo')}
       iconName="User"
+      scrollable={false}
       showBackButton={true}
       onBackPress={handleBack}
     >

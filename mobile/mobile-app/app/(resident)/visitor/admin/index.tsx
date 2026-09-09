@@ -118,6 +118,7 @@ export default function AdminVisitorDashboardScreen() {
       title="Community Visitor Management"
       subtitle="Admin master security console & entry audit"
       iconName="ShieldCheck"
+      scrollable={false}
       loading={isLoading}
       error={error}
       onRetry={loadData}

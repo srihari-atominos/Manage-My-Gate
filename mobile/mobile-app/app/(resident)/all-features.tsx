@@ -116,6 +116,7 @@ export default function AllFeaturesScreen() {
       title={t('all_features', 'All Features & Services')}
       subtitle={t('explore_quick_actions', 'Explore community quick actions and services')}
       iconName="LayoutGrid"
+      scrollable={false}
       showBackButton={true}
       onBackPress={handleBackPress}
       headerRight={

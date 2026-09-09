@@ -32,6 +32,16 @@ export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string, not
     return `/(resident)/directory/conversation/${convId}`;
   }
 
+  if (cleanUrl.includes('/invite/app/')) {
+    const token = cleanUrl.split('/invite/app/')[1]?.split('?')[0]?.replace(/\/$/, '');
+    return `/(auth)/accept-invite?token=${token}`;
+  }
+
+  if (cleanUrl.includes('accept-invite')) {
+    const tokenMatch = cleanUrl.match(/[?&]token=([^&#]+)/);
+    return tokenMatch ? `/(auth)/accept-invite?token=${tokenMatch[1]}` : '/(auth)/accept-invite';
+  }
+
   // Exact Web Action URL to Mobile Expo Router Route Mappings
   if (cleanUrl.includes('visitor-management-resident') || cleanUrl === '/visitor/resident') {
     return '/(resident)/visitor';

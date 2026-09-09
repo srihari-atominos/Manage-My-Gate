@@ -91,21 +91,23 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const nextIndex = (activeIndex + 1) % BANNERS.length;
-      setActiveIndex(nextIndex);
-      scrollViewRef.current?.scrollTo({
-        x: nextIndex * BANNER_WIDTH,
-        animated: true,
+      setActiveIndex((prev) => {
+        const nextIndex = (prev + 1) % BANNERS.length;
+        scrollViewRef.current?.scrollTo({
+          x: nextIndex * BANNER_WIDTH,
+          animated: true,
+        });
+        return nextIndex;
       });
-    }, 4500);
+    }, 5000);
 
     return () => clearInterval(timer);
-  }, [activeIndex]);
+  }, []);
 
-  const handleScroll = (event: any) => {
+  const handleScrollEnd = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(contentOffsetX / BANNER_WIDTH);
-    if (index !== activeIndex && index >= 0 && index < BANNERS.length) {
+    if (index >= 0 && index < BANNERS.length) {
       setActiveIndex(index);
     }
   };
@@ -117,8 +119,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBannerPress }) => {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
+        onMomentumScrollEnd={handleScrollEnd}
         snapToInterval={BANNER_WIDTH}
         decelerationRate="fast"
       >

@@ -327,24 +327,30 @@ export function ScreenShell({
       </KeyboardAvoidingView>
 
       {/* Global Easy Navigation Modal (Triggered from Compass Icon Button) */}
-      <GlobalNavModal
-        visible={showGlobalNavModal}
-        onClose={() => setShowGlobalNavModal(false)}
-      />
+      {showGlobalNavModal && (
+        <GlobalNavModal
+          visible={showGlobalNavModal}
+          onClose={() => setShowGlobalNavModal(false)}
+        />
+      )}
 
       {/* Role Context Switcher Modal (Triggered by Double Tap Gesture) */}
-      <RoleSwitchModal
-        visible={showRoleModal}
-        onClose={() => setShowRoleModal(false)}
-      />
+      {showRoleModal && (
+        <RoleSwitchModal
+          visible={showRoleModal}
+          onClose={() => setShowRoleModal(false)}
+        />
+      )}
 
       {/* Villa Unit Context Switcher Modal */}
-      <VillaSwitchModal
-        visible={showVillaModal}
-        onClose={() => setShowVillaModal(false)}
-        activeVilla={selectedVilla}
-        onSelectVilla={(v) => setSelectedVilla(v)}
-      />
+      {showVillaModal && (
+        <VillaSwitchModal
+          visible={showVillaModal}
+          onClose={() => setShowVillaModal(false)}
+          activeVilla={selectedVilla}
+          onSelectVilla={(v) => setSelectedVilla(v)}
+        />
+      )}
 
       {/* Down Bar Navigation */}
       {shouldShowBottomNav && <BottomNavigationBar />}

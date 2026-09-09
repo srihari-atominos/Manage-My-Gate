@@ -51,6 +51,7 @@ export default function AdminVisitorAnalyticsScreen() {
       title="Gate Visitor Analytics"
       subtitle="Check-in trends, traffic hours & gate metrics"
       iconName="BarChart3"
+      scrollable={false}
       loading={status === 'loading' && !analytics}
       error={error}
       onRetry={handleRefresh}

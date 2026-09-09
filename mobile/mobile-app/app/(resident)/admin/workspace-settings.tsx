@@ -16,7 +16,10 @@ export default function WorkspaceSettingsScreen() {
   ];
 
   return (
-    <ScreenShell title={t('feature_admin_workspace_settings_name', 'Workspace Settings')}>
+    <ScreenShell 
+      title={t('feature_admin_workspace_settings_name', 'Workspace Settings')}
+      scrollable={false}
+    >
       <View className="bg-background pt-2 pb-1">
         <TabBar 
           tabs={tabs} 

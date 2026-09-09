@@ -40,7 +40,11 @@ export function useAutoUpdate() {
       }
     }
 
-    checkForUpdates();
+    const timer = setTimeout(() => {
+      checkForUpdates();
+    }, 3500);
+
+    return () => clearTimeout(timer);
   }, []);
 }
 

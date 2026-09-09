@@ -1,5 +1,13 @@
 import '@/global.css';
 import React, { useEffect } from 'react';
+
+// Suppress synchronous console logs in production release builds to prevent Hermes JNI logcat bottlenecks
+if (!__DEV__) {
+  console.log = () => {};
+  console.info = () => {};
+  console.debug = () => {};
+}
+
 import { PortalHost } from '@rn-primitives/portal';
 import { Stack, useSegments, useRouter, useGlobalSearchParams, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';

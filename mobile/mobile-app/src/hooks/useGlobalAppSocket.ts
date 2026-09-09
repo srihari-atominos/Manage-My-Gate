@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store/store';
 import useAppSocket from './useAppSocket';
@@ -26,25 +26,30 @@ export const useGlobalAppSocket = () => {
   const currentUser = authState?.user;
   const isAuthenticated = authState?.isAuthenticated;
 
+  const currentUserRef = useRef(currentUser);
   useEffect(() => {
-    if (!socket || !isAuthenticated || !currentUser) return;
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
-    const permissions: string[] = currentUser?.permissions || [];
-    const userRole = getUserRoleName(currentUser);
-    const isSuperAdmin = userRole === 'SuperAdmin' || userRole === 'Admin';
-    const canReadRoles = isSuperAdmin || permissions.includes('role:read') || permissions.includes('roles:read') || permissions.includes('*');
-    const canReadUsers = isSuperAdmin || permissions.includes('user:read') || permissions.includes('users:read') || permissions.includes('*');
-    const canReadInvoices = isSuperAdmin || permissions.includes('billing:dashboard') || permissions.includes('*');
+  useEffect(() => {
+    if (!socket || !isAuthenticated) return;
 
     // 1. Role & Permission Updates
     const handleRoleOrUserUpdate = (payload: any) => {
+      const u = currentUserRef.current;
+      const permissions: string[] = u?.permissions || [];
+      const userRole = getUserRoleName(u);
+      const isSuperAdmin = userRole === 'SuperAdmin' || userRole === 'Admin';
+      const canReadRoles = isSuperAdmin || permissions.includes('role:read') || permissions.includes('roles:read') || permissions.includes('*');
+      const canReadUsers = isSuperAdmin || permissions.includes('user:read') || permissions.includes('users:read') || permissions.includes('*');
+
       // Refetch roles & users only if user has permission
       if (canReadRoles) dispatch(fetchRolesAsync({ page: 1, limit: 100 })).catch(() => {});
       if (canReadUsers) dispatch(fetchUsersThunk({ page: 1, limit: 100 })).catch(() => {});
 
-      if (!payload) return;
+      if (!payload || !u) return;
 
-      const currentId = currentUser.id || currentUser._id;
+      const currentId = u.id || u._id;
       const targetUserId = payload.userId || payload.data?.userId || payload.id;
       const updatedRoleName = payload.roleName || payload.data?.roleName || payload.role;
       const updatedRoleId = payload.roleId || payload.data?.roleId;
@@ -53,14 +58,14 @@ export const useGlobalAppSocket = () => {
       const isUserMatch = targetUserId && String(targetUserId) === String(currentId);
       const isRoleMatch =
         (updatedRoleName && userRole.toLowerCase() === String(updatedRoleName).toLowerCase()) ||
-        (updatedRoleId && (currentUser.roleId === updatedRoleId || currentUser.role === updatedRoleId));
+        (updatedRoleId && (u.roleId === updatedRoleId || u.role === updatedRoleId));
 
       if (isUserMatch || isRoleMatch) {
         if (Array.isArray(updatedPermissions)) {
           dispatch(
             updateTokenAndUser({
               user: {
-                ...currentUser,
+                ...u,
                 permissions: updatedPermissions,
                 ...(payload.role ? { role: payload.role } : {}),
               },
@@ -79,12 +84,20 @@ export const useGlobalAppSocket = () => {
 
     // 3. Visitor Management Pass & Log Updates
     const handleVisitorUpdate = () => {
-      dispatch(getPasses({ orgId: currentUser.orgId || '', params: { page: 1, limit: 20 } })).catch(() => {});
-      dispatch(fetchActiveVisitorsThunk(currentUser.orgId || '')).catch(() => {});
+      const u = currentUserRef.current;
+      const orgId = u?.orgId || u?.activeOrgId || '';
+      dispatch(getPasses({ orgId, params: { page: 1, limit: 20 } })).catch(() => {});
+      dispatch(fetchActiveVisitorsThunk(orgId)).catch(() => {});
     };
 
     // 4. Billing & Dues Updates
     const handleBillingUpdate = () => {
+      const u = currentUserRef.current;
+      const permissions: string[] = u?.permissions || [];
+      const userRole = getUserRoleName(u);
+      const isSuperAdmin = userRole === 'SuperAdmin' || userRole === 'Admin';
+      const canReadInvoices = isSuperAdmin || permissions.includes('billing:dashboard') || permissions.includes('*');
+
       dispatch(fetchMyDues()).catch(() => {});
       if (canReadInvoices) dispatch(fetchInvoicesGrid({ page: 1, limit: 20 })).catch(() => {});
     };
@@ -187,7 +200,7 @@ export const useGlobalAppSocket = () => {
       socket.off('COMMUNITY_NOTE_CREATED', handleCommunityNoteUpdate);
       socket.off('RECORD_UPDATED');
     };
-  }, [socket, isAuthenticated, currentUser, dispatch]);
+  }, [socket, isAuthenticated, dispatch]);
 };
 
 export default useGlobalAppSocket;

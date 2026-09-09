@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store/store';
 import {
@@ -55,24 +55,35 @@ export const useQuickActions = () => {
 
   const { modules, loadWorkspaceModules } = useWorkspace();
   const authUser = useSelector((state: RootState) => (state as any).auth?.user);
-  const userPermissions = authUser?.permissions || [];
   const currentUserId = authUser?._id || authUser?.id;
   const activeOrgId = authUser?.activeOrgId || authUser?.orgId || authUser?.organizationId;
   const activeVillaId = authUser?.activeVillaId || authUser?.villaId;
   const activeVillaNum = authUser?.activeVillaNumber || authUser?.villaNumber || authUser?.unitNumber;
 
+  const lastFetchedOrgRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (isAuthenticated && currentUserId) {
-      dispatch(
-        fetchQuickActionsThunk({
-          orgId: activeOrgId,
-          villaId: activeVillaId,
-          villaNumber: activeVillaNum,
-        })
-      );
-      loadWorkspaceModules('current');
+      const orgKey = activeOrgId || 'default';
+      const orgChanged = lastFetchedOrgRef.current !== orgKey;
+      const needsCatalog = (!rawCatalog || rawCatalog.length === 0) || orgChanged;
+      const needsModules = (!modules || modules.length === 0) || orgChanged;
+
+      if (needsCatalog && !loading) {
+        dispatch(
+          fetchQuickActionsThunk({
+            orgId: activeOrgId,
+            villaId: activeVillaId,
+            villaNumber: activeVillaNum,
+          })
+        );
+      }
+      if (needsModules) {
+        loadWorkspaceModules('current');
+      }
+      lastFetchedOrgRef.current = orgKey;
     }
-  }, [dispatch, isAuthenticated, currentUserId, activeOrgId, activeVillaId, activeVillaNum, loadWorkspaceModules]);
+  }, [dispatch, isAuthenticated, currentUserId, activeOrgId, activeVillaId, activeVillaNum, loadWorkspaceModules, rawCatalog, modules, loading]);
 
   const loadQuickActions = useCallback(() => {
     if (isAuthenticated) {
@@ -136,18 +147,9 @@ export const useQuickActions = () => {
         
         // Filter items within the category by workspace modules
         const filteredItems = category.items.filter(item => {
-          if (item.id === 'admin_workspace_settings') return true;
-          
-          // 1. RBAC Filtering
-          if (item.permission && userPermissions.length > 0) {
-            const hasAccess = userPermissions.includes('owner:*') || 
-                              userPermissions.includes('admin:*') || 
-                              userPermissions.includes('platform:super_admin') ||
-                              userPermissions.includes(item.permission);
-            if (!hasAccess) return false;
-          }
+          if (item.id === 'admin_workspace_settings' || item.id === 'admin_app_settings') return true;
 
-          // 2. Module Filtering
+          // Module Filtering
           const requiredItemModules = itemToModuleMap[item.id];
           if (requiredItemModules) {
             return requiredItemModules.some(m => enabledModuleKeys.includes(m));
@@ -162,12 +164,12 @@ export const useQuickActions = () => {
       }).filter(category => category.items.length > 0);
     }
     
-    // RBAC permission filtering per user role & permissions
+    // Authoritative RBAC permission filtering per user role & permissions
     return baseCatalog.map(category => ({
       ...category,
       items: category.items.filter(item => isFeatureAllowedForUser(item, user))
     })).filter(category => category.items.length > 0);
-  }, [rawCatalog, modules, userPermissions, user]);
+  }, [rawCatalog, modules, user]);
 
   // Flattened array of all available items across categories for easy lookup
   const allFeaturesList = useMemo<FeatureItem[]>(() => {

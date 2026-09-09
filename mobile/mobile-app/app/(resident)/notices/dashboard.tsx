@@ -107,6 +107,7 @@ export default function NoticeDashboardScreen() {
       title="Notice Board Dashboard"
       subtitle="Broadcast notices, drafts & resident polls"
       iconName="Bell"
+      scrollable={false}
       error={dashboardError}
       onRetry={handleRefresh}
       loading={dashboardLoading && !dashboardStats}

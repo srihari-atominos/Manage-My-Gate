@@ -291,54 +291,64 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
       />
 
       {/* Interactive Villa Switcher Modal */}
-      <VillaSwitchModal
-        visible={villaModalVisible}
-        onClose={() => setVillaModalVisible(false)}
-        activeVilla={activeVilla || ''}
-        onSelectVilla={(villaNum) => setActiveVilla(villaNum)}
-        communityName={activeCommunity}
-        onOpenOrgModal={() => setOrgModalVisible(true)}
-      />
+      {villaModalVisible && (
+        <VillaSwitchModal
+          visible={villaModalVisible}
+          onClose={() => setVillaModalVisible(false)}
+          activeVilla={activeVilla || ''}
+          onSelectVilla={(villaNum) => setActiveVilla(villaNum)}
+          communityName={activeCommunity}
+          onOpenOrgModal={() => setOrgModalVisible(true)}
+        />
+      )}
 
       {/* Interactive Organization / Community Switcher Modal */}
-      <OrgSwitchModal
-        visible={orgModalVisible}
-        onClose={() => setOrgModalVisible(false)}
-        activeCommunity={activeCommunity}
-        onSelectCommunity={(orgName) => setActiveCommunity(orgName)}
-      />
+      {orgModalVisible && (
+        <OrgSwitchModal
+          visible={orgModalVisible}
+          onClose={() => setOrgModalVisible(false)}
+          activeCommunity={activeCommunity}
+          onSelectCommunity={(orgName) => setActiveCommunity(orgName)}
+        />
+      )}
 
       {/* Interactive Role Switcher Modal */}
-      <RoleSwitchModal
-        visible={roleModalVisible}
-        onClose={() => setRoleModalVisible(false)}
-      />
+      {roleModalVisible && (
+        <RoleSwitchModal
+          visible={roleModalVisible}
+          onClose={() => setRoleModalVisible(false)}
+        />
+      )}
 
       {/* Profile & Settings Modal */}
-      <ProfileModal
-        visible={profileModalVisible}
-        onClose={() => {
-          setProfileModalVisible(false);
-          if (params?.openProfile) {
-            try {
-              router.setParams({ openProfile: undefined });
-            } catch (e) {
-              // safe fallback
+      {profileModalVisible && (
+        <ProfileModal
+          visible={profileModalVisible}
+          onClose={() => {
+            setProfileModalVisible(false);
+            if (params?.openProfile) {
+              try {
+                router.setParams({ openProfile: undefined });
+              } catch (e) {
+                // safe fallback
+              }
             }
-          }
-        }}
-        unitName={activeVilla || 'No Unit Assigned'}
-        communityName={activeCommunity}
-        onOpenOrgModal={() => setOrgModalVisible(true)}
-        onOpenRoleModal={() => setRoleModalVisible(true)}
-        onOpenVillaModal={() => setVillaModalVisible(true)}
-      />
+          }}
+          unitName={activeVilla || 'No Unit Assigned'}
+          communityName={activeCommunity}
+          onOpenOrgModal={() => setOrgModalVisible(true)}
+          onOpenRoleModal={() => setRoleModalVisible(true)}
+          onOpenVillaModal={() => setVillaModalVisible(true)}
+        />
+      )}
 
       {/* Notifications Slide-Over Drawer Modal */}
-      <NotificationSheetModal
-        visible={notifModalVisible}
-        onClose={() => setNotifModalVisible(false)}
-      />
+      {notifModalVisible && (
+        <NotificationSheetModal
+          visible={notifModalVisible}
+          onClose={() => setNotifModalVisible(false)}
+        />
+      )}
     </>
   );
 };
