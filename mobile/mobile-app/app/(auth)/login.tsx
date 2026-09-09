@@ -41,6 +41,8 @@ import { PhoneInput } from '@/components/forms/PhoneInput';
 import { Checkbox } from '@/components/forms/Checkbox';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { storage, sessionStore } from '@/src/utils/storage';
+import { useSelector, useDispatch } from 'react-redux';
+import { clearPendingRoute } from '../../src/features/notification/store/notificationSlice';
 
 // 1. Basic Auth Validation Schema
 const basicAuthSchema = yup.object().shape({
@@ -75,6 +77,8 @@ interface PhoneFormValues {
 }
 
 export default function LoginScreen() {
+  const dispatch = useDispatch();
+  const pendingRoute = useSelector((state: any) => state.notification?.pendingRoute);
   const { user, login: performLogin, requestOtp, loading, error, isAuthenticated, otpSent, clearStatus } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
   const params = useLocalSearchParams<{
@@ -106,7 +110,9 @@ export default function LoginScreen() {
   const [submittedPhone, setSubmittedPhone] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
   const [keepSignedIn, setKeepSignedIn] = React.useState(true);
-  const [connectingHarmony, setConnectingHarmony] = React.useState(false);
+  const [isSubmittingBasic, setIsSubmittingBasic] = React.useState(false);
+  const [isSubmittingPhone, setIsSubmittingPhone] = React.useState(false);
+  const hasNavigatedRef = React.useRef(false);
   const [switchDismissed, setSwitchDismissed] = React.useState(false);
   const passwordInputRef = React.useRef<TextInput>(null);
 
@@ -257,32 +263,37 @@ export default function LoginScreen() {
   }, [authMode]);
 
   React.useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !hasNavigatedRef.current) {
+      hasNavigatedRef.current = true;
       if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
       Keyboard.dismiss();
-      setConnectingHarmony(true);
-      const timer = setTimeout(() => {
-        const uAny = user as any;
-        const hasOrg = !!(
-          user && (
-            uAny.orgId ||
-            uAny.activeOrgId ||
-            uAny.organizationId ||
-            (Array.isArray(uAny.availableWorkspaces) && uAny.availableWorkspaces.length > 0)
-          )
-        );
-        if (isCreateOrgIntent || !hasOrg) {
-          sessionStore.removeItem('mobile_auth_intent');
-          router.replace({ pathname: '/(auth)/setup-organization', params: { intent: 'create-org' } });
-        } else {
-          router.replace('/(resident)/dashboard');
-        }
-      }, 900);
-      return () => clearTimeout(timer);
+
+      const uAny = user as any;
+      const hasOrg = !!(
+        user && (
+          uAny.orgId ||
+          uAny.activeOrgId ||
+          uAny.organizationId ||
+          (Array.isArray(uAny.availableWorkspaces) && uAny.availableWorkspaces.length > 0)
+        )
+      );
+
+      if (isCreateOrgIntent || !hasOrg) {
+        sessionStore.removeItem('mobile_auth_intent');
+        router.replace({ pathname: '/(auth)/setup-organization', params: { intent: 'create-org' } });
+      } else if (pendingRoute) {
+        console.log('[LoginScreen] Navigating to pending notification destination after login:', pendingRoute);
+        dispatch(clearPendingRoute());
+        router.replace(pendingRoute as any);
+      } else {
+        router.replace('/(resident)/dashboard');
+      }
+    } else if (!isAuthenticated) {
+      hasNavigatedRef.current = false;
     }
-  }, [isAuthenticated, user, isCreateOrgIntent]);
+  }, [isAuthenticated, user, isCreateOrgIntent, pendingRoute, dispatch]);
 
   // Reactively route to OTP screen if Phone OTP sent
   React.useEffect(() => {
@@ -310,36 +321,46 @@ export default function LoginScreen() {
         : undefined
     );
 
-    await savePreferences();
-    const resultAction: any = await performLogin({
-      login: data.login.trim(),
-      password: data.password,
-      ...(activeInviteToken ? { inviteToken: activeInviteToken } : {}),
-    });
+    setIsSubmittingBasic(true);
+    try {
+      await savePreferences();
+      const resultAction: any = await performLogin({
+        login: data.login.trim(),
+        password: data.password,
+        ...(activeInviteToken ? { inviteToken: activeInviteToken } : {}),
+      });
 
-    // Invoke Google / Browser Credential Management API only upon successful login on Web
-    if (resultAction && (resultAction.meta?.requestStatus === 'fulfilled' || (!resultAction.error && !resultAction.payload?.error))) {
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && 'PasswordCredential' in window && (navigator as any)?.credentials?.store) {
-        try {
-          // @ts-ignore
-          const cred = new window.PasswordCredential({
-            id: data.login.trim(),
-            password: data.password,
-            name: data.login.trim(),
-          });
-          await (navigator as any).credentials.store(cred);
-        } catch (e) {
-          // Safe fallback if dismissed or unsupported
+      // Invoke Google / Browser Credential Management API only upon successful login on Web
+      if (resultAction && (resultAction.meta?.requestStatus === 'fulfilled' || (!resultAction.error && !resultAction.payload?.error))) {
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && 'PasswordCredential' in window && (navigator as any)?.credentials?.store) {
+          try {
+            // @ts-ignore
+            const cred = new window.PasswordCredential({
+              id: data.login.trim(),
+              password: data.password,
+              name: data.login.trim(),
+            });
+            await (navigator as any).credentials.store(cred);
+          } catch (e) {
+            // Safe fallback if dismissed or unsupported
+          }
         }
       }
+    } finally {
+      setIsSubmittingBasic(false);
     }
   };
 
   // Handle Phone OTP Submit
   const onPhoneSubmit = async (data: PhoneFormValues) => {
     setSubmittedPhone(data.phone);
-    await savePreferences();
-    await requestOtp(data.phone, false);
+    setIsSubmittingPhone(true);
+    try {
+      await savePreferences();
+      await requestOtp(data.phone, false);
+    } finally {
+      setIsSubmittingPhone(false);
+    }
   };
 
   return (
@@ -643,7 +664,7 @@ export default function LoginScreen() {
                     {/* Step 7: Sign In CTA Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
                     <TouchableOpacity
                       onPress={basicForm.handleSubmit(onBasicSubmit)}
-                      disabled={loading || connectingHarmony}
+                      disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
                       activeOpacity={0.88}
                       className="mt-1 h-12 rounded-2xl bg-[#1E232E] flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
                     >
@@ -660,11 +681,11 @@ export default function LoginScreen() {
                           <Rect width="100%" height="100%" rx="16" fill="url(#signInGrad)" />
                         </Svg>
                       </View>
-                      {loading || connectingHarmony ? (
+                      {isSubmittingBasic ? (
                         <View className="flex-row items-center gap-2 z-10">
                           <ActivityIndicator color="#FFFFFF" size="small" />
                           <Text className="font-bold text-white text-sm font-sans">
-                            Connecting Harmony...
+                            Signing In...
                           </Text>
                         </View>
                       ) : (
@@ -717,7 +738,7 @@ export default function LoginScreen() {
                     {/* Get OTP Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
                     <TouchableOpacity
                       onPress={phoneForm.handleSubmit(onPhoneSubmit)}
-                      disabled={loading || connectingHarmony}
+                      disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
                       activeOpacity={0.88}
                       className="mt-1 h-12 rounded-2xl bg-[#1E232E] flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
                     >
@@ -734,9 +755,12 @@ export default function LoginScreen() {
                           <Rect width="100%" height="100%" rx="16" fill="url(#otpGrad)" />
                         </Svg>
                       </View>
-                      {loading || connectingHarmony ? (
+                      {isSubmittingPhone ? (
                         <View className="flex-row items-center gap-2 z-10">
                           <ActivityIndicator color="#FFFFFF" size="small" />
+                          <Text className="font-bold text-white text-sm font-sans">
+                            Sending OTP Code...
+                          </Text>
                         </View>
                       ) : (
                         <View className="flex-row items-center justify-center gap-2 z-10">
@@ -766,8 +790,12 @@ export default function LoginScreen() {
                   provider="google"
                   onPress={handleGoogleSignIn}
                   loading={googleLoading}
+                  disabled={isSubmittingBasic || isSubmittingPhone}
                 />
-                <SocialAuthButton provider="apple" />
+                <SocialAuthButton
+                  provider="apple"
+                  disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
+                />
               </View>
 
               {/* Create Account Prompt */}
