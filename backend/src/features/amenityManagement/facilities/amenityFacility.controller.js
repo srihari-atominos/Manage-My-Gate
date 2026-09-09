@@ -9,7 +9,8 @@ export class AmenityFacilityController {
     try {
       const orgId = req.tenant.orgId;
       const idempotencyKey = req.headers['x-idempotency-key'] || req.headers['idempotency-key'];
-      const facilityData = { ...req.body, orgId };
+      const { _id, orgId: bodyOrgId, concurrencyVersion, isDeleted, deletedAt, ...cleanBody } = req.body;
+      const facilityData = { ...cleanBody, orgId };
 
       if (idempotencyKey) {
         const idempResult = await amenityIdempotencyService.executeWithIdempotency(
@@ -93,7 +94,8 @@ export class AmenityFacilityController {
     try {
       const { facilityId } = req.params;
       const orgId = req.tenant.orgId;
-      const updated = await amenityFacilityService.updateFacility(facilityId, orgId, req.body);
+      const { _id, orgId: bodyOrgId, concurrencyVersion, isDeleted, deletedAt, ...cleanBody } = req.body;
+      const updated = await amenityFacilityService.updateFacility(facilityId, orgId, cleanBody);
       return res.success(updated, 'Facility updated successfully');
     } catch (error) {
       return next(error);

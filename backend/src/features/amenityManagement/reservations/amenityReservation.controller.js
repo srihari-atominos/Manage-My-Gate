@@ -52,13 +52,24 @@ export class AmenityReservationController {
       const { reservationId } = req.params;
       const orgId = req.tenant.orgId;
       const userId = req.user.id || req.user._id;
+      const isAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
       const { reason } = req.body;
+
+      const reservation = await amenityReservationService.getReservationById(reservationId);
+      if (!reservation || reservation.orgId.toString() !== orgId.toString()) {
+        throw new HttpError(404, 'Reservation not found');
+      }
+
+      if (!isAdmin && reservation.residentId.toString() !== userId.toString()) {
+        throw new HttpError(403, 'Forbidden. You do not have permission to cancel this reservation.');
+      }
 
       const result = await amenityReservationService.cancelReservation({
         reservationId,
         orgId,
-        userId,
-        reason,
+        residentId: reservation.residentId,
+        cancelledBy: userId,
+        cancellationReason: reason,
       });
 
       return res.success(result, 'Reservation cancelled successfully');
@@ -106,7 +117,7 @@ export class AmenityReservationController {
       // Check if user is administrative or resident-restricted
       const isAdminRole = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
       let effectiveResidentId = req.query.residentId;
-      if (!isAdminRole && !effectiveResidentId) {
+      if (!isAdminRole) {
         effectiveResidentId = req.user.id || req.user._id;
       }
 
@@ -133,20 +144,22 @@ export class AmenityReservationController {
   }
 
   /**
-   * Retrieves single reservation by ID.
+   * Retrieves single reservation by ID within organization and ownership boundaries.
    */
   async getById(req, res, next) {
     try {
       const { reservationId } = req.params;
       const orgId = req.tenant.orgId;
+      const userId = req.user.id || req.user._id;
+      const isAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
 
       const reservation = await amenityReservationService.getReservationById(reservationId);
-      if (!reservation) {
+      if (!reservation || reservation.orgId.toString() !== orgId.toString()) {
         throw new HttpError(404, 'Reservation not found');
       }
 
-      if (reservation.orgId.toString() !== orgId.toString()) {
-        throw new HttpError(403, 'Forbidden. Reservation does not belong to this organization.');
+      if (!isAdmin && reservation.residentId.toString() !== userId.toString()) {
+        throw new HttpError(403, 'Forbidden. You do not have permission to view this reservation.');
       }
 
       return res.success(reservation, 'Reservation retrieved successfully');
@@ -162,8 +175,18 @@ export class AmenityReservationController {
     try {
       const { reservationNumber } = req.params;
       const orgId = req.tenant.orgId;
+      const userId = req.user.id || req.user._id;
+      const isAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
 
       const reservation = await amenityReservationService.getReservationByNumber(orgId, reservationNumber);
+      if (!reservation) {
+        throw new HttpError(404, 'Reservation not found');
+      }
+
+      if (!isAdmin && reservation.residentId.toString() !== userId.toString()) {
+        throw new HttpError(403, 'Forbidden. You do not have permission to view this reservation.');
+      }
+
       return res.success(reservation, 'Reservation retrieved successfully');
     } catch (error) {
       return next(error);

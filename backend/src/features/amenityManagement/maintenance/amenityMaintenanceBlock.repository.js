@@ -17,8 +17,10 @@ export class AmenityMaintenanceBlockRepository {
    * @param {string|mongoose.Types.ObjectId} blockId
    * @param {mongoose.ClientSession} [session]
    */
-  async findById(blockId, session) {
-    return AmenityMaintenanceBlock.findById(blockId).session(session || null);
+  async findById(blockId, orgId, session) {
+    const filter = { _id: blockId };
+    if (orgId) filter.orgId = orgId;
+    return AmenityMaintenanceBlock.findOne(filter).session(session || null);
   }
 
   /**
@@ -52,12 +54,15 @@ export class AmenityMaintenanceBlockRepository {
   /**
    * Updates maintenance block status.
    * @param {string|mongoose.Types.ObjectId} blockId
+   * @param {string|mongoose.Types.ObjectId} [orgId]
    * @param {string} status
    * @param {mongoose.ClientSession} [session]
    */
-  async updateStatus(blockId, status, session) {
-    return AmenityMaintenanceBlock.findByIdAndUpdate(
-      blockId,
+  async updateStatus(blockId, orgId, status, session) {
+    const filter = { _id: blockId };
+    if (orgId) filter.orgId = orgId;
+    return AmenityMaintenanceBlock.findOneAndUpdate(
+      filter,
       { $set: { status } },
       { session: session || null, returnDocument: 'after', runValidators: true }
     );

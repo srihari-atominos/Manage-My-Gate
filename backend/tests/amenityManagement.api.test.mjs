@@ -1,6 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'http';
+import crypto from 'crypto';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 
@@ -37,12 +38,21 @@ describe('Amenity Management Phase 4C — API Layer Integration Suite', () => {
   let otherOrg;
   let adminUser;
   let residentUser;
+  let residentBUser;
   let otherOrgUser;
+  let otherOrgAdminUser;
 
   let adminToken;
   let residentToken;
+  let residentBToken;
   let otherOrgToken;
+  let otherOrgAdminToken;
   let noOrgToken;
+
+  function signWebhookPayload(payload) {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || 'default_webhook_secret_key';
+    return crypto.createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+  }
 
   before(async () => {
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/test';
@@ -114,12 +124,28 @@ describe('Amenity Management Phase 4C — API Layer Integration Suite', () => {
       role: 'Resident',
     });
 
+    residentBUser = await User.create({
+      email: `residentB4c_${timestamp}@test.com`,
+      username: `residentB4c_${timestamp}`,
+      password: 'hashedpassword123',
+      status: 'Active',
+      role: 'Resident',
+    });
+
     otherOrgUser = await User.create({
       email: `other4c_${timestamp}@test.com`,
       username: `other4c_${timestamp}`,
       password: 'hashedpassword123',
       status: 'Active',
       role: 'Resident',
+    });
+
+    otherOrgAdminUser = await User.create({
+      email: `otheradmin4c_${timestamp}@test.com`,
+      username: `otheradmin4c_${timestamp}`,
+      password: 'hashedpassword123',
+      status: 'Active',
+      role: 'Community Admin',
     });
 
     // 3. Generate Signed JWTs
@@ -141,8 +167,26 @@ describe('Amenity Management Phase 4C — API Layer Integration Suite', () => {
       { expiresIn: '2h' }
     );
 
+    residentBToken = jwt.sign(
+      {
+        id: residentBUser._id.toString(),
+        email: residentBUser.email,
+        role: 'Resident',
+        roleId: residentRole._id.toString(),
+        orgId: testOrg._id.toString(),
+      },
+      config.jwt.secret,
+      { expiresIn: '2h' }
+    );
+
     otherOrgToken = jwt.sign(
       { id: otherOrgUser._id.toString(), email: otherOrgUser.email, role: 'Resident', orgId: otherOrg._id.toString() },
+      config.jwt.secret,
+      { expiresIn: '2h' }
+    );
+
+    otherOrgAdminToken = jwt.sign(
+      { id: otherOrgAdminUser._id.toString(), email: otherOrgAdminUser.email, role: 'Community Admin', orgId: otherOrg._id.toString() },
       config.jwt.secret,
       { expiresIn: '2h' }
     );
@@ -179,7 +223,7 @@ describe('Amenity Management Phase 4C — API Layer Integration Suite', () => {
       AmenityIdempotencyRecord.deleteMany({ orgId: { $in: orgIds } }),
       AmenityCounter.deleteMany({ orgId: { $in: orgIds } }),
       Organization.deleteMany({ _id: { $in: orgIds } }),
-      User.deleteMany({ _id: { $in: [adminUser._id, residentUser._id, otherOrgUser._id] } }),
+      User.deleteMany({ _id: { $in: [adminUser._id, residentUser._id, residentBUser._id, otherOrgUser._id, otherOrgAdminUser._id] } }),
     ]);
 
     await mongoose.disconnect();
@@ -192,6 +236,8 @@ describe('Amenity Management Phase 4C — API Layer Integration Suite', () => {
   let createdHoldId;
   let createdReservationId;
   let accessPassToken;
+  let eventResvId;
+  let maintenanceBlockId;
 
   // =========================================================================
   // 1. Authentication & Security Middleware
@@ -719,7 +765,6 @@ describe('Amenity Management Phase 4C — API Layer Integration Suite', () => {
   // =========================================================================
   describe('9. Maker-Checker Event Approval Invariant', () => {
     let eventHoldId;
-    let eventResvId;
 
     it('should create event hold and pending approval reservation', async () => {
       const start = new Date(Date.now() + 259200000); // in 3 days
@@ -794,18 +839,21 @@ describe('Amenity Management Phase 4C — API Layer Integration Suite', () => {
     });
 
     it('payment webhook on approved reservation confirms booking and issues access pass', async () => {
+      const payload = {
+        orgId: testOrg._id.toString(),
+        reservationId: eventResvId,
+        paymentReference: 'GATEWAY-TXN-EVENT-999',
+        status: 'PAID',
+        paymentAmount: 11800,
+      };
+      const signature = signWebhookPayload(payload);
       const webhookRes = await fetch(`${baseUrl}/payments/webhook`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-razorpay-signature': signature,
         },
-        body: JSON.stringify({
-          orgId: testOrg._id.toString(),
-          reservationId: eventResvId,
-          paymentReference: 'GATEWAY-TXN-EVENT-999',
-          status: 'PAID',
-          paymentAmount: 11800,
-        }),
+        body: JSON.stringify(payload),
       });
 
       assert.equal(webhookRes.status, 200);
@@ -838,18 +886,21 @@ describe('Amenity Management Phase 4C — API Layer Integration Suite', () => {
       });
 
       // 2. Late webhook arrives
+      const payload = {
+        orgId: testOrg._id.toString(),
+        holdId: deadHold._id.toString(),
+        paymentReference: 'LATE-TXN-API-555',
+        status: 'PAID',
+        paymentAmount: 500,
+      };
+      const signature = signWebhookPayload(payload);
       const webhookRes = await fetch(`${baseUrl}/payments/webhook`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-razorpay-signature': signature,
         },
-        body: JSON.stringify({
-          orgId: testOrg._id.toString(),
-          holdId: deadHold._id.toString(),
-          paymentReference: 'LATE-TXN-API-555',
-          status: 'PAID',
-          paymentAmount: 500,
-        }),
+        body: JSON.stringify(payload),
       });
 
       assert.equal(webhookRes.status, 200);
@@ -987,8 +1038,6 @@ describe('Amenity Management Phase 4C — API Layer Integration Suite', () => {
   // 12. Maintenance Blackout Management
   // =========================================================================
   describe('12. Maintenance Blackout Operations', () => {
-    let maintenanceBlockId;
-
     it('should schedule a maintenance block (POST /maintenance)', async () => {
       const start = new Date(Date.now() + 604800000); // in 7 days
       const end = new Date(start.getTime() + 86400000); // 24 hours
@@ -1071,6 +1120,456 @@ describe('Amenity Management Phase 4C — API Layer Integration Suite', () => {
       const legacyBookingCount = await LegacyAmenityBooking.countDocuments({ organizationId: testOrg._id });
       assert.equal(legacyAmenityCount, 0);
       assert.equal(legacyBookingCount, 0);
+    });
+  });
+
+  // =========================================================================
+  // 14. Security & API Hardening Audit (Phase 4C.1)
+  // =========================================================================
+  describe('14. Security & API Hardening Audit (Phase 4C.1)', () => {
+    // -----------------------------------------------------------------------
+    // 14.1 Cross-Tenant Isolation & Resource Boundaries
+    // -----------------------------------------------------------------------
+    describe('14.1 Cross-Tenant Isolation & Resource Boundaries', () => {
+      it('should reject otherOrg access to facility belonging to testOrg with 404', async () => {
+        const res = await fetch(`${baseUrl}/facilities/${sharedFacilityId}`, {
+          headers: {
+            Authorization: `Bearer ${otherOrgAdminToken}`,
+            'x-organization-id': otherOrg._id.toString(),
+          },
+        });
+        assert.equal(res.status, 404);
+        const body = await res.json();
+        assert.equal(body.success, false);
+      });
+
+      it('should reject otherOrg access to reservation belonging to testOrg with 404', async () => {
+        const res = await fetch(`${baseUrl}/reservations/${createdReservationId}`, {
+          headers: {
+            Authorization: `Bearer ${otherOrgAdminToken}`,
+            'x-organization-id': otherOrg._id.toString(),
+          },
+        });
+        assert.equal(res.status, 404);
+        const body = await res.json();
+        assert.equal(body.success, false);
+      });
+
+      it('should reject otherOrg cancellation of reservation belonging to testOrg with 404', async () => {
+        const res = await fetch(`${baseUrl}/reservations/${createdReservationId}/cancel`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${otherOrgAdminToken}`,
+            'x-organization-id': otherOrg._id.toString(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ reason: 'Malicious cross-tenant cancellation' }),
+        });
+        assert.equal(res.status, 404);
+        const body = await res.json();
+        assert.equal(body.success, false);
+      });
+
+      it('should reject otherOrg access to passes belonging to testOrg reservation with 404', async () => {
+        const res = await fetch(`${baseUrl}/passes/reservation/${createdReservationId}`, {
+          headers: {
+            Authorization: `Bearer ${otherOrgAdminToken}`,
+            'x-organization-id': otherOrg._id.toString(),
+          },
+        });
+        assert.equal(res.status, 404);
+        const body = await res.json();
+        assert.equal(body.success, false);
+      });
+
+      it('should reject otherOrg update to maintenance block belonging to testOrg with 404', async () => {
+        const res = await fetch(`${baseUrl}/maintenance/${maintenanceBlockId}/status`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${otherOrgAdminToken}`,
+            'x-organization-id': otherOrg._id.toString(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: 'CANCELLED' }),
+        });
+        assert.equal(res.status, 404);
+        const body = await res.json();
+        assert.equal(body.success, false);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // 14.2 Reservation Ownership & Least-Privilege Boundaries
+    // -----------------------------------------------------------------------
+    describe('14.2 Reservation Ownership & Least-Privilege Boundaries', () => {
+      it('should reject resident B attempting to view resident A reservation with 403', async () => {
+        const res = await fetch(`${baseUrl}/reservations/${createdReservationId}`, {
+          headers: {
+            Authorization: `Bearer ${residentBToken}`,
+            'x-organization-id': testOrg._id.toString(),
+          },
+        });
+        assert.equal(res.status, 403);
+        const body = await res.json();
+        assert.equal(body.success, false);
+      });
+
+      it('should reject resident B attempting to cancel resident A reservation with 403', async () => {
+        const res = await fetch(`${baseUrl}/reservations/${createdReservationId}/cancel`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${residentBToken}`,
+            'x-organization-id': testOrg._id.toString(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ reason: 'Snoop cancellation' }),
+        });
+        assert.equal(res.status, 403);
+        const body = await res.json();
+        assert.equal(body.success, false);
+      });
+
+      it('should reject resident B attempting to view passes for resident A reservation with 403', async () => {
+        const res = await fetch(`${baseUrl}/passes/reservation/${createdReservationId}`, {
+          headers: {
+            Authorization: `Bearer ${residentBToken}`,
+            'x-organization-id': testOrg._id.toString(),
+          },
+        });
+        assert.equal(res.status, 403);
+        const body = await res.json();
+        assert.equal(body.success, false);
+      });
+
+      it('should scope reservation listing to authenticated resident and ignore spoofed query residentId', async () => {
+        const res = await fetch(`${baseUrl}/reservations?residentId=${residentUser._id.toString()}`, {
+          headers: {
+            Authorization: `Bearer ${residentBToken}`,
+            'x-organization-id': testOrg._id.toString(),
+          },
+        });
+        assert.equal(res.status, 200);
+        const body = await res.json();
+        assert.equal(body.success, true);
+        assert.equal(body.data.data.length, 0);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // 14.3 State Injection & Parameter Sanitization Boundaries
+    // -----------------------------------------------------------------------
+    describe('14.3 State Injection & Parameter Sanitization Boundaries', () => {
+      it('should sanitize client-injected status and expiry when creating hold', async () => {
+        const start = new Date(Date.now() + 86400000);
+        const end = new Date(start.getTime() + 3600000);
+        const res = await fetch(`${baseUrl}/holds`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${residentToken}`,
+            'x-organization-id': testOrg._id.toString(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            facilityId: sharedFacilityId,
+            requestedStartDateTime: start.toISOString(),
+            requestedEndDateTime: end.toISOString(),
+            status: 'CONFIRMED',
+            expiresAt: new Date(2099, 1, 1).toISOString(),
+          }),
+        });
+
+        assert.equal(res.status, 201);
+        const body = await res.json();
+        assert.equal(body.data.hold.status, 'ACTIVE');
+        const expiryYear = new Date(body.data.hold.expiresAt).getFullYear();
+        assert.notEqual(expiryYear, 2099);
+      });
+
+      it('should sanitize mass assignment of system fields on facility update', async () => {
+        const res = await fetch(`${baseUrl}/facilities/${sharedFacilityId}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+            'x-organization-id': testOrg._id.toString(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orgId: otherOrg._id.toString(),
+            concurrencyVersion: 9999,
+            isDeleted: true,
+            name: 'Hardened Sanitized Olympic Pool',
+          }),
+        });
+
+        assert.equal(res.status, 200);
+        const facilityInDb = await AmenityFacility.findById(sharedFacilityId);
+        assert.equal(facilityInDb.orgId.toString(), testOrg._id.toString());
+        assert.equal(facilityInDb.isDeleted, false);
+        assert.notEqual(facilityInDb.concurrencyVersion, 9999);
+        assert.equal(facilityInDb.name, 'Hardened Sanitized Olympic Pool');
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // 14.4 Pass Cryptographic Security & Anti-Replay Verification
+    // -----------------------------------------------------------------------
+    describe('14.4 Pass Cryptographic Security & Anti-Replay Verification', () => {
+      it('should never store raw pass token in database (only SHA-256 hash stored)', async () => {
+        const rawFound = await AmenityAccessPass.findOne({ rawToken: accessPassToken });
+        assert.equal(rawFound, null);
+
+        const expectedHash = crypto.createHash('sha256').update(accessPassToken).digest('hex');
+        const passDoc = await AmenityAccessPass.findOne({ passTokenHash: expectedHash });
+        assert.ok(passDoc);
+        assert.equal(passDoc.passTokenHash, expectedHash);
+      });
+
+      it('should confirm arbitrary pass issuance endpoint does NOT exist', async () => {
+        const passFeature = await import('../src/features/amenityManagement/index.js');
+        const passRouter = passFeature.amenityAccessPassRouter;
+        const registeredRoutes = passRouter.stack
+          .filter((l) => l.route)
+          .map((l) => `${Object.keys(l.route.methods).join(',').toUpperCase()} ${l.route.path}`);
+
+        assert.equal(registeredRoutes.some((r) => r.includes('issue') || r.includes('create') || r === 'POST /'), false);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // 14.5 Payment Webhook Security (Attacks A–E)
+    // -----------------------------------------------------------------------
+    describe('14.5 Payment Webhook Security (Attacks A–E)', () => {
+      it('Attack A: Unsigned webhook should be rejected with 400', async () => {
+        const res = await fetch(`${baseUrl}/payments/webhook`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orgId: testOrg._id.toString(),
+            reservationId: eventResvId,
+            status: 'PAID',
+            paymentReference: 'UNSIGNED-ATTACK-A',
+            paymentAmount: 11800,
+          }),
+        });
+        assert.equal(res.status, 400);
+        const body = await res.json();
+        assert.equal(body.success, false);
+        assert.match(body.message, /signature/i);
+      });
+
+      it('Attack B: Tampered webhook signature should be rejected with 400', async () => {
+        const payload = {
+          orgId: testOrg._id.toString(),
+          reservationId: eventResvId,
+          status: 'PAID',
+          paymentReference: 'TAMPERED-ATTACK-B',
+          paymentAmount: 11800,
+        };
+        const res = await fetch(`${baseUrl}/payments/webhook`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-razorpay-signature': '0'.repeat(64),
+          },
+          body: JSON.stringify(payload),
+        });
+        assert.equal(res.status, 400);
+        const body = await res.json();
+        assert.equal(body.success, false);
+        assert.match(body.message, /Invalid webhook signature/i);
+      });
+
+      it('Attack C: Tenant spoofing in webhook payload should be rejected with 403', async () => {
+        const payload = {
+          orgId: otherOrg._id.toString(),
+          reservationId: eventResvId,
+          status: 'PAID',
+          paymentReference: 'SPOOFED-TENANT-ATTACK-C',
+          paymentAmount: 11800,
+        };
+        const signature = signWebhookPayload(payload);
+        const res = await fetch(`${baseUrl}/payments/webhook`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-razorpay-signature': signature,
+          },
+          body: JSON.stringify(payload),
+        });
+        assert.equal(res.status, 403);
+        const body = await res.json();
+        assert.equal(body.success, false);
+        assert.match(body.message, /spoofing/i);
+      });
+
+      it('Attack D: Non-existent reservation in webhook should be rejected with 404', async () => {
+        const fakeReservationId = new mongoose.Types.ObjectId().toString();
+        const payload = {
+          orgId: testOrg._id.toString(),
+          reservationId: fakeReservationId,
+          status: 'PAID',
+          paymentReference: 'NOT-FOUND-ATTACK-D',
+          paymentAmount: 11800,
+        };
+        const signature = signWebhookPayload(payload);
+        const res = await fetch(`${baseUrl}/payments/webhook`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-razorpay-signature': signature,
+          },
+          body: JSON.stringify(payload),
+        });
+        assert.equal(res.status, 404);
+        const body = await res.json();
+        assert.equal(body.success, false);
+      });
+
+      it('Attack E: Underpayment in webhook should be rejected with 400', async () => {
+        const start = new Date(Date.now() + 345600000);
+        const end = new Date(start.getTime() + 14400000);
+        const underpayHold = await AmenityReservationHold.create({
+          orgId: testOrg._id,
+          facilityId: eventFacilityId,
+          residentId: residentUser._id,
+          unitId: new mongoose.Types.ObjectId(),
+          requestedStartDateTime: start,
+          requestedEndDateTime: end,
+          effectiveStartDateTime: start,
+          effectiveEndDateTime: end,
+          headcount: 50,
+          holdType: 'ADMIN_REVIEW',
+          status: 'ACTIVE',
+          expiresAt: new Date(Date.now() + 1800000),
+        });
+
+        const underpayResv = await AmenityReservation.create({
+          orgId: testOrg._id,
+          facilityId: eventFacilityId,
+          residentId: residentUser._id,
+          unitId: underpayHold.unitId,
+          reservationNumber: `RES-202609-${Math.floor(100000 + Math.random() * 900000)}`,
+          requestedStartDateTime: start,
+          requestedEndDateTime: end,
+          effectiveStartDateTime: start,
+          effectiveEndDateTime: end,
+          headcount: 50,
+          bookingStatus: 'PENDING_APPROVAL',
+          approvalStatus: 'APPROVED',
+          paymentStatus: 'PENDING',
+          accessStatus: 'NOT_APPLICABLE',
+          completionStatus: 'PENDING',
+          totalAmount: 11800,
+        });
+
+        const payload = {
+          orgId: testOrg._id.toString(),
+          reservationId: underpayResv._id.toString(),
+          status: 'PAID',
+          paymentReference: 'UNDERPAY-ATTACK-E',
+          paymentAmount: 10,
+        };
+        const signature = signWebhookPayload(payload);
+        const res = await fetch(`${baseUrl}/payments/webhook`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-razorpay-signature': signature,
+          },
+          body: JSON.stringify(payload),
+        });
+        assert.equal(res.status, 400);
+        const body = await res.json();
+        assert.equal(body.success, false);
+        assert.match(body.message, /Insufficient payment amount/i);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // 14.6 Cross-Tenant Idempotency Key Isolation
+    // -----------------------------------------------------------------------
+    describe('14.6 Cross-Tenant Idempotency Key Isolation', () => {
+      it('should isolate idempotency keys between tenants so identical key creates independent records', async () => {
+        const sharedKey = `SEC-IDEMP-${Date.now()}`;
+        const timestamp = Date.now().toString().slice(-4);
+
+        const payload1 = {
+          name: `Org1 Facility ${timestamp}`,
+          code: `O1${timestamp}`,
+          archetype: 'EXCLUSIVE_HOURLY',
+        };
+
+        const payload2 = {
+          name: `Org2 Facility ${timestamp}`,
+          code: `O2${timestamp}`,
+          archetype: 'EXCLUSIVE_HOURLY',
+        };
+
+        // Tenant 1 execution with sharedKey
+        const res1 = await fetch(`${baseUrl}/facilities`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+            'x-organization-id': testOrg._id.toString(),
+            'Content-Type': 'application/json',
+            'x-idempotency-key': sharedKey,
+          },
+          body: JSON.stringify(payload1),
+        });
+        assert.equal(res1.status, 201);
+        const body1 = await res1.json();
+
+        // Tenant 2 execution with EXACT same sharedKey
+        const res2 = await fetch(`${baseUrl}/facilities`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${otherOrgAdminToken}`,
+            'x-organization-id': otherOrg._id.toString(),
+            'Content-Type': 'application/json',
+            'x-idempotency-key': sharedKey,
+          },
+          body: JSON.stringify(payload2),
+        });
+        assert.equal(res2.status, 201);
+        const body2 = await res2.json();
+
+        // Independent entities must have different IDs and orgIds
+        assert.notEqual(body1.data._id, body2.data._id);
+        assert.equal(body1.data.orgId, testOrg._id.toString());
+        assert.equal(body2.data.orgId, otherOrg._id.toString());
+
+        // Verify two separate idempotency records exist in database with tenant-scoped _id
+        const record1 = await AmenityIdempotencyRecord.findById(`IDEMP:${testOrg._id}:${sharedKey}`);
+        const record2 = await AmenityIdempotencyRecord.findById(`IDEMP:${otherOrg._id}:${sharedKey}`);
+        assert.ok(record1);
+        assert.ok(record2);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // 14.7 Information Leakage & Error Sanitization
+    // -----------------------------------------------------------------------
+    describe('14.7 Information Leakage & Error Sanitization', () => {
+      it('should not leak internal stack traces in production error responses', async () => {
+        const prevEnv = config.nodeEnv;
+        try {
+          config.nodeEnv = 'production';
+          const res = await fetch(`${baseUrl}/facilities/invalid-mongo-id`, {
+            headers: {
+              Authorization: `Bearer ${adminToken}`,
+              'x-organization-id': testOrg._id.toString(),
+            },
+          });
+          assert.equal(res.status, 400);
+          const body = await res.json();
+          assert.equal(body.success, false);
+          assert.equal(body.stack, undefined);
+        } finally {
+          config.nodeEnv = prevEnv;
+        }
+      });
     });
   });
 });

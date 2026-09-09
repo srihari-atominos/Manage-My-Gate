@@ -134,13 +134,29 @@ export class AmenityMaintenanceBlockService {
    * @param {string} status
    * @param {import('mongoose').ClientSession} [session]
    */
-  async updateMaintenanceStatus(blockId, status, session) {
+  async updateMaintenanceStatus(blockId, orgId, status, session) {
+    let targetOrgId = orgId;
+    let targetStatus = status;
+    let targetSession = session;
     const validStatuses = ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
-    if (!validStatuses.includes(status)) {
-      throw new HttpError(400, `Invalid maintenance status: ${status}`);
+
+    // Backward compatibility if called as (blockId, status, session)
+    if (typeof orgId === 'string' && validStatuses.includes(orgId)) {
+      targetStatus = orgId;
+      targetOrgId = undefined;
+      targetSession = status;
     }
 
-    const updated = await amenityMaintenanceBlockRepository.updateStatus(blockId, status, session);
+    if (!validStatuses.includes(targetStatus)) {
+      throw new HttpError(400, `Invalid maintenance status: ${targetStatus}`);
+    }
+
+    const updated = await amenityMaintenanceBlockRepository.updateStatus(
+      blockId,
+      targetOrgId,
+      targetStatus,
+      targetSession
+    );
     if (!updated) {
       throw new HttpError(404, 'Maintenance block not found');
     }
@@ -158,12 +174,13 @@ export class AmenityMaintenanceBlockService {
   }
 
   /**
-   * Finds maintenance block by ID.
+   * Finds maintenance block by ID within organization.
    * @param {string|import('mongoose').Types.ObjectId} blockId
+   * @param {string|import('mongoose').Types.ObjectId} [orgId]
    * @param {import('mongoose').ClientSession} [session]
    */
-  async getMaintenanceBlockById(blockId, session) {
-    const block = await amenityMaintenanceBlockRepository.findById(blockId, session);
+  async getMaintenanceBlockById(blockId, orgId, session) {
+    const block = await amenityMaintenanceBlockRepository.findById(blockId, orgId, session);
     if (!block) {
       throw new HttpError(404, 'Maintenance block not found');
     }

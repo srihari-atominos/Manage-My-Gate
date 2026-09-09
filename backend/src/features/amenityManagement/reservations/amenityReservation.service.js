@@ -699,6 +699,23 @@ export class AmenityReservationService {
         throw new HttpError(404, 'Reservation not found for payment webhook');
       }
 
+      // Tenant spoofing guard: reject if caller passed orgId that differs from database
+      if (orgId && reservation.orgId.toString() !== orgId.toString()) {
+        throw new HttpError(403, 'Forbidden. Tenant spoofing detected for reservation payment webhook.');
+      }
+
+      // Underpayment guard: reject if payment amount is less than reservation total
+      if (
+        status === 'PAID' &&
+        paymentAmount !== undefined &&
+        paymentAmount !== null &&
+        Number(paymentAmount) < Number(reservation.totalAmount || 0)
+      ) {
+        throw new HttpError(400, `Insufficient payment amount: expected ${reservation.totalAmount}, got ${paymentAmount}`);
+      }
+
+      const authoritativeOrgId = reservation.orgId;
+
       // Idempotency: if already PAID and CONFIRMED, return existing reservation without duplicate pass/event
       if (reservation.paymentStatus === 'PAID') {
         const existingPasses = await amenityAccessPassService.getPassesByReservationId(
@@ -750,7 +767,7 @@ export class AmenityReservationService {
 
           const passResult = await amenityAccessPassService.issueAccessPass(
             {
-              orgId,
+              orgId: authoritativeOrgId,
               reservationId: reservation._id,
               passType: 'QR_DYNAMIC',
               validFrom: reservation.effectiveStartDateTime,
@@ -763,7 +780,7 @@ export class AmenityReservationService {
 
           await amenityOutboxEventRepository.createEvent(
             {
-              orgId,
+              orgId: authoritativeOrgId,
               eventType: 'RESERVATION_CONFIRMED',
               aggregateId: reservation._id,
               aggregateType: 'AmenityReservation',
@@ -778,7 +795,7 @@ export class AmenityReservationService {
 
           await amenityOutboxEventRepository.createEvent(
             {
-              orgId,
+              orgId: authoritativeOrgId,
               eventType: 'GATE_PASS_ISSUED',
               aggregateId: pass._id,
               aggregateType: 'AmenityAccessPass',
@@ -813,13 +830,41 @@ export class AmenityReservationService {
 
     // Case 2: Payment triggered from Hold checkout
     if (holdId) {
+      const hold = await amenityReservationHoldRepository.findById(holdId, session);
+      if (!hold) {
+        throw new HttpError(404, 'Hold not found for payment webhook');
+      }
+
+      // Tenant spoofing guard: reject if caller passed orgId that differs from database
+      if (orgId && hold.orgId.toString() !== orgId.toString()) {
+        throw new HttpError(403, 'Forbidden. Tenant spoofing detected for hold payment webhook.');
+      }
+
+      const authoritativeOrgId = hold.orgId;
       const activeHold = await amenityReservationHoldRepository.findActiveById(holdId, session);
 
       if (activeHold && status === 'PAID') {
+        // Underpayment guard for active hold
+        if (paymentAmount !== undefined && paymentAmount !== null) {
+          const facility = await amenityFacilityRepository.findById(activeHold.facilityId, session);
+          if (facility) {
+            const pricing = pricingService.calculateReservationPrice({
+              pricingConfig: facility.pricing,
+              requestedStartDateTime: activeHold.requestedStartDateTime,
+              requestedEndDateTime: activeHold.requestedEndDateTime,
+              headcount: activeHold.headcount,
+              quantity: activeHold.quantity,
+            });
+            if (Number(paymentAmount) < Number(pricing.totalAmount || 0)) {
+              throw new HttpError(400, `Insufficient payment amount: expected ${pricing.totalAmount}, got ${paymentAmount}`);
+            }
+          }
+        }
+
         return this.confirmReservationFromHold(
           {
             holdId,
-            orgId,
+            orgId: authoritativeOrgId,
             residentId: activeHold.residentId,
             unitId: activeHold.unitId,
             paymentReference,
@@ -833,7 +878,7 @@ export class AmenityReservationService {
       if ((!activeHold || activeHold.status !== 'ACTIVE') && status === 'PAID') {
         // Idempotency: check if a refund was already dispatched for this paymentReference or holdId
         const existingOutboxRefund = await amenityOutboxEventRepository.findExistingRefundEvent(
-          { orgId, paymentReference, holdId },
+          { orgId: authoritativeOrgId, paymentReference, holdId },
           session
         );
 
@@ -849,16 +894,16 @@ export class AmenityReservationService {
           };
         }
 
-        const deadHold = await amenityReservationHoldRepository.findById(holdId, session);
+        const deadHold = hold;
         const reservationNumber = await amenityCounterService.generateReservationNumber(
-          { orgId },
+          { orgId: authoritativeOrgId },
           session
         );
 
         // Step 1: Record reservation as CANCELLED with initial paymentStatus: 'PAID'
         const fallbackReservation = await amenityReservationRepository.create(
           {
-            orgId,
+            orgId: authoritativeOrgId,
             facilityId: deadHold?.facilityId || new mongoose.Types.ObjectId(),
             resourceId: deadHold?.resourceId || null,
             residentId: deadHold?.residentId || new mongoose.Types.ObjectId(),
@@ -892,7 +937,7 @@ export class AmenityReservationService {
         // Step 3: Write REFUND_DISPATCH_REQUIRED to Transactional Outbox
         await amenityOutboxEventRepository.createEvent(
           {
-            orgId,
+            orgId: authoritativeOrgId,
             eventType: 'REFUND_DISPATCH_REQUIRED',
             aggregateId: updatedRefundReservation._id,
             aggregateType: 'AmenityReservation',

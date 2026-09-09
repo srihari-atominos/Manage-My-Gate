@@ -7,9 +7,25 @@ export class AmenityMaintenanceBlockController {
   async schedule(req, res, next) {
     try {
       const orgId = req.tenant.orgId;
+      const {
+        facilityId,
+        resourceId,
+        startDateTime,
+        endDateTime,
+        isCompleteClosure,
+        degradedCapacity,
+        reason,
+      } = req.body;
+
       const result = await amenityMaintenanceBlockService.scheduleMaintenanceBlock({
-        ...req.body,
         orgId,
+        facilityId,
+        resourceId: resourceId || null,
+        startDateTime,
+        endDateTime,
+        isCompleteClosure: isCompleteClosure !== undefined ? isCompleteClosure : true,
+        degradedCapacity: degradedCapacity || 0,
+        reason,
       });
 
       return res.success(result, 'Maintenance block scheduled successfully', 201);
@@ -41,12 +57,13 @@ export class AmenityMaintenanceBlockController {
   }
 
   /**
-   * Retrieves single maintenance block by ID.
+   * Retrieves single maintenance block by ID within organization.
    */
   async getById(req, res, next) {
     try {
       const { blockId } = req.params;
-      const block = await amenityMaintenanceBlockService.getMaintenanceBlockById(blockId);
+      const orgId = req.tenant.orgId;
+      const block = await amenityMaintenanceBlockService.getMaintenanceBlockById(blockId, orgId);
       return res.success(block, 'Maintenance block retrieved successfully');
     } catch (error) {
       return next(error);
@@ -54,14 +71,15 @@ export class AmenityMaintenanceBlockController {
   }
 
   /**
-   * Updates maintenance block lifecycle status.
+   * Updates maintenance block lifecycle status within organization.
    */
   async updateStatus(req, res, next) {
     try {
       const { blockId } = req.params;
+      const orgId = req.tenant.orgId;
       const { status } = req.body;
 
-      const updated = await amenityMaintenanceBlockService.updateMaintenanceStatus(blockId, status);
+      const updated = await amenityMaintenanceBlockService.updateMaintenanceStatus(blockId, orgId, status);
       return res.success(updated, 'Maintenance block status updated successfully');
     } catch (error) {
       return next(error);

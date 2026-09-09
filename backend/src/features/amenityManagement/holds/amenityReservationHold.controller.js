@@ -10,11 +10,18 @@ export class AmenityReservationHoldController {
     try {
       const orgId = req.tenant.orgId;
       const residentId = req.user.id || req.user._id;
-      const unitId = req.body.unitId || req.user.villaId || req.user.unitId || req.user.id || req.user._id;
+      const isAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
+      const unitId = (!isAdmin && (req.user.villaId || req.user.unitId)) ? (req.user.villaId || req.user.unitId) : (req.body.unitId || req.user.villaId || req.user.unitId || req.user.id);
       const idempotencyKey = req.headers['x-idempotency-key'] || req.headers['idempotency-key'];
 
       const holdParams = {
-        ...req.body,
+        facilityId: req.body.facilityId,
+        resourceId: req.body.resourceId,
+        requestedStartDateTime: req.body.requestedStartDateTime,
+        requestedEndDateTime: req.body.requestedEndDateTime,
+        headcount: req.body.headcount,
+        quantity: req.body.quantity,
+        holdType: req.body.holdType,
         orgId,
         residentId,
         unitId,
@@ -43,12 +50,14 @@ export class AmenityReservationHoldController {
   }
 
   /**
-   * Retrieves single hold by ID with tenant isolation verification.
+   * Retrieves single hold by ID with tenant and ownership verification.
    */
   async getById(req, res, next) {
     try {
       const { holdId } = req.params;
       const orgId = req.tenant.orgId;
+      const userId = req.user.id || req.user._id;
+      const isAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
       const hold = await amenityReservationHoldService.getHoldById(holdId);
 
       if (!hold) {
@@ -57,6 +66,10 @@ export class AmenityReservationHoldController {
 
       if (hold.orgId.toString() !== orgId.toString()) {
         throw new HttpError(403, 'Forbidden. Reservation hold does not belong to this organization.');
+      }
+
+      if (!isAdmin && hold.residentId.toString() !== userId.toString()) {
+        throw new HttpError(403, 'Forbidden. You do not have permission to view this hold.');
       }
 
       return res.success(hold, 'Reservation hold retrieved successfully');
@@ -66,12 +79,14 @@ export class AmenityReservationHoldController {
   }
 
   /**
-   * Explicitly expires an active hold early.
+   * Explicitly expires an active hold early with tenant and ownership verification.
    */
   async expire(req, res, next) {
     try {
       const { holdId } = req.params;
       const orgId = req.tenant.orgId;
+      const userId = req.user.id || req.user._id;
+      const isAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
 
       const hold = await amenityReservationHoldService.getHoldById(holdId);
       if (!hold) {
@@ -80,6 +95,10 @@ export class AmenityReservationHoldController {
 
       if (hold.orgId.toString() !== orgId.toString()) {
         throw new HttpError(403, 'Forbidden. Reservation hold does not belong to this organization.');
+      }
+
+      if (!isAdmin && hold.residentId.toString() !== userId.toString()) {
+        throw new HttpError(403, 'Forbidden. You do not have permission to release this hold.');
       }
 
       const result = await amenityReservationHoldService.expireHold(holdId);

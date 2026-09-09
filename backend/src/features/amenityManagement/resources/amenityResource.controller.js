@@ -7,8 +7,9 @@ export class AmenityResourceController {
   async create(req, res, next) {
     try {
       const orgId = req.tenant.orgId;
-      const identifier = req.body.identifier || req.body.code || `RES-${Date.now().toString().slice(-6)}`;
-      const resourceData = { ...req.body, identifier, orgId };
+      const { _id, orgId: bodyOrgId, concurrencyVersion, isDeleted, deletedAt, ...cleanBody } = req.body;
+      const identifier = cleanBody.identifier || cleanBody.code || `RES-${Date.now().toString().slice(-6)}`;
+      const resourceData = { ...cleanBody, identifier, orgId };
       const resource = await amenityResourceService.createResource(resourceData);
       return res.success(resource, 'Resource created successfully', 201);
     } catch (error) {
@@ -76,7 +77,8 @@ export class AmenityResourceController {
     try {
       const { resourceId } = req.params;
       const orgId = req.tenant.orgId;
-      const updated = await amenityResourceService.updateResource(resourceId, orgId, req.body);
+      const { _id, orgId: bodyOrgId, concurrencyVersion, isDeleted, deletedAt, ...cleanBody } = req.body;
+      const updated = await amenityResourceService.updateResource(resourceId, orgId, cleanBody);
       return res.success(updated, 'Resource updated successfully');
     } catch (error) {
       return next(error);

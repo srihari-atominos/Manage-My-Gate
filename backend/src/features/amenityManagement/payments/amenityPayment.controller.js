@@ -11,11 +11,27 @@ export class AmenityPaymentController {
       const signature = req.headers['x-razorpay-signature'];
       const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-      // Optional gateway HMAC SHA256 signature verification if secret configured and signature provided
-      if (signature && secret && process.env.NODE_ENV !== 'test') {
-        const rawBody = req.rawBody || JSON.stringify(req.body);
+      // Gateway HMAC SHA256 signature verification when secret is configured
+      if (secret) {
+        if (!signature) {
+          logger.warn('[AmenityPaymentController] Missing webhook signature header');
+          return res.status(400).json({ success: false, message: 'Missing webhook signature' });
+        }
+
+        const rawBody = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(req.body);
         const expectedSignature = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
-        const isValid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+
+        let isValid = false;
+        try {
+          if (typeof signature === 'string' && signature.length === expectedSignature.length) {
+            isValid = crypto.timingSafeEqual(
+              Buffer.from(signature, 'utf8'),
+              Buffer.from(expectedSignature, 'utf8')
+            );
+          }
+        } catch {
+          isValid = false;
+        }
 
         if (!isValid) {
           logger.warn('[AmenityPaymentController] Webhook signature verification failed');

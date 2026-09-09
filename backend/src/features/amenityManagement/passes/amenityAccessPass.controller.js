@@ -1,4 +1,6 @@
 import amenityAccessPassService from './amenityAccessPass.service.js';
+import amenityReservationService from '../reservations/amenityReservation.service.js';
+import HttpError from '../../../utils/httpError.utils.js';
 
 export class AmenityAccessPassController {
   /**
@@ -42,11 +44,24 @@ export class AmenityAccessPassController {
   }
 
   /**
-   * Retrieves passes associated with a reservation.
+   * Retrieves passes associated with a reservation with tenant and ownership verification.
    */
   async getByReservation(req, res, next) {
     try {
       const { reservationId } = req.params;
+      const orgId = req.tenant.orgId;
+      const userId = req.user.id || req.user._id;
+      const isAdmin = ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(req.user.role);
+
+      const reservation = await amenityReservationService.getReservationById(reservationId);
+      if (!reservation || reservation.orgId.toString() !== orgId.toString()) {
+        throw new HttpError(404, 'Reservation not found');
+      }
+
+      if (!isAdmin && reservation.residentId.toString() !== userId.toString()) {
+        throw new HttpError(403, 'Forbidden. You do not have permission to view passes for this reservation.');
+      }
+
       const passes = await amenityAccessPassService.getPassesByReservationId(reservationId);
       return res.success(passes, 'Access passes retrieved successfully');
     } catch (error) {
