@@ -527,19 +527,41 @@ export class VillaService {
 
       // 4. Update or Create OrgMembership
       const mappedResidentType = (type) => {
-        switch (type) {
-          case 'Resident Owner':
-          case 'Non-Resident Owner':
-            return 'Owner';
-          case 'Tenant':
-            return 'Tenant';
-          case 'Family Member':
-            return 'Family';
-          case 'Staff':
-          default:
-            return 'Guest';
-        }
+        if (!type) return 'Guest';
+        const lower = String(type).toLowerCase();
+        if (lower.includes('owner')) return 'Owner';
+        if (lower.includes('family')) return 'Family';
+        if (lower.includes('tenant') || lower.includes('resident')) return 'Tenant';
+        if (lower.includes('staff')) return 'Staff';
+        return 'Guest';
       };
+
+      const resolveRoleName = (type) => {
+        if (!type) return 'Resident Tenant';
+        const lower = String(type).toLowerCase();
+        if (lower.includes('owner')) return 'Resident Owner';
+        if (lower.includes('family')) return 'Family Member';
+        if (lower.includes('tenant') || lower.includes('resident')) return 'Resident Tenant';
+        if (lower.includes('staff')) return 'Staff/Vendor';
+        return type;
+      };
+
+      const targetRoleName = resolveRoleName(residencyType);
+      const roleService = (await import('../role/role.services.js')).default;
+      const roleObj = await roleService.getRoleByName(targetRoleName, orgId, session);
+
+      // 3. Update User document with synced roles
+      await User.updateOne(
+        { _id: userId },
+        { 
+          $set: { 
+            villaId: villa._id, 
+            residencyType,
+            roles: roleObj ? [roleObj.name] : ['Family Member'],
+            role: roleObj ? roleObj.name : 'Family Member'
+          } 
+        }
+      ).session(session);
 
       let membership = await OrgMembership.findOne({ userId, orgId, villaId: villa._id }).session(session);
       if (!membership) {
@@ -566,9 +588,6 @@ export class VillaService {
         membership.residentType = mappedResidentType(residencyType);
       }
 
-      // Sync user role in membership to the selected tenant role
-      const roleService = (await import('../role/role.services.js')).default;
-      const roleObj = await roleService.getRoleByName(residencyType, orgId, session);
       if (roleObj) {
         membership.roleId = roleObj._id;
         membership.roleIds = [roleObj._id];
@@ -617,38 +636,56 @@ export class VillaService {
       villa.residents[residentIndex].residencyType = newResidencyType;
       await villa.save({ session });
 
+      // 4. Sync OrgMembership
+      const mappedResidentType = (type) => {
+        if (!type) return 'Guest';
+        const lower = String(type).toLowerCase();
+        if (lower.includes('owner')) return 'Owner';
+        if (lower.includes('family')) return 'Family';
+        if (lower.includes('tenant') || lower.includes('resident')) return 'Tenant';
+        if (lower.includes('staff')) return 'Staff';
+        return 'Guest';
+      };
+
+      const resolveRoleName = (type) => {
+        if (!type) return 'Resident Tenant';
+        const lower = String(type).toLowerCase();
+        if (lower.includes('owner')) return 'Resident Owner';
+        if (lower.includes('family')) return 'Family Member';
+        if (lower.includes('tenant') || lower.includes('resident')) return 'Resident Tenant';
+        if (lower.includes('staff')) return 'Staff/Vendor';
+        return type;
+      };
+
+      // Sync user role in membership to the selected tenant role
+      const targetRoleName = resolveRoleName(newResidencyType);
+      const roleService = (await import('../role/role.services.js')).default;
+      const roleObj = await roleService.getRoleByName(targetRoleName, orgId, session);
+
       // 3. Sync User Profile
       await User.updateOne(
         { _id: userId },
-        { $set: { residencyType: newResidencyType } }
+        { 
+          $set: { 
+            residencyType: newResidencyType,
+            villaId: villa._id,
+            roles: roleObj ? [roleObj.name] : ['Family Member'],
+            role: roleObj ? roleObj.name : 'Family Member'
+          } 
+        }
       ).session(session);
 
-      // 4. Sync OrgMembership
-      const mappedResidentType = (type) => {
-        switch (type) {
-          case 'Resident Owner':
-          case 'Non-Resident Owner':
-            return 'Owner';
-          case 'Tenant':
-            return 'Tenant';
-          case 'Family Member':
-            return 'Family';
-          case 'Staff':
-          default:
-            return 'Guest';
-        }
+      const updateFields = { 
+        residentType: mappedResidentType(newResidencyType),
+        villaId: villa._id
       };
-      // Sync user role in membership to the selected tenant role
-      const roleService = (await import('../role/role.services.js')).default;
-      const roleObj = await roleService.getRoleByName(newResidencyType, orgId, session);
-      const updateFields = { residentType: mappedResidentType(newResidencyType) };
       if (roleObj) {
         updateFields.roleId = roleObj._id;
         updateFields.roleIds = [roleObj._id];
       }
 
       await OrgMembership.updateOne(
-        { userId, orgId, villaId },
+        { userId, orgId, $or: [{ villaId }, { villaId: null }, { villaId: { $exists: false } }] },
         { $set: updateFields }
       ).session(session);
 

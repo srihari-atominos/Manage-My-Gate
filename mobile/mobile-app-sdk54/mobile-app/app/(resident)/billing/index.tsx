@@ -13,12 +13,19 @@ export default function BillingEntryGatewayRoute() {
 
     const permissions = user.permissions || [];
     const userRole = (user.role || '').toLowerCase();
+    const isResidentOrFamily =
+      userRole.includes('resident') ||
+      userRole.includes('family') ||
+      userRole.includes('tenant') ||
+      userRole.includes('owner');
+
     const hasAdminDashboardAccess =
-      permissions.includes('billing:dashboard') ||
-      permissions.includes('billing:assessment_manager') ||
-      userRole === 'admin' ||
-      userRole === 'accountant' ||
-      userRole === 'treasury';
+      !isResidentOrFamily &&
+      (permissions.includes('billing:dashboard') ||
+        permissions.includes('billing:assessment_manager') ||
+        userRole === 'admin' ||
+        userRole === 'accountant' ||
+        userRole === 'treasury');
 
     if (hasAdminDashboardAccess) {
       router.replace('/(resident)/admin/billing' as any);

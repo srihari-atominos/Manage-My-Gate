@@ -295,8 +295,12 @@ export class OrganizationService {
       );
       const familyPerms = getPermissionIds([
         'villas:read', 
-        'amenities:discover', 'amenities:my_booking', 'amenities:history',
-        'notices:read'
+        'amenities:discover', 'amenities:my_booking', 'amenities:history', 'amenities:wallet',
+        'notices:read', 'notices:active_board',
+        'complaints:raise_ticket', 'complaints:track_requests',
+        'visitor:resident',
+        'billing:action_center',
+        'billing:dashboard'
       ]);
       await rolePermissionService.updateRolePermissions(familyRole._id.toString(), familyPerms, session);
 
