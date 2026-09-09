@@ -263,7 +263,7 @@ class WalletService {
       session.endSession();
 
       // Emit decoupled Node events
-      paymentEventEmitter.emit(PAYMENT_SUCCESS, paymentRecord);
+      paymentEventEmitter.emit(PAYMENT_SUCCESS, paymentRecord, { alreadySettled: true });
       walletEventEmitter.emit(WALLET_UPDATED, { userId: payingUserId, orgId: targetOrgId, balance: updatedWallet.balance });
       if (isFamilyPayment) {
         walletEventEmitter.emit(WALLET_UPDATED, { userId, orgId: targetOrgId, balance: updatedWallet.balance });

@@ -137,6 +137,23 @@ export class PaymentService {
       const payment = await Payment.findById(paymentId);
       if (!payment) throw new HttpError(404, 'Payment record not found.');
 
+      if (payment.status === 'success') {
+        logger.info(`Payment transaction ${paymentId} already settled (success). Idempotent response returned.`);
+        let settledInvoice = null;
+        if (payment.referenceType === 'Invoice' && payment.referenceId) {
+          try {
+            const invoiceService = (await import('../invoice/invoice.services.js')).default;
+            settledInvoice = await invoiceService.getInvoiceById(payment.referenceId);
+          } catch (err) {}
+        }
+        return {
+          success: true,
+          message: 'Payment already verified by webhook',
+          payment,
+          invoice: settledInvoice,
+        };
+      }
+
       const activeGateway = payment.gateway || 'mock';
       let credentials = {};
       if (activeGateway !== 'mock') {
@@ -439,3 +456,7 @@ export class PaymentService {
 }
 
 export default new PaymentService();
+
+
+
+

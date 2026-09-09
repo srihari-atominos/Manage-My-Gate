@@ -147,7 +147,11 @@ amenityBookingEventEmitter.on(AMENITY_BOOKING_COMPLETED, async (booking) => {
 // Listen to Payment Events (The async payment flow)
 // ---------------------------------------------------------
 
-paymentEventEmitter.on(PAYMENT_SUCCESS, async (payment) => {
+paymentEventEmitter.on(PAYMENT_SUCCESS, async (payment, options = {}) => {
+  if (options.alreadySettled) {
+    logger.info(`Skipping PAYMENT_SUCCESS listener for AmenityBooking ${payment.referenceId} as it was settled in transaction.`);
+    return;
+  }
   if (payment.referenceType !== 'AmenityBooking') return;
 
   try {
