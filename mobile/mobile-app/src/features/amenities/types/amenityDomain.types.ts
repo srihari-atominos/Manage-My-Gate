@@ -1,0 +1,241 @@
+/**
+ * Amenity Management v2 - Domain Types
+ * Clean domain models for mobile state, presentation, and booking flow coordination.
+ */
+
+import {
+  AmenityArchetype,
+  AmenityPricingType,
+  AmenityFacilityStatus,
+  AmenityAssetState,
+  AmenityHoldType,
+  AmenityHoldStatus,
+  AmenityBookingStatus,
+  AmenityPaymentStatus,
+  AmenityApprovalStatus,
+  AmenityAccessStatus,
+  AmenityCompletionStatus,
+  AmenityPassType,
+  AmenityPassStatus,
+  AmenityMaintenanceStatus,
+  ApiPaginationMeta,
+} from './amenityApi.types';
+
+export {
+  AmenityArchetype,
+  AmenityPricingType,
+  AmenityFacilityStatus,
+  AmenityAssetState,
+  AmenityHoldType,
+  AmenityHoldStatus,
+  AmenityBookingStatus,
+  AmenityPaymentStatus,
+  AmenityApprovalStatus,
+  AmenityAccessStatus,
+  AmenityCompletionStatus,
+  AmenityPassType,
+  AmenityPassStatus,
+  AmenityMaintenanceStatus,
+};
+
+// Facility Domain Model
+export interface AmenityFacilityOperatingHour {
+  dayOfWeek: number;
+  opensAt: string;
+  closesAt: string;
+  isOpen: boolean;
+}
+
+export interface AmenityFacilityPricingConfig {
+  type: AmenityPricingType;
+  baseRate: number;
+  depositAmount: number;
+  taxRate: number;
+  currency: string;
+}
+
+export interface AmenityFacilityBookingRules {
+  minNoticeHours: number;
+  maxAdvanceBookingDays: number;
+  cancelNoticeHours: number;
+  requiresApproval: boolean;
+  maxActiveReservationsPerResident: number;
+}
+
+export interface AmenityFacility {
+  _id: string;
+  orgId: string;
+  name: string;
+  description?: string;
+  archetype: AmenityArchetype;
+  status: AmenityFacilityStatus;
+  maxCapacity: number;
+  maxHeadcountPerReservation: number;
+  slotDurationMinutes: number;
+  setupBufferMinutes: number;
+  teardownBufferMinutes: number;
+  timezone: string;
+  pricingConfig: AmenityFacilityPricingConfig;
+  bookingRules: AmenityFacilityBookingRules;
+  operatingHours: AmenityFacilityOperatingHour[];
+  images?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Resource Domain Model
+export interface AmenityResource {
+  _id: string;
+  orgId: string;
+  facilityId: string;
+  name: string;
+  identifier: string;
+  concurrencyVersion: number;
+  setupBufferMinutes: number;
+  teardownBufferMinutes: number;
+  isSerializedAsset: boolean;
+  serialNumber?: string;
+  assetState: AmenityAssetState;
+  totalBulkStock: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Discrete UI Slot Selection
+export interface AmenitySlotSelection {
+  date: string;              // "YYYY-MM-DD"
+  startTime: string;         // "HH:mm"
+  endTime: string;           // "HH:mm"
+  facilityTimezone: string;  // IANA timezone, e.g. "Asia/Riyadh" or "Asia/Kolkata"
+  utcStartDateTime: string;  // ISO string
+  utcEndDateTime: string;    // ISO string
+}
+
+// Dynamic Guest Row with client-side identifier (stripped before API submission)
+export interface AmenityGuest {
+  clientId?: string;         // In-memory unique ID for UI list keys
+  name: string;
+  phone?: string;
+  email?: string;
+}
+
+// Dynamic Availability Evaluation Result
+export interface AmenityAvailabilityResult {
+  isAvailable: boolean;
+  reason?: string;
+  availableUnits?: number;
+  maxCapacity?: number;
+  effectiveStartDateTime: string;
+  effectiveEndDateTime: string;
+}
+
+// Immutable Pricing Snapshot
+export interface AmenityPricingSnapshot {
+  baseAmount: number;
+  taxAmount: number;
+  depositAmount: number;
+  totalAmount: number;
+  currency: string;
+}
+
+// Reservation Hold State
+export interface AmenityHoldState {
+  _id: string;
+  orgId: string;
+  facilityId: string;
+  resourceId?: string;
+  userId: string;
+  unitId?: string;
+  requestedStartDateTime: string;
+  requestedEndDateTime: string;
+  headcount: number;
+  quantity: number;
+  holdType: AmenityHoldType;
+  status: AmenityHoldStatus;
+  expiresAt: string; // Authoritative backend expiration timestamp
+  pricingSnapshot?: AmenityPricingSnapshot;
+}
+
+// Complete Reservation Domain Model with Five Independent Status Dimensions
+export interface AmenityReservation {
+  _id: string;
+  orgId: string;
+  facilityId: string;
+  facilityName?: string;
+  facilityTimezone?: string;
+  resourceId?: string;
+  resourceName?: string;
+  userId: string;
+  userName?: string;
+  unitId?: string;
+  startDateTime: string; // UTC ISO string
+  endDateTime: string;   // UTC ISO string
+  headcount: number;
+  quantity: number;
+  guests?: Array<{ name: string; phone?: string; email?: string }>;
+  pricingSnapshot: AmenityPricingSnapshot;
+
+  // The Five Orthogonal State Dimensions
+  bookingStatus: AmenityBookingStatus;
+  paymentStatus: AmenityPaymentStatus;
+  approvalStatus: AmenityApprovalStatus;
+  accessStatus: AmenityAccessStatus;
+  completionStatus: AmenityCompletionStatus;
+
+  rejectionReason?: string;
+  cancellationReason?: string;
+  notes?: string;
+  holdId?: string;
+  paymentReference?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Access Pass Domain Model
+export interface AmenityAccessPass {
+  _id: string;
+  orgId: string;
+  facilityId: string;
+  facilityName?: string;
+  reservationId: string;
+  userId: string;
+  passCode: string;
+  qrData: string;
+  passType: AmenityPassType;
+  validFrom: string;
+  validUntil: string;
+  maxUses: number;
+  currentUses: number;
+  checkedInAt?: string;
+  checkedOutAt?: string;
+  status: AmenityPassStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Maintenance Block Domain Model
+export interface AmenityMaintenanceBlock {
+  _id: string;
+  orgId: string;
+  facilityId: string;
+  resourceId?: string;
+  startDateTime: string;
+  endDateTime: string;
+  reason: string;
+  blockType: string;
+  status: AmenityMaintenanceStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Normalized Error Model for Domain and Redux Store
+export interface AmenityErrorDetails {
+  message: string;
+  statusCode?: number;
+  fieldErrors?: Record<string, string>;
+  isConflict?: boolean;
+  conflictType?: 'SLOT_CAPACITY' | 'IDEMPOTENCY_MISMATCH' | 'OPERATION_IN_PROGRESS' | 'CONCURRENCY_VERSION' | 'GENERIC';
+  isHoldExpired?: boolean;
+  isNetworkError?: boolean;
+  isTimeout?: boolean;
+}

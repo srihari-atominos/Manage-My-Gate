@@ -1,6 +1,29 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import amenityService, { CreateBookingPayload, CheckInPayload } from '../services/amenityService';
+import amenityManagementService from '../services/amenityManagementService';
 import { PaginationMeta } from './amenitySlice';
+import {
+  AmenityHoldState,
+  AmenityReservation,
+  AmenityAccessPass,
+  AmenityPricingSnapshot,
+  AmenityAvailabilityResult,
+  AmenityErrorDetails,
+} from '../types/amenityDomain.types';
+import {
+  CreateHoldApiPayload,
+  ConfirmReservationApiPayload,
+  CalculatePricingApiPayload,
+  CancelReservationApiPayload,
+} from '../types/amenityApi.types';
+import {
+  normalizeHoldFromApi,
+  normalizeReservationFromApi,
+  normalizeAccessPassFromApi,
+  normalizePricingSnapshot,
+  normalizeAvailabilityFromApi,
+} from '../utils/amenityPayloadMappers';
+import { mapAmenityApiError } from '../utils/amenityErrorMapper';
 
 export interface AmenityBooking {
   _id: string;
@@ -98,6 +121,7 @@ export interface CheckInResult {
 }
 
 export interface AmenityBookingState {
+  // Legacy Booking State
   myBookings: AmenityBooking[];
   adminBookings: AmenityBooking[];
   recentScans: any[];
@@ -112,9 +136,22 @@ export interface AmenityBookingState {
   isOCCError: boolean;
   occErrorMessage: string | null;
   successMsg: string | null;
+
+  // v2 Frozen Backend State
+  activeHold: AmenityHoldState | null;
+  v2Reservations: AmenityReservation[];
+  v2CurrentReservation: AmenityReservation | null;
+  v2AccessPasses: AmenityAccessPass[];
+  v2PricingCalculation: AmenityPricingSnapshot | null;
+  v2Availability: AmenityAvailabilityResult | null;
+  v2Loading: boolean;
+  v2Holding: boolean;
+  v2Confirming: boolean;
+  v2Error: AmenityErrorDetails | null;
 }
 
 const initialState: AmenityBookingState = {
+  // Legacy
   myBookings: [],
   adminBookings: [],
   recentScans: [],
@@ -134,7 +171,23 @@ const initialState: AmenityBookingState = {
   isOCCError: false,
   occErrorMessage: null,
   successMsg: null,
+
+  // v2
+  activeHold: null,
+  v2Reservations: [],
+  v2CurrentReservation: null,
+  v2AccessPasses: [],
+  v2PricingCalculation: null,
+  v2Availability: null,
+  v2Loading: false,
+  v2Holding: false,
+  v2Confirming: false,
+  v2Error: null,
 };
+
+// ==========================================
+// Legacy Async Thunks
+// ==========================================
 
 export const fetchMyBookingsThunk = createAsyncThunk(
   'amenityBookings/fetchMyBookings',
@@ -198,6 +251,7 @@ export const createManualBookingThunk = createAsyncThunk(
     payload: {
       amenityId: string;
       residentId?: string;
+      residentName?: string;
       villaNumber?: string;
       date: string;
       startTime: string;
@@ -295,10 +349,161 @@ export const cancelBookingThunk = createAsyncThunk(
   }
 );
 
+// ==========================================
+// v2 Frozen Backend Async Thunks
+// ==========================================
+
+export const checkAvailabilityThunk = createAsyncThunk(
+  'amenityBookings/checkAvailability',
+  async (
+    params: {
+      facilityId: string;
+      resourceId?: string;
+      startDateTime: string;
+      endDateTime: string;
+      requestedQuantity?: number;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await amenityManagementService.checkAvailability(params);
+      return normalizeAvailabilityFromApi(res.data);
+    } catch (err) {
+      return rejectWithValue(mapAmenityApiError(err));
+    }
+  }
+);
+
+export const calculatePricingThunk = createAsyncThunk(
+  'amenityBookings/calculatePricing',
+  async (payload: CalculatePricingApiPayload, { rejectWithValue }) => {
+    try {
+      const res = await amenityManagementService.calculatePricing(payload);
+      return normalizePricingSnapshot(res.data);
+    } catch (err) {
+      return rejectWithValue(mapAmenityApiError(err));
+    }
+  }
+);
+
+export const createHoldThunk = createAsyncThunk(
+  'amenityBookings/createHold',
+  async (
+    { payload, idempotencyKey }: { payload: CreateHoldApiPayload; idempotencyKey?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await amenityManagementService.createHold(payload, idempotencyKey);
+      const hold = normalizeHoldFromApi(res.data.hold, res.data.pricingSnapshot);
+      return hold;
+    } catch (err) {
+      return rejectWithValue(mapAmenityApiError(err));
+    }
+  }
+);
+
+export const releaseHoldThunk = createAsyncThunk(
+  'amenityBookings/releaseHold',
+  async (holdId: string, { rejectWithValue }) => {
+    try {
+      const res = await amenityManagementService.releaseHold(holdId);
+      return { holdId, success: res.data.success };
+    } catch (err) {
+      return rejectWithValue(mapAmenityApiError(err));
+    }
+  }
+);
+
+export const confirmReservationThunk = createAsyncThunk(
+  'amenityBookings/confirmReservation',
+  async (
+    { payload, idempotencyKey }: { payload: ConfirmReservationApiPayload; idempotencyKey?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await amenityManagementService.confirmReservation(payload, idempotencyKey);
+      return normalizeReservationFromApi(res.data);
+    } catch (err) {
+      return rejectWithValue(mapAmenityApiError(err));
+    }
+  }
+);
+
+export const fetchReservationsThunk = createAsyncThunk(
+  'amenityBookings/fetchReservations',
+  async (
+    params: {
+      page?: number;
+      limit?: number;
+      facilityId?: string;
+      bookingStatus?: string;
+      paymentStatus?: string;
+      unitId?: string;
+      startDate?: string;
+      endDate?: string;
+    } = {},
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await amenityManagementService.getReservations(params);
+      return {
+        items: res.data.items.map(normalizeReservationFromApi),
+        pagination: res.data.pagination,
+      };
+    } catch (err) {
+      return rejectWithValue(mapAmenityApiError(err));
+    }
+  }
+);
+
+export const fetchReservationByIdThunk = createAsyncThunk(
+  'amenityBookings/fetchReservationById',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const res = await amenityManagementService.getReservationById(id);
+      return normalizeReservationFromApi(res.data);
+    } catch (err) {
+      return rejectWithValue(mapAmenityApiError(err));
+    }
+  }
+);
+
+export const cancelReservationThunk = createAsyncThunk(
+  'amenityBookings/cancelReservation',
+  async (
+    { id, payload }: { id: string; payload?: CancelReservationApiPayload },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await amenityManagementService.cancelReservation(id, payload);
+      return normalizeReservationFromApi(res.data);
+    } catch (err) {
+      return rejectWithValue(mapAmenityApiError(err));
+    }
+  }
+);
+
+export const fetchPassesByReservationThunk = createAsyncThunk(
+  'amenityBookings/fetchPassesByReservation',
+  async (reservationId: string, { rejectWithValue }) => {
+    try {
+      const res = await amenityManagementService.getPassesByReservation(reservationId);
+      return res.data.map(normalizeAccessPassFromApi);
+    } catch (err) {
+      return rejectWithValue(mapAmenityApiError(err));
+    }
+  }
+);
+
+// ==========================================
+// Slice Definition
+// ==========================================
+
 const amenityBookingSlice = createSlice({
   name: 'amenityBookings',
   initialState,
   reducers: {
+    // Legacy Reducers
     setActivePass: (state, action: PayloadAction<AmenityBooking | null>) => {
       state.activePass = action.payload;
     },
@@ -313,15 +518,12 @@ const amenityBookingSlice = createSlice({
     },
     upsertBooking: (state, action: PayloadAction<any>) => {
       const normalized = normalizeAmenityBooking(action.payload);
-      // Update or add in adminBookings
       const adminIndex = state.adminBookings.findIndex((b) => b._id === normalized._id);
       if (adminIndex !== -1) {
         state.adminBookings[adminIndex] = normalized;
       } else {
         state.adminBookings.unshift(normalized);
       }
-      
-      // Update or add in myBookings
       const myIndex = state.myBookings.findIndex((b) => b._id === normalized._id);
       if (myIndex !== -1) {
         state.myBookings[myIndex] = normalized;
@@ -333,10 +535,34 @@ const amenityBookingSlice = createSlice({
       state.adminBookings = state.adminBookings.filter((b) => b._id !== action.payload);
       state.myBookings = state.myBookings.filter((b) => b._id !== action.payload);
     },
+
+    // v2 Reducers
+    setActiveHold: (state, action: PayloadAction<AmenityHoldState | null>) => {
+      state.activeHold = action.payload;
+      if (action.payload?.pricingSnapshot) {
+        state.v2PricingCalculation = action.payload.pricingSnapshot;
+      }
+    },
+    clearActiveHold: (state) => {
+      state.activeHold = null;
+    },
+    clearV2Errors: (state) => {
+      state.v2Error = null;
+    },
+    resetV2BookingState: (state) => {
+      state.activeHold = null;
+      state.v2PricingCalculation = null;
+      state.v2Availability = null;
+      state.v2Error = null;
+      state.v2Holding = false;
+      state.v2Confirming = false;
+    },
   },
   extraReducers: (builder) => {
     builder
-      // My Bookings Fetch
+      // ==========================================
+      // Legacy Extra Reducers
+      // ==========================================
       .addCase(fetchMyBookingsThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -374,7 +600,6 @@ const amenityBookingSlice = createSlice({
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to fetch personal bookings';
       })
-      // Fetch Booking Queue (Master Ledger)
       .addCase(fetchBookingQueueThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -406,7 +631,6 @@ const amenityBookingSlice = createSlice({
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to fetch master booking queue';
       })
-      // Create Booking
       .addCase(createBookingThunk.pending, (state) => {
         state.creatingBooking = true;
         state.error = null;
@@ -418,12 +642,9 @@ const amenityBookingSlice = createSlice({
         state.creatingBooking = false;
         state.successMsg = 'Amenity slot successfully reserved!';
         let createdBooking = action.payload?.data || action.payload;
-        
-        // The backend returns { booking, paymentIntent } inside data
         if (createdBooking && createdBooking.booking) {
           createdBooking = createdBooking.booking;
         }
-
         if (createdBooking) {
           const normalized = normalizeAmenityBooking(createdBooking);
           state.myBookings.unshift(normalized);
@@ -443,7 +664,6 @@ const amenityBookingSlice = createSlice({
           state.error = (action.payload as string) || 'Failed to complete booking reservation';
         }
       })
-      // Security Check-In
       .addCase(checkInBookingThunk.pending, (state) => {
         state.checkingIn = true;
         state.checkInResult = null;
@@ -467,7 +687,6 @@ const amenityBookingSlice = createSlice({
           message: (action.payload as string) || 'Check-in verification failed',
         };
       })
-      // Admin Calendar Fetch
       .addCase(fetchAdminCalendarThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -482,7 +701,6 @@ const amenityBookingSlice = createSlice({
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to fetch admin calendar bookings';
       })
-      // Recent Scans Fetch
       .addCase(fetchRecentScansThunk.pending, (state) => {
         state.loading = true;
       })
@@ -495,7 +713,6 @@ const amenityBookingSlice = createSlice({
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to fetch gate audit scans';
       })
-      // Dashboard Stats Fetch
       .addCase(fetchDashboardStatsThunk.pending, (state) => {
         state.loading = true;
       })
@@ -507,7 +724,6 @@ const amenityBookingSlice = createSlice({
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to fetch dashboard metrics';
       })
-      // Cancel Booking
       .addCase(cancelBookingThunk.pending, (state) => {
         state.loading = true;
       })
@@ -522,6 +738,145 @@ const amenityBookingSlice = createSlice({
       .addCase(cancelBookingThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = (action.payload as string) || 'Failed to cancel booking';
+      })
+
+      // ==========================================
+      // v2 Extra Reducers
+      // ==========================================
+      // Availability Check
+      .addCase(checkAvailabilityThunk.pending, (state) => {
+        state.v2Loading = true;
+        state.v2Error = null;
+      })
+      .addCase(checkAvailabilityThunk.fulfilled, (state, action) => {
+        state.v2Loading = false;
+        state.v2Availability = action.payload;
+      })
+      .addCase(checkAvailabilityThunk.rejected, (state, action) => {
+        state.v2Loading = false;
+        state.v2Error = action.payload as AmenityErrorDetails;
+      })
+
+      // Pricing Calculation
+      .addCase(calculatePricingThunk.pending, (state) => {
+        state.v2Loading = true;
+        state.v2Error = null;
+      })
+      .addCase(calculatePricingThunk.fulfilled, (state, action) => {
+        state.v2Loading = false;
+        state.v2PricingCalculation = action.payload;
+      })
+      .addCase(calculatePricingThunk.rejected, (state, action) => {
+        state.v2Loading = false;
+        state.v2Error = action.payload as AmenityErrorDetails;
+      })
+
+      // Hold Creation
+      .addCase(createHoldThunk.pending, (state) => {
+        state.v2Holding = true;
+        state.v2Error = null;
+      })
+      .addCase(createHoldThunk.fulfilled, (state, action) => {
+        state.v2Holding = false;
+        state.activeHold = action.payload;
+        if (action.payload.pricingSnapshot) {
+          state.v2PricingCalculation = action.payload.pricingSnapshot;
+        }
+      })
+      .addCase(createHoldThunk.rejected, (state, action) => {
+        state.v2Holding = false;
+        state.v2Error = action.payload as AmenityErrorDetails;
+      })
+
+      // Release Hold
+      .addCase(releaseHoldThunk.fulfilled, (state, action) => {
+        if (state.activeHold && state.activeHold._id === action.payload.holdId) {
+          state.activeHold = null;
+        }
+      })
+
+      // Confirm Reservation
+      .addCase(confirmReservationThunk.pending, (state) => {
+        state.v2Confirming = true;
+        state.v2Error = null;
+      })
+      .addCase(confirmReservationThunk.fulfilled, (state, action) => {
+        state.v2Confirming = false;
+        state.v2CurrentReservation = action.payload;
+        state.activeHold = null; // Clear active hold on successful confirmation
+        state.v2Reservations.unshift(action.payload);
+      })
+      .addCase(confirmReservationThunk.rejected, (state, action) => {
+        state.v2Confirming = false;
+        state.v2Error = action.payload as AmenityErrorDetails;
+      })
+
+      // Fetch Reservations
+      .addCase(fetchReservationsThunk.pending, (state) => {
+        state.v2Loading = true;
+        state.v2Error = null;
+      })
+      .addCase(fetchReservationsThunk.fulfilled, (state, action) => {
+        state.v2Loading = false;
+        state.v2Reservations = action.payload.items;
+        state.pagination = {
+          currentPage: action.payload.pagination.page,
+          totalPages: action.payload.pagination.pages,
+          totalRecords: action.payload.pagination.total,
+          limit: action.payload.pagination.limit,
+        };
+      })
+      .addCase(fetchReservationsThunk.rejected, (state, action) => {
+        state.v2Loading = false;
+        state.v2Error = action.payload as AmenityErrorDetails;
+      })
+
+      // Fetch Reservation By ID
+      .addCase(fetchReservationByIdThunk.pending, (state) => {
+        state.v2Loading = true;
+        state.v2Error = null;
+      })
+      .addCase(fetchReservationByIdThunk.fulfilled, (state, action) => {
+        state.v2Loading = false;
+        state.v2CurrentReservation = action.payload;
+      })
+      .addCase(fetchReservationByIdThunk.rejected, (state, action) => {
+        state.v2Loading = false;
+        state.v2Error = action.payload as AmenityErrorDetails;
+      })
+
+      // Cancel Reservation
+      .addCase(cancelReservationThunk.pending, (state) => {
+        state.v2Loading = true;
+        state.v2Error = null;
+      })
+      .addCase(cancelReservationThunk.fulfilled, (state, action) => {
+        state.v2Loading = false;
+        const updated = action.payload;
+        if (state.v2CurrentReservation?._id === updated._id) {
+          state.v2CurrentReservation = updated;
+        }
+        state.v2Reservations = state.v2Reservations.map((r) =>
+          r._id === updated._id ? updated : r
+        );
+      })
+      .addCase(cancelReservationThunk.rejected, (state, action) => {
+        state.v2Loading = false;
+        state.v2Error = action.payload as AmenityErrorDetails;
+      })
+
+      // Fetch Passes
+      .addCase(fetchPassesByReservationThunk.pending, (state) => {
+        state.v2Loading = true;
+        state.v2Error = null;
+      })
+      .addCase(fetchPassesByReservationThunk.fulfilled, (state, action) => {
+        state.v2Loading = false;
+        state.v2AccessPasses = action.payload;
+      })
+      .addCase(fetchPassesByReservationThunk.rejected, (state, action) => {
+        state.v2Loading = false;
+        state.v2Error = action.payload as AmenityErrorDetails;
       });
   },
 });
@@ -532,6 +887,10 @@ export const {
   clearBookingStatus,
   upsertBooking,
   removeBooking,
+  setActiveHold,
+  clearActiveHold,
+  clearV2Errors,
+  resetV2BookingState,
 } = amenityBookingSlice.actions;
 
 export default amenityBookingSlice.reducer;
