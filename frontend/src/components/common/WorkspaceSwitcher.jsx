@@ -19,8 +19,8 @@ export const WorkspaceSwitcher = () => {
   const navigate = useNavigate()
   const { availableWorkspaces, activeWorkspace, handleSwitchWorkspace } = useWorkspaceSwitcher()
 
-  // Do not render switcher if there is only 1 or no workspaces available
-  if (!availableWorkspaces || availableWorkspaces.length <= 1) {
+  // Do not render switcher if there are no workspaces available
+  if (!availableWorkspaces || availableWorkspaces.length === 0) {
     return null
   }
 

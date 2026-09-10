@@ -1,25 +1,34 @@
-import React from 'react'
-import { CContainer, CRow, CCol } from '@coreui/react'
-import AcceptInviteForm from '../../../features/auth/components/AcceptInviteForm'
+import React, { useEffect } from 'react'
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
+import { CSpinner } from '@coreui/react'
 
 /**
- * AcceptInvitePage Component
+ * AcceptInvitePage (Legacy Route)
  *
- * simple layout page wrapper centering the invitation/password-set form.
+ * Backward-compatibility redirect handler that smoothly redirects
+ * legacy /accept-invite/:token requests to the canonical universal /invite/:token entry point.
  */
 const AcceptInvitePage = () => {
+  const { token: routeToken } = useParams()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
+  const token = routeToken || searchParams.get('token') || ''
+
+  useEffect(() => {
+    if (token) {
+      navigate(`/invite/${token}`, { replace: true })
+    } else {
+      navigate('/login', { replace: true })
+    }
+  }, [token, navigate])
+
   return (
-    <div
-      className="min-vh-100 d-flex flex-row align-items-center"
-      style={{ backgroundColor: '#f8f9fa' }}
-    >
-      <CContainer>
-        <CRow className="justify-content-center">
-          <CCol md={10} className="d-flex justify-content-center">
-            <AcceptInviteForm />
-          </CCol>
-        </CRow>
-      </CContainer>
+    <div className="min-vh-100 d-flex flex-row align-items-center justify-content-center bg-dark text-white">
+      <div className="text-center">
+        <CSpinner color="primary" variant="grow" className="mb-3" />
+        <h5>Redirecting to workspace invitation...</h5>
+      </div>
     </div>
   )
 }

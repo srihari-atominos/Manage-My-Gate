@@ -9,8 +9,10 @@ export class OrganizationRepository {
   }
 
   async findByName(name, session = null) {
+    if (!name || typeof name !== 'string') return null;
+    const escapedName = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return await Organization.findOne({
-      name: { $regex: new RegExp(`^${name.trim()}$`, 'i') },
+      name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
     }).session(session);
   }
 

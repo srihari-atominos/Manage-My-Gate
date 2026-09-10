@@ -1,5 +1,43 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import organizationApi from '../services/organizationApi.js'
+import { updateTokenAndUser } from '../../auth/store/authSlice.js'
+import { setActiveWorkspace } from '../../workspace/store/workspaceSlice.js'
+
+export const createOrganization = createAsyncThunk(
+  'organization/createOrganization',
+  async (workspaceData, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await organizationApi.setupWorkspace(workspaceData)
+
+      const token = response.data?.token
+      const user = response.data?.user
+      const availableWorkspaces = response.data?.availableWorkspaces || []
+
+      if (token && user) {
+        dispatch(updateTokenAndUser({ token, user }))
+      }
+
+      if (user) {
+        dispatch(
+          setActiveWorkspace({
+            activeOrganizationId: user.orgId,
+            activeVillaId: user.villaId || null,
+            activeRole: user.role,
+            allowedFeatures: user.permissions || [],
+            isPlatform: user.isPlatform || false,
+            availableWorkspaces: availableWorkspaces,
+          }),
+        )
+      }
+
+      return response.data
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to create organization',
+      )
+    }
+  },
+)
 
 export const loadOrganizations = createAsyncThunk(
   'organization/loadOrganizations',
@@ -77,6 +115,10 @@ const initialState = {
   loading: false,
   error: null,
 
+  createLoading: false,
+  createError: null,
+  currentCreatedOrganization: null,
+
   selectedOrganization: null,
   detailsLoading: false,
   detailsError: null,
@@ -102,8 +144,14 @@ export const organizationSlice = createSlice({
   name: 'organization',
   initialState,
   reducers: {
+    clearCreateOrganizationState: (state) => {
+      state.createLoading = false
+      state.createError = null
+      state.currentCreatedOrganization = null
+    },
     clearOrganizationError: (state) => {
       state.error = null
+      state.createError = null
       state.detailsError = null
       state.users.error = null
     },
@@ -214,10 +262,31 @@ export const organizationSlice = createSlice({
         state.users.userDrawerLoading = false
         state.users.error = action.payload || 'Failed to load user details'
       })
+      // createOrganization
+      .addCase(createOrganization.pending, (state) => {
+        state.createLoading = true
+        state.createError = null
+      })
+      .addCase(createOrganization.fulfilled, (state, action) => {
+        state.createLoading = false
+        state.createError = null
+        const createdUser = action.payload?.user
+        if (createdUser?.orgId) {
+          state.currentCreatedOrganization = {
+            id: createdUser.orgId,
+            name: createdUser.organizationName || createdUser.orgName,
+          }
+        }
+      })
+      .addCase(createOrganization.rejected, (state, action) => {
+        state.createLoading = false
+        state.createError = action.payload || 'Failed to create organization'
+      })
   },
 })
 
 export const {
+  clearCreateOrganizationState,
   clearOrganizationError,
   setUserSearch,
   setUserRoleFilter,

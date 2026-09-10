@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { useRouter } from 'expo-router';
-import { Home, X, Settings, ShieldCheck, Mail, Building2, ChevronRight, Users, Sparkles } from 'lucide-react-native';
+import { Home, X, Settings, Mail, Building2, ChevronRight, Users, Sparkles } from 'lucide-react-native';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useSettings } from '@/src/features/settings/hooks/useSettings';
 import { ThemeToggleSwitch } from '@/components/settings/ThemeToggleSwitch';
@@ -177,26 +177,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <ChevronRight size={15} className="text-muted-foreground" />
                 </TouchableOpacity>
 
-                {/* Switch Role */}
-                <TouchableOpacity
-                  onPress={() => {
-                    onClose();
-                    if (onOpenRoleModal) onOpenRoleModal();
-                  }}
-                  activeOpacity={0.7}
-                  className="bg-card border border-border/80 rounded-xl p-3 flex-row items-center justify-between active:bg-secondary/50 shadow-xs"
-                >
-                  <View className="flex-row items-center gap-3">
-                    <View className="bg-primary/10 border border-primary/20 p-2 rounded-lg">
-                      <ShieldCheck size={16} className="text-primary" />
-                    </View>
-                    <View>
-                      <Text className="text-xs font-bold text-foreground">{t('switch_role', 'Switch Role Persona')}</Text>
-                      <Text className="text-[10px] text-muted-foreground">{dynamicRole}</Text>
-                    </View>
-                  </View>
-                  <ChevronRight size={15} className="text-muted-foreground" />
-                </TouchableOpacity>
+
+
 
                 {/* Switch Villa Unit */}
                 <TouchableOpacity

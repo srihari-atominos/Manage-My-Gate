@@ -84,6 +84,12 @@ export const config = {
     microsoftClientId: process.env.MICROSOFT_CLIENT_ID || '',
     microsoftTenantId: process.env.MICROSOFT_TENANT_ID || '',
   },
+  mobile: {
+    scheme: process.env.MOBILE_APP_SCHEME || 'managemygate',
+    universalLinkDomain: process.env.MOBILE_UNIVERSAL_LINK_DOMAIN || 'app.managemygate.com',
+    androidPackageName: process.env.MOBILE_ANDROID_PACKAGE_NAME || 'com.atominos.managemygate',
+    iosAppStoreId: process.env.MOBILE_IOS_APP_STORE_ID || '6470000000',
+  },
 };
 
 export default config;

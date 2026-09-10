@@ -6,6 +6,7 @@ const organizationSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 100,
     },
     status: {
       type: String,
@@ -94,6 +95,12 @@ const organizationSchema = new mongoose.Schema(
   {
     timestamps: true,
   }
+);
+
+// Enforce database-level case-insensitive uniqueness on organization name
+organizationSchema.index(
+  { name: 1 },
+  { unique: true, collation: { locale: 'en', strength: 2 } }
 );
 
 export const Organization = mongoose.model('Organization', organizationSchema);

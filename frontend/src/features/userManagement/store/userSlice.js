@@ -72,6 +72,55 @@ export const updateUserRolesAsync = createAsyncThunk(
   },
 )
 
+export const fetchInvitationsAsync = createAsyncThunk(
+  'userManagement/fetchInvitations',
+  async ({ page, limit, status, search, sortBy, sortOrder } = {}, { getState, rejectWithValue }) => {
+    try {
+      const invState = getState().userManagement.invitations
+      const targetPage = page !== undefined ? page : invState.currentPage
+      const targetLimit = limit !== undefined ? limit : invState.rowsPerPage
+      const targetStatus = status !== undefined ? status : invState.statusFilter
+      const targetSearch = search !== undefined ? search : invState.searchQuery
+
+      const response = await userApi.fetchInvitations({
+        page: targetPage,
+        limit: targetLimit,
+        status: targetStatus,
+        search: targetSearch,
+        sortBy: sortBy || 'createdAt',
+        sortOrder: sortOrder || 'desc',
+      })
+      return response
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch invitations')
+    }
+  },
+)
+
+export const resendInvitationAsync = createAsyncThunk(
+  'userManagement/resendInvitation',
+  async (invitationId, { rejectWithValue }) => {
+    try {
+      const response = await userApi.resendInvitation(invitationId)
+      return response
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to resend invitation')
+    }
+  },
+)
+
+export const revokeInvitationAsync = createAsyncThunk(
+  'userManagement/revokeInvitation',
+  async (invitationId, { rejectWithValue }) => {
+    try {
+      const response = await userApi.revokeInvitation(invitationId)
+      return response
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to revoke invitation')
+    }
+  },
+)
+
 const initialState = {
   users: [],
   searchQuery: '',
@@ -83,6 +132,18 @@ const initialState = {
   totalPages: 1,
   loading: false,
   error: null,
+  invitations: {
+    items: [],
+    currentPage: 1,
+    rowsPerPage: 10,
+    totalRecords: 0,
+    totalPages: 1,
+    statusFilter: 'ALL',
+    searchQuery: '',
+    loading: false,
+    actionLoadingId: null,
+    error: null,
+  },
 }
 
 const userSlice = createSlice({
@@ -120,6 +181,21 @@ const userSlice = createSlice({
     clearUsers: (state) => {
       state.users = []
       state.totalRecords = 0
+    },
+    setInvitationSearchQuery: (state, action) => {
+      state.invitations.searchQuery = action.payload
+      state.invitations.currentPage = 1
+    },
+    setInvitationStatusFilter: (state, action) => {
+      state.invitations.statusFilter = action.payload
+      state.invitations.currentPage = 1
+    },
+    setInvitationCurrentPage: (state, action) => {
+      state.invitations.currentPage = action.payload
+    },
+    setInvitationRowsPerPage: (state, action) => {
+      state.invitations.rowsPerPage = action.payload
+      state.invitations.currentPage = 1
     },
   },
   extraReducers: (builder) => {
@@ -196,6 +272,46 @@ const userSlice = createSlice({
         state.loading = false
         state.error = action.payload || 'Failed to update user roles'
       })
+      // Fetch Invitations
+      .addCase(fetchInvitationsAsync.pending, (state) => {
+        state.invitations.loading = true
+        state.invitations.error = null
+      })
+      .addCase(fetchInvitationsAsync.fulfilled, (state, action) => {
+        state.invitations.loading = false
+        const payloadData = action.payload?.data || action.payload
+        state.invitations.items = payloadData?.records || []
+        state.invitations.totalRecords = payloadData?.totalRecords || 0
+        state.invitations.currentPage = payloadData?.currentPage || 1
+        state.invitations.totalPages = payloadData?.totalPages || 1
+        if (payloadData?.limit) {
+          state.invitations.rowsPerPage = payloadData.limit
+        }
+      })
+      .addCase(fetchInvitationsAsync.rejected, (state, action) => {
+        state.invitations.loading = false
+        state.invitations.error = action.payload || 'Failed to fetch invitations'
+      })
+      // Resend Invitation
+      .addCase(resendInvitationAsync.pending, (state, action) => {
+        state.invitations.actionLoadingId = action.meta.arg
+      })
+      .addCase(resendInvitationAsync.fulfilled, (state) => {
+        state.invitations.actionLoadingId = null
+      })
+      .addCase(resendInvitationAsync.rejected, (state) => {
+        state.invitations.actionLoadingId = null
+      })
+      // Revoke Invitation
+      .addCase(revokeInvitationAsync.pending, (state, action) => {
+        state.invitations.actionLoadingId = action.meta.arg
+      })
+      .addCase(revokeInvitationAsync.fulfilled, (state) => {
+        state.invitations.actionLoadingId = null
+      })
+      .addCase(revokeInvitationAsync.rejected, (state) => {
+        state.invitations.actionLoadingId = null
+      })
   },
 })
 
@@ -207,6 +323,10 @@ export const {
   setCurrentPage,
   setRowsPerPage,
   clearUsers,
+  setInvitationSearchQuery,
+  setInvitationStatusFilter,
+  setInvitationCurrentPage,
+  setInvitationRowsPerPage,
 } = userSlice.actions
 
 export default userSlice.reducer

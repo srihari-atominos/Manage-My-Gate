@@ -40,6 +40,45 @@ export class TokenRepository {
   }
 
   /**
+   * Finds a token document by its ID.
+   * @param {string|mongoose.Types.ObjectId} id
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async findById(id, session) {
+    return await Token.findById(id).session(session || null);
+  }
+
+  /**
+   * Finds multiple token documents matching query.
+   * @param {Object} query
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async find(query, session) {
+    return await Token.find(query).session(session || null);
+  }
+
+  /**
+   * Finds and updates a single token document atomically.
+   * @param {Object} query
+   * @param {Object} update
+   * @param {Object} [options={}]
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async findOneAndUpdate(query, update, options = {}, session = null) {
+    return await Token.findOneAndUpdate(query, update, { returnDocument: 'after', ...options }).session(session || null);
+  }
+
+  /**
+   * Updates multiple token documents matching query.
+   * @param {Object} query
+   * @param {Object} update
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async updateMany(query, update, session = null) {
+    return await Token.updateMany(query, update).session(session || null);
+  }
+
+  /**
    * Deletes multiple token documents matching query.
    * @param {Object} query
    * @param {import('mongoose').ClientSession} [session]
@@ -47,6 +86,16 @@ export class TokenRepository {
   async deleteMany(query, session) {
     return await Token.deleteMany(query, session ? { session } : undefined);
   }
+
+  /**
+   * Runs an aggregation pipeline on the Token collection.
+   * @param {Array<Object>} pipeline
+   * @param {import('mongoose').ClientSession} [session]
+   */
+  async aggregate(pipeline, session = null) {
+    return await Token.aggregate(pipeline).session(session || null);
+  }
 }
 
 export default new TokenRepository();
+

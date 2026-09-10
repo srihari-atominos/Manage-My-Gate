@@ -136,7 +136,9 @@ export const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClose
 
     // Handle invitation link routing
     if (finalActionUrl.includes('/invite/web/')) {
-      finalActionUrl = '/invite/web/' + finalActionUrl.split('/invite/web/')[1]
+      finalActionUrl = '/invite/' + finalActionUrl.split('/invite/web/')[1]
+    } else if (finalActionUrl.includes('/invite/app/')) {
+      finalActionUrl = '/invite/' + finalActionUrl.split('/invite/app/')[1]
     } else if (finalActionUrl.includes('/invite/')) {
       finalActionUrl = '/invite/' + finalActionUrl.split('/invite/')[1]
     } else if (finalActionUrl.startsWith('/complaints/')) {

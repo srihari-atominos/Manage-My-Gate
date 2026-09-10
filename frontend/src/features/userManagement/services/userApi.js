@@ -88,3 +88,49 @@ export const bulkInviteUsers = async (invitations) => {
   )
   return response.data
 }
+
+/**
+ * Fetches organization invitations with pagination, status filtering, and search.
+ * @param {Object} params
+ * @returns {Promise<Object>}
+ */
+export const fetchInvitations = async ({
+  page = 1,
+  limit = 10,
+  status = 'ALL',
+  search = '',
+  sortBy = 'createdAt',
+  sortOrder = 'desc',
+} = {}) => {
+  const params = new URLSearchParams()
+  params.append('page', page)
+  params.append('limit', limit)
+  if (status && status !== 'ALL') params.append('status', status)
+  if (search) params.append('search', search)
+  if (sortBy) params.append('sortBy', sortBy)
+  if (sortOrder) params.append('sortOrder', sortOrder)
+
+  const response = await apiClient.get(`/users/invitations?${params.toString()}`)
+  return response.data
+}
+
+/**
+ * Resends an eligible invitation with a newly minted secure token.
+ * @param {string} invitationId
+ * @returns {Promise<Object>}
+ */
+export const resendInvitation = async (invitationId) => {
+  const response = await apiClient.post(`/users/invitations/${invitationId}/resend`)
+  return response.data
+}
+
+/**
+ * Revokes a pending invitation.
+ * @param {string} invitationId
+ * @returns {Promise<Object>}
+ */
+export const revokeInvitation = async (invitationId) => {
+  const response = await apiClient.post(`/users/invitations/${invitationId}/revoke`)
+  return response.data
+}
+

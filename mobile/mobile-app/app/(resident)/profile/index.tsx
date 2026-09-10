@@ -17,6 +17,7 @@ import { useTranslation } from '@/src/utils/i18n';
 import { Save, Camera, Image as ImageIcon, FileUp } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import { validateEmail, validatePhone, parseBackendError } from '@/src/utils/validation';
 
 interface SelectedAvatarFile {
   uri: string;
@@ -47,6 +48,8 @@ export default function ProfileScreen() {
 
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; email?: string; phone?: string }>({});
+  const [touched, setTouched] = useState<{ name?: boolean; email?: boolean; phone?: boolean }>({});
 
   // Email verification OTP modal state
   const [showEmailOtpModal, setShowEmailOtpModal] = useState(false);
@@ -248,20 +251,36 @@ export default function ProfileScreen() {
         setTimeout(() => setProfileSuccess(null), 3500);
         return true;
       } else {
-        const err = res.payload || t('failed_to_update_profile', 'Failed to update profile');
+        const parsed = parseBackendError(res.payload, t('failed_to_update_profile', 'Failed to update profile'));
+        const err = parsed.userMessage;
         if (emailToUpdate) {
-          setEmailOtpError(String(err));
+          setEmailOtpError(err);
         } else {
-          Alert.alert(t('error', 'Error'), String(err));
+          const lower = err.toLowerCase();
+          if (lower.includes('email')) {
+            setFieldErrors((prev) => ({ ...prev, email: err }));
+          } else if (lower.includes('phone') || lower.includes('mobile')) {
+            setFieldErrors((prev) => ({ ...prev, phone: err }));
+          } else {
+            Alert.alert(t('error', 'Error'), err);
+          }
         }
         return false;
       }
     } catch (error: any) {
-      const msg = error?.message || t('failed_to_update_profile', 'Failed to update profile');
+      const parsed = parseBackendError(error, t('failed_to_update_profile', 'Failed to update profile'));
+      const msg = parsed.userMessage;
       if (emailToUpdate) {
         setEmailOtpError(msg);
       } else {
-        Alert.alert(t('error', 'Error'), msg);
+        const lower = msg.toLowerCase();
+        if (lower.includes('email')) {
+          setFieldErrors((prev) => ({ ...prev, email: msg }));
+        } else if (lower.includes('phone') || lower.includes('mobile')) {
+          setFieldErrors((prev) => ({ ...prev, phone: msg }));
+        } else {
+          Alert.alert(t('error', 'Error'), msg);
+        }
       }
       return false;
     } finally {
@@ -270,8 +289,12 @@ export default function ProfileScreen() {
   };
 
   const handleSaveProfile = async () => {
-    if (!name.trim()) {
-      Alert.alert(t('validation_error', 'Validation Error'), t('name_required', 'Please enter your name.'));
+    setTouched({ name: true, email: true, phone: true });
+    setFieldErrors({});
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setFieldErrors((prev) => ({ ...prev, name: t('name_required', 'Please enter your name.') }));
       return;
     }
 
@@ -279,9 +302,21 @@ export default function ProfileScreen() {
     const currentEmail = (user?.email || '').trim().toLowerCase();
 
     // Check email format if provided
-    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      Alert.alert(t('validation_error', 'Validation Error'), t('invalid_email', 'Please enter a valid email address.'));
-      return;
+    if (trimmedEmail) {
+      const emailRes = validateEmail(trimmedEmail);
+      if (emailRes.status === 'invalid' || emailRes.status === 'incomplete') {
+        setFieldErrors((prev) => ({ ...prev, email: emailRes.message || t('invalid_email', 'Please enter a valid email address.') }));
+        return;
+      }
+    }
+
+    const trimmedPhone = phone.trim();
+    if (trimmedPhone) {
+      const phoneRes = validatePhone(trimmedPhone, 'IN');
+      if (phoneRes.status === 'invalid') {
+        setFieldErrors((prev) => ({ ...prev, phone: phoneRes.message }));
+        return;
+      }
     }
 
     // If user has changed their email address, request verification OTP
@@ -299,8 +334,12 @@ export default function ProfileScreen() {
         setPendingNewEmail(trimmedEmail);
         setShowEmailOtpModal(true);
       } catch (err: any) {
-        const errorMsg = err?.response?.data?.message || err?.message || t('failed_send_otp', 'Failed to send verification OTP');
-        Alert.alert(t('error', 'Error'), errorMsg);
+        const errorMsg = parseBackendError(err, t('failed_send_otp', 'Failed to send verification OTP')).userMessage;
+        if (errorMsg.toLowerCase().includes('email')) {
+          setFieldErrors((prev) => ({ ...prev, email: errorMsg }));
+        } else {
+          Alert.alert(t('error', 'Error'), errorMsg);
+        }
       } finally {
         setProfileSaving(false);
       }
@@ -386,9 +425,26 @@ export default function ProfileScreen() {
           <View className="bg-card border border-border rounded-2xl p-4 shadow-xs gap-3.5">
             <TextInput
               label={t('full_name', 'Full Name')}
+              required
               placeholder="e.g. Naveen"
               value={name}
-              onChangeText={setName}
+              onChangeText={(val) => {
+                setName(val);
+                if (touched.name && !val.trim()) {
+                  setFieldErrors((prev) => ({ ...prev, name: t('name_required', 'Please enter your name.') }));
+                } else if (fieldErrors.name) {
+                  setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                }
+              }}
+              onBlur={() => setTouched((prev) => ({ ...prev, name: true }))}
+              status={fieldErrors.name ? 'invalid' : touched.name && name.trim() ? 'valid' : 'idle'}
+              error={fieldErrors.name}
+              clearable
+              onClear={() => {
+                setName('');
+                setTouched((prev) => ({ ...prev, name: true }));
+                setFieldErrors((prev) => ({ ...prev, name: t('name_required', 'Please enter your name.') }));
+              }}
             />
 
             <TextInput
@@ -397,7 +453,35 @@ export default function ProfileScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(val) => {
+                setEmail(val);
+                if (fieldErrors.email) {
+                  setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                }
+              }}
+              onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
+              status={
+                fieldErrors.email
+                  ? 'invalid'
+                  : email.trim()
+                  ? validateEmail(email).status === 'valid'
+                    ? 'valid'
+                    : validateEmail(email).status === 'incomplete' && touched.email
+                    ? 'incomplete'
+                    : 'idle'
+                  : 'idle'
+              }
+              helperText={
+                !fieldErrors.email && email.trim() && touched.email && validateEmail(email).status === 'incomplete'
+                  ? validateEmail(email).message
+                  : undefined
+              }
+              error={fieldErrors.email}
+              clearable
+              onClear={() => {
+                setEmail('');
+                setFieldErrors((prev) => ({ ...prev, email: undefined }));
+              }}
             />
 
             <TextInput
@@ -405,7 +489,35 @@ export default function ProfileScreen() {
               placeholder="e.g. +91 9876543210"
               keyboardType="phone-pad"
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(val) => {
+                setPhone(val);
+                if (fieldErrors.phone) {
+                  setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                }
+              }}
+              onBlur={() => setTouched((prev) => ({ ...prev, phone: true }))}
+              status={
+                fieldErrors.phone
+                  ? 'invalid'
+                  : phone.trim()
+                  ? validatePhone(phone, 'IN').status === 'valid'
+                    ? 'valid'
+                    : validatePhone(phone, 'IN').status === 'incomplete' && touched.phone
+                    ? 'incomplete'
+                    : 'idle'
+                  : 'idle'
+              }
+              helperText={
+                !fieldErrors.phone && phone.trim() && touched.phone
+                  ? validatePhone(phone, 'IN').message
+                  : undefined
+              }
+              error={fieldErrors.phone}
+              clearable
+              onClear={() => {
+                setPhone('');
+                setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+              }}
             />
 
             {profileSuccess && <SuccessToast message={profileSuccess} />}

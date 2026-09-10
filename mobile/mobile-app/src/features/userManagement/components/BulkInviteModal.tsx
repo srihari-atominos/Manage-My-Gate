@@ -20,6 +20,7 @@ import { Button } from '@/components/common/Button';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { downloadCSVFile } from '@/src/utils/downloadHelper';
+import { validateEmail, parseBackendError } from '@/src/utils/validation';
 import apiClient from '../../../services/apiClient';
 import { InviteUserData } from '../services/userService';
 
@@ -97,13 +98,19 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
   }, [visible]);
 
   // Validate a row item
-  const validateRow = (row: InviteRowItem, currentRoles = roles): InviteRowItem => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const validateRow = (row: InviteRowItem, currentRoles = roles, allRows: InviteRowItem[] = rows): InviteRowItem => {
     if (!row.email.trim()) {
       return { ...row, isValid: false, error: 'Email is required' };
     }
-    if (!emailRegex.test(row.email.trim())) {
-      return { ...row, isValid: false, error: 'Invalid email format' };
+    const emailRes = validateEmail(row.email.trim());
+    if (!emailRes.isValid) {
+      return { ...row, isValid: false, error: emailRes.message || 'Invalid email format' };
+    }
+    const hasDuplicate = allRows.some(
+      (r) => r.id !== row.id && r.email.trim().toLowerCase() === row.email.trim().toLowerCase()
+    );
+    if (hasDuplicate) {
+      return { ...row, isValid: false, error: 'Duplicate email in this list' };
     }
     if (!row.roleName) {
       return { ...row, isValid: false, error: 'Role is required' };
@@ -267,7 +274,8 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
       const res = await onBulkInvite(payload);
       setSuccessResults(res || { invitedCount: payload.length });
     } catch (err: any) {
-      setErrorMsg(typeof err === 'string' ? err : err?.message || 'Failed to send bulk invitations');
+      const parsed = parseBackendError(err, 'Failed to send bulk invitations');
+      setErrorMsg(parsed.userMessage);
     } finally {
       setSubmitting(false);
     }
@@ -288,7 +296,7 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
   return (
     <Modal visible={visible} transparent statusBarTranslucent={true} animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <View className="flex-1 justify-end bg-black/50">

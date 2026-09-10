@@ -16,22 +16,27 @@ export const isMockRazorpayKey = (key) => {
   return false;
 };
 
+const env = (typeof import.meta !== 'undefined' && import.meta?.env) ? import.meta.env : (typeof process !== 'undefined' ? process.env : {})
+
 export const config = {
-  isDev: import.meta.env.DEV || import.meta.env.MODE === 'development',
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '/api',
-  apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:5002/api',
+  isDev: Boolean(env.DEV || env.MODE === 'development'),
+  apiBaseUrl: env.VITE_API_BASE_URL || '/api',
+  apiUrl: env.VITE_API_URL || 'http://localhost:5002/api',
   socketUrl:
-    import.meta.env.VITE_SOCKET_URL ||
+    env.VITE_SOCKET_URL ||
     (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5002'),
-  googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
-  microsoftClientId: import.meta.env.VITE_MICROSOFT_CLIENT_ID || '',
-  microsoftTenantId: import.meta.env.VITE_MICROSOFT_TENANT_ID || 'common',
-  razorpayKey: import.meta.env.VITE_RAZORPAY_KEY || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_mockkey',
-  razorpayKeyId: import.meta.env.VITE_RAZORPAY_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY || 'rzp_test_mockkey',
+  googleClientId: env.VITE_GOOGLE_CLIENT_ID || '',
+  microsoftClientId: env.VITE_MICROSOFT_CLIENT_ID || '',
+  microsoftTenantId: env.VITE_MICROSOFT_TENANT_ID || 'common',
+  razorpayKey: env.VITE_RAZORPAY_KEY || env.VITE_RAZORPAY_KEY_ID || 'rzp_test_mockkey',
+  razorpayKeyId: env.VITE_RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY || 'rzp_test_mockkey',
   publicUrl:
-    import.meta.env.VITE_PUBLIC_URL ||
+    env.VITE_PUBLIC_URL ||
     (typeof window !== 'undefined' ? window.location.origin : ''),
-  appName: import.meta.env.VITE_APP_NAME || 'Portal',
+  appName: env.VITE_APP_NAME || 'Portal',
+  androidPackage: env.VITE_ANDROID_PACKAGE || 'com.atominosconsulting.nahom',
+  playStoreUrl: env.VITE_PLAY_STORE_URL || 'https://play.google.com/store/apps/details?id=com.atominosconsulting.nahom',
+  customScheme: env.VITE_MOBILE_CUSTOM_SCHEME || 'managemygate',
 }
 
 export default config
