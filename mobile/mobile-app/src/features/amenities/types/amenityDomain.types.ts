@@ -103,17 +103,18 @@ export interface AmenityResource {
 
 // Discrete UI Slot Selection
 export interface AmenitySlotSelection {
-  date: string;              // "YYYY-MM-DD"
-  startTime: string;         // "HH:mm"
-  endTime: string;           // "HH:mm"
-  facilityTimezone: string;  // IANA timezone, e.g. "Asia/Riyadh" or "Asia/Kolkata"
-  utcStartDateTime: string;  // ISO string
-  utcEndDateTime: string;    // ISO string
+  date: string; // "YYYY-MM-DD"
+  startTime: string; // "HH:mm"
+  endTime: string; // "HH:mm"
+  facilityTimezone?: string; // IANA timezone, e.g. "Asia/Riyadh" or "Asia/Kolkata"
+  utcStartDateTime: string; // ISO string
+  utcEndDateTime: string; // ISO string
+  slotId?: string;
 }
 
 // Dynamic Guest Row with client-side identifier (stripped before API submission)
 export interface AmenityGuest {
-  clientId?: string;         // In-memory unique ID for UI list keys
+  clientId?: string; // In-memory unique ID for UI list keys
   name: string;
   phone?: string;
   email?: string;
@@ -122,6 +123,7 @@ export interface AmenityGuest {
 // Dynamic Availability Evaluation Result
 export interface AmenityAvailabilityResult {
   isAvailable: boolean;
+  available?: boolean; // Compatibility alias
   reason?: string;
   availableUnits?: number;
   maxCapacity?: number;
@@ -159,6 +161,7 @@ export interface AmenityHoldState {
 // Complete Reservation Domain Model with Five Independent Status Dimensions
 export interface AmenityReservation {
   _id: string;
+  reservationNumber?: string;
   orgId: string;
   facilityId: string;
   facilityName?: string;
@@ -169,7 +172,7 @@ export interface AmenityReservation {
   userName?: string;
   unitId?: string;
   startDateTime: string; // UTC ISO string
-  endDateTime: string;   // UTC ISO string
+  endDateTime: string; // UTC ISO string
   headcount: number;
   quantity: number;
   guests?: Array<{ name: string; phone?: string; email?: string }>;
@@ -234,7 +237,12 @@ export interface AmenityErrorDetails {
   statusCode?: number;
   fieldErrors?: Record<string, string>;
   isConflict?: boolean;
-  conflictType?: 'SLOT_CAPACITY' | 'IDEMPOTENCY_MISMATCH' | 'OPERATION_IN_PROGRESS' | 'CONCURRENCY_VERSION' | 'GENERIC';
+  conflictType?:
+    | 'SLOT_CAPACITY'
+    | 'IDEMPOTENCY_MISMATCH'
+    | 'OPERATION_IN_PROGRESS'
+    | 'CONCURRENCY_VERSION'
+    | 'GENERIC';
   isHoldExpired?: boolean;
   isNetworkError?: boolean;
   isTimeout?: boolean;

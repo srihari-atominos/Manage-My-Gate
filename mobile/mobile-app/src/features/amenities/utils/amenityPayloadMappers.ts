@@ -187,13 +187,19 @@ export const normalizeHoldFromApi = (
 };
 
 export const normalizeReservationFromApi = (raw: ApiAmenityReservation): AmenityReservation => {
-  const facilityObj = typeof raw.facilityId === 'object' && raw.facilityId !== null ? raw.facilityId : null;
+  const facilityObj =
+    typeof raw.facilityId === 'object' && raw.facilityId !== null ? raw.facilityId : null;
   const facilityId = facilityObj ? facilityObj._id : String(raw.facilityId);
   const facilityName = facilityObj ? facilityObj.name : undefined;
   const facilityTimezone = facilityObj ? facilityObj.timezone : undefined;
 
-  const resourceObj = typeof raw.resourceId === 'object' && raw.resourceId !== null ? raw.resourceId : null;
-  const resourceId = resourceObj ? resourceObj._id : raw.resourceId ? String(raw.resourceId) : undefined;
+  const resourceObj =
+    typeof raw.resourceId === 'object' && raw.resourceId !== null ? raw.resourceId : null;
+  const resourceId = resourceObj
+    ? resourceObj._id
+    : raw.resourceId
+      ? String(raw.resourceId)
+      : undefined;
   const resourceName = resourceObj ? resourceObj.name : undefined;
 
   const userObj = typeof raw.userId === 'object' && raw.userId !== null ? raw.userId : null;
@@ -202,6 +208,7 @@ export const normalizeReservationFromApi = (raw: ApiAmenityReservation): Amenity
 
   return {
     _id: raw._id,
+    reservationNumber: raw.reservationNumber,
     orgId: raw.orgId,
     facilityId,
     facilityName,
@@ -262,6 +269,7 @@ export const normalizeAvailabilityFromApi = (
 ): AmenityAvailabilityResult => {
   return {
     isAvailable: Boolean(raw.isAvailable),
+    available: Boolean(raw.isAvailable),
     reason: raw.reason,
     availableUnits: raw.availableUnits,
     maxCapacity: raw.maxCapacity,

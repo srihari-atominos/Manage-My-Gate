@@ -5,11 +5,7 @@
  */
 
 export type AmenityArchetype =
-  | 'SHARED_CAPACITY'
-  | 'EXCLUSIVE_HOURLY'
-  | 'EVENT_SPACE'
-  | 'ROOM_RESOURCE'
-  | 'INVENTORY_TOOLS';
+  'SHARED_CAPACITY' | 'EXCLUSIVE_HOURLY' | 'EVENT_SPACE' | 'ROOM_RESOURCE' | 'INVENTORY_TOOLS';
 
 export type AmenityPricingType = 'FREE' | 'HOURLY' | 'DAILY' | 'FIXED_EVENT' | 'TIERED';
 
@@ -22,11 +18,7 @@ export type AmenityHoldType = 'STANDARD' | 'ADMIN_REVIEW' | 'PAYMENT_PENDING';
 export type AmenityHoldStatus = 'ACTIVE' | 'PROMOTED' | 'EXPIRED' | 'RELEASED';
 
 // The Five Orthogonal State Dimensions (Strictly from backend/src/features/amenityManagement/reservations/amenityReservation.model.js)
-export type AmenityBookingStatus =
-  | 'PENDING_APPROVAL'
-  | 'CONFIRMED'
-  | 'CANCELLED'
-  | 'REJECTED';
+export type AmenityBookingStatus = 'PENDING_APPROVAL' | 'CONFIRMED' | 'CANCELLED' | 'REJECTED';
 
 // NOTE: 'EXEMPTED' does NOT exist in backend schemas. 'NOT_REQUIRED' is used for zero-cost / fee-waived reservations.
 export type AmenityPaymentStatus =
@@ -38,24 +30,12 @@ export type AmenityPaymentStatus =
   | 'REFUNDED'
   | 'FAILED';
 
-export type AmenityApprovalStatus =
-  | 'NOT_REQUIRED'
-  | 'PENDING_REVIEW'
-  | 'APPROVED'
-  | 'REJECTED';
+export type AmenityApprovalStatus = 'NOT_REQUIRED' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
 
 export type AmenityAccessStatus =
-  | 'NOT_APPLICABLE'
-  | 'PASS_GENERATED'
-  | 'CHECKED_IN'
-  | 'CHECKED_OUT'
-  | 'ACCESS_REVOKED';
+  'NOT_APPLICABLE' | 'PASS_GENERATED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'ACCESS_REVOKED';
 
-export type AmenityCompletionStatus =
-  | 'PENDING'
-  | 'COMPLETED'
-  | 'NO_SHOW'
-  | 'ABANDONED';
+export type AmenityCompletionStatus = 'PENDING' | 'COMPLETED' | 'NO_SHOW' | 'ABANDONED';
 
 export type AmenityPassType = 'QR_DYNAMIC' | 'PIN_CODE' | 'RFID_NFC';
 
@@ -99,8 +79,8 @@ export interface ApiErrorResponse {
 // Facility Entity
 export interface ApiFacilityOperatingHour {
   dayOfWeek: number; // 0 (Sun) - 6 (Sat)
-  opensAt: string;   // "HH:mm"
-  closesAt: string;  // "HH:mm"
+  opensAt: string; // "HH:mm"
+  closesAt: string; // "HH:mm"
   isOpen: boolean;
 }
 
@@ -213,6 +193,7 @@ export interface ApiAmenityGuest {
 
 export interface ApiAmenityReservation {
   _id: string;
+  reservationNumber?: string;
   orgId: string;
   facilityId: string | ApiAmenityFacility;
   resourceId?: string | ApiAmenityResource;

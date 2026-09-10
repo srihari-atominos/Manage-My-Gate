@@ -38,7 +38,7 @@ export function BookingResultView({
 }: BookingResultViewProps) {
   if (!reservation) {
     return (
-      <View className="p-6 items-center justify-center">
+      <View className="items-center justify-center p-6">
         <Text variant="muted">No reservation details available.</Text>
       </View>
     );
@@ -54,23 +54,21 @@ export function BookingResultView({
     <ScrollView className="flex-1" contentContainerClassName="gap-4 pb-8">
       {/* Hero Status Card */}
       <View
-        className={`p-6 rounded-3xl border items-center text-center ${
+        className={`items-center rounded-3xl border p-6 text-center ${
           isConfirmed
-            ? 'bg-emerald-500/10 border-emerald-500/30'
+            ? 'border-emerald-500/30 bg-emerald-500/10'
             : isPendingApproval
-            ? 'bg-amber-500/10 border-amber-500/30'
-            : 'bg-destructive/10 border-destructive/30'
-        }`}
-      >
+              ? 'border-amber-500/30 bg-amber-500/10'
+              : 'border-destructive/30 bg-destructive/10'
+        }`}>
         <View
-          className={`w-14 h-14 rounded-full items-center justify-center mb-3 ${
+          className={`mb-3 h-14 w-14 items-center justify-center rounded-full ${
             isConfirmed
               ? 'bg-emerald-500/20'
               : isPendingApproval
-              ? 'bg-amber-500/20'
-              : 'bg-destructive/20'
-          }`}
-        >
+                ? 'bg-amber-500/20'
+                : 'bg-destructive/20'
+          }`}>
           {isConfirmed ? (
             <CheckCircle2 size={32} className="text-emerald-600 dark:text-emerald-400" />
           ) : isPendingApproval ? (
@@ -84,22 +82,22 @@ export function BookingResultView({
           {isConfirmed
             ? 'Reservation Confirmed!'
             : isPendingApproval
-            ? 'Booking Pending Review'
-            : 'Reservation Rejected'}
+              ? 'Booking Pending Review'
+              : 'Reservation Rejected'}
         </Text>
 
-        <Text variant="muted" className="text-center text-xs text-muted-foreground mt-1 max-w-xs">
+        <Text variant="muted" className="mt-1 max-w-xs text-center text-xs text-muted-foreground">
           {isConfirmed
             ? 'Your facility reservation is active. Keep your pass ready for gate access.'
             : isPendingApproval
-            ? 'Your request requires administrative approval. You will be notified once reviewed.'
-            : reservation.rejectionReason || 'Your booking request could not be approved.'}
+              ? 'Your request requires administrative approval. You will be notified once reviewed.'
+              : reservation.rejectionReason || 'Your booking request could not be approved.'}
         </Text>
       </View>
 
       {/* Access Pass QR Presentation (When Eligible & Returned) */}
       {isPassEligible && primaryPass?.qrData ? (
-        <View className="bg-card p-6 rounded-3xl border border-border items-center gap-3">
+        <View className="items-center gap-3 rounded-3xl border border-border bg-card p-6">
           <View className="flex-row items-center gap-2">
             <QrCode size={18} className="text-primary" />
             <Text className="font-bold text-sm text-foreground">Digital Access Pass</Text>
@@ -111,8 +109,8 @@ export function BookingResultView({
             caption={`Pass Code: ${primaryPass.passCode}`}
           />
 
-          <View className="flex-row items-center gap-2 mt-1">
-            <StatusBadge label={primaryPass.status || 'ACTIVE'} variant="success" pulseDot />
+          <View className="mt-1 flex-row items-center gap-2">
+            <StatusBadge label={primaryPass.status || 'ACTIVE'} variant="success" dot />
             <Text variant="muted" className="text-[11px]">
               Valid until: {new Date(primaryPass.validUntil).toLocaleTimeString()}
             </Text>
@@ -121,7 +119,9 @@ export function BookingResultView({
       ) : null}
 
       {/* Five Orthogonal Reservation Dimensions */}
-      <DetailSection title="Authoritative Reservation States" className="bg-card border border-border">
+      <DetailSection
+        title="Authoritative Reservation States"
+        className="border border-border bg-card">
         <DetailRow
           label="Booking Status"
           value={
@@ -140,8 +140,8 @@ export function BookingResultView({
                 reservation.paymentStatus === 'PAID' || reservation.paymentStatus === 'NOT_REQUIRED'
                   ? 'success'
                   : reservation.paymentStatus === 'FAILED'
-                  ? 'danger'
-                  : 'warning'
+                    ? 'danger'
+                    : 'warning'
               }
             />
           }
@@ -152,11 +152,12 @@ export function BookingResultView({
             <StatusBadge
               label={reservation.approvalStatus}
               variant={
-                reservation.approvalStatus === 'APPROVED' || reservation.approvalStatus === 'NOT_REQUIRED'
+                reservation.approvalStatus === 'APPROVED' ||
+                reservation.approvalStatus === 'NOT_REQUIRED'
                   ? 'success'
                   : reservation.approvalStatus === 'REJECTED'
-                  ? 'danger'
-                  : 'warning'
+                    ? 'danger'
+                    : 'warning'
               }
             />
           }
@@ -167,11 +168,12 @@ export function BookingResultView({
             <StatusBadge
               label={reservation.accessStatus}
               variant={
-                reservation.accessStatus === 'PASS_GENERATED' || reservation.accessStatus === 'CHECKED_IN'
+                reservation.accessStatus === 'PASS_GENERATED' ||
+                reservation.accessStatus === 'CHECKED_IN'
                   ? 'success'
                   : reservation.accessStatus === 'ACCESS_REVOKED'
-                  ? 'danger'
-                  : 'neutral'
+                    ? 'danger'
+                    : 'neutral'
               }
             />
           }
@@ -184,9 +186,10 @@ export function BookingResultView({
               variant={
                 reservation.completionStatus === 'COMPLETED'
                   ? 'success'
-                  : reservation.completionStatus === 'NO_SHOW' || reservation.completionStatus === 'ABANDONED'
-                  ? 'danger'
-                  : 'neutral'
+                  : reservation.completionStatus === 'NO_SHOW' ||
+                      reservation.completionStatus === 'ABANDONED'
+                    ? 'danger'
+                    : 'neutral'
               }
             />
           }
@@ -194,7 +197,7 @@ export function BookingResultView({
       </DetailSection>
 
       {/* Booking Summary */}
-      <DetailSection title="Booking Details" className="bg-card border border-border">
+      <DetailSection title="Booking Details" className="border border-border bg-card">
         <DetailRow label="Facility" value={facility.name} />
         <DetailRow label="Headcount" value={String(reservation.headcount || 1)} />
         {reservation.paymentReference ? (
@@ -204,19 +207,11 @@ export function BookingResultView({
 
       {/* Action Buttons */}
       <View className="gap-2.5 pt-2">
-        <Button
-          variant="default"
-          onPress={onViewBookings}
-          className="w-full h-12 rounded-xl"
-        >
+        <Button variant="default" onPress={onViewBookings} className="h-12 w-full rounded-xl">
           <Text className="font-bold text-base text-primary-foreground">View My Bookings</Text>
         </Button>
 
-        <Button
-          variant="outline"
-          onPress={onDone}
-          className="w-full h-12 rounded-xl"
-        >
+        <Button variant="outline" onPress={onDone} className="h-12 w-full rounded-xl">
           <Text className="font-semibold text-foreground">Done</Text>
         </Button>
       </View>
