@@ -7,6 +7,8 @@ import {
   logout as logoutAction,
   updateProfile as updateProfileAction,
   clearStatus as clearStatusAction,
+  clearInvitation as clearInvitationAction,
+  validateInvitation,
   acceptInvitation,
   acceptSsoInvitation,
   loginUser,
@@ -21,6 +23,7 @@ import {
   resetPassword as resetPasswordAction,
   performLogout,
 } from '../store/authSlice'
+import authService from '../services/authService.js'
 
 /**
  * useAuth Custom Hook
@@ -41,6 +44,16 @@ export const useAuth = () => {
   const successMsg = useSelector((state) => state.auth.successMsg)
 
   const otpSent = useSelector((state) => state.auth.otpSent)
+  const invitation = useSelector(
+    (state) =>
+      state.auth.invitation || {
+        loading: false,
+        error: null,
+        token: null,
+        valid: false,
+        data: null,
+      },
+  )
   const allowedFeatures = useSelector((state) => state.workspace?.allowedFeatures || [])
   const isPlatform = useSelector((state) => state.workspace?.isPlatform || false)
 
@@ -68,20 +81,63 @@ export const useAuth = () => {
     dispatch(clearStatusAction())
   }
 
-  const handleAcceptInvitation = async (token, password) => {
+  const handleValidateInvitation = async (invitationToken) => {
     try {
-      const resultAction = await dispatch(acceptInvitation({ token, password }))
-      if (acceptInvitation.fulfilled.match(resultAction)) {
-        toast.success(t('auth.invite.success'))
-        navigate('/dashboard')
-        return { success: true }
+      const resultAction = await dispatch(validateInvitation(invitationToken))
+      if (validateInvitation.fulfilled.match(resultAction)) {
+        return {
+          success: true,
+          data:
+            resultAction.payload.data?.data ||
+            resultAction.payload.data ||
+            resultAction.payload,
+        }
       } else {
-        const errorMsg = resultAction.payload || t('auth.invite.error')
+        return {
+          success: false,
+          error: resultAction.payload || t('auth.invite.invalidToken'),
+        }
+      }
+    } catch (err) {
+      return {
+        success: false,
+        error: err.message || t('auth.invite.invalidToken'),
+      }
+    }
+  }
+
+  const handleClearInvitation = () => {
+    dispatch(clearInvitationAction())
+  }
+
+  const handleAcceptInvitation = async (arg1, arg2, options = {}) => {
+    try {
+      let payload
+      let opts = options
+      if (typeof arg1 === 'object' && arg1 !== null) {
+        payload = arg1
+        if (typeof arg2 === 'object' && arg2 !== null) {
+          opts = arg2
+        } else if (arg1.options) {
+          opts = arg1.options
+        }
+      } else {
+        payload = { token: arg1, password: arg2 }
+      }
+      const resultAction = await dispatch(acceptInvitation(payload))
+      if (acceptInvitation.fulfilled.match(resultAction)) {
+        toast.success(t('auth.invite.success', 'Invitation accepted successfully!'))
+        if (!opts.skipNavigate) {
+          navigate('/dashboard', { replace: true })
+        }
+        return { success: true, payload: resultAction.payload }
+      } else {
+        const errorMsg = resultAction.payload || t('auth.invite.error', 'Failed to accept invitation')
         toast.error(errorMsg)
         return { success: false, error: errorMsg }
       }
     } catch (err) {
-      const fallbackMsg = t('auth.invite.error')
+      const fallbackMsg = err.message || t('auth.invite.error', 'Failed to accept invitation')
       toast.error(fallbackMsg)
       return { success: false, error: fallbackMsg }
     }
@@ -126,7 +182,7 @@ export const useAuth = () => {
     return { success: false, error: resultAction.payload }
   }
 
-  const handleAcceptSsoInvitation = async (inviteToken, ssoCredential, provider) => {
+  const handleAcceptSsoInvitation = async (inviteToken, ssoCredential, provider, options = {}) => {
     try {
       const resultAction = await dispatch(
         acceptSsoInvitation({ inviteToken, ssoCredential, provider }),
@@ -136,8 +192,10 @@ export const useAuth = () => {
         const workspaces = data?.workspaces || data?.availableWorkspaces || []
         const navigateTo = workspaces.length === 0 ? '/workspace-setup' : '/dashboard'
         toast.success(t('auth.invite.success'))
-        navigate(navigateTo)
-        return { success: true, navigateTo }
+        if (!options.skipNavigate) {
+          navigate(navigateTo)
+        }
+        return { success: true, navigateTo, payload: resultAction.payload }
       } else {
         const errorMsg = resultAction.payload || t('auth.invite.error')
         toast.error(errorMsg)
@@ -147,6 +205,19 @@ export const useAuth = () => {
       const fallbackMsg = t('auth.invite.error')
       toast.error(fallbackMsg)
       return { success: false, error: fallbackMsg }
+    }
+  }
+
+  const handleCreateInviteHandoff = async (payload = {}) => {
+    try {
+      const res = await authService.createInviteHandoff(payload)
+      const handoffData = res.data?.data || res.data
+      return { success: true, data: handoffData }
+    } catch (err) {
+      return {
+        success: false,
+        error: err.response?.data?.message || err.message || 'Failed to create mobile handoff.',
+      }
     }
   }
 
@@ -235,6 +306,9 @@ export const useAuth = () => {
     logout,
     updateProfile,
     clearStatus,
+    invitation,
+    handleValidateInvitation,
+    handleClearInvitation,
     handleAcceptInvitation,
     handleAcceptSsoInvitation,
     login,
@@ -249,6 +323,7 @@ export const useAuth = () => {
     sendPasswordResetOtp,
     verifyResetOtp,
     resetAccountPassword,
+    handleCreateInviteHandoff,
   }
 }
 

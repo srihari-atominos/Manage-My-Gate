@@ -23,7 +23,7 @@ const DEFAULT_INVITE_BODY = `
 `;
 
 // Register user domain events
-userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId }) => {
+userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting }) => {
   try {
     const inviteLink = generateInviteLink(invitationToken, invitationSource);
     const rejectInviteLink = `${inviteLink}${inviteLink.includes('?') ? '&' : '?'}action=reject`;
@@ -51,21 +51,28 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
       } catch (e) {}
     }
 
-    // 3. Create in-app Notification for existing registered user
+    // 3. Create in-app Notification for EXISTING registered users ONLY
     try {
       const User = (await import('./user.model.js')).default;
-      let targetUserId = userId;
-      if (!targetUserId && email) {
-        const foundUser = await User.findOne({ email: email.toLowerCase() }).select('_id');
-        if (foundUser) targetUserId = foundUser._id;
+      let targetUser = null;
+      if (userId) {
+        targetUser = await User.findById(userId);
+      } else if (email) {
+        targetUser = await User.findOne({ email: email.toLowerCase() });
       }
 
-      if (targetUserId) {
+      // Existing user has an active account (status Active or password set)
+      const isExistingAccount = isExisting !== undefined
+        ? isExisting
+        : (targetUser && (targetUser.status === 'Active' || !!(targetUser.password && targetUser.password.length > 0)));
+
+      if (targetUser && isExistingAccount) {
         const notificationService = (await import('../notification/notification.service.js')).default;
         const detailStr = [villaLabel, roleName].filter(Boolean).join(' • ');
         const descStr = detailStr ? ` (${detailStr})` : '';
         await notificationService.createNotification({
-          recipientId: targetUserId,
+          recipientId: targetUser._id,
+          senderId: inviterId || null,
           orgId,
           title: `Invitation to ${communityName}`,
           body: `You have been invited to join ${communityName}${descStr}. Tap to Accept or Reject this invitation.`,
@@ -76,8 +83,6 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
     } catch (notifErr) {
       logger.error(`In-app invitation notification dispatch error: ${notifErr.message}`);
     }
-
-    const isApp = String(invitationSource).toUpperCase() === 'APP';
 
     const unitRoleDetails = (villaLabel || roleName) ? `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin: 18px 0 22px 0;">
@@ -122,7 +127,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
             <td style="padding: 28px 24px 12px 24px;">
               <div style="margin-bottom: 14px;">
                 <span style="display: inline-block; background-color: #e0e7ff; color: #4338ca; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.06em;">
-                  ${isApp ? 'Mobile App Invitation' : 'Web Workspace Invitation'}
+                  Workspace Invitation
                 </span>
               </div>
               <h1 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 10px 0; line-height: 1.35; letter-spacing: -0.01em;">
@@ -130,7 +135,7 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
               </h1>
               <p style="font-size: 15px; line-height: 1.6; color: #475569; margin: 0;">
                 Hello,<br/><br/>
-                You have been invited to join <strong>${communityName}</strong> on Nahom. Please select your response below to proceed.
+                You have been invited to join <strong>${communityName}</strong>. Please select your response below to proceed.
               </p>
             </td>
           </tr>
@@ -146,14 +151,12 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
           <tr>
             <td style="padding: 0 24px 16px 24px;">
               <p style="color: #64748b; font-size: 13.5px; line-height: 1.5; margin: 0;">
-                ${isApp
-                  ? 'This is an invitation for the <strong>Nahom Mobile App</strong>. Select an option below to open the application and accept your role:'
-                  : 'This is an invitation for the <strong>Web Workspace</strong>. Select an option below to complete your registration:'}
+                Please select an option below to respond to your invitation:
               </p>
             </td>
           </tr>
 
-          <!-- Action Buttons (Full-width, perfectly stacked & centered on all mobile phones) -->
+          <!-- Action Buttons (Centered, accessible on desktop and mobile) -->
           <tr>
             <td style="padding: 0 24px 28px 24px;" align="center">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 340px; margin: 0 auto; width: 100%;">
@@ -216,12 +219,9 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
       .replace(/{{reject_link}}/g, rejectInviteLink)
       .replace(/{{community_name}}/g, communityName);
 
-    // Send email using sendEmail helper
-    logger.info(`\n================================================================================`);
-    logger.info(`[INVITATION LINK GENERATED] Email: ${email} | Source: ${invitationSource}`);
-    logger.info(`Accept URL: ${inviteLink}`);
-    logger.info(`Reject URL: ${rejectInviteLink}`);
-    logger.info(`================================================================================\n`);
+    // Mask raw token in logs to comply with security directive
+    const maskedToken = invitationToken ? `${invitationToken.slice(0, 6)}...` : '[MASKED]';
+    logger.info(`[INVITATION CREATED] Email: ${email} | Token: ${maskedToken} | Universal URL: /invite/${maskedToken}`);
 
     const { sendEmail } = await import('../../utils/email.utils.js');
     const sent = await sendEmail(orgId, email, compiledSubject, compiledBody);
@@ -230,7 +230,6 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
     } else {
       logger.warn(`SMTP Server is not configured in backend/.env or Integration Hub.`);
       logger.warn(`To deliver real emails to inbox (${email}), configure SMTP_USER & SMTP_PASS in backend/.env or connect SMTP in Integration Hub.`);
-      logger.warn(`Manual Activation Link for ${email} (${invitationSource}): ${inviteLink}`);
     }
   } catch (error) {
     logger.error(`Asynchronous invitation email dispatch failed: ${error.message}`);

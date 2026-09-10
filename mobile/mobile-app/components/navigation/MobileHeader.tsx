@@ -14,8 +14,6 @@ import { OrgSwitchModal } from './OrgSwitchModal';
 import { ProfileModal } from './ProfileModal';
 import { NotificationSheetModal } from './NotificationSheetModal';
 import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
-import { RealtimeNotificationToast } from '@/components/feedback/RealtimeNotificationToast';
-import { mapActionUrlToMobileRoute } from '@/src/features/notification/utils/notificationNavigation';
 import { useTranslation } from '@/src/utils/i18n';
 
 interface MobileHeaderProps {
@@ -37,13 +35,8 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const router = useRouter();
   const { t } = useTranslation();
   
-  // Real-time notification hook initialization to ensure WebSockets & state remain active
-  const {
-    unreadCount: hookUnreadCount,
-    latestNotification,
-    dismissLatestNotification,
-    markAsRead,
-  } = useNotifications();
+  // Real-time notification hook initialization to ensure unread badge remains active
+  const { unreadCount: hookUnreadCount } = useNotifications();
 
   // Real-time notification count from Redux store or prop override
   const liveUnreadCount = unreadNotificationCount !== undefined 
@@ -116,10 +109,11 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   // Check if context switching is applicable
   const userUnits = (user as any)?.accessibleUnits || [];
   const hasMultipleOrgs = Array.isArray(reduxWorkspaces) && reduxWorkspaces.length > 1;
+  const hasOrgs = (Array.isArray(reduxWorkspaces) && reduxWorkspaces.length > 0) || Boolean((user as any)?.orgId);
   const hasMultipleUnits = Array.isArray(userUnits) && userUnits.length > 1;
   const hasUnit = Boolean(activeVilla && activeVilla.trim() !== '');
 
-  const canSwitchContext = hasUnit || hasMultipleOrgs || hasMultipleUnits;
+  const canSwitchContext = hasUnit || hasOrgs || hasMultipleUnits;
 
   // Avatar initial letter
   const avatarLetter = React.useMemo(() => {
@@ -144,7 +138,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     if (!canSwitchContext) return;
     if (hasUnit) {
       setVillaModalVisible(true);
-    } else if (hasMultipleOrgs) {
+    } else if (hasOrgs) {
       setOrgModalVisible(true);
     }
   };
@@ -152,19 +146,6 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const handleBellPress = () => {
     if (onNotificationPress) {
       onNotificationPress();
-    } else {
-      router.push('/(resident)/notifications' as any);
-    }
-  };
-
-  const handleToastPress = (notification: any) => {
-    const notifId = notification?.id || notification?._id;
-    if (notifId && !notification.isRead) {
-      markAsRead(notifId);
-    }
-    if (notification.actionUrl) {
-      const route = mapActionUrlToMobileRoute(notification.actionUrl, notification.type, notification);
-      router.push(route as any);
     } else {
       router.push('/(resident)/notifications' as any);
     }
@@ -282,13 +263,6 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Real-time Notification Banner Toast */}
-      <RealtimeNotificationToast
-        notification={latestNotification}
-        onDismiss={dismissLatestNotification}
-        onPressBanner={handleToastPress}
-      />
 
       {/* Interactive Villa Switcher Modal */}
       {villaModalVisible && (

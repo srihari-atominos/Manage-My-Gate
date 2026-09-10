@@ -18,7 +18,7 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
-  TextInput,
+  TextInput as RNTextInput,
   Platform,
   Animated,
   Easing,
@@ -37,8 +37,11 @@ import {
   NahomWordmark,
 } from '@/components/auth/NahomBrandLogo';
 import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
+import { TextInput } from '@/components/forms/TextInput';
+import { PasswordInput } from '@/components/forms/PasswordInput';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { Checkbox } from '@/components/forms/Checkbox';
+import { parseBackendError } from '@/src/utils/validation';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { storage, sessionStore } from '@/src/utils/storage';
 import { useSelector, useDispatch } from 'react-redux';
@@ -114,7 +117,7 @@ export default function LoginScreen() {
   const [isSubmittingPhone, setIsSubmittingPhone] = React.useState(false);
   const hasNavigatedRef = React.useRef(false);
   const [switchDismissed, setSwitchDismissed] = React.useState(false);
-  const passwordInputRef = React.useRef<TextInput>(null);
+  const passwordInputRef = React.useRef<RNTextInput>(null);
 
   React.useEffect(() => {
     const loadSavedPreferences = async () => {
@@ -231,6 +234,7 @@ export default function LoginScreen() {
   // Basic Auth Form Hook
   const basicForm = useForm<BasicAuthFormValues>({
     resolver: yupResolver(basicAuthSchema),
+    mode: 'onTouched',
     defaultValues: {
       login: params.email ? decodeURIComponent(params.email) : '',
       password: '',
@@ -240,6 +244,7 @@ export default function LoginScreen() {
   // Phone Form Hook
   const phoneForm = useForm<PhoneFormValues>({
     resolver: yupResolver(phoneSchema),
+    mode: 'onTouched',
     defaultValues: {
       phone: '',
     },
@@ -534,54 +539,34 @@ export default function LoginScreen() {
                   /* Email / Password Form */
                   <View className="gap-3.5">
                     {/* Step 5: Email or Username Input */}
-                    <View>
-                      <View className="flex-row items-center justify-between mb-1.5">
-                        <Text className="text-xs font-bold text-foreground">
-                          Email or Username
-                        </Text>
-                      </View>
-                      <Controller
-                        control={basicForm.control}
-                        name="login"
-                        render={({ field: { onChange, onBlur, value } }) => (
-                          <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
-                            <Mail size={18} color="#94A3B8" className="me-2.5 shrink-0" />
-                            <TextInput
-                              value={value}
-                              onChangeText={onChange}
-                              onBlur={onBlur}
-                              placeholder="Enter your email or username"
-                              placeholderTextColor="#94A3B8"
-                              autoCapitalize="none"
-                              autoCorrect={false}
-                              keyboardType="email-address"
-                              autoComplete="username"
-                              textContentType="username"
-                              importantForAutofill="yes"
-                              accessibilityLabel="Email or Username"
-                              returnKeyType="next"
-                              onSubmitEditing={() => passwordInputRef.current?.focus()}
-                              blurOnSubmit={false}
-                              className={cnText(
-                                'flex-1 text-sm text-foreground font-sans p-0',
-                                Platform.select({ web: 'outline-none' })
-                              )}
-                            />
-                          </View>
-                        )}
-                      />
-                      {basicForm.formState.errors.login && (
-                        <Text className="text-rose-500 text-[11px] mt-1 ms-1 font-medium">
-                          {basicForm.formState.errors.login.message}
-                        </Text>
+                    <Controller
+                      control={basicForm.control}
+                      name="login"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <TextInput
+                          label="Email or Username"
+                          required
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          placeholder="Enter your email or username"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          keyboardType="email-address"
+                          leftIcon={Mail}
+                          error={basicForm.formState.errors.login?.message}
+                          returnKeyType="next"
+                          onSubmitEditing={() => passwordInputRef.current?.focus()}
+                          blurOnSubmit={false}
+                        />
                       )}
-                    </View>
+                    />
 
                     {/* Step 6: Password Input */}
                     <View>
                       <View className="flex-row items-center justify-between mb-1.5">
-                        <Text className="text-xs font-bold text-foreground">
-                          Password
+                        <Text className="text-sm font-medium text-foreground">
+                          Password <Text className="text-destructive font-bold">*</Text>
                         </Text>
                         <TouchableOpacity
                           onPress={() => router.push('/(auth)/forgot-password')}
@@ -597,48 +582,19 @@ export default function LoginScreen() {
                         control={basicForm.control}
                         name="password"
                         render={({ field: { onChange, onBlur, value } }) => (
-                          <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
-                            <Lock size={18} color="#94A3B8" className="me-2.5 shrink-0" />
-                            <TextInput
-                              ref={passwordInputRef}
-                              value={value}
-                              onChangeText={onChange}
-                              onBlur={onBlur}
-                              placeholder="Enter your password"
-                              placeholderTextColor="#94A3B8"
-                              secureTextEntry={!showPassword}
-                              autoCapitalize="none"
-                              autoCorrect={false}
-                              autoComplete={Platform.select({ web: 'current-password', default: 'password' })}
-                              textContentType="password"
-                              importantForAutofill="yes"
-                              accessibilityLabel="Password"
-                              returnKeyType="go"
-                              onSubmitEditing={basicForm.handleSubmit(onBasicSubmit)}
-                              className={cnText(
-                                'flex-1 text-sm text-foreground font-sans p-0',
-                                Platform.select({ web: 'outline-none' })
-                              )}
-                            />
-                            <TouchableOpacity
-                              onPress={() => setShowPassword(!showPassword)}
-                              hitSlop={8}
-                              activeOpacity={0.7}
-                            >
-                              {showPassword ? (
-                                <Eye size={18} color="#94A3B8" />
-                              ) : (
-                                <EyeOff size={18} color="#94A3B8" />
-                              )}
-                            </TouchableOpacity>
-                          </View>
+                          <PasswordInput
+                            ref={passwordInputRef}
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            placeholder="Enter your password"
+                            leftIcon={Lock}
+                            error={basicForm.formState.errors.password?.message}
+                            returnKeyType="go"
+                            onSubmitEditing={basicForm.handleSubmit(onBasicSubmit)}
+                          />
                         )}
                       />
-                      {basicForm.formState.errors.password && (
-                        <Text className="text-rose-500 text-[11px] mt-1 ms-1 font-medium">
-                          {basicForm.formState.errors.password.message}
-                        </Text>
-                      )}
                     </View>
 
                     {/* Stay signed in Checkbox */}

@@ -82,21 +82,25 @@ export default function ForgotPasswordScreen() {
   // Form hooks
   const emailForm = useForm<{ email: string }>({
     resolver: yupResolver(identifierEmailSchema),
+    mode: 'onTouched',
     defaultValues: { email: '' },
   });
 
   const phoneForm = useForm<{ phone: string }>({
     resolver: yupResolver(identifierPhoneSchema),
+    mode: 'onTouched',
     defaultValues: { phone: '' },
   });
 
   const otpForm = useForm<{ code: string }>({
     resolver: yupResolver(otpSchema),
+    mode: 'onTouched',
     defaultValues: { code: '' },
   });
 
   const passwordForm = useForm<{ newPassword: string; confirmPassword: string }>({
     resolver: yupResolver(passwordSchema),
+    mode: 'onTouched',
     defaultValues: { newPassword: '', confirmPassword: '' },
   });
 
@@ -390,11 +394,13 @@ export default function ForgotPasswordScreen() {
                     render={({ field: { onChange, onBlur, value } }) => (
                       <PasswordInput
                         label="New Password"
+                        required
                         placeholder="Min 8 chars, 1 uppercase, 1 symbol"
                         value={value}
                         onChangeText={onChange}
                         onBlur={onBlur}
                         autoCapitalize="none"
+                        showRequirements
                         error={passwordForm.formState.errors.newPassword?.message}
                         leftIcon={<Lock size={16} color="#94A3B8" />}
                       />
@@ -407,11 +413,13 @@ export default function ForgotPasswordScreen() {
                     render={({ field: { onChange, onBlur, value } }) => (
                       <PasswordInput
                         label="Confirm Password"
+                        required
                         placeholder="Re-enter new password"
                         value={value}
                         onChangeText={onChange}
                         onBlur={onBlur}
                         autoCapitalize="none"
+                        confirmValue={passwordForm.watch('newPassword')}
                         error={passwordForm.formState.errors.confirmPassword?.message}
                         leftIcon={<Lock size={16} color="#94A3B8" />}
                       />

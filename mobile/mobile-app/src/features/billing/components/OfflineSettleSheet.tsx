@@ -109,6 +109,7 @@ export function OfflineSettleSheet({
 
   const [paymentMethod, setPaymentMethod] = useState<OfflinePaymentType>('BANK_TRANSFER');
   const [offlineReference, setOfflineReference] = useState<string>('');
+  const [refTouched, setRefTouched] = useState<boolean>(false);
   const [paymentDateStr, setPaymentDateStr] = useState<string>(new Date().toISOString().slice(0, 10));
   const [payerNotes, setPayerNotes] = useState<string>('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -412,14 +413,23 @@ export function OfflineSettleSheet({
                     required={paymentMethod !== 'CASH'}
                     leftIcon={FileText}
                     value={offlineReference}
-                    onChangeText={setOfflineReference}
+                    onChangeText={(val) => {
+                      setOfflineReference(val);
+                      if (val.trim()) setRefTouched(true);
+                    }}
+                    onBlur={() => setRefTouched(true)}
                     placeholder={currentOption.refPlaceholder}
+                    error={
+                      refTouched && isReferenceRequired && !offlineReference.trim()
+                        ? 'Transaction UTR or reference ID is required.'
+                        : undefined
+                    }
+                    helperText={
+                      !refTouched && isReferenceRequired
+                        ? 'Enter transaction UTR, cheque #, or reference ID.'
+                        : undefined
+                    }
                   />
-                  {isReferenceRequired && !offlineReference.trim() ? (
-                    <Text className="text-[11px] text-amber-600 dark:text-amber-400 ms-1">
-                      * Mandatory: Enter transaction UTR, cheque #, or reference ID to submit
-                    </Text>
-                  ) : null}
                 </View>
 
                 <DatePicker

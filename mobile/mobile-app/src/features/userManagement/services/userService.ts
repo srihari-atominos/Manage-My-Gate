@@ -104,10 +104,90 @@ export const updateUserRoles = async (userId: string, roles: string[], villaId?:
   return { userId, roles, villaId, data: response.data || response };
 };
 
+export interface InvitationItem {
+  _id: string;
+  userId?: string;
+  orgId?: string;
+  inviterId?: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'REVOKED' | 'EXPIRED';
+  rawStatus?: string;
+  invitationSource?: string;
+  expiresAt?: string;
+  usedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  recipient?: {
+    _id?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    username?: string;
+    status?: string;
+  };
+  inviter?: {
+    _id?: string;
+    name?: string;
+    email?: string;
+  };
+  role?: {
+    _id?: string;
+    name?: string;
+  };
+  residencyType?: string;
+}
+
+export interface FetchInvitationsParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: string;
+}
+
+/**
+ * Fetch organization invitations
+ */
+export const fetchInvitations = async (params: FetchInvitationsParams = {}) => {
+  const page = params.page || 1;
+  const limit = params.limit || 10;
+  const searchParams = new URLSearchParams();
+
+  searchParams.append('page', String(page));
+  searchParams.append('limit', String(limit));
+  if (params.status && params.status !== 'ALL') searchParams.append('status', params.status);
+  if (params.search) searchParams.append('search', params.search);
+  if (params.sortBy) searchParams.append('sortBy', params.sortBy);
+  if (params.sortOrder) searchParams.append('sortOrder', params.sortOrder);
+
+  const response: any = await apiClient.get(`/users/invitations?${searchParams.toString()}`);
+  return response.data || response;
+};
+
+/**
+ * Resend an eligible invitation
+ */
+export const resendInvitation = async (invitationId: string) => {
+  const response: any = await apiClient.post(`/users/invitations/${invitationId}/resend`);
+  return response.data || response;
+};
+
+/**
+ * Revoke an unconsumed invitation
+ */
+export const revokeInvitation = async (invitationId: string) => {
+  const response: any = await apiClient.post(`/users/invitations/${invitationId}/revoke`);
+  return response.data || response;
+};
+
 export default {
   fetchUsers,
   inviteUser,
   bulkInviteUsers,
   deleteUser,
   updateUserRoles,
+  fetchInvitations,
+  resendInvitation,
+  revokeInvitation,
 };
+

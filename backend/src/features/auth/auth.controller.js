@@ -62,8 +62,9 @@ export class AuthController {
 
   async acceptInvite(req, res, next) {
     try {
-      const { token, password, email } = req.body;
-      const data = await authService.acceptInvitation(token, password, email);
+      const { token, password, email, name, phone } = req.body;
+      const authenticatedUserId = req.user?.id || req.user?._id || null;
+      const data = await authService.acceptInvitation(token, password, email, authenticatedUserId, { name, phone });
       
       if (data && data.token) {
         setAuthCookie(res, data.token);
@@ -298,6 +299,40 @@ export class AuthController {
       const { email } = req.query;
       const data = await authService.checkAccountStatus(email);
       res.success(data, 'Account status fetched successfully.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createInviteHandoff(req, res, next) {
+    try {
+      const userId = req.user?.id || req.user?._id;
+      const activeOrgId = req.user?.orgId || req.body?.orgId || null;
+      const data = await authService.createInviteHandoff(userId, activeOrgId);
+      res.success(data, 'Mobile handoff ticket created successfully.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async exchangeInviteHandoff(req, res, next) {
+    try {
+      const { handoffId, deviceInfo } = req.body;
+      const clientDeviceInfo = {
+        ...deviceInfo,
+        deviceName: deviceInfo?.deviceName || req.headers['user-agent'],
+        ipAddress: req.ip,
+      };
+      const data = await authService.exchangeInviteHandoff(handoffId, clientDeviceInfo);
+
+      if (data && data.token) {
+        setAuthCookie(res, data.token);
+      }
+      if (data && data.refreshToken) {
+        setRefreshTokenCookie(res, data.refreshToken);
+      }
+
+      res.success(data, 'Mobile handoff ticket exchanged successfully.');
     } catch (error) {
       next(error);
     }

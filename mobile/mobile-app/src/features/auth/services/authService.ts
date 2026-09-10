@@ -113,6 +113,10 @@ export const requestEmailChangeOtp = async (newEmail: string) => {
   return await apiClient.post('/users/request-email-otp', { newEmail });
 };
 
+export const exchangeHandoff = async (handoffId: string, deviceInfo?: any) => {
+  return await apiClient.post('/auth/invite/handoff/exchange', { handoffId, deviceInfo });
+};
+
 export default {
   login,
   register,
@@ -140,4 +144,5 @@ export default {
   checkOrganizationName,
   createWorkspace,
   updateOrganizationFeatures,
+  exchangeHandoff,
 };

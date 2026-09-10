@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { Building2, Check, X } from 'lucide-react-native';
+import { Building2, Check, X, Plus } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
@@ -35,6 +36,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   onSelectCommunity,
 }) => {
   const { user } = useAuth();
+  const router = useRouter();
   const dispatch = useDispatch<any>();
   const { t, tRole } = useTranslation();
   const reduxWorkspaces = useSelector((state: any) => state.auth?.user?.availableWorkspaces || state.workspace?.availableWorkspaces);
@@ -188,6 +190,26 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
               }))}
             </View>
           </ScrollView>
+
+          {/* Create New Organization CTA */}
+          <TouchableOpacity
+            onPress={() => {
+              onClose();
+              router.push({
+                pathname: '/(auth)/setup-organization' as any,
+                params: { intent: 'create-org', canGoBack: 'true' },
+              });
+            }}
+            activeOpacity={0.8}
+            className="flex-row items-center justify-center p-3 rounded-2xl border border-dashed border-primary/50 bg-primary/5 active:bg-primary/10 mt-1 gap-2"
+            accessibilityRole="button"
+            accessibilityLabel={t('create_new_organization', '+ Create New Organization')}
+          >
+            <Plus size={16} color="#03A9F4" />
+            <Text className="text-xs font-bold text-primary">
+              {t('create_new_organization', '+ Create New Organization')}
+            </Text>
+          </TouchableOpacity>
 
           <Button onPress={onClose} variant="secondary" className="mt-1 h-11">
             <Text className="font-bold text-foreground text-sm">{t('cancel', 'Cancel')}</Text>

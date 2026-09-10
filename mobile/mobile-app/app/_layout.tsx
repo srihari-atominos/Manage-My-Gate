@@ -1,3 +1,4 @@
+import '../src/utils/cryptoPolyfill';
 import '@/global.css';
 import React, { useEffect } from 'react';
 
@@ -12,7 +13,7 @@ import { PortalHost } from '@rn-primitives/portal';
 import { Stack, useSegments, useRouter, useGlobalSearchParams, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
-import { Provider } from 'react-redux';
+import { Provider, useDispatch, useSelector } from 'react-redux';
 import { store } from '../src/store/store';
 import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -31,7 +32,9 @@ import i18n from '../src/utils/i18n';
 import * as SplashScreen from 'expo-splash-screen';
 import useAutoUpdate from '../src/hooks/useAutoUpdate';
 import usePushNotifications from '../src/features/notification/hooks/usePushNotifications';
+import { clearPendingRoute } from '../src/features/notification/store/notificationSlice';
 import { useGlobalAppSocket } from '../src/hooks/useGlobalAppSocket';
+import { getDeferredHandoffContext } from '../src/features/auth/services/deferredDeepLinkService';
 
 // Prevent splash screen from auto-hiding before asset loading is complete
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -42,12 +45,14 @@ export {
 
 // AuthRouteGuard runs inside Provider/ThemeProvider context
 function AuthRouteGuard() {
+  const dispatch = useDispatch();
   const { isAuthenticated, isInitialized, user, bootstrap } = useAuth();
   const { setColorScheme } = useColorScheme();
   const segments = useSegments();
   const router = useRouter();
   const searchParams = useGlobalSearchParams<{ intent?: string; token?: string; code?: string; [key: string]: any }>();
   const rootNavigationState = useRootNavigationState();
+  const pendingRoute = useSelector((state: any) => state.notification?.pendingRoute);
 
   // Initialize global real-time Socket.io engine
   useGlobalAppSocket();
@@ -122,7 +127,7 @@ function AuthRouteGuard() {
       if (firstSegment !== '(auth)' || currentRoute !== 'accept-invite') {
         let tokenToPass = searchParams?.token || searchParams?.code;
         if (!tokenToPass && typeof window !== 'undefined' && window.location?.href) {
-          const match = window.location.href.match(/[\/?&](?:token|code)=([^&#]+)|\/invite\/(?:app|web)\/([^/?&#]+)/i);
+          const match = window.location.href.match(/[\/?&](?:token|code)=([^&#]+)|\/invite\/(?:app\/|web\/)?([a-f0-9]{32,64}|[^/?&#]+)/i);
           if (match) {
             tokenToPass = match[1] || match[2];
           }
@@ -146,20 +151,42 @@ function AuthRouteGuard() {
     const isOnboardingRoute = currentRoute === 'setup-organization' || currentRoute === 'select-features';
 
     if (!isAuthenticated && !inAuthGroup) {
-      // Direct unauthenticated users to sign in
-      router.replace('/(auth)/login');
+      // Check for deferred handoff or invitation token from Google Play Install Referrer on first launch
+      getDeferredHandoffContext()
+        .then((context) => {
+          if (context) {
+            if (context.type === 'handoff') {
+              router.replace(`/invite/handoff/${context.value}` as any);
+            } else {
+              router.replace({
+                pathname: '/(auth)/accept-invite',
+                params: { token: context.value },
+              });
+            }
+          } else {
+            router.replace('/(auth)/login');
+          }
+        })
+        .catch(() => {
+          router.replace('/(auth)/login');
+        });
     } else if (isAuthenticated) {
       if (!hasOrg) {
         // Authenticated user has no organization workspace -> direct to setup-organization
         if (!isOnboardingRoute) {
           router.replace('/(auth)/setup-organization');
         }
+      } else if (pendingRoute) {
+        // Priority 1: Cold start / background notification pending destination
+        console.log('[AuthRouteGuard] Navigating to pending notification destination:', pendingRoute);
+        dispatch(clearPendingRoute());
+        router.replace(pendingRoute as any);
       } else if (isRoot) {
         // Authenticated user opening app cold at root -> route to dashboard
         router.replace('/(resident)/dashboard');
       }
     }
-  }, [isAuthenticated, isInitialized, rootNavigationState?.key, segments, user, isCreateOrgIntent]);
+  }, [isAuthenticated, isInitialized, rootNavigationState?.key, segments, user, isCreateOrgIntent, pendingRoute, dispatch]);
 
   return null;
 }

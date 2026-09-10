@@ -1,4 +1,4 @@
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import mongoose from 'mongoose';
 
 /**
@@ -136,3 +136,61 @@ export const requestDeletionRules = [
     .trim()
     .escape(),
 ];
+
+/**
+ * Validation rules for revoking an invitation.
+ */
+export const revokeInvitationRules = [
+  param('id')
+    .notEmpty()
+    .withMessage('Invitation ID is required')
+    .isMongoId()
+    .withMessage('Invalid Invitation ID format'),
+];
+
+/**
+ * Validation rules for listing organization invitations.
+ */
+export const listInvitationsRules = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Page must be a positive integer')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Limit must be an integer between 1 and 100')
+    .toInt(),
+  query('status')
+    .optional()
+    .isIn(['ALL', 'PENDING', 'ACCEPTED', 'REJECTED', 'REVOKED', 'EXPIRED'])
+    .withMessage('Invalid status filter value'),
+  query('search')
+    .optional()
+    .isString()
+    .isLength({ max: 100 })
+    .withMessage('Search query cannot exceed 100 characters')
+    .trim(),
+  query('sortBy')
+    .optional()
+    .isIn(['createdAt', 'expiresAt', 'status'])
+    .withMessage('Invalid sort field'),
+  query('sortOrder')
+    .optional()
+    .isIn(['asc', 'desc', '1', '-1'])
+    .withMessage('Invalid sort order'),
+];
+
+/**
+ * Validation rules for resending an invitation.
+ */
+export const resendInvitationRules = [
+  param('id')
+    .notEmpty()
+    .withMessage('Invitation ID is required')
+    .isMongoId()
+    .withMessage('Invalid Invitation ID format'),
+];
+
+

@@ -64,6 +64,15 @@ export const getSocketBaseUrl = () => {
   }
 
   if (!socketUrl) {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        socketUrl = `http://${ip}:5002`;
+      }
+    }
+  }
+  if (!socketUrl) {
     socketUrl = process.env.EXPO_PUBLIC_API_URL
       ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api.*$/, '')
       : 'http://localhost:5002';

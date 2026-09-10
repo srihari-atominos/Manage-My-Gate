@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Modal, FlatList, ScrollView, Platform, Alert } from 'react-native';
-import { ChevronDown, Check } from 'lucide-react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  Modal,
+  FlatList,
+  ScrollView,
+  Platform,
+  TextInput as RNTextInput,
+  KeyboardAvoidingView,
+} from 'react-native';
+import { ChevronDown, Check, AlertCircle, Search } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
 
 export interface DropdownOption {
@@ -10,29 +20,36 @@ export interface DropdownOption {
 
 export interface DropdownSelectProps {
   label?: string;
+  required?: boolean;
   options: DropdownOption[];
   value: string | null;
   onValueChange: (value: string) => void;
   placeholder?: string;
   error?: string;
+  helperText?: string;
   className?: string;
   inline?: boolean;
   accordion?: boolean;
+  searchable?: boolean;
 }
 
 export const DropdownSelect = ({
   label,
+  required = false,
   options,
   value,
   onValueChange,
   placeholder = 'Select an option',
   error,
+  helperText,
   className,
   inline = false,
   accordion = false,
+  searchable = true,
 }: DropdownSelectProps) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const isInline = inline || accordion;
 
   const selectedOption = options.find((opt) => opt.value === value);
@@ -41,27 +58,38 @@ export const DropdownSelect = ({
     if (inline) {
       setIsOpen(!isOpen);
     } else {
+      setSearchQuery('');
       setModalVisible(true);
     }
   };
 
+  const filteredOptions = options.filter((opt) =>
+    opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <View 
+    <View
       className={cn('w-full relative', className)}
       style={inline && isOpen ? { zIndex: 1000 } : undefined}
     >
       {Boolean(label) && (
         <Text className="mb-1.5 text-sm font-medium text-foreground">
           {label}
+          {required && !label?.includes('*') && (
+            <Text className="text-destructive font-bold"> *</Text>
+          )}
         </Text>
       )}
-      
+
       <Pressable
         className={cn(
-          'flex-row items-center justify-between rounded-2xl border border-border/80 bg-card px-3.5 py-3 shadow-xs active:bg-secondary/50',
-          Boolean(error) && 'border-destructive bg-destructive/5'
+          'flex-row items-center justify-between rounded-2xl border bg-card px-3.5 py-3 shadow-xs active:bg-secondary/50 transition-colors',
+          'border-border/80',
+          Boolean(error) && 'border-destructive bg-destructive/5 ring-1 ring-destructive/20'
         )}
         onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={label ? `${label}: ${selectedOption?.label || placeholder}` : placeholder}
       >
         <Text
           className={cn(
@@ -75,18 +103,23 @@ export const DropdownSelect = ({
       </Pressable>
 
       {Boolean(error) && (
-        <Text className="mt-1 text-xs text-destructive font-medium ms-1">
-          {error}
-        </Text>
+        <View className="flex-row items-center mt-1 ms-1 gap-1">
+          <AlertCircle size={12} className="text-destructive shrink-0" />
+          <Text className="text-xs text-destructive font-semibold">{error}</Text>
+        </View>
+      )}
+
+      {!error && Boolean(helperText) && (
+        <Text className="mt-1 text-[11px] text-muted-foreground ms-1">{helperText}</Text>
       )}
 
       {/* Inline Dropdown List overlay */}
       {isInline && isOpen && (
-        <View 
+        <View
           className="absolute left-0 right-0 z-[1000] bg-card border border-border rounded-xl shadow-lg mt-1 overflow-hidden"
-          style={{ 
-            top: '100%', 
-            maxHeight: 200, 
+          style={{
+            top: '100%',
+            maxHeight: 200,
             elevation: 5,
           }}
         >
@@ -113,9 +146,7 @@ export const DropdownSelect = ({
                     <Text
                       className={cn(
                         'text-sm font-sans',
-                        isSelected
-                          ? 'font-bold text-primary'
-                          : 'text-foreground'
+                        isSelected ? 'font-bold text-primary' : 'text-foreground'
                       )}
                     >
                       {item.label}
@@ -134,68 +165,88 @@ export const DropdownSelect = ({
         visible={modalVisible}
         transparent
         animationType="fade"
+        statusBarTranslucent={true}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View className="flex-1 justify-end bg-black/60">
-          <Pressable 
-            className="absolute top-0 bottom-0 left-0 right-0" 
-            onPress={() => setModalVisible(false)} 
-          />
-          <View className="max-h-[70%] rounded-t-3xl bg-card border-t border-border p-4 shadow-xl">
-            <Text className="mb-4 text-center text-lg font-bold font-sans text-foreground">
-              {label || 'Select'}
-            </Text>
-            
-            <FlatList
-              data={options}
-              keyExtractor={(item, index) => {
-                if (item && typeof item === 'object') {
-                  if (typeof item.value === 'string' || typeof item.value === 'number') {
-                    return String(item.value);
-                  }
-                  if (typeof item.label === 'string' && item.label) {
-                    return `${item.label}-${index}`;
-                  }
-                }
-                return `opt-${index}`;
-              }}
-              ListEmptyComponent={() => (
-                <View className="py-6 items-center justify-center">
-                  <Text className="text-base text-muted-foreground italic">No options available</Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+        >
+          <View className="flex-1 justify-end bg-black/60">
+            <Pressable
+              className="absolute top-0 bottom-0 left-0 right-0"
+              onPress={() => setModalVisible(false)}
+            />
+            <View className="max-h-[75%] rounded-t-3xl bg-card border-t border-border p-4 shadow-xl">
+              <Text className="mb-3 text-center text-lg font-bold font-sans text-foreground">
+                {label || 'Select Option'}
+              </Text>
+
+              {/* In-modal search bar when options > 5 */}
+              {(searchable || options.length > 5) && (
+                <View className="flex-row items-center rounded-xl bg-background border border-border px-3 py-2 mb-3">
+                  <Search size={16} className="text-muted-foreground me-2" />
+                  <RNTextInput
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder="Search options..."
+                    placeholderTextColor="#737c88"
+                    className="flex-1 text-sm font-sans text-foreground p-0 min-h-[22px]"
+                    style={{ outlineStyle: 'none' } as any}
+                  />
                 </View>
               )}
-              renderItem={({ item }) => {
-                const isSelected = item.value === value;
-                return (
-                  <Pressable
-                    className={cn(
-                      'flex-row items-center justify-between rounded-xl px-4 py-3.5 mb-1',
-                      isSelected && 'bg-primary/10'
-                    )}
-                    onPress={() => {
-                      onValueChange(item.value);
-                      setModalVisible(false);
-                    }}
-                  >
-                    <Text
+
+              <FlatList
+                data={filteredOptions}
+                keyExtractor={(item, index) => {
+                  if (item && typeof item === 'object') {
+                    if (typeof item.value === 'string' || typeof item.value === 'number') {
+                      return String(item.value);
+                    }
+                    if (typeof item.label === 'string' && item.label) {
+                      return `${item.label}-${index}`;
+                    }
+                  }
+                  return `opt-${index}`;
+                }}
+                keyboardShouldPersistTaps="handled"
+                ListEmptyComponent={() => (
+                  <View className="py-6 items-center justify-center">
+                    <Text className="text-base text-muted-foreground italic">No options found</Text>
+                  </View>
+                )}
+                renderItem={({ item }) => {
+                  const isSelected = item.value === value;
+                  return (
+                    <Pressable
                       className={cn(
-                        'text-base font-sans',
-                        isSelected
-                          ? 'font-bold text-primary'
-                          : 'text-foreground'
+                        'flex-row items-center justify-between rounded-xl px-4 py-3.5 mb-1',
+                        isSelected && 'bg-primary/10'
                       )}
+                      onPress={() => {
+                        onValueChange(item.value);
+                        setModalVisible(false);
+                      }}
                     >
-                      {item.label}
-                    </Text>
-                    {isSelected && <Check size={18} className="text-primary" />}
-                  </Pressable>
-                );
-              }}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 24 }}
-            />
+                      <Text
+                        className={cn(
+                          'text-base font-sans',
+                          isSelected ? 'font-bold text-primary' : 'text-foreground'
+                        )}
+                      >
+                        {item.label}
+                      </Text>
+                      {isSelected && <Check size={18} className="text-primary" />}
+                    </Pressable>
+                  );
+                }}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 24 }}
+              />
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

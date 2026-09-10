@@ -202,8 +202,9 @@ const AppHeaderDropdown = () => {
           component="button"
           onClick={() => navigate('/workspace-setup?intent=create')}
           className="text-primary fw-semibold py-1 px-3 w-100 text-start"
+          id="header-dropdown-create-org-btn"
         >
-          + Create New Organization
+          + {t('workspace.createNewOrg', { defaultValue: 'Create New Organization' })}
         </CDropdownItem>
 
         <CDropdownDivider />

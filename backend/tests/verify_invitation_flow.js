@@ -11,6 +11,8 @@ import villaService from '../src/features/villa/villa.services.js';
 import orgMembershipService from '../src/features/orgMembership/orgMembership.services.js';
 import OrgMembership from '../src/features/orgMembership/orgMembership.model.js';
 import Role from '../src/features/role/role.model.js';
+import Token from '../src/features/token/token.model.js';
+import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import '../src/features/user/user.listeners.js';
 
@@ -126,14 +128,53 @@ async function runVerification() {
       'Resident',
       '',
       'Existing Resident',
-      'WEB'
+      'WEB',
+      adminB._id.toString()
     );
 
     const inviteToken = inviteResult.invitationToken;
     console.log(`✓ Invitation dispatched successfully. Token generated: ${inviteToken ? 'YES' : 'NO'}`);
 
+    // Verify Token data model fields (inviterId, status, expiresAt, used)
+    const hashedInviteToken = crypto.createHash('sha256').update(inviteToken).digest('hex');
+    const tokenDoc = await Token.findOne({ token: hashedInviteToken });
+    console.log(`- Token document found in DB: ${tokenDoc ? 'YES' : 'NO'}`);
+    if (!tokenDoc) {
+      throw new Error('TOKEN LIFECYCLE FAILURE: Token document not found in database!');
+    }
+    console.log(`- Token inviterId: ${tokenDoc.inviterId} (Expected: ${adminB._id})`);
+    if (!tokenDoc.inviterId || tokenDoc.inviterId.toString() !== adminB._id.toString()) {
+      throw new Error(`TOKEN LIFECYCLE FAILURE: Expected inviterId ${adminB._id}, got ${tokenDoc.inviterId}`);
+    }
+    console.log(`- Token status: ${tokenDoc.status} (Expected: PENDING)`);
+    if (tokenDoc.status !== 'PENDING') {
+      throw new Error(`TOKEN LIFECYCLE FAILURE: Expected status PENDING, got ${tokenDoc.status}`);
+    }
+    console.log(`- Token expiresAt: ${tokenDoc.expiresAt.toISOString()}`);
+    const twentyFourHoursFromNow = Date.now() + 24 * 60 * 60 * 1000;
+    if (Math.abs(tokenDoc.expiresAt.getTime() - twentyFourHoursFromNow) > 60000) {
+      throw new Error(`TOKEN LIFECYCLE FAILURE: Expected expiresAt to be ~24h in the future, got ${tokenDoc.expiresAt}`);
+    }
+    console.log('✓ Token data model persistence, inviterId attribution, and 24h expiration verified!');
+
     // Allow event listener to persist notification
     await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Verify notification has senderId populated with adminB._id
+    const inviteNotif = await Notification.findOne({ recipientId: residentUser._id, type: 'INVITATION' });
+    console.log(`- Invitation notification found: ${inviteNotif ? 'YES' : 'NO'}, senderId: ${inviteNotif?.senderId}`);
+    if (!inviteNotif || !inviteNotif.senderId || inviteNotif.senderId.toString() !== adminB._id.toString()) {
+      throw new Error(`NOTIFICATION FAILURE: Expected invitation notification senderId to be ${adminB._id}, got ${inviteNotif?.senderId}`);
+    }
+    console.log('✓ In-app invitation notification senderId correctly attribution to adminB verified!');
+
+    // Verify validateInvite response payload
+    const validateRes = await authService.validateInvite(inviteToken);
+    console.log(`- validateInvite result: valid=${validateRes.valid}, invitationStatus=${validateRes.invitationStatus}, inviterId=${validateRes.inviterId}`);
+    if (!validateRes.valid || validateRes.invitationStatus !== 'PENDING' || validateRes.inviterId?.toString() !== adminB._id.toString()) {
+      throw new Error(`VALIDATE_INVITE FAILURE: Invalid payload from validateInvite: ${JSON.stringify(validateRes)}`);
+    }
+    console.log('✓ validateInvite endpoint verified with strict lifecycle fields!');
 
     // 6. Verify PRE-ACCEPTANCE state
     console.log('\n[Step 5] Verifying PRE-ACCEPTANCE state:');
@@ -267,12 +308,189 @@ async function runVerification() {
       throw new Error('POST-ACCEPTANCE FAILURE: switchContext returned incorrect active organization');
     }
 
+    // 10. Verify Idempotency: Repeated Acceptance blocked
+    console.log('\n[Step 9] Testing Idempotency: Attempting to re-accept already accepted token...');
+    const acceptedTokenDoc = await Token.findOne({ token: hashedInviteToken });
+    console.log(`- Token status in DB: ${acceptedTokenDoc.status}, used: ${acceptedTokenDoc.used}`);
+    if (acceptedTokenDoc.status !== 'ACCEPTED' || acceptedTokenDoc.used !== true) {
+      throw new Error(`IDEMPOTENCY FAILURE: Expected token status to be ACCEPTED and used=true, got status=${acceptedTokenDoc.status}, used=${acceptedTokenDoc.used}`);
+    }
+    let reacceptErrorCaught = false;
+    try {
+      await authService.acceptInvitation(inviteToken, null, testEmail);
+    } catch (err) {
+      reacceptErrorCaught = true;
+      console.log(`✓ Repeated acceptance correctly blocked: "${err.message}"`);
+    }
+    if (!reacceptErrorCaught) {
+      throw new Error('IDEMPOTENCY FAILURE: User was able to accept an already accepted invitation token!');
+    }
+
+    // 11. Verify Expired Token Lifecycle
+    console.log('\n[Step 10] Testing Expired Token Lifecycle:');
+    const expiredRawToken = crypto.randomBytes(32).toString('hex');
+    const expiredHashedToken = crypto.createHash('sha256').update(expiredRawToken).digest('hex');
+    await Token.create({
+      userId: residentUser._id,
+      orgId: orgB._id,
+      inviterId: adminB._id,
+      token: expiredHashedToken,
+      type: 'INVITATION',
+      status: 'PENDING',
+      invitationSource: 'WEB',
+      expiresAt: new Date(Date.now() - 3600 * 1000), // 1 hour in the past
+    });
+
+    let expiredValidateCaught = false;
+    try {
+      await authService.validateInvite(expiredRawToken);
+    } catch (err) {
+      expiredValidateCaught = true;
+      console.log(`✓ validateInvite on expired token correctly blocked: "${err.message}"`);
+    }
+    if (!expiredValidateCaught) {
+      throw new Error('EXPIRATION FAILURE: validateInvite did not block expired token!');
+    }
+
+    let expiredAcceptCaught = false;
+    try {
+      await authService.acceptInvitation(expiredRawToken, 'NewPass123!');
+    } catch (err) {
+      expiredAcceptCaught = true;
+      console.log(`✓ acceptInvitation on expired token correctly blocked: "${err.message}"`);
+    }
+    if (!expiredAcceptCaught) {
+      throw new Error('EXPIRATION FAILURE: acceptInvitation did not block expired token!');
+    }
+
+    // 12. Verify Admin Revocation Lifecycle & Cross-Tenant Protection
+    console.log('\n[Step 11] Testing Admin Revocation Lifecycle & Cross-Tenant Security:');
+    const revokeEmail = `revoked_resident_${timestamp}@example.com`;
+    const revokeInviteResult = await userService.inviteUser(
+      revokeEmail,
+      orgB._id.toString(),
+      null,
+      'None',
+      'Resident',
+      '',
+      'To Be Revoked',
+      'WEB',
+      adminB._id.toString()
+    );
+    const revokeRawToken = revokeInviteResult.invitationToken;
+    const revokeHashedToken = crypto.createHash('sha256').update(revokeRawToken).digest('hex');
+    const tokenToRevokeDoc = await Token.findOne({ token: revokeHashedToken });
+
+    // Try cross-tenant revocation: Admin of Org A tries to revoke invitation of Org B
+    let crossTenantCaught = false;
+    try {
+      await userService.revokeInvitation(tokenToRevokeDoc._id.toString(), orgA._id.toString(), residentUser._id.toString());
+    } catch (err) {
+      crossTenantCaught = true;
+      console.log(`✓ Cross-tenant revocation correctly blocked: "${err.message}"`);
+    }
+    if (!crossTenantCaught) {
+      throw new Error('SECURITY FAILURE: Admin was able to revoke an invitation belonging to another organization!');
+    }
+
+    // Authorised revocation by Org B admin
+    const revokeResult = await userService.revokeInvitation(tokenToRevokeDoc._id.toString(), orgB._id.toString(), adminB._id.toString());
+    console.log(`✓ Revocation succeeded: ${revokeResult.message}, status: ${revokeResult.status}`);
+    const revokedDocAfter = await Token.findById(tokenToRevokeDoc._id);
+    if (revokedDocAfter.status !== 'REVOKED' || revokedDocAfter.used !== true) {
+      throw new Error(`REVOCATION FAILURE: Token doc status should be REVOKED and used=true, got ${revokedDocAfter.status}`);
+    }
+
+    // Block validating revoked token
+    let revokedValidateCaught = false;
+    try {
+      await authService.validateInvite(revokeRawToken);
+    } catch (err) {
+      revokedValidateCaught = true;
+      console.log(`✓ validateInvite on revoked token correctly blocked: "${err.message}"`);
+    }
+    if (!revokedValidateCaught) {
+      throw new Error('REVOCATION FAILURE: validateInvite accepted a revoked token!');
+    }
+
+    // Block accepting revoked token
+    let revokedAcceptCaught = false;
+    try {
+      await authService.acceptInvitation(revokeRawToken, 'NewPass123!');
+    } catch (err) {
+      revokedAcceptCaught = true;
+      console.log(`✓ acceptInvitation on revoked token correctly blocked: "${err.message}"`);
+    }
+    if (!revokedAcceptCaught) {
+      throw new Error('REVOCATION FAILURE: acceptInvitation accepted a revoked token!');
+    }
+
+    // Block double revocation
+    let doubleRevokeCaught = false;
+    try {
+      await userService.revokeInvitation(tokenToRevokeDoc._id.toString(), orgB._id.toString(), adminB._id.toString());
+    } catch (err) {
+      doubleRevokeCaught = true;
+      console.log(`✓ Double revocation correctly blocked: "${err.message}"`);
+    }
+    if (!doubleRevokeCaught) {
+      throw new Error('REVOCATION FAILURE: Able to revoke an already revoked token!');
+    }
+
+    // 13. Verify Rejection Lifecycle
+    console.log('\n[Step 12] Testing Rejection Lifecycle:');
+    const rejectEmail = `rejected_resident_${timestamp}@example.com`;
+    const rejectInviteResult = await userService.inviteUser(
+      rejectEmail,
+      orgB._id.toString(),
+      null,
+      'None',
+      'Resident',
+      '',
+      'To Be Rejected',
+      'WEB',
+      adminB._id.toString()
+    );
+    const rejectRawToken = rejectInviteResult.invitationToken;
+    const rejectHashedToken = crypto.createHash('sha256').update(rejectRawToken).digest('hex');
+
+    await authService.rejectInvitation(rejectRawToken);
+    const rejectedTokenDoc = await Token.findOne({ token: rejectHashedToken });
+    console.log(`- Rejected token in DB: status=${rejectedTokenDoc.status}, used=${rejectedTokenDoc.used}`);
+    if (rejectedTokenDoc.status !== 'REJECTED' || rejectedTokenDoc.used !== true) {
+      throw new Error(`REJECTION FAILURE: Token status should be REJECTED and used=true, got ${rejectedTokenDoc.status}`);
+    }
+
+    let rejectValidateCaught = false;
+    try {
+      await authService.validateInvite(rejectRawToken);
+    } catch (err) {
+      rejectValidateCaught = true;
+      console.log(`✓ validateInvite on rejected token correctly blocked: "${err.message}"`);
+    }
+    if (!rejectValidateCaught) {
+      throw new Error('REJECTION FAILURE: validateInvite allowed a rejected token!');
+    }
+
+    let rejectAcceptCaught = false;
+    try {
+      await authService.acceptInvitation(rejectRawToken, 'NewPass123!');
+    } catch (err) {
+      rejectAcceptCaught = true;
+      console.log(`✓ acceptInvitation on rejected token correctly blocked: "${err.message}"`);
+    }
+    if (!rejectAcceptCaught) {
+      throw new Error('REJECTION FAILURE: acceptInvitation allowed a rejected token!');
+    }
+
     console.log('\n======================================================');
     console.log('🎉 ALL MULTI-TENANT INVITATION & NOTIFICATION TESTS PASSED!');
     console.log('======================================================\n');
   } finally {
     // Cleanup test data
     console.log('Cleaning up test data...');
+    await User.deleteMany({ email: { $regex: new RegExp(`.*_${timestamp}@example\\.com`) } });
+    await Token.deleteMany({ orgId: { $in: [orgA?._id, orgB?._id] } });
     await User.deleteMany({ email: { $in: [testEmail, adminEmail] } });
     await Organization.deleteMany({ name: { $regex: new RegExp(`Test Community.*${timestamp}`) } });
     await Villa.deleteMany({ unitNumber: { $regex: new RegExp(`.*${timestamp}`) } });

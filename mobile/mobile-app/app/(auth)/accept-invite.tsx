@@ -33,7 +33,7 @@ const acceptInviteSchema = yup.object().shape({
 type AcceptInviteFormValues = yup.InferType<typeof acceptInviteSchema>;
 
 export default function AcceptInviteScreen() {
-  const { clearStatus } = useAuth();
+  const { isAuthenticated, user, clearStatus } = useAuth();
   const searchParams = useLocalSearchParams<{ token?: string; code?: string; email?: string; action?: string }>();
   const [submitting, setSubmitting] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -53,7 +53,7 @@ export default function AcceptInviteScreen() {
     if (searchParams.token) return searchParams.token;
     if (searchParams.code) return searchParams.code;
     if (typeof window !== 'undefined' && window.location?.href) {
-      const match = window.location.href.match(/[\/?&](?:token|code)=([^&#]+)|\/invite\/(?:app|web)\/([^/?&#]+)/i);
+      const match = window.location.href.match(/[\/?&](?:token|code)=([^&#]+)|\/invite\/(?:app\/|web\/)?([a-f0-9]{32,64}|[^/?&#]+)/i);
       if (match) return match[1] || match[2];
     }
     return '';
@@ -151,6 +151,23 @@ export default function AcceptInviteScreen() {
             const userEmail = data.email || emailToValidate;
             setIsAlreadyRegistered(true);
             setAlreadyRegisteredEmail(userEmail);
+
+            // Reconcile mobile notification / link navigation:
+            // If the user is already authenticated on this device with the matching email,
+            // accept the workspace invitation immediately without forcing a redundant sign-in.
+            if (isAuthenticated && user?.email && user.email.toLowerCase() === userEmail.toLowerCase()) {
+              try {
+                await authService.acceptInvite({
+                  token: tokenToValidate,
+                  email: userEmail,
+                });
+                router.replace('/(resident)/dashboard');
+                return;
+              } catch (autoAcceptErr) {
+                // If auto-accept fails, continue to standard modal
+              }
+            }
+
             setIsAlreadyRegisteredModalVisible(true);
 
             if (Platform.OS !== 'web') {
@@ -399,48 +416,104 @@ export default function AcceptInviteScreen() {
                     </View>
                   ) : null}
 
-                  {/* New Password Field */}
-                  <Controller
-                    control={form.control}
-                    name="password"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <View>
-                        <Input
-                          label="New Password"
-                          placeholder="••••••••"
-                          isPassword
-                          leftIcon={<Lock size={18} className="text-muted-foreground me-1" />}
-                          onBlur={onBlur}
-                          onChangeText={onChange}
-                          value={value}
-                          autoCapitalize="none"
-                          autoComplete="new-password"
-                          error={form.formState.errors.password?.message}
-                        />
-                        <PasswordStrengthIndicator password={value} />
-                      </View>
-                    )}
-                  />
-
-                  {/* Confirm Password Field */}
-                  <Controller
-                    control={form.control}
-                    name="confirmPassword"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <Input
-                        label="Confirm New Password"
-                        placeholder="••••••••"
-                        isPassword
-                        leftIcon={<Lock size={18} className="text-muted-foreground me-1" />}
-                        onBlur={onBlur}
-                        onChangeText={onChange}
-                        value={value}
-                        autoCapitalize="none"
-                        autoComplete="new-password"
-                        error={form.formState.errors.confirmPassword?.message}
+                  {/* Password Form (Wrapped in form on Web to satisfy browser password managers) */}
+                  {Platform.OS === 'web' ? (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleSaveAndConfirm();
+                      }}
+                      style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}
+                    >
+                      {/* New Password Field */}
+                      <Controller
+                        control={form.control}
+                        name="password"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <View>
+                            <Input
+                              label="New Password"
+                              placeholder="••••••••"
+                              isPassword
+                              leftIcon={<Lock size={18} className="text-muted-foreground me-1" />}
+                              onBlur={onBlur}
+                              onChangeText={onChange}
+                              value={value}
+                              autoCapitalize="none"
+                              autoComplete="new-password"
+                              error={form.formState.errors.password?.message}
+                            />
+                            <PasswordStrengthIndicator password={value} />
+                          </View>
+                        )}
                       />
-                    )}
-                  />
+
+                      {/* Confirm Password Field */}
+                      <Controller
+                        control={form.control}
+                        name="confirmPassword"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <Input
+                            label="Confirm New Password"
+                            placeholder="••••••••"
+                            isPassword
+                            leftIcon={<Lock size={18} className="text-muted-foreground me-1" />}
+                            onBlur={onBlur}
+                            onChangeText={onChange}
+                            value={value}
+                            autoCapitalize="none"
+                            autoComplete="new-password"
+                            error={form.formState.errors.confirmPassword?.message}
+                          />
+                        )}
+                      />
+                    </form>
+                  ) : (
+                    <>
+                      {/* New Password Field */}
+                      <Controller
+                        control={form.control}
+                        name="password"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <View>
+                            <Input
+                              label="New Password"
+                              placeholder="••••••••"
+                              isPassword
+                              leftIcon={<Lock size={18} className="text-muted-foreground me-1" />}
+                              onBlur={onBlur}
+                              onChangeText={onChange}
+                              value={value}
+                              autoCapitalize="none"
+                              autoComplete="new-password"
+                              error={form.formState.errors.password?.message}
+                            />
+                            <PasswordStrengthIndicator password={value} />
+                          </View>
+                        )}
+                      />
+
+                      {/* Confirm Password Field */}
+                      <Controller
+                        control={form.control}
+                        name="confirmPassword"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <Input
+                            label="Confirm New Password"
+                            placeholder="••••••••"
+                            isPassword
+                            leftIcon={<Lock size={18} className="text-muted-foreground me-1" />}
+                            onBlur={onBlur}
+                            onChangeText={onChange}
+                            value={value}
+                            autoCapitalize="none"
+                            autoComplete="new-password"
+                            error={form.formState.errors.confirmPassword?.message}
+                          />
+                        )}
+                      />
+                    </>
+                  )}
 
                   {/* Global Error Banner */}
                   {apiError ? <ErrorBanner message={apiError} /> : null}

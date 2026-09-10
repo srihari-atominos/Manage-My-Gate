@@ -1,71 +1,27 @@
 import { Router } from 'express';
-import { body, query } from 'express-validator';
 import organizationController from './organization.controller.js';
 import validate from '../../middlewares/validator.middleware.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
+import { nameCheckLimiter } from '../../middlewares/rateLimiter.middleware.js';
+import {
+  checkNameRules,
+  setupWorkspaceRules,
+  updateFeaturesRules,
+  updateStatusRules,
+} from './organization.validator.js';
 
 const router = Router();
 
-const checkNameRules = [
-  query('name')
-    .notEmpty()
-    .withMessage('Organization name query parameter is required')
-    .isString()
-    .withMessage('Organization name must be a string')
-    .trim(),
-];
-
-const updateFeaturesRules = [
-  body('features')
-    .isArray()
-    .withMessage('features must be an array')
-    .bail()
-    .custom((value) => {
-      if (!value.every((item) => typeof item === 'string')) {
-        throw new Error('All features must be strings');
-      }
-      return true;
-    }),
-];
-
-const updateStatusRules = [
-  body('status')
-    .isString()
-    .withMessage('status must be a string')
-    .bail()
-    .isIn(['Active', 'Pending', 'Rejected'])
-    .withMessage('status must be one of Active, Pending, or Rejected'),
-];
-
-
-
-const setupWorkspaceRules = [
-  body('name')
-    .notEmpty()
-    .withMessage('Organization name is required')
-    .isString()
-    .withMessage('Organization name must be a string')
-    .trim(),
-  body('features')
-    .optional()
-    .isArray()
-    .withMessage('features must be an array'),
-  body('password')
-    .optional()
-    .isString()
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long'),
-];
-
-// Check Organization Name availability route (decoupled setup)
+// Check Organization Name availability route (public, rate-limited, validated)
 router.get(
   '/check-name',
+  nameCheckLimiter,
   validate(checkNameRules),
   organizationController.checkName
 );
 
-// Setup Workspace route (authenticated context, decoupled setup)
+// Setup Workspace route (authenticated context, validated)
 router.post(
   '/setup',
   isAuthenticated,

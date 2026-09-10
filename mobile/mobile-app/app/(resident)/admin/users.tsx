@@ -212,6 +212,14 @@ export default function UserManagementScreen() {
       headerRight={
         <View className="flex-row items-center gap-1.5">
           <TouchableOpacity
+            onPress={() => router.push('/(resident)/admin/invitations')}
+            className="p-2 rounded-xl bg-secondary border border-border flex-row items-center"
+            accessibilityRole="button"
+            accessibilityLabel="View Invitations"
+          >
+            <Mail size={16} className="text-foreground" />
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => setShowFilterSheet(true)}
             className="p-2 rounded-xl bg-secondary border border-border flex-row items-center"
             accessibilityRole="button"

@@ -49,7 +49,7 @@ export const QRScannerOverlay: React.FC<QRScannerOverlayProps> = ({
   }));
 
   return (
-    <View className={cn('absolute inset-0 flex-col', className)} pointerEvents="box-none">
+    <View className={cn('absolute inset-0 flex-col', className)} style={{ pointerEvents: 'box-none' }}>
       {/* Top Dimmed Letterbox */}
       <View className="flex-1 bg-black/60 items-center justify-end pb-5 px-6">
         <View className="flex-row items-center gap-2 bg-black/80 px-3.5 py-1.5 rounded-full border border-white/20 shadow-md">

@@ -166,14 +166,33 @@ export const updateProfile = createAsyncThunk(
   },
 )
 
+export const validateInvitation = createAsyncThunk(
+  'auth/validateInvitation',
+  async (token, { rejectWithValue }) => {
+    try {
+      const response = await authService.validateInvite(token)
+      return response
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Invalid or expired invitation token',
+      )
+    }
+  },
+)
+
 export const acceptInvitation = createAsyncThunk(
   'auth/acceptInvitation',
-  async ({ token, password }, { dispatch, rejectWithValue }) => {
+  async (payload, { dispatch, rejectWithValue }) => {
     try {
-      const response = await authService.acceptInvite({ token, password })
+      const response = await authService.acceptInvite(payload)
 
       const user = response.data?.user
+      const token = response.data?.token
       const availableWorkspaces = response.data?.availableWorkspaces || []
+
+      if (token || user) {
+        dispatch(updateTokenAndUser({ token, user }))
+      }
 
       if (user) {
         dispatch(
@@ -451,6 +470,13 @@ const initialState = {
   loading: false,
   error: null,
   successMsg: null,
+  invitation: {
+    loading: false,
+    error: null,
+    token: null,
+    valid: false,
+    data: null,
+  },
 }
 
 const authSlice = createSlice({
@@ -474,6 +500,15 @@ const authSlice = createSlice({
       state.successMsg = null
       state.loading = false
       state.otpSent = false
+    },
+    clearInvitation: (state) => {
+      state.invitation = {
+        loading: false,
+        error: null,
+        token: null,
+        valid: false,
+        data: null,
+      }
     },
     updateTokenAndUser: (state, action) => {
       const { token, user } = action.payload || {}
@@ -904,8 +939,27 @@ const authSlice = createSlice({
         state.loading = false
         state.error = action.payload || 'Password reset failed'
       })
+      // Validate Invitation
+      .addCase(validateInvitation.pending, (state) => {
+        state.invitation.loading = true
+        state.invitation.error = null
+      })
+      .addCase(validateInvitation.fulfilled, (state, action) => {
+        state.invitation.loading = false
+        state.invitation.valid = true
+        state.invitation.token = action.meta?.arg
+        state.invitation.data = action.payload.data?.data || action.payload.data || action.payload
+        state.invitation.error = null
+      })
+      .addCase(validateInvitation.rejected, (state, action) => {
+        state.invitation.loading = false
+        state.invitation.valid = false
+        state.invitation.token = action.meta?.arg || null
+        state.invitation.data = null
+        state.invitation.error = action.payload || 'Invalid or expired invitation token'
+      })
   },
 })
 
-export const { logout, clearStatus, updateTokenAndUser } = authSlice.actions
+export const { logout, clearStatus, clearInvitation, updateTokenAndUser } = authSlice.actions
 export default authSlice.reducer

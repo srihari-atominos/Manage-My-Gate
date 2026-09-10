@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CBadge, CAlert, CButton, CSpinner } from '@coreui/react'
 import { toast } from 'react-hot-toast'
 
@@ -25,11 +26,13 @@ import InviteUserButton from './components/InviteUserButton'
 import ManageRolesModal from './components/ManageRolesModal'
 import TemplateEditorCanvasModal from '../messageTemplate/components/TemplateEditorCanvasModal'
 import { useUserList } from './hooks/useUserList'
+import { parseBackendError } from '../../utils/validation'
 import './styles/_userManagement.scss'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const UserList = () => {
+  const navigate = useNavigate()
   // ── Controller Hook ──
   const {
     currentUserId,
@@ -73,7 +76,7 @@ const UserList = () => {
       const response = await inviteUser(inviteData)
       const token = response.invitationToken
       if (token) {
-        const inviteLink = response.inviteLink || `${window.location.origin}/invite/web/${token}`
+        const inviteLink = response.inviteLink || `${window.location.origin}/invite/${token}`
         toast(
           (t) => (
             <div className="d-flex align-items-center gap-2">
@@ -105,10 +108,13 @@ const UserList = () => {
       } else {
         toast.success('User invited successfully!')
       }
+      setShowInviteModal(false)
+      return response
     } catch (err) {
-      toast.error(err || 'Failed to invite user')
+      const cleanMsg = parseBackendError(err, 'Failed to invite user')
+      toast.error(cleanMsg)
+      throw new Error(cleanMsg)
     }
-    setShowInviteModal(false)
   }
 
   const handleResendInvite = (user) => {
@@ -411,6 +417,16 @@ const UserList = () => {
         subtitle="Manage organization users and allocate access roles."
         actionButtons={
           <div className="d-flex gap-2">
+            <CButton
+              id="view-invitations-btn"
+              color="info"
+              variant="outline"
+              size="sm"
+              className="fw-semibold d-flex align-items-center gap-1"
+              onClick={() => navigate('/users/invitations')}
+            >
+              📋 Invitations
+            </CButton>
             <CButton
               id="configure-invitation-tmpl-btn"
               color="secondary"

@@ -10,8 +10,11 @@ import {
   CFormInput,
   CFormSelect,
   CButton,
+  CAlert,
+  CSpinner,
 } from '@coreui/react'
 import apiClient from '../../../services/apiClient'
+import { validateEmail, parseBackendError } from '../../../utils/validation'
 
 /**
  * InviteUserModal Component
@@ -20,15 +23,20 @@ import apiClient from '../../../services/apiClient'
  */
 const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
   const [inviteEmail, setInviteEmail] = useState('')
+  const [emailTouched, setEmailTouched] = useState(false)
   const [villas, setVillas] = useState([])
   const [selectedVillaId, setSelectedVillaId] = useState('')
   const [roles, setRoles] = useState([])
   const [selectedRoleName, setSelectedRoleName] = useState('')
+  const [roleTouched, setRoleTouched] = useState(false)
   const [loadingVillas, setLoadingVillas] = useState(false)
   const [loadingRoles, setLoadingRoles] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
 
   useEffect(() => {
     if (visible) {
+      setSubmitError(null)
       setLoadingVillas(true)
       apiClient
         .get('/villas?limit=1000')
@@ -57,12 +65,23 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
     }
   }, [visible])
 
-  const handleSubmit = (e) => {
+  const emailValidation = validateEmail(inviteEmail)
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!inviteEmail.trim()) return
+    setEmailTouched(true)
+    setRoleTouched(true)
+    setSubmitError(null)
+
+    if (emailValidation.state === 'empty' || emailValidation.state === 'incomplete' || emailValidation.state === 'invalid') {
+      return
+    }
+
+    if (!selectedRoleName) return
 
     const selectedRole = roles.find((r) => r.name === selectedRoleName)
     const isTenant = selectedRole ? selectedRole.isTenantRole : false
+    if (isTenant && !selectedVillaId) return
 
     // Determine residentType based on roleName
     let residentType = 'None'
@@ -74,22 +93,29 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
       else residentType = 'Guest' // Fallback for other tenant roles
     }
 
-    onSendInvite({
-      email: inviteEmail.trim(),
-      villaId: isTenant ? selectedVillaId || null : null,
-      residentType,
-      roleName: selectedRoleName || null,
-    })
-
-    setInviteEmail('')
-    setSelectedVillaId('')
-    setSelectedRoleName('')
+    setSubmitting(true)
+    try {
+      await onSendInvite({
+        email: inviteEmail.trim(),
+        villaId: isTenant ? selectedVillaId || null : null,
+        residentType,
+        roleName: selectedRoleName || null,
+      })
+      handleClose()
+    } catch (err) {
+      setSubmitError(parseBackendError(err, 'Failed to send invitation. Please verify the email and try again.'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleClose = () => {
     setInviteEmail('')
+    setEmailTouched(false)
     setSelectedVillaId('')
     setSelectedRoleName('')
+    setRoleTouched(false)
+    setSubmitError(null)
     onClose()
   }
 
@@ -105,21 +131,41 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
       </CModalHeader>
       <form onSubmit={handleSubmit}>
         <CModalBody>
+          {submitError && (
+            <CAlert color="danger" className="mb-3" dismissible onDismiss={() => setSubmitError(null)}>
+              {submitError}
+            </CAlert>
+          )}
+
           <div className="mb-3">
             <CFormLabel
               htmlFor="invite-email-input"
               style={{ fontSize: '0.85rem', fontWeight: 600 }}
             >
-              Email Address
+              Email Address <span className="text-danger">*</span>
             </CFormLabel>
             <CFormInput
               id="invite-email-input"
               type="email"
               placeholder="resident@example.com"
               value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
+              onChange={(e) => {
+                setInviteEmail(e.target.value)
+                if (submitError) setSubmitError(null)
+              }}
+              onBlur={() => setEmailTouched(true)}
+              valid={emailTouched && emailValidation.state === 'valid'}
+              invalid={emailTouched && (emailValidation.state === 'invalid' || (emailValidation.state === 'empty' && emailTouched))}
+              feedbackValid="Valid email address format"
+              feedbackInvalid={emailValidation.state === 'empty' ? 'Email address is required' : emailValidation.message}
+              text={
+                emailTouched && emailValidation.state === 'incomplete'
+                  ? 'Keep typing... (e.g. resident@example.com)'
+                  : undefined
+              }
               required
               autoFocus
+              disabled={submitting}
             />
           </div>
 
@@ -128,15 +174,21 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
               htmlFor="invite-role-select"
               style={{ fontSize: '0.85rem', fontWeight: 600 }}
             >
-              Select Role
+              Select Role <span className="text-danger">*</span>
             </CFormLabel>
             <CFormSelect
               id="invite-role-select"
               value={selectedRoleName}
-              onChange={(e) => setSelectedRoleName(e.target.value)}
+              onChange={(e) => {
+                setSelectedRoleName(e.target.value)
+                setRoleTouched(true)
+              }}
+              onBlur={() => setRoleTouched(true)}
+              invalid={roleTouched && !selectedRoleName}
+              feedbackInvalid="Please choose a community role"
               className="form-select-sm"
               required
-              disabled={loadingRoles}
+              disabled={loadingRoles || submitting}
             >
               <option value="">-- Choose a Role --</option>
               {roles.map((role) => (
@@ -227,7 +279,7 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
           </div>
         </CModalBody>
         <CModalFooter className="border-0 pt-0">
-          <CButton color="light" size="sm" onClick={handleClose}>
+          <CButton color="light" size="sm" onClick={handleClose} disabled={submitting}>
             Cancel
           </CButton>
           <CButton
@@ -236,11 +288,23 @@ const InviteUserModal = ({ visible, onClose, onSendInvite }) => {
             color="primary"
             size="sm"
             disabled={
-              !inviteEmail.trim() || !selectedRoleName || (isTenantRole && !selectedVillaId)
+              submitting ||
+              !inviteEmail.trim() ||
+              emailValidation.state === 'invalid' ||
+              emailValidation.state === 'incomplete' ||
+              !selectedRoleName ||
+              (isTenantRole && !selectedVillaId)
             }
             style={{ fontWeight: 600 }}
           >
-            Send Invitation
+            {submitting ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Sending...
+              </>
+            ) : (
+              'Send Invitation'
+            )}
           </CButton>
         </CModalFooter>
       </form>

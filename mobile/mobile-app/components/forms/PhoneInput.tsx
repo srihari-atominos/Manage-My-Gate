@@ -10,8 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { ChevronDown, Check, Phone } from 'lucide-react-native';
+import { ChevronDown, Check, Phone, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { cn } from '../../lib/utils';
+import { validatePhone } from '../../src/utils/validation';
 
 export interface CountryOption {
   code: string;
@@ -38,25 +39,30 @@ export const COUNTRIES: CountryOption[] = [
 
 export interface PhoneInputProps {
   label?: string;
+  required?: boolean;
   value?: string;
   onChangeText?: (fullPhoneNumber: string) => void;
   error?: string;
   placeholder?: string;
   containerClassName?: string;
+  helperText?: string;
 }
 
 export const PhoneInput: React.FC<PhoneInputProps> = ({
   label = 'Mobile Number',
+  required = false,
   value = '',
   onChangeText,
   error,
   placeholder = '99887 76655',
   containerClassName,
+  helperText,
 }) => {
   const [selectedCountry, setSelectedCountry] = useState<CountryOption>(COUNTRIES[0]); // Default India +91
   const [nationalNumber, setNationalNumber] = useState('');
   const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
 
   // Parse initial value if passed e.g. +919988776655
   useEffect(() => {
@@ -98,16 +104,47 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     }
   };
 
+  const currentLength = nationalNumber.length;
+  const isComplete = currentLength === selectedCountry.digitsLength;
+  const isIncomplete = currentLength > 0 && currentLength < selectedCountry.digitsLength;
+
   return (
     <View className={cn('w-full', containerClassName)}>
       {Boolean(label) && (
-        <Text className="mb-1.5 text-xs font-bold text-foreground">{label}</Text>
+        <View className="flex-row items-center justify-between mb-1.5">
+          <Text className="text-sm font-medium text-foreground">
+            {label}
+            {required && !label?.includes('*') && (
+              <Text className="text-destructive font-bold"> *</Text>
+            )}
+          </Text>
+          {currentLength > 0 && (
+            <View className="flex-row items-center gap-1">
+              {isComplete ? (
+                <View className="flex-row items-center gap-1">
+                  <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400" />
+                  <Text className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    {currentLength}/{selectedCountry.digitsLength}
+                  </Text>
+                </View>
+              ) : (
+                <Text className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                  {currentLength}/{selectedCountry.digitsLength} digits
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
       )}
 
       <View
         className={cn(
-          'flex-row items-center rounded-2xl border border-border/90 bg-background px-3.5 py-3 shadow-xs',
-          Boolean(error) && 'border-rose-500 bg-rose-500/5'
+          'flex-row items-center rounded-2xl border bg-card px-3.5 py-3 shadow-xs transition-colors',
+          'border-border/80',
+          isFocused && !error && 'border-primary ring-2 ring-primary/20',
+          isIncomplete && !error && 'border-amber-500/80 bg-amber-500/5',
+          isComplete && !error && 'border-emerald-500/80 bg-emerald-500/5',
+          Boolean(error) && 'border-destructive bg-destructive/5 ring-1 ring-destructive/20'
         )}
       >
         {/* Country Picker Trigger */}
@@ -115,6 +152,8 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           onPress={() => setIsPickerVisible(true)}
           className="flex-row items-center me-2.5 pe-2.5 border-e border-border/80"
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Selected country ${selectedCountry.name}, dial code ${selectedCountry.dialCode}. Tap to change.`}
         >
           <Text className="text-base me-1">{selectedCountry.flag}</Text>
           <Text className="text-xs font-bold text-foreground me-1">
@@ -129,21 +168,41 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           style={{ outlineStyle: 'none' } as any}
           keyboardType="phone-pad"
           placeholder={placeholder}
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor="#737c88"
           value={nationalNumber}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           onChangeText={handleNumberChange}
           maxLength={selectedCountry.digitsLength}
+          accessibilityLabel={label}
         />
+
+        {isComplete && !error && (
+          <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 ms-2" />
+        )}
       </View>
 
       {Boolean(error) && (
-        <Text className="mt-1 text-[11px] text-rose-500 font-medium ms-1">{error}</Text>
+        <View className="flex-row items-center mt-1 ms-1 gap-1">
+          <AlertCircle size={12} className="text-destructive shrink-0" />
+          <Text className="text-xs text-destructive font-semibold">{error}</Text>
+        </View>
+      )}
+
+      {!error && isIncomplete && (
+        <Text className="mt-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium ms-1">
+          Enter {selectedCountry.digitsLength - currentLength} more digit{selectedCountry.digitsLength - currentLength > 1 ? 's' : ''} to complete.
+        </Text>
+      )}
+
+      {!error && !isIncomplete && Boolean(helperText) && (
+        <Text className="mt-1 text-[11px] text-muted-foreground ms-1">{helperText}</Text>
       )}
 
       {/* Country Selection Modal */}
       <Modal visible={isPickerVisible} transparent statusBarTranslucent={true} animationType="fade">
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
         >
           <Pressable
@@ -158,12 +217,12 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
               onPress={(e) => e.stopPropagation()}
             >
               <Text className="text-base font-bold text-foreground mb-2 px-1">Select Country</Text>
-              
+
               {/* Search Filter */}
               <RNTextInput
                 className="bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground mb-3"
                 placeholder="Search country or code..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#737c88"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoCapitalize="none"
