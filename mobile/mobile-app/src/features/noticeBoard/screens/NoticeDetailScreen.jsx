@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Share, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { ScrollContainer } from '@/components/layout/ScrollContainer';
@@ -13,8 +13,8 @@ import { DetailRow } from '@/components/ui/DetailRow';
 import { ActionBar } from '@/components/ui/ActionBar';
 
 import { useNoticeBoard } from '../hooks/useNoticeBoard';
-import { NoticeImageGallery, ErrorBoundary } from '../components';
-import { Heart, Share2, Pin } from 'lucide-react-native';
+import { NoticeImageGallery, NoticeAcknowledgementCard, ErrorBoundary } from '../components';
+import { Heart, Share2, Pin, AlertTriangle, Users } from 'lucide-react-native';
 
 function NoticeDetailContent() {
   const { id } = useLocalSearchParams();
@@ -23,9 +23,11 @@ function NoticeDetailContent() {
     selectedNotice,
     loading,
     error,
+    acknowledging,
     loadNoticeById,
     readNotice,
     toggleBookmark,
+    acknowledgeNotice,
   } = useNoticeBoard();
 
   // Load notice details and record read status on mount
@@ -110,6 +112,9 @@ function NoticeDetailContent() {
         <View className="p-4">
           {/* Header Badges */}
           <View className="flex-row flex-wrap gap-2 mb-3">
+            {selectedNotice.isCritical && (
+              <StatusBadge label="CRITICAL" variant="danger" size="sm" />
+            )}
             {selectedNotice.isPinned && (
               <View className="flex-row items-center bg-primary/10 px-2 py-1 rounded-md">
                 <Icon as={Pin} size={12} className="text-primary me-1" />
@@ -121,16 +126,47 @@ function NoticeDetailContent() {
             <StatusBadge label={selectedNotice.status || 'Published'} variant={getStatusVariant(selectedNotice.status || 'Published')} size="sm" />
           </View>
 
+          {/* Critical Notice Warning Banner */}
+          {selectedNotice.isCritical && (
+            <View className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 mb-4 flex-row items-center">
+              <AlertTriangle size={20} color="#dc2626" className="me-2" />
+              <Text className="text-destructive font-bold text-sm flex-1">
+                Mandatory Critical Notice — Review required by all targeted community members.
+              </Text>
+            </View>
+          )}
+
           {/* Notice Title */}
           <Text className="text-foreground text-2xl font-bold mb-4 text-start">
             {selectedNotice.title}
           </Text>
 
+          {/* Notice Acknowledgement Action Container */}
+          {selectedNotice.requiresAcknowledgement && (
+            <NoticeAcknowledgementCard
+              notice={selectedNotice}
+              onAcknowledge={() => acknowledgeNotice(selectedNotice._id)}
+              loading={acknowledging}
+            />
+          )}
+
           {/* Metadata Cards */}
           <DetailSection title="Notice Details" iconName="Info">
             <DetailRow label="Posted by" value={creatorName} iconName="User" />
             <DetailRow label="Posted On" value={formattedPostedDate || 'N/A'} iconName="Calendar" />
-            <DetailRow label="Expiry" value={formattedExpiryDate || 'N/A'} iconName="CalendarOff" isLast />
+            <DetailRow label="Expiry" value={formattedExpiryDate || 'N/A'} iconName="CalendarOff" />
+            <DetailRow
+              label="Audience"
+              value={
+                selectedNotice.targetAudience?.type === 'ALL'
+                  ? 'All Community Residents'
+                  : selectedNotice.targetAudience?.type === 'ROLES'
+                  ? `Roles: ${(selectedNotice.targetAudience?.roles || []).join(', ')}`
+                  : 'Specific Units'
+              }
+              iconName="Users"
+              isLast
+            />
           </DetailSection>
 
           {/* Announcement Body */}
@@ -167,9 +203,30 @@ function NoticeDetailContent() {
 }
 
 export default function NoticeDetailScreen() {
+  const { canUpdate, isAdmin } = useNoticeBoard();
+  const router = useRouter();
+  const { id } = useLocalSearchParams();
+
   return (
     <ErrorBoundary>
-      <ScreenShell title="Notice Detail">
+      <ScreenShell 
+        title="Notice Detail"
+        headerRight={
+          (canUpdate || isAdmin) ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onPress={() => router.push({
+                pathname: '/(resident)/notices/create',
+                params: { id }
+              })}
+              accessibilityLabel="Edit Notice"
+            >
+              Edit
+            </Button>
+          ) : null
+        }
+      >
         <NoticeDetailContent />
       </ScreenShell>
     </ErrorBoundary>

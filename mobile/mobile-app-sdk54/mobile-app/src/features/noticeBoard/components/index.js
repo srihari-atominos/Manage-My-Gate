@@ -9,4 +9,5 @@ export * from './NoticeBoardTopNav';
 export * from './DeleteNoticeDialog';
 export * from './NoticeBoardEmptyState';
 export * from './NoticeBoardLoadingSkeleton';
-export * from './NoticeBoardTopNav';
+export * from './NoticeAcknowledgementCard';
+

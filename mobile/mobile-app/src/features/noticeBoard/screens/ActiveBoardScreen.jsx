@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { useTranslation } from '@/src/utils/i18n';
+
+import { Button } from '@/components/common/Button';
 
 import { useNoticeBoard } from '../hooks/useNoticeBoard';
 import { useNoticeSocket } from '../hooks/useNoticeSocket';
@@ -13,6 +15,7 @@ import {
   MemoizedNoticeCard, 
   ErrorBoundary, 
   NoticeBoardFilters, 
+  NoticeBoardTopNav,
   NoticeBoardLoadingSkeleton
 } from '../components';
 import { debounce } from '../utils/debounce';
@@ -43,16 +46,20 @@ export default function ActiveBoardScreen() {
     selectNotice,
     readNotice,
     toggleBookmark,
+    canManage,
+    isAdmin,
   } = useNoticeBoard();
 
   const [localSearch, setLocalSearch] = useState(search);
 
-  // Initialize board and apply default Published status filter on mount
-  useEffect(() => {
-    setFilters({ status: 'Published' });
-    loadNotices();
-    loadNoticeStats?.();
-  }, []);
+  // Initialize board and apply default Published status filter on mount & focus
+  useFocusEffect(
+    useCallback(() => {
+      setFilters({ status: 'Published' });
+      loadNotices();
+      loadNoticeStats?.();
+    }, [setFilters, loadNotices, loadNoticeStats])
+  );
 
   // Handle deep-linking to automatically open notice details
   useEffect(() => {
@@ -142,8 +149,21 @@ export default function ActiveBoardScreen() {
         subtitle={t('official_announcements', 'Community updates & announcements')}
         iconName="Megaphone"
         loading={false}
+        headerRight={
+          (canManage || isAdmin) ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onPress={() => router.push('/(resident)/notices/manage')}
+              accessibilityLabel="Manage Notices"
+            >
+              Manage
+            </Button>
+          ) : null
+        }
       >
         <View className="flex-1 bg-background">
+          <NoticeBoardTopNav />
           <View className="px-4 pt-3 pb-2 border-b border-border/40 bg-card z-50" style={{ zIndex: 50 }}>
             <NoticeBoardFilters
               search={localSearch || ''}

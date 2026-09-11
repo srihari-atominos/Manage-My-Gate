@@ -34,6 +34,10 @@ export const registerPollSocketHandlers = () => {
     messageBroker.publishEvent('socket:poll_closed', { orgId: poll.orgId, poll });
   });
 
+  pollEvents.on('poll_finalized', (poll) => {
+    messageBroker.publishEvent('socket:poll_finalized', { orgId: poll.orgId, poll });
+  });
+
   pollEvents.on('poll_reopened', (poll) => {
     messageBroker.publishEvent('socket:poll_reopened', { orgId: poll.orgId, poll });
   });
@@ -65,6 +69,10 @@ export const registerPollSocketHandlers = () => {
 
   messageBroker.subscribeEvent('socket:poll_closed', (payload) => {
     emitToOrg(payload.orgId, 'poll_closed', payload.poll);
+  });
+
+  messageBroker.subscribeEvent('socket:poll_finalized', (payload) => {
+    emitToOrg(payload.orgId, 'poll_finalized', payload.poll);
   });
 
   messageBroker.subscribeEvent('socket:poll_reopened', (payload) => {

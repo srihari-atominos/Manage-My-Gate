@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import targetAudienceSchema from '../audience/audience.schema.js';
 
 const noticeSchema = new mongoose.Schema(
   {
@@ -86,6 +87,36 @@ const noticeSchema = new mongoose.Schema(
       ref: 'User',
       default: null,
     },
+    targetAudience: {
+      type: targetAudienceSchema,
+      default: () => ({ targetType: 'ALL' }),
+    },
+    isCritical: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    requiresAcknowledgement: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    acknowledgementDeadline: {
+      type: Date,
+      default: null,
+    },
+    allowComments: {
+      type: Boolean,
+      default: true,
+    },
+    allowReactions: {
+      type: Boolean,
+      default: true,
+    },
+    currentVersion: {
+      type: Number,
+      default: 1,
+    },
   },
   {
     timestamps: true,
@@ -98,6 +129,8 @@ noticeSchema.index({ orgId: 1, status: 1, isPinned: -1, createdAt: -1 });
 // Indexes for frequently sorted fields to avoid in-memory sorts in aggregation
 noticeSchema.index({ orgId: 1, expiryDate: 1 });
 noticeSchema.index({ orgId: 1, priority: 1 });
+noticeSchema.index({ orgId: 1, isCritical: 1 });
+noticeSchema.index({ orgId: 1, requiresAcknowledgement: 1 });
 
 // Text index for search functionality
 noticeSchema.index({ title: 'text', description: 'text' });

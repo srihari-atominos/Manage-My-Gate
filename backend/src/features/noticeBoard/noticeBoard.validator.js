@@ -99,6 +99,36 @@ export const createNoticeRules = [
     .optional()
     .isBoolean()
     .withMessage('isPinned must be a boolean value'),
+
+  body('targetAudience')
+    .optional({ nullable: true })
+    .isObject()
+    .withMessage('targetAudience must be an object'),
+
+  body('isCritical')
+    .optional()
+    .isBoolean()
+    .withMessage('isCritical must be a boolean'),
+
+  body('requiresAcknowledgement')
+    .optional()
+    .isBoolean()
+    .withMessage('requiresAcknowledgement must be a boolean'),
+
+  body('acknowledgementDeadline')
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage('acknowledgementDeadline must be a valid ISO 8601 date'),
+
+  body('allowComments')
+    .optional()
+    .isBoolean()
+    .withMessage('allowComments must be a boolean'),
+
+  body('allowReactions')
+    .optional()
+    .isBoolean()
+    .withMessage('allowReactions must be a boolean'),
 ];
 
 /**
@@ -200,6 +230,36 @@ export const updateNoticeRules = [
     .optional()
     .isBoolean()
     .withMessage('isPinned must be a boolean value'),
+
+  body('targetAudience')
+    .optional({ nullable: true })
+    .isObject()
+    .withMessage('targetAudience must be an object'),
+
+  body('isCritical')
+    .optional()
+    .isBoolean()
+    .withMessage('isCritical must be a boolean'),
+
+  body('requiresAcknowledgement')
+    .optional()
+    .isBoolean()
+    .withMessage('requiresAcknowledgement must be a boolean'),
+
+  body('acknowledgementDeadline')
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage('acknowledgementDeadline must be a valid ISO 8601 date'),
+
+  body('allowComments')
+    .optional()
+    .isBoolean()
+    .withMessage('allowComments must be a boolean'),
+
+  body('allowReactions')
+    .optional()
+    .isBoolean()
+    .withMessage('allowReactions must be a boolean'),
 ];
 
 /**

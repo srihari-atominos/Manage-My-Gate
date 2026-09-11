@@ -70,8 +70,12 @@ export class NoticeBoardController {
       const hasCreatePermission =
         req.user.role === 'Super Admin' ||
         req.user.role === 'Platform Super Admin' ||
+        req.user.role === 'Admin' ||
+        req.user.role === 'Community Admin' ||
         userPermissions.includes('notices.manage_notices') ||
-        userPermissions.includes('notices:manage_notices');
+        userPermissions.includes('notices:manage_notices') ||
+        userPermissions.includes('notices.create') ||
+        userPermissions.includes('notices:create');
       const restrictToPublished = !hasCreatePermission
 
       // Extract filters and search parameters
@@ -108,13 +112,14 @@ export class NoticeBoardController {
     try {
       const { id } = req.params
       const userId = req.user._id || req.user.id
-      const notice = await noticeService.getNoticeById(id)
+      const orgId = req.tenant?.orgId || req.orgId || req.user.currentOrgId || req.user.orgId
+      const notice = await noticeService.getNoticeById(id, null, userId, orgId)
 
       const readByList = notice.readBy || []
       const bookmarkedByList = notice.bookmarkedBy || []
 
       const result = {
-        ...notice.toObject(),
+        ...(notice.toObject ? notice.toObject() : notice),
         isReadByUser: readByList.some((uid) => uid.toString() === userId.toString()),
         isBookmarkedByUser: bookmarkedByList.some((uid) => uid.toString() === userId.toString()),
         readerCount: readByList.length,

@@ -69,6 +69,13 @@ const STATUS_SEMANTIC_MAP: Record<string, StatusSemanticType> = {
   REFUNDED: 'neutral',
   MANUAL: 'neutral',
   LOW: 'neutral',
+  MEDIUM: 'warning',
+  HIGH: 'danger',
+  URGENT: 'danger',
+  ARCHIVED: 'neutral',
+  DRAFT: 'warning',
+  PUBLISHED: 'success',
+  SCHEDULED: 'all',
   // Notice Board Categories
   EMERGENCY: 'danger',
   MAINTENANCE: 'warning',

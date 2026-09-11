@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import HttpError from '../utils/httpError.utils.js';
-import { mapPermission } from '../utils/permissionMapper.js';
+import { mapPermission, expandUserPermissions } from '../utils/permissionMapper.js';
+import Workspace from '../features/workspace/workspace.model.js';
 
 /**
  * Helper to dynamically resolve user permissions from the cache or database.
@@ -21,7 +22,7 @@ export const getPermissionsForUser = async (user) => {
   }
   
   // Fallback: Query database OrgMembership if roleIds is empty
-  if (roleIds.length === 0 && user.id) {
+  if (roleIds.length === 0 && user.id && mongoose.connection?.readyState === 1) {
     try {
       const OrgMembership = (await import('../features/orgMembership/orgMembership.model.js')).default;
       const memberships = await OrgMembership.find({ userId: user.id, status: 'Active' }).lean();
@@ -40,7 +41,7 @@ export const getPermissionsForUser = async (user) => {
   }
 
   // Secondary Fallback: Query roleId by role name if still empty
-  if (roleIds.length === 0 && user.role && user.orgId) {
+  if (roleIds.length === 0 && user.role && user.orgId && mongoose.connection?.readyState === 1) {
     try {
       const roleService = (await import('../features/role/role.services.js')).default;
       const role = await roleService.getRoleByName(user.role, user.orgId);
@@ -52,18 +53,44 @@ export const getPermissionsForUser = async (user) => {
     }
   }
 
-  if (roleIds.length === 0) return [];
-
-  const rolePermissionService = (await import('../features/rolePermission/rolePermission.services.js')).default;
-  const permissionSet = new Set();
-  for (const rid of roleIds) {
-    const permissionsList = await rolePermissionService.getPermissionsByRoleId(rid);
-    permissionsList.forEach((p) => {
-      if (p && p.name) permissionSet.add(p.name);
-    });
+  // Tertiary Fallback: If no roleIds found in database, provide standard default role permissions
+  // based on user.role string (e.g., 'Admin', 'Resident', 'Guard')
+  if (roleIds.length === 0) {
+    const roleName = user.role;
+    if (roleName === 'Admin' || roleName === 'Community Admin') {
+      return [
+        'notices:dashboard', 'notices:active_board', 'notices:manage_notices', 'notices:polls',
+        'notices:read', 'notices:create', 'notices:update', 'notices:delete', 'notices:publish', 'notices:acknowledge',
+        'polls:read', 'polls:create', 'polls:update', 'polls:delete', 'polls:publish', 'polls:vote', 'polls:view_voters', 'polls:close', 'polls:export'
+      ];
+    }
+    if (roleName === 'Resident') {
+      return [
+        'notices:active_board', 'notices:read', 'notices:acknowledge', 'notices:polls',
+        'polls:read', 'polls:vote'
+      ];
+    }
+    if (roleName === 'Security Guard' || roleName === 'Guard') {
+      return [
+        'notices:active_board', 'notices:read'
+      ];
+    }
+    return [];
   }
 
-  return Array.from(permissionSet);
+  if (mongoose.connection?.readyState === 1) {
+    const rolePermissionService = (await import('../features/rolePermission/rolePermission.services.js')).default;
+    const permissionSet = new Set();
+    for (const rid of roleIds) {
+      const permissionsList = await rolePermissionService.getPermissionsByRoleId(rid);
+      permissionsList.forEach((p) => {
+        if (p && p.name) permissionSet.add(p.name);
+      });
+    }
+    return Array.from(permissionSet);
+  }
+
+  return [];
 };
 
 /**
@@ -103,8 +130,7 @@ export const authorizePermission = (feature, action) => {
       }
       // Check if this feature is a dynamic module in the workspace and if it is disabled
       const orgId = req.headers['x-organization-id'] || req.user?.orgId;
-      if (orgId && mongoose.isValidObjectId(orgId)) {
-        const Workspace = mongoose.model('Workspace');
+      if (orgId && mongoose.isValidObjectId(orgId) && mongoose.connection?.readyState === 1) {
         const workspace = await Workspace.findOne({ organizationId: orgId });
         if (workspace && workspace.modules) {
           const targetModule = workspace.modules.find(m => m.moduleKey === feature);
@@ -121,20 +147,24 @@ export const authorizePermission = (feature, action) => {
         return next();
       }
 
-      // Normalise all user permissions through the mapper before comparing
+      // Normalise all user permissions through the mapper and expand hierarchies
       const permissions = await getPermissionsForUser(req.user);
-      const userPermissions = permissions.map(mapPermission);
+      const userPermissions = expandUserPermissions(permissions.map(mapPermission));
 
+      const features = Array.isArray(feature) ? feature : [feature];
       const actions = Array.isArray(action) ? action : [action];
-      console.log(`[RBAC DEBUG] Checking ${feature}:${actions.join(',')} for user ${req.user.username} (Role: ${req.user.role}). Permissions count: ${userPermissions.length}`);
+      console.log(`[RBAC DEBUG] Checking ${features.join(',')}:${actions.join(',')} for user ${req.user.username} (Role: ${req.user.role}). Permissions count: ${userPermissions.length}`);
       
-      const hasPermission = actions.some(act => {
-        const requiredPermission = mapPermission(`${feature}:${act}`);
-        return userPermissions.includes(requiredPermission);
-      });
+      const hasPermission = features.some(feat =>
+        actions.some(act => {
+          const permString = act.includes(':') ? act : `${feat}:${act}`;
+          const requiredPermission = mapPermission(permString);
+          return userPermissions.includes(requiredPermission);
+        })
+      );
 
       if (!hasPermission) {
-        console.error(`[RBAC DEBUG] 403 Forbidden. User has: ${userPermissions.join(',')}. Required ANY of actions for feature '${feature}': ${actions.join(',')}`);
+        console.error(`[RBAC DEBUG] 403 Forbidden. User has: ${userPermissions.join(',')}. Required ANY of actions for features '${features.join(',')}': ${actions.join(',')}`);
         throw new HttpError(
           403,
           `Forbidden. You do not have permission to access this resource.`
@@ -176,7 +206,7 @@ export const authorizeAnyPermission = (permissionsArray) => {
       }
 
       const permissions = await getPermissionsForUser(req.user);
-      const userPermissions = permissions.map(mapPermission);
+      const userPermissions = expandUserPermissions(permissions.map(mapPermission));
 
       const hasPermission = permissionsArray.some(p => {
         return userPermissions.includes(mapPermission(p));

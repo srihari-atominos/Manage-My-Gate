@@ -49,3 +49,14 @@ export const bookmarkNotice = async (id, isBookmarked) => {
 export const getNoticeStats = async () => {
   return await apiClient.get('/notices/stats');
 };
+
+// Explicitly acknowledge a critical notice by ID
+export const acknowledgeNotice = async (id, payload = {}) => {
+  return await apiClient.post(`/notices/${id}/acknowledge`, payload);
+};
+
+// Get acknowledgements list for a notice by ID (admin auditing)
+export const getNoticeAcknowledgements = async (id, params = {}) => {
+  return await apiClient.get(`/notices/${id}/acknowledgements`, { params });
+};
+

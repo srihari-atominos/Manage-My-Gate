@@ -9,6 +9,7 @@ import './src/features/technician/technician.listeners.js';
 import './src/features/auth/auth.listeners.js';
 import './src/features/workspace/workspace.listeners.js';
 import './src/features/poll/poll.listeners.js';
+import './src/features/noticeBoard/noticeBoard.listeners.js';
 import connectToDb from './src/config/db/mongodbConnectToDb.config.js';
 import { initSocket } from './src/config/socket.js';
 import initializePassport from './src/features/auth/passport/passport.init.js';
@@ -17,6 +18,8 @@ import { syncPermissions } from './src/utils/permissionSync.util.js';
 import complaintCron from './src/features/complaint/complaint.cron.js';
 import assessmentCron from './src/features/assessment/utils/assessmentCron.js';
 import userCron from './src/features/user/user.cron.js';
+import noticeBoardCron from './src/features/noticeBoard/noticeBoard.cron.js';
+import pollCron from './src/features/poll/poll.cron.js';
 import outboxWorker from './src/workers/outbox.worker.js';
 
 const initCronJobs = () => {
@@ -24,6 +27,8 @@ const initCronJobs = () => {
     complaintCron.init();
     assessmentCron.init();
     userCron.init();
+    noticeBoardCron.init();
+    pollCron.init();
     logger.info('Background Cron Jobs Initialized');
   }
 };

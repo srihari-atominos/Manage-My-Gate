@@ -820,8 +820,10 @@ export class VillaService {
     }
   }
 
-  async getUnitsByVillaIds(ids, session = null) {
-    return await Villa.find({ _id: { $in: ids } }).session(session);
+  async getUnitsByVillaIds(ids, orgId = null, session = null) {
+    const query = { _id: { $in: ids } };
+    if (orgId) query.orgId = orgId;
+    return await Villa.find(query).session(session);
   }
 
   async getUnitsByOrgId(orgId, session = null) {

@@ -279,6 +279,28 @@ export class OrgMembershipRepository {
       .populate({ path: 'units.villaId' })
       .session(session);
   }
+
+  async findActiveMemberships(orgId, filter = {}, session = null) {
+    const query = {
+      orgId: new mongoose.Types.ObjectId(orgId),
+      status: 'Active',
+      ...filter,
+    };
+    return await OrgMembership.find(query)
+      .populate({ path: 'villaId' })
+      .populate({ path: 'units.villaId' })
+      .session(session || null);
+  }
+
+  async findActiveUserIds(orgId, filter = {}, session = null) {
+    const query = {
+      orgId: new mongoose.Types.ObjectId(orgId),
+      status: 'Active',
+      ...filter,
+    };
+    const memberships = await OrgMembership.find(query).select('userId').session(session || null);
+    return [...new Set(memberships.map((m) => m.userId?.toString()).filter(Boolean))];
+  }
 }
 
 export default new OrgMembershipRepository();

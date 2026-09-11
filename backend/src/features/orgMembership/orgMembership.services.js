@@ -58,6 +58,14 @@ export class OrgMembershipService {
   async getMembershipWithVilla(userId, orgId, session = null) {
     return await orgMembershipRepository.findByUserIdAndOrgIdWithPopulate(userId, orgId, session);
   }
+
+  async getActiveMemberships(orgId, filter = {}, session = null) {
+    return await orgMembershipRepository.findActiveMemberships(orgId, filter, session);
+  }
+
+  async getActiveUserIds(orgId, filter = {}, session = null) {
+    return await orgMembershipRepository.findActiveUserIds(orgId, filter, session);
+  }
 }
 
 export default new OrgMembershipService();

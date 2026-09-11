@@ -1,4 +1,5 @@
 import OutboxEvent from '../features/outbox/outboxEvent.model.js';
+import outboxService from '../features/outbox/outbox.service.js';
 import integrationHubService from '../features/integrationHub/integrationHub.service.js';
 import messageTemplateService from '../features/messageTemplate/messageTemplate.service.js';
 import logger from '../utils/logger.utils.js';
@@ -145,6 +146,15 @@ async function processEvent(event) {
     await handleInvoiceGenerated(event.payload);
   } else if (event.eventType === 'PROVISIONING_COMPLETED_EMAIL') {
     await handleProvisioningCompletedEmail(event.payload);
+  } else if (
+    event.eventType === 'NOTICE_PUBLISHED' ||
+    event.eventType === 'NOTICE_ACKNOWLEDGEMENT_REMINDER' ||
+    event.eventType === 'POLL_ACTIVATED' ||
+    event.eventType === 'POLL_CLOSED' ||
+    event.eventType === 'POLL_FINALIZED' ||
+    event.eventType === 'POLL_CLOSING_SOON'
+  ) {
+    await outboxService.processEvent(event);
   } else {
     throw new Error(`Unknown event type: ${event.eventType}`);
   }

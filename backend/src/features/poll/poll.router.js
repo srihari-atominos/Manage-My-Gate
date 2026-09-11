@@ -12,31 +12,135 @@ const router = express.Router();
 router.use(isAuthenticated);
 router.use(tenantContext);
 
-// Require notices:polls for all poll operations (since Polls are inside Notice Board)
-router.use(authorizePermission('notices', 'polls'));
+const POLL_READ_PERMISSIONS = ['polls', 'manage_notices', 'manage_polls', 'view_polls', 'active_board', 'read', 'dashboard', 'polls:read'];
+const POLL_MANAGE_PERMISSIONS = ['manage_polls', 'manage_notices', 'polls', 'create', 'update', 'delete', 'publish', 'close', 'polls:create', 'polls:update', 'polls:delete', 'polls:close'];
+const POLL_VOTE_PERMISSIONS = ['polls', 'vote_polls', 'manage_notices', 'active_board', 'read', 'vote', 'polls:vote'];
+const POLL_VIEW_VOTERS_PERMISSIONS = ['manage_polls', 'manage_notices', 'polls', 'view_voters', 'polls:view_voters'];
+const POLL_EXPORT_PERMISSIONS = ['manage_polls', 'manage_notices', 'polls', 'export', 'polls:export'];
 
 // Collection endpoints
-router.post('/', validate(pollValidation.createPollRules()), pollController.createPoll);
-router.get('/', validate(pollValidation.paginationRules()), pollController.getPolls);
+router.post(
+  '/',
+  authorizePermission(['notices', 'polls'], POLL_MANAGE_PERMISSIONS),
+  validate(pollValidation.createPollRules()),
+  pollController.createPoll
+);
+
+router.get(
+  '/',
+  authorizePermission(['notices', 'polls'], POLL_READ_PERMISSIONS),
+  validate(pollValidation.paginationRules()),
+  pollController.getPolls
+);
 
 // Status-specific collections
-router.get('/active', validate(pollValidation.paginationRules()), pollController.getActivePolls);
-router.get('/closed', validate(pollValidation.paginationRules()), pollController.getClosedPolls);
-router.get('/my', validate(pollValidation.paginationRules()), pollController.getMyPolls);
+router.get(
+  '/active',
+  authorizePermission(['notices', 'polls'], POLL_READ_PERMISSIONS),
+  validate(pollValidation.paginationRules()),
+  pollController.getActivePolls
+);
+
+router.get(
+  '/closed',
+  authorizePermission(['notices', 'polls'], POLL_READ_PERMISSIONS),
+  validate(pollValidation.paginationRules()),
+  pollController.getClosedPolls
+);
+
+router.get(
+  '/my',
+  authorizePermission(['notices', 'polls'], POLL_READ_PERMISSIONS),
+  validate(pollValidation.paginationRules()),
+  pollController.getMyPolls
+);
 
 // Specific Poll Endpoints
-router.get('/:id', validate(pollValidation.validateIdRule()), pollController.getPollById);
-router.put('/:id', validate(pollValidation.updatePollRules()), pollController.updatePoll);
-router.delete('/:id', validate(pollValidation.validateIdRule()), pollController.deletePoll);
+router.get(
+  '/:id',
+  authorizePermission(['notices', 'polls'], POLL_READ_PERMISSIONS),
+  validate(pollValidation.validateIdRule()),
+  pollController.getPollById
+);
+
+router.put(
+  '/:id',
+  authorizePermission(['notices', 'polls'], POLL_MANAGE_PERMISSIONS),
+  validate(pollValidation.updatePollRules()),
+  pollController.updatePoll
+);
+
+router.delete(
+  '/:id',
+  authorizePermission(['notices', 'polls'], POLL_MANAGE_PERMISSIONS),
+  validate(pollValidation.validateIdRule()),
+  pollController.deletePoll
+);
 
 // Actions
-router.post('/:id/publish', validate(pollValidation.validateIdRule()), pollController.publishPoll);
-router.post('/:id/close', validate(pollValidation.validateIdRule()), pollController.closePoll);
-router.post('/:id/reopen', validate(pollValidation.validateIdRule()), pollController.reopenPoll);
-router.post('/:id/vote', validate(pollValidation.voteRules()), pollController.voteOnPoll);
+router.post(
+  '/:id/publish',
+  authorizePermission(['notices', 'polls'], POLL_MANAGE_PERMISSIONS),
+  validate(pollValidation.validateIdRule()),
+  pollController.publishPoll
+);
 
-// Results
-router.get('/:id/results', validate(pollValidation.validateIdRule()), pollController.getPollResults);
-router.get('/:id/voters', validate(pollValidation.validateIdRule()), pollController.getPollVoters);
+router.post(
+  '/:id/close',
+  authorizePermission(['notices', 'polls'], POLL_MANAGE_PERMISSIONS),
+  validate(pollValidation.validateIdRule()),
+  pollController.closePoll
+);
+
+router.post(
+  '/:id/finalize',
+  authorizePermission(['notices', 'polls'], POLL_MANAGE_PERMISSIONS),
+  validate(pollValidation.validateIdRule()),
+  pollController.finalizePoll
+);
+
+router.post(
+  '/:id/reopen',
+  authorizePermission(['notices', 'polls'], POLL_MANAGE_PERMISSIONS),
+  validate(pollValidation.validateIdRule()),
+  pollController.reopenPoll
+);
+
+router.post(
+  '/:id/vote',
+  authorizePermission(['notices', 'polls'], POLL_VOTE_PERMISSIONS),
+  validate(pollValidation.voteRules()),
+  pollController.voteOnPoll
+);
+
+// Results & Analytics
+router.get(
+  '/:id/results',
+  authorizePermission(['notices', 'polls'], POLL_READ_PERMISSIONS),
+  validate(pollValidation.validateIdRule()),
+  pollController.getPollResults
+);
+
+router.get(
+  '/:id/voters',
+  authorizePermission(['notices', 'polls'], POLL_VIEW_VOTERS_PERMISSIONS),
+  validate(pollValidation.validateIdRule()),
+  pollController.getPollVoters
+);
+
+// Governance Exports
+router.get(
+  '/:id/export/csv',
+  authorizePermission(['notices', 'polls'], POLL_EXPORT_PERMISSIONS),
+  validate(pollValidation.validateIdRule()),
+  pollController.exportPollCSV
+);
+
+router.get(
+  '/:id/export/json',
+  authorizePermission(['notices', 'polls'], POLL_EXPORT_PERMISSIONS),
+  validate(pollValidation.validateIdRule()),
+  pollController.exportPollJSON
+);
 
 export default router;

@@ -1,5 +1,5 @@
 import { registerPollSocketHandlers } from './poll.socket.js';
-import './poll.cron.js';
+import pollCron from './poll.cron.js';
 import './poll.notification.js';
 import './poll.audit.js';
 import logger from '../../utils/logger.utils.js';
@@ -10,3 +10,5 @@ try {
 } catch (error) {
   logger.error('[Poll] Failed to register event listeners:', error);
 }
+
+export { pollCron };

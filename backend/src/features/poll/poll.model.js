@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import targetAudienceSchema from '../audience/audience.schema.js';
 
 const pollOptionSchema = new mongoose.Schema({
   text: {
@@ -39,9 +40,9 @@ const pollSchema = new mongoose.Schema(
       validate: [
         {
           validator: function (v) {
-            return v && v.length >= 2 && v.length <= 5;
+            return v && v.length >= 2 && v.length <= 10;
           },
-          message: 'Poll must have between 2 and 5 options.'
+          message: 'Poll must have between 2 and 10 options.'
         },
         {
           validator: function (v) {
@@ -76,6 +77,67 @@ const pollSchema = new mongoose.Schema(
     },
     closedAt: {
       type: Date
+    },
+    targetAudience: {
+      type: targetAudienceSchema,
+      default: () => ({ targetType: 'ALL' })
+    },
+    choiceType: {
+      type: String,
+      enum: ['SINGLE_CHOICE', 'MULTIPLE_CHOICE'],
+      default: 'SINGLE_CHOICE'
+    },
+    maxChoices: {
+      type: Number,
+      default: 1,
+      min: 1
+    },
+    votingMode: {
+      type: String,
+      enum: ['ONE_PER_USER', 'ONE_PER_UNIT'],
+      default: 'ONE_PER_USER'
+    },
+    resultsVisibility: {
+      type: String,
+      enum: ['ALWAYS', 'AFTER_VOTE', 'AFTER_EXPIRY', 'ADMIN_ONLY'],
+      default: 'ALWAYS'
+    },
+    isAnonymous: {
+      type: Boolean,
+      default: false
+    },
+    quorumPercentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100
+    },
+    totalEligibleVoters: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    totalVotes: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    outcome: {
+      type: String,
+      enum: ['PENDING', 'PASSED', 'REJECTED', 'NO_QUORUM', 'TIED'],
+      default: 'PENDING'
+    },
+    winningOption: {
+      index: { type: Number },
+      text: { type: String },
+      votesCount: { type: Number }
+    },
+    finalizedAt: {
+      type: Date
+    },
+    finalizedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     }
   },
   { timestamps: true }
