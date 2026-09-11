@@ -204,7 +204,6 @@ function ManageNoticesContent() {
     <NoticeCard
       notice={notice}
       onPress={handleCardPress}
-      onDetailsPress={handleCardPress}
       onPinToggle={handlePinToggle}
       onStatusChange={handleStatusChange}
       onEditPress={handleEditPress}

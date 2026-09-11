@@ -14,7 +14,6 @@ import { Text } from '@/components/ui/text';
 export function NoticeCard({
   notice,
   onPress,
-  onDetailsPress,
   onBookmarkToggle,
   onPinToggle,
   onStatusChange,
@@ -155,26 +154,7 @@ export function NoticeCard({
 
         {/* Admin Dedicated Action Button Row */}
         {isAdmin ? (
-          <View className="flex-row items-center justify-between pt-2 border-t border-border/30 mt-0.5">
-            {/* Manage Details button */}
-            {onDetailsPress ? (
-              <TouchableOpacity
-                onPress={(e) => {
-                  e?.stopPropagation?.();
-                  onDetailsPress(notice);
-                }}
-                activeOpacity={0.7}
-                className="flex-row items-center gap-1.5 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/10"
-                accessibilityRole="button"
-                accessibilityLabel="Manage Notice Details"
-              >
-                <Edit size={13} color="#2563eb" />
-                <Text className="text-xs font-bold text-primary">Manage</Text>
-              </TouchableOpacity>
-            ) : (
-              <View />
-            )}
-
+          <View className="flex-row items-center justify-end pt-2 border-t border-border/30 mt-0.5">
             {/* Quick Action Icons */}
             <View className="flex-row items-center gap-1.5">
               {/* Pin Action */}
