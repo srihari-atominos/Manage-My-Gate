@@ -54,7 +54,7 @@ export const GeneratedPassView: React.FC<GeneratedPassViewProps> = ({
     }
 
     const shareMessage =
-      `*Manage-My-Gate Visitor Pass*\n\n` +
+      `*Nahom Visitor Pass*\n\n` +
       `Visitor Name: ${passData.visitorName}\n` +
       `Pass Type: ${PASS_TYPE_NAMES[passData.passType]}\n` +
       `Pass Code: ${passData.code}\n` +

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -27,7 +27,7 @@ export function PollVotersModal({
       onClose={onClose}
       title={isAnonymous ? 'Voter Turnout (Anonymous)' : 'Voter Turnout'}
     >
-      <ScrollView className="max-h-[70vh] py-2">
+      <View className="py-2">
         {/* Privacy Notice Banner */}
         {isAnonymous && (
           <View className="flex-row items-center gap-2 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 mb-3">
@@ -89,7 +89,7 @@ export function PollVotersModal({
             })}
           </View>
         )}
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 }

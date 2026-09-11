@@ -8,7 +8,7 @@ export class NoticeCommentController {
       const orgId = req.orgId || req.user.currentOrgId || req.user.orgId;
       const { content, parentCommentId } = req.body;
 
-      const comment = await noticeCommentService.addComment(noticeId, userId, orgId, content, parentCommentId);
+      const comment = await noticeCommentService.addComment(noticeId, userId, orgId, content, parentCommentId, null, req.user);
       res.status(201).json({
         success: true,
         message: 'Comment added successfully.',

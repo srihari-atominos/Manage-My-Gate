@@ -3,18 +3,15 @@ import { useDispatch } from 'react-redux';
 import { useAppSocket } from '@/src/hooks/useAppSocket';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { AppDispatch } from '@/src/store/store';
-import {
-  pollCreatedSocket,
-  pollUpdatedSocket,
-  pollPublishedSocket,
-  pollClosedSocket,
-  pollVoteAddedSocket,
-  pollVoteRemovedSocket,
-  pollDeletedSocket,
+const {
+  socketPollCreated,
+  socketPollUpdated,
+  socketPollClosed,
+  socketVoteAdded,
   fetchActivePolls,
   fetchClosedPolls,
   fetchMyPolls,
-} from '../store/pollSlice';
+}: any = require('../store/pollSlice');
 
 export const usePollSocket = (activeTab: 'active' | 'closed' | 'my', searchQuery?: string, sortOption?: string) => {
   const dispatch = useDispatch<AppDispatch>();
@@ -34,37 +31,37 @@ export const usePollSocket = (activeTab: 'active' | 'closed' | 'my', searchQuery
 
     const handlePollCreated = (poll: any) => {
       console.log('Poll created via socket', poll);
-      dispatch(pollCreatedSocket(poll));
+      if (socketPollCreated) dispatch(socketPollCreated(poll));
     };
 
     const handlePollUpdated = (poll: any) => {
       console.log('Poll updated via socket', poll);
-      dispatch(pollUpdatedSocket(poll));
+      if (socketPollUpdated) dispatch(socketPollUpdated(poll));
     };
 
     const handlePollPublished = (poll: any) => {
       console.log('Poll published via socket', poll);
-      dispatch(pollPublishedSocket(poll));
+      if (socketPollUpdated) dispatch(socketPollUpdated(poll));
     };
 
     const handlePollClosed = (poll: any) => {
       console.log('Poll closed via socket', poll);
-      dispatch(pollClosedSocket(poll));
+      if (socketPollClosed) dispatch(socketPollClosed(poll));
     };
 
     const handlePollVoteAdded = (payload: any) => {
       console.log('Poll vote added via socket', payload);
-      dispatch(pollVoteAddedSocket({ ...payload, currentUserId: user?.id }));
+      if (socketVoteAdded) dispatch(socketVoteAdded({ ...payload, currentUserId: user?.id }));
     };
 
     const handlePollVoteRemoved = (payload: any) => {
       console.log('Poll vote removed via socket', payload);
-      dispatch(pollVoteRemovedSocket({ ...payload, currentUserId: user?.id }));
+      if (socketVoteAdded) dispatch(socketVoteAdded({ ...payload, currentUserId: user?.id }));
     };
 
     const handlePollDeleted = (payload: any) => {
       console.log('Poll deleted via socket', payload);
-      dispatch(pollDeletedSocket(payload));
+      if (socketPollClosed) dispatch(socketPollClosed(payload));
     };
 
     socket.on('connect', handleReconnect);

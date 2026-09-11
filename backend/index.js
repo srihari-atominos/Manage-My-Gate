@@ -48,10 +48,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'x-organization-id', 'x-role', 'x-villa-id', 'X-User-ID', 'x-user-id', 'Accept', 'Origin']
 }));
 
-// Set up Helmet with CSP disabled for frontend integrations and allow popups for Google OAuth
+// Set up Helmet with CSP disabled for frontend integrations, cross-origin resource policy for images/assets, and allow popups for Google OAuth
 app.use(helmet({
   contentSecurityPolicy: false,
-  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
 // Standard body-parsers with rawBody capture for webhooks

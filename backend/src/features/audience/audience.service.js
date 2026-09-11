@@ -269,8 +269,15 @@ export class AudienceService {
    * @param {mongoose.ClientSession} [session=null]
    * @returns {Promise<Object|null>} Resolved user context or null if not an active member
    */
-  async getUserContext(userId, orgId, session = null) {
-    if (!userId || !orgId) return null;
+  async getUserContext(userOrId, orgId, session = null) {
+    if (!userOrId || !orgId) return null;
+
+    // Safely extract primitive userId if an object/req.user was passed
+    const userId = (typeof userOrId === 'object' && userOrId !== null && !(userOrId instanceof mongoose.Types.ObjectId))
+      ? (userOrId.userId || userOrId.id || userOrId._id)
+      : userOrId;
+
+    if (!userId) return null;
 
     const membership = await this.orgMembershipService.getMembershipWithVilla(userId, orgId, session);
     if (!membership || membership.status !== 'Active') {
@@ -391,20 +398,51 @@ export class AudienceService {
    * @returns {Promise<boolean>}
    */
   async checkEligibility(userOrContext, targetAudience, orgId = null, session = null) {
+    // 1. Backward compatibility: Missing or ALL targetAudience is visible to all active users
+    if (!targetAudience || !targetAudience.targetType || targetAudience.targetType === AUDIENCE_TARGET_TYPES.ALL) {
+      return true;
+    }
+
+    // 2. Community Admin, Super Admin, and Admins can ALWAYS view and access all notices in their community
+    const adminRoleNames = ['Community Admin', 'Admin', 'Super Admin', 'Platform Super Admin', 'SuperAdmin'];
+    if (userOrContext && typeof userOrContext === 'object') {
+      const r = (userOrContext.role || '').trim();
+      const roles = Array.isArray(userOrContext.roles) ? userOrContext.roles : [];
+      if (adminRoleNames.includes(r) || roles.some((role) => adminRoleNames.includes(role))) {
+        return true;
+      }
+    }
+
     let userContext = null;
     if (userOrContext && typeof userOrContext === 'object' && userOrContext.userId && userOrContext.roleIds) {
       userContext = userOrContext;
     } else if (userOrContext) {
-      userContext = await this.getUserContext(userOrContext, orgId, session);
+      const rawUserId = (typeof userOrContext === 'object' && userOrContext !== null)
+        ? (userOrContext.userId || userOrContext.id || userOrContext._id)
+        : userOrContext;
+      userContext = await this.getUserContext(rawUserId, orgId, session);
     }
 
     if (!userContext || userContext.status !== 'Active') {
       return false;
     }
 
-    // Backward compatibility: Missing or ALL targetAudience is visible to all active users
-    if (!targetAudience || !targetAudience.targetType || targetAudience.targetType === AUDIENCE_TARGET_TYPES.ALL) {
-      return true;
+    if (userContext.roleIds && userContext.roleIds.length > 0) {
+      const Role = (await import('../role/role.model.js')).default;
+      const adminRoleCount = await Role.countDocuments({
+        _id: { $in: userContext.roleIds },
+        name: { $in: adminRoleNames },
+      }).session(session);
+      if (adminRoleCount > 0) {
+        return true;
+      }
+    }
+    if (userContext.userId) {
+      const User = mongoose.model('User');
+      const user = await User.findById(userContext.userId).session(session).lean();
+      if (user && adminRoleNames.includes(user.role)) {
+        return true;
+      }
     }
 
     // If ruleGroups are defined, evaluate: OR across rule groups
@@ -463,11 +501,26 @@ export class AudienceService {
 
     const orgObjectId = new mongoose.Types.ObjectId(orgId);
 
+    // Community Admin, Super Admin, and Admins have full visibility to all notices in their community
+    const adminRoleNames = ['Community Admin', 'Admin', 'Super Admin', 'Platform Super Admin', 'SuperAdmin'];
+    if (userOrContext && typeof userOrContext === 'object') {
+      const r = (userOrContext.role || '').trim();
+      const roles = Array.isArray(userOrContext.roles) ? userOrContext.roles : [];
+      if (adminRoleNames.includes(r) || roles.some((role) => adminRoleNames.includes(role))) {
+        return {
+          orgId: orgObjectId,
+        };
+      }
+    }
+
     let userContext = null;
     if (userOrContext && typeof userOrContext === 'object' && userOrContext.userId && userOrContext.roleIds) {
       userContext = userOrContext;
     } else if (userOrContext) {
-      userContext = await this.getUserContext(userOrContext, orgId, session);
+      const rawUserId = (typeof userOrContext === 'object' && userOrContext !== null)
+        ? (userOrContext.userId || userOrContext.id || userOrContext._id)
+        : userOrContext;
+      userContext = await this.getUserContext(rawUserId, orgId, session);
     }
 
     // Default base: ALL or missing targetAudience is visible to any community member
@@ -482,6 +535,38 @@ export class AudienceService {
       return {
         orgId: orgObjectId,
         $or: baseAudienceClauses,
+      };
+    }
+
+    // Community Admin, Super Admin, and Admins have full visibility to all notices in their community
+    let isAdmin = false;
+    if (userOrContext && typeof userOrContext === 'object') {
+      const r = (userOrContext.role || '').trim();
+      const roles = Array.isArray(userOrContext.roles) ? userOrContext.roles : [];
+      if (adminRoleNames.includes(r) || roles.some((role) => adminRoleNames.includes(role))) {
+        isAdmin = true;
+      }
+    }
+    if (!isAdmin && userContext && userContext.roleIds && userContext.roleIds.length > 0) {
+      const Role = (await import('../role/role.model.js')).default;
+      const adminRoleCount = await Role.countDocuments({
+        _id: { $in: userContext.roleIds },
+        name: { $in: adminRoleNames },
+      }).session(session);
+      if (adminRoleCount > 0) {
+        isAdmin = true;
+      }
+    }
+    if (!isAdmin && userContext && userContext.userId) {
+      const User = mongoose.model('User');
+      const user = await User.findById(userContext.userId).session(session).lean();
+      if (user && adminRoleNames.includes(user.role)) {
+        isAdmin = true;
+      }
+    }
+    if (isAdmin) {
+      return {
+        orgId: orgObjectId,
       };
     }
 

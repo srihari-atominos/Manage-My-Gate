@@ -8,6 +8,8 @@ export * from './NoticeBoardTopNav';
 export * from './NoticeBoardEmptyState';
 export * from './NoticeBoardLoadingSkeleton';
 export * from './NoticeAcknowledgementCard';
+export * from './NoticeEngagementBar';
+export * from './NoticeCommentsSection';
 export * from './DeleteNoticeDialog';
 export * from './NoticeBoardFilters';
 export * from './NoticeDetailsModal';

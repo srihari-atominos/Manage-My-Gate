@@ -1,4 +1,5 @@
 import noticeService from './noticeBoard.service.js'
+import noticeReactionService from '../noticeReaction/noticeReaction.service.js'
 import mongoose from 'mongoose'
 
 export class NoticeBoardController {
@@ -16,12 +17,20 @@ export class NoticeBoardController {
         uploadTimestamp: new Date(),
       }))
 
-      const noticeData = {
-        ...req.body,
-        images: uploadedImages,
+      let targetAudience = req.body.targetAudience
+      if (typeof targetAudience === 'string') {
+        try {
+          targetAudience = JSON.parse(targetAudience)
+        } catch (e) {
+          // keep as string or null
+        }
       }
 
-
+      const noticeData = {
+        ...req.body,
+        targetAudience,
+        images: uploadedImages,
+      }
 
       const notice = await noticeService.createNotice(noticeData, userId, orgId)
       res.success(notice, 'Notice created successfully', 201)
@@ -67,11 +76,12 @@ export class NoticeBoardController {
         }
       }
       const userPermissions = permissions.map((p) => p.replace(':', '.'));
+      const adminRoleNames = ['super admin', 'platform super admin', 'admin', 'community admin', 'superadmin'];
+      const userRoleLower = (req.user.role || '').trim().toLowerCase();
+      const userRoles = Array.isArray(req.user.roles) ? req.user.roles.map((r) => (r || '').trim().toLowerCase()) : [];
       const hasCreatePermission =
-        req.user.role === 'Super Admin' ||
-        req.user.role === 'Platform Super Admin' ||
-        req.user.role === 'Admin' ||
-        req.user.role === 'Community Admin' ||
+        adminRoleNames.includes(userRoleLower) ||
+        userRoles.some((r) => adminRoleNames.includes(r)) ||
         userPermissions.includes('notices.manage_notices') ||
         userPermissions.includes('notices:manage_notices') ||
         userPermissions.includes('notices.create') ||
@@ -99,6 +109,15 @@ export class NoticeBoardController {
         queryParams,
         restrictToPublished,
       )
+
+      if (result && Array.isArray(result.notices)) {
+        try {
+          result.notices = await noticeReactionService.enrichNoticesWithReactions(result.notices, orgId, userId);
+        } catch (enrichErr) {
+          // Safe fallback
+        }
+      }
+
       res.success(result, 'Notices retrieved successfully')
     } catch (error) {
       next(error)
@@ -113,7 +132,7 @@ export class NoticeBoardController {
       const { id } = req.params
       const userId = req.user._id || req.user.id
       const orgId = req.tenant?.orgId || req.orgId || req.user.currentOrgId || req.user.orgId
-      const notice = await noticeService.getNoticeById(id, null, userId, orgId)
+      const notice = await noticeService.getNoticeById(id, null, userId, orgId, req.user)
 
       const readByList = notice.readBy || []
       const bookmarkedByList = notice.bookmarkedBy || []
@@ -123,6 +142,33 @@ export class NoticeBoardController {
         isReadByUser: readByList.some((uid) => uid.toString() === userId.toString()),
         isBookmarkedByUser: bookmarkedByList.some((uid) => uid.toString() === userId.toString()),
         readerCount: readByList.length,
+      }
+
+      // Check acknowledgement status if the notice requires it
+      if (result.requiresAcknowledgement) {
+        const mongoose = (await import('mongoose')).default;
+        const NoticeAcknowledgement = mongoose.model('NoticeAcknowledgement');
+        const ack = await NoticeAcknowledgement.findOne({ noticeId: notice._id, userId });
+        if (ack) {
+          result.hasAcknowledged = true;
+          result.userAcknowledgement = ack.toObject ? ack.toObject() : ack;
+        } else {
+          result.hasAcknowledged = false;
+        }
+      }
+
+      // Enrich reactions
+      try {
+        const reactionData = await noticeReactionService.getReactions(id, orgId, userId);
+        if (reactionData) {
+          result.reactionCounts = reactionData.counts;
+          result.reactions = reactionData.counts;
+          result.userReaction = reactionData.userReaction;
+          result.likeCount = reactionData.likeCount;
+          result.isLiked = reactionData.isLiked;
+        }
+      } catch (reactionErr) {
+        // Safe fallback if reactions disabled or not yet initialized
       }
 
       res.success(result, 'Notice retrieved successfully')
@@ -159,12 +205,20 @@ export class NoticeBoardController {
 
       const finalImages = [...existingImages, ...uploadedImages]
 
-      const noticeData = {
-        ...req.body,
-        images: finalImages,
+      let targetAudience = req.body.targetAudience
+      if (typeof targetAudience === 'string') {
+        try {
+          targetAudience = JSON.parse(targetAudience)
+        } catch (e) {
+          // keep as string or null
+        }
       }
 
-
+      const noticeData = {
+        ...req.body,
+        targetAudience,
+        images: finalImages,
+      }
 
       const notice = await noticeService.updateNotice(id, noticeData, userId, orgId)
       res.success(notice, 'Notice updated successfully')

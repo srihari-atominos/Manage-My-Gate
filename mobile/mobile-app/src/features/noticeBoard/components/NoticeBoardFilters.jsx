@@ -18,7 +18,6 @@ const PRIORITIES = {
   LOW: 'Low',
   MEDIUM: 'Medium',
   HIGH: 'High',
-  URGENT: 'Urgent',
 };
 
 const STATUSES = {

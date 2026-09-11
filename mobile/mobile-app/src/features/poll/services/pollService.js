@@ -85,6 +85,16 @@ export const exportPollJSON = async (id) => {
   return await apiClient.get(`/polls/${id}/export/json`);
 };
 
+// Toggle or update reaction on a poll
+export const togglePollReaction = async (id, reactionType = 'LIKE') => {
+  return await apiClient.post(`/polls/${id}/reactions`, { reactionType });
+};
+
+// Fetch poll reactions
+export const getPollReactions = async (id) => {
+  return await apiClient.get(`/polls/${id}/reactions`);
+};
+
 export default {
   getActivePolls,
   getClosedPolls,
@@ -102,4 +112,6 @@ export default {
   getPollVoters,
   exportPollCSV,
   exportPollJSON,
+  togglePollReaction,
+  getPollReactions,
 };

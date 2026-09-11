@@ -60,3 +60,29 @@ export const getNoticeAcknowledgements = async (id, params = {}) => {
   return await apiClient.get(`/notices/${id}/acknowledgements`, { params });
 };
 
+// Get threaded comments for a notice by ID
+export const getNoticeComments = async (id) => {
+  return await apiClient.get(`/notices/${id}/comments`);
+};
+
+// Add a new comment or reply to a notice
+export const addNoticeComment = async (id, { content, parentCommentId = null }) => {
+  return await apiClient.post(`/notices/${id}/comments`, { content, parentCommentId });
+};
+
+// Delete a comment on a notice
+export const deleteNoticeComment = async (id, commentId) => {
+  return await apiClient.delete(`/notices/${id}/comments/${commentId}`);
+};
+
+// Get reactions and current user's reaction for a notice
+export const getNoticeReactions = async (id) => {
+  return await apiClient.get(`/notices/${id}/reactions`);
+};
+
+// Toggle a reaction (like) on a notice
+export const toggleNoticeReaction = async (id, reactionType = 'LIKE') => {
+  return await apiClient.post(`/notices/${id}/reactions`, { reactionType });
+};
+
+

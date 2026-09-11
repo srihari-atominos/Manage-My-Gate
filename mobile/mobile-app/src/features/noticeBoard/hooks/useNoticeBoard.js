@@ -13,6 +13,11 @@ import {
   fetchNoticeStats,
   acknowledgeNoticeThunk,
   fetchNoticeAcknowledgements,
+  fetchNoticeComments,
+  addNoticeCommentThunk,
+  deleteNoticeCommentThunk,
+  fetchNoticeReactions,
+  toggleNoticeReactionThunk,
   setSearch as setSearchAction,
   setFilters as setFiltersAction,
   setActiveKpiCard as setActiveKpiCardAction,
@@ -51,6 +56,12 @@ export function useNoticeBoard() {
   const acknowledgeError = useSelector((state) => state.noticeBoard.acknowledgeError);
   const acknowledgements = useSelector((state) => state.noticeBoard.acknowledgements);
   const acknowledgementsLoading = useSelector((state) => state.noticeBoard.acknowledgementsLoading);
+  const comments = useSelector((state) => state.noticeBoard.comments);
+  const commentsLoading = useSelector((state) => state.noticeBoard.commentsLoading);
+  const commentsError = useSelector((state) => state.noticeBoard.commentsError);
+  const addingComment = useSelector((state) => state.noticeBoard.addingComment);
+  const reactions = useSelector((state) => state.noticeBoard.reactions);
+  const reactionsLoading = useSelector((state) => state.noticeBoard.reactionsLoading);
 
   // User authorization selectors
   const user = useSelector((state) => state.auth?.user || null);
@@ -134,6 +145,26 @@ export function useNoticeBoard() {
     return dispatch(fetchNoticeAcknowledgements({ id, params }));
   }, [dispatch]);
 
+  const loadComments = useCallback((id) => {
+    return dispatch(fetchNoticeComments(id));
+  }, [dispatch]);
+
+  const postComment = useCallback((id, content, parentCommentId = null) => {
+    return dispatch(addNoticeCommentThunk({ id, content, parentCommentId }));
+  }, [dispatch]);
+
+  const removeComment = useCallback((id, commentId) => {
+    return dispatch(deleteNoticeCommentThunk({ id, commentId }));
+  }, [dispatch]);
+
+  const loadReactions = useCallback((id) => {
+    return dispatch(fetchNoticeReactions(id));
+  }, [dispatch]);
+
+  const toggleReaction = useCallback((id, reactionType = 'LIKE') => {
+    return dispatch(toggleNoticeReactionThunk({ id, reactionType }));
+  }, [dispatch]);
+
   // Synchronous Reducer Dispatchers
   const setSearch = useCallback((query) => {
     dispatch(setSearchAction(query));
@@ -198,12 +229,19 @@ export function useNoticeBoard() {
     acknowledgeError,
     acknowledgements,
     acknowledgementsLoading,
+    comments,
+    commentsLoading,
+    commentsError,
+    addingComment,
+    reactions,
+    reactionsLoading,
     canCreate,
     canUpdate,
     canDelete,
     canPin,
     canManage,
     isAdmin,
+    user,
 
     // Thunk Dispatchers
     loadNotices,
@@ -217,6 +255,11 @@ export function useNoticeBoard() {
     loadNoticeStats,
     acknowledgeNotice,
     loadNoticeAcknowledgements,
+    loadComments,
+    postComment,
+    removeComment,
+    loadReactions,
+    toggleReaction,
 
     // Synchronous Reducers
     setSearch,

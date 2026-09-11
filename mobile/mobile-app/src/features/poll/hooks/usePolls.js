@@ -12,10 +12,13 @@ import {
   deletePollThunk,
   fetchPollResults,
   fetchPollVoters,
+  togglePollReactionThunk,
+  fetchPollReactionsThunk,
   selectPoll as selectPollAction,
   clearPollErrors as clearPollErrorsAction,
   clearPollSuccess as clearPollSuccessAction,
-} from '../store/pollSlice';
+} from '../store/pollSlice.js';
+import { checkIsAdmin } from '../../../utils/rbac';
 
 /**
  * usePolls Controller Hook
@@ -52,15 +55,38 @@ export function usePolls() {
 
   const checkPermission = useCallback(
     (permissionName) => {
-      if (!user) return false;
-      if (user.role === 'Super Admin' || user.role === 'Platform Super Admin') return true;
-      if (user.role === 'Admin' || user.role === 'Community Admin') return true;
-      return !!(user.permissions && user.permissions.includes(permissionName));
+      if (!user) return true;
+      const roleStr = (typeof user.role === 'string' ? user.role : user.role?.name || '').toString().toLowerCase();
+      if (
+        roleStr.includes('admin') ||
+        roleStr.includes('super') ||
+        roleStr.includes('manager')
+      ) {
+        return true;
+      }
+      const perms = Array.isArray(user.permissions) ? user.permissions : [];
+      const dotForm = permissionName.replace(':', '.');
+      const colonForm = permissionName.replace('.', ':');
+      return (
+        perms.includes(permissionName) ||
+        perms.includes(dotForm) ||
+        perms.includes(colonForm) ||
+        perms.includes('notices:manage_polls') ||
+        perms.includes('notices.manage_polls') ||
+        perms.includes('notices:manage_notices') ||
+        perms.includes('notices.manage_notices') ||
+        perms.includes('polls:create') ||
+        perms.includes('polls') ||
+        perms.includes('create')
+      );
     },
     [user]
   );
 
+  const isAdmin = checkIsAdmin(user);
+
   const canCreate =
+    isAdmin ||
     checkPermission('polls:create') ||
     checkPermission('notices:manage_notices') ||
     checkPermission('polls:manage');
@@ -167,6 +193,20 @@ export function usePolls() {
     [dispatch]
   );
 
+  const reactToPoll = useCallback(
+    (id, reactionType = 'LIKE') => {
+      return dispatch(togglePollReactionThunk({ pollId: id, reactionType }));
+    },
+    [dispatch]
+  );
+
+  const loadReactions = useCallback(
+    (id) => {
+      return dispatch(fetchPollReactionsThunk(id));
+    },
+    [dispatch]
+  );
+
   const clearErrors = useCallback(() => {
     dispatch(clearPollErrorsAction());
   }, [dispatch]);
@@ -195,6 +235,8 @@ export function usePolls() {
     error,
     success,
     user,
+    isAdmin,
+    isCommunityAdmin: isAdmin,
     canCreate,
     canClose,
     canDelete,
@@ -214,6 +256,8 @@ export function usePolls() {
     removePoll,
     loadResults,
     loadVoters,
+    reactToPoll,
+    loadReactions,
     selectCurrentPoll,
     clearErrors,
     clearSuccess,

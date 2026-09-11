@@ -30,11 +30,21 @@ export const connectToDb = async (retries = 5, delayMs = 3000) => {
             startTransaction: () => {},
             commitTransaction: async () => {},
             abortTransaction: async () => {},
-            endSession: async () => {}
+            endSession: async () => {},
+            inTransaction: () => false,
+            hasEnded: false
           };
         };
 
         // Strip the mock session from all Mongoose query execution to prevent Driver errors
+        const originalQuerySession = mongoose.Query.prototype.session;
+        mongoose.Query.prototype.session = function(s) {
+          if (s && s._isMockSession) {
+            return this;
+          }
+          return originalQuerySession.apply(this, arguments);
+        };
+
         const originalExec = mongoose.Query.prototype.exec;
         mongoose.Query.prototype.exec = function() {
           if (this.options && this.options.session && this.options.session._isMockSession) {
@@ -65,6 +75,15 @@ export const connectToDb = async (retries = 5, delayMs = 3000) => {
             delete options.session;
           }
           return originalInsertMany.apply(this, arguments);
+        };
+
+        const originalCreate = mongoose.Model.create;
+        mongoose.Model.create = function() {
+          const args = Array.from(arguments);
+          if (args.length > 1 && args[1] && args[1].session && args[1].session._isMockSession) {
+            delete args[1].session;
+          }
+          return originalCreate.apply(this, args);
         };
       }
       return;

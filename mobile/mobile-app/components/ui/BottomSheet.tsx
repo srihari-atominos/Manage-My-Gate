@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Modal, TouchableOpacity, Pressable, ScrollView, Dimensions } from 'react-native';
+import { View, Modal, TouchableOpacity, Pressable, ScrollView, Dimensions, Platform } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { X } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
@@ -34,7 +34,9 @@ function BottomSheet({
   if (!visible) return null;
 
   const screenHeight = Dimensions.get('window').height;
-  const sheetMaxHeight = Math.round(screenHeight * 0.88);
+  const sheetMaxHeight = Platform.OS === 'web'
+    ? Math.min(Math.round(screenHeight * 0.85), 680)
+    : Math.round(screenHeight * 0.88);
   const scrollMaxHeight = sheetMaxHeight - 65;
 
   return (
@@ -44,7 +46,7 @@ function BottomSheet({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View className="flex-1 justify-end">
+      <View className="flex-1 justify-end items-center">
         {/* Backdrop */}
         <Pressable 
           className="absolute inset-0 bg-black/60" 
@@ -54,7 +56,7 @@ function BottomSheet({
         {/* Content Box */}
         <View
           style={{ maxHeight: sheetMaxHeight }}
-          className="bg-card border-t border-border/80 rounded-t-3xl shadow-2xl overflow-hidden flex-col w-full"
+          className="bg-card border-t border-border/80 rounded-t-3xl sm:rounded-3xl sm:border sm:mb-4 shadow-2xl overflow-hidden flex-col w-full max-w-lg mx-auto"
         >
           {/* Top grab handle */}
           <SheetGrabHandle onClose={onClose} />

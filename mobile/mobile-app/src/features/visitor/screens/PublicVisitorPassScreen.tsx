@@ -196,7 +196,7 @@ export function PublicVisitorPassScreen() {
 
   const handleSharePass = async () => {
     const shareMessage =
-      `*Official Manage-My-Gate Visitor Pass*\n\n` +
+      `*Official Nahom Visitor Pass*\n\n` +
       `Host Unit: ${unitString}\n` +
       `Host: ${hostString}\n` +
       `Visitor Name: ${passData?.visitorName || 'Guest'}\n` +
@@ -286,7 +286,7 @@ export function PublicVisitorPassScreen() {
                   </View>
                   <View>
                     <Text className="text-foreground font-bold text-sm">
-                      {passData.organizationName || 'ManageMyGate'}
+                      {passData.organizationName || 'Nahom'}
                     </Text>
                     <Text className="text-muted-foreground text-[11px]">
                       Official Verified Guest Pass

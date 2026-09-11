@@ -59,8 +59,11 @@ export function PollVotingSection({
     }
 
     const votePayload = {
+      optionIndex: selectedIndices[0],
+      selectedOptions: selectedIndices,
+      selectedOptionIndices: selectedIndices,
       optionIndices: selectedIndices,
-      selectedOptionIndex: selectedIndices[0], // for backwards compatibility
+      selectedOptionIndex: selectedIndices[0],
     };
 
     if (isPerUnit) {
@@ -95,7 +98,7 @@ export function PollVotingSection({
               className={cn(
                 'flex-row items-center p-3.5 rounded-xl border transition-colors',
                 isSelected
-                  ? 'border-primary bg-primary/10'
+                  ? 'border-emerald-500 bg-emerald-500/10'
                   : 'border-border bg-background'
               )}
             >
@@ -103,7 +106,7 @@ export function PollVotingSection({
               <View className="me-3">
                 {isMultiple ? (
                   isSelected ? (
-                    <CheckSquare size={20} color="#2563eb" />
+                    <CheckSquare size={20} color="#10b981" />
                   ) : (
                     <Square size={20} color="#94a3b8" />
                   )
@@ -111,7 +114,7 @@ export function PollVotingSection({
                   <View
                     className={cn(
                       'w-5 h-5 rounded-full border items-center justify-center',
-                      isSelected ? 'border-primary bg-primary' : 'border-muted-foreground'
+                      isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-muted-foreground'
                     )}
                   >
                     {isSelected && <View className="w-2 h-2 rounded-full bg-white" />}
@@ -122,7 +125,7 @@ export function PollVotingSection({
               <Text
                 className={cn(
                   'flex-1 text-sm font-medium',
-                  isSelected ? 'text-primary font-bold' : 'text-foreground'
+                  isSelected ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-foreground'
                 )}
               >
                 {opt.text}

@@ -41,12 +41,9 @@ export const ImagePreview = ({
         />
       ) : (
         <View className="items-center justify-center p-4">
-          <ImageIcon size={40} className="mb-2 text-slate-300 dark:text-slate-700" />
-          <Text className="text-center text-sm font-medium text-slate-500 dark:text-slate-400">
-            [Failed to Load Image]
-          </Text>
-          <Text className="mt-1 text-center text-[10px] text-slate-400 dark:text-slate-500 px-2" numberOfLines={3}>
-            {source && source.uri ? source.uri : (altText || 'Image goes here')}
+          <ImageIcon size={32} className="mb-1.5 text-muted-foreground/40" />
+          <Text className="text-center text-xs font-medium text-muted-foreground">
+            Image Preview Unavailable
           </Text>
         </View>
       )}

@@ -134,6 +134,30 @@ export const fetchPollVoters = createAsyncThunk(
   }
 );
 
+export const togglePollReactionThunk = createAsyncThunk(
+  'poll/toggleReaction',
+  async ({ pollId, reactionType = 'LIKE' }, { rejectWithValue }) => {
+    try {
+      const response = await pollService.togglePollReaction(pollId, reactionType);
+      return { pollId, data: response.data?.data || response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to toggle reaction');
+    }
+  }
+);
+
+export const fetchPollReactionsThunk = createAsyncThunk(
+  'poll/fetchReactions',
+  async (pollId, { rejectWithValue }) => {
+    try {
+      const response = await pollService.getPollReactions(pollId);
+      return { pollId, data: response.data?.data || response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch reactions');
+    }
+  }
+);
+
 // Initial State
 const initialState = {
   activePolls: {
@@ -162,6 +186,25 @@ const initialState = {
   submitting: false,
   error: null,
   success: null,
+};
+
+const extractPollsList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.polls)) return payload.polls;
+  if (Array.isArray(payload?.data?.polls)) return payload.data.polls;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+};
+
+const extractPollsTotal = (payload, fallbackLength = 0) => {
+  return (
+    payload?.data?.totalCount ??
+    payload?.totalCount ??
+    payload?.data?.total ??
+    payload?.total ??
+    fallbackLength
+  );
 };
 
 export const pollSlice = createSlice({
@@ -246,10 +289,9 @@ export const pollSlice = createSlice({
       })
       .addCase(fetchActivePolls.fulfilled, (state, action) => {
         state.activePolls.loading = false;
-        const payload = action.payload;
-        const list = payload?.data?.data || payload?.data || payload || [];
-        state.activePolls.data = Array.isArray(list) ? list : [];
-        state.activePolls.total = payload?.data?.total || payload?.total || state.activePolls.data.length;
+        const list = extractPollsList(action.payload);
+        state.activePolls.data = list;
+        state.activePolls.total = extractPollsTotal(action.payload, list.length);
       })
       .addCase(fetchActivePolls.rejected, (state, action) => {
         state.activePolls.loading = false;
@@ -263,10 +305,9 @@ export const pollSlice = createSlice({
       })
       .addCase(fetchClosedPolls.fulfilled, (state, action) => {
         state.closedPolls.loading = false;
-        const payload = action.payload;
-        const list = payload?.data?.data || payload?.data || payload || [];
-        state.closedPolls.data = Array.isArray(list) ? list : [];
-        state.closedPolls.total = payload?.data?.total || payload?.total || state.closedPolls.data.length;
+        const list = extractPollsList(action.payload);
+        state.closedPolls.data = list;
+        state.closedPolls.total = extractPollsTotal(action.payload, list.length);
       })
       .addCase(fetchClosedPolls.rejected, (state, action) => {
         state.closedPolls.loading = false;
@@ -280,10 +321,9 @@ export const pollSlice = createSlice({
       })
       .addCase(fetchMyPolls.fulfilled, (state, action) => {
         state.myPolls.loading = false;
-        const payload = action.payload;
-        const list = payload?.data?.data || payload?.data || payload || [];
-        state.myPolls.data = Array.isArray(list) ? list : [];
-        state.myPolls.total = payload?.data?.total || payload?.total || state.myPolls.data.length;
+        const list = extractPollsList(action.payload);
+        state.myPolls.data = list;
+        state.myPolls.total = extractPollsTotal(action.payload, list.length);
       })
       .addCase(fetchMyPolls.rejected, (state, action) => {
         state.myPolls.loading = false;
@@ -313,16 +353,38 @@ export const pollSlice = createSlice({
       .addCase(castVoteThunk.fulfilled, (state, action) => {
         state.voting = false;
         state.success = 'Vote successfully recorded!';
-        const updatedPoll = action.payload.data?.data?.poll || action.payload.data?.poll || action.payload.data;
-        if (updatedPoll && updatedPoll._id) {
-          if (state.selectedPoll && state.selectedPoll._id === updatedPoll._id) {
-            state.selectedPoll = { ...state.selectedPoll, ...updatedPoll, hasVoted: true };
+        const pollPayload =
+          action.payload?.data?.data?.poll ||
+          action.payload?.data?.poll ||
+          action.payload?.data?.data ||
+          action.payload?.data;
+        const targetId = pollPayload?._id || action.payload?.id;
+        const votedOptionIndex =
+          typeof pollPayload?.votedOptionIndex === 'number'
+            ? pollPayload.votedOptionIndex
+            : action.payload?.voteData?.optionIndex;
+        const votedOptions =
+          Array.isArray(pollPayload?.votedOptions) && pollPayload.votedOptions.length > 0
+            ? pollPayload.votedOptions
+            : (typeof votedOptionIndex === 'number' ? [votedOptionIndex] : []);
+
+        const updateItem = (p) => {
+          const merged = pollPayload && pollPayload._id ? { ...p, ...pollPayload } : { ...p };
+          return {
+            ...merged,
+            hasVoted: true,
+            votedOptionIndex,
+            votedOptions,
+          };
+        };
+
+        if (targetId) {
+          if (state.selectedPoll && state.selectedPoll._id === targetId) {
+            state.selectedPoll = updateItem(state.selectedPoll);
           }
           state.activePolls.data = state.activePolls.data.map((p) =>
-            p._id === updatedPoll._id ? { ...p, ...updatedPoll, hasVoted: true } : p
+            p._id === targetId ? updateItem(p) : p
           );
-        } else if (state.selectedPoll && state.selectedPoll._id === action.payload.id) {
-          state.selectedPoll.hasVoted = true;
         }
       })
       .addCase(castVoteThunk.rejected, (state, action) => {
@@ -339,9 +401,19 @@ export const pollSlice = createSlice({
         state.submitting = false;
         state.success = 'Poll created successfully!';
         const newPoll = action.payload?.data || action.payload;
-        if (newPoll && newPoll.status === 'Active') {
-          state.activePolls.data.unshift(newPoll);
-          state.activePolls.total += 1;
+        if (newPoll && newPoll._id) {
+          if (newPoll.status === 'Active') {
+            const existsInActive = state.activePolls.data.some((p) => p._id === newPoll._id);
+            if (!existsInActive) {
+              state.activePolls.data.unshift(newPoll);
+              state.activePolls.total += 1;
+            }
+          }
+          const existsInMy = state.myPolls.data.some((p) => p._id === newPoll._id);
+          if (!existsInMy) {
+            state.myPolls.data.unshift(newPoll);
+            state.myPolls.total += 1;
+          }
         }
       })
       .addCase(createPollThunk.rejected, (state, action) => {
@@ -377,6 +449,68 @@ export const pollSlice = createSlice({
       // Fetch Voters
       .addCase(fetchPollVoters.fulfilled, (state, action) => {
         state.voters = action.payload?.data || action.payload;
+      })
+
+      // Toggle Poll Reaction
+      .addCase(togglePollReactionThunk.fulfilled, (state, action) => {
+        const payload = action.payload || {};
+        const pollId = payload.pollId;
+        const data = payload.data || payload;
+        if (!pollId) return;
+
+        const { likeCount, isLiked, userReaction, reactions, counts } = data;
+
+        const updateReactionFields = (item) => {
+          if (item._id === pollId) {
+            return {
+              ...item,
+              likeCount: typeof likeCount === 'number' ? likeCount : item.likeCount,
+              isLiked: typeof isLiked === 'boolean' ? isLiked : item.isLiked,
+              userReaction: userReaction !== undefined ? userReaction : item.userReaction,
+              reactionCounts: counts || reactions || item.reactionCounts,
+            };
+          }
+          return item;
+        };
+
+        if (state.selectedPoll && state.selectedPoll._id === pollId) {
+          state.selectedPoll = updateReactionFields(state.selectedPoll);
+        }
+
+        state.activePolls.data = state.activePolls.data.map(updateReactionFields);
+        state.closedPolls.data = state.closedPolls.data.map(updateReactionFields);
+        state.myPolls.data = state.myPolls.data.map(updateReactionFields);
+      })
+
+      // Fetch Poll Reactions
+      .addCase(fetchPollReactionsThunk.fulfilled, (state, action) => {
+        const payload = action.payload || {};
+        const pollId = payload.pollId;
+        const data = payload.data || payload;
+        if (!pollId) return;
+
+        const { likeCount, isLiked, userReaction, reactions, counts } = data;
+
+        const updateReactionFields = (item) => {
+          if (item._id === pollId) {
+            return {
+              ...item,
+              likeCount: typeof likeCount === 'number' ? likeCount : item.likeCount,
+              isLiked: typeof isLiked === 'boolean' ? isLiked : item.isLiked,
+              userReaction: userReaction !== undefined ? userReaction : item.userReaction,
+              reactionCounts: counts || reactions || item.reactionCounts,
+            };
+          }
+          return item;
+        };
+
+        if (state.selectedPoll && state.selectedPoll._id === pollId) {
+          state.selectedPoll = updateReactionFields(state.selectedPoll);
+        }
+
+        state.activePolls.data = state.activePolls.data.map(updateReactionFields);
+        state.closedPolls.data = state.closedPolls.data.map(updateReactionFields);
+        state.myPolls.data = state.myPolls.data.map(updateReactionFields);
       });
   },
 });

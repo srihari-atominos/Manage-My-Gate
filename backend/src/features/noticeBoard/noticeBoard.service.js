@@ -6,11 +6,22 @@ import audienceService from '../audience/audience.service.js';
 import noticeVersionService from '../noticeVersion/noticeVersion.service.js';
 import auditLogService from '../auditLog/auditLog.services.js';
 
+const toBoolean = (value, defaultValue = false) => {
+  if (value === undefined || value === null) return defaultValue;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1') return true;
+    if (normalized === 'false' || normalized === '0') return false;
+  }
+  return Boolean(value);
+};
+
 export class NoticeBoardService {
   /**
    * Retrieves a notice by ID.
    */
-  async getNoticeById(id, session = null, userId = null, orgId = null) {
+  async getNoticeById(id, session = null, userId = null, orgId = null, currentUser = null) {
     const notice = await noticeRepository.findById(id, session);
     if (!notice) {
       throw new HttpError(404, `Notice with ID ${id} not found.`);
@@ -26,9 +37,15 @@ export class NoticeBoardService {
       await notice.save({ session });
     }
 
-    // Audience eligibility verification
-    if (userId && orgId && notice.targetAudience) {
-      const isEligible = await audienceService.checkEligibility(userId, notice.targetAudience, orgId, session);
+    // Audience eligibility verification (Community Admin and Super Admin always have access)
+    const adminRoleNames = ['Community Admin', 'Admin', 'Super Admin', 'Platform Super Admin', 'SuperAdmin'];
+    const callerRole = (currentUser?.role || '').trim();
+    const callerRoles = Array.isArray(currentUser?.roles) ? currentUser.roles : [];
+    const isCallerAdmin = adminRoleNames.includes(callerRole) || callerRoles.some((r) => adminRoleNames.includes(r));
+
+    if (!isCallerAdmin && userId && orgId && notice.targetAudience) {
+      const resolvedUserId = typeof userId === 'object' && userId !== null ? (userId._id || userId.id || userId.userId) : userId;
+      const isEligible = await audienceService.checkEligibility(resolvedUserId, notice.targetAudience, orgId, session);
       if (!isEligible) {
         throw new HttpError(403, 'Access denied: You are not eligible to view this notice.');
       }
@@ -61,20 +78,22 @@ export class NoticeBoardService {
         data.targetAudience = await audienceService.validateTarget(noticeData.targetAudience, orgId, session);
       }
 
-      // Governance rules: Acknowledgement requires Critical
-      if (noticeData.requiresAcknowledgement) {
-        data.requiresAcknowledgement = true;
-        data.isCritical = true; // Acknowledgement implies Critical
+      // Governance rules: isCritical is strictly controlled by admin enablement
+      data.isCritical = toBoolean(noticeData.isCritical, false);
+      if (!data.isCritical && data.priority === 'Critical') {
+        data.priority = 'Medium';
+      }
+      data.isPinned = toBoolean(noticeData.isPinned, false);
+      data.requiresAcknowledgement = toBoolean(noticeData.requiresAcknowledgement, false);
+      if (data.requiresAcknowledgement) {
         if (noticeData.acknowledgementDeadline) {
           data.acknowledgementDeadline = new Date(noticeData.acknowledgementDeadline);
         }
       } else {
-        data.isCritical = !!noticeData.isCritical;
-        data.requiresAcknowledgement = false;
         data.acknowledgementDeadline = null;
       }
-      data.allowComments = noticeData.allowComments !== false;
-      data.allowReactions = noticeData.allowReactions !== false;
+      data.allowComments = toBoolean(noticeData.allowComments, true);
+      data.allowReactions = toBoolean(noticeData.allowReactions, true);
       data.currentVersion = 1;
 
       // Set initial status to Published if not specified
@@ -228,11 +247,27 @@ export class NoticeBoardService {
     const { data, totalRecords } = await noticeRepository.getNotices(orgId, skip, limit, filters, sort);
     const totalPages = Math.ceil(totalRecords / limit);
 
-    // 6. Map results to inject user-specific flags
+    // 6. Bulk fetch acknowledgements for the current user
+    const reqAckNoticeIds = data.filter(n => n.requiresAcknowledgement).map(n => n._id);
+    let userAcks = [];
+    if (reqAckNoticeIds.length > 0 && userId) {
+      const NoticeAcknowledgement = mongoose.model('NoticeAcknowledgement');
+      userAcks = await NoticeAcknowledgement.find({
+        noticeId: { $in: reqAckNoticeIds },
+        userId: typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId
+      }).lean();
+    }
+    const ackMap = userAcks.reduce((acc, ack) => {
+      acc[ack.noticeId.toString()] = ack;
+      return acc;
+    }, {});
+
+    // 7. Map results to inject user-specific flags
     const mappedData = data.map(notice => {
       const readByList = notice.readBy || [];
       const bookmarkedByList = notice.bookmarkedBy || [];
-      return {
+      
+      const mappedNotice = {
         ...notice,
         isReadByUser: readByList.some(uid => uid.toString() === userId.toString()),
         isBookmarkedByUser: bookmarkedByList.some(uid => uid.toString() === userId.toString()),
@@ -244,6 +279,18 @@ export class NoticeBoardService {
         allowReactions: notice.allowReactions !== false,
         currentVersion: notice.currentVersion || 1,
       };
+
+      if (mappedNotice.requiresAcknowledgement) {
+        const ack = ackMap[notice._id.toString()];
+        if (ack) {
+          mappedNotice.hasAcknowledged = true;
+          mappedNotice.userAcknowledgement = ack;
+        } else {
+          mappedNotice.hasAcknowledged = false;
+        }
+      }
+
+      return mappedNotice;
     });
 
     return {
@@ -286,11 +333,10 @@ export class NoticeBoardService {
         data.targetAudience = await audienceService.validateTarget(updateData.targetAudience, orgId, session);
       }
 
-      // Governance rules: Acknowledgement requires Critical
+      // Governance rules: isCritical is strictly controlled by admin enablement
       if (updateData.requiresAcknowledgement !== undefined) {
-        data.requiresAcknowledgement = !!updateData.requiresAcknowledgement;
+        data.requiresAcknowledgement = toBoolean(updateData.requiresAcknowledgement, false);
         if (data.requiresAcknowledgement) {
-          data.isCritical = true;
           if (updateData.acknowledgementDeadline) {
             data.acknowledgementDeadline = new Date(updateData.acknowledgementDeadline);
           }
@@ -298,14 +344,20 @@ export class NoticeBoardService {
           data.acknowledgementDeadline = null;
         }
       }
-      if (updateData.isCritical !== undefined && !data.requiresAcknowledgement) {
-        data.isCritical = !!updateData.isCritical;
+      if (updateData.isCritical !== undefined) {
+        data.isCritical = toBoolean(updateData.isCritical, false);
+        if (!data.isCritical && (data.priority === 'Critical' || (!data.priority && notice.priority === 'Critical'))) {
+          data.priority = 'Medium';
+        }
+      }
+      if (updateData.isPinned !== undefined) {
+        data.isPinned = toBoolean(updateData.isPinned, false);
       }
       if (updateData.allowComments !== undefined) {
-        data.allowComments = !!updateData.allowComments;
+        data.allowComments = toBoolean(updateData.allowComments, true);
       }
       if (updateData.allowReactions !== undefined) {
-        data.allowReactions = !!updateData.allowReactions;
+        data.allowReactions = toBoolean(updateData.allowReactions, true);
       }
 
       if (data.title) data.title = data.title.trim();

@@ -11,6 +11,11 @@ import {
   getNoticeStats as apiGetNoticeStats,
   acknowledgeNotice as apiAcknowledgeNotice,
   getNoticeAcknowledgements as apiGetNoticeAcknowledgements,
+  getNoticeComments as apiGetNoticeComments,
+  addNoticeComment as apiAddNoticeComment,
+  deleteNoticeComment as apiDeleteNoticeComment,
+  getNoticeReactions as apiGetNoticeReactions,
+  toggleNoticeReaction as apiToggleNoticeReaction,
 } from '../services/noticeBoardService';
 import storage from '../../../utils/storage';
 
@@ -82,7 +87,13 @@ export const createNotice = createAsyncThunk(
       dispatch(fetchNoticeStats());
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create notice');
+      const data = error.response?.data;
+      const details = data?.details;
+      let errorMsg = data?.message || 'Failed to create notice';
+      if (Array.isArray(details) && details.length > 0) {
+        errorMsg = details.map((d) => d.message || `${d.field} is invalid`).join('. ');
+      }
+      return rejectWithValue(errorMsg);
     }
   }
 );
@@ -96,7 +107,13 @@ export const updateNotice = createAsyncThunk(
       dispatch(fetchNoticeStats());
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update notice');
+      const data = error.response?.data;
+      const details = data?.details;
+      let errorMsg = data?.message || 'Failed to update notice';
+      if (Array.isArray(details) && details.length > 0) {
+        errorMsg = details.map((d) => d.message || `${d.field} is invalid`).join('. ');
+      }
+      return rejectWithValue(errorMsg);
     }
   }
 );
@@ -246,6 +263,65 @@ export const fetchNoticeAcknowledgements = createAsyncThunk(
   }
 );
 
+export const fetchNoticeComments = createAsyncThunk(
+  'noticeBoard/fetchNoticeComments',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await apiGetNoticeComments(id);
+      return { id, comments: response.data?.data || response.data || [] };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch comments');
+    }
+  }
+);
+
+export const addNoticeCommentThunk = createAsyncThunk(
+  'noticeBoard/addNoticeComment',
+  async ({ id, content, parentCommentId = null }, { rejectWithValue }) => {
+    try {
+      const response = await apiAddNoticeComment(id, { content, parentCommentId });
+      return { id, comment: response.data?.data || response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to post comment');
+    }
+  }
+);
+
+export const deleteNoticeCommentThunk = createAsyncThunk(
+  'noticeBoard/deleteNoticeComment',
+  async ({ id, commentId }, { rejectWithValue }) => {
+    try {
+      await apiDeleteNoticeComment(id, commentId);
+      return { id, commentId };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete comment');
+    }
+  }
+);
+
+export const fetchNoticeReactions = createAsyncThunk(
+  'noticeBoard/fetchNoticeReactions',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await apiGetNoticeReactions(id);
+      return { id, reactions: response.data?.data || response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch reactions');
+    }
+  }
+);
+
+export const toggleNoticeReactionThunk = createAsyncThunk(
+  'noticeBoard/toggleNoticeReaction',
+  async ({ id, reactionType = 'LIKE' }, { rejectWithValue }) => {
+    try {
+      const response = await apiToggleNoticeReaction(id, reactionType);
+      return { id, result: response.data?.data || response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to toggle reaction');
+    }
+  }
+);
 
 // Initial Redux State
 const initialState = {
@@ -258,6 +334,12 @@ const initialState = {
   acknowledgeError: null,
   acknowledgements: [],
   acknowledgementsLoading: false,
+  comments: [],
+  commentsLoading: false,
+  commentsError: null,
+  addingComment: false,
+  reactions: { counts: {}, userReaction: null },
+  reactionsLoading: false,
   pagination: {
     currentPage: 1,
     totalPages: 1,
@@ -546,6 +628,64 @@ export const noticeBoardSlice = createSlice({
       })
       .addCase(fetchNoticeAcknowledgements.rejected, (state) => {
         state.acknowledgementsLoading = false;
+      })
+
+      // Fetch Comments
+      .addCase(fetchNoticeComments.pending, (state) => {
+        state.commentsLoading = true;
+        state.commentsError = null;
+      })
+      .addCase(fetchNoticeComments.fulfilled, (state, action) => {
+        state.commentsLoading = false;
+        state.comments = Array.isArray(action.payload.comments) ? action.payload.comments : [];
+      })
+      .addCase(fetchNoticeComments.rejected, (state, action) => {
+        state.commentsLoading = false;
+        state.commentsError = action.payload;
+      })
+
+      // Add Comment
+      .addCase(addNoticeCommentThunk.pending, (state) => {
+        state.addingComment = true;
+      })
+      .addCase(addNoticeCommentThunk.fulfilled, (state, action) => {
+        state.addingComment = false;
+        if (action.payload.comment) {
+          state.comments = [action.payload.comment, ...state.comments];
+        }
+      })
+      .addCase(addNoticeCommentThunk.rejected, (state) => {
+        state.addingComment = false;
+      })
+
+      // Delete Comment
+      .addCase(deleteNoticeCommentThunk.fulfilled, (state, action) => {
+        state.comments = state.comments.filter(c => c._id !== action.payload.commentId && c.id !== action.payload.commentId);
+      })
+
+      // Fetch Reactions
+      .addCase(fetchNoticeReactions.pending, (state) => {
+        state.reactionsLoading = true;
+      })
+      .addCase(fetchNoticeReactions.fulfilled, (state, action) => {
+        state.reactionsLoading = false;
+        const res = action.payload.reactions;
+        state.reactions = {
+          counts: res?.counts || {},
+          userReaction: res?.userReaction || null,
+        };
+      })
+      .addCase(fetchNoticeReactions.rejected, (state) => {
+        state.reactionsLoading = false;
+      })
+
+      // Toggle Reaction
+      .addCase(toggleNoticeReactionThunk.fulfilled, (state, action) => {
+        const res = action.payload.result;
+        state.reactions = {
+          counts: res?.counts || {},
+          userReaction: res?.userReaction || null,
+        };
       });
   },
 });

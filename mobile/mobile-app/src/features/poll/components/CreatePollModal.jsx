@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, TouchableOpacity, Alert } from 'react-native';
 import { Plus, Trash2 } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { TextInput } from '@/components/forms/TextInput';
@@ -101,6 +101,7 @@ export function CreatePollModal({
       votingMode,
       resultsVisibility,
       isAnonymous,
+      status: 'Active',
       endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     };
 
@@ -136,7 +137,7 @@ export function CreatePollModal({
       onClose={onClose}
       title="Create Community Poll"
     >
-      <ScrollView className="max-h-[75vh] py-2" keyboardShouldPersistTaps="handled">
+      <View className="py-2">
         {/* Validation error */}
         {Boolean(validationError) && (
           <View className="bg-destructive/10 p-3 rounded-xl border border-destructive/20 mb-3">
@@ -307,7 +308,7 @@ export function CreatePollModal({
             Create Poll
           </Button>
         </View>
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 }

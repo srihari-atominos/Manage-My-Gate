@@ -11,10 +11,12 @@ import { Button } from '@/components/common/Button';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Text } from '@/components/ui/text';
 
-import { usePolls } from '../hooks/usePolls';
+import { usePolls } from '../hooks/usePolls.js';
 import { PollVotingSection } from '../components/PollVotingSection';
 import { PollResultsView } from '../components/PollResultsView';
 import { PollVotersModal } from '../components/PollVotersModal';
+import { PollEngagementBar } from '../components/PollEngagementBar';
+import { checkIsAdmin } from '@/src/utils/rbac';
 
 /**
  * PollDetailScreen Component (Pure JSX)
@@ -44,18 +46,27 @@ export default function PollDetailScreen() {
     loadVoters,
     castVote,
     closeExistingPoll,
+    reactToPoll,
   } = usePolls();
 
   const [votersModalOpen, setVotersModalOpen] = useState(false);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [closeLoading, setCloseLoading] = useState(false);
 
+  const isCommunityAdmin = checkIsAdmin(user);
+
   useEffect(() => {
-    if (id) {
+    if (user && !isCommunityAdmin) {
+      router.replace('/(resident)/polls');
+    }
+  }, [user, isCommunityAdmin, router]);
+
+  useEffect(() => {
+    if (id && isCommunityAdmin) {
       loadPollById(id);
       loadResults(id);
     }
-  }, [id, loadPollById, loadResults]);
+  }, [id, isCommunityAdmin, loadPollById, loadResults]);
 
   const poll = selectedPoll?._id === id ? selectedPoll : null;
 
@@ -63,11 +74,6 @@ export default function PollDetailScreen() {
     try {
       await castVote(id, votePayload);
       loadResults(id);
-      if (Platform.OS === 'web') {
-        window.alert('Your vote has been recorded successfully!');
-      } else {
-        Alert.alert('Vote Recorded', 'Your ballot has been securely counted.');
-      }
     } catch (err) {
       if (Platform.OS === 'web') {
         window.alert('Failed to cast vote: ' + (err?.message || 'Unknown error'));
@@ -189,6 +195,16 @@ export default function PollDetailScreen() {
             )}
           </View>
         </View>
+
+        {/* Social Engagement & Reactions Bar: 👍 Helpful  ❤️ Important  🙏 Thanks */}
+        <PollEngagementBar
+          reactions={poll.reactionCounts || poll.reactions}
+          userReaction={poll.userReaction}
+          likeCount={poll.likeCount || 0}
+          isLiked={Boolean(poll.isLiked)}
+          onReactionPress={(type) => reactToPoll(poll._id, type)}
+          onLikePress={() => reactToPoll(poll._id, 'HELPFUL')}
+        />
 
         {/* Voting Section (Shown only if Active and not yet voted, or if editing ballot is supported) */}
         {!isClosed && !hasVoted && (

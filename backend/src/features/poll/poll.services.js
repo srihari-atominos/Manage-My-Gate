@@ -5,6 +5,7 @@ import HttpError from '../../utils/httpError.utils.js';
 import PollVote from './pollVote.model.js';
 import audienceService from '../audience/audience.service.js';
 import orgMembershipService from '../orgMembership/orgMembership.services.js';
+import pollReactionService from '../pollReaction/pollReaction.service.js';
 
 /**
  * Resolves a user's assigned villa / unit ID within an organization.
@@ -177,9 +178,16 @@ export const createPoll = async (pollData) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
+    const options = (pollData.options || []).map((opt) => ({
+      text: typeof opt === 'string' ? opt.trim() : (opt.text || '').trim(),
+      votesCount: 0
+    }));
+
     const data = {
       ...pollData,
-      status: pollData.status || 'Draft',
+      options,
+      totalVotes: 0,
+      status: pollData.status || 'Active',
       choiceType: pollData.choiceType || 'SINGLE_CHOICE',
       maxChoices: pollData.choiceType === 'MULTIPLE_CHOICE' ? (pollData.maxChoices || 2) : 1,
       votingMode: pollData.votingMode || 'ONE_PER_USER',
@@ -238,7 +246,26 @@ export const getPollById = async (pollId, orgId, userId = null, isCommunityAdmin
     }
   }
 
-  return poll;
+  const allVotes = await PollVote.find({ pollId, orgId }).lean();
+  const totalVotes = allVotes.length;
+  const optionVoteCounts = {};
+  allVotes.forEach((v) => {
+    const opts = Array.isArray(v.selectedOptions) && v.selectedOptions.length > 0
+      ? v.selectedOptions
+      : (typeof v.optionIndex === 'number' ? [v.optionIndex] : []);
+    opts.forEach((optIdx) => {
+      optionVoteCounts[optIdx] = (optionVoteCounts[optIdx] || 0) + 1;
+    });
+  });
+
+  const rawPoll = poll.toObject ? poll.toObject() : poll;
+  rawPoll.totalVotes = totalVotes;
+  rawPoll.options = (rawPoll.options || []).map((opt, idx) => ({
+    ...opt,
+    votesCount: optionVoteCounts[idx] || 0
+  }));
+
+  return rawPoll;
 };
 
 export const updatePoll = async (pollId, orgId, userId, updateData, isCommunityAdmin) => {
@@ -421,13 +448,45 @@ const populateHasVoted = async (data, orgId, userId, isCommunityAdmin = false) =
     });
   }
 
+  // Count actual verified votes from PollVote (1 vote per user)
+  const allVotes = await PollVote.find({
+    pollId: { $in: pollIds },
+    orgId
+  }).lean();
+
+  const pollVoteCounts = {};
+  const optionVoteCounts = {};
+
+  allVotes.forEach((v) => {
+    const pId = v.pollId.toString();
+    pollVoteCounts[pId] = (pollVoteCounts[pId] || 0) + 1;
+
+    const opts = Array.isArray(v.selectedOptions) && v.selectedOptions.length > 0
+      ? v.selectedOptions
+      : (typeof v.optionIndex === 'number' ? [v.optionIndex] : []);
+
+    if (!optionVoteCounts[pId]) optionVoteCounts[pId] = {};
+    opts.forEach((optIdx) => {
+      optionVoteCounts[pId][optIdx] = (optionVoteCounts[pId][optIdx] || 0) + 1;
+    });
+  });
+
   data.polls = data.polls.map((poll) => {
-    const hasVoted = voteMap[poll._id.toString()] !== undefined;
-    const votedOptions = hasVoted ? voteMap[poll._id.toString()] : [];
+    const pIdStr = poll._id.toString();
+    const hasVoted = voteMap[pIdStr] !== undefined;
+    const votedOptions = hasVoted ? voteMap[pIdStr] : [];
     const votedOptionIndex = votedOptions.length > 0 ? votedOptions[0] : null;
+
+    const actualTotalVotes = pollVoteCounts[pIdStr] || 0;
+    const reconciledOptions = (poll.options || []).map((opt, idx) => ({
+      ...opt,
+      votesCount: (optionVoteCounts[pIdStr] && optionVoteCounts[pIdStr][idx]) || 0
+    }));
 
     const basePoll = {
       ...poll,
+      totalVotes: actualTotalVotes,
+      options: reconciledOptions,
       hasVoted,
       votedOptions,
       votedOptionIndex
@@ -435,6 +494,12 @@ const populateHasVoted = async (data, orgId, userId, isCommunityAdmin = false) =
 
     return sanitizePollForViewer(basePoll, userId, hasVoted, isCommunityAdmin);
   });
+
+  try {
+    data.polls = await pollReactionService.enrichPollsWithReactions(data.polls, orgId, userId);
+  } catch (err) {
+    // Graceful fallback if reactions lookup encounters an error
+  }
 
   return data;
 };
@@ -513,12 +578,16 @@ export const voteOnPoll = async (pollId, orgId, residentId, payload) => {
 
   // Normalize selectedOptions from payload
   let selected = [];
-  if (Array.isArray(payload?.selectedOptions)) {
+  if (Array.isArray(payload?.selectedOptions) && payload.selectedOptions.length > 0) {
     selected = payload.selectedOptions.map(Number);
-  } else if (Array.isArray(payload?.selectedOptionIndices)) {
+  } else if (Array.isArray(payload?.selectedOptionIndices) && payload.selectedOptionIndices.length > 0) {
     selected = payload.selectedOptionIndices.map(Number);
+  } else if (Array.isArray(payload?.optionIndices) && payload.optionIndices.length > 0) {
+    selected = payload.optionIndices.map(Number);
   } else if (typeof payload?.optionIndex === 'number') {
     selected = [Number(payload.optionIndex)];
+  } else if (typeof payload?.selectedOptionIndex === 'number') {
+    selected = [Number(payload.selectedOptionIndex)];
   } else if (typeof payload === 'number') {
     selected = [Number(payload)];
   }

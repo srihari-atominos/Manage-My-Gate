@@ -48,7 +48,14 @@ export class NoticeReactionService {
       throw new HttpError(400, 'Reactions are disabled for this notice.');
     }
 
-    const isEligible = await audienceService.checkEligibility(userId, notice.targetAudience, orgId, session);
+    let isEligible = await audienceService.checkEligibility(userId, notice.targetAudience, orgId, session);
+    if (!isEligible) {
+      const User = mongoose.model('User');
+      const user = await User.findById(userId).session(session || null);
+      if (user && ['Admin', 'Community Admin', 'Super Admin', 'Platform Super Admin', 'SuperAdmin'].includes(user.role)) {
+        isEligible = true;
+      }
+    }
     if (!isEligible) {
       throw new HttpError(403, 'You are not eligible to react to this notice.');
     }
@@ -86,11 +93,23 @@ export class NoticeReactionService {
     }
 
     const counts = await noticeReactionRepository.getReactionCounts(noticeObjectId, orgObjectId, session);
+    const userReaction = actionTaken === 'removed' ? null : reactionType;
+    const normalizedCounts = {
+      HELPFUL: (counts.HELPFUL || 0) + (counts.LIKE || 0),
+      IMPORTANT: (counts.IMPORTANT || 0) + (counts.LOVE || 0),
+      THANKS: (counts.THANKS || 0) + (counts.APPLAUD || 0),
+      ...counts,
+    };
+    const totalReactions = (normalizedCounts.HELPFUL || 0) + (normalizedCounts.IMPORTANT || 0) + (normalizedCounts.THANKS || 0);
 
     return {
       action: actionTaken,
-      userReaction: actionTaken === 'removed' ? null : reactionType,
-      counts,
+      userReaction,
+      counts: normalizedCounts,
+      reactions: normalizedCounts,
+      likeCount: normalizedCounts.HELPFUL || totalReactions,
+      isLiked: userReaction === 'HELPFUL' || userReaction === 'LIKE' || Boolean(userReaction),
+      totalReactions,
     };
   }
 
@@ -117,7 +136,14 @@ export class NoticeReactionService {
       throw new HttpError(403, 'Forbidden. Notice belongs to another community.');
     }
 
-    const isEligible = await audienceService.checkEligibility(userId, notice.targetAudience, orgId);
+    let isEligible = await audienceService.checkEligibility(userId, notice.targetAudience, orgId);
+    if (!isEligible) {
+      const User = mongoose.model('User');
+      const user = await User.findById(userId);
+      if (user && ['Admin', 'Community Admin', 'Super Admin', 'Platform Super Admin', 'SuperAdmin'].includes(user.role)) {
+        isEligible = true;
+      }
+    }
     if (!isEligible) {
       throw new HttpError(403, 'You are not eligible to view reactions on this notice.');
     }
@@ -131,10 +157,62 @@ export class NoticeReactionService {
       noticeReactionRepository.findByNoticeAndUser(noticeObjectId, userObjectId),
     ]);
 
-    return {
-      counts,
-      userReaction: userReactionDoc ? userReactionDoc.reactionType : null,
+    const userReaction = userReactionDoc ? userReactionDoc.reactionType : null;
+    const normalizedCounts = {
+      HELPFUL: (counts.HELPFUL || 0) + (counts.LIKE || 0),
+      IMPORTANT: (counts.IMPORTANT || 0) + (counts.LOVE || 0),
+      THANKS: (counts.THANKS || 0) + (counts.APPLAUD || 0),
+      ...counts,
     };
+    const totalReactions = (normalizedCounts.HELPFUL || 0) + (normalizedCounts.IMPORTANT || 0) + (normalizedCounts.THANKS || 0);
+
+    return {
+      counts: normalizedCounts,
+      reactions: normalizedCounts,
+      userReaction,
+      likeCount: normalizedCounts.HELPFUL || totalReactions,
+      isLiked: userReaction === 'HELPFUL' || userReaction === 'LIKE' || Boolean(userReaction),
+      totalReactions,
+    };
+  }
+
+  /**
+   * Batch enriches notice items with reaction counts and current user reaction status.
+   *
+   * @param {Array} notices
+   * @param {string|mongoose.Types.ObjectId} orgId
+   * @param {string|mongoose.Types.ObjectId} userId
+   * @returns {Promise<Array>}
+   */
+  async enrichNoticesWithReactions(notices, orgId, userId = null) {
+    if (!notices || notices.length === 0) return notices;
+
+    const noticeIds = notices.map((n) => n._id);
+    const { countsByNotice, userReactions } = await noticeReactionRepository.getBatchReactionData(noticeIds, orgId, userId);
+
+    return notices.map((notice) => {
+      const nid = notice._id.toString();
+      const rawCounts = countsByNotice[nid] || {};
+      const normalizedCounts = {
+        HELPFUL: (rawCounts.HELPFUL || 0) + (rawCounts.LIKE || 0),
+        IMPORTANT: (rawCounts.IMPORTANT || 0) + (rawCounts.LOVE || 0),
+        THANKS: (rawCounts.THANKS || 0) + (rawCounts.APPLAUD || 0),
+        ...rawCounts,
+      };
+      const userReaction = userReactions[nid] || null;
+      const totalReactions = (normalizedCounts.HELPFUL || 0) + (normalizedCounts.IMPORTANT || 0) + (normalizedCounts.THANKS || 0);
+
+      const noticeObj = notice.toObject ? notice.toObject() : notice;
+      return {
+        ...noticeObj,
+        reactionCounts: normalizedCounts,
+        reactions: normalizedCounts,
+        userReaction,
+        likeCount: normalizedCounts.HELPFUL || totalReactions,
+        isLiked: userReaction === 'HELPFUL' || userReaction === 'LIKE' || Boolean(userReaction),
+        totalReactions,
+      };
+    });
   }
 }
 

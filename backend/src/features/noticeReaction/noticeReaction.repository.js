@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import NoticeReaction from './noticeReaction.model.js';
 
 export class NoticeReactionRepository {
@@ -29,6 +30,41 @@ export class NoticeReactionRepository {
     });
 
     return counts;
+  }
+
+  async getBatchReactionData(noticeIds, orgId, userId = null) {
+    if (!noticeIds || noticeIds.length === 0) return { countsByNotice: {}, userReactions: {} };
+
+    const objectNoticeIds = noticeIds.map((id) => new mongoose.Types.ObjectId(id));
+    const objectOrgId = new mongoose.Types.ObjectId(orgId);
+
+    const [countsAgg, userDocs] = await Promise.all([
+      NoticeReaction.aggregate([
+        { $match: { noticeId: { $in: objectNoticeIds }, orgId: objectOrgId } },
+        { $group: { _id: { noticeId: '$noticeId', reactionType: '$reactionType' }, count: { $sum: 1 } } },
+      ]),
+      userId
+        ? NoticeReaction.find({
+            noticeId: { $in: objectNoticeIds },
+            orgId: objectOrgId,
+            userId: new mongoose.Types.ObjectId(userId),
+          }).lean()
+        : [],
+    ]);
+
+    const countsByNotice = {};
+    countsAgg.forEach((item) => {
+      const nid = item._id.noticeId.toString();
+      if (!countsByNotice[nid]) countsByNotice[nid] = {};
+      countsByNotice[nid][item._id.reactionType] = item.count;
+    });
+
+    const userReactions = {};
+    userDocs.forEach((doc) => {
+      userReactions[doc.noticeId.toString()] = doc.reactionType;
+    });
+
+    return { countsByNotice, userReactions };
   }
 }
 

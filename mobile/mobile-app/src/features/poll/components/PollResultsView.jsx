@@ -90,21 +90,39 @@ export function PollResultsView({ poll, results }) {
           const count = opt.votesCount || 0;
           const percentage = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
           const isWinner = winningOption && (winningOption.index === index || winningOption.text === opt.text);
+          const isVoted = poll.votedOptionIndex === index ||
+            (Array.isArray(poll.votedOptions) && poll.votedOptions.includes(index)) ||
+            (Array.isArray(poll.votedOptionIndices) && poll.votedOptionIndices.includes(index));
 
           return (
             <View key={opt._id || index} className="gap-1">
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-1.5 flex-1 me-2">
                   {isWinner && <Trophy size={14} color="#eab308" />}
+                  {isVoted && (
+                    <View className="bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                      <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        Your Vote
+                      </Text>
+                    </View>
+                  )}
                   <Text
                     className={`text-sm ${
-                      isWinner ? 'font-bold text-primary' : 'font-medium text-foreground'
+                      isVoted
+                        ? 'font-bold text-emerald-600 dark:text-emerald-400'
+                        : isWinner
+                        ? 'font-bold text-primary'
+                        : 'font-medium text-foreground'
                     }`}
                   >
                     {opt.text}
                   </Text>
                 </View>
-                <Text className="text-xs font-bold text-muted-foreground">
+                <Text
+                  className={`text-xs font-bold ${
+                    isVoted ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+                  }`}
+                >
                   {count} ({percentage}%)
                 </Text>
               </View>
@@ -112,7 +130,11 @@ export function PollResultsView({ poll, results }) {
               <View className="h-3 w-full bg-muted rounded-full overflow-hidden">
                 <View
                   className={`h-full rounded-full transition-all ${
-                    isWinner ? 'bg-primary' : 'bg-primary/60'
+                    isVoted
+                      ? 'bg-emerald-500'
+                      : isWinner
+                      ? 'bg-primary'
+                      : 'bg-primary/60'
                   }`}
                   style={{ width: `${percentage}%` }}
                 />

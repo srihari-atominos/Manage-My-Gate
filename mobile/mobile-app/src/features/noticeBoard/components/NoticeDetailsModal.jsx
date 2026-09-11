@@ -93,12 +93,6 @@ export function NoticeDetailsModal({
           <View className="bg-muted/40 p-4 rounded-2xl border border-border/60 gap-2.5">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center gap-1.5 flex-1 me-2">
-                {notice.isCritical && (
-                  <View className="bg-destructive/15 px-2 py-0.5 rounded-md flex-row items-center gap-1">
-                    <ShieldAlert size={12} className="text-destructive" />
-                    <Text className="text-[11px] font-bold text-destructive">CRITICAL</Text>
-                  </View>
-                )}
                 {isPinned && (
                   <View className="bg-primary/15 px-2 py-0.5 rounded-md flex-row items-center gap-1">
                     <Pin size={12} className="text-primary" />
@@ -249,20 +243,8 @@ export function NoticeDetailsModal({
               label="Author"
               value={notice.author?.name || notice.createdBy?.name || 'Community Admin'}
               iconName="UserCheck"
-              isLast={!notice.requiresAcknowledgement}
+              isLast={true}
             />
-            {notice.requiresAcknowledgement && (
-              <DetailRow
-                label="Acknowledgement"
-                value={
-                  notice.acknowledgementCount !== undefined
-                    ? `${notice.acknowledgementCount} Confirmed`
-                    : 'Required'
-                }
-                iconName="ShieldCheck"
-                isLast={true}
-              />
-            )}
           </View>
 
           {/* View Full Screen Detail Link */}

@@ -1,13 +1,13 @@
 import mongoose from 'mongoose';
 
-export const NOTICE_REACTION_TYPES = ['LIKE', 'LOVE', 'HELPFUL', 'APPLAUD', 'DISLIKE', 'IMPORTANT', 'THANKS'];
+export const POLL_REACTION_TYPES = ['LIKE', 'LOVE', 'HELPFUL', 'APPLAUD', 'DISLIKE', 'IMPORTANT', 'THANKS'];
 
-const noticeReactionSchema = new mongoose.Schema(
+const pollReactionSchema = new mongoose.Schema(
   {
-    noticeId: {
+    pollId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Notice',
-      required: [true, 'Notice ID is required'],
+      ref: 'Poll',
+      required: [true, 'Poll ID is required'],
       index: true,
     },
     orgId: {
@@ -25,7 +25,7 @@ const noticeReactionSchema = new mongoose.Schema(
     reactionType: {
       type: String,
       required: [true, 'Reaction type is required'],
-      enum: NOTICE_REACTION_TYPES,
+      enum: POLL_REACTION_TYPES,
       default: 'LIKE',
     },
   },
@@ -34,9 +34,9 @@ const noticeReactionSchema = new mongoose.Schema(
   }
 );
 
-// One reaction per user per notice
-noticeReactionSchema.index({ noticeId: 1, userId: 1 }, { unique: true });
-noticeReactionSchema.index({ orgId: 1, noticeId: 1, reactionType: 1 });
+// One reaction per user per poll
+pollReactionSchema.index({ pollId: 1, userId: 1 }, { unique: true });
+pollReactionSchema.index({ orgId: 1, pollId: 1, reactionType: 1 });
 
-export const NoticeReaction = mongoose.model('NoticeReaction', noticeReactionSchema);
-export default NoticeReaction;
+export const PollReaction = mongoose.model('PollReaction', pollReactionSchema);
+export default PollReaction;

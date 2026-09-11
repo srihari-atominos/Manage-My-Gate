@@ -45,7 +45,6 @@ const PRIORITY_FILTER_OPTIONS = [
   { label: 'Low', value: 'Low' },
   { label: 'Medium', value: 'Medium' },
   { label: 'High', value: 'High' },
-  { label: 'Urgent', value: 'Urgent' },
 ];
 
 const CATEGORY_FILTER_OPTIONS = [
@@ -198,7 +197,6 @@ function ManageNoticesContent() {
 
   const stats = dashboardStats?.kpis || {};
   const currentStatusFilter = filters.status || 'ALL';
-  const urgentCount = stats.urgentNotices || 0;
 
   const renderNoticeItem = useCallback((notice) => (
     <NoticeCard
@@ -218,29 +216,6 @@ function ManageNoticesContent() {
   // Visitor Management style ListHeaderComponent
   const renderHeader = () => (
     <View className="gap-3 mb-3">
-      {/* Urgent Notice Alert Banner (mirrors Pending Walk-In Approval Alert Banner in visitor management) */}
-      {urgentCount > 0 && (
-        <TouchableOpacity
-          onPress={() => {
-            setFilters({ ...filters, priority: 'High' });
-          }}
-          activeOpacity={0.8}
-          className="bg-status-warning/15 border border-status-warning/30 p-3 rounded-2xl flex-row items-center justify-between"
-          accessibilityRole="button"
-          accessibilityLabel="Filter by urgent notices"
-        >
-          <View className="flex-row items-center gap-2 flex-1 me-2">
-            <ShieldAlert size={18} className="text-status-warning shrink-0" />
-            <Text className="text-xs font-bold text-status-warning flex-1">
-              {urgentCount} Urgent Notice{urgentCount > 1 ? 's' : ''} Require Immediate Attention
-            </Text>
-          </View>
-          <Text className="text-xs font-extrabold text-status-warning underline">
-            Filter →
-          </Text>
-        </TouchableOpacity>
-      )}
-
       {/* Filter Mode Switcher (Status vs Priority vs Category) */}
       <View className="flex-row items-center justify-between px-1">
         <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
@@ -370,8 +345,6 @@ function ManageNoticesContent() {
             emptySubtitle="No notices matched your search or status filter parameters."
             contentContainerClassName="px-4 pt-3 pb-28"
           />
-        )}
-
         )}
 
         {/* Floating Action Button for Notice Creation */}

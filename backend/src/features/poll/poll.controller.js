@@ -1,4 +1,5 @@
 import * as pollService from './poll.services.js';
+import pollReactionService from '../pollReaction/pollReaction.service.js';
 import { getPermissionsForUser } from '../../middlewares/rbac.middleware.js';
 
 const checkIsCommunityAdmin = async (user) => {
@@ -21,7 +22,7 @@ export const createPoll = async (req, res, next) => {
       ...req.body,
       orgId,
       createdBy: userId,
-      status: req.body.status || 'Draft',
+      status: req.body.status || 'Active',
       visibility: req.body.visibility || 'Everyone'
     };
 
@@ -76,7 +77,11 @@ export const getPollById = async (req, res, next) => {
       votedOptionIndex: votedOptions[0] ?? null
     };
 
-    const sanitized = pollService.sanitizePollForViewer(basePoll, userId, hasVoted, isCommunityAdmin);
+    const reactionData = await pollReactionService.getReactions(pollId, orgId, userId);
+    const sanitized = {
+      ...pollService.sanitizePollForViewer(basePoll, userId, hasVoted, isCommunityAdmin),
+      ...reactionData,
+    };
     return res.success(sanitized, 'Poll fetched successfully');
   } catch (error) {
     next(error);

@@ -16,6 +16,7 @@ import reducer, {
   deletePollThunk,
   fetchPollResults,
   fetchPollVoters,
+  togglePollReactionThunk,
 } from '../store/pollSlice';
 
 describe('pollSlice Redux Reducers & Async Actions (Pure JS)', () => {
@@ -301,6 +302,32 @@ describe('pollSlice Redux Reducers & Async Actions (Pure JS)', () => {
         payload: votersPayload,
       });
       expect(state.voters.length).toBe(1);
+    });
+
+    test('togglePollReactionThunk: fulfilled updates like count and isLiked in lists and selectedPoll', () => {
+      const stateWithPoll = {
+        ...initialPollState,
+        activePolls: { ...initialPollState.activePolls, data: [{ ...samplePoll, likeCount: 0, isLiked: false }] },
+        selectedPoll: { ...samplePoll, likeCount: 0, isLiked: false },
+      };
+
+      const reactionPayload = {
+        pollId: 'poll-001',
+        action: 'added',
+        isLiked: true,
+        likeCount: 1,
+        reactions: { LIKE: 1 },
+      };
+
+      const nextState = reducer(stateWithPoll, {
+        type: togglePollReactionThunk.fulfilled.type,
+        payload: reactionPayload,
+      });
+
+      expect(nextState.selectedPoll.isLiked).toBe(true);
+      expect(nextState.selectedPoll.likeCount).toBe(1);
+      expect(nextState.activePolls.data[0].isLiked).toBe(true);
+      expect(nextState.activePolls.data[0].likeCount).toBe(1);
     });
   });
 });

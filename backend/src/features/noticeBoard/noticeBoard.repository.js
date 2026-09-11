@@ -14,7 +14,11 @@ export class NoticeBoardRepository {
    * Find a notice by its ID.
    */
   async findById(id, session) {
-    return await Notice.findById(id).session(session);
+    return await Notice.findById(id)
+      .populate('createdBy', 'name username avatar')
+      .populate('targetAudience.targetRoles', 'name')
+      .populate('targetAudience.targetUsers', 'name username email')
+      .session(session);
   }
 
   /**

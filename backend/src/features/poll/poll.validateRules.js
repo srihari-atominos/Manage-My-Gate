@@ -35,6 +35,9 @@ export const createPollRules = () => {
         }
         return true;
       }),
+    body('status')
+      .optional()
+      .isIn(['Draft', 'Active', 'Closed']).withMessage('Invalid poll status'),
     body('choiceType')
       .optional()
       .isIn(['SINGLE_CHOICE', 'MULTIPLE_CHOICE']).withMessage('Invalid choice type'),
@@ -110,6 +113,9 @@ export const voteRules = () => {
     body('optionIndex')
       .optional()
       .isInt({ min: 0 }).withMessage('optionIndex must be a non-negative integer'),
+    body('selectedOptionIndex')
+      .optional()
+      .isInt({ min: 0 }).withMessage('selectedOptionIndex must be a non-negative integer'),
     body('selectedOptions')
       .optional()
       .isArray().withMessage('selectedOptions must be an array of integers'),
@@ -119,15 +125,26 @@ export const voteRules = () => {
     body('selectedOptionIndices')
       .optional()
       .isArray().withMessage('selectedOptionIndices must be an array of integers'),
+    body('selectedOptionIndices.*')
+      .optional()
+      .isInt({ min: 0 }).withMessage('selectedOptionIndices items must be non-negative integers'),
+    body('optionIndices')
+      .optional()
+      .isArray().withMessage('optionIndices must be an array of integers'),
+    body('optionIndices.*')
+      .optional()
+      .isInt({ min: 0 }).withMessage('optionIndices items must be non-negative integers'),
     body('unitId')
       .optional()
       .isMongoId().withMessage('unitId must be a valid ID'),
     body().custom((value) => {
-      const hasOptionIndex = typeof value.optionIndex === 'number';
-      const hasSelectedOptions = Array.isArray(value.selectedOptions) && value.selectedOptions.length > 0;
-      const hasSelectedOptionIndices = Array.isArray(value.selectedOptionIndices) && value.selectedOptionIndices.length > 0;
+      const hasOptionIndex = typeof value.optionIndex === 'number' || typeof value.selectedOptionIndex === 'number';
+      const hasSelectedOptions =
+        (Array.isArray(value.selectedOptions) && value.selectedOptions.length > 0) ||
+        (Array.isArray(value.selectedOptionIndices) && value.selectedOptionIndices.length > 0) ||
+        (Array.isArray(value.optionIndices) && value.optionIndices.length > 0);
 
-      if (!hasOptionIndex && !hasSelectedOptions && !hasSelectedOptionIndices) {
+      if (!hasOptionIndex && !hasSelectedOptions) {
         throw new Error('At least one option selection (optionIndex or selectedOptions) is required');
       }
       return true;

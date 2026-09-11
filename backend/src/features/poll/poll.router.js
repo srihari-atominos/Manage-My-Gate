@@ -143,4 +143,8 @@ router.get(
   pollController.exportPollJSON
 );
 
+// Poll Reactions sub-feature
+import pollReactionRouter from '../pollReaction/pollReaction.routes.js';
+router.use('/:id/reactions', pollReactionRouter);
+
 export default router;

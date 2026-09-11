@@ -37,6 +37,18 @@ const noticeCommentSchema = new mongoose.Schema(
       enum: ['Active', 'Hidden', 'Deleted'],
       default: 'Active',
     },
+    authorName: {
+      type: String,
+      default: '',
+    },
+    authorRole: {
+      type: String,
+      default: 'Resident',
+    },
+    isAdminComment: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

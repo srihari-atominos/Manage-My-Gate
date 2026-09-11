@@ -6,7 +6,7 @@ import { NoticeCard } from './NoticeCard';
  * Memoized NoticeCard Wrapper
  * Prevents redundant re-renders of items in the PaginatedList by keeping handlers stable.
  */
-export const MemoizedNoticeCard = React.memo(({ notice, onPress, onBookmarkToggle }) => {
+export const MemoizedNoticeCard = React.memo(({ notice, onPress, onBookmarkToggle, isAdmin = false }) => {
   const handlePress = useCallback(() => {
     onPress(notice);
   }, [notice, onPress]);
@@ -16,14 +16,12 @@ export const MemoizedNoticeCard = React.memo(({ notice, onPress, onBookmarkToggl
   }, [onBookmarkToggle]);
 
   return (
-    <View className="px-4">
-      <NoticeCard
-        notice={notice}
-        onPress={handlePress}
-        onBookmarkToggle={handleBookmark}
-        isAdmin={false}
-      />
-    </View>
+    <NoticeCard
+      notice={notice}
+      onPress={handlePress}
+      onBookmarkToggle={handleBookmark}
+      isAdmin={isAdmin}
+    />
   );
 });
 

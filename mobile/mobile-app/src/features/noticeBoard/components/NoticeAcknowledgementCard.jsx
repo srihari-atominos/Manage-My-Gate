@@ -23,6 +23,7 @@ export function NoticeAcknowledgementCard({
   }
 
   const hasAcknowledged = !!notice.hasAcknowledged;
+  const ackData = notice.userAcknowledgement;
   const deadline = notice.acknowledgementDeadline ? new Date(notice.acknowledgementDeadline) : null;
   const isPastDeadline = deadline ? new Date() > deadline : false;
 
@@ -32,6 +33,21 @@ export function NoticeAcknowledgementCard({
         day: 'numeric',
         year: 'numeric',
         hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null;
+
+  const formattedAckDate = ackData?.acknowledgedAt
+    ? new Date(ackData.acknowledgedAt).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : null;
+    
+  const formattedAckTime = ackData?.acknowledgedAt
+    ? new Date(ackData.acknowledgedAt).toLocaleTimeString(undefined, {
+        hour: 'numeric',
         minute: '2-digit',
       })
     : null;
@@ -61,7 +77,7 @@ export function NoticeAcknowledgementCard({
             <ShieldAlert size={20} color={isPastDeadline ? '#dc2626' : '#d97706'} className="me-2" />
           )}
           <Text className="text-foreground font-bold text-base">
-            {hasAcknowledged ? 'Notice Acknowledged' : 'Action Required: Acknowledge'}
+            {hasAcknowledged ? 'Acknowledged' : 'Action Required: Acknowledge'}
           </Text>
         </View>
         <StatusBadge
@@ -73,7 +89,7 @@ export function NoticeAcknowledgementCard({
 
       <Text className="text-muted-foreground text-sm mb-3 text-start">
         {hasAcknowledged
-          ? 'You have formally acknowledged this critical notice. Your confirmation has been recorded.'
+          ? (formattedAckDate && formattedAckTime ? `You acknowledged this notice on ${formattedAckDate} at ${formattedAckTime}.` : 'You have formally acknowledged this critical notice. Your confirmation has been recorded.')
           : 'This is a mandatory compliance notice requiring explicit acknowledgement from residents.'}
       </Text>
 
@@ -107,7 +123,7 @@ export function NoticeAcknowledgementCard({
           disabled={loading}
           className="w-full mt-1"
         >
-          {loading ? 'Submitting...' : 'Acknowledge Notice'}
+          {loading ? 'Submitting...' : '✓ Acknowledge Notice'}
         </Button>
       )}
     </Card>

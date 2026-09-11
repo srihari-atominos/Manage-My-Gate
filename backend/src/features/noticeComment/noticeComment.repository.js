@@ -8,7 +8,11 @@ export class NoticeCommentRepository {
 
   async findByNotice(noticeId, orgId, session = null) {
     return await NoticeComment.find({ noticeId, orgId, status: { $ne: 'Deleted' } })
-      .populate({ path: 'userId', select: 'name username email' })
+      .populate({
+        path: 'userId',
+        select: 'name username email avatar roles residencyType',
+        populate: { path: 'roles', select: 'name' },
+      })
       .sort({ createdAt: 1 })
       .session(session || null);
   }

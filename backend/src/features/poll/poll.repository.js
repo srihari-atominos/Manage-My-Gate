@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import HttpError from '../../utils/httpError.utils.js';
 
 export const createPoll = async (pollData, session = null) => {
-  if (session) {
+  if (session && !session._isMockSession) {
     const [poll] = await Poll.create([pollData], { session });
     return poll;
   }
@@ -237,55 +237,7 @@ export const recordVote = async (
   }).session(session);
 
   if (existingVote) {
-    const oldOptions = (Array.isArray(existingVote.selectedOptions) && existingVote.selectedOptions.length > 0)
-      ? existingVote.selectedOptions
-      : (typeof existingVote.optionIndex === 'number' ? [existingVote.optionIndex] : []);
-
-    const isSame = oldOptions.length === optionsToRecord.length &&
-      [...oldOptions].sort().every((v, i) => v === [...optionsToRecord].sort()[i]);
-
-    if (isSame) {
-      // Unvote (toggle off)
-      await PollVote.findByIdAndDelete(existingVote._id).session(session);
-
-      const incOps = { totalVotes: -1 };
-      oldOptions.forEach((idx) => {
-        incOps[`options.${idx}.votesCount`] = -1;
-      });
-
-      const updatedPoll = await Poll.findOneAndUpdate(
-        { _id: pollId, orgId },
-        { $inc: incOps },
-        { new: true, session }
-      );
-
-      return { poll: updatedPoll, action: 'unvoted' };
-    }
-
-    // Changed vote
-    const incOps = {};
-    oldOptions.forEach((idx) => {
-      incOps[`options.${idx}.votesCount`] = (incOps[`options.${idx}.votesCount`] || 0) - 1;
-    });
-    optionsToRecord.forEach((idx) => {
-      incOps[`options.${idx}.votesCount`] = (incOps[`options.${idx}.votesCount`] || 0) + 1;
-    });
-
-    const filteredInc = Object.fromEntries(Object.entries(incOps).filter(([_, v]) => v !== 0));
-    const updateQuery = Object.keys(filteredInc).length > 0 ? { $inc: filteredInc } : {};
-
-    const updatedPoll = await Poll.findOneAndUpdate(
-      { _id: pollId, orgId },
-      updateQuery,
-      { new: true, session }
-    );
-
-    existingVote.selectedOptions = optionsToRecord;
-    existingVote.optionIndex = optionsToRecord[0];
-    existingVote.unitId = unitId;
-    await existingVote.save({ session });
-
-    return { poll: updatedPoll, action: 'changed' };
+    throw new HttpError(409, 'You have already voted on this poll. Each user may only vote once.');
   }
 
   // New vote
