@@ -148,14 +148,19 @@ export const getFacilityStatusMeta = (status?: AmenityFacilityStatus | string): 
  * Formats pricing configuration for display without calculating local totals.
  */
 export const formatFacilityPricing = (
-  pricingConfig?: AmenityFacilityPricingConfig
+  pricingConfig?: AmenityFacilityPricingConfig | any
 ): {
   displayRate: string;
   displayDeposit: string;
   pricingTypeLabel: string;
   isFree: boolean;
 } => {
-  if (!pricingConfig || pricingConfig.type === 'FREE') {
+  const pType = pricingConfig?.type || pricingConfig?.pricingType || 'FREE';
+  const baseRate = Number(pricingConfig?.baseRate ?? 0);
+  const depositAmount = Number(pricingConfig?.depositAmount ?? pricingConfig?.securityDeposit ?? 0);
+  const currency = pricingConfig?.currency || 'INR';
+
+  if (!pricingConfig || pType === 'FREE' || (baseRate === 0 && depositAmount === 0)) {
     return {
       displayRate: 'Free Access',
       displayDeposit: 'No Deposit Required',
@@ -164,25 +169,24 @@ export const formatFacilityPricing = (
     };
   }
 
-  const currency = pricingConfig.currency || 'SAR';
   const typeMap: Record<string, string> = {
-    HOURLY: 'hour',
+    HOURLY: 'hr',
     DAILY: 'day',
     FIXED_EVENT: 'event',
     TIERED: 'session',
   };
-  const unit = typeMap[pricingConfig.type] || 'slot';
-  const displayRate = `${pricingConfig.baseRate} ${currency} / ${unit}`;
+  const unit = typeMap[pType] || 'slot';
+  const displayRate = baseRate > 0 ? `${baseRate} ${currency} / ${unit}` : 'Free Access';
   const displayDeposit =
-    pricingConfig.depositAmount > 0
-      ? `${pricingConfig.depositAmount} ${currency} (Refundable Deposit)`
+    depositAmount > 0
+      ? `${depositAmount} ${currency} (Refundable Deposit)`
       : 'No Deposit Required';
 
   return {
     displayRate,
     displayDeposit,
-    pricingTypeLabel: pricingConfig.type,
-    isFree: false,
+    pricingTypeLabel: pType,
+    isFree: baseRate === 0,
   };
 };
 

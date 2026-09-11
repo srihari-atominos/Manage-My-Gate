@@ -7,7 +7,7 @@ export interface AmenityCreationFormState {
   archetype: AmenityArchetype;
   category: string;
   location: string;
-  status: 'active' | 'maintenance' | 'inactive';
+  status: 'active' | 'inactive';
   imageUrl?: string;
   description?: string;
 

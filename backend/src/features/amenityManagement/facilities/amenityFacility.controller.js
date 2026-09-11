@@ -53,6 +53,7 @@ export class AmenityFacilityController {
         isActive: isActive !== undefined ? isActive === 'true' : undefined,
       });
 
+      console.log(`[amenityFacility.getAll] tenant.orgId: "${orgId}", header.orgId: "${req.headers['x-organization-id']}", found: ${result?.data?.length}, total: ${result?.total}`);
       return res.success(result, 'Facilities retrieved successfully');
     } catch (error) {
       return next(error);

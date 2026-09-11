@@ -167,8 +167,14 @@ export function useAmenityBookingWizard(facility: AmenityFacility) {
       amenityManagementService
         .getResources({ facilityId: facility._id })
         .then((res) => {
-          if (isMounted && res?.data?.items) {
-            setAvailableResources(res.data.items as AmenityResource[]);
+          if (isMounted) {
+            const rawPayload: any = res?.data;
+            const resList =
+              (Array.isArray(rawPayload) ? rawPayload : null) ||
+              (Array.isArray(rawPayload?.data) ? rawPayload.data : null) ||
+              (Array.isArray(rawPayload?.items) ? rawPayload.items : null) ||
+              [];
+            setAvailableResources(resList as AmenityResource[]);
           }
         })
         .catch(() => {

@@ -132,6 +132,7 @@ export class AmenityFacilityRepository {
 
     return {
       data,
+      items: data,
       total,
       page,
       limit,

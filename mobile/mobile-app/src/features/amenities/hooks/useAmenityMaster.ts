@@ -97,12 +97,19 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
         limit: 100,
       });
 
-      const rawItems =
-        res?.data?.items ||
-        (res as any)?.items ||
-        (Array.isArray(res?.data) ? res.data : []);
+      console.log('[useAmenityMaster] Facilities response received:', res);
+
+      const rawPayload: any = res?.data;
+      const rawItems: any[] =
+        (Array.isArray(rawPayload) ? rawPayload : null) ||
+        (Array.isArray(rawPayload?.data) ? rawPayload.data : null) ||
+        (Array.isArray(rawPayload?.items) ? rawPayload.items : null) ||
+        (Array.isArray((res as any)?.items) ? (res as any).items : null) ||
+        (Array.isArray((res as any)?.data) ? (res as any).data : null) ||
+        [];
 
       const normalizedItems: AmenityFacility[] = rawItems.map(normalizeFacilityFromApi);
+      console.log('[useAmenityMaster] Parsed facilities count:', normalizedItems.length);
       setFacilities(normalizedItems);
 
       // Sync into Redux store for global state synchronization
@@ -110,7 +117,7 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
         dispatch(upsertAmenity(fac));
       });
     } catch (err: any) {
-      console.error('Failed to load facilities', err);
+      console.error('[useAmenityMaster] Failed to load facilities:', err);
       const mapped = mapAmenityApiError(err);
       setError(mapped.message || 'Failed to load amenities catalog');
     } finally {
@@ -167,19 +174,18 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
 
       // Pricing model filter
       let matchesPricing = true;
+      const pConfig = facility.pricingConfig || (facility as any).pricing;
+      const isFree =
+        !pConfig ||
+        pConfig.type === 'FREE' ||
+        (pConfig as any).pricingType === 'FREE' ||
+        (pConfig as any).model === 'FREE' ||
+        (Number(pConfig.baseRate ?? (pConfig as any).ratePerHour ?? 0) === 0);
+
       if (activeFilters.pricingModel === 'FREE') {
-        matchesPricing =
-          !facility.pricing ||
-          facility.pricing.model === 'FREE' ||
-          (facility.pricing as any).ratePerHour === 0;
+        matchesPricing = isFree;
       } else if (activeFilters.pricingModel === 'PAID') {
-        matchesPricing = Boolean(
-          facility.pricing &&
-            facility.pricing.model !== 'FREE' &&
-            ((facility.pricing as any).ratePerHour > 0 ||
-              (facility.pricing as any).ratePerDay > 0 ||
-              (facility.pricing as any).ratePerSlot > 0)
-        );
+        matchesPricing = !isFree;
       }
 
       return matchesSearch && matchesStatus && matchesArchetype && matchesCategory && matchesPricing;

@@ -230,7 +230,7 @@ export function ResidentAccessPassCard({
         {canRenderQr ? (
           <View className="mt-2 items-center">
             <QRCodeView
-              value={activePass.qrData}
+              value={activePass.qrData || ''}
               size={160}
               caption={activePass.passCode ? `Pass Code: ${activePass.passCode}` : undefined}
             />
@@ -253,7 +253,7 @@ export function ResidentAccessPassCard({
 
         {/* Server-Provided QR Presentation Credential */}
         <QRCodeView
-          value={activePass.qrData}
+          value={activePass.qrData || ''}
           size={180}
           caption={activePass.passCode ? `Pass Code: ${activePass.passCode}` : undefined}
         />

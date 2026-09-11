@@ -411,8 +411,8 @@ export const AmenityCreationWizard: React.FC<AmenityCreationWizardProps> = ({
           {currentStep.key === 'inventory-stock' && (
             <InventoryToolsConfigStep
               data={{
-                availableStock: form.availableStock,
-                maxLoanHours: form.maxLoanHours,
+                availableStock: form.availableStock ?? 5,
+                maxLoanHours: form.maxLoanHours ?? 24,
                 requiresInspection: form.requiresInspection ?? true,
               }}
               onChange={(updated) => setForm((prev) => ({ ...prev, ...updated }))}

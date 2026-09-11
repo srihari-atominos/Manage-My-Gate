@@ -62,7 +62,14 @@ export function useResidentAmenities(initialArchetype?: AmenityArchetype) {
           status: 'ACTIVE',
         });
 
-        const rawItems = res?.data?.items || (res as any)?.items || (Array.isArray(res?.data) ? res.data : []);
+        const rawPayload: any = res?.data;
+        const rawItems: any[] =
+          (Array.isArray(rawPayload) ? rawPayload : null) ||
+          (Array.isArray(rawPayload?.data) ? rawPayload.data : null) ||
+          (Array.isArray(rawPayload?.items) ? rawPayload.items : null) ||
+          (Array.isArray((res as any)?.items) ? (res as any).items : null) ||
+          (Array.isArray((res as any)?.data) ? (res as any).data : null) ||
+          [];
         const items = rawItems.map(normalizeFacilityFromApi);
         if (page > 1) {
           setFacilities((prev) => [...prev, ...items]);
@@ -105,7 +112,14 @@ export function useResidentAmenities(initialArchetype?: AmenityArchetype) {
         page: 1,
         limit: 50,
       });
-      const rawResItems = res?.data?.items || (res as any)?.items || (Array.isArray(res?.data) ? res.data : []);
+      const rawResPayload: any = res?.data;
+      const rawResItems: any[] =
+        (Array.isArray(rawResPayload) ? rawResPayload : null) ||
+        (Array.isArray(rawResPayload?.data) ? rawResPayload.data : null) ||
+        (Array.isArray(rawResPayload?.items) ? rawResPayload.items : null) ||
+        (Array.isArray((res as any)?.items) ? (res as any).items : null) ||
+        (Array.isArray((res as any)?.data) ? (res as any).data : null) ||
+        [];
       const items = rawResItems.map(normalizeResourceFromApi);
       setResources(items);
       return items;

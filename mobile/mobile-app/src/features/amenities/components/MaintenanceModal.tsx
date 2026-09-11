@@ -226,19 +226,7 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({
             </View>
           </View>
 
-          {/* Assigned Staff & Vendor */}
-          <Controller
-            control={control}
-            name="assignedStaff"
-            render={({ field: { onChange, value } }) => (
-              <TextInput
-                label="Assigned Staff / Vendor"
-                value={value}
-                onChangeText={onChange}
-                placeholder="e.g. John (Facilities Manager), AquaTech Inc."
-              />
-            )}
-          />
+
 
           {/* Task Description */}
           <Controller

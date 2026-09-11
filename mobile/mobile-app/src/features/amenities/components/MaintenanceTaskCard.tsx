@@ -37,7 +37,7 @@ export function MaintenanceTaskCard({
     <ListCard
       key={task._id}
       title={`${task.amenityName || 'Facility'} • ${task.title}`}
-      subtitle={`Schedule: ${formattedDates}\nStaff: ${task.assignedStaff || 'Unassigned'}`}
+      subtitle={`Schedule: ${formattedDates}${task.assignedStaff ? `\nStaff: ${task.assignedStaff}` : ''}`}
       backgroundImage={facilityImageUrl}
       leftIcon="Wrench"
       leftIconBgColor={facilityImageUrl ? 'rgba(255,255,255,0.2)' : 'bg-status-warning/15'}

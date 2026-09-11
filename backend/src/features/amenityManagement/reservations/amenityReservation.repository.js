@@ -127,7 +127,7 @@ export class AmenityReservationRepository {
     const total = result?.totalCount?.[0]?.count || 0;
     const totalPages = Math.ceil(total / limit) || 1;
 
-    return { data, total, page, limit, totalPages };
+    return { data, items: data, total, page, limit, totalPages };
   }
 }
 

@@ -59,8 +59,13 @@ export interface ApiPaginationMeta {
 }
 
 export interface ApiPaginatedResponse<T = any> {
-  items: T[];
-  pagination: ApiPaginationMeta;
+  items?: T[];
+  pagination?: ApiPaginationMeta;
+  data?: T[];
+  total?: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
 }
 
 // Validation Error Structure returned by Express-Validator on HTTP 400
@@ -103,10 +108,13 @@ export interface ApiFacilityBookingRules {
 export interface ApiAmenityFacility {
   _id: string;
   orgId: string;
+  code?: string;
   name: string;
   description?: string;
+  location?: string;
   archetype: AmenityArchetype;
   status: AmenityFacilityStatus;
+  isActive?: boolean;
   maxCapacity: number;
   maxHeadcountPerReservation: number;
   slotDurationMinutes: number;

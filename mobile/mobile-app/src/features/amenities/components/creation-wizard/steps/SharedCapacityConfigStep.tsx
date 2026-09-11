@@ -62,8 +62,10 @@ export const SharedCapacityConfigStep: React.FC<SharedCapacityConfigStepProps> =
           value={String(data.maxCapacity || '')}
           onChangeText={(val) => onChange({ ...data, maxCapacity: val })}
           error={errors.maxCapacity}
-          helperText="The booking engine dynamically tracks headcount tickets against this total limit."
         />
+        <Text variant="muted" className="text-xs">
+          The booking engine dynamically tracks headcount tickets against this total limit.
+        </Text>
       </View>
 
       <View className="bg-card p-4 rounded-3xl border border-border gap-3.5">

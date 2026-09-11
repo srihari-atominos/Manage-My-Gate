@@ -508,8 +508,8 @@ export const fetchPassesByReservationThunk = createAsyncThunk(
   async (reservationId: string, { rejectWithValue }) => {
     try {
       const res = await amenityManagementService.getPassesByReservation(reservationId);
-      const rawPayload = res?.data || res;
-      const rawList = Array.isArray(rawPayload) ? rawPayload : rawPayload?.passes || [];
+      const rawPayload: any = res?.data || res;
+      const rawList = Array.isArray(rawPayload) ? rawPayload : (rawPayload?.passes || rawPayload?.data || []);
       return rawList.map(normalizeAccessPassFromApi);
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));

@@ -67,10 +67,13 @@ export interface AmenityFacilityBookingRules {
 export interface AmenityFacility {
   _id: string;
   orgId: string;
+  code?: string;
   name: string;
   description?: string;
+  location?: string;
   archetype: AmenityArchetype;
   status: AmenityFacilityStatus;
+  isActive?: boolean;
   maxCapacity: number;
   maxHeadcountPerReservation: number;
   slotDurationMinutes: number;

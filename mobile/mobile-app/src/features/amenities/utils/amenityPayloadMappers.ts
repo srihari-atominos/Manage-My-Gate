@@ -20,6 +20,8 @@ import {
 
 import {
   AmenityFacility,
+  AmenityFacilityStatus,
+  AmenityPricingType,
   AmenityResource,
   AmenityHoldState,
   AmenityReservation,
@@ -112,24 +114,66 @@ export const mapPricingFormToApiPayload = (params: {
 // API -> Domain Response Normalizers
 // ==========================================
 
-export const normalizeFacilityFromApi = (raw: ApiAmenityFacility): AmenityFacility => {
+export const normalizeFacilityFromApi = (raw: ApiAmenityFacility | any): AmenityFacility => {
+  const derivedStatus: AmenityFacilityStatus =
+    raw.status ||
+    (raw.isActive === false ? 'INACTIVE' : 'ACTIVE');
+
+  const rawPricing = raw.pricingConfig || {};
+  const pricingType = (rawPricing.type || rawPricing.pricingType || (raw.bookingFee ? 'HOURLY' : 'FREE')) as AmenityPricingType;
+  const baseRate = Number(rawPricing.baseRate ?? raw.bookingFee ?? 0);
+  const depositAmount = Number(rawPricing.depositAmount ?? rawPricing.securityDeposit ?? raw.securityDeposit ?? 0);
+  const taxRate = Number(rawPricing.taxRate ?? rawPricing.taxPercentage ?? 0);
+  const currency = rawPricing.currency || 'INR';
+
+  const rawBookingRules = raw.bookingRules || {};
+  const requiresApproval = Boolean(raw.requiresApproval ?? rawBookingRules.requiresApproval ?? false);
+
+  const operatingHours = Array.isArray(raw.operatingHours)
+    ? raw.operatingHours.map((h: any) => ({
+        dayOfWeek: h.dayOfWeek,
+        opensAt: h.opensAt || h.openTime || '06:00',
+        closesAt: h.closesAt || h.closeTime || '22:00',
+        openTime: h.openTime || h.opensAt || '06:00',
+        closeTime: h.closeTime || h.closesAt || '22:00',
+        isOpen: h.isOpen !== undefined ? h.isOpen : true,
+      }))
+    : [];
+
   return {
     _id: raw._id,
     orgId: raw.orgId,
+    code: raw.code,
     name: raw.name,
     description: raw.description,
+    location: raw.location,
     archetype: raw.archetype,
-    status: raw.status,
-    maxCapacity: raw.maxCapacity,
-    maxHeadcountPerReservation: raw.maxHeadcountPerReservation,
-    slotDurationMinutes: raw.slotDurationMinutes,
-    setupBufferMinutes: raw.setupBufferMinutes,
-    teardownBufferMinutes: raw.teardownBufferMinutes,
+    status: derivedStatus,
+    isActive: raw.isActive !== undefined ? raw.isActive : derivedStatus === 'ACTIVE',
+    maxCapacity: raw.maxCapacity ?? raw.capacity ?? 1,
+    maxHeadcountPerReservation: raw.maxHeadcountPerReservation ?? raw.maxBookingsPerUserPerSlot ?? 1,
+    slotDurationMinutes: raw.slotDurationMinutes ?? rawBookingRules.slotDurationMinutes ?? 60,
+    setupBufferMinutes: raw.setupBufferMinutes ?? rawBookingRules.bufferTimeMinutes ?? 0,
+    teardownBufferMinutes: raw.teardownBufferMinutes ?? 0,
     timezone: raw.timezone || 'UTC',
-    pricingConfig: { ...raw.pricingConfig },
-    bookingRules: { ...raw.bookingRules },
-    operatingHours: Array.isArray(raw.operatingHours) ? [...raw.operatingHours] : [],
-    images: Array.isArray(raw.images) ? [...raw.images] : [],
+    pricingConfig: {
+      type: pricingType,
+      baseRate,
+      depositAmount,
+      taxRate,
+      currency,
+      ...(rawPricing as any),
+    },
+    bookingRules: {
+      minNoticeHours: rawBookingRules.minNoticeHours ?? 0,
+      maxAdvanceBookingDays: rawBookingRules.maxAdvanceBookingDays ?? 30,
+      cancelNoticeHours: rawBookingRules.cancelNoticeHours ?? raw.cancellationPolicy?.refundCutoffHours ?? 24,
+      requiresApproval,
+      maxActiveReservationsPerResident: rawBookingRules.maxActiveReservationsPerResident ?? 3,
+      ...rawBookingRules,
+    },
+    operatingHours,
+    images: Array.isArray(raw.images) ? [...raw.images] : (raw.imageUrl ? [raw.imageUrl] : []),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };

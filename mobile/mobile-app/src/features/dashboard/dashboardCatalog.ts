@@ -245,7 +245,7 @@ export const isFeatureAllowedForUser = (
     'billing:action_center',
     'villas:read',
   ];
-  return residentAllowed.includes(feature.permission);
+  if (residentAllowed.includes(feature.permission)) return true;
 
   if (roleName.includes('facility') || roleName.includes('manager')) {
     const managerAllowed = [
