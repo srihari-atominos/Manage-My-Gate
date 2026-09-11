@@ -141,35 +141,20 @@ function ManageNoticesContent() {
   const handleStatusFilterChange = useCallback((statusValue) => {
     setActiveKpiCard(null);
     setCurrentPage(1);
-    if (statusValue === 'ALL' || !statusValue) {
-      const { status, ...rest } = filters;
-      setFilters(rest);
-    } else {
-      setFilters({ ...filters, status: statusValue });
-    }
-  }, [filters, setFilters, setActiveKpiCard, setCurrentPage]);
+    setFilters({ status: (statusValue === 'ALL' || !statusValue) ? '' : statusValue });
+  }, [setFilters, setActiveKpiCard, setCurrentPage]);
 
   const handlePriorityFilterChange = useCallback((priorityValue) => {
     setActiveKpiCard(null);
     setCurrentPage(1);
-    if (priorityValue === 'ALL' || !priorityValue) {
-      const { priority, ...rest } = filters;
-      setFilters(rest);
-    } else {
-      setFilters({ ...filters, priority: priorityValue });
-    }
-  }, [filters, setFilters, setActiveKpiCard, setCurrentPage]);
+    setFilters({ priority: (priorityValue === 'ALL' || !priorityValue) ? '' : priorityValue });
+  }, [setFilters, setActiveKpiCard, setCurrentPage]);
 
   const handleCategoryFilterChange = useCallback((categoryValue) => {
     setActiveKpiCard(null);
     setCurrentPage(1);
-    if (categoryValue === 'ALL' || !categoryValue) {
-      const { category, ...rest } = filters;
-      setFilters(rest);
-    } else {
-      setFilters({ ...filters, category: categoryValue });
-    }
-  }, [filters, setFilters, setActiveKpiCard, setCurrentPage]);
+    setFilters({ category: (categoryValue === 'ALL' || !categoryValue) ? '' : categoryValue });
+  }, [setFilters, setActiveKpiCard, setCurrentPage]);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (deleteConfirmId) {

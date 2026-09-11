@@ -152,9 +152,9 @@ export class NoticeBoardService {
     // 3. Build filters
     const filters = {};
 
-    // Apply audience feed filter for the user
+    // Apply audience feed filter for the user ONLY if they are restricted to published notices (residents)
     let audienceOr = null;
-    if (userId && orgId) {
+    if (restrictToPublished && userId && orgId) {
       const audienceFilter = await audienceService.buildFeedFilter(userId, orgId);
       if (audienceFilter.$or && audienceFilter.$or.length > 0) {
         audienceOr = audienceFilter.$or;
@@ -164,17 +164,17 @@ export class NoticeBoardService {
     if (restrictToPublished) {
       filters.status = 'Published';
     } else if (queryParams.status) {
-      // If client requests All, don't filter by status
-      if (queryParams.status !== 'All') {
+      // If client requests All or ALL, don't filter by status
+      if (queryParams.status.toUpperCase() !== 'ALL') {
         filters.status = queryParams.status;
       }
     }
 
-    if (queryParams.category) {
+    if (queryParams.category && queryParams.category.toUpperCase() !== 'ALL') {
       filters.category = queryParams.category;
     }
 
-    if (queryParams.priority) {
+    if (queryParams.priority && queryParams.priority.toUpperCase() !== 'ALL') {
       filters.priority = queryParams.priority;
     }
 
