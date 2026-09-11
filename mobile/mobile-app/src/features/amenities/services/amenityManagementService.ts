@@ -24,6 +24,9 @@ import {
   ReviewReservationApiPayload,
   RescheduleReservationApiPayload,
   ScheduleMaintenanceApiPayload,
+  CheckInPassApiPayload,
+  CheckOutPassApiPayload,
+  RevokePassApiPayload,
 } from '../types/amenityApi.types';
 import * as Crypto from 'expo-crypto';
 
@@ -291,6 +294,24 @@ export const amenityManagementService = {
   async getPassesByReservation(reservationId: string): Promise<ApiResponse<ApiAmenityAccessPass[]>> {
     const url = getAmenityV2Url(`/passes/reservation/${reservationId}`);
     const response = await apiClient.get<ApiResponse<ApiAmenityAccessPass[]>>(url);
+    return response.data;
+  },
+
+  async checkInPass(payload: CheckInPassApiPayload): Promise<ApiResponse<ApiAmenityAccessPass>> {
+    const url = getAmenityV2Url('/passes/check-in');
+    const response = await apiClient.post<ApiResponse<ApiAmenityAccessPass>>(url, payload);
+    return response.data;
+  },
+
+  async checkOutPass(payload: CheckOutPassApiPayload): Promise<ApiResponse<ApiAmenityAccessPass>> {
+    const url = getAmenityV2Url('/passes/check-out');
+    const response = await apiClient.post<ApiResponse<ApiAmenityAccessPass>>(url, payload);
+    return response.data;
+  },
+
+  async revokePass(passId: string, reason: string): Promise<ApiResponse<ApiAmenityAccessPass>> {
+    const url = getAmenityV2Url(`/passes/${passId}/revoke`);
+    const response = await apiClient.post<ApiResponse<ApiAmenityAccessPass>>(url, { reason });
     return response.data;
   },
 

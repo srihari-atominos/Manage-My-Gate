@@ -109,12 +109,17 @@ const PERMISSION_SYNONYMS: Record<string, string[]> = {
   'complaints:assignee': ['complaints:assignee', 'complaints:update', 'complaints'],
 
   // Amenities & Facilities
-  'amenities:scanner': ['amenities:scanner', 'amenities:security_logs', 'amenities:view', 'amenities:read', 'amenities'],
-  'amenities:security_logs': ['amenities:security_logs', 'amenities:scanner', 'amenities:view', 'amenities:read', 'amenities'],
-  'amenities:discover': ['amenities:discover', 'amenities:view', 'amenities:read', 'amenities'],
-  'amenities:my_booking': ['amenities:my_booking', 'amenities:view', 'amenities:read', 'amenities'],
-  'amenities:wallet': ['amenities:wallet', 'amenities'],
-  'amenities:dashboard': ['amenities:dashboard', 'amenities'],
+  'amenities:scanner': ['amenities:scanner', 'amenities.scanner', 'amenities:guard', 'amenities.guard'],
+  'amenities:security_logs': ['amenities:security_logs', 'amenities.security_logs', 'amenities:guard', 'amenities.guard'],
+  'amenities:discover': ['amenities:discover', 'amenities.discover', 'amenities:resident', 'amenities.resident', 'amenities:read', 'amenities.read'],
+  'amenities:my_booking': ['amenities:my_booking', 'amenities.my_booking', 'amenities:book', 'amenities.book', 'amenities:resident', 'amenities.resident'],
+  'amenities:wallet': ['amenities:wallet', 'amenities.wallet', 'amenities:resident', 'amenities.resident'],
+  'amenities:amenities': ['amenities:amenities', 'amenities.amenities', 'amenities:admin', 'amenities.admin', 'amenities:create', 'amenities:update', 'amenities:delete'],
+  'amenities:admin_calander': ['amenities:admin_calander', 'amenities.admin_calander', 'amenities:admin', 'amenities.admin'],
+  'amenities:maintenance': ['amenities:maintenance', 'amenities.maintenance', 'amenities:admin', 'amenities.admin'],
+  'amenities:settings': ['amenities:settings', 'amenities.settings', 'amenities:admin', 'amenities.admin'],
+  'amenities:dashboard': ['amenities:dashboard', 'amenities.dashboard', 'amenities:admin', 'amenities.admin'],
+  'amenities:ledgers': ['amenities:ledgers', 'amenities.ledgers', 'amenities:admin', 'amenities.admin'],
 
   // Billing & Invoices
   'billing:action_center': ['billing:action_center', 'billing:dashboard', 'billing:view', 'billing:read', 'billing'],
@@ -232,6 +237,18 @@ export const isFeatureAllowedForUser = (
   if (!user) return false;
   if (item.id === 'admin_organizations' || item.id === 'admin_audit_logs') return false;
 
+  const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+
+  // Super Admin / Platform bypass
+  if (user.isPlatform === true || permissions.includes('platform:super_admin') || permissions.includes('*')) {
+    return true;
+  }
+
+  // Amenities: Strict evaluation per Phase 2 contract (Admin must NOT receive resident or guard permissions)
+  if (item.permission && item.permission.startsWith('amenities:') && permissions.length > 0) {
+    return matchesUserPermissions(item.permission, item.id, permissions);
+  }
+
   // 1. Super Admins & Community Admins have full feature access
   if (checkIsAdmin(user)) {
     return true;
@@ -242,8 +259,6 @@ export const isFeatureAllowedForUser = (
     if (FALLBACK_SECURITY_FEATURE_IDS.has(item.id)) return true;
     if (item.permission && FALLBACK_SECURITY_PERMISSIONS.has(item.permission)) return true;
   }
-
-  const permissions = Array.isArray(user.permissions) ? user.permissions : [];
 
   // 3. Strict evaluation of permissions assigned in Role Builder (when permissions array is populated)
   if (permissions.length > 0) {

@@ -23,6 +23,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 import { useBottomNavScroll } from './BottomNavScrollContext';
 import { cn } from '@/lib/utils';
 
@@ -51,7 +52,7 @@ const TAB_ITEMS: TabItem[] = [
   {
     key: 'amenities',
     label: 'Amenities',
-    route: '/(resident)/amenities/dashboard',
+    route: '/(resident)/amenities/discover',
     icon: Sparkles,
   },
   {
@@ -311,6 +312,32 @@ export const BottomNavigationBar: React.FC = () => {
     let targetRoute = item.route;
     if (item.key === 'billing') {
       targetRoute = billingRoute;
+    } else if (item.key === 'amenities') {
+      if (
+        user &&
+        isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user) &&
+        !isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user)
+      ) {
+        targetRoute = '/(resident)/amenities/scanner';
+      } else if (
+        user &&
+        !isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user) &&
+        (isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user) ||
+         isFeatureAllowedForUser({ id: 'amenities_admin_calendar', permission: 'amenities:admin_calander' }, user) ||
+         isFeatureAllowedForUser({ id: 'amenities_master', permission: 'amenities:amenities' }, user))
+      ) {
+        targetRoute = isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user)
+          ? '/(resident)/amenities/dashboard'
+          : isFeatureAllowedForUser({ id: 'amenities_admin_calendar', permission: 'amenities:admin_calander' }, user)
+            ? '/(resident)/amenities/admin-calendar'
+            : '/(resident)/amenities/admin-master';
+      } else if (
+        user &&
+        !isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user) &&
+        !isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user)
+      ) {
+        targetRoute = '/(resident)/dashboard';
+      }
     }
 
     // 3. Short micro-delay so user visibly sees the capsule glide across before screen switches

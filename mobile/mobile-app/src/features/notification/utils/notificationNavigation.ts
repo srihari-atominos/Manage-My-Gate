@@ -42,10 +42,19 @@ export const mapActionUrlToMobileRoute = (actionUrl?: string, type?: string): st
   if (cleanUrl.includes('visitor-management-guard') || cleanUrl === '/visitor/guard') {
     return '/(resident)/visitor/gate-console';
   }
-  if (cleanUrl.includes('resident/amenities/discover') || cleanUrl === '/amenities/discover') {
+  if (
+    cleanUrl.includes('amenities/dashboard') ||
+    cleanUrl.includes('resident/amenities/discover') ||
+    cleanUrl === '/amenities/discover' ||
+    cleanUrl === '/amenities'
+  ) {
     return '/(resident)/amenities/discover';
   }
-  if (cleanUrl.includes('resident/amenities/calendar') || cleanUrl === '/amenities/my-bookings') {
+  if (
+    cleanUrl.includes('resident/amenities/calendar') ||
+    cleanUrl.includes('amenities/my-bookings') ||
+    cleanUrl === '/amenities/my-bookings'
+  ) {
     return '/(resident)/amenities/my-bookings';
   }
   if (cleanUrl.includes('admin/complaints/my-tickets') || cleanUrl.includes('/complaints')) {

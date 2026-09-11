@@ -139,12 +139,8 @@ export const useQuickActions = () => {
           if (item.id === 'admin_workspace_settings') return true;
           
           // 1. RBAC Filtering
-          if (item.permission && userPermissions.length > 0) {
-            const hasAccess = userPermissions.includes('owner:*') || 
-                              userPermissions.includes('admin:*') || 
-                              userPermissions.includes('platform:super_admin') ||
-                              userPermissions.includes(item.permission);
-            if (!hasAccess) return false;
+          if (!isFeatureAllowedForUser(item, user)) {
+            return false;
           }
 
           // 2. Module Filtering

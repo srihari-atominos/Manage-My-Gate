@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Text } from '@/components/ui/text';
 import { KPIDashboardStrip } from '@/components/ui/KPIDashboardStrip';
@@ -12,6 +12,8 @@ import { useAmenityDashboard } from '@/src/features/amenities/hooks/useAmenityDa
 import { MobileQuickNavHub } from '@/src/features/amenities/components/MobileQuickNavHub';
 import { MobileLiveActivityWidget } from '@/src/features/amenities/components/MobileLiveActivityWidget';
 import { useTranslation } from '@/src/utils/i18n';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 
 const parseRevenue = (val: any, fallback: number): number => {
   if (val === undefined || val === null) return fallback;
@@ -31,8 +33,20 @@ const parseRevenue = (val: any, fallback: number): number => {
 
 export default function AmenityExecutiveDashboardScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { dashboardStats, loading, error, loadData } = useAmenityDashboard();
   const { t } = useTranslation();
+
+  // Guard: Normal residents or non-admins must never land on the legacy executive analytics dashboard
+  if (user && !isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user)) {
+    if (isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user)) {
+      return <Redirect href="/(resident)/amenities/discover" />;
+    }
+    if (isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user)) {
+      return <Redirect href="/(resident)/amenities/scanner" />;
+    }
+    return <Redirect href="/(resident)/dashboard" />;
+  }
 
   // Dynamic real-time metrics from backend DTO (/amenity-bookings/stats/dashboard)
   const totalRevenue = parseRevenue(

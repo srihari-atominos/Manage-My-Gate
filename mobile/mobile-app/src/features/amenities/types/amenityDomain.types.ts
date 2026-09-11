@@ -18,6 +18,7 @@ import {
   AmenityPassType,
   AmenityPassStatus,
   AmenityMaintenanceStatus,
+  AmenityInspectionDetails,
   ApiPaginationMeta,
 } from './amenityApi.types';
 
@@ -36,6 +37,7 @@ export {
   AmenityPassType,
   AmenityPassStatus,
   AmenityMaintenanceStatus,
+  AmenityInspectionDetails,
 };
 
 // Facility Domain Model
@@ -198,20 +200,28 @@ export interface AmenityReservation {
 export interface AmenityAccessPass {
   _id: string;
   orgId: string;
-  facilityId: string;
+  facilityId?: string;
   facilityName?: string;
   reservationId: string;
-  userId: string;
-  passCode: string;
-  qrData: string;
-  passType: AmenityPassType;
+  userId?: string;
+  passCode?: string;
+  qrData?: string;
+  passType: AmenityPassType | string;
   validFrom: string;
   validUntil: string;
-  maxUses: number;
-  currentUses: number;
+  maxUses?: number;
+  currentUses?: number;
   checkedInAt?: string;
   checkedOutAt?: string;
-  status: AmenityPassStatus;
+  status?: AmenityPassStatus;
+  checkInTimestamp?: string | null;
+  checkOutTimestamp?: string | null;
+  gateId?: string | null;
+  isRevoked?: boolean;
+  revokedAt?: string | null;
+  revokedReason?: string | null;
+  inspectionDetails?: AmenityInspectionDetails | null;
+  passTokenHash?: string;
   createdAt: string;
   updatedAt: string;
 }

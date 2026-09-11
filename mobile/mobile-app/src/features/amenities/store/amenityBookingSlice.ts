@@ -15,6 +15,9 @@ import {
   ConfirmReservationApiPayload,
   CalculatePricingApiPayload,
   CancelReservationApiPayload,
+  CheckInPassApiPayload,
+  CheckOutPassApiPayload,
+  RevokePassApiPayload,
 } from '../types/amenityApi.types';
 import {
   normalizeHoldFromApi,
@@ -148,6 +151,12 @@ export interface AmenityBookingState {
   v2Holding: boolean;
   v2Confirming: boolean;
   v2Error: AmenityErrorDetails | null;
+
+  // v2 Guard Pass State
+  v2CheckInResult: AmenityAccessPass | null;
+  v2CheckOutResult: AmenityAccessPass | null;
+  v2PassActionLoading: boolean;
+  v2PassError: AmenityErrorDetails | null;
 }
 
 const initialState: AmenityBookingState = {
@@ -183,6 +192,12 @@ const initialState: AmenityBookingState = {
   v2Holding: false,
   v2Confirming: false,
   v2Error: null,
+
+  // v2 Guard Pass State
+  v2CheckInResult: null,
+  v2CheckOutResult: null,
+  v2PassActionLoading: false,
+  v2PassError: null,
 };
 
 // ==========================================
@@ -495,6 +510,42 @@ export const fetchPassesByReservationThunk = createAsyncThunk(
   }
 );
 
+export const checkInPassThunk = createAsyncThunk(
+  'amenityBookings/checkInPass',
+  async (payload: CheckInPassApiPayload, { rejectWithValue }) => {
+    try {
+      const res = await amenityManagementService.checkInPass(payload);
+      return normalizeAccessPassFromApi(res.data);
+    } catch (err) {
+      return rejectWithValue(mapAmenityApiError(err));
+    }
+  }
+);
+
+export const checkOutPassThunk = createAsyncThunk(
+  'amenityBookings/checkOutPass',
+  async (payload: CheckOutPassApiPayload, { rejectWithValue }) => {
+    try {
+      const res = await amenityManagementService.checkOutPass(payload);
+      return normalizeAccessPassFromApi(res.data);
+    } catch (err) {
+      return rejectWithValue(mapAmenityApiError(err));
+    }
+  }
+);
+
+export const revokePassThunk = createAsyncThunk(
+  'amenityBookings/revokePass',
+  async ({ passId, reason }: { passId: string; reason: string }, { rejectWithValue }) => {
+    try {
+      const res = await amenityManagementService.revokePass(passId, reason);
+      return normalizeAccessPassFromApi(res.data);
+    } catch (err) {
+      return rejectWithValue(mapAmenityApiError(err));
+    }
+  }
+);
+
 // ==========================================
 // Slice Definition
 // ==========================================
@@ -556,6 +607,12 @@ const amenityBookingSlice = createSlice({
       state.v2Error = null;
       state.v2Holding = false;
       state.v2Confirming = false;
+    },
+    clearV2PassResults: (state) => {
+      state.v2CheckInResult = null;
+      state.v2CheckOutResult = null;
+      state.v2PassError = null;
+      state.v2PassActionLoading = false;
     },
   },
   extraReducers: (builder) => {
@@ -877,6 +934,50 @@ const amenityBookingSlice = createSlice({
       .addCase(fetchPassesByReservationThunk.rejected, (state, action) => {
         state.v2Loading = false;
         state.v2Error = action.payload as AmenityErrorDetails;
+      })
+
+      // V2 Check-In Pass
+      .addCase(checkInPassThunk.pending, (state) => {
+        state.v2PassActionLoading = true;
+        state.v2PassError = null;
+      })
+      .addCase(checkInPassThunk.fulfilled, (state, action) => {
+        state.v2PassActionLoading = false;
+        state.v2CheckInResult = action.payload;
+        state.v2PassError = null;
+      })
+      .addCase(checkInPassThunk.rejected, (state, action) => {
+        state.v2PassActionLoading = false;
+        state.v2PassError = action.payload as AmenityErrorDetails;
+      })
+
+      // V2 Check-Out Pass
+      .addCase(checkOutPassThunk.pending, (state) => {
+        state.v2PassActionLoading = true;
+        state.v2PassError = null;
+      })
+      .addCase(checkOutPassThunk.fulfilled, (state, action) => {
+        state.v2PassActionLoading = false;
+        state.v2CheckOutResult = action.payload;
+        state.v2PassError = null;
+      })
+      .addCase(checkOutPassThunk.rejected, (state, action) => {
+        state.v2PassActionLoading = false;
+        state.v2PassError = action.payload as AmenityErrorDetails;
+      })
+
+      // V2 Revoke Pass
+      .addCase(revokePassThunk.pending, (state) => {
+        state.v2PassActionLoading = true;
+        state.v2PassError = null;
+      })
+      .addCase(revokePassThunk.fulfilled, (state, action) => {
+        state.v2PassActionLoading = false;
+        state.v2PassError = null;
+      })
+      .addCase(revokePassThunk.rejected, (state, action) => {
+        state.v2PassActionLoading = false;
+        state.v2PassError = action.payload as AmenityErrorDetails;
       });
   },
 });
@@ -891,6 +992,7 @@ export const {
   clearActiveHold,
   clearV2Errors,
   resetV2BookingState,
+  clearV2PassResults,
 } = amenityBookingSlice.actions;
 
 export default amenityBookingSlice.reducer;

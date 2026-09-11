@@ -6,7 +6,7 @@
 
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PaginatedList } from '@/components/ui/PaginatedList';
@@ -20,9 +20,20 @@ import {
 import { ResidentReservationCard } from '@/src/features/amenities/components/ResidentReservationCard';
 import { ResidentCancelModal } from '@/src/features/amenities/components/ResidentCancelModal';
 import { AmenityReservation } from '@/src/features/amenities/types/amenityDomain.types';
+import { useAuth } from '@/src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '@/src/utils/rbac';
 
 export default function MyBookingsScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  // Guard: Users without resident booking permissions are redirected
+  if (user && !isFeatureAllowedForUser({ id: 'amenities_my_booking', permission: 'amenities:my_booking' }, user)) {
+    if (isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user)) {
+      return <Redirect href="/(resident)/amenities/scanner" />;
+    }
+    return <Redirect href="/(resident)/dashboard" />;
+  }
 
   const {
     reservations,

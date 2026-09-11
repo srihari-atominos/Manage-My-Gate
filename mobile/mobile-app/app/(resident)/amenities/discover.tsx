@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SearchFilterBar, SortOption } from '@/components/ui/SearchFilterBar';
 import { PaginatedList } from '@/components/ui/PaginatedList';
@@ -12,6 +12,8 @@ import { useResidentAmenities } from '../../../src/features/amenities/hooks/useR
 import { ResidentAmenityDetailSheet } from '../../../src/features/amenities/components/ResidentAmenityDetailSheet';
 import { AmenityCatalogCard } from '../../../src/features/amenities/components/AmenityCatalogCard';
 import { AmenityFacility, AmenityArchetype } from '../../../src/features/amenities/types/amenityDomain.types';
+import { useAuth } from '../../../src/features/auth/hooks/useAuth';
+import { isFeatureAllowedForUser } from '../../../src/utils/rbac';
 
 const ARCHETYPE_FILTER_OPTIONS: SortOption[] = [
   { label: 'All Facilities', value: 'All' },
@@ -24,6 +26,24 @@ const ARCHETYPE_FILTER_OPTIONS: SortOption[] = [
 
 export default function DiscoverAmenitiesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  // Guard: Users without discover/resident amenity permissions are redirected
+  if (user && !isFeatureAllowedForUser({ id: 'amenities_discover', permission: 'amenities:discover' }, user)) {
+    if (isFeatureAllowedForUser({ id: 'amenities_scanner', permission: 'amenities:scanner' }, user)) {
+      return <Redirect href="/(resident)/amenities/scanner" />;
+    }
+    if (isFeatureAllowedForUser({ id: 'amenities_dashboard', permission: 'amenities:dashboard' }, user)) {
+      return <Redirect href="/(resident)/amenities/dashboard" />;
+    }
+    if (isFeatureAllowedForUser({ id: 'amenities_admin_calendar', permission: 'amenities:admin_calander' }, user)) {
+      return <Redirect href="/(resident)/amenities/admin-calendar" />;
+    }
+    if (isFeatureAllowedForUser({ id: 'amenities_master', permission: 'amenities:amenities' }, user)) {
+      return <Redirect href="/(resident)/amenities/admin-master" />;
+    }
+    return <Redirect href="/(resident)/dashboard" />;
+  }
 
   const {
     facilities,

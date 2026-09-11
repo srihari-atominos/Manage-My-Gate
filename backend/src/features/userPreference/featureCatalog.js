@@ -84,8 +84,9 @@ export const SYSTEM_FEATURE_CATALOG = [
 ];
 
 export const DEFAULT_ACTIVE_QUICK_ACTIONS = [
-  'billing_dashboard',
   'visitor_resident_passes',
+  'billing_dashboard',
   'complaints_track_requests',
+  'amenities_discover',
   'notices_active_board'
 ];

@@ -243,10 +243,14 @@ export const normalizeReservationFromApi = (raw: ApiAmenityReservation): Amenity
 };
 
 export const normalizeAccessPassFromApi = (raw: ApiAmenityAccessPass): AmenityAccessPass => {
+  const checkInTimestamp = raw.checkInTimestamp || (raw as any).checkedInAt || null;
+  const checkOutTimestamp = raw.checkOutTimestamp || (raw as any).checkedOutAt || null;
+
   return {
     _id: raw._id,
     orgId: raw.orgId,
     facilityId: raw.facilityId,
+    facilityName: raw.facilityName,
     reservationId: raw.reservationId,
     userId: raw.userId,
     passCode: raw.passCode,
@@ -256,9 +260,17 @@ export const normalizeAccessPassFromApi = (raw: ApiAmenityAccessPass): AmenityAc
     validUntil: raw.validUntil,
     maxUses: raw.maxUses,
     currentUses: raw.currentUses,
-    checkedInAt: raw.checkedInAt,
-    checkedOutAt: raw.checkedOutAt,
-    status: raw.status,
+    checkedInAt: raw.checkedInAt || (checkInTimestamp ? String(checkInTimestamp) : undefined),
+    checkedOutAt: raw.checkedOutAt || (checkOutTimestamp ? String(checkOutTimestamp) : undefined),
+    status: raw.status || (raw.isRevoked ? 'REVOKED' : checkOutTimestamp ? 'USED' : 'ACTIVE'),
+    checkInTimestamp,
+    checkOutTimestamp,
+    gateId: raw.gateId || null,
+    isRevoked: Boolean(raw.isRevoked || raw.status === 'REVOKED'),
+    revokedAt: raw.revokedAt || null,
+    revokedReason: raw.revokedReason || null,
+    inspectionDetails: raw.inspectionDetails || null,
+    passTokenHash: raw.passTokenHash,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };
