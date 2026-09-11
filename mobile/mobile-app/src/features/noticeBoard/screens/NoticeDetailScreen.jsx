@@ -111,9 +111,18 @@ function NoticeDetailContent() {
       <ScrollContainer contentContainerStyle={{ paddingBottom: 100 }}>
         <View className="p-4">
           {/* Header Badges */}
-          <View className="flex-row flex-wrap gap-2 mb-3">
-            {selectedNotice.isCritical && (
-              <StatusBadge label="CRITICAL" variant="danger" size="sm" />
+          <View className="flex-row flex-wrap items-center gap-2 mb-3">
+            {(selectedNotice.isCritical || selectedNotice.priority === 'Critical') && (
+              <StatusBadge label="🔴 CRITICAL" variant="danger" size="md" />
+            )}
+            {selectedNotice.priority === 'High' && (
+              <StatusBadge label="🟠 HIGH PRIORITY" variant="warning" size="md" />
+            )}
+            {selectedNotice.priority === 'Medium' && (
+              <StatusBadge label="🟡 MEDIUM PRIORITY" variant="info" size="sm" />
+            )}
+            {selectedNotice.priority === 'Low' && (
+              <StatusBadge label="🟢 LOW PRIORITY" variant="neutral" size="sm" />
             )}
             {selectedNotice.isPinned && (
               <View className="flex-row items-center bg-primary/10 px-2 py-1 rounded-md">
@@ -121,18 +130,37 @@ function NoticeDetailContent() {
                 <Text className="text-primary text-xs font-semibold">Pinned</Text>
               </View>
             )}
-            <StatusBadge label={selectedNotice.category || 'General'} variant="info" size="sm" />
-            <StatusBadge label={selectedNotice.priority || 'Medium'} variant={getStatusVariant(selectedNotice.priority || 'Medium')} size="sm" />
+            <StatusBadge label={selectedNotice.category || 'General'} variant="neutral" size="sm" />
             <StatusBadge label={selectedNotice.status || 'Published'} variant={getStatusVariant(selectedNotice.status || 'Published')} size="sm" />
           </View>
 
           {/* Critical Notice Warning Banner */}
-          {selectedNotice.isCritical && (
-            <View className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 mb-4 flex-row items-center">
-              <AlertTriangle size={20} color="#dc2626" className="me-2" />
-              <Text className="text-destructive font-bold text-sm flex-1">
-                Mandatory Critical Notice — Review required by all targeted community members.
-              </Text>
+          {(selectedNotice.isCritical || selectedNotice.priority === 'Critical') && (
+            <View className="bg-destructive/10 border-2 border-destructive/40 rounded-xl p-3.5 mb-4 flex-row items-center">
+              <AlertTriangle size={22} color="#dc2626" className="me-2.5 shrink-0" />
+              <View className="flex-1">
+                <Text className="text-destructive font-black text-sm uppercase tracking-wide">
+                  CRITICAL NOTICE — Immediate Attention Required
+                </Text>
+                <Text className="text-destructive/90 text-xs font-medium mt-0.5">
+                  This announcement contains essential community safety or utility shutdown information.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* High Priority Notice Banner */}
+          {selectedNotice.priority === 'High' && !selectedNotice.isCritical && (
+            <View className="bg-amber-500/10 border-2 border-amber-500/40 rounded-xl p-3.5 mb-4 flex-row items-center">
+              <AlertTriangle size={22} color="#d97706" className="me-2.5 shrink-0" />
+              <View className="flex-1">
+                <Text className="text-amber-700 dark:text-amber-400 font-black text-sm uppercase tracking-wide">
+                  HIGH PRIORITY NOTICE
+                </Text>
+                <Text className="text-amber-700/90 dark:text-amber-400/90 text-xs font-medium mt-0.5">
+                  Important operational update for community residents.
+                </Text>
+              </View>
             </View>
           )}
 

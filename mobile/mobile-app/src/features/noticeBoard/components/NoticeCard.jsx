@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
-import { Heart, Pin, Globe, Archive, Edit, Trash2, ShieldAlert } from 'lucide-react-native';
+import { Heart, Pin, Globe, Archive, Edit, Trash2, ShieldAlert, AlertTriangle } from 'lucide-react-native';
 import { ListCard } from '@/components/ui/ListCard';
 import { getStatusVariant } from '@/components/ui/StatusBadge';
 import { Text } from '@/components/ui/text';
@@ -73,9 +73,6 @@ export function NoticeCard({
   const formatSubtitle = () => {
     const details = [];
     if (notice?.category) details.push(notice.category);
-    if (notice?.priority && notice.priority !== 'Normal') {
-      details.push(`Priority: ${notice.priority}`);
-    }
     if (notice?.scheduleDate && status === 'Scheduled') {
       details.push(`Scheduled: ${new Date(notice.scheduleDate).toLocaleDateString()}`);
     } else if (notice?.expiryDate) {
@@ -84,29 +81,87 @@ export function NoticeCard({
     return details.join(' • ');
   };
 
+  const isCriticalNotice = notice?.isCritical || notice?.priority === 'Critical';
+  const isHighNotice = notice?.priority === 'High';
+  const isMediumNotice = notice?.priority === 'Medium';
+  const isLowNotice = notice?.priority === 'Low';
+
+  // Primary badge priority: Critical/Urgency & Priority take front stage so residents immediately see importance
   const computeStatusBadge = () => {
-    if (notice?.isCritical) {
-      return { label: 'Critical', variant: 'danger' };
+    if (isCriticalNotice) {
+      return { label: 'CRITICAL', variant: 'danger' };
     }
-    if (status) {
+    if (isHighNotice) {
+      return { label: 'HIGH PRIORITY', variant: 'warning' };
+    }
+    if (isAdmin && status && status !== 'Published') {
       return { label: status, variant: getNoticeStatusVariant(status) };
     }
-    return notice?.priority ? { label: notice.priority, variant: getStatusVariant(notice.priority) } : undefined;
+    if (isMediumNotice) {
+      return { label: 'MEDIUM', variant: 'info' };
+    }
+    if (isLowNotice) {
+      return { label: 'LOW', variant: 'neutral' };
+    }
+    return status ? { label: status, variant: getNoticeStatusVariant(status) } : undefined;
   };
+
+  // Secondary badge: for admins or when status adds extra context
+  const computeSecondaryBadge = () => {
+    if (isAdmin && (isCriticalNotice || isHighNotice) && status) {
+      return { label: status, variant: getNoticeStatusVariant(status) };
+    }
+    return undefined;
+  };
+
+  // Border & background urgency styling
+  const cardBorderClass = isCriticalNotice
+    ? 'border-l-4 border-l-red-500 border-red-500/30 dark:border-red-500/40 bg-red-500/[0.03]'
+    : isHighNotice
+    ? 'border-l-4 border-l-amber-500 border-amber-500/30 dark:border-amber-500/40 bg-amber-500/[0.02]'
+    : 'border-border/80';
 
   return (
     <ListCard
       title={notice?.title || ''}
       subtitle={formatSubtitle()}
       timestamp={notice?.createdAt}
-      leftIcon={getCategoryIconName(notice?.category)}
-      leftIconBgColor={notice?.isCritical ? '#fee2e2' : getCategoryColor(notice?.category)}
-      leftIconColor={notice?.isCritical ? '#dc2626' : getCategoryIconColor(notice?.category)}
+      leftIcon={isCriticalNotice ? 'AlertTriangle' : getCategoryIconName(notice?.category)}
+      leftIconBgColor={isCriticalNotice ? '#fee2e2' : isHighNotice ? '#fef3c7' : getCategoryColor(notice?.category)}
+      leftIconColor={isCriticalNotice ? '#dc2626' : isHighNotice ? '#d97706' : getCategoryIconColor(notice?.category)}
       status={computeStatusBadge()}
+      secondaryBadge={computeSecondaryBadge()}
       onPress={() => onPress?.(notice)}
-      className="mb-3"
+      className={`mb-3 ${cardBorderClass}`}
     >
       <View className="pt-2 border-t border-border/40 gap-2 mt-2">
+        {/* Prominent Urgency Callout Banner for Critical & High Priority Notices */}
+        {isCriticalNotice && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => onPress?.(notice)}
+            className="flex-row items-center gap-1.5 bg-red-500/10 border border-red-500/25 px-2.5 py-1.5 rounded-lg mb-1"
+          >
+            <ShieldAlert size={14} color="#dc2626" />
+            <Text className="text-xs font-bold text-red-600 dark:text-red-400 flex-1">
+              🔴 CRITICAL NOTICE — Action or review required
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {isHighNotice && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => onPress?.(notice)}
+            className="flex-row items-center gap-1.5 bg-amber-500/10 border border-amber-500/25 px-2.5 py-1.5 rounded-lg mb-1"
+          >
+            <AlertTriangle size={14} color="#d97706" />
+            <Text className="text-xs font-bold text-amber-700 dark:text-amber-400 flex-1">
+              🟠 HIGH PRIORITY — Important community update
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Notice Description Snippet */}
         {notice?.description ? (
           <TouchableOpacity 
@@ -123,22 +178,14 @@ export function NoticeCard({
           </TouchableOpacity>
         ) : null}
 
-        {/* Status Pills / Badges (Pinned, Critical, Acknowledgement) */}
-        {(isPinned || notice?.isCritical || notice?.requiresAcknowledgement) && (
+        {/* Status Pills / Badges (Pinned, Acknowledgement) */}
+        {(isPinned || notice?.requiresAcknowledgement) && (
           <View className="flex-row flex-wrap items-center gap-1.5 pt-0.5">
             {isPinned && (
               <View className="flex-row items-center gap-1 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
                 <Pin size={11} color="#d97706" />
                 <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
                   Pinned to Top
-                </Text>
-              </View>
-            )}
-            {notice?.isCritical && (
-              <View className="flex-row items-center gap-1 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded-md">
-                <ShieldAlert size={11} color="#dc2626" />
-                <Text className="text-[10px] font-bold text-red-600 dark:text-red-400">
-                  Critical Alert
                 </Text>
               </View>
             )}
@@ -270,10 +317,13 @@ export function NoticeCard({
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => onPress?.(notice)}
+                className={isCriticalNotice ? "bg-destructive/10 px-2.5 py-1 rounded-lg border border-destructive/20" : isHighNotice ? "bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20" : "py-1"}
                 accessibilityRole="button"
                 accessibilityLabel="Read full notice"
               >
-                <Text className="text-xs font-bold text-primary">Read More →</Text>
+                <Text className={`text-xs font-bold ${isCriticalNotice ? 'text-destructive' : isHighNotice ? 'text-amber-700 dark:text-amber-400' : 'text-primary'}`}>
+                  Read Notice →
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
