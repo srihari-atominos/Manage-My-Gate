@@ -18,7 +18,7 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
-  TextInput,
+  TextInput as RNTextInput,
   Platform,
   Animated,
   Easing,
@@ -37,10 +37,15 @@ import {
   NahomWordmark,
 } from '@/components/auth/NahomBrandLogo';
 import { SocialAuthButton } from '@/components/auth/SocialAuthButton';
+import { TextInput } from '@/components/forms/TextInput';
+import { PasswordInput } from '@/components/forms/PasswordInput';
 import { PhoneInput } from '@/components/forms/PhoneInput';
 import { Checkbox } from '@/components/forms/Checkbox';
+import { parseBackendError } from '@/src/utils/validation';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { storage, sessionStore } from '@/src/utils/storage';
+import { useSelector, useDispatch } from 'react-redux';
+import { clearPendingRoute } from '../../src/features/notification/store/notificationSlice';
 
 // 1. Basic Auth Validation Schema
 const basicAuthSchema = yup.object().shape({
@@ -75,6 +80,8 @@ interface PhoneFormValues {
 }
 
 export default function LoginScreen() {
+  const dispatch = useDispatch();
+  const pendingRoute = useSelector((state: any) => state.notification?.pendingRoute);
   const { user, login: performLogin, requestOtp, loading, error, isAuthenticated, otpSent, clearStatus } = useAuth();
   const { handleGoogleSignIn, loading: googleLoading } = useGoogleAuthSession();
   const params = useLocalSearchParams<{
@@ -106,9 +113,11 @@ export default function LoginScreen() {
   const [submittedPhone, setSubmittedPhone] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
   const [keepSignedIn, setKeepSignedIn] = React.useState(true);
-  const [connectingHarmony, setConnectingHarmony] = React.useState(false);
+  const [isSubmittingBasic, setIsSubmittingBasic] = React.useState(false);
+  const [isSubmittingPhone, setIsSubmittingPhone] = React.useState(false);
+  const hasNavigatedRef = React.useRef(false);
   const [switchDismissed, setSwitchDismissed] = React.useState(false);
-  const passwordInputRef = React.useRef<TextInput>(null);
+  const passwordInputRef = React.useRef<RNTextInput>(null);
 
   React.useEffect(() => {
     const loadSavedPreferences = async () => {
@@ -225,6 +234,7 @@ export default function LoginScreen() {
   // Basic Auth Form Hook
   const basicForm = useForm<BasicAuthFormValues>({
     resolver: yupResolver(basicAuthSchema),
+    mode: 'onTouched',
     defaultValues: {
       login: params.email ? decodeURIComponent(params.email) : '',
       password: '',
@@ -234,6 +244,7 @@ export default function LoginScreen() {
   // Phone Form Hook
   const phoneForm = useForm<PhoneFormValues>({
     resolver: yupResolver(phoneSchema),
+    mode: 'onTouched',
     defaultValues: {
       phone: '',
     },
@@ -257,32 +268,37 @@ export default function LoginScreen() {
   }, [authMode]);
 
   React.useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !hasNavigatedRef.current) {
+      hasNavigatedRef.current = true;
       if (Platform.OS === 'web' && typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
       Keyboard.dismiss();
-      setConnectingHarmony(true);
-      const timer = setTimeout(() => {
-        const uAny = user as any;
-        const hasOrg = !!(
-          user && (
-            uAny.orgId ||
-            uAny.activeOrgId ||
-            uAny.organizationId ||
-            (Array.isArray(uAny.availableWorkspaces) && uAny.availableWorkspaces.length > 0)
-          )
-        );
-        if (isCreateOrgIntent || !hasOrg) {
-          sessionStore.removeItem('mobile_auth_intent');
-          router.replace({ pathname: '/(auth)/setup-organization', params: { intent: 'create-org' } });
-        } else {
-          router.replace('/(resident)/dashboard');
-        }
-      }, 900);
-      return () => clearTimeout(timer);
+
+      const uAny = user as any;
+      const hasOrg = !!(
+        user && (
+          uAny.orgId ||
+          uAny.activeOrgId ||
+          uAny.organizationId ||
+          (Array.isArray(uAny.availableWorkspaces) && uAny.availableWorkspaces.length > 0)
+        )
+      );
+
+      if (isCreateOrgIntent || !hasOrg) {
+        sessionStore.removeItem('mobile_auth_intent');
+        router.replace({ pathname: '/(auth)/setup-organization', params: { intent: 'create-org' } });
+      } else if (pendingRoute) {
+        console.log('[LoginScreen] Navigating to pending notification destination after login:', pendingRoute);
+        dispatch(clearPendingRoute());
+        router.replace(pendingRoute as any);
+      } else {
+        router.replace('/(resident)/dashboard');
+      }
+    } else if (!isAuthenticated) {
+      hasNavigatedRef.current = false;
     }
-  }, [isAuthenticated, user, isCreateOrgIntent]);
+  }, [isAuthenticated, user, isCreateOrgIntent, pendingRoute, dispatch]);
 
   // Reactively route to OTP screen if Phone OTP sent
   React.useEffect(() => {
@@ -310,36 +326,46 @@ export default function LoginScreen() {
         : undefined
     );
 
-    await savePreferences();
-    const resultAction: any = await performLogin({
-      login: data.login.trim(),
-      password: data.password,
-      ...(activeInviteToken ? { inviteToken: activeInviteToken } : {}),
-    });
+    setIsSubmittingBasic(true);
+    try {
+      await savePreferences();
+      const resultAction: any = await performLogin({
+        login: data.login.trim(),
+        password: data.password,
+        ...(activeInviteToken ? { inviteToken: activeInviteToken } : {}),
+      });
 
-    // Invoke Google / Browser Credential Management API only upon successful login on Web
-    if (resultAction && (resultAction.meta?.requestStatus === 'fulfilled' || (!resultAction.error && !resultAction.payload?.error))) {
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && 'PasswordCredential' in window && (navigator as any)?.credentials?.store) {
-        try {
-          // @ts-ignore
-          const cred = new window.PasswordCredential({
-            id: data.login.trim(),
-            password: data.password,
-            name: data.login.trim(),
-          });
-          await (navigator as any).credentials.store(cred);
-        } catch (e) {
-          // Safe fallback if dismissed or unsupported
+      // Invoke Google / Browser Credential Management API only upon successful login on Web
+      if (resultAction && (resultAction.meta?.requestStatus === 'fulfilled' || (!resultAction.error && !resultAction.payload?.error))) {
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && 'PasswordCredential' in window && (navigator as any)?.credentials?.store) {
+          try {
+            // @ts-ignore
+            const cred = new window.PasswordCredential({
+              id: data.login.trim(),
+              password: data.password,
+              name: data.login.trim(),
+            });
+            await (navigator as any).credentials.store(cred);
+          } catch (e) {
+            // Safe fallback if dismissed or unsupported
+          }
         }
       }
+    } finally {
+      setIsSubmittingBasic(false);
     }
   };
 
   // Handle Phone OTP Submit
   const onPhoneSubmit = async (data: PhoneFormValues) => {
     setSubmittedPhone(data.phone);
-    await savePreferences();
-    await requestOtp(data.phone, false);
+    setIsSubmittingPhone(true);
+    try {
+      await savePreferences();
+      await requestOtp(data.phone, false);
+    } finally {
+      setIsSubmittingPhone(false);
+    }
   };
 
   return (
@@ -513,54 +539,34 @@ export default function LoginScreen() {
                   /* Email / Password Form */
                   <View className="gap-3.5">
                     {/* Step 5: Email or Username Input */}
-                    <View>
-                      <View className="flex-row items-center justify-between mb-1.5">
-                        <Text className="text-xs font-bold text-foreground">
-                          Email or Username
-                        </Text>
-                      </View>
-                      <Controller
-                        control={basicForm.control}
-                        name="login"
-                        render={({ field: { onChange, onBlur, value } }) => (
-                          <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
-                            <Mail size={18} color="#94A3B8" className="me-2.5 shrink-0" />
-                            <TextInput
-                              value={value}
-                              onChangeText={onChange}
-                              onBlur={onBlur}
-                              placeholder="Enter your email or username"
-                              placeholderTextColor="#94A3B8"
-                              autoCapitalize="none"
-                              autoCorrect={false}
-                              keyboardType="email-address"
-                              autoComplete="username"
-                              textContentType="username"
-                              importantForAutofill="yes"
-                              accessibilityLabel="Email or Username"
-                              returnKeyType="next"
-                              onSubmitEditing={() => passwordInputRef.current?.focus()}
-                              blurOnSubmit={false}
-                              className={cnText(
-                                'flex-1 text-sm text-foreground font-sans p-0',
-                                Platform.select({ web: 'outline-none' })
-                              )}
-                            />
-                          </View>
-                        )}
-                      />
-                      {basicForm.formState.errors.login && (
-                        <Text className="text-rose-500 text-[11px] mt-1 ms-1 font-medium">
-                          {basicForm.formState.errors.login.message}
-                        </Text>
+                    <Controller
+                      control={basicForm.control}
+                      name="login"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <TextInput
+                          label="Email or Username"
+                          required
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          placeholder="Enter your email or username"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          keyboardType="email-address"
+                          leftIcon={Mail}
+                          error={basicForm.formState.errors.login?.message}
+                          returnKeyType="next"
+                          onSubmitEditing={() => passwordInputRef.current?.focus()}
+                          blurOnSubmit={false}
+                        />
                       )}
-                    </View>
+                    />
 
                     {/* Step 6: Password Input */}
                     <View>
                       <View className="flex-row items-center justify-between mb-1.5">
-                        <Text className="text-xs font-bold text-foreground">
-                          Password
+                        <Text className="text-sm font-medium text-foreground">
+                          Password <Text className="text-destructive font-bold">*</Text>
                         </Text>
                         <TouchableOpacity
                           onPress={() => router.push('/(auth)/forgot-password')}
@@ -576,48 +582,19 @@ export default function LoginScreen() {
                         control={basicForm.control}
                         name="password"
                         render={({ field: { onChange, onBlur, value } }) => (
-                          <View className="flex-row items-center bg-background border border-border/90 rounded-2xl px-3.5 py-3">
-                            <Lock size={18} color="#94A3B8" className="me-2.5 shrink-0" />
-                            <TextInput
-                              ref={passwordInputRef}
-                              value={value}
-                              onChangeText={onChange}
-                              onBlur={onBlur}
-                              placeholder="Enter your password"
-                              placeholderTextColor="#94A3B8"
-                              secureTextEntry={!showPassword}
-                              autoCapitalize="none"
-                              autoCorrect={false}
-                              autoComplete={Platform.select({ web: 'current-password', default: 'password' })}
-                              textContentType="password"
-                              importantForAutofill="yes"
-                              accessibilityLabel="Password"
-                              returnKeyType="go"
-                              onSubmitEditing={basicForm.handleSubmit(onBasicSubmit)}
-                              className={cnText(
-                                'flex-1 text-sm text-foreground font-sans p-0',
-                                Platform.select({ web: 'outline-none' })
-                              )}
-                            />
-                            <TouchableOpacity
-                              onPress={() => setShowPassword(!showPassword)}
-                              hitSlop={8}
-                              activeOpacity={0.7}
-                            >
-                              {showPassword ? (
-                                <Eye size={18} color="#94A3B8" />
-                              ) : (
-                                <EyeOff size={18} color="#94A3B8" />
-                              )}
-                            </TouchableOpacity>
-                          </View>
+                          <PasswordInput
+                            ref={passwordInputRef}
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            placeholder="Enter your password"
+                            leftIcon={Lock}
+                            error={basicForm.formState.errors.password?.message}
+                            returnKeyType="go"
+                            onSubmitEditing={basicForm.handleSubmit(onBasicSubmit)}
+                          />
                         )}
                       />
-                      {basicForm.formState.errors.password && (
-                        <Text className="text-rose-500 text-[11px] mt-1 ms-1 font-medium">
-                          {basicForm.formState.errors.password.message}
-                        </Text>
-                      )}
                     </View>
 
                     {/* Stay signed in Checkbox */}
@@ -643,7 +620,7 @@ export default function LoginScreen() {
                     {/* Step 7: Sign In CTA Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
                     <TouchableOpacity
                       onPress={basicForm.handleSubmit(onBasicSubmit)}
-                      disabled={loading || connectingHarmony}
+                      disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
                       activeOpacity={0.88}
                       className="mt-1 h-12 rounded-2xl bg-[#1E232E] flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
                     >
@@ -660,11 +637,11 @@ export default function LoginScreen() {
                           <Rect width="100%" height="100%" rx="16" fill="url(#signInGrad)" />
                         </Svg>
                       </View>
-                      {loading || connectingHarmony ? (
+                      {isSubmittingBasic ? (
                         <View className="flex-row items-center gap-2 z-10">
                           <ActivityIndicator color="#FFFFFF" size="small" />
                           <Text className="font-bold text-white text-sm font-sans">
-                            Connecting Harmony...
+                            Signing In...
                           </Text>
                         </View>
                       ) : (
@@ -717,7 +694,7 @@ export default function LoginScreen() {
                     {/* Get OTP Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
                     <TouchableOpacity
                       onPress={phoneForm.handleSubmit(onPhoneSubmit)}
-                      disabled={loading || connectingHarmony}
+                      disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
                       activeOpacity={0.88}
                       className="mt-1 h-12 rounded-2xl bg-[#1E232E] flex-row items-center justify-center gap-2 shadow-md overflow-hidden relative"
                     >
@@ -734,9 +711,12 @@ export default function LoginScreen() {
                           <Rect width="100%" height="100%" rx="16" fill="url(#otpGrad)" />
                         </Svg>
                       </View>
-                      {loading || connectingHarmony ? (
+                      {isSubmittingPhone ? (
                         <View className="flex-row items-center gap-2 z-10">
                           <ActivityIndicator color="#FFFFFF" size="small" />
+                          <Text className="font-bold text-white text-sm font-sans">
+                            Sending OTP Code...
+                          </Text>
                         </View>
                       ) : (
                         <View className="flex-row items-center justify-center gap-2 z-10">
@@ -766,8 +746,12 @@ export default function LoginScreen() {
                   provider="google"
                   onPress={handleGoogleSignIn}
                   loading={googleLoading}
+                  disabled={isSubmittingBasic || isSubmittingPhone}
                 />
-                <SocialAuthButton provider="apple" />
+                <SocialAuthButton
+                  provider="apple"
+                  disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
+                />
               </View>
 
               {/* Create Account Prompt */}

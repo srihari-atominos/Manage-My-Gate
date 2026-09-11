@@ -56,11 +56,13 @@ function BottomSheet({
     <Modal
       visible={visible}
       transparent
+      statusBarTranslucent={true}
       animationType="slide"
       onRequestClose={handleClose}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
         className="flex-1 justify-end"
       >
         {/* Backdrop */}
@@ -71,7 +73,7 @@ function BottomSheet({
         
         {/* Content Box */}
         <View
-          style={{ maxHeight: sheetMaxHeight }}
+          style={{ maxHeight: '88%' }}
           className="bg-card border-t border-border/80 rounded-t-3xl shadow-2xl overflow-hidden flex-col w-full"
         >
           {/* Top grab handle */}
@@ -93,8 +95,7 @@ function BottomSheet({
 
           {/* Scrollable Body Content */}
           <ScrollView
-            style={{ maxHeight: scrollMaxHeight }}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 60 }}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 60, flexGrow: 1 }}
             showsVerticalScrollIndicator={true}
             bounces={true}
             alwaysBounceVertical={false}

@@ -96,6 +96,7 @@ export default function AmenityExecutiveDashboardScreen() {
       title={t('amenities_facilities', 'Amenities Dashboard')}
       subtitle={t('feature_amenities_discover_sub', 'Facility bookings, ledger revenue & maintenance')}
       iconName="BarChart3"
+      scrollable={false}
       loading={loading && !dashboardStats}
       error={error}
       onRetry={loadData}

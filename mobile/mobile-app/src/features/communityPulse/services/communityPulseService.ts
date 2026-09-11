@@ -29,70 +29,25 @@ export const MASTER_INTERESTS: CommunityInterest[] = [
   { id: 'swimming', name: 'Swimming', emoji: '🏊' },
 ];
 
-const DEFAULT_INITIAL_PULSES: PulseItem[] = [
-  {
-    id: 'p1',
-    userId: 'u101',
-    userName: 'Arun Kumar',
-    userVilla: 'Villa 104',
-    text: 'Playing badminton tonight at 7 PM!',
-    emoji: '🏸',
-    category: 'up_for',
-    createdAt: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'p2',
-    userId: 'u102',
-    userName: 'Priya Sharma',
-    userVilla: 'Block B - 202',
-    text: 'Coffee time near the clubhouse gazebo ☕',
-    emoji: '☕',
-    category: 'general',
-    createdAt: new Date(Date.now() - 42 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 22 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'p3',
-    userId: 'u103',
-    userName: 'Karthik Raja',
-    userVilla: 'Villa 210',
-    text: 'Going for evening walk around central park',
-    emoji: '🚶',
-    category: 'general',
-    createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 21 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'p4',
-    userId: 'u104',
-    userName: 'Meena Reddy',
-    userVilla: 'Villa 305',
-    text: 'Looking for a reliable plumber for kitchen sink',
-    emoji: '🔎',
-    category: 'looking_for',
-    createdAt: new Date(Date.now() - 120 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString(),
-  },
-];
+const DEFAULT_INITIAL_PULSES: PulseItem[] = [];
 
 const DEFAULT_QUESTION: DailyQuestion = {
   id: 'dq_101',
   question: '☕ Morning Coffee or 🍵 Evening Tea?',
-  totalVotes: 127,
+  totalVotes: 0,
   userAnswerId: undefined,
   options: [
-    { id: 'opt_coffee', label: 'Coffee ☕', percentage: 58, count: 74 },
-    { id: 'opt_tea', label: 'Tea 🍵', percentage: 42, count: 53 },
+    { id: 'opt_coffee', label: 'Coffee ☕', percentage: 0, count: 0 },
+    { id: 'opt_tea', label: 'Tea 🍵', percentage: 0, count: 0 },
   ],
 };
 
 const DEFAULT_MOOD_RESULTS: MoodResult[] = [
-  { option: 'great', label: 'Great', emoji: '😊', percentage: 65, count: 92 },
-  { option: 'relaxed', label: 'Relaxed', emoji: '😌', percentage: 20, count: 28 },
-  { option: 'energetic', label: 'Energetic', emoji: '🔥', percentage: 10, count: 14 },
-  { option: 'quiet', label: 'Quiet', emoji: '🌧️', percentage: 3, count: 4 },
-  { option: 'excited', label: 'Excited', emoji: '🎉', percentage: 2, count: 3 },
+  { option: 'great', label: 'Great', emoji: '😊', percentage: 0, count: 0 },
+  { option: 'relaxed', label: 'Relaxed', emoji: '😌', percentage: 0, count: 0 },
+  { option: 'energetic', label: 'Energetic', emoji: '🔥', percentage: 0, count: 0 },
+  { option: 'quiet', label: 'Quiet', emoji: '🌧️', percentage: 0, count: 0 },
+  { option: 'excited', label: 'Excited', emoji: '🎉', percentage: 0, count: 0 },
 ];
 
 export const communityPulseService = {
@@ -103,7 +58,7 @@ export const communityPulseService = {
         return (response as any).data;
       }
     } catch (err) {
-      // Fallback to local storage cache / seed
+      // Fallback to local storage cache
     }
 
     try {
@@ -117,8 +72,7 @@ export const communityPulseService = {
       }
     } catch (e) {}
 
-    await storage.setItem(MOCK_PULSES_KEY, JSON.stringify(DEFAULT_INITIAL_PULSES));
-    return DEFAULT_INITIAL_PULSES;
+    return [];
   },
 
   createPulse: async (payload: {
@@ -132,8 +86,8 @@ export const communityPulseService = {
     const newPulse: PulseItem = {
       id: `p_${Date.now()}`,
       userId: 'u_current',
-      userName: payload.userName || 'Naveen Vijayakumar',
-      userVilla: payload.userVilla || 'Villa 101',
+      userName: payload.userName || 'Resident',
+      userVilla: payload.userVilla || '',
       text: payload.text,
       contextText: payload.contextText || undefined,
       emoji: payload.emoji || '💬',
@@ -221,7 +175,7 @@ export const communityPulseService = {
 
     return {
       userVote: null,
-      totalResponses: 141,
+      totalResponses: 0,
       results: DEFAULT_MOOD_RESULTS,
     };
   },
@@ -258,7 +212,7 @@ export const communityPulseService = {
       const cached = await storage.getItem(MOCK_INTERESTS_KEY);
       if (cached) return JSON.parse(cached);
     } catch (e) {}
-    return ['badminton', 'coffee', 'walking'];
+    return [];
   },
 
   saveUserInterests: async (interests: string[]): Promise<string[]> => {

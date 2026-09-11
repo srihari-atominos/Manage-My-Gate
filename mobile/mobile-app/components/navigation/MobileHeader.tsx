@@ -14,8 +14,6 @@ import { OrgSwitchModal } from './OrgSwitchModal';
 import { ProfileModal } from './ProfileModal';
 import { NotificationSheetModal } from './NotificationSheetModal';
 import { useNotifications } from '@/src/features/notification/hooks/useNotifications';
-import { RealtimeNotificationToast } from '@/components/feedback/RealtimeNotificationToast';
-import { mapActionUrlToMobileRoute } from '@/src/features/notification/utils/notificationNavigation';
 import { useTranslation } from '@/src/utils/i18n';
 
 interface MobileHeaderProps {
@@ -37,13 +35,8 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const router = useRouter();
   const { t } = useTranslation();
   
-  // Real-time notification hook initialization to ensure WebSockets & state remain active
-  const {
-    unreadCount: hookUnreadCount,
-    latestNotification,
-    dismissLatestNotification,
-    markAsRead,
-  } = useNotifications();
+  // Real-time notification hook initialization to ensure unread badge remains active
+  const { unreadCount: hookUnreadCount } = useNotifications();
 
   // Real-time notification count from Redux store or prop override
   const liveUnreadCount = unreadNotificationCount !== undefined 
@@ -116,10 +109,11 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   // Check if context switching is applicable
   const userUnits = (user as any)?.accessibleUnits || [];
   const hasMultipleOrgs = Array.isArray(reduxWorkspaces) && reduxWorkspaces.length > 1;
+  const hasOrgs = (Array.isArray(reduxWorkspaces) && reduxWorkspaces.length > 0) || Boolean((user as any)?.orgId);
   const hasMultipleUnits = Array.isArray(userUnits) && userUnits.length > 1;
   const hasUnit = Boolean(activeVilla && activeVilla.trim() !== '');
 
-  const canSwitchContext = hasUnit || hasMultipleOrgs || hasMultipleUnits;
+  const canSwitchContext = hasUnit || hasOrgs || hasMultipleUnits;
 
   // Avatar initial letter
   const avatarLetter = React.useMemo(() => {
@@ -144,7 +138,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
     if (!canSwitchContext) return;
     if (hasUnit) {
       setVillaModalVisible(true);
-    } else if (hasMultipleOrgs) {
+    } else if (hasOrgs) {
       setOrgModalVisible(true);
     }
   };
@@ -152,19 +146,6 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const handleBellPress = () => {
     if (onNotificationPress) {
       onNotificationPress();
-    } else {
-      router.push('/(resident)/notifications' as any);
-    }
-  };
-
-  const handleToastPress = (notification: any) => {
-    const notifId = notification?.id || notification?._id;
-    if (notifId && !notification.isRead) {
-      markAsRead(notifId);
-    }
-    if (notification.actionUrl) {
-      const route = mapActionUrlToMobileRoute(notification.actionUrl, notification.type);
-      router.push(route as any);
     } else {
       router.push('/(resident)/notifications' as any);
     }
@@ -283,62 +264,65 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         </View>
       </View>
 
-      {/* Real-time Notification Banner Toast */}
-      <RealtimeNotificationToast
-        notification={latestNotification}
-        onDismiss={dismissLatestNotification}
-        onPressBanner={handleToastPress}
-      />
-
       {/* Interactive Villa Switcher Modal */}
-      <VillaSwitchModal
-        visible={villaModalVisible}
-        onClose={() => setVillaModalVisible(false)}
-        activeVilla={activeVilla || ''}
-        onSelectVilla={(villaNum) => setActiveVilla(villaNum)}
-        communityName={activeCommunity}
-        onOpenOrgModal={() => setOrgModalVisible(true)}
-      />
+      {villaModalVisible && (
+        <VillaSwitchModal
+          visible={villaModalVisible}
+          onClose={() => setVillaModalVisible(false)}
+          activeVilla={activeVilla || ''}
+          onSelectVilla={(villaNum) => setActiveVilla(villaNum)}
+          communityName={activeCommunity}
+          onOpenOrgModal={() => setOrgModalVisible(true)}
+        />
+      )}
 
       {/* Interactive Organization / Community Switcher Modal */}
-      <OrgSwitchModal
-        visible={orgModalVisible}
-        onClose={() => setOrgModalVisible(false)}
-        activeCommunity={activeCommunity}
-        onSelectCommunity={(orgName) => setActiveCommunity(orgName)}
-      />
+      {orgModalVisible && (
+        <OrgSwitchModal
+          visible={orgModalVisible}
+          onClose={() => setOrgModalVisible(false)}
+          activeCommunity={activeCommunity}
+          onSelectCommunity={(orgName) => setActiveCommunity(orgName)}
+        />
+      )}
 
       {/* Interactive Role Switcher Modal */}
-      <RoleSwitchModal
-        visible={roleModalVisible}
-        onClose={() => setRoleModalVisible(false)}
-      />
+      {roleModalVisible && (
+        <RoleSwitchModal
+          visible={roleModalVisible}
+          onClose={() => setRoleModalVisible(false)}
+        />
+      )}
 
       {/* Profile & Settings Modal */}
-      <ProfileModal
-        visible={profileModalVisible}
-        onClose={() => {
-          setProfileModalVisible(false);
-          if (params?.openProfile) {
-            try {
-              router.setParams({ openProfile: undefined });
-            } catch (e) {
-              // safe fallback
+      {profileModalVisible && (
+        <ProfileModal
+          visible={profileModalVisible}
+          onClose={() => {
+            setProfileModalVisible(false);
+            if (params?.openProfile) {
+              try {
+                router.setParams({ openProfile: undefined });
+              } catch (e) {
+                // safe fallback
+              }
             }
-          }
-        }}
-        unitName={activeVilla || 'No Unit Assigned'}
-        communityName={activeCommunity}
-        onOpenOrgModal={() => setOrgModalVisible(true)}
-        onOpenRoleModal={() => setRoleModalVisible(true)}
-        onOpenVillaModal={() => setVillaModalVisible(true)}
-      />
+          }}
+          unitName={activeVilla || 'No Unit Assigned'}
+          communityName={activeCommunity}
+          onOpenOrgModal={() => setOrgModalVisible(true)}
+          onOpenRoleModal={() => setRoleModalVisible(true)}
+          onOpenVillaModal={() => setVillaModalVisible(true)}
+        />
+      )}
 
       {/* Notifications Slide-Over Drawer Modal */}
-      <NotificationSheetModal
-        visible={notifModalVisible}
-        onClose={() => setNotifModalVisible(false)}
-      />
+      {notifModalVisible && (
+        <NotificationSheetModal
+          visible={notifModalVisible}
+          onClose={() => setNotifModalVisible(false)}
+        />
+      )}
     </>
   );
 };

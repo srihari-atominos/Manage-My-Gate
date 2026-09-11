@@ -7,6 +7,7 @@ import {
   clearCheckInResult,
   fetchRecentScansThunk,
 } from '../store/amenityBookingSlice';
+import { parseAndValidateAppBarcode } from '@/src/utils/appBarcodeProtocol';
 
 export function useSecurityScanner() {
   const dispatch = useDispatch<AppDispatch>();
@@ -59,14 +60,20 @@ export function useSecurityScanner() {
       setIsScanning(false);
       let bookingId = String(data).trim();
 
-      // Check if data is JSON payload containing bookingId or _id
-      try {
-        const parsed = JSON.parse(data);
-        if (parsed && typeof parsed === 'object') {
-          bookingId = String(parsed.bookingId || parsed._id || parsed.id || parsed.displayId || parsed.code || bookingId).trim();
+      // 1. Validate & extract via MMG barcode protocol
+      const validation = parseAndValidateAppBarcode(data);
+      if (validation.isValid) {
+        bookingId = validation.code || validation.passId || bookingId;
+      } else {
+        // Check if data is JSON payload containing bookingId or _id
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed && typeof parsed === 'object') {
+            bookingId = String(parsed.bookingId || parsed._id || parsed.id || parsed.displayId || parsed.code || bookingId).trim();
+          }
+        } catch {
+          // Raw ID or booking code string payload
         }
-      } catch {
-        // Raw ID or booking code string payload
       }
 
       await dispatch(

@@ -27,6 +27,7 @@ import Animated, {
   Extrapolation,
   runOnJS,
   Easing,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { cn } from '../../lib/utils';
 import { useBottomNavScroll } from './BottomNavScrollContext';
@@ -76,7 +77,7 @@ const TAB_ITEMS: TabItem[] = [
 const ACTIVE_ORANGE = '#FF6A00';
 
 export interface BottomNavigationBarProps {
-  scrollY?: any;
+  scrollY?: SharedValue<number> | any;
   isMinimized?: boolean;
 }
 
@@ -214,11 +215,21 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   }, [activeTab]);
 
   const isNavigatingRef = useRef(false);
+  const navTranslateY = useSharedValue(0);
+
+  useEffect(() => {
+    navTranslateY.value = withTiming(isCompact ? (isIOS ? 120 : 90) : 0, {
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [isCompact, isIOS]);
 
   const barAnimatedStyle = useAnimatedStyle(() => {
     const baseStyle: any = {
       height: containerHeight.value,
     };
+
+    const transforms: any[] = [{ translateY: navTranslateY.value }];
 
     if (scrollY) {
       const scale = interpolate(
@@ -227,14 +238,16 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
         [1.0, 0.95, 0.90],
         Extrapolation.CLAMP
       );
-      const translateY = interpolate(
+      const scrollYTranslate = interpolate(
         scrollY.value,
         [0, 80],
         [0, 6],
         Extrapolation.CLAMP
       );
-      baseStyle.transform = [{ scale }, { translateY }];
+      transforms.push({ scale }, { translateY: scrollYTranslate });
     }
+
+    baseStyle.transform = transforms;
     return baseStyle;
   });
 
@@ -387,16 +400,19 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
     const androidBottomPad = Math.max(insets.bottom, 6);
 
     return (
-      <View
-        pointerEvents="box-none"
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          width: '100%',
-          zIndex: 50,
-        }}
+      <Animated.View
+        style={[
+          {
+            pointerEvents: 'box-none',
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            width: '100%',
+            zIndex: 50,
+            transform: [{ translateY: navTranslateY.value }],
+          },
+        ]}
       >
         <View
           style={{
@@ -483,19 +499,19 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
             );
           })}
         </View>
-      </View>
+      </Animated.View>
     );
   }
 
   // Native iOS Floating Glass Capsule
   return (
     <View
-      pointerEvents="box-none"
       style={{
         bottom: bottomInset,
         width: '100%',
+        pointerEvents: 'box-none',
       }}
-      className="absolute left-0 right-0 items-center justify-center px-4 z-50 pointer-events-box-none"
+      className="absolute left-0 right-0 items-center justify-center px-4 z-50"
     >
       <GestureDetector gesture={panGesture}>
         <Animated.View
@@ -556,8 +572,8 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
                 : (isIOS ? 'rgba(255, 255, 255, 0.30)' : 'rgba(255, 255, 255, 0.24)'),
               borderTopLeftRadius: 30,
               borderTopRightRadius: 30,
+              pointerEvents: 'none',
             }}
-            pointerEvents="none"
           />
 
           {/* Glossy Specular Top Highlight Line */}
@@ -572,8 +588,8 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
                 ? 'rgba(255, 255, 255, 0.40)'
                 : 'rgba(255, 255, 255, 0.95)',
               borderRadius: 1,
+              pointerEvents: 'none',
             }}
-            pointerEvents="none"
           />
 
           {tabWidth > 0 && (
@@ -600,9 +616,9 @@ export const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: isDark ? 0.35 : 0.18,
                   shadowRadius: 6,
+                  pointerEvents: 'none',
                 },
               ]}
-              pointerEvents="none"
             />
           )}
 

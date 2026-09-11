@@ -3,6 +3,8 @@ import auditLogController from './auditLog.controller.js';
 import isAuthenticated from '../../middlewares/auth.middleware.js';
 import tenantContext from '../../middlewares/tenant.middleware.js';
 
+import './auditLog.listeners.js';
+
 const router = Router();
 
 // Retrieve paginated list of audit logs (Platform Admin only)

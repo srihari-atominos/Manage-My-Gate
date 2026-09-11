@@ -9,6 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import config from '../../config/config.js';
+import { generateInviteLink } from './utils/invite.utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -246,12 +247,13 @@ export class UserService {
     }
   }
 
-  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null, phone = '', name = '', invitationSource = 'WEB') {
+  async inviteUser(email, orgId, villaId = null, residentType = 'None', roleName = null, phone = '', name = '', invitationSource = 'WEB', inviterId = null) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
       const trimmedEmail = email.trim().toLowerCase();
       const existing = await userRepository.findByEmail(trimmedEmail, session);
+      const isExisting = !!existing && (existing.status === 'Active' || !!(existing.password && existing.password.length > 0));
 
       // Check if membership already exists in this organization
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
@@ -411,29 +413,27 @@ export class UserService {
         }
       }
 
-      await userRepository.update(user._id, { villaId: rootVillaId, residencyType: userResidencyType }, session);
-
-      // Add to Villa residents array via villa service to respect boundaries
-      if (villaId) {
-        const villaService = (await import('../villa/villa.services.js')).default;
-        // RECOMMENDATION: Eventually update the InvoiceService and other strict-string services
-        // to check role.isTenantRole or a baseSystemType classification (calculated as: ${baseSystemType})
-        // rather than strictly matching residencyType strings like 'Tenant' or 'Resident Owner'.
-        await villaService.assignResidentToVilla(villaId, user._id, userResidencyType, session, orgId);
+      // Only initialize user residencyType on global profile if new user
+      if (!existing && rootVillaId) {
+        await userRepository.update(user._id, { residencyType: userResidencyType }, session);
       }
+
+      // NOTE: Villa assignment (assignResidentToVilla) and villa occupancy status update
+      // are strictly deferred until the user accepts the invitation (via accept-invite or login).
+      // This guarantees that pending invitations do not reserve or occupy villas prematurely.
 
       // Always generate an invitationToken with orgId (for both new and existing users)
       const tokenService = (await import('../token/token.services.js')).default;
       // Clean up previous unconsumed invitation tokens for this user in this organization
       await tokenService.deleteTokens({ userId: user._id, orgId, type: 'INVITATION' }, session);
-      const result = await tokenService.generateInvitationToken(user._id, orgId, session, invitationSource);
+      const result = await tokenService.generateInvitationToken(user._id, orgId, session, invitationSource, inviterId);
       const invitationToken = result.invitationToken;
 
       // Insert transactional outbox event for auditing & token resolution fallback
       const OutboxEvent = (await import('../outbox/outboxEvent.model.js')).default;
       const outboxEvent = new OutboxEvent({
         eventType: 'USER_INVITED',
-        payload: { email: trimmedEmail, orgId, invitationToken, invitationSource },
+        payload: { email: trimmedEmail, orgId, invitationToken, invitationSource, inviterId },
         status: 'COMPLETED',
       });
       await outboxEvent.save({ session });
@@ -454,10 +454,18 @@ export class UserService {
         villaId: rootVillaId || villaId,
         roleName: roleName || (role ? role.name : null),
         userId: user._id,
+        inviterId,
+        isExisting,
       });
       userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'invited', invitationSource });
 
-      return { user, invitationToken, invitationSource, membership };
+      return {
+        user,
+        invitationToken,
+        invitationSource,
+        membership,
+        inviteLink: generateInviteLink(invitationToken),
+      };
     } catch (error) {
       await session.abortTransaction();
       throw error;
@@ -601,8 +609,15 @@ export class UserService {
     return await orgMembershipService.getPaginatedUsersForOrg(orgId, page, limit, filters);
   }
 
-  async activateUser(id, hashedPassword, session) {
-    const updatedUser = await userRepository.update(id, { password: hashedPassword, status: 'Active' }, session);
+  async activateUser(id, hashedPassword, session, additionalData = {}) {
+    const updatePayload = { password: hashedPassword, status: 'Active', emailVerified: true };
+    if (additionalData.name && typeof additionalData.name === 'string' && additionalData.name.trim()) {
+      updatePayload.name = additionalData.name.trim();
+    }
+    if (additionalData.phone && typeof additionalData.phone === 'string' && additionalData.phone.trim()) {
+      updatePayload.phone = additionalData.phone.trim();
+    }
+    const updatedUser = await userRepository.update(id, updatePayload, session);
     return updatedUser;
   }
 
@@ -714,7 +729,7 @@ export class UserService {
     }
   }
 
-  async bulkInviteUsers(invitations, orgId, defaultSource = 'WEB') {
+  async bulkInviteUsers(invitations, orgId, defaultSource = 'WEB', inviterId = null) {
     const successes = [];
     const failures = [];
 
@@ -742,7 +757,7 @@ export class UserService {
         }
 
         // Call the single inviteUser logic
-        await this.inviteUser(trimmedEmail, orgId, villaId, residentType, roleName, '', '', source);
+        await this.inviteUser(trimmedEmail, orgId, villaId, residentType, roleName, '', '', source, inviterId);
 
         successes.push({
           email: trimmedEmail,
@@ -769,6 +784,234 @@ export class UserService {
       successes,
       failures,
     };
+  }
+
+  /**
+   * Revokes an existing invitation by ID within an organization.
+   * Atomic operation wrapped in a Mongoose transaction.
+   *
+   * @param {string} invitationId - Token ID or token string
+   * @param {string} orgId - Organization context
+   * @param {string} [inviterId=null] - Requesting admin ID
+   */
+  async revokeInvitation(invitationId, orgId, inviterId = null) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const tokenService = (await import('../token/token.services.js')).default;
+      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+
+      // 1. Revoke the token using strict lifecycle enforcement
+      const tokenDoc = await tokenService.revokeInvitationToken(invitationId, orgId, inviterId, session);
+
+      // 2. If the user had a pending membership in this organization, update it to Rejected
+      if (tokenDoc.userId) {
+        const membership = await orgMembershipService.getMembership(tokenDoc.userId, orgId, session);
+        if (membership && membership.status === 'Pending') {
+          await orgMembershipService.updateStatus(tokenDoc.userId, orgId, 'Rejected', session);
+        }
+
+        // 3. Remove any pending villa assignments for this user in this organization
+        const villaService = (await import('../villa/villa.services.js')).default;
+        await villaService.removeUserFromAllVillasInOrg(tokenDoc.userId, orgId, session).catch(() => null);
+      }
+
+      await session.commitTransaction();
+
+      // 4. Emit domain events
+      userEvents.emit('INVITATION_REVOKED', {
+        invitationId,
+        userId: tokenDoc.userId,
+        orgId,
+        inviterId,
+      });
+      userEvents.emit('USER_UPDATED', {
+        userId: tokenDoc.userId,
+        orgId,
+        action: 'invitation_revoked',
+      });
+
+      return {
+        message: 'Invitation revoked successfully',
+        invitationId,
+        userId: tokenDoc.userId,
+        orgId,
+        status: 'REVOKED',
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Lists invitations for an organization with pagination, filtering, and recipient search.
+   * Exclusively delegates to tokenService adhering to feature isolation.
+   * @param {Object} params
+   */
+  async listInvitations(params) {
+    const tokenService = (await import('../token/token.services.js')).default;
+    return await tokenService.listInvitations(params);
+  }
+
+  /**
+   * Resends an eligible invitation (PENDING or EXPIRED).
+   * Generates a new cryptographically secure token, invalidates old token,
+   * re-triggers dual-audience notification, and returns safe administrative metadata.
+   * Protected with concurrency-safe single-consumer atomic update.
+   *
+   * @param {string} invitationId - Invitation token document ID
+   * @param {string} orgId - Organization context from authenticated session
+   * @param {string} [inviterId=null] - Requesting admin ID
+   */
+  async resendInvitation(invitationId, orgId, inviterId = null) {
+    if (!invitationId) {
+      throw new HttpError(400, 'Invitation ID is required.');
+    }
+    if (!orgId) {
+      throw new HttpError(400, 'Organization context is required.');
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const tokenService = (await import('../token/token.services.js')).default;
+      const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
+
+      // 1. Fetch the target invitation token
+      const targetToken = await tokenService.findTokenById(invitationId, session);
+      if (!targetToken) {
+        throw new HttpError(404, 'Invitation not found.');
+      }
+
+      // 2. Strict tenant verification
+      if (targetToken.orgId && targetToken.orgId.toString() !== orgId.toString()) {
+        throw new HttpError(403, 'Forbidden. Invitation belongs to another organization.');
+      }
+
+      // 3. Type verification
+      if (targetToken.type !== 'INVITATION') {
+        throw new HttpError(400, 'Specified token is not an invitation.');
+      }
+
+      // 4. Strict lifecycle validation guards
+      if (targetToken.status === 'ACCEPTED' || targetToken.used === true) {
+        throw new HttpError(400, 'Cannot resend an invitation that has already been accepted or consumed.');
+      }
+      if (targetToken.status === 'REJECTED') {
+        throw new HttpError(400, 'Cannot resend an invitation that has already been rejected.');
+      }
+      if (targetToken.status === 'REVOKED') {
+        throw new HttpError(400, 'Cannot resend an invitation that has been revoked. Please create a new invitation instead.');
+      }
+
+      // 5. Determine correct invalidation status:
+      // Naturally expired tokens remain EXPIRED; pending tokens superseded administratively become REVOKED.
+      const isNaturallyExpired = targetToken.status === 'EXPIRED' || (targetToken.expiresAt && new Date() >= targetToken.expiresAt);
+      const replacementStatus = isNaturallyExpired ? 'EXPIRED' : 'REVOKED';
+
+      // 6. Concurrency-safe atomic invalidation of the old token
+      const oldToken = await tokenService.findAndInvalidateForResend(
+        invitationId,
+        orgId,
+        replacementStatus,
+        session
+      );
+
+      if (!oldToken) {
+        throw new HttpError(409, 'Invitation has already been processed or superseded by another action.');
+      }
+
+      // 7. Fetch recipient user details
+      const recipient = await userRepository.findById(oldToken.userId, session);
+      if (!recipient) {
+        throw new HttpError(404, 'Invited recipient user record not found.');
+      }
+
+      // 8. Verify and maintain membership status
+      const membership = await orgMembershipService.getMembership(recipient._id, orgId, session);
+      if (membership && membership.status === 'Active') {
+        throw new HttpError(400, 'User is already an active member of this organization.');
+      }
+
+      // 9. Generate brand-new cryptographically secure invitation token
+      const newResult = await tokenService.generateInvitationToken(
+        oldToken.userId,
+        orgId,
+        session,
+        oldToken.invitationSource || 'WEB',
+        inviterId
+      );
+
+      // 10. Resolve role name if assigned
+      let roleName = null;
+      if (membership && membership.roleId) {
+        try {
+          const roleService = (await import('../role/role.services.js')).default;
+          const role = await roleService.getRoleById(membership.roleId, session);
+          if (role) roleName = role.name;
+        } catch (e) {}
+      }
+
+      // 11. Transactional outbox event for audit
+      try {
+        const OutboxEvent = (await import('../outbox/outboxEvent.model.js')).default;
+        const outboxEvent = new OutboxEvent({
+          eventType: 'USER_INVITED',
+          payload: {
+            email: recipient.email,
+            orgId,
+            invitationToken: newResult.invitationToken,
+            invitationSource: oldToken.invitationSource || 'WEB',
+            inviterId,
+            isResend: true,
+          },
+          status: 'COMPLETED',
+        });
+        await outboxEvent.save({ session });
+      } catch (e) {}
+
+      await session.commitTransaction();
+
+      // 12. Emit domain events for dual-audience notification
+      const isExisting = !!(recipient.status === 'Active' || (recipient.password && recipient.password.length > 0));
+      userEvents.emit('USER_INVITED', {
+        email: recipient.email,
+        orgId,
+        invitationToken: newResult.invitationToken,
+        invitationSource: oldToken.invitationSource || 'WEB',
+        villaId: membership?.villaId || null,
+        roleName,
+        userId: recipient._id,
+        inviterId,
+        isExisting,
+        isResend: true,
+      });
+
+      userEvents.emit('USER_UPDATED', {
+        userId: recipient._id,
+        orgId,
+        action: 'invitation_resent',
+        invitationSource: oldToken.invitationSource || 'WEB',
+      });
+
+      // 13. Return safe administrative response (zero raw credentials or hashes)
+      return {
+        message: 'Invitation resent successfully',
+        invitationId: newResult.tokenDoc._id,
+        recipientEmail: recipient.email,
+        recipientName: recipient.name,
+        status: 'PENDING',
+        expiresAt: newResult.tokenDoc.expiresAt,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
   }
 
   async getUsersByIds(ids, session = null) {

@@ -10,7 +10,6 @@ import {
   SlidersHorizontal,
   RotateCcw,
   Layers,
-  Sparkles,
 } from 'lucide-react-native';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import ActionTile from '@/components/dashboard/ActionTile';
@@ -19,7 +18,7 @@ import { useQuickActions } from '@/src/features/dashboard/useQuickActions';
 import { useAuth } from '@/src/features/auth/hooks/useAuth';
 import { Stack, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import CustomiseSheetModal from '@/components/dashboard/CustomiseSheetModal';
-import { ALL_AVAILABLE_FEATURES, REAL_APP_FEATURES, AppFeatureItem } from '@/src/features/dashboard/dashboardCatalog';
+import { ALL_AVAILABLE_FEATURES } from '@/src/features/dashboard/dashboardCatalog';
 import { isFeatureAllowedForUser, checkIsAdmin } from '@/src/utils/rbac';
 import { useTranslation } from '@/src/utils/i18n';
 import { useBottomNavScroll } from '@/components/navigation/BottomNavScrollContext';
@@ -37,8 +36,6 @@ export default function AllFeaturesScreen() {
   
   const { user } = useAuth();
   const { featureCatalog, allFeaturesList, activeQuickActions, saveQuickActions } = useQuickActions();
-
-  const isAdminRole = checkIsAdmin(user);
 
   // Smart Back Button Handler: Clears category filter first, then search query, then navigates back to Home/Dashboard
   const handleBackPress = useCallback(() => {
@@ -58,6 +55,7 @@ export default function AllFeaturesScreen() {
     return true;
   }, [selectedCategoryKey, searchQuery, router]);
 
+  // Hardware / Gesture Back Button Listener
   useFocusEffect(
     useCallback(() => {
       const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
@@ -104,18 +102,22 @@ export default function AllFeaturesScreen() {
     await saveQuickActions(selectedIds);
   };
 
-  const filteredAvailableFeatures = useMemo(() => {
+  const isAdminRole = checkIsAdmin(user);
+
+  const filteredAvailableFeatures = React.useMemo(() => {
     if (!isAdminRole) return allFeaturesList;
     return allFeaturesList.filter(
       (item) => item.id !== 'visitor_resident_passes' && item.id !== 'visitor_passes'
     );
   }, [allFeaturesList, isAdminRole]);
+  const activeCategory = featureCatalog?.find(cat => cat.categoryKey === selectedCategoryKey);
 
   return (
     <ScreenShell
       title={t('all_features', 'All Features & Services')}
       subtitle={t('explore_quick_actions', 'Explore community quick actions and services')}
       iconName="LayoutGrid"
+      scrollable={false}
       showBackButton={true}
       onBackPress={handleBackPress}
       headerRight={

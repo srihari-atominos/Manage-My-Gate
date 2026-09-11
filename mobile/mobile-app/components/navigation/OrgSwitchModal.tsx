@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { Building2, Check, X } from 'lucide-react-native';
+import { Building2, Check, X, Plus } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -14,6 +15,7 @@ import {
 import { fetchQuickActionsThunk, resetQuickActionsForContext } from '../../src/features/dashboard/dashboardSlice';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 export interface WorkspaceItem {
   orgId: string;
@@ -31,6 +33,7 @@ interface OrgSwitchModalProps {
   onSelectCommunity: (orgName: string, orgId: string) => void;
 }
 
+export const CANONICAL_COMMUNITIES: WorkspaceItem[] = [];
 export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   visible,
   onClose,
@@ -38,6 +41,7 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   onSelectCommunity,
 }) => {
   const { user } = useAuth();
+  const router = useRouter();
   const dispatch = useDispatch<any>();
   const { t, tRole } = useTranslation();
   const reduxWorkspaces = useSelector((state: any) => state.auth?.user?.availableWorkspaces || state.workspace?.availableWorkspaces);
@@ -45,36 +49,22 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
   const activeRole = user?.role || (user as any)?.activeRole;
 
+  const [pendingOrg, setPendingOrg] = React.useState<WorkspaceItem | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = React.useState(false);
+  const [isSwitching, setIsSwitching] = React.useState(false);
+
   const workspacesList: WorkspaceItem[] = React.useMemo(() => {
     const list = reduxWorkspaces || (user as any)?.availableWorkspaces;
     if (list && Array.isArray(list) && list.length > 0) {
       return list.map((w: any) => ({
         orgId: w.orgId || w._id,
         name: w.name || w.organizationName || w.orgName || w.communityOrg || (w.isPlatform ? 'System Platform' : 'Community Workspace'),
-        roleName: w.roleName || (w.roles ? (Array.isArray(w.roles) ? w.roles.join(', ') : w.roles) : 'Member'),
+        roleName: w.roleName || (w.roles ? w.roles.join(', ') : 'Admin'),
         isPlatform: w.isPlatform || false,
         villaId: w.villaId || w.unitId,
         villaNumber: w.villaNumber || w.unitNumber,
       }));
     }
-
-    // Fallback to active organization context if availableWorkspaces has not been loaded yet
-    const userAny = user as any;
-    const fallbackOrgId = userAny?.orgId || userAny?.activeOrgId;
-    const fallbackOrgName = userAny?.organizationName || userAny?.orgName || userAny?.activeOrganizationName;
-    if (fallbackOrgId && fallbackOrgName) {
-      return [
-        {
-          orgId: fallbackOrgId,
-          name: fallbackOrgName,
-          roleName: userAny?.role || 'Member',
-          isPlatform: userAny?.isPlatform || false,
-          villaId: userAny?.villaId || userAny?.activeVillaId,
-          villaNumber: userAny?.villaNumber || userAny?.activeVillaNumber || userAny?.unitNumber,
-        },
-      ];
-    }
-
     return [];
   }, [reduxWorkspaces, user]);
 
@@ -142,7 +132,9 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
             <View className="gap-2.5">
               {workspacesList.length === 0 ? (
                 <View className="py-6 items-center justify-center">
-                  <Text className="text-sm text-muted-foreground">{t('no_workspaces_available', 'No other organizations available')}</Text>
+                  <Text className="text-xs text-muted-foreground text-center">
+                    {t('no_workspaces_found', 'No other community workspaces found for this account.')}
+                  </Text>
                 </View>
               ) : (
                 workspacesList.map((ws, index) => {
@@ -200,16 +192,52 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
                     {isSelected && <Check size={18} className="text-primary" />}
                   </TouchableOpacity>
                 );
-              })
-            )}
+              }))}
             </View>
           </ScrollView>
+
+          {/* Create New Organization CTA */}
+          <TouchableOpacity
+            onPress={() => {
+              onClose();
+              router.push({
+                pathname: '/(auth)/setup-organization' as any,
+                params: { intent: 'create-org', canGoBack: 'true' },
+              });
+            }}
+            activeOpacity={0.8}
+            className="flex-row items-center justify-center p-3 rounded-2xl border border-dashed border-primary/50 bg-primary/5 active:bg-primary/10 mt-1 gap-2"
+            accessibilityRole="button"
+            accessibilityLabel={t('create_new_organization', '+ Create New Organization')}
+          >
+            <Plus size={16} color="#03A9F4" />
+            <Text className="text-xs font-bold text-primary">
+              {t('create_new_organization', '+ Create New Organization')}
+            </Text>
+          </TouchableOpacity>
 
           <Button onPress={onClose} variant="secondary" className="mt-1 h-11">
             <Text className="font-bold text-foreground text-sm">{t('cancel', 'Cancel')}</Text>
           </Button>
         </View>
       </View>
+
+      {/* Yes/No Switch Confirmation Dialog */}
+      <ConfirmationModal
+        visible={showConfirmModal}
+        variant="info"
+        loading={isSwitching}
+        title={t('confirm_switch_org_title', 'Switch Community Workspace?')}
+        message={`${t('confirm_switch_org_msg', 'Are you sure you want to switch to')} ${pendingOrg?.name || ''}?`}
+        confirmLabel={t('yes_switch', 'Yes, Switch')}
+        cancelLabel={t('no_cancel', 'No, Cancel')}
+        onConfirm={handleConfirmSwitch}
+        onCancel={() => {
+          if (isSwitching) return;
+          setShowConfirmModal(false);
+          setPendingOrg(null);
+        }}
+      />
     </Modal>
   );
 };

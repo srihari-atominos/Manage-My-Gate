@@ -33,11 +33,24 @@ export default function DashboardScreen() {
 
   const insets = useSafeAreaInsets();
   const scrollY = useSharedValue(0);
+  const lastScrollTime = React.useRef(0);
+
+  const throttledHandleScroll = React.useCallback(
+    (y: number) => {
+      const now = Date.now();
+      if (now - lastScrollTime.current > 120) {
+        lastScrollTime.current = now;
+        handleScroll(y);
+      }
+    },
+    [handleScroll]
+  );
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
+      'worklet';
       scrollY.value = event.contentOffset.y;
-      runOnJS(handleScroll)(event.contentOffset.y);
+      runOnJS(throttledHandleScroll)(event.contentOffset.y);
     },
   });
 

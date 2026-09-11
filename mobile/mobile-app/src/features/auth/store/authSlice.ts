@@ -148,36 +148,71 @@ export const bootstrapAuth = createAsyncThunk(
         }
       }
 
-      // If token exists, sync latest profile & availableWorkspaces from backend to replace stale cached storage
+      // If token and user exist in local storage, return immediately to unblock app startup instantly!
+      if (token && user) {
+        // Sync latest profile & availableWorkspaces asynchronously in background without blocking bootstrap
+        (async () => {
+          try {
+            const savedOrgId = user?.orgId || user?.activeOrgId || user?.organizationId;
+            const savedVillaId = user?.activeVillaId || user?.villaId || user?.unitNumber;
+            const savedRole = user?.role || user?.activeRole;
+
+            const switchPayload: any = {};
+            if (savedOrgId && typeof savedOrgId === 'string' && /^[0-9a-fA-F]{24}$/.test(savedOrgId.trim())) {
+              switchPayload.targetOrgId = savedOrgId.trim();
+            }
+            if (savedVillaId && typeof savedVillaId === 'string' && /^[0-9a-fA-F]{24}$/.test(savedVillaId.trim())) {
+              switchPayload.targetVillaId = savedVillaId.trim();
+            }
+            if (savedRole && typeof savedRole === 'string' && savedRole.trim()) {
+              switchPayload.targetRole = savedRole.trim();
+            }
+
+            let response;
+            try {
+              response = await authService.switchContext(switchPayload);
+            } catch (syncErr: any) {
+              console.warn('Target workspace context unavailable or deleted, falling back to default active context:', syncErr?.message);
+              try {
+                response = await authService.switchContext({});
+              } catch (fallbackErr) {
+                console.warn('Fallback switchContext failed:', fallbackErr);
+              }
+            }
+
+            if (response) {
+              const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
+              const innerData = body?.data || body;
+              const freshToken = innerData?.token || token;
+              const freshRefreshToken = innerData?.refreshToken || refreshToken;
+              const rawUser = innerData?.user;
+              const availableWorkspaces = innerData?.availableWorkspaces || rawUser?.availableWorkspaces || [];
+              const freshUser = rawUser ? { ...rawUser, availableWorkspaces } : user;
+
+              if (freshToken) await storage.setItem('token', freshToken);
+              if (freshRefreshToken) await storage.setItem('refreshToken', freshRefreshToken);
+              if (freshUser) await storage.setItem('user', JSON.stringify(freshUser));
+
+              dispatch(
+                updateTokenAndUser({
+                  token: freshToken,
+                  refreshToken: freshRefreshToken,
+                  user: freshUser,
+                })
+              );
+            }
+          } catch (syncErr) {
+            console.warn('Background auth session refresh error:', syncErr);
+          }
+        })();
+
+        return { token, refreshToken, user };
+      }
+
+      // If token exists but user was missing, fetch fresh user context
       if (token) {
         try {
-          const savedOrgId = user?.orgId || user?.activeOrgId || user?.organizationId;
-          const savedVillaId = user?.activeVillaId || user?.villaId || user?.unitNumber;
-          const savedRole = user?.role || user?.activeRole;
-
-          const switchPayload: any = {};
-          if (savedOrgId && typeof savedOrgId === 'string' && /^[0-9a-fA-F]{24}$/.test(savedOrgId.trim())) {
-            switchPayload.targetOrgId = savedOrgId.trim();
-          }
-          if (savedVillaId && typeof savedVillaId === 'string' && /^[0-9a-fA-F]{24}$/.test(savedVillaId.trim())) {
-            switchPayload.targetVillaId = savedVillaId.trim();
-          }
-          if (savedRole && typeof savedRole === 'string' && savedRole.trim()) {
-            switchPayload.targetRole = savedRole.trim();
-          }
-
-          let response;
-          try {
-            response = await authService.switchContext(switchPayload);
-          } catch (syncErr: any) {
-            console.warn('Target workspace context unavailable or deleted, falling back to default active context:', syncErr?.message);
-            try {
-              response = await authService.switchContext({});
-            } catch (fallbackErr) {
-              console.warn('Fallback switchContext failed:', fallbackErr);
-            }
-          }
-
+          const response = await authService.switchContext({});
           if (response) {
             const body = response && (response as any).success !== undefined ? response : (response as any)?.data;
             const innerData = body?.data || body;
@@ -194,7 +229,7 @@ export const bootstrapAuth = createAsyncThunk(
             return { token: freshToken, refreshToken: freshRefreshToken, user: freshUser };
           }
         } catch (syncErr) {
-          console.warn('Could not refresh auth session from backend, using cached session:', syncErr);
+          console.warn('Could not refresh auth session from backend:', syncErr);
         }
       }
 

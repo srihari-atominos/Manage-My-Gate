@@ -2,8 +2,7 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { Home, Check, X, Building2, Lock, ShieldAlert } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { Home, Check, X, Building2 } from 'lucide-react-native';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { switchWorkspaceContextThunk, setActiveUnitContext } from '../../src/features/auth/store/authSlice';
@@ -38,7 +37,6 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   communityName = '',
   onOpenOrgModal,
 }) => {
-  const router = useRouter();
   const { user } = useAuth();
   const dispatch = useDispatch<any>();
   const { t, tRole } = useTranslation();
@@ -47,6 +45,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
   const activeVillaId = (user as any)?.villaId;
 
+
   const userUnits: VillaUnit[] = React.useMemo(() => {
     const userAny = user as any;
     const unitsMap = new Map<string, VillaUnit>();
@@ -54,8 +53,8 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
     // 1. Extract from accessibleUnits
     if (userAny?.accessibleUnits && Array.isArray(userAny.accessibleUnits)) {
       userAny.accessibleUnits.forEach((u: any, idx: number) => {
-        const uId = u.villaId || u.id || `unit-${idx + 1}`;
-        const uNum = u.villaNumber || u.unitNumber;
+        const uId = u.villaId || u.id || String(idx + 1);
+        const uNum = u.villaNumber || u.unitNumber || `Villa ${idx + 1}`;
         if (uNum) {
           unitsMap.set(uId, {
             id: uId,
@@ -67,22 +66,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
       });
     }
 
-    // 2. Extract from primary user unit context (if not already mapped)
-    const primaryUnitNum = userAny?.villaNumber || userAny?.activeVillaNumber || userAny?.unitNumber;
-    const primaryUnitId = userAny?.villaId || userAny?.activeVillaId;
-    if (primaryUnitNum) {
-      const pKey = primaryUnitId || primaryUnitNum;
-      if (!unitsMap.has(pKey)) {
-        unitsMap.set(pKey, {
-          id: primaryUnitId || pKey,
-          unitNumber: primaryUnitNum,
-          block: userAny?.villaBlock || '',
-          residencyType: userAny?.residentType || 'Resident',
-        });
-      }
-    }
-
-    // 3. Extract from availableWorkspaces matching current active organization
+    // 2. Extract from availableWorkspaces matching current active organization
     const workspaces = userAny?.availableWorkspaces || reduxWorkspaces;
     if (Array.isArray(workspaces)) {
       workspaces.forEach((w: any, idx: number) => {
@@ -249,6 +233,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
           </Button>
         </View>
       </View>
+
     </Modal>
   );
 };

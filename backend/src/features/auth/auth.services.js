@@ -229,8 +229,8 @@ export class AuthService {
     const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
     const memberships = await orgMembershipService.getUserMemberships(user._id);
 
-    // Active memberships (where organization status is Active and membership status is Active, Pending, or missing for legacy documents)
-    const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active' && (m.status === 'Active' || m.status === 'Pending' || !m.status));
+    // Active memberships strictly (organization status is Active and membership status is Active, or missing for legacy documents)
+    const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active' && (m.status === 'Active' || !m.status));
 
     let selectedMembership = null;
     const targetOrgIdStr = targetOrgId ? targetOrgId.toString() : null;
@@ -576,6 +576,27 @@ export class AuthService {
         targetOrgIdFromInvite = orgId;
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
         await orgMembershipService.updateStatus(user._id, orgId, 'Active');
+
+        // Assign resident to villa upon accepting invitation during login
+        const updatedMembership = await orgMembershipService.getMembershipWithVilla(user._id, orgId);
+        if (updatedMembership) {
+          const villaService = (await import('../villa/villa.services.js')).default;
+          if (updatedMembership.units && updatedMembership.units.length > 0) {
+            for (const unit of updatedMembership.units) {
+              if (unit.villaId) {
+                const vId = unit.villaId._id || unit.villaId;
+                await villaService.assignResidentToVilla(vId, user._id, unit.residentType || 'Resident', null, orgId);
+              }
+            }
+          } else if (updatedMembership.villaId) {
+            const vId = updatedMembership.villaId._id || updatedMembership.villaId;
+            await villaService.assignResidentToVilla(vId, user._id, updatedMembership.residentType || 'Resident', null, orgId);
+          }
+        }
+
+        const Technician = (await import('../technician/technician.model.js')).default;
+        await Technician.findOneAndUpdate({ userId: user._id, orgId }, { status: 'Active' }).catch(() => null);
+
         userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
         userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
       } catch (tokenError) {
@@ -654,7 +675,7 @@ export class AuthService {
    * @param {string} rawToken - Unhashed token from client
    * @param {string} password - New password set by user
    */
-  async acceptInvitation(rawToken, password, email = null) {
+  async acceptInvitation(rawToken, password, email = null, authenticatedUserId = null, profileData = {}) {
     const mongoose = (await import('mongoose')).default;
     const session = await mongoose.startSession();
     
@@ -666,12 +687,13 @@ export class AuthService {
       let orgId = null;
 
       if (rawToken) {
-        try {
-          const tokenRes = await tokenService.validateAndDeleteToken(rawToken, 'INVITATION', session);
-          userId = tokenRes.userId;
-          orgId = tokenRes.orgId;
-        } catch (err) {
-          logger.warn(`Token validation failed during acceptInvitation, fallback to email/pending user lookup: ${err.message}`);
+        const tokenRes = await tokenService.validateInvitationToken(rawToken, session);
+        userId = tokenRes.userId;
+        orgId = tokenRes.orgId;
+      } else if (email) {
+        const userByEmail = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
+        if (userByEmail) {
+          userId = userByEmail._id;
         }
       }
 
@@ -688,6 +710,21 @@ export class AuthService {
         throw new HttpError(404, 'No pending user account found to activate.');
       }
 
+      // Server-side identity verification: authenticated user check
+      if (authenticatedUserId && user._id.toString() !== authenticatedUserId.toString()) {
+        throw new HttpError(403, 'The authenticated account does not match the invitation identity.');
+      }
+
+      // Server-side identity verification: email match check
+      if (email && user.email && user.email.toLowerCase() !== email.trim().toLowerCase()) {
+        throw new HttpError(403, 'The provided email does not match the invitation identity.');
+      }
+
+      // Transition invitation token to ACCEPTED only after identity verification succeeds
+      if (rawToken) {
+        await tokenService.consumeInvitationToken(rawToken, session);
+      }
+
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
       if (!orgId) {
         const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
@@ -697,14 +734,40 @@ export class AuthService {
         }
       }
 
-      const { hashPassword } = await import('../../utils/crypto.utils.js');
-      const hashedPassword = await hashPassword(password);
-
-      // Perform user activation via user service
-      await userService.activateUser(user._id, hashedPassword, session);
+      if (password) {
+        const { hashPassword } = await import('../../utils/crypto.utils.js');
+        const hashedPassword = await hashPassword(password);
+        await userService.activateUser(user._id, hashedPassword, session, profileData);
+      } else {
+        if (!user.password) {
+          throw new HttpError(400, 'Password is required to activate a new account.');
+        }
+        if (user.status !== 'Active' || profileData.name || profileData.phone) {
+          await userService.activateUser(user._id, user.password, session, profileData);
+        }
+      }
 
       // Update OrgMembership status to Active for this organization or user
       await orgMembershipService.updateStatus(user._id, orgId || null, 'Active', session).catch(() => null);
+
+      // Assign resident to villa upon accepting invitation
+      if (orgId) {
+        const membership = await orgMembershipService.getMembershipWithVilla(user._id, orgId, session);
+        if (membership) {
+          const villaService = (await import('../villa/villa.services.js')).default;
+          if (membership.units && membership.units.length > 0) {
+            for (const unit of membership.units) {
+              if (unit.villaId) {
+                const vId = unit.villaId._id || unit.villaId;
+                await villaService.assignResidentToVilla(vId, user._id, unit.residentType || 'Resident', session, orgId);
+              }
+            }
+          } else if (membership.villaId) {
+            const vId = membership.villaId._id || membership.villaId;
+            await villaService.assignResidentToVilla(vId, user._id, membership.residentType || 'Resident', session, orgId);
+          }
+        }
+      }
 
       if (orgId) {
         const Technician = (await import('../technician/technician.model.js')).default;
@@ -723,6 +786,8 @@ export class AuthService {
 
       // Emit event for successful activation and login write operations
       authEvents.emit('USER_ACTIVATED', { userId: user._id });
+      authEvents.emit('INVITATION_ACCEPTED', { userId: user._id, orgId });
+      userEvents.emit('INVITATION_ACCEPTED', { userId: user._id, orgId });
       userEvents.emit('USER_ACTIVATED', { userId: user._id, orgId });
       userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'activated' });
       authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'invitation' });
@@ -761,11 +826,22 @@ export class AuthService {
 
       if (rawToken) {
         try {
-          const tokenRes = await tokenService.validateAndDeleteToken(rawToken, 'INVITATION', session);
+          const tokenRes = await tokenService.rejectInvitationToken(rawToken, session);
           userId = tokenRes.userId;
           orgId = tokenRes.orgId;
-        } catch (err) {
-          logger.warn(`Token validation failed during rejectInvitation, fallback to email lookup: ${err.message}`);
+        } catch (tokenErr) {
+          if (tokenErr.message && tokenErr.message.toLowerCase().includes('already been rejected')) {
+            const tokenDoc = await tokenService.getInvitationToken(rawToken, 'INVITATION');
+            userId = tokenDoc?.userId;
+            orgId = tokenDoc?.orgId;
+          } else {
+            throw tokenErr;
+          }
+        }
+      } else if (email) {
+        const userByEmail = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
+        if (userByEmail) {
+          userId = userByEmail._id;
         }
       }
 
@@ -794,9 +870,17 @@ export class AuthService {
       // Update OrgMembership status to Rejected for this organization
       await orgMembershipService.updateStatus(user._id, orgId || null, 'Rejected', session).catch(() => null);
 
+      // Ensure user is removed from any villa in this organization
+      if (orgId) {
+        const villaService = (await import('../villa/villa.services.js')).default;
+        await villaService.removeUserFromAllVillasInOrg(user._id, orgId, session).catch(() => null);
+      }
+
       await session.commitTransaction();
 
       // Emit event for real-time frontend syncing (admin UI updates to REJECTED badge)
+      authEvents.emit('INVITATION_REJECTED', { userId: user._id, orgId });
+      userEvents.emit('INVITATION_REJECTED', { userId: user._id, orgId });
       userEvents.emit('USER_UPDATED', { userId: user._id, orgId, action: 'rejected' });
 
       return {
@@ -1591,11 +1675,14 @@ export class AuthService {
     session.startTransaction();
 
     try {
-      // Validate and consume the invitation token in the database
-      const { userId, orgId } = await tokenService.validateAndDeleteToken(inviteToken, 'INVITATION', session);
+      // Validate invitation token without consuming it before identity verification
+      const { userId, orgId } = await tokenService.validateInvitationToken(inviteToken, session);
 
       // Fetch user to ensure they exist and status is valid
       const user = await userService.getUserById(userId, session);
+      if (!user) {
+        throw new HttpError(404, 'No pending user account found for this invitation.');
+      }
       if (user.status !== 'Pending Verification' && user.status !== 'Active') {
         throw new HttpError(400, 'User account is inactive or suspended.');
       }
@@ -1603,6 +1690,9 @@ export class AuthService {
       if (!user.email || ssoEmail.toLowerCase() !== user.email.toLowerCase()) {
         throw new HttpError(403, 'Email in SSO token does not match the invitation email.');
       }
+
+      // Transition invitation token to ACCEPTED only after identity verification succeeds
+      await tokenService.consumeInvitationToken(inviteToken, session);
 
       let activatedUser = user;
       if (user.status === 'Pending Verification') {
@@ -1620,6 +1710,22 @@ export class AuthService {
       if (orgId) {
         const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
         await orgMembershipService.updateStatus(userId, orgId, 'Active', session);
+
+        const membership = await orgMembershipService.getMembershipWithVilla(userId, orgId, session);
+        if (membership) {
+          const villaService = (await import('../villa/villa.services.js')).default;
+          if (membership.units && membership.units.length > 0) {
+            for (const unit of membership.units) {
+              if (unit.villaId) {
+                const vId = unit.villaId._id || unit.villaId;
+                await villaService.assignResidentToVilla(vId, userId, unit.residentType || 'Resident', session, orgId);
+              }
+            }
+          } else if (membership.villaId) {
+            const vId = membership.villaId._id || membership.villaId;
+            await villaService.assignResidentToVilla(vId, userId, membership.residentType || 'Resident', session, orgId);
+          }
+        }
 
         const Technician = (await import('../technician/technician.model.js')).default;
         await Technician.findOneAndUpdate({ userId, orgId }, { status: 'Active' }).session(session);
@@ -1649,6 +1755,8 @@ export class AuthService {
       authEvents.emit('PROVIDER_LOGIN', { userId: activatedUser._id, provider });
       authEvents.emit('LOGIN_SUCCESS', { userId: activatedUser._id, method: provider });
       authEvents.emit('USER_ACTIVATED', { userId: activatedUser._id });
+      authEvents.emit('INVITATION_ACCEPTED', { userId: activatedUser._id, orgId });
+      userEvents.emit('INVITATION_ACCEPTED', { userId: activatedUser._id, orgId });
       userEvents.emit('USER_ACTIVATED', { userId: activatedUser._id, orgId });
       userEvents.emit('USER_UPDATED', { userId: activatedUser._id, orgId, action: 'activated' });
 
@@ -1674,7 +1782,26 @@ export class AuthService {
     if (!token && !email) {
       throw new HttpError(400, 'Invitation token is required.');
     }
-    let tokenDoc = token ? await tokenService.getInvitationToken(token, 'INVITATION') : null;
+    let tokenDoc = null;
+    if (token) {
+      tokenDoc = await tokenService.getInvitationToken(token, 'INVITATION');
+      if (!tokenDoc) {
+        throw new HttpError(400, 'Invalid or expired invitation token.');
+      }
+      if (tokenDoc.status === 'EXPIRED' || (tokenDoc.expiresAt && new Date() > new Date(tokenDoc.expiresAt))) {
+        throw new HttpError(400, 'Invitation has expired. Please ask your administrator to resend the invitation.');
+      }
+      if (tokenDoc.status === 'REVOKED') {
+        throw new HttpError(400, 'Invitation has been revoked by the administrator.');
+      }
+      if (tokenDoc.status === 'REJECTED') {
+        throw new HttpError(400, 'Invitation has already been rejected.');
+      }
+      if (tokenDoc.status === 'ACCEPTED' || tokenDoc.used === true) {
+        throw new HttpError(400, 'Invitation has already been accepted.');
+      }
+    }
+
     let user = null;
 
     if (tokenDoc?.userId) {
@@ -1703,11 +1830,17 @@ export class AuthService {
     let membershipDoc = null;
 
     if (resolvedOrgId) {
-      try {
-        const Organization = (await import('../organization/organization.model.js')).default;
-        const org = await Organization.findById(resolvedOrgId).select('name');
-        if (org) orgName = org.name;
+      const Organization = (await import('../organization/organization.model.js')).default;
+      const org = await Organization.findById(resolvedOrgId).select('name status');
+      if (!org) {
+        throw new HttpError(404, 'The workspace or organization for this invitation no longer exists.');
+      }
+      if (org.status && org.status !== 'Active') {
+        throw new HttpError(400, 'This community workspace is currently inactive.');
+      }
+      orgName = org.name;
 
+      try {
         const OrgMembership = (await import('../orgMembership/orgMembership.model.js')).default;
         membershipDoc = await OrgMembership.findOne({ userId: user._id, orgId: resolvedOrgId })
           .populate('villaId')
@@ -1783,6 +1916,16 @@ export class AuthService {
     const hasAccountCredentials = user.status === 'Active' || !!(user.password && user.password.length > 0);
     const isAlreadyRegistered = isAlreadyMemberInOrg || hasAccountCredentials;
 
+    let inviterName = '';
+    if (tokenDoc?.inviterId) {
+      try {
+        const inviter = await userService.getUserById(tokenDoc.inviterId).catch(() => null);
+        if (inviter) {
+          inviterName = inviter.name || inviter.username || '';
+        }
+      } catch (e) {}
+    }
+
     return {
       valid: true,
       isExisting: isAlreadyRegistered,
@@ -1790,6 +1933,10 @@ export class AuthService {
       isAlreadyMemberInOrg,
       hasAccountCredentials,
       membershipStatus: membershipDoc?.status || 'Pending',
+      invitationStatus: tokenDoc?.status || 'PENDING',
+      expiresAt: tokenDoc?.expiresAt || null,
+      inviterId: tokenDoc?.inviterId || null,
+      inviterName,
       email: user.email,
       orgId: resolvedOrgId,
       orgName: orgName || 'Community Workspace',
@@ -1989,6 +2136,94 @@ export class AuthService {
       status: user.status,
       isAlreadyConfigured,
       email: user.email,
+    };
+  }
+
+  /**
+   * Creates a short-lived, single-use mobile handoff ticket for an already-authenticated user.
+   *
+   * @param {string} userId - ID of authenticated user
+   * @param {string} [activeOrgId] - Optional active organization ID
+   * @returns {Promise<{ handoffId: string, expiresAt: Date, deepLink: string, universalLink: string, playStoreUrl: string, appStoreUrl: string }>}
+   */
+  async createInviteHandoff(userId, activeOrgId = null) {
+    if (!userId) {
+      throw new HttpError(401, 'Authentication required to initiate mobile handoff.');
+    }
+
+    const user = await userService.getUserById(userId);
+    if (!user) {
+      throw new HttpError(404, 'User account not found.');
+    }
+
+    if (user.status !== 'Active') {
+      throw new HttpError(403, 'Account is not active. Complete invitation acceptance before mobile handoff.');
+    }
+
+    const targetOrgId = activeOrgId || user.organizationId || null;
+    const handoffResult = await tokenService.createMobileHandoffToken(user._id, targetOrgId);
+
+    const scheme = config.mobile?.scheme || 'managemygate';
+    const universalDomain = config.mobile?.universalLinkDomain || 'app.managemygate.com';
+    const androidPackage = config.mobile?.androidPackageName || 'com.atominos.managemygate';
+    const iosAppStoreId = config.mobile?.iosAppStoreId || '6470000000';
+
+    return {
+      handoffId: handoffResult.handoffId,
+      expiresAt: handoffResult.expiresAt,
+      deepLink: `${scheme}://invite/handoff/${handoffResult.handoffId}`,
+      universalLink: `https://${universalDomain}/invite/handoff/${handoffResult.handoffId}`,
+      playStoreUrl: `https://play.google.com/store/apps/details?id=${androidPackage}&referrer=${encodeURIComponent(`handoffId=${handoffResult.handoffId}`)}`,
+      appStoreUrl: `https://apps.apple.com/app/manage-my-gate/id${iosAppStoreId}`,
+    };
+  }
+
+  /**
+   * Atomically exchanges a short-lived mobile handoff ticket for an authenticated mobile session.
+   * Prevents replay and concurrency race conditions at the database level.
+   *
+   * @param {string} rawHandoffId - Raw opaque handoff identifier
+   * @param {object} [deviceInfo={}] - Optional mobile client device info
+   * @returns {Promise<{ token: string, refreshToken: string, user: object, availableWorkspaces: Array }>}
+   */
+  async exchangeInviteHandoff(rawHandoffId, deviceInfo = {}) {
+    if (!rawHandoffId || typeof rawHandoffId !== 'string' || rawHandoffId.trim().length === 0) {
+      throw new HttpError(400, 'Handoff identifier is required.');
+    }
+
+    // Atomically exchange handoff token in Token collection (PENDING -> EXCHANGED)
+    const { userId, orgId } = await tokenService.exchangeMobileHandoffToken(rawHandoffId);
+
+    const user = await userService.getUserById(userId);
+    if (!user) {
+      throw new HttpError(404, 'User account not found.');
+    }
+
+    if (user.status !== 'Active') {
+      throw new HttpError(403, 'User account is not active or has been suspended.');
+    }
+
+    // Create fresh mobile session
+    const mobileDeviceInfo = {
+      ...deviceInfo,
+      client: 'mobile',
+      source: 'mobile_handoff',
+    };
+    const refreshToken = await sessionService.createSession(user._id, mobileDeviceInfo);
+
+    // Derive server-side scoped context (client cannot spoof targetOrgId or roles)
+    const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(user, orgId);
+    const token = signToken(tokenPayload);
+
+    // Emit domain event
+    authEvents.emit('MOBILE_HANDOFF_EXCHANGED', { userId: user._id, orgId });
+    authEvents.emit('LOGIN_SUCCESS', { userId: user._id, method: 'mobile_handoff' });
+
+    return {
+      token,
+      refreshToken,
+      user: this._formatAuthUser(user, tokenPayload, permissions, availableWorkspaces),
+      availableWorkspaces,
     };
   }
 }

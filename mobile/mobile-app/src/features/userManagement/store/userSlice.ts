@@ -27,7 +27,7 @@ const initialState: UserManagementState = {
   currentPage: 1,
   rowsPerPage: 10,
   totalRecords: 0,
-  totalPages: 0,
+  totalPages: 1,
   loading: false,
   error: null,
 };
@@ -152,17 +152,13 @@ const userSlice = createSlice({
       .addCase(fetchUsersAsync.fulfilled, (state, action: any) => {
         state.loading = false;
         const fetchedData = action.payload?.data || [];
-        state.users = fetchedData.length > 0 ? fetchedData : DUMMY_USERS;
-        state.totalRecords = action.payload?.pagination?.totalRecords || state.users.length;
+        state.users = fetchedData;
+        state.totalRecords = action.payload?.pagination?.totalRecords || fetchedData.length;
         state.currentPage = action.payload?.pagination?.currentPage || 1;
         state.totalPages = action.payload?.pagination?.totalPages || 1;
       })
       .addCase(fetchUsersAsync.rejected, (state, action: any) => {
         state.loading = false;
-        if (state.users.length === 0) {
-          state.users = DUMMY_USERS;
-          state.totalRecords = DUMMY_USERS.length;
-        }
         state.error = action.payload || 'Failed to fetch users';
       })
       // Invite User

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/src/store/store';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -19,7 +21,7 @@ export interface PaymentCheckoutSheetProps {
   onClose: () => void;
   invoice: Invoice | null;
   onOpenOfflineSheet?: (invoice: Invoice, amountToPay: number) => void;
-  onPaymentSuccess?: (result: any) => void;
+  onPaymentSuccess?: (result: any, amountPaid?: number, paymentMethod?: string) => void;
 }
 
 export function PaymentCheckoutSheet({
@@ -31,6 +33,8 @@ export function PaymentCheckoutSheet({
 }: PaymentCheckoutSheetProps) {
   const router = useRouter();
   const { walletBalance, loadResidentDues } = useBilling();
+  const walletState = useSelector((state: RootState) => state.wallet);
+  const isGatewayConfigured = walletState?.isPaymentGatewayConfigured === true;
   const {
     paymentState,
     isGlobalSettling,
@@ -79,11 +83,14 @@ export function PaymentCheckoutSheet({
       resetPaymentState();
       setPaymentMode('FULL');
       setCustomAmountStr('');
-      setSelectedMethod(walletBalance >= remainingDue ? 'WALLET' : 'RAZORPAY');
+      const defaultMethod = walletBalance >= remainingDue
+        ? 'WALLET'
+        : (isGatewayConfigured ? 'RAZORPAY' : 'OFFLINE');
+      setSelectedMethod(defaultMethod);
       setShowWalletConfirmModal(false);
       setShowUnknownStateAlert(false);
     }
-  }, [visible, invoice, walletBalance, remainingDue, resetPaymentState]);
+  }, [visible, invoice, walletBalance, remainingDue, isGatewayConfigured, resetPaymentState]);
 
   if (!invoice) return null;
 
@@ -114,6 +121,13 @@ export function PaymentCheckoutSheet({
       }
       setShowWalletConfirmModal(true);
     } else if (selectedMethod === 'RAZORPAY') {
+      if (!isGatewayConfigured) {
+        Alert.alert(
+          'Online Gateway Not Configured',
+          'Razorpay online payment has not been configured for your community by the administrator. Please choose an Offline Payment Request or pay via Digital Wallet.'
+        );
+        return;
+      }
       handleProcessRazorpay();
     }
   };
@@ -124,10 +138,33 @@ export function PaymentCheckoutSheet({
       const result = await processWalletPayment(invoice._id, amountToPay);
       setShowWalletConfirmModal(false);
       await loadResidentDues();
-      if (onPaymentSuccess) onPaymentSuccess(result);
+      const rawTotal = invoice.totalDue || invoice.totalAmount || (invoice as any).amount || totalDue;
+      const currentPaid = (invoice.paidAmount || 0) + amountToPay;
+      const calcRemaining = Math.max(0, remainingDue - amountToPay);
+      const isFull = calcRemaining <= 0.01;
+
+      const updatedReceiptData = {
+        ...(result?.invoice || {}),
+        ...invoice,
+        _id: invoice._id,
+        invoiceNumber: invoice.invoiceNumber || result?.invoice?.invoiceNumber || invoice._id,
+        unitNumber: invoice.unitNumber || result?.invoice?.unitNumber,
+        assessmentName: (invoice as any).assessmentName || result?.invoice?.snapshot?.assessmentName || result?.invoice?.assessmentName,
+        totalDue: rawTotal,
+        totalAmount: rawTotal,
+        paidAmount: currentPaid,
+        amountPaid: amountToPay,
+        outstandingAmount: calcRemaining,
+        status: (isFull ? 'PAID' : 'PARTIALLY_PAID') as any,
+        paymentMethod: 'Digital Wallet',
+      };
+      if (onPaymentSuccess) {
+        onPaymentSuccess(updatedReceiptData, amountToPay, 'Digital Wallet');
+      } else {
+        router.push(`/(resident)/billing/invoice/${invoice._id}` as any);
+        Alert.alert('Payment Successful!', `Settled ₹${amountToPay.toLocaleString('en-IN')} via Digital Wallet for Invoice #${invNo}.`);
+      }
       onClose();
-      router.push(`/(resident)/billing/invoice/${invoice._id}` as any);
-      Alert.alert('Payment Successful!', `Settled ₹${amountToPay.toLocaleString('en-IN')} via Digital Wallet for Invoice #${invNo}.`);
     } catch (err: any) {
       setShowWalletConfirmModal(false);
       Alert.alert('Wallet Payment Failed', err.message || 'Transaction could not be completed.');
@@ -167,10 +204,33 @@ export function PaymentCheckoutSheet({
     try {
       const verifyResult = await confirmRazorpayPayment(payload);
       await loadResidentDues();
-      if (onPaymentSuccess) onPaymentSuccess(verifyResult);
+      const rawTotal = invoice.totalDue || invoice.totalAmount || (invoice as any).amount || totalDue;
+      const currentPaid = (invoice.paidAmount || 0) + amountToPay;
+      const calcRemaining = Math.max(0, remainingDue - amountToPay);
+      const isFull = calcRemaining <= 0.01;
+
+      const updatedReceiptData = {
+        ...(verifyResult?.invoice || {}),
+        ...invoice,
+        _id: invoice._id,
+        invoiceNumber: invoice.invoiceNumber || verifyResult?.invoice?.invoiceNumber || invoice._id,
+        unitNumber: invoice.unitNumber || verifyResult?.invoice?.unitNumber,
+        assessmentName: (invoice as any).assessmentName || verifyResult?.invoice?.snapshot?.assessmentName || verifyResult?.invoice?.assessmentName,
+        totalDue: rawTotal,
+        totalAmount: rawTotal,
+        paidAmount: currentPaid,
+        amountPaid: amountToPay,
+        outstandingAmount: calcRemaining,
+        status: (isFull ? 'PAID' : 'PARTIALLY_PAID') as any,
+        paymentMethod: 'Online Payment',
+      };
+      if (onPaymentSuccess) {
+        onPaymentSuccess(updatedReceiptData, amountToPay, 'Online Payment');
+      } else {
+        router.push(`/(resident)/billing/invoice/${invoice._id}` as any);
+        Alert.alert('Razorpay Payment Confirmed!', `Verified & settled ₹${amountToPay.toLocaleString('en-IN')} for Invoice #${invNo}.`);
+      }
       onClose();
-      router.push(`/(resident)/billing/invoice/${invoice._id}` as any);
-      Alert.alert('Razorpay Payment Confirmed!', `Verified & settled ₹${amountToPay.toLocaleString('en-IN')} for Invoice #${invNo}.`);
     } catch (err: any) {
       if (err?.code === 'NETWORK_ERROR' || err?.message?.includes('network')) {
         setShowUnknownStateAlert(true);
@@ -325,30 +385,56 @@ export function PaymentCheckoutSheet({
 
             {/* Razorpay Online Option */}
             <TouchableOpacity
-              onPress={() => setSelectedMethod('RAZORPAY')}
-              activeOpacity={0.8}
+              onPress={() => {
+                if (!isGatewayConfigured) {
+                  Alert.alert(
+                    'Online Gateway Not Configured',
+                    'Razorpay online payment has not been configured for your community by the administrator. Please pay using an Offline Payment Request or Digital Wallet.'
+                  );
+                  return;
+                }
+                setSelectedMethod('RAZORPAY');
+              }}
+              activeOpacity={isGatewayConfigured ? 0.8 : 0.9}
               className={`p-4 rounded-xl border flex-row items-center justify-between ${
-                selectedMethod === 'RAZORPAY' ? 'bg-primary/10 border-primary' : 'bg-card border-border'
+                !isGatewayConfigured
+                  ? 'bg-muted/30 border-border/60 opacity-70'
+                  : selectedMethod === 'RAZORPAY'
+                  ? 'bg-primary/10 border-primary'
+                  : 'bg-card border-border'
               }`}
             >
-              <View className="flex-row items-center gap-3">
-                <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-                  <Icon as={CreditCard} size={20} className="text-primary" />
+              <View className="flex-row items-center gap-3 flex-1 me-2">
+                <View className={`w-10 h-10 rounded-xl items-center justify-center ${isGatewayConfigured ? 'bg-primary/10' : 'bg-muted/60'}`}>
+                  <Icon as={CreditCard} size={20} className={isGatewayConfigured ? 'text-primary' : 'text-muted-foreground'} />
                 </View>
-                <View>
-                  <Text className="font-bold text-sm text-foreground">Razorpay Online</Text>
-                  <Text className="text-xs text-muted-foreground">UPI, Credit/Debit Card, NetBanking</Text>
+                <View className="flex-1">
+                  <View className="flex-row items-center gap-2">
+                    <Text className={`font-bold text-sm ${isGatewayConfigured ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      Razorpay Online
+                    </Text>
+                    {!isGatewayConfigured ? (
+                      <View className="bg-amber-500/15 px-2 py-0.5 rounded-md">
+                        <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400">Not Configured</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text className="text-xs text-muted-foreground">
+                    {isGatewayConfigured ? 'UPI, Credit/Debit Card, NetBanking' : 'Disabled by community administrator'}
+                  </Text>
                 </View>
               </View>
 
-              <View className={`w-5 h-5 rounded-full border items-center justify-center ${
-                selectedMethod === 'RAZORPAY' ? 'border-primary bg-primary' : 'border-muted-foreground'
-              }`}>
-                {selectedMethod === 'RAZORPAY' ? <Check size={12} className="text-primary-foreground" /> : null}
-              </View>
+              {isGatewayConfigured ? (
+                <View className={`w-5 h-5 rounded-full border items-center justify-center ${
+                  selectedMethod === 'RAZORPAY' ? 'border-primary bg-primary' : 'border-muted-foreground'
+                }`}>
+                  {selectedMethod === 'RAZORPAY' ? <Check size={12} className="text-primary-foreground" /> : null}
+                </View>
+              ) : null}
             </TouchableOpacity>
 
-            {/* Pay Offline Option */}
+            {/* Offline Payment Request Option */}
             <TouchableOpacity
               onPress={() => setSelectedMethod('OFFLINE')}
               activeOpacity={0.8}
@@ -361,8 +447,8 @@ export function PaymentCheckoutSheet({
                   <Icon as={Landmark} size={20} className="text-amber-600 dark:text-amber-400" />
                 </View>
                 <View>
-                  <Text className="font-bold text-sm text-foreground">Pay Offline</Text>
-                  <Text className="text-xs text-muted-foreground">Bank Transfer (NEFT/IMPS/UPI) or Cash</Text>
+                  <Text className="font-bold text-sm text-foreground">Offline Payment Request</Text>
+                  <Text className="text-xs text-muted-foreground">Bank Transfer (NEFT/IMPS), UPI, Cheque, Cash</Text>
                 </View>
               </View>
 
@@ -389,7 +475,7 @@ export function PaymentCheckoutSheet({
               {selectedMethod === 'WALLET'
                 ? `Pay ₹${amountToPay.toLocaleString('en-IN')} via Wallet`
                 : selectedMethod === 'OFFLINE'
-                ? `Proceed to Pay Offline (₹${amountToPay.toLocaleString('en-IN')})`
+                ? `Proceed with Offline Payment (₹${amountToPay.toLocaleString('en-IN')})`
                 : `Proceed to Razorpay (₹${amountToPay.toLocaleString('en-IN')})`}
             </Text>
             <Icon as={ChevronRight} size={18} className="text-primary-foreground" />

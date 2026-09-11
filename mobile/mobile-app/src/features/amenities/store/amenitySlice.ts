@@ -454,18 +454,19 @@ const amenitySlice = createSlice({
             limit: payload.limit || action.meta.arg?.limit || 20,
           };
         }
+        const normalizedList = list.map(normalizeAmenity);
+        const targetList = page > 1 ? [...state.amenities, ...normalizedList] : normalizedList;
         const seenIds = new Set<string>();
         const seenNames = new Set<string>();
         const uniqueAmenities: Amenity[] = [];
-        for (const item of list) {
-          const norm = normalizeAmenity(item);
-          const idStr = String(norm._id || (norm as any).id || '');
-          const nameStr = (norm.name || '').trim().toLowerCase();
+        for (const item of targetList) {
+          const idStr = String(item._id || (item as any).id || '');
+          const nameStr = (item.name || '').trim().toLowerCase();
           if (idStr && seenIds.has(idStr)) continue;
           if (nameStr && seenNames.has(nameStr)) continue;
           if (idStr) seenIds.add(idStr);
           if (nameStr) seenNames.add(nameStr);
-          uniqueAmenities.push(norm);
+          uniqueAmenities.push(item);
         }
         state.amenities = uniqueAmenities;
       })

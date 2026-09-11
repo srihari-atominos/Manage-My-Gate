@@ -105,6 +105,7 @@ app.use(cookieParser());
 app.use(responseHandler);
 
 // Static public folder
+app.use('/.well-known', express.static(path.join(__dirname, 'public', '.well-known')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

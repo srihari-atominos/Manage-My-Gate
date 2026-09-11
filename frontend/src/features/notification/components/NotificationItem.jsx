@@ -50,6 +50,7 @@ const formatRelativeTime = (dateString, locale = 'en') => {
 const getNotificationIcon = (type) => {
   switch (type) {
     case 'SUCCESS':
+    case 'INVITATION':
       return cilCheckCircle
     case 'WARNING':
       return cilWarning
@@ -133,8 +134,14 @@ export const NotificationItem = ({ notification, onMarkAsRead, onDelete, onClose
   if (actionUrl) {
     let finalActionUrl = actionUrl
 
-    // Legacy mapping for broken URLs already in the DB
-    if (finalActionUrl.startsWith('/complaints/')) {
+    // Handle invitation link routing
+    if (finalActionUrl.includes('/invite/web/')) {
+      finalActionUrl = '/invite/' + finalActionUrl.split('/invite/web/')[1]
+    } else if (finalActionUrl.includes('/invite/app/')) {
+      finalActionUrl = '/invite/' + finalActionUrl.split('/invite/app/')[1]
+    } else if (finalActionUrl.includes('/invite/')) {
+      finalActionUrl = '/invite/' + finalActionUrl.split('/invite/')[1]
+    } else if (finalActionUrl.startsWith('/complaints/')) {
       finalActionUrl = '/complaints'
     } else if (finalActionUrl === '/assignee') {
       finalActionUrl = '/admin/complaints/assignee'
@@ -182,7 +189,7 @@ NotificationItem.propTypes = {
     id: PropTypes.string,
     title: PropTypes.string.isRequired,
     body: PropTypes.string.isRequired,
-    type: PropTypes.oneOf(['INFO', 'WARNING', 'SUCCESS', 'ERROR']).isRequired,
+    type: PropTypes.oneOf(['INFO', 'WARNING', 'SUCCESS', 'ERROR', 'INVITATION']).isRequired,
     isRead: PropTypes.bool.isRequired,
     createdAt: PropTypes.string.isRequired,
     actionUrl: PropTypes.string,

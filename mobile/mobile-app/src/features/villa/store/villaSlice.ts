@@ -58,22 +58,10 @@ export interface VillaState {
   error: string | null;
 }
 
-export const DUMMY_VILLAS: Villa[] = [
-  {
-    _id: '650000000000000000000101',
-    unitNumber: 'Villa 101',
-    blockOrBuilding: 'Phase 1',
-    floor: 1,
-    squareFeetArea: 2400,
-    status: 'Occupied',
-    type: '3BHK Luxury Villa',
-    primaryResident: { name: 'Srihari', email: 'srihari@community.org', phone: '+919876543210' },
-  },
-];
+export const DUMMY_VILLAS: Villa[] = [];
 
-export const DUMMY_BLOCKS = [
-  'Phase 1',
-];
+export const DUMMY_BLOCKS: string[] = [];
+
 
 const initialState: VillaState = {
   villas: [],

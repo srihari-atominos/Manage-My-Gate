@@ -12,47 +12,88 @@ const generateUUID = (): string => {
   });
 };
 
+export const PRODUCTION_API_URL = 'https://managemygate.e3esg.com/api/v1';
+export const PRODUCTION_SOCKET_URL = 'https://managemygate.e3esg.com';
+
 export const getApiBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    let url = process.env.EXPO_PUBLIC_API_URL;
-    if (Platform.OS === 'android' && url.includes('localhost')) {
-      url = url.replace('localhost', '10.0.2.2');
+  let url = process.env.EXPO_PUBLIC_API_URL;
+
+  // In production builds, never allow local/LAN or emulator fallback IPs
+  if (!__DEV__) {
+    if (!url || /^(https?:\/\/)?(localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i.test(url)) {
+      return PRODUCTION_API_URL;
     }
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    return url;
+  }
+
+  if (!url) {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        url = `http://${ip}:5002/api/v1`;
+      }
+    }
+  }
+  if (!url) {
+    url = Platform.OS === 'android' ? 'http://10.0.2.2:5002/api/v1' : 'http://localhost:5002/api/v1';
+  }
+  if (Platform.OS === 'android' && url.includes('localhost')) {
+    url = url.replace('localhost', '10.0.2.2');
+  }
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
+    if (isLocalHostName) {
+      url = `${window.location.protocol}//${window.location.hostname}:5002/api/v1`;
+    } else {
       const isPrivateOrLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(url);
       if (isPrivateOrLocalUrl && window.location.hostname) {
         url = url.replace(/^https?:\/\/[^/:]+/i, `${window.location.protocol}//${window.location.hostname}`);
       }
     }
-    return url;
   }
-  // Auto-detect Mac LAN IP from Expo bundler host for physical iOS/Android
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-      return `http://${ip}:5002/api/v1`;
-    }
-  }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5002/api/v1';
-  }
-  return 'http://localhost:5002/api/v1';
+  return url;
 };
 
 export const getDefaultBaseUrl = getApiBaseUrl;
 
 export const getSocketBaseUrl = () => {
-  let socketUrl =
-    process.env.EXPO_PUBLIC_SOCKET_URL ||
-    (process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api.*$/, '') : 'http://localhost:5002');
+  let socketUrl = process.env.EXPO_PUBLIC_SOCKET_URL;
+
+  // In production builds, never allow local/LAN or emulator fallback socket URLs
+  if (!__DEV__) {
+    if (!socketUrl || /^(https?:\/\/)?(localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i.test(socketUrl)) {
+      return PRODUCTION_SOCKET_URL;
+    }
+    return socketUrl;
+  }
+
+  if (!socketUrl) {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        socketUrl = `http://${ip}:5002`;
+      }
+    }
+  }
+  if (!socketUrl) {
+    socketUrl = process.env.EXPO_PUBLIC_API_URL
+      ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api.*$/, '')
+      : 'http://localhost:5002';
+  }
   if (Platform.OS === 'android' && socketUrl.includes('localhost')) {
     socketUrl = socketUrl.replace('localhost', '10.0.2.2');
   }
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
-    const isPrivateOrLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(socketUrl);
-    if (isPrivateOrLocalUrl && window.location.hostname) {
-      socketUrl = socketUrl.replace(/^https?:\/\/[^/:]+/i, `${window.location.protocol}//${window.location.hostname}`);
+    const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
+    if (isLocalHostName) {
+      socketUrl = `${window.location.protocol}//${window.location.hostname}:5002`;
+    } else {
+      const isPrivateOrLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(socketUrl);
+      if (isPrivateOrLocalUrl && window.location.hostname) {
+        socketUrl = socketUrl.replace(/^https?:\/\/[^/:]+/i, `${window.location.protocol}//${window.location.hostname}`);
+      }
     }
   }
   return socketUrl;
@@ -64,11 +105,13 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
     'X-Client-Type': 'APP',
   },
-  timeout: 30000,
+  timeout: 15000,
   withCredentials: true,
 });
 
-console.log(`[ApiClient] Configured baseURL: ${apiClient.defaults.baseURL}`);
+if (__DEV__) {
+  console.log(`[ApiClient] Configured baseURL: ${apiClient.defaults.baseURL}`);
+}
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -299,7 +342,7 @@ apiClient.interceptors.response.use(
         }
 
         const res = await axios.post(
-          `${apiClient.defaults.baseURL}/auth/refresh-token`,
+          `${getApiBaseUrl()}/auth/refresh-token`,
           { refreshToken },
           { headers: { 'Content-Type': 'application/json' }, withCredentials: true }
         );

@@ -23,10 +23,10 @@ const DEFAULT_INVITE_BODY = `
 `;
 
 // Register user domain events
-userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId }) => {
+userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitationSource = 'WEB', villaId, roleName, userId, inviterId, isExisting }) => {
   try {
     const inviteLink = generateInviteLink(invitationToken, invitationSource);
-    const rejectInviteLink = `${inviteLink}&action=reject`;
+    const rejectInviteLink = `${inviteLink}${inviteLink.includes('?') ? '&' : '?'}action=reject`;
 
     // 1. Fetch organization name for branded invite presentation
     let communityName = 'ManageMyGate';
@@ -51,86 +51,154 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
       } catch (e) {}
     }
 
-    // 3. Create in-app Notification for existing registered user
+    // 3. Create in-app Notification for EXISTING registered users ONLY
     try {
       const User = (await import('./user.model.js')).default;
-      let targetUserId = userId;
-      if (!targetUserId && email) {
-        const foundUser = await User.findOne({ email: email.toLowerCase() }).select('_id');
-        if (foundUser) targetUserId = foundUser._id;
+      let targetUser = null;
+      if (userId) {
+        targetUser = await User.findById(userId);
+      } else if (email) {
+        targetUser = await User.findOne({ email: email.toLowerCase() });
       }
 
-      if (targetUserId) {
+      // Existing user has an active account (status Active or password set)
+      const isExistingAccount = isExisting !== undefined
+        ? isExisting
+        : (targetUser && (targetUser.status === 'Active' || !!(targetUser.password && targetUser.password.length > 0)));
+
+      if (targetUser && isExistingAccount) {
         const notificationService = (await import('../notification/notification.service.js')).default;
         const detailStr = [villaLabel, roleName].filter(Boolean).join(' • ');
         const descStr = detailStr ? ` (${detailStr})` : '';
         await notificationService.createNotification({
-          recipientId: targetUserId,
+          recipientId: targetUser._id,
+          senderId: inviterId || null,
+          orgId,
           title: `Invitation to ${communityName}`,
           body: `You have been invited to join ${communityName}${descStr}. Tap to Accept or Reject this invitation.`,
           actionUrl: inviteLink,
-          type: 'INFO',
+          type: 'INVITATION',
         });
       }
     } catch (notifErr) {
       logger.error(`In-app invitation notification dispatch error: ${notifErr.message}`);
     }
 
-    const isApp = String(invitationSource).toUpperCase() === 'APP';
-    const instructions = isApp
-      ? `<p style="color: #4b5563; font-size: 0.9rem; line-height: 1.5; margin-top: 16px;">
-           This is a mobile invitation for the <strong>Nahom Mobile App</strong>.<br/>
-           Clicking the buttons below will open Nahom directly to respond to your invitation.
-         </p>`
-      : `<p style="color: #4b5563; font-size: 0.9rem; line-height: 1.5; margin-top: 16px;">
-           This is an invitation for the <strong>Web Workspace</strong>.<br/>
-           Clicking the buttons below will open your secure portal to respond to your invitation.
-         </p>`;
-
     const unitRoleDetails = (villaLabel || roleName) ? `
-      <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 18px; margin: 16px 0 24px 0; text-align: left;">
-        ${communityName ? `<p style="margin: 4px 0; font-size: 14px; color: #374151;"><strong>Organization:</strong> ${communityName}</p>` : ''}
-        ${villaLabel ? `<p style="margin: 4px 0; font-size: 14px; color: #374151;"><strong>Villa / Unit:</strong> ${villaLabel}</p>` : ''}
-        ${roleName ? `<p style="margin: 4px 0; font-size: 14px; color: #374151;"><strong>Role:</strong> ${roleName}</p>` : ''}
-      </div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin: 18px 0 22px 0;">
+        <tr>
+          <td style="padding: 16px 18px;">
+            ${communityName ? `
+            <div style="font-size: 14px; color: #334155; margin-bottom: 6px;">
+              <span style="color: #64748b; font-size: 13px; display: inline-block; width: 100px;">Organization:</span>
+              <strong style="color: #0f172a;">${communityName}</strong>
+            </div>` : ''}
+            ${villaLabel ? `
+            <div style="font-size: 14px; color: #334155; margin-bottom: 6px;">
+              <span style="color: #64748b; font-size: 13px; display: inline-block; width: 100px;">Villa / Unit:</span>
+              <strong style="color: #0f172a;">${villaLabel}</strong>
+            </div>` : ''}
+            ${roleName ? `
+            <div style="font-size: 14px; color: #334155;">
+              <span style="color: #64748b; font-size: 13px; display: inline-block; width: 100px;">Role:</span>
+              <strong style="color: #0f172a;">${roleName}</strong>
+            </div>` : ''}
+          </td>
+        </tr>
+      </table>
     ` : '';
 
     const customInviteBody = `
-<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 24px; color: #1f2937; max-width: 580px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px;">
-  <div style="margin-bottom: 24px;">
-    <span style="display: inline-block; background-color: #e0e7ff; color: #4338ca; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em;">
-      ${isApp ? 'Mobile App Invitation' : 'Web Workspace Invitation'}
-    </span>
-  </div>
-  <h2 style="font-size: 22px; font-weight: 800; color: #111827; margin: 0 0 12px 0;">You're invited to join ${communityName}</h2>
-  <p style="font-size: 15px; line-height: 1.6; color: #374151; margin: 0 0 16px 0;">
-    Hello,<br/><br/>
-    You have been invited to join <strong>${communityName}</strong> on Nahom. Please select your response below to proceed.
-  </p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invitation to join ${communityName}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f5f9; margin: 0; padding: 24px 12px; width: 100%;">
+    <tr>
+      <td align="center">
+        <!-- Main Email Card Container -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 520px; width: 100%; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: left;">
+          <!-- Card Header Section -->
+          <tr>
+            <td style="padding: 28px 24px 12px 24px;">
+              <div style="margin-bottom: 14px;">
+                <span style="display: inline-block; background-color: #e0e7ff; color: #4338ca; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.06em;">
+                  Workspace Invitation
+                </span>
+              </div>
+              <h1 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 10px 0; line-height: 1.35; letter-spacing: -0.01em;">
+                You're invited to join ${communityName}
+              </h1>
+              <p style="font-size: 15px; line-height: 1.6; color: #475569; margin: 0;">
+                Hello,<br/><br/>
+                You have been invited to join <strong>${communityName}</strong>. Please select your response below to proceed.
+              </p>
+            </td>
+          </tr>
 
-  ${unitRoleDetails}
+          <!-- Details Box (Org, Villa, Role) -->
+          <tr>
+            <td style="padding: 0 24px;">
+              ${unitRoleDetails}
+            </td>
+          </tr>
 
-  <div style="margin: 28px 0; text-align: center;">
-    <a href="{{invite_link}}" style="background-color: #16a34a; color: #ffffff; display: inline-block; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; margin-right: 12px; box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);">
-      Accept Invitation
-    </a>
-    <a href="{{reject_link}}" style="background-color: #dc2626; color: #ffffff; display: inline-block; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);">
-      Reject Invitation
-    </a>
-  </div>
-  ${instructions}
-  <div style="border-top: 1px solid #e5e7eb; margin-top: 32px; padding-top: 20px;">
-    <p style="color: #9ca3af; font-size: 12px; line-height: 1.5; margin: 0 0 8px 0;">
-      This invitation link is single-use and will expire in 24 hours.
-    </p>
-    <p style="color: #9ca3af; font-size: 12px; line-height: 1.5; margin: 0;">
-      If you were not expecting this invitation, you can click Reject or safely ignore this email.
-    </p>
-    <p style="color: #6b7280; font-size: 12px; word-break: break-all; margin-top: 16px;">
-      Direct Link: <a href="{{invite_link}}" style="color: #4f46e5;">{{invite_link}}</a>
-    </p>
-  </div>
-</div>
+          <!-- Instruction Notice -->
+          <tr>
+            <td style="padding: 0 24px 16px 24px;">
+              <p style="color: #64748b; font-size: 13.5px; line-height: 1.5; margin: 0;">
+                Please select an option below to respond to your invitation:
+              </p>
+            </td>
+          </tr>
+
+          <!-- Action Buttons (Centered, accessible on desktop and mobile) -->
+          <tr>
+            <td style="padding: 0 24px 28px 24px;" align="center">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 340px; margin: 0 auto; width: 100%;">
+                <tr>
+                  <td align="center" style="padding-bottom: 12px;">
+                    <a href="{{invite_link}}" target="_blank" style="display: block; width: 100%; box-sizing: border-box; background-color: #16a34a; color: #ffffff; padding: 14px 24px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 15px; text-align: center; box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25); letter-spacing: 0.01em;">
+                      Accept Invitation
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <a href="{{reject_link}}" target="_blank" style="display: block; width: 100%; box-sizing: border-box; background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 12px 24px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; text-align: center;">
+                      Reject Invitation
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer & Security Notice -->
+          <tr>
+            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 24px;">
+              <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0 0 6px 0;">
+                &bull; This invitation link is single-use and will expire in 24 hours.
+              </p>
+              <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0 0 14px 0;">
+                &bull; If you were not expecting this invitation, you can click Reject or safely ignore this email.
+              </p>
+              <div style="font-size: 12px; color: #64748b; word-break: break-all; line-height: 1.45;">
+                <strong style="color: #475569;">Direct Link:</strong><br/>
+                <a href="{{invite_link}}" style="color: #4f46e5; text-decoration: underline;">{{invite_link}}</a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
 `;
 
     // Fetch organization's customized user_invitation email template if available
@@ -151,12 +219,9 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
       .replace(/{{reject_link}}/g, rejectInviteLink)
       .replace(/{{community_name}}/g, communityName);
 
-    // Send email using sendEmail helper
-    logger.info(`\n================================================================================`);
-    logger.info(`[INVITATION LINK GENERATED] Email: ${email} | Source: ${invitationSource}`);
-    logger.info(`Accept URL: ${inviteLink}`);
-    logger.info(`Reject URL: ${rejectInviteLink}`);
-    logger.info(`================================================================================\n`);
+    // Mask raw token in logs to comply with security directive
+    const maskedToken = invitationToken ? `${invitationToken.slice(0, 6)}...` : '[MASKED]';
+    logger.info(`[INVITATION CREATED] Email: ${email} | Token: ${maskedToken} | Universal URL: /invite/${maskedToken}`);
 
     const { sendEmail } = await import('../../utils/email.utils.js');
     const sent = await sendEmail(orgId, email, compiledSubject, compiledBody);
@@ -165,7 +230,6 @@ userEvents.on('USER_INVITED', async ({ email, orgId, invitationToken, invitation
     } else {
       logger.warn(`SMTP Server is not configured in backend/.env or Integration Hub.`);
       logger.warn(`To deliver real emails to inbox (${email}), configure SMTP_USER & SMTP_PASS in backend/.env or connect SMTP in Integration Hub.`);
-      logger.warn(`Manual Activation Link for ${email} (${invitationSource}): ${inviteLink}`);
     }
   } catch (error) {
     logger.error(`Asynchronous invitation email dispatch failed: ${error.message}`);

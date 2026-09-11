@@ -8,6 +8,12 @@ const notificationSchema = new mongoose.Schema(
       required: [true, 'Recipient ID is required'],
       index: true,
     },
+    orgId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      default: null,
+      index: true,
+    },
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -30,7 +36,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['INFO', 'WARNING', 'SUCCESS', 'ERROR'],
+      enum: ['INFO', 'WARNING', 'SUCCESS', 'ERROR', 'INVITATION'],
       default: 'INFO',
     },
     isRead: {
@@ -46,6 +52,8 @@ const notificationSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+notificationSchema.index({ recipientId: 1, orgId: 1, createdAt: -1 });
 
 export const Notification = mongoose.model('Notification', notificationSchema);
 export default Notification;

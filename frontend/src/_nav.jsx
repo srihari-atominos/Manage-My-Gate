@@ -66,6 +66,12 @@ const _nav = [
       },
       {
         component: CNavItem,
+        name: 'Invitations',
+        to: '/users/invitations',
+        requiredPermission: 'users:read',
+      },
+      {
+        component: CNavItem,
         name: 'Role Builder',
         to: '/role-builder',
         requiredPermission: 'roles:read',

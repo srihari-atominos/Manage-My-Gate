@@ -35,7 +35,19 @@ export const fetchOrganizationUserDetails = async (orgId, userId) => {
   return await apiClient.get(`/organizations/${orgId}/users/${userId}`)
 }
 
+export const checkOrganizationName = async (name) => {
+  return await apiClient.get('/organizations/check-name', {
+    params: { name },
+  })
+}
+
+export const setupWorkspace = async (workspaceData) => {
+  return await apiClient.post('/organizations/setup', workspaceData)
+}
+
 export default {
+  checkOrganizationName,
+  setupWorkspace,
   updateOrganizationFeatures,
   fetchOrganizations,
   updateOrganizationStatus,

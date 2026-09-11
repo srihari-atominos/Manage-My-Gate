@@ -63,13 +63,13 @@ export const BottomNavScrollProvider: React.FC<{ children: React.ReactNode }> = 
         return;
       }
 
-      // Scrolling Down threshold: 16px -> Compact Navigation
-      if (delta > 16) {
+      // Scrolling Down threshold: 10px -> Compact / Slide Up Header & Slide Down Bottom Nav
+      if (delta > 10) {
         setIsCompact(true);
         lastScrollY.current = currentY;
       }
-      // Scrolling Up threshold: -16px -> Expand Navigation
-      else if (delta < -16) {
+      // Scrolling Up threshold: -10px -> Expand / Slide Down Header & Slide Up Bottom Nav
+      else if (delta < -10) {
         setIsCompact(false);
         lastScrollY.current = currentY;
       }
@@ -117,10 +117,10 @@ export const useBottomNavScroll = () => {
       return;
     }
 
-    if (delta > 16) {
+    if (delta > 10) {
       setGlobalBottomNavCompact(true);
       localLastY.current = currentY;
-    } else if (delta < -16) {
+    } else if (delta < -10) {
       setGlobalBottomNavCompact(false);
       localLastY.current = currentY;
     }

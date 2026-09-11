@@ -208,18 +208,18 @@ const initialState = {
   },
   dashboardStats: {
     kpis: {
-      activeNotices: DEFAULT_MOCK_NOTICES.length,
+      activeNotices: 0,
       draftNotices: 0,
-      highPriorityNotices: 1,
+      highPriorityNotices: 0,
       expiredNotices: 0,
       scheduledNotices: 0,
       archivedNotices: 0,
       urgentNotices: 0,
     },
     categories: {
-      General: 1,
-      Maintenance: 1,
-      Events: 1,
+      General: 0,
+      Maintenance: 0,
+      Events: 0,
       Emergency: 0,
       Meetings: 0,
     },

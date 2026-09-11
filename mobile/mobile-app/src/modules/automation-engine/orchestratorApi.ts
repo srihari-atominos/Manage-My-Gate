@@ -1,18 +1,15 @@
+import apiClient, { getApiBaseUrl } from '../../services/apiClient';
 import { Workflow } from './automationSlice';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const getUrl = () => getApiBaseUrl();
 
 export const orchestratorApi = {
   getWorkflows: async (): Promise<Workflow[]> => {
     try {
-      // const response = await axios.get(`${API_URL}/automation/workflows`);
-      // return response.data;
-      
-      // Mock data for UI development
-      return [];
+      const response = await apiClient.get<Workflow[]>('/automation/workflows').catch(() => null);
+      return response?.data || [];
     } catch (error) {
-      console.error('Error fetching workflows', error);
-      throw error;
+      return [];
     }
   },
   

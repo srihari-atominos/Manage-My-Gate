@@ -6,7 +6,7 @@ import logger from '../../utils/logger.utils.js';
 /**
  * Listen for organization status change events and asynchronously write audit logs.
  */
-orgEventEmitter.on('ORG_STATUS_CHANGED', async (eventData) => {
+const handleOrgStatusChanged = async (eventData) => {
   try {
     const { actorId, targetId, oldStatus, newStatus } = eventData;
 
@@ -25,7 +25,38 @@ orgEventEmitter.on('ORG_STATUS_CHANGED', async (eventData) => {
   } catch (error) {
     logger.error('Failed to write audit log for ORG_STATUS_CHANGED event: ', error);
   }
-});
+};
+
+if (orgEventEmitter.listenerCount('ORG_STATUS_CHANGED') === 0) {
+  orgEventEmitter.on('ORG_STATUS_CHANGED', handleOrgStatusChanged);
+}
+
+/**
+ * Listen for organization creation events and asynchronously write audit logs.
+ */
+const handleOrganizationCreated = async (eventData) => {
+  try {
+    const { organizationId, organizationName, creatorUserId } = eventData;
+
+    await auditLogService.logEvent({
+      actorId: creatorUserId,
+      action: 'ORGANIZATION_CREATED',
+      targetId: organizationId,
+      metadata: {
+        organizationName,
+      },
+      ipAddress: 'System Event',
+    });
+
+    logger.info(`Audit Log: ORGANIZATION_CREATED logged for org ${organizationId} by creator ${creatorUserId}`);
+  } catch (error) {
+    logger.error('Failed to write audit log for ORGANIZATION_CREATED event: ', error);
+  }
+};
+
+if (orgEventEmitter.listenerCount('ORGANIZATION_CREATED') === 0) {
+  orgEventEmitter.on('ORGANIZATION_CREATED', handleOrganizationCreated);
+}
 
 /**
  * Listen for contract owner assignment events and asynchronously write audit logs.

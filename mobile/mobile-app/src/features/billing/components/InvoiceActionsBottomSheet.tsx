@@ -374,71 +374,10 @@ export function InvoiceActionsBottomSheet({
           {isPendingVerification ? (
             <View className="bg-card border border-border rounded-xl p-4 gap-3">
               <Text className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Admin Verification Options
+                Requested Settlement Amount
               </Text>
 
-              {/* Option 1: Mark as Paid (Full Amount) */}
-              <TouchableOpacity
-                onPress={() => setApprovalMode('FULL')}
-                activeOpacity={0.8}
-                className={`p-3.5 rounded-xl border flex-row items-center justify-between ${
-                  approvalMode === 'FULL'
-                    ? 'bg-status-success/10 border-status-success'
-                    : 'bg-muted/40 border-border'
-                }`}
-              >
-                <View className="flex-row items-center gap-3">
-                  <View className={`w-5 h-5 rounded-full border items-center justify-center ${
-                    approvalMode === 'FULL' ? 'border-status-success bg-status-success' : 'border-muted-foreground'
-                  }`}>
-                    {approvalMode === 'FULL' ? <Check size={12} className="text-primary-foreground" /> : null}
-                  </View>
-                  <View>
-                    <Text className="font-bold text-sm text-foreground">Mark as Paid (Full Amount)</Text>
-                    <Text className="text-xs text-muted-foreground">Clears full remaining due of ₹{remainingDue.toLocaleString('en-IN')}</Text>
-                  </View>
-                </View>
-                <Text className="text-sm font-extrabold text-status-success">
-                  ₹{remainingDue.toLocaleString('en-IN')}
-                </Text>
-              </TouchableOpacity>
 
-              {/* Option 2: Custom Amount */}
-              <TouchableOpacity
-                onPress={() => setApprovalMode('CUSTOM')}
-                activeOpacity={0.8}
-                className={`p-3.5 rounded-xl border ${
-                  approvalMode === 'CUSTOM'
-                    ? 'bg-primary/10 border-primary'
-                    : 'bg-muted/40 border-border'
-                }`}
-              >
-                <View className="flex-row items-center gap-3 mb-1">
-                  <View className={`w-5 h-5 rounded-full border items-center justify-center ${
-                    approvalMode === 'CUSTOM' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                  }`}>
-                    {approvalMode === 'CUSTOM' ? <Check size={12} className="text-primary-foreground" /> : null}
-                  </View>
-                  <View>
-                    <Text className="font-bold text-sm text-foreground">Custom Amount</Text>
-                    <Text className="text-xs text-muted-foreground">Approve partial amount and keep remaining dues active</Text>
-                  </View>
-                </View>
-
-                {approvalMode === 'CUSTOM' ? (
-                  <View className="mt-2 ps-8">
-                    <TextInput
-                      label="Enter Custom Amount to Settle (₹)"
-                      required
-                      value={customAmountStr}
-                      onChangeText={setCustomAmountStr}
-                      placeholder={`Max ₹${remainingDue.toLocaleString('en-IN')}`}
-                      keyboardType="numeric"
-                      inputClassName="font-bold text-base"
-                    />
-                  </View>
-                ) : null}
-              </TouchableOpacity>
 
               {/* Remaining calculation preview */}
               <View className="bg-muted/30 border border-border/60 rounded-lg p-3 flex-row items-center justify-between">

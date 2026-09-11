@@ -1,7 +1,17 @@
 import { Router } from 'express'
 import userController from './user.controller.js'
 import { validate } from '../../middlewares/validator.middleware.js'
-import { inviteUserRules, bulkInviteUserRules, updateUserRolesRules, updateProfileRules, requestDeletionRules, requestEmailOtpRules } from './user.validateRules.js'
+import {
+  inviteUserRules,
+  bulkInviteUserRules,
+  updateUserRolesRules,
+  updateProfileRules,
+  requestDeletionRules,
+  requestEmailOtpRules,
+  revokeInvitationRules,
+  listInvitationsRules,
+  resendInvitationRules,
+} from './user.validateRules.js'
 import isAuthenticated from '../../middlewares/auth.middleware.js'
 import { authorizePermission, authorizeAnyPermission } from '../../middlewares/rbac.middleware.js'
 import { upload, imageSignatureValidator } from './middlewares/upload.middleware.js'
@@ -125,6 +135,87 @@ router.post(
   authorizePermission('users', 'create'),
   validate(bulkInviteUserRules),
   userController.bulkInviteUsers
+)
+
+/**
+ * @swagger
+ * /users/invitations:
+ *   get:
+ *     summary: Retrieve organization invitations with filtering, search, and pagination
+ *     responses:
+ *       200:
+ *         description: List of invitations.
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden.
+ */
+router.get(
+  '/invitations',
+  tenantContext,
+  authorizePermission('users', 'read'),
+  validate(listInvitationsRules),
+  userController.getInvitations
+)
+
+/**
+ * @swagger
+ * /users/invitations/{id}/resend:
+ *   post:
+ *     summary: Resend an eligible organization invitation
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Invitation Token ID
+ *     responses:
+ *       200:
+ *         description: Invitation resent successfully.
+ *       400:
+ *         description: Cannot resend invitation.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: Invitation not found.
+ */
+router.post(
+  '/invitations/:id/resend',
+  tenantContext,
+  authorizePermission('users', 'create'),
+  validate(resendInvitationRules),
+  userController.resendInvitation
+)
+
+/**
+ * @swagger
+ * /users/invitations/{id}/revoke:
+ *   post:
+ *     summary: Revoke an existing invitation
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Invitation Token ID
+ *     responses:
+ *       200:
+ *         description: Invitation revoked successfully.
+ *       400:
+ *         description: Cannot revoke invitation.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: Invitation not found.
+ */
+router.post(
+  '/invitations/:id/revoke',
+  tenantContext,
+  authorizePermission('users', 'create'),
+  validate(revokeInvitationRules),
+  userController.revokeInvitation
 )
 
 /**

@@ -41,3 +41,20 @@ export const otpLimiter = rateLimit({
     message: 'Too many OTP requests from this IP, please try again after 15 minutes',
   },
 });
+
+/**
+ * Rate limiter for public organization name availability checks.
+ * Allows up to 300 requests per 15-minute window per IP.
+ * This is enough headroom for real typing sessions with 800ms debouncing
+ * while still protecting against enumeration scraping.
+ */
+export const nameCheckLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300, // 300 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many organization name checks from this IP, please try again after 15 minutes',
+  },
+});

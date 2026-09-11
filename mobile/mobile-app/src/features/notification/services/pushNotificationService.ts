@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import storage from '../../../utils/storage';
 
 // Configure how incoming notifications are handled when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -15,31 +16,144 @@ Notifications.setNotificationHandler({
   }),
 });
 
+let channelsInitialized = false;
+
 /**
- * Configure Android notification channels with high priority sound and vibration.
+ * Configure Android notification channels with high priority, appropriate sounds, and vibrations.
+ * Uses stable channel IDs matching backend dispatch rules.
  */
 export async function setupAndroidNotificationChannels() {
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('billing', {
-      name: 'Billing & Payment Reminders',
-      description: 'Alerts regarding invoices, maintenance dues, and payment confirmations',
-      importance: Notifications.AndroidImportance.MAX,
+  if (Platform.OS !== 'android' || channelsInitialized) {
+    return;
+  }
+
+  try {
+    // 1. General & Community Announcements
+    await Notifications.setNotificationChannelAsync('general', {
+      name: 'General Community Alerts',
+      description: 'Standard notices, announcements, and system alerts',
+      importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#2563eb',
+      lightColor: '#FF6A00',
       sound: 'default',
       enableLights: true,
       enableVibrate: true,
     });
 
+    // 2. Default alias for backwards compatibility
     await Notifications.setNotificationChannelAsync('default', {
-      name: 'General Community Alerts',
-      description: 'Standard notices, visitor approvals, and community messages',
+      name: 'General Alerts',
+      description: 'Default community and system alerts',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
       sound: 'default',
       enableLights: true,
       enableVibrate: true,
     });
+
+    // 3. Visitor Management & Gate Approvals (MAX importance for urgent approvals)
+    await Notifications.setNotificationChannelAsync('visitors', {
+      name: 'Visitor & Gate Requests',
+      description: 'Urgent gate approvals, visitor check-ins, and guest arrivals',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 300, 200, 300],
+      lightColor: '#2563EB',
+      sound: 'default',
+      enableLights: true,
+      enableVibrate: true,
+    });
+
+    // 4. Billing, Invoices & Maintenance Payments
+    await Notifications.setNotificationChannelAsync('billing', {
+      name: 'Billing & Payment Reminders',
+      description: 'Alerts regarding invoices, maintenance dues, and payment confirmations',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#16A34A',
+      sound: 'default',
+      enableLights: true,
+      enableVibrate: true,
+    });
+
+    // 5. Complaints & Maintenance Issues
+    await Notifications.setNotificationChannelAsync('complaints', {
+      name: 'Complaints & Maintenance',
+      description: 'Maintenance tickets, technician assignments, and issue resolutions',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#DC2626',
+      sound: 'default',
+      enableLights: true,
+      enableVibrate: true,
+    });
+
+    // 6. Resident & Community Messages
+    await Notifications.setNotificationChannelAsync('messages', {
+      name: 'Community Messages',
+      description: 'Direct communications between residents, guards, and community admins',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#7C3AED',
+      sound: 'default',
+      enableLights: true,
+      enableVibrate: true,
+    });
+
+    channelsInitialized = true;
+    console.log('[PushNotificationService] Android notification channels successfully configured');
+  } catch (error) {
+    console.warn('[PushNotificationService] Error setting up Android notification channels:', error);
+  }
+}
+
+export type NotificationPermissionsStatus = Awaited<ReturnType<typeof Notifications.getPermissionsAsync>>;
+
+/**
+ * Check current notification permissions without prompting user.
+ */
+export async function checkNotificationPermissions(): Promise<NotificationPermissionsStatus | null> {
+  try {
+    if (Platform.OS === 'web') return null;
+    return await Notifications.getPermissionsAsync();
+  } catch (error) {
+    console.warn('[PushNotificationService] Error checking permissions:', error);
+    return null;
+  }
+}
+
+/**
+ * Request notification permissions from user, respecting previous denials to avoid nagging.
+ * @param forcePrompt - If true, bypasses the previous request check.
+ */
+export async function requestNotificationPermissionsAsync(forcePrompt = false): Promise<boolean> {
+  try {
+    if (Platform.OS === 'web') return false;
+
+    const currentStatus = await Notifications.getPermissionsAsync();
+    if (currentStatus.status === 'granted') {
+      return true;
+    }
+
+    const alreadyRequested = await storage.getItem('notification_permission_requested');
+    if (!forcePrompt && alreadyRequested === 'true' && currentStatus.status === 'denied' && !currentStatus.canAskAgain) {
+      console.log('[PushNotificationService] Notification permission previously denied and cannot ask again without settings change.');
+      return false;
+    }
+
+    await storage.setItem('notification_permission_requested', 'true');
+    const { status } = await Notifications.requestPermissionsAsync({
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+      },
+    });
+
+    console.log('[PushNotificationService] Permission request result:', status);
+    return status === 'granted';
+  } catch (error) {
+    console.warn('[PushNotificationService] Error requesting notification permissions:', error);
+    return false;
   }
 }
 
@@ -57,21 +171,13 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     await setupAndroidNotificationChannels();
 
     if (!Device.isDevice) {
-      console.log('[PushNotificationService] Running on simulator/emulator; remote push notifications require a physical device.');
-      // Return a development placeholder token so testing flows work in simulators
+      console.log('[PushNotificationService] Running on simulator/emulator; returning dev placeholder token.');
       return 'ExponentPushToken[SIMULATOR_DEV_TOKEN_MANAGE_MY_GATE]';
     }
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-      console.warn('[PushNotificationService] Notification permission was not granted by user.');
+    const isGranted = await requestNotificationPermissionsAsync(false);
+    if (!isGranted) {
+      console.log('[PushNotificationService] Notification permission not granted; push notifications inactive.');
       return null;
     }
 
@@ -94,5 +200,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 
 export default {
   setupAndroidNotificationChannels,
+  checkNotificationPermissions,
+  requestNotificationPermissionsAsync,
   registerForPushNotificationsAsync,
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Modal, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { X, Key, Check } from 'lucide-react-native';
 import { Button } from '@/components/common/Button';
 import { UserData } from '../services/userService';
@@ -61,87 +61,93 @@ export const ManageRolesModal: React.FC<ManageRolesModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 justify-end bg-black/50">
-        <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[80%]">
-          {/* Header */}
-          <View className="flex-row items-center justify-between pb-3 border-b border-border mb-4">
-            <View className="flex-row items-center">
-              <Key size={20} color="#6366f1" className="me-2" />
-              <View>
-                <Text className="text-base font-bold text-foreground text-start">
-                  Manage Access Role
-                </Text>
-                <Text className="text-xs text-muted-foreground text-start">
-                  User: {user.name} {unit ? `(Unit ${unit.villaNumber})` : ''}
-                </Text>
+    <Modal visible={visible} transparent statusBarTranslucent={true} animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <Pressable className="flex-1" onPress={onClose} />
+          <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
+            {/* Header */}
+            <View className="flex-row items-center justify-between pb-3 border-b border-border mb-4">
+              <View className="flex-row items-center">
+                <Key size={20} color="#6366f1" className="me-2" />
+                <View>
+                  <Text className="text-base font-bold text-foreground text-start">
+                    Manage Access Role
+                  </Text>
+                  <Text className="text-xs text-muted-foreground text-start">
+                    User: {user?.name || ''} {unit ? `(Unit ${unit.villaNumber})` : ''}
+                  </Text>
+                </View>
               </View>
+
+              <TouchableOpacity onPress={onClose} className="p-1 rounded-full bg-muted">
+                <X size={18} color="#6b7280" />
+              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity onPress={onClose} className="p-1 rounded-full bg-muted">
-              <X size={18} color="#6b7280" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Single Role Radio List */}
-          <ScrollView showsVerticalScrollIndicator={false} className="mb-4">
-            <Text className="text-xs font-semibold text-muted-foreground text-start mb-2">
-              Select single user role persona:
-            </Text>
-
-            {availableRoles.length === 0 ? (
-              <Text className="text-xs text-muted-foreground text-start py-4">
-                No roles defined in the system.
+            {/* Single Role Radio List */}
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }} className="mb-4">
+              <Text className="text-xs font-semibold text-muted-foreground text-start mb-2">
+                Select single user role persona:
               </Text>
-            ) : (
-              availableRoles.map((roleName) => {
-                const isSelected = selectedRoles.includes(roleName);
-                return (
-                  <TouchableOpacity
-                    key={roleName}
-                    onPress={() => toggleRoleSelect(roleName)}
-                    className={`flex-row items-center justify-between p-3 rounded-xl mb-2 border ${
-                      isSelected
-                        ? 'bg-primary/10 border-primary'
-                        : 'bg-muted/30 border-border'
-                    }`}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: isSelected }}
-                  >
-                    <Text
-                      className={`text-sm font-semibold text-start ${
-                        isSelected ? 'text-primary' : 'text-foreground'
-                      }`}
-                    >
-                      {roleName}
-                    </Text>
 
-                    <View
-                      className={`w-5 h-5 rounded-full items-center justify-center border ${
+              {availableRoles.length === 0 ? (
+                <Text className="text-xs text-muted-foreground text-start py-4">
+                  No roles defined in the system.
+                </Text>
+              ) : (
+                availableRoles.map((roleName) => {
+                  const isSelected = selectedRoles.includes(roleName);
+                  return (
+                    <TouchableOpacity
+                      key={roleName}
+                      onPress={() => toggleRoleSelect(roleName)}
+                      className={`flex-row items-center justify-between p-3 rounded-xl mb-2 border ${
                         isSelected
-                          ? 'bg-primary border-primary'
-                          : 'bg-background border-border'
+                          ? 'bg-primary/10 border-primary'
+                          : 'bg-muted/30 border-border'
                       }`}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: isSelected }}
                     >
-                      {isSelected ? <View className="w-2 h-2 rounded-full bg-white" /> : null}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
-            )}
-          </ScrollView>
+                      <Text
+                        className={`text-sm font-semibold text-start ${
+                          isSelected ? 'text-primary' : 'text-foreground'
+                        }`}
+                      >
+                        {roleName}
+                      </Text>
 
-          {/* Footer Actions */}
-          <View className="flex-row items-center justify-end gap-3 pt-3 border-t border-border">
-            <Button variant="outline" onPress={onClose} disabled={submitting}>
-              Cancel
-            </Button>
-            <Button variant="default" onPress={handleSave} loading={submitting}>
-              Save Roles
-            </Button>
+                      <View
+                        className={`w-5 h-5 rounded-full items-center justify-center border ${
+                          isSelected
+                            ? 'bg-primary border-primary'
+                            : 'bg-background border-border'
+                        }`}
+                      >
+                        {isSelected ? <View className="w-2 h-2 rounded-full bg-white" /> : null}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            {/* Footer Actions */}
+            <View className="flex-row items-center justify-end gap-3 pt-3 border-t border-border">
+              <Button variant="outline" onPress={onClose} disabled={submitting}>
+                Cancel
+              </Button>
+              <Button variant="default" onPress={handleSave} loading={submitting}>
+                Save Roles
+              </Button>
+            </View>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

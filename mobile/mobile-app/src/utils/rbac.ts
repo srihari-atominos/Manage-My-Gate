@@ -41,18 +41,21 @@ export const checkIsAdmin = (user: UserLike | null | undefined): boolean => {
   if (
     permissions.includes('platform:super_admin') ||
     permissions.includes('*') ||
-    permissions.includes('all')
+    permissions.includes('all') ||
+    permissions.includes('admin:*') ||
+    permissions.includes('owner:*')
   ) {
     return true;
   }
 
-  const roleName = getUserRoleName(user);
+  const roleName = getUserRoleName(user).toLowerCase();
   const adminRoleNames = [
-    'Platform Super Admin',
-    'SuperAdmin',
-    'Super Admin',
-    'Community Admin',
-    'Admin',
+    'platform super admin',
+    'superadmin',
+    'super admin',
+    'community admin',
+    'admin',
+    'administrator',
   ];
 
   return adminRoleNames.includes(roleName);
@@ -91,8 +94,8 @@ export const checkIsSecurityRole = (user: UserLike | null | undefined): boolean 
 const PERMISSION_SYNONYMS: Record<string, string[]> = {
   // Visitor & Gate Security
   'visitor:guard': ['visitor:guard', 'visitor.guard', 'visitor:admin', 'visitor', 'gate:console', 'visitor_gate_console'],
-  'visitor:admin': ['visitor:admin', 'visitor.admin', 'visitor:guard', 'visitor'],
-  'visitor:resident': ['visitor:resident', 'visitor.resident', 'visitor'],
+  'visitor:admin': ['visitor:admin', 'visitor.admin', 'visitor:guard', 'visitor', 'visitor_admin_dashboard', 'visitor_community_passes', 'visitor_admin_logs'],
+  'visitor:resident': ['visitor:resident', 'visitor.resident', 'visitor', 'visitor_resident_passes', 'visitor_passes', 'visitor:view', 'visitor:read', 'visitor_gate_pass'],
 
   // Notice Board
   'notices:active_board': ['notices:active_board', 'notices:read', 'notices.read', 'notices:view', 'notices.view', 'notices', 'notice_board'],
@@ -122,10 +125,11 @@ const PERMISSION_SYNONYMS: Record<string, string[]> = {
 
   // Administration & Security
   'villas:read': ['villas:read', 'villas.read', 'villas:view', 'villas', 'units:read', 'admin_villas'],
-  'users:read': ['users:read', 'users.read', 'users:view', 'users'],
-  'roles:read': ['roles:read', 'roles.read', 'roles:view', 'roles'],
-  'workspaces:read': ['workspaces:read', 'workspaces.read', 'workspaces:view', 'workspaces'],
-  'integrations:read': ['integrations:read', 'integrations.read', 'integrations:view', 'integrations'],
+  'users:read': ['users:read', 'users.read', 'users:view', 'users', 'admin_users'],
+  'roles:read': ['roles:read', 'roles.read', 'roles:view', 'roles', 'admin_role_builder'],
+  'workspaces:read': ['workspaces:read', 'workspaces.read', 'workspaces:view', 'workspaces', 'admin_workspaces', 'admin_workspace_settings'],
+  'settings:read': ['settings:read', 'settings.read', 'settings:view', 'settings', 'admin_app_settings'],
+  'integrations:read': ['integrations:read', 'integrations.read', 'integrations:view', 'integrations', 'admin_integrations'],
 };
 
 /**

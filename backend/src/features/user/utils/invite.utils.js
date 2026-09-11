@@ -44,33 +44,56 @@ export const resolveInvitationSource = (req) => {
 };
 
 /**
- * Generates the user invitation activation link.
+ * Generates the canonical universal invitation link (/invite/:token).
  * 
- * @param {string} invitationToken - The generated invitation token
- * @param {string} [invitationSource='WEB'] - Source of invitation ('WEB' or 'APP')
- * @returns {string} The full client-side registration URL
+ * @param {string} invitationToken - The generated raw invitation token
+ * @param {string} [invitationSource='WEB'] - Backward-compatible source parameter
+ * @returns {string} The canonical universal client-side invitation URL
  */
 export const generateInviteLink = (invitationToken, invitationSource = 'WEB') => {
+  const defaultProductionBaseUrl = 'https://managemygate.e3esg.com';
+  const isLocalhost = (url) => !url || /localhost|127\.0\.0\.1|::1/i.test(url);
   const source = String(invitationSource || 'WEB').toUpperCase();
 
-  if (source === 'APP' || source === 'MOBILE') {
-    const rawAppUrl =
-      process.env.APP_CLIENT_URL ||
-      (process.env.CLIENT_URL && process.env.CLIENT_URL.includes('8081') ? process.env.CLIENT_URL : null) ||
-      'http://localhost:8081';
-    const baseUrl = rawAppUrl.replace(/\/+$/, '');
-    return `${baseUrl}/invite/app/${invitationToken}`;
+  let rawUrl = (source === 'APP' || source === 'MOBILE')
+    ? (process.env.APP_CLIENT_URL || process.env.CLIENT_URL || process.env.WEB_CLIENT_URL)
+    : (process.env.WEB_CLIENT_URL || process.env.CLIENT_URL);
+
+  if (!rawUrl || (process.env.NODE_ENV === 'production' && isLocalhost(rawUrl))) {
+    rawUrl = defaultProductionBaseUrl;
   }
 
-  const rawWebUrl =
-    process.env.WEB_CLIENT_URL ||
-    (process.env.CLIENT_URL && !process.env.CLIENT_URL.includes('8081') ? process.env.CLIENT_URL : null) ||
-    'http://localhost:3004';
-  const baseUrl = rawWebUrl.replace(/\/+$/, '');
-  return `${baseUrl}/invite/web/${invitationToken}`;
+  const baseUrl = rawUrl.trim().replace(/\/+$/, '');
+  return `${baseUrl}/invite/${invitationToken}`;
+};
+
+/**
+ * Generates legacy invitation links for backward compatibility (/invite/web/:token, /invite/app/:token).
+ * 
+ * @param {string} invitationToken - The generated raw invitation token
+ * @param {string} [invitationSource='WEB'] - Source ('WEB' or 'APP')
+ * @returns {string} Legacy formatted invitation URL
+ */
+export const generateLegacyInviteLink = (invitationToken, invitationSource = 'WEB') => {
+  const defaultProductionBaseUrl = 'https://managemygate.e3esg.com';
+  const isLocalhost = (url) => !url || /localhost|127\.0\.0\.1|::1/i.test(url);
+  const source = String(invitationSource || 'WEB').toUpperCase();
+
+  let rawUrl = (source === 'APP' || source === 'MOBILE')
+    ? (process.env.APP_CLIENT_URL || process.env.CLIENT_URL)
+    : (process.env.WEB_CLIENT_URL || process.env.CLIENT_URL);
+
+  if (!rawUrl || (process.env.NODE_ENV === 'production' && isLocalhost(rawUrl))) {
+    rawUrl = defaultProductionBaseUrl;
+  }
+
+  const baseUrl = rawUrl.trim().replace(/\/+$/, '');
+  const prefix = (source === 'APP' || source === 'MOBILE') ? 'app' : 'web';
+  return `${baseUrl}/invite/${prefix}/${invitationToken}`;
 };
 
 export default {
   resolveInvitationSource,
   generateInviteLink,
+  generateLegacyInviteLink,
 };

@@ -2,12 +2,11 @@ import React from 'react';
 import { View, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, Check, X, UserCheck, Lock } from 'lucide-react-native';
+import { ShieldCheck, Check, X, UserCheck } from 'lucide-react-native';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useDispatch } from 'react-redux';
-import { performLogout } from '../../src/features/auth/store/authSlice';
+import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
 import { useTranslation } from '@/src/utils/i18n';
-import { useRouter } from 'expo-router';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 interface RoleSwitchModalProps {
@@ -17,26 +16,27 @@ interface RoleSwitchModalProps {
 }
 
 export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClose, onSelectRole }) => {
-  const router = useRouter();
   const { user } = useAuth();
   const dispatch = useDispatch<any>();
   const { t, tRole } = useTranslation();
 
   const [pendingRole, setPendingRole] = React.useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = React.useState(false);
+  const [isSwitching, setIsSwitching] = React.useState(false);
+
+  // The 3 standard canonical roles: Admin, Tenant/Owner, Security
+  const canonicalRoles = ['Admin', 'Tenant/Owner', 'Security'];
   const roles: string[] = React.useMemo(() => {
-    if (!user) return [];
+    if (!user) return canonicalRoles;
     const userAny = user as any;
     if (userAny.roles && Array.isArray(userAny.roles) && userAny.roles.length > 0) {
-      return Array.from(new Set(userAny.roles.filter(Boolean)));
+      const merged = Array.from(new Set([...userAny.roles, ...canonicalRoles]));
+      return merged;
     }
-    if (userAny.role) {
-      return [userAny.role];
-    }
-    return [];
+    return canonicalRoles;
   }, [user]);
 
-  const activeRole = user?.role || roles[0] || '';
+  const activeRole = user?.role || roles[0] || 'Admin';
 
   const handleSelectRole = (selectedRole: string) => {
     setPendingRole(selectedRole);
@@ -46,20 +46,30 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
   const handleConfirmSwitch = async () => {
     if (!pendingRole) return;
     const selectedRole = pendingRole;
-    setShowConfirmModal(false);
-    setPendingRole(null);
-    onClose();
-    // 1. Terminate current session
-    await dispatch(performLogout());
-    // 2. Redirect to Login screen with target role parameters
-    router.replace({
-      pathname: '/(auth)/login' as any,
-      params: {
-        switchType: 'role',
-        targetName: selectedRole,
-        targetRole: selectedRole,
-      },
-    });
+    setIsSwitching(true);
+    try {
+      const switchPayload: { targetOrgId?: string; targetRole?: string } = {};
+      const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
+      if (activeOrgId && typeof activeOrgId === 'string' && /^[0-9a-fA-F]{24}$/.test(activeOrgId.trim())) {
+        switchPayload.targetOrgId = activeOrgId.trim();
+      }
+      if (selectedRole && typeof selectedRole === 'string' && selectedRole.trim()) {
+        switchPayload.targetRole = selectedRole.trim();
+      }
+      await dispatch(switchWorkspaceContextThunk(switchPayload)).unwrap();
+      if (onSelectRole) onSelectRole(selectedRole);
+      setShowConfirmModal(false);
+      setPendingRole(null);
+      onClose();
+    } catch (err) {
+      console.warn('Failed to switch role context via backend, applying local selection:', err);
+      if (onSelectRole) onSelectRole(selectedRole);
+      setShowConfirmModal(false);
+      setPendingRole(null);
+      onClose();
+    } finally {
+      setIsSwitching(false);
+    }
   };
 
   return (
@@ -79,14 +89,6 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
             </TouchableOpacity>
           </View>
 
-          {/* Logout & Re-authentication Warning Badge */}
-          <View className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-2.5 flex-row items-center gap-2">
-            <Lock size={15} color="#F59E0B" />
-            <Text className="text-[11px] text-amber-800 dark:text-amber-300 font-medium flex-1 leading-tight">
-              Switching role persona will log you out and require login credentials for that role.
-            </Text>
-          </View>
-
           <Text className="text-xs text-muted-foreground">
             {t('select_role_persona_sub', 'Select an active role persona to customize your mobile tools & permissions:')}
           </Text>
@@ -94,12 +96,7 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
           {/* Roles List */}
           <ScrollView className="max-h-60">
             <View className="gap-2.5">
-              {roles.length === 0 ? (
-                <View className="py-6 items-center justify-center">
-                  <Text className="text-sm text-muted-foreground">{t('no_roles_available', 'No other roles available')}</Text>
-                </View>
-              ) : (
-                roles.map((role, idx) => {
+              {roles.map((role, idx) => {
                 const isSelected = role === activeRole;
                 const localizedRole = tRole(role, role);
                 return (
@@ -141,8 +138,7 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
                     {isSelected && <Check size={18} className="text-primary" />}
                   </TouchableOpacity>
                 );
-              })
-            )}
+              })}
             </View>
           </ScrollView>
 
@@ -152,16 +148,18 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
         </View>
       </View>
 
-      {/* Yes/No Permission Confirmation Dialog */}
+      {/* Yes/No Switch Confirmation Dialog */}
       <ConfirmationModal
         visible={showConfirmModal}
-        variant="warning"
+        variant="info"
+        loading={isSwitching}
         title={t('confirm_switch_role_title', 'Switch Role Persona?')}
-        message={`${t('confirm_switch_role_msg', 'Switching will sign you out and require login credentials for')} ${pendingRole ? tRole(pendingRole, pendingRole) : ''}. ${t('do_you_want_to_proceed', 'Do you want to proceed?')}`}
+        message={`${t('confirm_switch_role_msg', 'Are you sure you want to switch to')} ${pendingRole ? tRole(pendingRole, pendingRole) : ''}?`}
         confirmLabel={t('yes_switch', 'Yes, Switch')}
         cancelLabel={t('no_cancel', 'No, Cancel')}
         onConfirm={handleConfirmSwitch}
         onCancel={() => {
+          if (isSwitching) return;
           setShowConfirmModal(false);
           setPendingRole(null);
         }}

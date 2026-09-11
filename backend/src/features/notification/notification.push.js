@@ -15,6 +15,73 @@ export const isValidExpoPushToken = (token) => {
 };
 
 /**
+ * Resolves the appropriate Android notification channel based on domain, type, and URL.
+ */
+export const resolveAndroidChannel = (payload) => {
+  const { channelId, type = '', title = '', actionUrl = '', data = {} } = payload;
+  if (channelId || data.channelId) {
+    return channelId || data.channelId;
+  }
+
+  const str = `${type} ${title} ${actionUrl} ${data.type || ''}`.toLowerCase();
+
+  if (str.includes('visitor') || str.includes('gate approval') || str.includes('walk-in') || str.includes('walkin')) {
+    return 'visitors';
+  }
+  if (str.includes('billing') || str.includes('invoice') || str.includes('payment') || str.includes('assessment') || str.includes('due')) {
+    return 'billing';
+  }
+  if (str.includes('complaint') || str.includes('ticket') || str.includes('technician')) {
+    return 'complaints';
+  }
+  if (str.includes('directory') || str.includes('conversation') || str.includes('message') || str.includes('chat')) {
+    return 'messages';
+  }
+  return 'general';
+};
+
+/**
+ * Resolves a normalized semantic notification type for mobile deep-linking.
+ */
+export const resolveNotificationType = (payload) => {
+  const { type = '', title = '', actionUrl = '', data = {} } = payload;
+  if (data.type && !['INFO', 'WARNING', 'SUCCESS', 'ERROR'].includes(data.type)) {
+    return data.type;
+  }
+
+  const str = `${title} ${actionUrl} ${type}`.toLowerCase();
+
+  if (str.includes('gate approval') || str.includes('walk-in') || str.includes('walkin')) {
+    return 'VISITOR_REQUEST';
+  }
+  if (str.includes('visitor')) {
+    return 'VISITOR';
+  }
+  if (str.includes('invoice') || str.includes('bill') || str.includes('payment') || str.includes('billing')) {
+    return 'BILLING';
+  }
+  if (str.includes('complaint')) {
+    return 'COMPLAINT';
+  }
+  if (str.includes('booking') || str.includes('amenit')) {
+    return 'AMENITY';
+  }
+  if (str.includes('poll')) {
+    return 'POLL';
+  }
+  if (str.includes('notice')) {
+    return 'NOTICE';
+  }
+  if (str.includes('message') || str.includes('directory')) {
+    return 'MESSAGE';
+  }
+  if (str.includes('invit')) {
+    return 'INVITATION';
+  }
+  return type || 'INFO';
+};
+
+/**
  * Dispatches mobile push notifications to all active registered devices of the given recipient(s).
  *
  * @param {string|string[]} recipientUserIds - Single user ID or array of user IDs
@@ -37,6 +104,8 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
 
     // 2. Prepare Expo push message objects
     const { title, body, actionUrl = null, type = 'INFO', sound = 'default', data = {} } = notificationPayload;
+    const resolvedChannel = resolveAndroidChannel(notificationPayload);
+    const resolvedType = resolveNotificationType(notificationPayload);
     const messages = [];
     const tokenRecordMap = new Map();
 
@@ -54,11 +123,17 @@ export const dispatchPushNotification = async (recipientUserIds, notificationPay
         title: title || 'ManageMyGate Alert',
         body: body || '',
         data: {
-          ...data,
+          notificationId: data.notificationId || null,
+          type: resolvedType,
+          entityId: data.entityId || null,
+          route: data.route || null,
+          action: data.action || 'OPEN_DETAILS',
           actionUrl,
-          type,
+          orgId: data.orgId || null,
+          createdAt: data.createdAt || new Date().toISOString(),
+          ...data,
         },
-        channelId: type === 'WARNING' || type === 'ERROR' ? 'billing' : 'default',
+        channelId: resolvedChannel,
         priority: 'high',
       });
     }

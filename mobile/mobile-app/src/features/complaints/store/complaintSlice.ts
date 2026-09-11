@@ -27,7 +27,14 @@ const initialState: ComplaintState = {
     limit: 10,
   },
   currentComplaint: null,
-  dashboardAnalytics: null,
+  dashboardAnalytics: {
+    total: 0,
+    open: 0,
+    inProgress: 0,
+    resolved: 0,
+    slaBreached: 0,
+    byCategory: [],
+  } as any,
   status: 'idle',
   error: null,
 };

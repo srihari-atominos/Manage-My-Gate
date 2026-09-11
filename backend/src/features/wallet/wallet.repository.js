@@ -27,6 +27,20 @@ class WalletRepository {
       }
     }
 
+    if (!targetOrgId) {
+      try {
+        const Organization = (await import('../organization/organization.model.js')).default;
+        const defaultOrg = (await Organization.findOne({ status: 'Active' })) || (await Organization.findOne({}));
+        if (defaultOrg && defaultOrg._id) {
+          targetOrgId = defaultOrg._id;
+        }
+      } catch (e) {}
+    }
+
+    if (!targetOrgId && process.env.PLATFORM_ORG_ID) {
+      targetOrgId = process.env.PLATFORM_ORG_ID;
+    }
+
     if (targetOrgId) {
       return await Wallet.findOneAndUpdate(
         { userId, orgId: targetOrgId },
@@ -58,9 +72,20 @@ class WalletRepository {
 
   async createTransaction(data, session = null) {
     const activeSession = this._getActiveSession(session);
-    const transactionId = `TXN-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+    let targetOrgId = data.orgId;
+    if (!targetOrgId) {
+      try {
+        const Organization = (await import('../organization/organization.model.js')).default;
+        const defaultOrg = (await Organization.findOne({ status: 'Active' })) || (await Organization.findOne({}));
+        if (defaultOrg && defaultOrg._id) {
+          targetOrgId = defaultOrg._id;
+        }
+      } catch (e) {}
+    }
+    const transactionId = data.transactionId || `TXN-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
     const transaction = new WalletTransaction({
       ...data,
+      orgId: targetOrgId || data.orgId,
       transactionId
     });
     return await transaction.save(activeSession ? { session: activeSession } : undefined);
@@ -68,9 +93,35 @@ class WalletRepository {
 
   async updateBalance(userId, orgId, amountDelta, session = null) {
     const activeSession = this._getActiveSession(session);
-    const wallet = await this.getWallet(userId, orgId, activeSession);
-    wallet.balance += amountDelta;
-    return await wallet.save(activeSession ? { session: activeSession } : undefined);
+    let targetOrgId = orgId;
+    
+    if (!targetOrgId) {
+      const existingWallet = await Wallet.findOne({ userId }).sort({ updatedAt: -1 }).session(activeSession);
+      if (existingWallet && existingWallet.orgId) {
+        targetOrgId = existingWallet.orgId;
+      }
+    }
+
+    if (!targetOrgId) {
+      try {
+        const Organization = (await import('../organization/organization.model.js')).default;
+        const defaultOrg = (await Organization.findOne({ status: 'Active' })) || (await Organization.findOne({}));
+        if (defaultOrg && defaultOrg._id) {
+          targetOrgId = defaultOrg._id;
+        }
+      } catch (e) {}
+    }
+
+    const query = targetOrgId ? { userId, orgId: targetOrgId } : { userId };
+    const options = { returnDocument: 'after', upsert: true, new: true, setDefaultsOnInsert: true };
+    if (activeSession) options.session = activeSession;
+    
+    const update = { $inc: { balance: amountDelta } };
+    if (targetOrgId) {
+      update.$setOnInsert = { orgId: targetOrgId };
+    }
+
+    return await Wallet.findOneAndUpdate(query, update, options);
   }
 
   async updateTransactionDescription(referenceId, type, appendText) {
@@ -97,8 +148,19 @@ class WalletRepository {
 
   async createRazorpayTransaction(data, session = null) {
     const activeSession = this._getActiveSession(session);
+    let targetOrgId = data.orgId;
+    if (!targetOrgId) {
+      try {
+        const Organization = (await import('../organization/organization.model.js')).default;
+        const defaultOrg = (await Organization.findOne({ status: 'Active' })) || (await Organization.findOne({}));
+        if (defaultOrg && defaultOrg._id) {
+          targetOrgId = defaultOrg._id;
+        }
+      } catch (e) {}
+    }
     const transaction = new WalletTransaction({
       ...data,
+      orgId: targetOrgId || data.orgId,
       paymentMethod: 'razorpay',
       referenceType: 'Recharge',
       type: 'Credit'

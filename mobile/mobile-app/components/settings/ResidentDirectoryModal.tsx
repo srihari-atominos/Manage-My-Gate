@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Modal, Pressable, ScrollView, Image, Alert, Linking } from 'react-native';
+import { View, Modal, Pressable, ScrollView, Image, Alert, Linking, KeyboardAvoidingView, Platform } from 'react-native';
 import { X, Users, Search, User as UserIcon, MessageCircle, Send, Phone, MessageSquare } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
@@ -141,11 +141,15 @@ export const ResidentDirectoryModal = ({
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 justify-end bg-black/50">
-        <Pressable className="absolute inset-0" onPress={onClose} />
+    <Modal visible={visible} transparent statusBarTranslucent={true} animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <Pressable className="absolute inset-0" onPress={onClose} />
 
-        <View className="bg-card rounded-t-3xl overflow-hidden" style={{ maxHeight: '92%' }}>
+          <View className="bg-card rounded-t-3xl overflow-hidden" style={{ maxHeight: '92%' }}>
           {/* Grab Handle */}
           <SheetGrabHandle onClose={onClose} />
 
@@ -387,7 +391,8 @@ export const ResidentDirectoryModal = ({
             </View>
           </View>
         ) : null}
-      </View>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

@@ -86,6 +86,7 @@ export const setupInvoiceSocketListeners = async () => {
         const amountStr = populatedPayload.totalDue ? populatedPayload.totalDue.toLocaleString('en-IN') : '0';
         await notificationService.createNotification({
           recipientId: targetUserId,
+          orgId: populatedPayload.communityId || populatedPayload.orgId || null,
           senderId: null,
           title: 'New Maintenance & Assessment Bill',
           body: `A new assessment invoice of ₹${amountStr} has been generated for unit ${populatedPayload.unitId?.unitNumber || '—'} for period ${populatedPayload.billingPeriodString || '—'}.`,
@@ -125,6 +126,7 @@ export const setupInvoiceSocketListeners = async () => {
           const notificationService = (await import('../notification/notification.service.js')).default;
           await notificationService.createNotification({
             recipientId: targetUserId,
+            orgId: populatedPayload.communityId || populatedPayload.orgId || null,
             senderId: null,
             title: 'Payment Verified',
             body: `Your offline payment has been successfully verified and settled.`,
@@ -170,6 +172,7 @@ export const setupInvoiceSocketListeners = async () => {
           const resUserId = payload.invoice.targetUserId._id || payload.invoice.targetUserId;
           await notificationService.createNotification({
             recipientId: resUserId,
+            orgId: payload.communityId || payload.invoice?.orgId || null,
             senderId: null,
             title: `${methodTitle} Submitted`,
             body: `Your ₹${amtStr} ${methodTitle.toLowerCase()} request has been submitted for verification.`,
@@ -192,12 +195,14 @@ export const setupInvoiceSocketListeners = async () => {
           });
 
           for (const member of memberships) {
+            const invoiceId = payload.invoice?._id || payload.invoiceId || '';
             await notificationService.createNotification({
               recipientId: member.userId,
+              orgId: payload.communityId || null,
               senderId: null,
               title: `New ${methodTitle} Request`,
               body: `${payload.residentName || 'Resident'} submitted a ₹${amtStr} ${methodTitle.toLowerCase()} payment for verification.`,
-              actionUrl: '/billing?tab=action-center',
+              actionUrl: `/billing/ledger?status=VERIFICATION_PENDING&invoiceId=${invoiceId}`,
               type: 'INFO',
             });
           }
@@ -229,6 +234,7 @@ export const setupInvoiceSocketListeners = async () => {
       const notificationService = (await import('../notification/notification.service.js')).default;
       await notificationService.createNotification({
         recipientId: targetUserId,
+        orgId: payload.orgId || payload.invoice?.orgId || payload.communityId || null,
         senderId: null,
         title: `${methodTitle} Verified`,
         body: `Your ₹${amtStr} ${methodTitle.toLowerCase()} payment has been verified. Status: ${payload.status}. Receipt: ${payload.receiptNumber || 'Generated'}`,
@@ -251,6 +257,7 @@ export const setupInvoiceSocketListeners = async () => {
       const amtStr = (payload.totalAmount || payload.totalDue || 0).toLocaleString('en-IN');
       await notificationService.createNotification({
         recipientId: targetUserId,
+        orgId: payload.orgId || payload.invoice?.orgId || payload.communityId || null,
         senderId: null,
         title: 'Payment Could Not Be Verified',
         body: `Your ₹${amtStr} payment could not be verified. Reason: ${payload.rejectionReason || 'Verification failed.'}`,
@@ -273,6 +280,7 @@ export const setupInvoiceSocketListeners = async () => {
       const amtStr = (payload.paidAmount || payload.totalAmount || 0).toLocaleString('en-IN');
       await notificationService.createNotification({
         recipientId: targetUserId,
+        orgId: payload.orgId || payload.invoice?.orgId || payload.communityId || null,
         senderId: null,
         title: 'Cash Payment Received',
         body: `₹${amtStr} cash payment has been recorded. Invoice: ${payload.snapshot?.assessmentName || 'Maintenance'}, Receipt: ${payload.receiptNumber || 'N/A'}`,

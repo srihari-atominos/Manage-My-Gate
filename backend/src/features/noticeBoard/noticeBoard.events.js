@@ -26,6 +26,7 @@ const notifyUsers = async (notice) => {
       try {
         await notificationService.createNotification({
           recipientId: user._id,
+          orgId: notice.orgId,
           title: 'New Notice Published',
           body: notice.title,
           actionUrl: '/notices/board',

@@ -20,10 +20,20 @@ export interface AmenityBookingModalProps {
 }
 
 export const AmenityBookingModal: React.FC<AmenityBookingModalProps> = ({
-  amenity = MOCK_AMENITIES[4] || MOCK_AMENITIES[0], // Defaults to Community Hall
+  amenity: passedAmenity,
   onBack,
   onProceedToCheckout,
 }) => {
+  const amenity = passedAmenity || {
+    id: 'default',
+    name: 'Amenity',
+    category: 'Facility',
+    description: '',
+    location: '',
+    pricePerHour: 0,
+    isActive: true,
+  };
+
   const defaultDate = '13/08/2026';
   const isoDate = '2026-08-13';
 

@@ -32,13 +32,14 @@ export class NotificationService {
   }
 
   /**
-   * Get paginated notifications list and count metadata for a specific user.
+   * Get paginated notifications list and count metadata for a specific user, scoped by organization.
    * @param {string} userId - Recipient's user ID
    * @param {number} page - Page number
    * @param {number} limit - Items per page
+   * @param {string} [orgId=null] - Optional organization ID for multi-tenant isolation
    * @returns {Promise<object>} Paginated notifications response object
    */
-  async getUserNotifications(userId, page = 1, limit = 10) {
+  async getUserNotifications(userId, page = 1, limit = 10, orgId = null) {
     const cleanPage = Math.max(1, parseInt(page, 10) || 1);
     const cleanLimit = Math.max(1, parseInt(limit, 10) || 10);
     const skip = (cleanPage - 1) * cleanLimit;
@@ -47,7 +48,7 @@ export class NotificationService {
     session.startTransaction();
     try {
       const { notifications, totalCount, unreadCount } = 
-        await notificationRepository.findNotificationsWithMetadata(userId, skip, cleanLimit, session);
+        await notificationRepository.findNotificationsWithMetadata(userId, skip, cleanLimit, session, orgId);
 
       await session.commitTransaction();
 
@@ -114,15 +115,16 @@ export class NotificationService {
   }
 
   /**
-   * Mark all unread notifications for a user as read.
+   * Mark all unread notifications for a user as read, scoped by orgId.
    * @param {string} userId - Recipient user's ID
+   * @param {string} [orgId=null] - Optional organization ID for multi-tenant isolation
    * @returns {Promise<object>} Update result summary
    */
-  async markAllAsRead(userId) {
+  async markAllAsRead(userId, orgId = null) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      const result = await notificationRepository.markAllAsRead(userId, new Date(), session);
+      const result = await notificationRepository.markAllAsRead(userId, new Date(), session, orgId);
       await session.commitTransaction();
       return {
         matchedCount: result.matchedCount,

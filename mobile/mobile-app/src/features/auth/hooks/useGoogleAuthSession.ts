@@ -1,3 +1,4 @@
+import '../../../utils/cryptoPolyfill';
 import * as React from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
@@ -33,6 +34,11 @@ export function useGoogleAuthSession() {
         setAuthInProgress(true);
         loginWithGoogle(idToken)
           .then((res: any) => {
+            if (res?.meta?.requestStatus === 'rejected' || res?.error) {
+              const errMsg = (res?.payload as string) || res?.error?.message || 'Google sign in failed';
+              Alert.alert('Google Sign-In Failed', errMsg);
+              return;
+            }
             if (res?.payload?.isNewUser) {
               const googleData = res.payload.googleData || {};
               router.push({

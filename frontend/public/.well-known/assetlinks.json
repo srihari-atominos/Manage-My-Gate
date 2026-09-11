@@ -1,0 +1,14 @@
+﻿[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.atominosconsulting.nahom",
+      "sha256_cert_fingerprints": [
+        "88:88:CE:67:F7:40:9B:FC:E9:DB:E2:E9:41:E2:4D:32:DC:83:EE:A1:F4:A9:96:06:EA:7C:67:48:76:70:63:2C"
+      ]
+    }
+  }
+]

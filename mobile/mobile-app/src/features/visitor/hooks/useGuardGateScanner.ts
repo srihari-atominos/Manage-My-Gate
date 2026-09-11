@@ -5,6 +5,7 @@ import { selectActiveOrgId } from '../../auth/store/authSelectors';
 import { useVisitorSocket } from './useVisitorSocket';
 import visitorService from '../services/visitorService';
 import { ScanResultData } from '@/components/hardware/ScanResultSheet';
+import { parseAndValidateAppBarcode } from '@/src/utils/appBarcodeProtocol';
 
 export interface GuardRecentScan {
   id: string;
@@ -44,7 +45,7 @@ export function useGuardGateScanner() {
 
   const handleBarCodeScanned = useCallback(
     async ({ type, data }: { type: string; data: string }) => {
-      if (!isScanning || checkingIn) return;
+      if (!isScanning || checkingIn || !data) return;
 
       setIsScanning(false);
       setCheckingIn(true);
@@ -52,37 +53,56 @@ export function useGuardGateScanner() {
       let lookupCode = data.trim();
       let passId = '';
 
-      // 1. Check if raw data is a JSON payload
-      try {
-        const parsed = JSON.parse(data);
-        if (parsed.code || parsed.passCode) {
-          lookupCode = parsed.code || parsed.passCode;
+      // 1. Validate & extract using canonical MMG barcode protocol
+      const validation = parseAndValidateAppBarcode(data);
+      if (validation.isValid) {
+        if (validation.code) lookupCode = validation.code;
+        if (validation.passId) passId = validation.passId;
+      } else {
+        // Fallback JSON payload check
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.code || parsed.passCode) {
+            lookupCode = parsed.code || parsed.passCode;
+          }
+          if (parsed._id || parsed.id || parsed.passId) {
+            passId = parsed._id || parsed.id || parsed.passId;
+          }
+        } catch {
+          // Raw string code or ID
         }
-        if (parsed._id || parsed.id || parsed.passId) {
-          passId = parsed._id || parsed.id || parsed.passId;
-        }
-      } catch {
-        // Raw string code or ID
       }
 
       try {
         let passData: any = null;
 
         // 2. Fetch pass by code or ID
-        if (lookupCode && lookupCode.length < 24 && !passId) {
+        // Strategy A: If passId is a valid 24-char ObjectId, fetch pass details directly
+        if (passId && /^[0-9a-fA-F]{24}$/.test(passId)) {
+          try {
+            const res = await visitorService.getPassDetails(passId);
+            const body = res && (res as any).success !== undefined ? res : (res as any)?.data;
+            passData = body?.data || body;
+          } catch {
+            // Fall through to code search
+          }
+        }
+
+        // Strategy B: If not found or no passId, search by pass code (e.g. 6-digit PIN)
+        if (!passData && lookupCode) {
           try {
             const res = await visitorService.getPassByCode(lookupCode);
             const body = res && (res as any).success !== undefined ? res : (res as any)?.data;
             passData = body?.data || body;
           } catch {
-            // Fallback to direct ID fetch if code search misses
+            // Fall through to direct ID lookup if code search missed
           }
         }
 
-        if (!passData && (passId || (lookupCode && lookupCode.length >= 24))) {
-          const targetId = passId || lookupCode;
+        // Strategy C: If still not found and lookupCode is a 24-char ObjectId, try getPassDetails
+        if (!passData && lookupCode && /^[0-9a-fA-F]{24}$/.test(lookupCode)) {
           try {
-            const res = await visitorService.getPassDetails(targetId);
+            const res = await visitorService.getPassDetails(lookupCode);
             const body = res && (res as any).success !== undefined ? res : (res as any)?.data;
             passData = body?.data || body;
           } catch {

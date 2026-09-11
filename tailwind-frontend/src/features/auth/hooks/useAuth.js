@@ -101,7 +101,22 @@ export const useAuth = () => {
        }
     }
 
-    if (currentUser.role === 'Super Admin' || currentUser.role === 'Platform Super Admin') return true
+    const roleUpper = (currentUser.role || '').toUpperCase()
+    if (
+      ['Super Admin', 'Platform Super Admin', 'Community Admin', 'Admin', 'SuperAdmin'].includes(currentUser.role) ||
+      roleUpper.includes('ADMIN') ||
+      roleUpper.includes('SUPER') ||
+      currentUser.isPlatform
+    ) {
+      return true
+    }
+    if (
+      (permissionName === 'amenities:wallet' || permissionName === 'billing:wallet') &&
+      (['Family Member', 'Family', 'Resident', 'Resident Owner', 'Resident Tenant', 'Tenant', 'Owner'].includes(currentUser.role) ||
+       ['Family Member', 'Family', 'Resident Owner', 'Tenant', 'Owner'].includes(currentUser.residencyType))
+    ) {
+      return true
+    }
     return !!(currentUser.permissions && currentUser.permissions.includes(permissionName))
   }
 

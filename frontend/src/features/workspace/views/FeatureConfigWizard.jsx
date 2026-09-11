@@ -15,7 +15,7 @@ import {
 } from '@coreui/icons'
 import useFeatureConfigWizard from '../hooks/useFeatureConfigWizard.js'
 
-import SetupWorkspace from '../components/SetupWorkspace.jsx'
+import { CreateOrganizationForm } from '../../organization/index.js'
 import '../styles/_workspace.scss'
 
 /**
@@ -30,7 +30,7 @@ export const FeatureConfigWizard = () => {
   // If user does not have an active organization, or if they explicitly intend to create a new one,
   // they must setup one first.
   if (showWorkspaceSetup) {
-    return <SetupWorkspace />
+    return <CreateOrganizationForm />
   }
 
   const features = [

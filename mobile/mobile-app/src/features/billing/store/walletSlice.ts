@@ -7,10 +7,11 @@ import { WalletState } from '../types';
 
 export const fetchWalletBalance = createAsyncThunk<any, { page?: number; limit?: number } | void>(
   'wallet/fetchWalletBalance',
-  async (params, { rejectWithValue }) => {
+  async (params: { page?: number; limit?: number } | void = {}, { rejectWithValue }) => {
     try {
-      const data = await billingService.getWalletBalance(params || {});
-      return { ...data, requestedParams: params || {} };
+      const queryParams = params || {};
+      const data = await billingService.getWalletBalance(queryParams);
+      return { ...data, requestedParams: queryParams };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || error.message || 'Failed to fetch wallet balance'
@@ -65,7 +66,6 @@ export const topUpWalletDirect = createAsyncThunk(
 
 const initialState: WalletState = {
   balance: 0,
-  activePasses: [],
   transactions: [],
   transactionHistory: [],
   isPaymentGatewayConfigured: false,
@@ -121,7 +121,12 @@ export const walletSlice = createSlice({
           if (isAppend) {
             state.transactionHistory = [...(state.transactionHistory || []), ...newHistory];
           } else {
-            state.transactionHistory = newHistory;
+            state.transactionHistory = newHistory.length > 0 ? newHistory : history;
+          }
+          state.transactions = state.transactionHistory;
+
+          if (action.payload.isPaymentGatewayConfigured !== undefined) {
+            state.isPaymentGatewayConfigured = action.payload.isPaymentGatewayConfigured;
           }
           state.transactions = state.transactionHistory;
 

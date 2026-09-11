@@ -5,6 +5,8 @@ export interface NotificationState {
   items: NotificationItemData[];
   unreadCount: number;
   latestNotification: NotificationItemData | null;
+  pendingRoute: string | null;
+  lastHandledNotificationId: string | null;
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -18,6 +20,8 @@ const initialState: NotificationState = {
   items: [],
   unreadCount: 0,
   latestNotification: null,
+  pendingRoute: null,
+  lastHandledNotificationId: null,
   pagination: {
     currentPage: 1,
     totalPages: 1,
@@ -99,6 +103,15 @@ export const notificationSlice = createSlice({
     clearLatestNotification: (state) => {
       state.latestNotification = null;
     },
+    setPendingRoute: (state, action: PayloadAction<string | null>) => {
+      state.pendingRoute = action.payload;
+    },
+    clearPendingRoute: (state) => {
+      state.pendingRoute = null;
+    },
+    setLastHandledNotificationId: (state, action: PayloadAction<string | null>) => {
+      state.lastHandledNotificationId = action.payload;
+    },
     clearNotificationError: (state) => {
       state.error = null;
     },
@@ -175,5 +188,12 @@ export const notificationSlice = createSlice({
   },
 });
 
-export const { addRealTimeNotification, clearLatestNotification, clearNotificationError } = notificationSlice.actions;
+export const {
+  addRealTimeNotification,
+  clearLatestNotification,
+  setPendingRoute,
+  clearPendingRoute,
+  setLastHandledNotificationId,
+  clearNotificationError,
+} = notificationSlice.actions;
 export default notificationSlice.reducer;

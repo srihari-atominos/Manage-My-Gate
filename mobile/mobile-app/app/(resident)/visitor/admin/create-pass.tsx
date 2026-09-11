@@ -35,7 +35,11 @@ export default function AdminCreatePassScreen() {
   };
 
   return (
-    <ScreenShell title="Admin Pass Creation" subtitle="Issue visitor pass on behalf of villa or community event">
+    <ScreenShell
+      title="Admin Pass Creation"
+      subtitle="Issue visitor pass on behalf of villa or community event"
+      hideBottomNav={true}
+    >
       <View className="flex-1 bg-background">
         <VisitorPassWizard
           initialType={initialType}

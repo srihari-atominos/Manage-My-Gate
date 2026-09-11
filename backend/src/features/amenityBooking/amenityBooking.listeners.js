@@ -22,6 +22,7 @@ const sendBookingNotification = async (booking, type, title, message) => {
   try {
     await notificationService.createNotification({
       recipientId: booking.userId,
+      orgId: booking.orgId || null,
       title: title,
       body: message,
       type: type === 'alert' ? 'WARNING' : type === 'info' ? 'INFO' : 'SUCCESS',

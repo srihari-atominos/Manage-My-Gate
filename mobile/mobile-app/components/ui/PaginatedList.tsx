@@ -7,6 +7,8 @@ import { Inbox } from 'lucide-react-native';
 import * as React from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, View, StyleProp, ViewStyle } from 'react-native';
 
+import { useBottomNavScroll } from '../navigation/BottomNavScrollContext';
+
 export interface PaginatedListProps<T> {
   data: T[];
   renderItem: (item: T, index: number) => React.ReactNode;
@@ -22,6 +24,7 @@ export interface PaginatedListProps<T> {
   keyExtractor?: (item: T, index: number) => string;
   contentContainerClassName?: string;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  onScroll?: (event: any) => void;
 }
 
 const getEmptyIconComponent = (iconName?: string): LucideIcons.LucideIcon => {
@@ -49,7 +52,9 @@ export function PaginatedList<T>({
   keyExtractor,
   contentContainerClassName,
   contentContainerStyle,
+  onScroll: onScrollProp,
 }: PaginatedListProps<T>) {
+  const { handleScroll } = useBottomNavScroll();
   const onEndReachedCalledDuringMomentum = React.useRef(false);
 
   const currentPage = pagination?.currentPage ?? (pagination as any)?.page ?? 1;
@@ -163,6 +168,12 @@ export function PaginatedList<T>({
       onEndReachedThreshold={0.4}
       onMomentumScrollBegin={handleMomentumScrollBegin}
       onScrollBeginDrag={handleScrollBeginDrag}
+      onScroll={(event) => {
+        handleScroll(event);
+        if (onScrollProp) {
+          onScrollProp(event);
+        }
+      }}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       scrollEventThrottle={16}

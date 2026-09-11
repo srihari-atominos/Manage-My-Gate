@@ -50,6 +50,8 @@ export class UserController {
       const { email, phone, villaId, residentType, roleName } = req.body;
       const orgId = req.tenant.orgId;
 
+      const inviterId = req.user?.id || req.user?._id || null;
+
       const invitationSource = resolveInvitationSource(req);
 
       const { user, invitationToken, membership } = await userService.inviteUser(
@@ -60,7 +62,8 @@ export class UserController {
         roleName,
         phone,
         '',
-        invitationSource
+        invitationSource,
+        inviterId
       );
 
       const inviteLink = generateInviteLink(invitationToken, invitationSource);
@@ -166,11 +169,66 @@ export class UserController {
     try {
       const { invitations } = req.body;
       const orgId = req.tenant.orgId;
+      const inviterId = req.user?.id || req.user?._id || null;
 
       const defaultSource = resolveInvitationSource(req);
 
-      const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource);
+      const result = await userService.bulkInviteUsers(invitations, orgId, defaultSource, inviterId);
       res.success(result, 'Bulk invitation process completed');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Retrieves organization invitations with pagination, status filtering, and recipient search.
+   */
+  async getInvitations(req, res, next) {
+    try {
+      const orgId = req.tenant.orgId;
+      const { page, limit, status, search, sortBy, sortOrder } = req.query;
+      const result = await userService.listInvitations({
+        orgId,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 10,
+        status: status || 'ALL',
+        search: search || '',
+        sortBy: sortBy || 'createdAt',
+        sortOrder: sortOrder || 'desc',
+      });
+      res.success(result, 'Invitations retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Resends an eligible invitation with a fresh token.
+   */
+  async resendInvitation(req, res, next) {
+    try {
+      const { id } = req.params;
+      const orgId = req.tenant.orgId;
+      const inviterId = req.user?.id || req.user?._id || null;
+
+      const result = await userService.resendInvitation(id, orgId, inviterId);
+      res.success(result, 'Invitation resent successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Revokes an existing invitation.
+   */
+  async revokeInvitation(req, res, next) {
+    try {
+      const { id } = req.params;
+      const orgId = req.tenant.orgId;
+      const inviterId = req.user?.id || req.user?._id || null;
+
+      const result = await userService.revokeInvitation(id, orgId, inviterId);
+      res.success(result, 'Invitation revoked successfully');
     } catch (error) {
       next(error);
     }

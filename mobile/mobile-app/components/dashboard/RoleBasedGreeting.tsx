@@ -68,9 +68,42 @@ export const formatRoleDisplay = (rawRole: string): string => {
 };
 
 /**
- * Extracts and formats the dynamic unit / villa / apartment number from user session
+ * Resolves the personal display name of the user for greeting.
+ * Strictly avoids showing generic role labels like "Admin", "Resident", or "Security".
  */
-export const formatUnitLocation = (user: any, propUnitName?: string | null): string => {
+export const getUserDisplayName = (user: any): string => {
+  if (!user) return 'Neighbor';
+
+  const nameCandidate =
+    user.name ||
+    user.fullName ||
+    user.displayName ||
+    user.username ||
+    user.firstName;
+
+  if (typeof nameCandidate === 'string' && nameCandidate.trim() !== '') {
+    const trimmed = nameCandidate.trim();
+    // Return first name or single-word name
+    const firstName = trimmed.split(' ')[0];
+    return firstName || trimmed;
+  }
+
+  // Derive from email if name is not set
+  if (user.email && typeof user.email === 'string') {
+    const emailPrefix = user.email.split('@')[0];
+    if (emailPrefix) {
+      return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+    }
+  }
+
+  return 'Neighbor';
+};
+
+/**
+ * Extracts and formats the dynamic unit / villa / apartment number from user session.
+ * Returns null if no unit is assigned (strictly avoids hardcoded fallbacks like "Villa 101").
+ */
+export const formatUnitLocation = (user: any, propUnitName?: string | null): string | null => {
   if (propUnitName && typeof propUnitName === 'string' && propUnitName.trim() !== '') {
     const pTrim = propUnitName.trim();
     const hasPrefix = /^(villa|unit|flat|apt|apartment|tower|block|gate|#)/i.test(pTrim);
@@ -79,12 +112,14 @@ export const formatUnitLocation = (user: any, propUnitName?: string | null): str
   }
 
   if (user) {
-    // 1. Security / Guard persona check
+    // 1. Security / Guard persona check (only if gate is explicitly assigned)
     const roleLower = (user.role || (Array.isArray(user.roles) ? user.roles[0] : '') || '').toLowerCase();
     if (roleLower.includes('guard') || roleLower.includes('security')) {
       const gateVal = user.gate || user.assignedGate || user.gateName;
-      if (gateVal) return String(gateVal);
-      return 'Gate 01';
+      if (gateVal && String(gateVal).trim() !== '') {
+        return String(gateVal).trim();
+      }
+      return null;
     }
 
     // 2. Check direct unit fields on user session object
@@ -123,6 +158,11 @@ export const formatUnitLocation = (user: any, propUnitName?: string | null): str
 
     if (candidateUnit !== undefined && candidateUnit !== null && String(candidateUnit).trim() !== '') {
       const strUnit = String(candidateUnit).trim();
+      // Ignore placeholder strings like "N/A", "None", or "undefined"
+      if (/^(n\/a|none|undefined|null)$/i.test(strUnit)) {
+        return null;
+      }
+
       const blockOrTower = user.block || user.blockOrBuilding || user.tower || user.building || user.villaBlock;
       const hasPrefix = /^(villa|unit|flat|apt|apartment|tower|block|#)/i.test(strUnit);
 
@@ -141,13 +181,12 @@ export const formatUnitLocation = (user: any, propUnitName?: string | null): str
     }
   }
 
-  // 5. Fallback suitable villa number
-  return 'Villa 101';
+  // 5. If no unit is assigned, return null so NO badge is displayed
+  return null;
 };
 
 export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
   unitName,
-  customRoleName,
 }) => {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -155,23 +194,12 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
   // 1. Time of day calculation
   const timeGreeting = useMemo(() => getTimeOfDayGreeting(), []);
 
-  // 2. Resolve display persona (Role priority, or Display Name if available)
-  const roleOrName = useMemo(() => {
-    if (customRoleName) {
-      return formatRoleDisplay(customRoleName);
-    }
-    const rawRole = getUserRoleName(user);
-    if (rawRole) {
-      return formatRoleDisplay(rawRole);
-    }
-    if (user?.name) {
-      const firstName = user.name.split(' ')[0];
-      return firstName;
-    }
-    return 'Resident';
-  }, [user, customRoleName]);
+  // 2. Resolve personal display name (strictly the user's name, not role string)
+  const displayName = useMemo(() => {
+    return getUserDisplayName(user);
+  }, [user]);
 
-  // 3. Dynamic unit / location pill matching active user session perfectly
+  // 3. Dynamic unit / location pill: strictly only if user has an assigned unit (no "Villa 101" fallback)
   const dynamicLocation = useMemo(() => {
     return formatUnitLocation(user, unitName);
   }, [unitName, user]);
@@ -181,14 +209,14 @@ export const RoleBasedGreeting: React.FC<RoleBasedGreetingProps> = ({
       {/* Left: Salutation & Subtitle */}
       <View className="flex-1 pr-2">
         <Text className="text-[20px] font-extrabold font-sans text-foreground tracking-tight leading-snug">
-          {t(timeGreeting.key, timeGreeting.defaultText)}, {roleOrName} 👋
+          {t(timeGreeting.key, timeGreeting.defaultText)}, {displayName} 👋
         </Text>
         <Text className="text-[12px] font-medium font-sans text-muted-foreground mt-0.5">
           {t('welcome_back_sub', 'Welcome back to your community hub')}
         </Text>
       </View>
 
-      {/* Right: Location / Villa Badge Pill adopting theme with map icon */}
+      {/* Right: Location / Villa Badge Pill adopting theme with map icon (only if assigned) */}
       {dynamicLocation ? (
         <View className="flex-row items-center gap-1.5 bg-primary/10 dark:bg-primary/20 border border-primary/25 dark:border-primary/35 px-3 py-1.5 rounded-full shadow-2xs">
           <MapPin size={13} color="#FF6A00" strokeWidth={2.4} />

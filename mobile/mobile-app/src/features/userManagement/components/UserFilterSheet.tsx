@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { X, Filter, Check, RotateCcw } from 'lucide-react-native';
 import { Button } from '@/components/common/Button';
 
@@ -27,24 +27,29 @@ export const UserFilterSheet: React.FC<UserFilterSheetProps> = ({
   onToggleStatus,
 }) => {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 justify-end bg-black/50">
-        <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
-          {/* Header */}
-          <View className="flex-row items-center justify-between pb-3 border-b border-border mb-4">
-            <View className="flex-row items-center">
-              <Filter size={20} color="#6366f1" className="me-2" />
-              <Text className="text-base font-bold text-foreground text-start">
-                Filter Users
-              </Text>
+    <Modal visible={visible} transparent statusBarTranslucent={true} animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <Pressable className="flex-1" onPress={onClose} />
+          <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
+            {/* Header */}
+            <View className="flex-row items-center justify-between pb-3 border-b border-border mb-4">
+              <View className="flex-row items-center">
+                <Filter size={20} color="#6366f1" className="me-2" />
+                <Text className="text-base font-bold text-foreground text-start">
+                  Filter Users
+                </Text>
+              </View>
+
+              <TouchableOpacity onPress={onClose} className="p-1 rounded-full bg-muted">
+                <X size={18} color="#6b7280" />
+              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity onPress={onClose} className="p-1 rounded-full bg-muted">
-              <X size={18} color="#6b7280" />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
             {/* Status Filters */}
             <View className="mb-4">
               <Text className="text-xs font-bold text-foreground text-start mb-2">
@@ -128,7 +133,8 @@ export const UserFilterSheet: React.FC<UserFilterSheetProps> = ({
           </View>
         </View>
       </View>
-    </Modal>
+    </KeyboardAvoidingView>
+  </Modal>
   );
 };
 

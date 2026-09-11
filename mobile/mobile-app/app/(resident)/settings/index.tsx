@@ -63,7 +63,17 @@ export default function SettingsScreen() {
   const handleDeleteAccount = async () => {
     try {
       setIsDeleting(true);
-      await deleteAccount();
+      const result = await deleteAccount();
+      // Redux thunks don't throw on rejection — check requestStatus
+      if (result?.meta?.requestStatus === 'rejected') {
+        const msg = (result as any)?.payload || 'Failed to delete account. Please try again.';
+        if (Platform.OS === 'web') {
+          window.alert(msg);
+        } else {
+          Alert.alert('Error', String(msg));
+        }
+        return;
+      }
       setDeleteModalOpen(false);
       router.replace('/(auth)/login');
     } catch (e: any) {

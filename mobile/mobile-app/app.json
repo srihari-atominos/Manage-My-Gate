@@ -16,15 +16,12 @@
       "**/*"
     ],
     "updates": {
-      "url": "https://u.expo.dev/94a573d9-5e93-4827-8fbd-605e0ef3a50a",
-      "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
+      "enabled": false
     },
-    "runtimeVersion": "1.0.0",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
-      "buildNumber": "1.0.0",
+      "buildNumber": "8",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "ManageMyGate requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints.",
@@ -36,15 +33,17 @@
       }
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.atominosconsulting.nahom",
-      "versionCode": 8,
+      "versionCode": 12,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "intentFilters": [
         {
@@ -53,13 +52,41 @@
           "data": [
             {
               "scheme": "https",
+              "host": "app.managemygate.com",
+              "pathPrefix": "/invite/handoff"
+            },
+            {
+              "scheme": "https",
+              "host": "managemygate.e3esg.com",
+              "pathPrefix": "/invite/handoff"
+            },
+            {
+              "scheme": "https",
               "host": "managemygate.e3esg.com",
               "pathPrefix": "/invite/app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "managemygate",
+              "host": "invite",
+              "pathPrefix": "/handoff"
             },
             {
               "scheme": "managemygate",
               "host": "invite",
               "pathPrefix": "/app"
+            },
+            {
+              "scheme": "managemygate",
+              "host": "accept-invite"
             }
           ],
           "category": [
@@ -98,7 +125,15 @@
         }
       ],
       "expo-secure-store",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/adaptive-icon.png",
+          "color": "#FF6A00",
+          "defaultChannel": "general"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

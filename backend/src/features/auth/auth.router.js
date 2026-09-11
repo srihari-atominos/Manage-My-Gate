@@ -16,9 +16,10 @@ import {
   resetPasswordRules,
   setupAccountPasswordRules,
   acceptInviteSsoRules,
-  registerSsoWithOrgRules
+  registerSsoWithOrgRules,
+  exchangeHandoffRules,
 } from './auth.validateRules.js';
-import { isAuthenticated } from '../../middlewares/auth.middleware.js';
+import { isAuthenticated, optionalAuth } from '../../middlewares/auth.middleware.js';
 import { authLimiter, otpLimiter } from '../../middlewares/rateLimiter.middleware.js';
 
 const router = Router();
@@ -153,7 +154,7 @@ router.post('/login', authLimiter, validate(loginRules), authController.login);
  *       400:
  *         description: Invalid token or validation error.
  */
-router.post('/accept-invite', validate(acceptInviteRules), authController.acceptInvite);
+router.post('/accept-invite', optionalAuth, validate(acceptInviteRules), authController.acceptInvite);
 router.post('/reject-invite', authController.rejectInvite);
 
 /**
@@ -191,6 +192,46 @@ router.post('/reject-invite', authController.rejectInvite);
 router.post('/accept-invite/sso', validate(acceptInviteSsoRules), authController.acceptInviteWithSSO);
 
 router.post('/register-with-org/sso', authLimiter, validate(registerSsoWithOrgRules), authController.registerSsoWithOrg);
+
+/**
+ * @swagger
+ * /auth/invite/handoff:
+ *   post:
+ *     summary: Create single-use short-lived mobile handoff ticket for authenticated user
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Handoff ticket created.
+ *       401:
+ *         description: Unauthorized.
+ */
+router.post('/invite/handoff', isAuthenticated, authController.createInviteHandoff);
+
+/**
+ * @swagger
+ * /auth/invite/handoff/exchange:
+ *   post:
+ *     summary: Atomically exchange mobile handoff ticket for authenticated mobile session
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - handoffId
+ *             properties:
+ *               handoffId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Handoff ticket exchanged successfully.
+ *       400:
+ *         description: Invalid or expired handoff ticket.
+ */
+router.post('/invite/handoff/exchange', authLimiter, validate(exchangeHandoffRules), authController.exchangeInviteHandoff);
 
 /**
  * @swagger

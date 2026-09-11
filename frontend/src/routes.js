@@ -5,6 +5,9 @@ const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const SampleFeature = React.lazy(() => import('./features/sampleFeature/SampleFeatureView'))
 const RoleBuilder = React.lazy(() => import('./features/roleBuilder/RoleBuilderList'))
 const UserList = React.lazy(() => import('./features/userManagement/UserList'))
+const InvitationManagementView = React.lazy(
+  () => import('./features/userManagement/views/InvitationManagementView'),
+)
 const NotificationView = React.lazy(() => import('./features/notification/views/NotificationView'))
 const IntegrationHubView = React.lazy(
   () => import('./features/integrationHub/views/IntegrationHubView'),
@@ -156,6 +159,12 @@ export const routes = [
     requiredPermission: 'visitor:guard',
   },
   { path: '/users', name: 'User Management', element: UserList, requiredPermission: 'users:read' },
+  {
+    path: '/users/invitations',
+    name: 'Invitation Management',
+    element: InvitationManagementView,
+    requiredPermission: 'users:read',
+  },
   {
     path: '/villas',
     name: 'Unit Management',

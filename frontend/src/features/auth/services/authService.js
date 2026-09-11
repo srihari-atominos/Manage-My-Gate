@@ -15,8 +15,18 @@ export const verifyRegistration = async (email, code) => {
   return await apiClient.post('/auth/register/verify', { email, code })
 }
 
-export const acceptInvite = async ({ token, password }) => {
-  return await apiClient.post('/auth/accept-invite', { token, password })
+export const validateInvite = async (token) => {
+  return await apiClient.get('/auth/validate-invite', { params: { token } })
+}
+
+export const acceptInvite = async (payload) => {
+  const body = typeof payload === 'string' ? { token: payload } : (payload || {})
+  return await apiClient.post('/auth/accept-invite', body)
+}
+
+export const rejectInvite = async (payload) => {
+  const body = typeof payload === 'string' ? { token: payload } : (payload || {})
+  return await apiClient.post('/auth/reject-invite', body)
 }
 
 export const createWorkspace = async (workspaceData) => {
@@ -93,11 +103,21 @@ export const registerSsoWithOrg = async (payload) => {
   return await apiClient.post('/auth/register-with-org/sso', payload)
 }
 
+export const createInviteHandoff = async (payload = {}) => {
+  return await apiClient.post('/auth/invite/handoff', payload)
+}
+
+export const exchangeInviteHandoff = async (handoffId, deviceInfo = {}) => {
+  return await apiClient.post('/auth/invite/handoff/exchange', { handoffId, deviceInfo })
+}
+
 export default {
   login,
   register,
   verifyRegistration,
+  validateInvite,
   acceptInvite,
+  rejectInvite,
   createWorkspace,
   loginWithGoogle,
   loginWithMicrosoft,
@@ -116,4 +136,6 @@ export default {
   acceptSsoInvite,
   switchContext,
   registerSsoWithOrg,
+  createInviteHandoff,
+  exchangeInviteHandoff,
 }

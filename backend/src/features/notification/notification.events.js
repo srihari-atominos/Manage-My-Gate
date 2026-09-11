@@ -26,6 +26,7 @@ notificationEvents.on('notification_created', (notification) => {
     sound: 'default',
     data: {
       notificationId: notification._id ? notification._id.toString() : null,
+      orgId: notification.orgId ? notification.orgId.toString() : null,
       createdAt: notification.createdAt,
     },
   }).catch((err) => {

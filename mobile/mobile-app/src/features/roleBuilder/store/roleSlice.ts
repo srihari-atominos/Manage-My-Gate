@@ -22,81 +22,15 @@ export interface RoleState {
   rowsPerPage: number;
 }
 
-export const DUMMY_ROLES: roleService.RoleData[] = [
-  {
-    id: 'role-1',
-    _id: 'role-1',
-    name: 'Admin',
-    description: 'Full administrative control over community settings, users, villas/blocks, and financial suite.',
-    isTenantRole: false,
-    permissions: [
-      'users:read',
-      'users:write',
-      'villas:read',
-      'villas:write',
-      'roles:read',
-      'roles:write',
-      'workspaces:read',
-      'visitor:admin',
-      'billing:dashboard',
-      'billing:assessment_manager',
-      'billing:action_center',
-      'amenities:dashboard',
-      'amenities:amenities',
-      'amenities:admin_calander',
-      'amenities:ledgers',
-      'amenities:maintenance',
-      'notices:dashboard',
-      'notices:manage_notices',
-      'complaints:dashboard',
-      'complaints:complaint_management',
-      'complaints:staff',
-    ],
-  },
-  {
-    id: 'role-2',
-    _id: 'role-2',
-    name: 'Tenant/Owner',
-    description: 'Resident property owner or tenant with access to digital passes, amenities booking, dues payment, and helpdesk.',
-    isTenantRole: true,
-    permissions: [
-      'visitor:resident',
-      'amenities:discover',
-      'amenities:my_booking',
-      'amenities:wallet',
-      'billing:action_center',
-      'notices:active_board',
-      'notices:polls',
-      'complaints:raise_ticket',
-      'complaints:track_requests',
-      'villas:read',
-    ],
-  },
-  {
-    id: 'role-3',
-    _id: 'role-3',
-    name: 'Security',
-    description: 'Gate security personnel for visitor check-ins, vehicle activity logs, and digital pass verification.',
-    isTenantRole: false,
-    permissions: [
-      'visitor:guard',
-      'visitor:admin',
-      'amenities:scanner',
-      'amenities:security_logs',
-      'notices:active_board',
-      'complaints:track_requests',
-      'villas:read',
-    ],
-  },
-];
+export const DUMMY_ROLES: roleService.RoleData[] = [];
 
 const initialState: RoleState = {
-  roles: DUMMY_ROLES,
+  roles: [],
   isLoading: false,
   isPermissionsLoading: false,
   error: null,
   permissionsList: {},
-  totalRecords: DUMMY_ROLES.length,
+  totalRecords: 0,
   currentPage: 1,
   totalPages: 1,
   rowsPerPage: 10,
@@ -205,19 +139,15 @@ const roleSlice = createSlice({
           list = payloadData.data;
         }
 
-        state.roles = list.length > 0 ? list : DUMMY_ROLES;
+        state.roles = list;
 
         const pagination = action.payload?.pagination || payloadData?.pagination;
-        state.totalRecords = pagination?.totalRecords || state.roles.length;
+        state.totalRecords = pagination?.totalRecords || list.length;
         state.currentPage = pagination?.currentPage || state.currentPage;
         state.totalPages = pagination?.totalPages || Math.ceil(state.totalRecords / state.rowsPerPage) || 1;
       })
       .addCase(fetchRolesAsync.rejected, (state, action: any) => {
         state.isLoading = false;
-        if (state.roles.length === 0) {
-          state.roles = DUMMY_ROLES;
-          state.totalRecords = DUMMY_ROLES.length;
-        }
         state.error = action.payload || 'Failed to fetch roles';
       })
       // Fetch Permissions

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, ScrollView, Modal, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Modal, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { X, Mail, Sparkles, CheckCircle2, AlertTriangle, Plus } from 'lucide-react-native';
 import { TextInput } from '@/components/forms/TextInput';
 import { DropdownSelect } from '@/components/forms/DropdownSelect';
@@ -147,9 +147,14 @@ export const ConfigureInviteTemplateModal: React.FC<ConfigureInviteTemplateModal
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 justify-end bg-black/50">
-        <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[90%] flex-col">
+    <Modal visible={visible} transparent statusBarTranslucent={true} animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <Pressable className="flex-1" onPress={onClose} />
+          <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%] flex-col">
           {/* Header */}
           <View className="flex-row items-center justify-between pb-3 border-b border-border mb-3">
             <View className="flex-row items-center">
@@ -178,7 +183,12 @@ export const ConfigureInviteTemplateModal: React.FC<ConfigureInviteTemplateModal
             </View>
           ) : null}
 
-          <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ flexGrow: 1 }}
+            className="flex-1"
+          >
             {loading ? (
               <View className="py-8 items-center justify-center">
                 <ActivityIndicator size="small" color="#6366f1" />
@@ -312,7 +322,8 @@ export const ConfigureInviteTemplateModal: React.FC<ConfigureInviteTemplateModal
           </View>
         </View>
       </View>
-    </Modal>
+    </KeyboardAvoidingView>
+  </Modal>
   );
 };
 

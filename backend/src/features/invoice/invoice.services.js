@@ -876,6 +876,7 @@ export class InvoiceService {
       if (targetUserId) {
         await notificationService.createNotification({
           recipientId: targetUserId,
+          orgId: invoice.orgId || null,
           senderId: adminUserId || null,
           title: 'Offline Payment Rejected',
           body: `Your offline payment submission for invoice #${invoice.invoiceNumber || invoice._id} was rejected${reason ? `: ${reason}` : '.'}`,
@@ -1189,13 +1190,23 @@ export class InvoiceService {
    * Fetch invoice by ID with optional transaction session.
    */
   async getInvoiceById(invoiceId, session = null) {
-    const query = Invoice.findById(invoiceId);
+    const query = Invoice.findById(invoiceId)
+      .populate('unitId')
+      .populate('assessmentId')
+      .populate('targetUserId', 'name email username phone');
     if (session) query.session(session);
     const invoice = await query;
     if (!invoice) {
       throw new HttpError(404, 'Invoice not found');
     }
-    return invoice;
+    const invObj = invoice.toObject ? invoice.toObject() : invoice;
+    if (!invObj.assessmentName) {
+      invObj.assessmentName = invObj.snapshot?.assessmentName || invObj.assessmentId?.name || 'Community Maintenance Assessment';
+    }
+    if (!invObj.unitNumber) {
+      invObj.unitNumber = invObj.snapshot?.unitDetails?.unitNumber || invObj.unitId?.unitNumber || invObj.unitId?.villaNumber || '';
+    }
+    return invObj;
   }
 
   /**
@@ -1268,6 +1279,7 @@ export class InvoiceService {
       try {
         const notification = await notificationService.createNotification({
           recipientId,
+          orgId: invoice.orgId || null,
           senderId: adminUserId,
           title,
           body,
@@ -1314,6 +1326,7 @@ export class InvoiceService {
 
     const notification = await notificationService.createNotification({
       recipientId: residentUserId,
+      orgId: orgId || null,
       senderId: adminUserId,
       title,
       body,

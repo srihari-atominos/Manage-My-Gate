@@ -15,12 +15,17 @@ export interface TimelineItemProps {
 
 export function formatTime(date: string): string {
   const d = new Date(date);
+  if (isNaN(d.getTime())) return date || '';
   const now = new Date();
   const diff = Math.floor((now.getTime() - d.getTime()) / 60000);
-  if (isNaN(d.getTime()) || diff < 1) return 'Just now';
+  if (diff < 1) return 'Just now';
   if (diff < 60) return `${diff}m ago`;
   if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
-  return `${Math.floor(diff / 1440)}d ago`;
+  return d.toLocaleDateString([], {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 export const DOT_COLORS: Record<NonNullable<TimelineItemProps['type']>, string> = {

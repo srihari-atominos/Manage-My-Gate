@@ -111,9 +111,31 @@ export default function SelectFeaturesScreen() {
         ? selectedFeatures
         : ['administration_security', 'visitor', 'amenities', 'notices', 'complaints', 'billing'];
 
+    const orgId =
+      params?.orgId ||
+      userAny?.orgId ||
+      userAny?.activeOrgId ||
+      userAny?.organizationId ||
+      (Array.isArray(userAny?.availableWorkspaces) &&
+        (userAny?.availableWorkspaces[0]?.orgId ||
+          userAny?.availableWorkspaces[0]?._id ||
+          userAny?.availableWorkspaces[0]?.id));
+
     try {
-      if (params?.orgName) {
-        // Mode 1: New organization creation - execute atomic DB write with chosen features
+      if (orgId) {
+        // Mode 1: Organization already created in DB - update features and role permissions
+        const action: any = await updateOrganizationFeatures(String(orgId), featuresToSave);
+        if (
+          action &&
+          (action.type?.endsWith('/fulfilled') ||
+            (action.meta && action.meta.requestStatus === 'fulfilled') ||
+            !action.error)
+        ) {
+          sessionStore.removeItem('mobile_auth_intent');
+          router.replace('/(resident)/dashboard');
+        }
+      } else if (params?.orgName) {
+        // Mode 2: Organization not created yet - create workspace with chosen features in one operation
         const action: any = await createWorkspace({
           name: params.orgName.trim(),
           organizationType: params.organizationType || 'Residential',
@@ -132,23 +154,6 @@ export default function SelectFeaturesScreen() {
           sessionStore.removeItem('mobile_auth_intent');
           router.replace('/(resident)/dashboard');
         }
-      } else {
-        // Mode 2: Existing organization updating features
-        const orgId =
-          params?.orgId ||
-          userAny?.orgId ||
-          userAny?.activeOrgId ||
-          userAny?.organizationId ||
-          (Array.isArray(userAny?.availableWorkspaces) &&
-            (userAny?.availableWorkspaces[0]?.orgId ||
-              userAny?.availableWorkspaces[0]?._id ||
-              userAny?.availableWorkspaces[0]?.id));
-
-        if (orgId) {
-          await updateOrganizationFeatures(orgId, featuresToSave);
-        }
-        sessionStore.removeItem('mobile_auth_intent');
-        router.replace('/(resident)/dashboard');
       }
     } catch (e) {
       console.warn('Organization features setup warning:', e);

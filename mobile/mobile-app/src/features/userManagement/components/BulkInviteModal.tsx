@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform, Alert } from 'react-native';
+import { View, ScrollView, Modal, TouchableOpacity, ActivityIndicator, Platform, Alert, KeyboardAvoidingView, Pressable } from 'react-native';
 import { X, Users, Upload, Plus, Trash2, CheckCircle2, AlertTriangle, FileSpreadsheet, Download, FileText } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -20,6 +20,7 @@ import { Button } from '@/components/common/Button';
 import { Text } from '@/components/ui/text';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { downloadCSVFile } from '@/src/utils/downloadHelper';
+import { validateEmail, parseBackendError } from '@/src/utils/validation';
 import apiClient from '../../../services/apiClient';
 import { InviteUserData } from '../services/userService';
 
@@ -97,13 +98,19 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
   }, [visible]);
 
   // Validate a row item
-  const validateRow = (row: InviteRowItem, currentRoles = roles): InviteRowItem => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const validateRow = (row: InviteRowItem, currentRoles = roles, allRows: InviteRowItem[] = rows): InviteRowItem => {
     if (!row.email.trim()) {
       return { ...row, isValid: false, error: 'Email is required' };
     }
-    if (!emailRegex.test(row.email.trim())) {
-      return { ...row, isValid: false, error: 'Invalid email format' };
+    const emailRes = validateEmail(row.email.trim());
+    if (!emailRes.isValid) {
+      return { ...row, isValid: false, error: emailRes.message || 'Invalid email format' };
+    }
+    const hasDuplicate = allRows.some(
+      (r) => r.id !== row.id && r.email.trim().toLowerCase() === row.email.trim().toLowerCase()
+    );
+    if (hasDuplicate) {
+      return { ...row, isValid: false, error: 'Duplicate email in this list' };
     }
     if (!row.roleName) {
       return { ...row, isValid: false, error: 'Role is required' };
@@ -267,7 +274,8 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
       const res = await onBulkInvite(payload);
       setSuccessResults(res || { invitedCount: payload.length });
     } catch (err: any) {
-      setErrorMsg(typeof err === 'string' ? err : err?.message || 'Failed to send bulk invitations');
+      const parsed = parseBackendError(err, 'Failed to send bulk invitations');
+      setErrorMsg(parsed.userMessage);
     } finally {
       setSubmitting(false);
     }
@@ -286,9 +294,14 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
   const validCount = rows.filter((r) => r.isValid).length;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 justify-end bg-black/50">
-        <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[90%] flex-col">
+    <Modal visible={visible} transparent statusBarTranslucent={true} animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <Pressable className="flex-1" onPress={onClose} />
+          <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%] flex-col">
           {/* Header */}
           <View className="flex-row items-center justify-between pb-3 border-b border-border mb-3">
             <View className="flex-row items-center">
@@ -350,7 +363,12 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
               ) : null}
 
               {/* Scrollable Content Area */}
-              <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ flexGrow: 1 }}
+                className="flex-1"
+              >
                 {loadingOptions ? (
                   <View className="py-8 items-center justify-center">
                     <ActivityIndicator size="small" color="#6366f1" />
@@ -507,8 +525,9 @@ export const BulkInviteModal: React.FC<BulkInviteModalProps> = ({
           )}
         </View>
       </View>
-    </Modal>
-  );
+    </KeyboardAvoidingView>
+  </Modal>
+);
 };
 
 export default BulkInviteModal;

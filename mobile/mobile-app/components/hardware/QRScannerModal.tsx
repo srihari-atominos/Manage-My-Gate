@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Modal, Pressable } from 'react-native';
+import { View, Modal, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/common/Button';
 import { TextInput } from '@/components/forms/TextInput';
@@ -58,9 +58,13 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View className="flex-1 bg-black/80 justify-center p-4 items-center">
-        <View className="bg-card w-full rounded-3xl p-4 gap-4 max-w-md border border-border shadow-2xl overflow-hidden">
+    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent={true} onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View className="flex-1 bg-black/80 justify-center p-4 items-center">
+          <View className="bg-card w-full rounded-3xl p-4 gap-4 max-w-md border border-border shadow-2xl overflow-hidden">
           {/* Header */}
           <View className="flex-row items-center justify-between border-b border-border pb-3">
             <View className="flex-row items-center gap-2">
@@ -137,8 +141,9 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
               Verify
             </Button>
           </View>
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

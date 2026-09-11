@@ -80,12 +80,19 @@ export const acceptInviteRules = [
     .isEmail()
     .trim(),
   body('password')
-    .notEmpty()
-    .withMessage('Password is required')
+    .optional({ nullable: true, checkFalsy: true })
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters long')
     .matches(passwordRegex)
     .withMessage('Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character'),
+  body('name')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
+  body('phone')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim(),
 ];
 
 /**
@@ -360,4 +367,20 @@ export const acceptInviteSsoRules = [
     .isIn(['google', 'microsoft'])
     .withMessage('Provider must be google or microsoft')
     .trim(),
+];
+
+/**
+ * Validation rules for exchanging a mobile handoff ticket
+ */
+export const exchangeHandoffRules = [
+  body('handoffId')
+    .notEmpty()
+    .withMessage('Handoff ID is required')
+    .isString()
+    .withMessage('Handoff ID must be a string')
+    .trim(),
+  body('deviceInfo')
+    .optional()
+    .isObject()
+    .withMessage('deviceInfo must be an object'),
 ];

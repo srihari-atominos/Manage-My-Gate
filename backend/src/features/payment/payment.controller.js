@@ -51,10 +51,16 @@ class PaymentController {
         razorpaySignature,
       });
 
+      const paymentObj = verificationResult.payment?.toObject ? verificationResult.payment.toObject() : verificationResult.payment;
+
       res.status(200).json({
         success: true,
         message: verificationResult.message,
-        data: verificationResult.payment,
+        data: {
+          ...paymentObj,
+          payment: paymentObj,
+          invoice: verificationResult.invoice,
+        },
       });
     } catch (error) {
       next(error);

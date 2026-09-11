@@ -33,10 +33,26 @@ export interface ListCardProps extends Omit<React.ComponentPropsWithoutRef<typeo
 
 import { i18n } from '../../src/utils/i18n';
 
+export function formatDate(date: string | Date): string {
+  if (!date) return '';
+  const past = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(past.getTime())) return typeof date === 'string' ? date : '';
+
+  return past.toLocaleDateString([], {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+export function formatDateTime(date: string | Date): string {
+  return formatDate(date);
+}
+
 export function formatRelativeTime(date: string | Date): string {
   if (!date) return '';
   const past = new Date(date);
-  if (isNaN(past.getTime())) return '';
+  if (isNaN(past.getTime())) return typeof date === 'string' ? date : '';
 
   const now = new Date();
   const diffMs = now.getTime() - past.getTime();
@@ -46,11 +62,9 @@ export function formatRelativeTime(date: string | Date): string {
   if (diffMins < 60) return `${diffMins} ${i18n.t('mins_ago_unit', 'm ago')}`;
   const diffHours = Math.floor(diffMins / 60);
   if (diffHours < 24) return `${diffHours} ${i18n.t('hours_ago_unit', 'h ago')}`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays} ${i18n.t('days_ago_unit', 'd ago')}`;
-  const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 4) return `${diffWeeks} ${i18n.t('weeks_ago_unit', 'w ago')}`;
-  return past.toLocaleDateString();
+
+  // When past 24 hours (e.g. days or weeks ago), display the exact date when created (no time)
+  return formatDate(past);
 }
 
 const listCardVariants = cva(
@@ -82,6 +96,7 @@ const ListCard = React.forwardRef<View, ListCardProps>(
       status,
       secondaryBadge,
       timestamp,
+      disableRelativeTime = false,
       rightContent,
       children,
       onPress,
@@ -134,8 +149,16 @@ const ListCard = React.forwardRef<View, ListCardProps>(
             </Text>
           ) : null}
           {timestamp ? (
-            <Text variant="muted" className={cn("text-[11px] font-sans mt-0.5 shrink truncate", backgroundImage ? "text-white/60" : "text-muted-foreground/80")} numberOfLines={1}>
-              {formatRelativeTime(timestamp)}
+            <Text
+              variant="muted"
+              className={cn("text-[11px] font-sans mt-0.5 shrink truncate", backgroundImage ? "text-white/60" : "text-muted-foreground/80")}
+              numberOfLines={1}
+            >
+              {disableRelativeTime
+                ? (typeof timestamp === 'string' && isNaN(new Date(timestamp).getTime())
+                    ? timestamp
+                    : formatDate(timestamp))
+                : formatRelativeTime(timestamp)}
             </Text>
           ) : null}
         </View>

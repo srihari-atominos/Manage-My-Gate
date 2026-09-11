@@ -18,6 +18,7 @@ import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 import { useComplaints } from '../hooks/useComplaints';
 import complaintService from '../services/complaintService';
+import { parseBackendError } from '@/src/utils/validation';
 
 const CATEGORY_OPTIONS = [
   { label: 'Plumbing (Leaks, Pipes, Taps)', value: 'Plumbing' },
@@ -73,6 +74,7 @@ export function RaiseTicketForm() {
     formState: { errors },
   } = useForm<FormData>({
     resolver: yupResolver(schema) as any,
+    mode: 'onTouched',
     defaultValues: {
       title: '',
       category: 'Plumbing',
@@ -144,7 +146,8 @@ export function RaiseTicketForm() {
       setSuccessModalOpen(true);
     } catch (err: any) {
       setIsSubmitting(false);
-      setSubmitError(err?.message || err || 'Failed to submit maintenance ticket. Please try again.');
+      const parsed = parseBackendError(err, 'Failed to submit maintenance ticket. Please try again.');
+      setSubmitError(parsed.userMessage);
     }
   };
 
@@ -236,16 +239,37 @@ export function RaiseTicketForm() {
           <Controller
             control={control}
             name="title"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Issue Title *"
-                placeholder="E.g., Water leakage under bathroom sink"
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                error={errors.title?.message}
-              />
-            )}
+            render={({ field: { onChange, onBlur, value } }) => {
+              const trimmedLen = (value || '').trim().length;
+              let status: 'idle' | 'incomplete' | 'valid' | 'invalid' = 'idle';
+              let helperText: string | undefined = undefined;
+
+              if (errors.title?.message) {
+                status = 'invalid';
+              } else if (trimmedLen > 0 && trimmedLen < 5) {
+                status = 'incomplete';
+                helperText = `${trimmedLen}/5 characters (at least 5 required)`;
+              } else if (trimmedLen >= 5) {
+                status = 'valid';
+                helperText = `${(value || '').length}/100 characters`;
+              }
+
+              return (
+                <TextInput
+                  label="Issue Title"
+                  required
+                  placeholder="E.g., Water leakage under bathroom sink"
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  status={status}
+                  helperText={helperText}
+                  error={errors.title?.message}
+                  clearable
+                  onClear={() => onChange('')}
+                />
+              );
+            }}
           />
 
           {/* Location Input */}
@@ -268,19 +292,38 @@ export function RaiseTicketForm() {
           <Controller
             control={control}
             name="description"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Detailed Description *"
-                placeholder="Describe the issue, when it started, and any immediate hazards..."
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                multiline
-                numberOfLines={4}
-                className="min-h-[100px] text-start"
-                error={errors.description?.message}
-              />
-            )}
+            render={({ field: { onChange, onBlur, value } }) => {
+              const trimmedLen = (value || '').trim().length;
+              let status: 'idle' | 'incomplete' | 'valid' | 'invalid' = 'idle';
+              let helperText: string | undefined = undefined;
+
+              if (errors.description?.message) {
+                status = 'invalid';
+              } else if (trimmedLen > 0 && trimmedLen < 10) {
+                status = 'incomplete';
+                helperText = `${trimmedLen}/10 characters (at least 10 required)`;
+              } else if (trimmedLen >= 10) {
+                status = 'valid';
+                helperText = `${(value || '').length} characters`;
+              }
+
+              return (
+                <TextInput
+                  label="Detailed Description"
+                  required
+                  placeholder="Describe the issue, when it started, and any immediate hazards..."
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  multiline
+                  numberOfLines={4}
+                  className="min-h-[100px] text-start"
+                  status={status}
+                  helperText={helperText}
+                  error={errors.description?.message}
+                />
+              );
+            }}
           />
         </View>
 

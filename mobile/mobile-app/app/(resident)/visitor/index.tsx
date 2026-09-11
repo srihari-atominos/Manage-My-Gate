@@ -117,6 +117,7 @@ export default function VisitorDashboardScreen() {
       title={t('visitor_passes', 'Visitors & Passes')}
       subtitle={t('visitor_subtext', 'Resident entry approvals, QR passes & gate logs')}
       iconName="ShieldCheck"
+      scrollable={false}
       loading={isLoading}
       error={dashboard?.status === 'failed' ? (dashboard?.error || 'Failed to load dashboard data.') : null}
       onRetry={loadData}

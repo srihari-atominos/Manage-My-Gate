@@ -188,7 +188,7 @@ export class OrganizationService {
   }
 
   async checkNameAvailability(name) {
-    if (!name || !name.trim()) {
+    if (!name || typeof name !== 'string' || !name.trim()) {
       throw new HttpError(400, 'Organization name query parameter is required.');
     }
     const org = await organizationRepository.findByName(name.trim());
@@ -196,8 +196,12 @@ export class OrganizationService {
   }
 
   async setupWorkspace({ name, organizationType, contactEmail, contactPhone, expectedMemberCount, timezone, userId, features }) {
-    // Enforce name uniqueness checks BEFORE starting the write transaction
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      throw new HttpError(400, 'Organization name is required.');
+    }
     const trimmedName = name.trim();
+
+    // Enforce name uniqueness checks BEFORE starting the write transaction
     const existingOrg = await organizationRepository.findByName(trimmedName);
     if (existingOrg) {
       throw new HttpError(409, 'Conflict. Organization name already exists.');
@@ -321,6 +325,13 @@ export class OrganizationService {
 
       await session.commitTransaction();
 
+      // Emit decoupled ORGANIZATION_CREATED event strictly after successful commit
+      orgEventEmitter.emit('ORGANIZATION_CREATED', {
+        organizationId: newOrg._id.toString(),
+        organizationName: newOrg.name,
+        creatorUserId: userId.toString(),
+      });
+
       // Outside the write transaction, generate the fresh token context
       const authService = (await import('../auth/auth.services.js')).default;
       const user = await authService.getUserById(userId);
@@ -348,6 +359,9 @@ export class OrganizationService {
       };
     } catch (error) {
       await session.abortTransaction();
+      if (error.code === 11000 || (error.name === 'MongoServerError' && error.code === 11000)) {
+        throw new HttpError(409, 'Conflict. Organization name already exists.');
+      }
       throw error;
     } finally {
       await session.endSession();

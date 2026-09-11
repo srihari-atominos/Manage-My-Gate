@@ -11,14 +11,13 @@ export interface DirectoryState {
   refreshing: boolean;
   error: string | null;
 }
-
 export const DUMMY_MEMBERS: DirectoryMember[] = [];
 
 const initialState: DirectoryState = {
   members: [],
   pagination: {
     currentPage: 1,
-    totalPages: 0,
+    totalPages: 1,
     totalRecords: 0,
     limit: 50,
   },
@@ -43,12 +42,13 @@ export const fetchDirectory = createAsyncThunk(
         limit: params?.limit || 50,
       });
       return {
-        ...response,
+        data: response.data || [],
+        pagination: response.pagination,
         page: params?.page || 1,
         refreshing: params?.refreshing || false,
       };
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message || 'Failed to fetch directory');
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch directory');
     }
   }
 );
@@ -65,7 +65,7 @@ const directorySlice = createSlice({
       state.pagination.currentPage = 1;
     },
     resetDirectoryState(state) {
-      state.members = DUMMY_MEMBERS;
+      state.members = [];
       state.pagination = initialState.pagination;
       state.error = null;
     },
@@ -85,7 +85,7 @@ const directorySlice = createSlice({
         state.refreshing = false;
 
         const payload = action.payload || {};
-        const safeData = Array.isArray(payload.data) && payload.data.length > 0 ? payload.data : DUMMY_MEMBERS;
+        const safeData = Array.isArray(payload.data) ? payload.data : [];
         const page = payload.page || 1;
 
         if (page === 1) {
@@ -108,7 +108,6 @@ const directorySlice = createSlice({
       .addCase(fetchDirectory.rejected, (state, action) => {
         state.loading = false;
         state.refreshing = false;
-        state.members = DUMMY_MEMBERS;
         state.error = action.payload as string;
       });
   },

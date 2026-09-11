@@ -126,6 +126,10 @@ const ROLE_PERMISSIONS = {
     'visitor:resident',
     // Complaints — raise only
     'complaints:raise_ticket', 'complaints:track_requests',
+    // Amenities & Wallet
+    'amenities:discover', 'amenities:my_booking', 'amenities:wallet',
+    // Billing
+    'billing:action_center',
   ],
 };
 

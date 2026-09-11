@@ -103,6 +103,24 @@ export const walletSlice = createSlice({
       .addCase(createWalletRazorpayOrder.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
+      })
+      .addCase(verifyWalletPayment.fulfilled, (state, action) => {
+        if (action.payload) {
+          if (action.payload.balance !== undefined) {
+            state.balance = action.payload.balance;
+          }
+          if (action.payload.transactionId || action.payload._id) {
+            // Unshift the new transaction to the history instantly
+            const newTxn = { ...action.payload };
+            // Ensure no duplicate by checking transactionId
+            const exists = state.transactionHistory.some(
+              (tx) => tx.transactionId === newTxn.transactionId || tx._id === newTxn._id
+            );
+            if (!exists) {
+              state.transactionHistory = [newTxn, ...state.transactionHistory];
+            }
+          }
+        }
       });
   },
 });

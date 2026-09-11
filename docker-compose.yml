@@ -84,6 +84,8 @@ services:
       - MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}
       - MICROSOFT_TENANT_ID=${MICROSOFT_TENANT_ID}
       - CLIENT_URL=${CLIENT_URL}
+      - APP_CLIENT_URL=${APP_CLIENT_URL:-https://managemygate.e3esg.com}
+      - WEB_CLIENT_URL=${WEB_CLIENT_URL:-https://managemygate.e3esg.com}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - REDIS_URL=${REDIS_URL}
       - NODE_ENV=${NODE_ENV:-production}

@@ -8,6 +8,7 @@ import { TextInput } from '@/components/forms/TextInput';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { User, Phone, Tag } from 'lucide-react-native';
+import { validatePhone } from '@/src/utils/validation';
 
 const passSchema = yup.object({
   visitorName: yup.string().required('Visitor Name is required').min(2, 'Name is too short'),
@@ -44,6 +45,7 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
 }) => {
   const { control, handleSubmit, reset, formState: { errors } } = useForm<CreatePassFormData>({
     resolver: yupResolver(passSchema),
+    mode: 'onTouched',
     defaultValues: {
       visitorName: '',
       phone: '',
@@ -101,36 +103,76 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
         <Controller
           control={control}
           name="visitorName"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              label="Visitor Full Name"
-              placeholder="e.g. Rahul Sharma"
-              leftIcon={User}
-              onBlur={onBlur}
-              onChangeText={onChange}
-              value={value}
-              error={errors.visitorName?.message}
-            />
-          )}
+          render={({ field: { onChange, onBlur, value } }) => {
+            const trimmed = (value || '').trim();
+            let status: 'idle' | 'incomplete' | 'valid' | 'invalid' = 'idle';
+            let helperText: string | undefined = undefined;
+
+            if (errors.visitorName?.message) {
+              status = 'invalid';
+            } else if (trimmed.length > 0 && trimmed.length < 2) {
+              status = 'incomplete';
+              helperText = 'Name is too short (min 2 characters)';
+            } else if (trimmed.length >= 2) {
+              status = 'valid';
+            }
+
+            return (
+              <TextInput
+                label="Visitor Full Name"
+                required
+                placeholder="e.g. Rahul Sharma"
+                leftIcon={User}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                status={status}
+                helperText={helperText}
+                error={errors.visitorName?.message}
+                clearable
+                onClear={() => onChange('')}
+              />
+            );
+          }}
         />
 
         {/* Phone Field */}
         <Controller
           control={control}
           name="phone"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              label="Visitor Phone Number (Optional)"
-              placeholder="e.g. 9876543210"
-              keyboardType="phone-pad"
-              maxLength={10}
-              leftIcon={Phone}
-              onBlur={onBlur}
-              onChangeText={onChange}
-              value={value}
-              error={errors.phone?.message}
-            />
-          )}
+          render={({ field: { onChange, onBlur, value } }) => {
+            const phoneRes = validatePhone(value || '', 'IN');
+            let status: 'idle' | 'incomplete' | 'valid' | 'invalid' = 'idle';
+            let helperText: string | undefined = undefined;
+
+            if (errors.phone?.message) {
+              status = 'invalid';
+            } else if (phoneRes.status === 'incomplete') {
+              status = 'incomplete';
+              helperText = phoneRes.message;
+            } else if (phoneRes.status === 'valid') {
+              status = 'valid';
+              helperText = 'Valid 10-digit mobile number';
+            }
+
+            return (
+              <TextInput
+                label="Visitor Phone Number (Optional)"
+                placeholder="e.g. 9876543210"
+                keyboardType="phone-pad"
+                maxLength={10}
+                leftIcon={Phone}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                status={status}
+                helperText={helperText}
+                error={errors.phone?.message}
+                clearable
+                onClear={() => onChange('')}
+              />
+            );
+          }}
         />
 
         {/* Purpose / Vehicle Note */}
@@ -146,6 +188,8 @@ export const CreateVisitorPassSheet: React.FC<CreateVisitorPassSheetProps> = ({
               onChangeText={onChange}
               value={value}
               error={errors.purpose?.message}
+              clearable
+              onClear={() => onChange('')}
             />
           )}
         />
