@@ -90,12 +90,17 @@ export const InviteStatusCard = ({ status, errorMessage, isAuthenticated }) => {
     title = t('auth.invite.rejectedTitle', 'Invitation Declined')
     description = t(
       'auth.invite.rejectedDesc',
-      'This invitation was previously declined. Please request a new invitation if you wish to join.',
+      'This invitation has been declined. You will not be added to this community workspace.',
     )
     actionCta = (
-      <Link to="/login" className="btn btn-primary px-4 py-2 rounded-pill fw-semibold">
-        {t('auth.invite.backToLogin', 'Go to Login')}
-      </Link>
+      <div className="d-flex flex-column align-items-center gap-2">
+        <Link to="/" className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-semibold">
+          {t('auth.invite.returnHome', 'Return to Home')}
+        </Link>
+        <Link to="/login" className="btn btn-link text-muted text-decoration-none small">
+          {t('auth.invite.backToLogin', 'Sign in with an existing account')}
+        </Link>
+      </div>
     )
   }
 
@@ -109,7 +114,10 @@ export const InviteStatusCard = ({ status, errorMessage, isAuthenticated }) => {
           <CIcon icon={icon} size="xl" />
         </div>
         <h3 className="fw-bold mb-2">{title}</h3>
-        <CAlert color={normalizedStatus === 'ACCEPTED' ? 'success' : 'danger'} className="mb-4 text-start">
+        <CAlert
+          color={normalizedStatus === 'ACCEPTED' ? 'success' : normalizedStatus === 'REJECTED' ? 'secondary' : 'danger'}
+          className="mb-4 text-start"
+        >
           {description}
         </CAlert>
         <div className="mt-3">{actionCta}</div>

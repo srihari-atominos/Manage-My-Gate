@@ -4,19 +4,22 @@ import { View, ActivityIndicator } from 'react-native';
 
 export default function AppInviteIndexRedirectScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ token?: string }>();
+  const params = useLocalSearchParams<Record<string, string>>();
 
   useEffect(() => {
     const inviteToken = params.token;
     if (inviteToken) {
       router.replace({
         pathname: '/(auth)/accept-invite',
-        params: { token: inviteToken },
+        params: { ...params, token: inviteToken },
       });
     } else {
-      router.replace('/(auth)/accept-invite');
+      router.replace({
+        pathname: '/(auth)/accept-invite',
+        params: params,
+      });
     }
-  }, [params.token, router]);
+  }, [params, router]);
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' }}>

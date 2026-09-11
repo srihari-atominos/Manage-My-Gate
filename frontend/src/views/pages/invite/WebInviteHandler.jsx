@@ -17,11 +17,12 @@ export const WebInviteHandler = () => {
 
   useEffect(() => {
     if (token) {
-      navigate(`/invite/${token}`, { replace: true })
+      const searchStr = searchParams.toString() ? `?${searchParams.toString()}` : ''
+      navigate(`/invite/${token}${searchStr}`, { replace: true })
     } else {
       navigate('/login', { replace: true })
     }
-  }, [token, navigate])
+  }, [token, searchParams, navigate])
 
   return (
     <div className="min-vh-100 d-flex flex-row align-items-center justify-content-center bg-dark text-white">

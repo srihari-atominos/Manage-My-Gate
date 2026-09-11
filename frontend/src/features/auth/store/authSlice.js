@@ -245,6 +245,20 @@ export const acceptSsoInvitation = createAsyncThunk(
   },
 )
 
+export const rejectInvitation = createAsyncThunk(
+  'auth/rejectInvitation',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const response = await authService.rejectInvite(payload)
+      return response.data || response
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Failed to reject invitation',
+      )
+    }
+  },
+)
+
 export const switchWorkspaceContext = createAsyncThunk(
   'auth/switchWorkspaceContext',
   async (arg, { dispatch, rejectWithValue }) => {
@@ -946,17 +960,56 @@ const authSlice = createSlice({
       })
       .addCase(validateInvitation.fulfilled, (state, action) => {
         state.invitation.loading = false
-        state.invitation.valid = true
         state.invitation.token = action.meta?.arg
-        state.invitation.data = action.payload.data?.data || action.payload.data || action.payload
-        state.invitation.error = null
+        const data = action.payload.data?.data || action.payload.data || action.payload
+        state.invitation.data = data
+        if (data?.membershipStatus === 'Rejected' || data?.invitationStatus === 'REJECTED' || data?.status === 'REJECTED') {
+          state.invitation.valid = false
+          state.invitation.error = 'REJECTED'
+        } else {
+          state.invitation.valid = true
+          state.invitation.error = null
+        }
       })
       .addCase(validateInvitation.rejected, (state, action) => {
         state.invitation.loading = false
         state.invitation.valid = false
         state.invitation.token = action.meta?.arg || null
         state.invitation.data = null
-        state.invitation.error = action.payload || 'Invalid or expired invitation token'
+        const errMsg = action.payload || ''
+        if (typeof errMsg === 'string' && errMsg.toLowerCase().includes('reject')) {
+          state.invitation.error = 'REJECTED'
+        } else {
+          state.invitation.error = errMsg || 'Invalid or expired invitation token'
+        }
+      })
+      // Reject Invitation
+      .addCase(rejectInvitation.pending, (state) => {
+        state.invitation.loading = true
+        state.invitation.error = null
+      })
+      .addCase(rejectInvitation.fulfilled, (state, action) => {
+        state.invitation.loading = false
+        state.invitation.valid = false
+        state.invitation.error = 'REJECTED'
+        if (state.invitation.data) {
+          state.invitation.data.membershipStatus = 'Rejected'
+          state.invitation.data.invitationStatus = 'REJECTED'
+        }
+      })
+      .addCase(rejectInvitation.rejected, (state, action) => {
+        state.invitation.loading = false
+        const errMsg = action.payload || ''
+        if (typeof errMsg === 'string' && errMsg.toLowerCase().includes('reject')) {
+          state.invitation.valid = false
+          state.invitation.error = 'REJECTED'
+          if (state.invitation.data) {
+            state.invitation.data.membershipStatus = 'Rejected'
+            state.invitation.data.invitationStatus = 'REJECTED'
+          }
+        } else {
+          state.invitation.error = errMsg || 'Failed to reject invitation'
+        }
       })
   },
 })

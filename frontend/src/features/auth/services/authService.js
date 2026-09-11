@@ -24,6 +24,11 @@ export const acceptInvite = async (payload) => {
   return await apiClient.post('/auth/accept-invite', body)
 }
 
+export const rejectInvite = async (payload) => {
+  const body = typeof payload === 'string' ? { token: payload } : (payload || {})
+  return await apiClient.post('/auth/reject-invite', body)
+}
+
 export const createWorkspace = async (workspaceData) => {
   return await apiClient.post('/organizations/setup', workspaceData)
 }
@@ -112,6 +117,7 @@ export default {
   verifyRegistration,
   validateInvite,
   acceptInvite,
+  rejectInvite,
   createWorkspace,
   loginWithGoogle,
   loginWithMicrosoft,

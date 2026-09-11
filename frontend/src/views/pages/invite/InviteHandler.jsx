@@ -46,6 +46,7 @@ const InviteHandlerContent = () => {
     handleValidateInvitation,
     handleAcceptInvitation,
     handleAcceptSsoInvitation,
+    handleRejectInvitation,
     handleCreateInviteHandoff,
     login,
     logout,
@@ -64,12 +65,16 @@ const InviteHandlerContent = () => {
   const [activeTab, setActiveTab] = useState('signup')
   const [tabInitialized, setTabInitialized] = useState(false)
 
-  // 1. Trigger invitation token validation on mount or token change
+  // 1. Trigger invitation token validation or immediate rejection on mount or token change
   useEffect(() => {
     if (token) {
-      handleValidateInvitation(token)
+      if (searchParams.get('action') === 'reject') {
+        handleRejectInvitation({ token, email: searchParams.get('email') })
+      } else {
+        handleValidateInvitation(token)
+      }
     }
-  }, [token])
+  }, [token, searchParams])
 
   // 2. Set default tab according to whether user is detected as existing
   useEffect(() => {
@@ -219,6 +224,26 @@ const InviteHandlerContent = () => {
   const handleSignOut = () => {
     logout()
     setSubmissionError('')
+  }
+
+  // Handler: Reject / Decline Invitation
+  const handleRejectSubmit = async () => {
+    setSubmitting(true)
+    setSubmissionError('')
+
+    try {
+      const result = await handleRejectInvitation({
+        token,
+        email: inviteData?.email,
+      })
+      if (!result.success) {
+        setSubmissionError(result.error || t('auth.invite.error', 'Failed to decline invitation.'))
+      }
+    } catch (err) {
+      setSubmissionError(err.message || t('auth.invite.error', 'Failed to decline invitation.'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   // 0. Mobile Handoff State (Rendered after successful acceptance on mobile device)
@@ -381,6 +406,18 @@ const InviteHandlerContent = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Option to decline/reject workspace invitation */}
+                  <div className="text-center mt-4 pt-3 border-top">
+                    <button
+                      type="button"
+                      className="btn btn-link text-danger text-decoration-none small p-0 fw-medium"
+                      onClick={handleRejectSubmit}
+                      disabled={submitting}
+                    >
+                      {t('auth.invite.declineInvitation', 'Decline this invitation')}
+                    </button>
+                  </div>
                 </CCardBody>
               </CCard>
             </div>

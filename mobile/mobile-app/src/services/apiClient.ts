@@ -42,9 +42,14 @@ export const getApiBaseUrl = () => {
     url = url.replace('localhost', '10.0.2.2');
   }
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
-    const isPrivateOrLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(url);
-    if (isPrivateOrLocalUrl && window.location.hostname) {
-      url = url.replace(/^https?:\/\/[^/:]+/i, `${window.location.protocol}//${window.location.hostname}`);
+    const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
+    if (isLocalHostName) {
+      url = `${window.location.protocol}//${window.location.hostname}:5002/api/v1`;
+    } else {
+      const isPrivateOrLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(url);
+      if (isPrivateOrLocalUrl && window.location.hostname) {
+        url = url.replace(/^https?:\/\/[^/:]+/i, `${window.location.protocol}//${window.location.hostname}`);
+      }
     }
   }
   return url;
@@ -81,9 +86,14 @@ export const getSocketBaseUrl = () => {
     socketUrl = socketUrl.replace('localhost', '10.0.2.2');
   }
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
-    const isPrivateOrLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(socketUrl);
-    if (isPrivateOrLocalUrl && window.location.hostname) {
-      socketUrl = socketUrl.replace(/^https?:\/\/[^/:]+/i, `${window.location.protocol}//${window.location.hostname}`);
+    const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
+    if (isLocalHostName) {
+      socketUrl = `${window.location.protocol}//${window.location.hostname}:5002`;
+    } else {
+      const isPrivateOrLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(socketUrl);
+      if (isPrivateOrLocalUrl && window.location.hostname) {
+        socketUrl = socketUrl.replace(/^https?:\/\/[^/:]+/i, `${window.location.protocol}//${window.location.hostname}`);
+      }
     }
   }
   return socketUrl;

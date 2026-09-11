@@ -59,7 +59,17 @@ export default function AcceptInviteScreen() {
     return '';
   }, [searchParams.token, searchParams.code]);
 
+  const getActionFromContext = useCallback(() => {
+    if (searchParams.action) return searchParams.action;
+    if (typeof window !== 'undefined' && window.location?.href) {
+      const match = window.location.href.match(/[\/?&]action=([^&#]+)/i);
+      if (match) return decodeURIComponent(match[1]);
+    }
+    return '';
+  }, [searchParams.action]);
+
   const [resolvedToken, setResolvedToken] = useState<string>(getTokenFromContext);
+  const [resolvedAction, setResolvedAction] = useState<string>(getActionFromContext);
 
   useEffect(() => {
     const extracted = getTokenFromContext();
@@ -67,6 +77,13 @@ export default function AcceptInviteScreen() {
       setResolvedToken(extracted);
     }
   }, [getTokenFromContext, resolvedToken]);
+
+  useEffect(() => {
+    const extracted = getActionFromContext();
+    if (extracted && extracted !== resolvedAction) {
+      setResolvedAction(extracted);
+    }
+  }, [getActionFromContext, resolvedAction]);
 
   const form = useForm<AcceptInviteFormValues>({
     resolver: yupResolver(acceptInviteSchema),
@@ -111,8 +128,12 @@ export default function AcceptInviteScreen() {
       });
       setIsRejectedState(true);
     } catch (err: any) {
-      const errMsg = err?.response?.data?.message || err?.message || 'Failed to reject invitation.';
-      setApiError(errMsg);
+      const errMsg = err?.response?.data?.message || err?.message || '';
+      if (errMsg.toLowerCase().includes('reject')) {
+        setIsRejectedState(true);
+      } else {
+        setApiError(errMsg || 'Failed to reject invitation.');
+      }
     } finally {
       setIsRejecting(false);
     }
@@ -131,6 +152,27 @@ export default function AcceptInviteScreen() {
     setValidating(true);
 
     const checkInvite = async () => {
+      const actionToPerform = (resolvedAction || getActionFromContext() || '').trim().toLowerCase();
+
+      // If the incoming intent is explicitly to REJECT, execute rejection immediately
+      // and do not evaluate registration or auto-login workflows.
+      if (actionToPerform === 'reject') {
+        await handleRejectInvitation();
+        // Best-effort fetch invite metadata for clean community/role presentation
+        try {
+          const query = new URLSearchParams();
+          if (tokenToValidate) query.append('token', tokenToValidate);
+          if (emailToValidate) query.append('email', emailToValidate);
+          const res: any = await apiClient.get(`/auth/validate-invite?${query.toString()}`);
+          const data = res?.data?.data || res?.data || res;
+          if (isMounted && data) {
+            setInviteMeta(data);
+          }
+        } catch (_) {}
+        if (isMounted) setValidating(false);
+        return;
+      }
+
       try {
         const query = new URLSearchParams();
         if (tokenToValidate) query.append('token', tokenToValidate);
@@ -143,10 +185,8 @@ export default function AcceptInviteScreen() {
           setInviteMeta(data);
           setApiError(null);
 
-          if (data.membershipStatus === 'Rejected') {
+          if (data.membershipStatus === 'Rejected' || data.invitationStatus === 'REJECTED') {
             setIsRejectedState(true);
-          } else if (searchParams.action === 'reject') {
-            handleRejectInvitation();
           } else if (data.isExisting || data.isAlreadyRegistered) {
             const userEmail = data.email || emailToValidate;
             setIsAlreadyRegistered(true);
@@ -187,7 +227,13 @@ export default function AcceptInviteScreen() {
       } catch (err: any) {
         if (isMounted) {
           const errMsg = err?.response?.data?.message || err?.message || '';
-          if (errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('active')) {
+          if (errMsg.toLowerCase().includes('reject')) {
+            setIsRejectedState(true);
+            setApiError(null);
+          } else if (
+            (errMsg.toLowerCase().includes('already') && (errMsg.toLowerCase().includes('active') || errMsg.toLowerCase().includes('registered') || errMsg.toLowerCase().includes('accepted') || errMsg.toLowerCase().includes('member'))) ||
+            errMsg.toLowerCase().includes('active')
+          ) {
             setIsAlreadyRegistered(true);
             setAlreadyRegisteredEmail(emailToValidate);
             setIsAlreadyRegisteredModalVisible(true);
@@ -206,7 +252,7 @@ export default function AcceptInviteScreen() {
     return () => {
       isMounted = false;
     };
-  }, [resolvedToken, getTokenFromContext, searchParams.email, searchParams.action, handleNavigateToLogin, handleRejectInvitation]);
+  }, [resolvedToken, getTokenFromContext, resolvedAction, getActionFromContext, searchParams.email, handleNavigateToLogin, handleRejectInvitation]);
 
   useEffect(() => {
     clearStatus();
@@ -318,13 +364,33 @@ export default function AcceptInviteScreen() {
                       Role: <Text className="font-semibold text-foreground">{inviteMeta.role}</Text>
                     </Text>
                   ) : null}
+                  <Text className="text-xs text-muted-foreground text-center mt-1 px-2">
+                    No further action is required. You will not be added to this community.
+                  </Text>
                 </View>
                 <Button
-                  onPress={() => handleNavigateToLogin()}
-                  className="mt-3 h-12 bg-primary rounded-xl w-full items-center justify-center"
-                  textClassName="font-bold text-base"
+                  onPress={() => {
+                    if (router.canGoBack()) {
+                      router.back();
+                    } else {
+                      try {
+                        router.replace('/');
+                      } catch (_) {}
+                    }
+                  }}
+                  variant="outline"
+                  className="mt-3 h-12 border-border rounded-xl w-full items-center justify-center"
+                  textClassName="font-semibold text-sm text-foreground"
                 >
-                  Go to Sign In
+                  Close
+                </Button>
+                <Button
+                  onPress={() => handleNavigateToLogin()}
+                  variant="ghost"
+                  className="h-10 w-full items-center justify-center"
+                  textClassName="text-xs text-muted-foreground"
+                >
+                  Sign in with an existing account
                 </Button>
               </View>
             ) : null}

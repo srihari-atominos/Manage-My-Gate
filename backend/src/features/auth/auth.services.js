@@ -825,9 +825,19 @@ export class AuthService {
       let orgId = null;
 
       if (rawToken) {
-        const tokenRes = await tokenService.rejectInvitationToken(rawToken, session);
-        userId = tokenRes.userId;
-        orgId = tokenRes.orgId;
+        try {
+          const tokenRes = await tokenService.rejectInvitationToken(rawToken, session);
+          userId = tokenRes.userId;
+          orgId = tokenRes.orgId;
+        } catch (tokenErr) {
+          if (tokenErr.message && tokenErr.message.toLowerCase().includes('already been rejected')) {
+            const tokenDoc = await tokenService.getInvitationToken(rawToken, 'INVITATION');
+            userId = tokenDoc?.userId;
+            orgId = tokenDoc?.orgId;
+          } else {
+            throw tokenErr;
+          }
+        }
       } else if (email) {
         const userByEmail = await userService.getUserByEmail(email.trim().toLowerCase(), session).catch(() => null);
         if (userByEmail) {
