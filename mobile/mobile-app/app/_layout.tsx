@@ -121,7 +121,6 @@ function AuthRouteGuard() {
 
     if (isInviteRoute) {
       if (firstSegment === 'invite') {
-        // Let the dedicated /invite routes (such as /invite/app/[token]) resolve their parameters and redirect cleanly
         return;
       }
       if (firstSegment !== '(auth)' || currentRoute !== 'accept-invite') {
@@ -132,10 +131,12 @@ function AuthRouteGuard() {
             tokenToPass = match[1] || match[2];
           }
         }
-        router.replace({
-          pathname: '/(auth)/accept-invite',
-          params: { ...searchParams, ...(tokenToPass ? { token: tokenToPass } : {}) },
-        });
+        setTimeout(() => {
+          router.replace({
+            pathname: '/(auth)/accept-invite',
+            params: { ...searchParams, ...(tokenToPass ? { token: tokenToPass } : {}) },
+          });
+        }, 0);
       }
       return;
     }
@@ -150,40 +151,48 @@ function AuthRouteGuard() {
     );
     const isOnboardingRoute = currentRoute === 'setup-organization' || currentRoute === 'select-features';
 
+    // On root route (/ or index), app/index.tsx handles initial redirect cleanly. Avoid racing.
+    if (isRoot) {
+      return;
+    }
+
     if (!isAuthenticated && !inAuthGroup) {
       // Check for deferred handoff or invitation token from Google Play Install Referrer on first launch
       getDeferredHandoffContext()
         .then((context) => {
-          if (context) {
-            if (context.type === 'handoff') {
-              router.replace(`/invite/handoff/${context.value}` as any);
+          setTimeout(() => {
+            if (context) {
+              if (context.type === 'handoff') {
+                router.replace(`/invite/handoff/${context.value}` as any);
+              } else {
+                router.replace({
+                  pathname: '/(auth)/accept-invite',
+                  params: { token: context.value },
+                });
+              }
             } else {
-              router.replace({
-                pathname: '/(auth)/accept-invite',
-                params: { token: context.value },
-              });
+              router.replace('/(auth)/login');
             }
-          } else {
-            router.replace('/(auth)/login');
-          }
+          }, 0);
         })
         .catch(() => {
-          router.replace('/(auth)/login');
+          setTimeout(() => {
+            router.replace('/(auth)/login');
+          }, 0);
         });
     } else if (isAuthenticated) {
       if (!hasOrg) {
-        // Authenticated user has no organization workspace -> direct to setup-organization
         if (!isOnboardingRoute) {
-          router.replace('/(auth)/setup-organization');
+          setTimeout(() => {
+            router.replace('/(auth)/setup-organization');
+          }, 0);
         }
       } else if (pendingRoute) {
-        // Priority 1: Cold start / background notification pending destination
         console.log('[AuthRouteGuard] Navigating to pending notification destination:', pendingRoute);
         dispatch(clearPendingRoute());
-        router.replace(pendingRoute as any);
-      } else if (isRoot) {
-        // Authenticated user opening app cold at root -> route to dashboard
-        router.replace('/(resident)/dashboard');
+        setTimeout(() => {
+          router.replace(pendingRoute as any);
+        }, 0);
       }
     }
   }, [isAuthenticated, isInitialized, rootNavigationState?.key, segments, user, isCreateOrgIntent, pendingRoute, dispatch]);

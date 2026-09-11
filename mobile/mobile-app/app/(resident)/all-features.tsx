@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
-import { View, TouchableOpacity, ScrollView, TextInput, BackHandler, Text } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, TouchableOpacity, ScrollView, TextInput, BackHandler } from 'react-native';
+import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import {

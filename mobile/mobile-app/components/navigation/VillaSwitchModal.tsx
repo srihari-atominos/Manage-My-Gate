@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Home, Check, X, Building2 } from 'lucide-react-native';
 
 import { useDispatch, useSelector } from 'react-redux';
-import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
+import { switchWorkspaceContextThunk, setActiveUnitContext } from '../../src/features/auth/store/authSlice';
+import { fetchQuickActionsThunk, resetQuickActionsForContext } from '../../src/features/dashboard/dashboardSlice';
 
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
@@ -44,9 +45,6 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   const activeOrgId = (user as any)?.orgId || (user as any)?.activeOrgId;
   const activeVillaId = (user as any)?.villaId;
 
-  const [pendingUnit, setPendingUnit] = React.useState<VillaUnit | null>(null);
-  const [showConfirmModal, setShowConfirmModal] = React.useState(false);
-  const [isSwitching, setIsSwitching] = React.useState(false);
 
   const userUnits: VillaUnit[] = React.useMemo(() => {
     const userAny = user as any;
@@ -92,36 +90,39 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
   }, [user, reduxWorkspaces, activeOrgId]);
 
   const handleSelect = (unit: VillaUnit) => {
-    setPendingUnit(unit);
-    setShowConfirmModal(true);
-  };
+    // 1. Reset quick actions and set active unit context
+    dispatch(resetQuickActionsForContext());
 
-  const handleConfirmSwitch = async () => {
-    if (!pendingUnit) return;
-    const unit = pendingUnit;
-    setIsSwitching(true);
-    try {
-      const switchPayload: { targetVillaId?: string; targetOrgId?: string } = {};
-      if (unit.id && typeof unit.id === 'string' && /^[0-9a-fA-F]{24}$/.test(unit.id.trim())) {
-        switchPayload.targetVillaId = unit.id.trim();
-      }
-      if (activeOrgId && typeof activeOrgId === 'string' && /^[0-9a-fA-F]{24}$/.test(activeOrgId.trim())) {
-        switchPayload.targetOrgId = activeOrgId.trim();
-      }
-      await dispatch(switchWorkspaceContextThunk(switchPayload)).unwrap();
-      onSelectVilla(unit.unitNumber);
-      setShowConfirmModal(false);
-      setPendingUnit(null);
-      onClose();
-    } catch (err) {
-      console.warn('Failed to switch property unit via backend, applying local selection:', err);
-      onSelectVilla(unit.unitNumber);
-      setShowConfirmModal(false);
-      setPendingUnit(null);
-      onClose();
-    } finally {
-      setIsSwitching(false);
+    dispatch(
+      setActiveUnitContext({
+        villaId: unit.id,
+        villaNumber: unit.unitNumber,
+        orgId: activeOrgId,
+      })
+    );
+
+    // 2. Dispatch backend workspace switch if valid ObjectId
+    const payload: any = {};
+    if (unit.id && /^[0-9a-fA-F]{24}$/.test(unit.id)) {
+      payload.targetVillaId = unit.id;
     }
+    if (activeOrgId && /^[0-9a-fA-F]{24}$/.test(activeOrgId)) {
+      payload.targetOrgId = activeOrgId;
+    }
+    if (Object.keys(payload).length > 0) {
+      dispatch(switchWorkspaceContextThunk(payload));
+    }
+
+    dispatch(
+      fetchQuickActionsThunk({
+        orgId: activeOrgId,
+        villaId: unit.id,
+        villaNumber: unit.unitNumber,
+      })
+    );
+
+    onSelectVilla(unit.unitNumber);
+    onClose();
   };
 
   return (
@@ -140,6 +141,7 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
               <X size={16} className="text-muted-foreground" />
             </TouchableOpacity>
           </View>
+
 
           <Text className="text-xs text-muted-foreground">
             {t('select_property_unit_context', 'Select a property unit context in')} <Text className="font-bold text-foreground">{communityName}</Text>:
@@ -232,22 +234,6 @@ export const VillaSwitchModal: React.FC<VillaSwitchModalProps> = ({
         </View>
       </View>
 
-      {/* Yes/No Switch Confirmation Dialog */}
-      <ConfirmationModal
-        visible={showConfirmModal}
-        variant="info"
-        loading={isSwitching}
-        title={t('confirm_switch_unit_title', 'Switch Property Unit?')}
-        message={`${t('confirm_switch_unit_msg', 'Are you sure you want to switch active unit to')} ${pendingUnit?.unitNumber || ''}?`}
-        confirmLabel={t('yes_switch', 'Yes, Switch')}
-        cancelLabel={t('no_cancel', 'No, Cancel')}
-        onConfirm={handleConfirmSwitch}
-        onCancel={() => {
-          if (isSwitching) return;
-          setShowConfirmModal(false);
-          setPendingUnit(null);
-        }}
-      />
     </Modal>
   );
 };

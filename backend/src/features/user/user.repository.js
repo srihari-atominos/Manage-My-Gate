@@ -128,7 +128,6 @@ export class UserRepository {
       {
         $set: {
           name: 'Deleted User',
-          phone: null,
           email: `deleted_${id}_${timestamp}@deleted.nahom.local`,
           username: `deleted_${id}_${timestamp}`,
           password: `DELETED_${id}_${timestamp}`,
@@ -143,6 +142,9 @@ export class UserRepository {
           villaId: null,
           residencyType: 'None',
           roles: [],
+        },
+        $unset: {
+          phone: 1,
         },
       },
       { returnDocument: 'after', session: session || null }

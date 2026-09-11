@@ -6,7 +6,13 @@ import { Building2, Check, X, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 import { useDispatch, useSelector } from 'react-redux';
-import { switchWorkspaceContextThunk } from '../../src/features/auth/store/authSlice';
+import {
+  setActiveCommunityOrg,
+  setActiveRolePersona,
+  setActiveVillaUnit,
+  switchWorkspaceContextThunk,
+} from '../../src/features/auth/store/authSlice';
+import { fetchQuickActionsThunk, resetQuickActionsForContext } from '../../src/features/dashboard/dashboardSlice';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
 import { useTranslation } from '@/src/utils/i18n';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
@@ -28,7 +34,6 @@ interface OrgSwitchModalProps {
 }
 
 export const CANONICAL_COMMUNITIES: WorkspaceItem[] = [];
-
 export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   visible,
   onClose,
@@ -64,6 +69,10 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   }, [reduxWorkspaces, user]);
 
   const handleSelect = (ws: WorkspaceItem) => {
+    if (ws.orgId === activeOrgId) {
+      onClose();
+      return;
+    }
     setPendingOrg(ws);
     setShowConfirmModal(true);
   };
@@ -71,31 +80,46 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
   const handleConfirmSwitch = async () => {
     if (!pendingOrg) return;
     const ws = pendingOrg;
-    const targetRole = ws.roleName ? ws.roleName.split(',')[0].trim() : undefined;
     setIsSwitching(true);
+
     try {
-      const switchPayload: { targetOrgId?: string; targetRole?: string; targetVillaId?: string } = {};
-      if (ws.orgId && typeof ws.orgId === 'string' && /^[0-9a-fA-F]{24}$/.test(ws.orgId.trim())) {
-        switchPayload.targetOrgId = ws.orgId.trim();
+      // 1. Reset quick actions and update active context locally in Redux
+      dispatch(resetQuickActionsForContext());
+      const targetRole = ws.roleName ? ws.roleName.split(',')[0].trim() : undefined;
+      
+      dispatch(setActiveCommunityOrg({ orgId: ws.orgId, orgName: ws.name }));
+      if (targetRole) {
+        dispatch(setActiveRolePersona({ role: targetRole }));
       }
-      if (targetRole && typeof targetRole === 'string' && targetRole.trim()) {
-        switchPayload.targetRole = targetRole.trim();
-      }
-      if (ws.villaId && typeof ws.villaId === 'string' && /^[0-9a-fA-F]{24}$/.test(ws.villaId.trim())) {
-        switchPayload.targetVillaId = ws.villaId.trim();
+      if (ws.villaNumber) {
+        dispatch(setActiveVillaUnit({ villaNumber: ws.villaNumber, villaId: ws.villaId }));
       }
 
-      await dispatch(switchWorkspaceContextThunk(switchPayload)).unwrap();
+      // 2. Notify parent callback & close modal
       onSelectCommunity(ws.name, ws.orgId);
       setShowConfirmModal(false);
       setPendingOrg(null);
       onClose();
-    } catch (err) {
-      console.warn('Failed to switch community workspace via backend, applying local selection:', err);
-      onSelectCommunity(ws.name, ws.orgId);
-      setShowConfirmModal(false);
-      setPendingOrg(null);
-      onClose();
+
+      // 3. Dispatch backend workspace context sync in background
+      try {
+        const payload: any = { targetOrgId: ws.orgId };
+        if (targetRole) payload.targetRole = targetRole;
+        if (ws.villaId && /^[0-9a-fA-F]{24}$/.test(ws.villaId)) {
+          payload.targetVillaId = ws.villaId;
+        }
+        await dispatch(switchWorkspaceContextThunk(payload));
+      } catch (e) {
+        console.warn('Background workspace context sync error:', e);
+      }
+
+      dispatch(
+        fetchQuickActionsThunk({
+          orgId: ws.orgId,
+          villaId: ws.villaId,
+          villaNumber: ws.villaNumber,
+        })
+      );
     } finally {
       setIsSwitching(false);
     }

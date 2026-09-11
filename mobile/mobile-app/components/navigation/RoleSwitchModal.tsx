@@ -26,7 +26,6 @@ export const RoleSwitchModal: React.FC<RoleSwitchModalProps> = ({ visible, onClo
 
   // The 3 standard canonical roles: Admin, Tenant/Owner, Security
   const canonicalRoles = ['Admin', 'Tenant/Owner', 'Security'];
-
   const roles: string[] = React.useMemo(() => {
     if (!user) return canonicalRoles;
     const userAny = user as any;

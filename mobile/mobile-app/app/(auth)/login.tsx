@@ -46,6 +46,7 @@ import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { storage, sessionStore } from '@/src/utils/storage';
 import { useSelector, useDispatch } from 'react-redux';
 import { clearPendingRoute } from '../../src/features/notification/store/notificationSlice';
+import { useTranslation } from '@/src/utils/i18n';
 
 // 1. Basic Auth Validation Schema
 const basicAuthSchema = yup.object().shape({
@@ -80,6 +81,7 @@ interface PhoneFormValues {
 }
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const pendingRoute = useSelector((state: any) => state.notification?.pendingRoute);
   const { user, login: performLogin, requestOtp, loading, error, isAuthenticated, otpSent, clearStatus } = useAuth();
@@ -370,11 +372,6 @@ export default function LoginScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
       <ImageBackground
         source={require('../../assets/images/auth-bg.jpg')}
         style={{ flex: 1 }}
@@ -383,14 +380,15 @@ export default function LoginScreen() {
       >
         <View className="absolute inset-0 bg-white/40 dark:bg-[#0B0E14]/55" />
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
         >
           <ScrollView
-            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
             className="px-5 py-6"
           >
             <View className="max-w-sm mx-auto w-full gap-3.5">
@@ -544,12 +542,12 @@ export default function LoginScreen() {
                       name="login"
                       render={({ field: { onChange, onBlur, value } }) => (
                         <TextInput
-                          label="Email or Username"
+                          label={t('email_or_username', 'Email or Username')}
                           required
                           value={value}
                           onChangeText={onChange}
                           onBlur={onBlur}
-                          placeholder="Enter your email or username"
+                          placeholder={t('enter_email_or_username', 'Enter your email or username')}
                           autoCapitalize="none"
                           autoCorrect={false}
                           keyboardType="email-address"
@@ -566,7 +564,7 @@ export default function LoginScreen() {
                     <View>
                       <View className="flex-row items-center justify-between mb-1.5">
                         <Text className="text-sm font-medium text-foreground">
-                          Password <Text className="text-destructive font-bold">*</Text>
+                          {t('password', 'Password')} <Text className="text-destructive font-bold">*</Text>
                         </Text>
                         <TouchableOpacity
                           onPress={() => router.push('/(auth)/forgot-password')}
@@ -574,7 +572,7 @@ export default function LoginScreen() {
                           hitSlop={8}
                         >
                           <Text className="text-xs font-bold text-[#FF5E00] dark:text-[#FF7A00]">
-                            Forgot?
+                            {t('forgot_password', 'Forgot?')}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -587,7 +585,7 @@ export default function LoginScreen() {
                             value={value}
                             onChangeText={onChange}
                             onBlur={onBlur}
-                            placeholder="Enter your password"
+                            placeholder={t('enter_password', 'Enter your password')}
                             leftIcon={Lock}
                             error={basicForm.formState.errors.password?.message}
                             returnKeyType="go"
@@ -602,7 +600,7 @@ export default function LoginScreen() {
                       <Checkbox
                         checked={keepSignedIn}
                         onCheckedChange={setKeepSignedIn}
-                        label="Stay signed in"
+                        label={t('stay_signed_in', 'Stay signed in')}
                         labelClassName="text-xs text-muted-foreground font-medium"
                         className="items-center"
                       />
@@ -617,7 +615,7 @@ export default function LoginScreen() {
                       </View>
                     ) : null}
 
-                    {/* Step 7: Sign In CTA Button (Logo Mixed Colors: Charcoal Slate & Sunset Orange Gradient) */}
+                    {/* Step 7: Sign In CTA Button */}
                     <TouchableOpacity
                       onPress={basicForm.handleSubmit(onBasicSubmit)}
                       disabled={isSubmittingBasic || isSubmittingPhone || googleLoading}
@@ -641,13 +639,13 @@ export default function LoginScreen() {
                         <View className="flex-row items-center gap-2 z-10">
                           <ActivityIndicator color="#FFFFFF" size="small" />
                           <Text className="font-bold text-white text-sm font-sans">
-                            Signing In...
+                            {t('signing_in', 'Signing In...')}
                           </Text>
                         </View>
                       ) : (
                         <View className="flex-row items-center justify-center gap-2 z-10">
                           <Text className="font-bold text-white text-base font-sans">
-                            Sign In
+                            {t('sign_in', 'Sign In')}
                           </Text>
                           <ArrowRight size={17} color="#FFFFFF" strokeWidth={2.5} />
                         </View>

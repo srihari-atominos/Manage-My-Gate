@@ -61,7 +61,7 @@ function BottomSheet({
       onRequestClose={handleClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
         className="flex-1 justify-end"
       >
@@ -95,13 +95,14 @@ function BottomSheet({
 
           {/* Scrollable Body Content */}
           <ScrollView
-            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 60, flexGrow: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 80, flexGrow: 1 }}
             showsVerticalScrollIndicator={true}
             bounces={true}
             alwaysBounceVertical={false}
             nestedScrollEnabled={true}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
           >
             {children}
           </ScrollView>

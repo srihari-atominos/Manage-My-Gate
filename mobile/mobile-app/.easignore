@@ -1,18 +1,23 @@
-# Ignore documentation files
-*.md
-
-# Ignore coverage and testing artifacts
-coverage/
-jest/
-
-# Ignore local environment overrides
-.env.local
-.env*.local
-
-# Ignore build artifacts and local cache
+# Dependencies
+node_modules/
 .expo/
 dist/
 web-build/
 
-# Ignore iOS native directory for Android cloud CNG compilation
-ios/
+# iOS build artifacts
+ios/Pods/
+ios/Podfile.lock
+ios/build/
+ios/DerivedData/
+ios/**/xcuserdata/
+ios/.xcode.env.local
+
+# Android build artifacts
+android/build/
+android/app/build/
+
+# Logs and environment
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store

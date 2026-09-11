@@ -34,20 +34,31 @@ export class GoogleProvider {
         // Non-blocking — proceed to standard verification even if decoding fails.
       }
 
-      // Build the full set of trusted audiences from env + config.
+      // Build the full set of trusted audiences from env + config + project defaults.
       // This covers: web client, Android client, and iOS client IDs.
+      const defaultProjectPrefix = '610778456829';
+      const defaultWebClientId = '610778456829-edvpd6gcav2u31jo0p2aeligfopvqfbo.apps.googleusercontent.com';
+      const defaultAndroidClientId = '610778456829-6g1bvqtplfrgva93sbdsvgbuqmkpr203.apps.googleusercontent.com';
+
       const configuredAudiences = [
         config.sso.googleClientId,
         config.sso.googleAndroidClientId,
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_ANDROID_CLIENT_ID,
         process.env.GOOGLE_IOS_CLIENT_ID,
+        defaultWebClientId,
+        defaultAndroidClientId,
       ].filter(Boolean);
 
       // Derive the GCP project number prefix (e.g. "610778456829") so we can
       // also accept any audience that belongs to the same project, even if a
       // new platform-specific client ID has not yet been added to .env.
-      const projectPrefix = (config.sso.googleClientId || '').split('-')[0] || '';
+      const projectPrefix =
+        (config.sso.googleClientId || '').split('-')[0] ||
+        (config.sso.googleAndroidClientId || '').split('-')[0] ||
+        (process.env.GOOGLE_CLIENT_ID || '').split('-')[0] ||
+        (process.env.GOOGLE_ANDROID_CLIENT_ID || '').split('-')[0] ||
+        defaultProjectPrefix;
 
       const validAudiences = [...new Set([
         ...configuredAudiences,

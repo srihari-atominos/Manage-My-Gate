@@ -14,16 +14,19 @@ import Role from '../src/features/role/role.model.js';
 import Token from '../src/features/token/token.model.js';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import userIdentityService from '../src/features/userIdentity/userIdentity.services.js';
 import '../src/features/user/user.listeners.js';
 
 async function runVerification() {
   console.log('=== Starting Multi-Tenant User Invitation & Notification Flow Verification ===\n');
   await connectToDb();
+  await OrgMembership.collection.dropIndexes().catch(() => null);
+  await OrgMembership.syncIndexes().catch(() => null);
 
   const timestamp = Date.now();
   const testEmail = `test_resident_${timestamp}@example.com`;
   const adminEmail = `admin_b_${timestamp}@example.com`;
-  let orgA, orgB, residentUser, adminB;
+  let orgA, orgB, residentUser, adminB, roleA, roleB;
 
   try {
     // 1. Create Community A and Community B
@@ -40,12 +43,12 @@ async function runVerification() {
     });
 
     // Create default 'Resident' roles for both communities
-    await Role.create({
+    roleA = await Role.create({
       name: 'Resident',
       orgId: orgA._id,
       isTenantRole: true,
     });
-    await Role.create({
+    roleB = await Role.create({
       name: 'Resident',
       orgId: orgB._id,
       isTenantRole: true,
@@ -275,6 +278,18 @@ async function runVerification() {
     console.log('\n[Step 7] User accepts the invitation to Community B...');
     const acceptResponse = await authService.acceptInvitation(inviteToken, null, testEmail);
     console.log(`✓ Invitation accepted. Returned token: ${acceptResponse.token ? 'YES' : 'NO'}`);
+    const returnedWorkspaces = acceptResponse.availableWorkspaces.map((w) => w.orgId.toString());
+    console.log(`- Workspaces returned in acceptResponse: [${returnedWorkspaces.join(', ')}]`);
+    if (!returnedWorkspaces.includes(orgB._id.toString())) {
+      throw new Error('DASHBOARD VISIBILITY FAILURE: Newly accepted Community B is missing from acceptResponse.availableWorkspaces!');
+    }
+    if (!returnedWorkspaces.includes(orgA._id.toString())) {
+      throw new Error('DASHBOARD VISIBILITY FAILURE: Existing Community A is missing from acceptResponse.availableWorkspaces!');
+    }
+    if (acceptResponse.user.orgId.toString() !== orgB._id.toString()) {
+      throw new Error('DASHBOARD VISIBILITY FAILURE: Active orgId in acceptResponse is not Community B!');
+    }
+    console.log('✓ acceptResponse immediately includes BOTH organizations in availableWorkspaces and active orgId is Community B!');
 
     // 9. Verify POST-ACCEPTANCE state
     console.log('\n[Step 8] Verifying POST-ACCEPTANCE state:');
@@ -483,8 +498,390 @@ async function runVerification() {
       throw new Error('REJECTION FAILURE: acceptInvitation allowed a rejected token!');
     }
 
+    // 13. Verify Phase 2 GAP-01: SSO Invitation Scoping to Target Org (Org B)
+    console.log('\n[Step 13] Testing SSO Acceptance Scoping to Target Org (GAP-01):');
+    const ssoEmail = `sso_multi_org_${timestamp}@example.com`;
+    // Create pre-existing user who already belongs to Org A
+    const ssoUser = await User.create({
+      name: 'SSO Multi-Org Resident',
+      username: `sso_user_${timestamp}`,
+      email: ssoEmail,
+      password: hashedPassword,
+      status: 'Active',
+    });
+    await OrgMembership.create({
+      userId: ssoUser._id,
+      orgId: orgA._id,
+      roleIds: [roleA._id],
+      status: 'Active',
+    });
+
+    // Invite this existing user to Org B
+    const ssoInviteResult = await userService.inviteUser(
+      ssoEmail,
+      orgB._id.toString(),
+      null,
+      'None',
+      'Resident',
+      '',
+      'SSO Multi-Org Resident',
+      'WEB',
+      adminB._id.toString()
+    );
+    const ssoInviteRawToken = ssoInviteResult.invitationToken;
+
+    // Temporarily mock external Google OAuth token validation on userIdentityService
+    const originalVerify = userIdentityService.verifyAndNormalizeProviderToken;
+    userIdentityService.verifyAndNormalizeProviderToken = async (provider, token) => {
+      return {
+        provider: 'google',
+        providerId: `google_uid_${timestamp}`,
+        providerEmail: ssoEmail,
+        profileData: { name: 'SSO Multi-Org Resident' }
+      };
+    };
+
+    try {
+      const ssoAcceptResult = await authService.acceptInvitationWithSSO(
+        ssoInviteRawToken,
+        'mock_google_oauth_token',
+        'google'
+      );
+
+      console.log(`- SSO Accepted session activeOrgId: ${ssoAcceptResult.user.activeOrgId}`);
+      console.log(`- Target invited orgId: ${orgB._id}`);
+      console.log(`- Older membership orgId: ${orgA._id}`);
+
+      if (ssoAcceptResult.user.activeOrgId.toString() !== orgB._id.toString()) {
+        throw new Error(
+          `GAP-01 FAILURE: Expected activeOrgId to be target invited org (${orgB._id}), got ${ssoAcceptResult.user.activeOrgId}`
+        );
+      }
+      if (ssoAcceptResult.user.activeOrgId.toString() === orgA._id.toString()) {
+        throw new Error(`GAP-01 FAILURE: Session was scoped to older organization (Org A) instead of target (Org B)!`);
+      }
+      console.log('✓ GAP-01 Verified: SSO invitation acceptance explicitly scoped token to target Org B!');
+
+      // Step 14: Verify Mobile Acceptance Contract (GAP-02)
+      console.log('\n[Step 14] Testing Mobile Acceptance Response Contract (GAP-02):');
+      if (!ssoAcceptResult.token) throw new Error('GAP-02 FAILURE: Response missing token');
+      if (!ssoAcceptResult.refreshToken) throw new Error('GAP-02 FAILURE: Response missing refreshToken');
+      if (!ssoAcceptResult.user || !ssoAcceptResult.user.id) throw new Error('GAP-02 FAILURE: Response missing normalized user');
+      if (!Array.isArray(ssoAcceptResult.availableWorkspaces) || ssoAcceptResult.availableWorkspaces.length < 2) {
+        throw new Error('GAP-02 FAILURE: Response missing multi-org availableWorkspaces');
+      }
+      console.log('✓ GAP-02 Verified: Response contains token, refreshToken, user, and multi-org availableWorkspaces!');
+
+      // Step 15: Verify Multi-Org Context Isolation & Legacy Field Safety (GAP-04)
+      console.log('\n[Step 15] Testing Multi-Org Context Isolation & Legacy Field Safety (GAP-04):');
+      const memberships = await OrgMembership.find({ userId: ssoUser._id }).lean();
+      console.log(`- Total distinct org memberships for user: ${memberships.length}`);
+      if (memberships.length !== 2) {
+        throw new Error(`GAP-04 FAILURE: User should have exactly 2 memberships, got ${memberships.length}`);
+      }
+      const membershipOrgs = memberships.map(m => m.orgId.toString());
+      if (!membershipOrgs.includes(orgA._id.toString()) || !membershipOrgs.includes(orgB._id.toString())) {
+        throw new Error('GAP-04 FAILURE: Memberships do not contain both Org A and Org B!');
+      }
+      console.log('✓ GAP-04 Verified: One User -> Many OrgMemberships strictly preserved without global bleed!');
+    } finally {
+      userIdentityService.verifyAndNormalizeProviderToken = originalVerify;
+      await User.deleteOne({ _id: ssoUser._id }).catch(() => null);
+      await OrgMembership.deleteMany({ userId: ssoUser._id }).catch(() => null);
+      const UserIdentity = (await import('../src/features/userIdentity/userIdentity.model.js')).default;
+      await UserIdentity.deleteMany({ userId: ssoUser._id }).catch(() => null);
+    }
+
+    // =====================================================================
+    // PHASE 4 SECURITY REGRESSION TESTS (SEC-01 through SEC-15)
+    // =====================================================================
     console.log('\n======================================================');
-    console.log('🎉 ALL MULTI-TENANT INVITATION & NOTIFICATION TESTS PASSED!');
+    console.log('=== PHASE 4 SECURITY REGRESSION TESTS ===');
+    console.log('======================================================\n');
+
+    let secPassed = 0;
+    let secFailed = 0;
+
+    // SEC-01: validateInvite rejects missing token (P0-02)
+    console.log('[SEC-01] validateInvite rejects missing/empty token...');
+    try {
+      await authService.validateInvite(null);
+      console.log('  ❌ FAIL: Did not throw on null token');
+      secFailed++;
+    } catch (err) {
+      if (err.statusCode === 400 && err.message.includes('token is required')) {
+        console.log('  ✅ PASS: Correctly rejected null token');
+        secPassed++;
+      } else {
+        console.log(`  ❌ FAIL: Wrong error: ${err.statusCode} ${err.message}`);
+        secFailed++;
+      }
+    }
+
+    try {
+      await authService.validateInvite('');
+      console.log('  ❌ FAIL: Did not throw on empty string token');
+      secFailed++;
+    } catch (err) {
+      if (err.statusCode === 400) {
+        console.log('  ✅ PASS: Correctly rejected empty string token');
+        secPassed++;
+      } else {
+        console.log(`  ❌ FAIL: Wrong error: ${err.statusCode} ${err.message}`);
+        secFailed++;
+      }
+    }
+
+    // SEC-02: validateInvite rejects email mismatch (P0-02)
+    console.log('[SEC-02] validateInvite rejects email mismatch...');
+    const sec02Email = `sec02_${timestamp}@example.com`;
+    const sec02Invite = await userService.inviteUser(
+      sec02Email, orgB._id.toString(), null, 'None', 'Resident', '', 'SEC-02 User', 'WEB', adminB._id.toString()
+    );
+    try {
+      await authService.validateInvite(sec02Invite.invitationToken, 'attacker@evil.com');
+      console.log('  ❌ FAIL: Did not throw on mismatched email');
+      secFailed++;
+    } catch (err) {
+      if (err.statusCode === 400 && err.message.includes('does not match')) {
+        console.log('  ✅ PASS: Correctly rejected mismatched email');
+        secPassed++;
+      } else {
+        console.log(`  ❌ FAIL: Wrong error: ${err.statusCode} ${err.message}`);
+        secFailed++;
+      }
+    }
+
+    // SEC-03: validateInvite rejects fabricated/random token (P0-02)
+    console.log('[SEC-03] validateInvite rejects fabricated token...');
+    try {
+      await authService.validateInvite(crypto.randomBytes(32).toString('hex'));
+      console.log('  ❌ FAIL: Did not throw on fabricated token');
+      secFailed++;
+    } catch (err) {
+      if (err.statusCode === 400) {
+        console.log('  ✅ PASS: Correctly rejected fabricated token');
+        secPassed++;
+      } else {
+        console.log(`  ❌ FAIL: Wrong error: ${err.statusCode} ${err.message}`);
+        secFailed++;
+      }
+    }
+
+    // SEC-04: acceptInvitation rejects fabricated/random token
+    console.log('[SEC-04] acceptInvitation rejects fabricated token...');
+    try {
+      await authService.acceptInvitation(crypto.randomBytes(32).toString('hex'), 'SomePass123!');
+      console.log('  ❌ FAIL: Did not throw on fabricated token');
+      secFailed++;
+    } catch (err) {
+      console.log(`  ✅ PASS: Correctly rejected fabricated token: "${err.message}"`);
+      secPassed++;
+    }
+
+    // SEC-05: Cross-tenant revocation blocked (already tested in Step 11, re-verify explicitly)
+    console.log('[SEC-05] Cross-tenant revocation explicitly blocked...');
+    const sec05Email = `sec05_${timestamp}@example.com`;
+    const sec05Invite = await userService.inviteUser(
+      sec05Email, orgB._id.toString(), null, 'None', 'Resident', '', 'SEC-05 User', 'WEB', adminB._id.toString()
+    );
+    const sec05HashedToken = crypto.createHash('sha256').update(sec05Invite.invitationToken).digest('hex');
+    const sec05TokenDoc = await Token.findOne({ token: sec05HashedToken });
+    try {
+      // residentUser is a member of orgA — should NOT be able to revoke orgB invitations
+      await userService.revokeInvitation(sec05TokenDoc._id.toString(), orgA._id.toString(), residentUser._id.toString());
+      console.log('  ❌ FAIL: Cross-tenant revocation was not blocked');
+      secFailed++;
+    } catch (err) {
+      console.log(`  ✅ PASS: Cross-tenant revocation blocked: "${err.message}"`);
+      secPassed++;
+    }
+
+    // SEC-06: Double revocation blocked
+    console.log('[SEC-06] Double revocation blocked...');
+    // First revoke SEC-05 token properly
+    await userService.revokeInvitation(sec05TokenDoc._id.toString(), orgB._id.toString(), adminB._id.toString());
+    try {
+      await userService.revokeInvitation(sec05TokenDoc._id.toString(), orgB._id.toString(), adminB._id.toString());
+      console.log('  ❌ FAIL: Double revocation was not blocked');
+      secFailed++;
+    } catch (err) {
+      console.log(`  ✅ PASS: Double revocation blocked: "${err.message}"`);
+      secPassed++;
+    }
+
+    // SEC-07: Re-acceptance of already accepted token blocked (idempotency)
+    console.log('[SEC-07] Re-acceptance of already accepted token blocked...');
+    try {
+      // inviteToken was already accepted in Step 7
+      await authService.acceptInvitation(inviteToken, null, testEmail);
+      console.log('  ❌ FAIL: Re-acceptance of accepted token was not blocked');
+      secFailed++;
+    } catch (err) {
+      console.log(`  ✅ PASS: Re-acceptance blocked: "${err.message}"`);
+      secPassed++;
+    }
+
+    // SEC-08: Expired token validateInvite blocked
+    console.log('[SEC-08] Expired token validateInvite blocked...');
+    const sec08RawToken = crypto.randomBytes(32).toString('hex');
+    const sec08HashedToken = crypto.createHash('sha256').update(sec08RawToken).digest('hex');
+    await Token.create({
+      userId: residentUser._id, orgId: orgB._id, inviterId: adminB._id,
+      token: sec08HashedToken, type: 'INVITATION', status: 'PENDING',
+      email: `sec08_${timestamp}@example.com`, invitationSource: 'WEB',
+      expiresAt: new Date(Date.now() - 3600 * 1000),
+    });
+    try {
+      await authService.validateInvite(sec08RawToken);
+      console.log('  ❌ FAIL: Expired token was not blocked on validate');
+      secFailed++;
+    } catch (err) {
+      console.log(`  ✅ PASS: Expired token blocked on validate: "${err.message}"`);
+      secPassed++;
+    }
+
+    // SEC-09: Expired token acceptInvitation blocked
+    console.log('[SEC-09] Expired token acceptInvitation blocked...');
+    try {
+      await authService.acceptInvitation(sec08RawToken, 'SomePass123!');
+      console.log('  ❌ FAIL: Expired token was not blocked on accept');
+      secFailed++;
+    } catch (err) {
+      console.log(`  ✅ PASS: Expired token blocked on accept: "${err.message}"`);
+      secPassed++;
+    }
+
+    // SEC-10: Revoked token validateInvite blocked
+    console.log('[SEC-10] Revoked token validateInvite blocked...');
+    try {
+      await authService.validateInvite(sec05Invite.invitationToken);
+      console.log('  ❌ FAIL: Revoked token was not blocked on validate');
+      secFailed++;
+    } catch (err) {
+      console.log(`  ✅ PASS: Revoked token blocked on validate: "${err.message}"`);
+      secPassed++;
+    }
+
+    // SEC-11: Revoked token acceptInvitation blocked
+    console.log('[SEC-11] Revoked token acceptInvitation blocked...');
+    try {
+      await authService.acceptInvitation(sec05Invite.invitationToken, 'SomePass123!');
+      console.log('  ❌ FAIL: Revoked token was not blocked on accept');
+      secFailed++;
+    } catch (err) {
+      console.log(`  ✅ PASS: Revoked token blocked on accept: "${err.message}"`);
+      secPassed++;
+    }
+
+    // SEC-12: Rejected token validateInvite blocked
+    console.log('[SEC-12] Rejected token validateInvite blocked...');
+    try {
+      // rejectRawToken was rejected in Step 12
+      await authService.validateInvite(rejectRawToken);
+      console.log('  ❌ FAIL: Rejected token was not blocked on validate');
+      secFailed++;
+    } catch (err) {
+      console.log(`  ✅ PASS: Rejected token blocked on validate: "${err.message}"`);
+      secPassed++;
+    }
+
+    // SEC-13: Rejected token acceptInvitation blocked
+    console.log('[SEC-13] Rejected token acceptInvitation blocked...');
+    try {
+      await authService.acceptInvitation(rejectRawToken, 'SomePass123!');
+      console.log('  ❌ FAIL: Rejected token was not blocked on accept');
+      secFailed++;
+    } catch (err) {
+      console.log(`  ✅ PASS: Rejected token blocked on accept: "${err.message}"`);
+      secPassed++;
+    }
+
+    // SEC-14: Active membership not demoted to Pending on re-invite (P2-01)
+    console.log('[SEC-14] Active membership preserved on re-invite (P2-01)...');
+    // residentUser is Active in orgA from initial setup. Re-invite them to orgA should NOT demote.
+    const membershipABefore = await orgMembershipService.getMembership(residentUser._id, orgA._id);
+    const membershipAStatusBefore = membershipABefore?.status;
+    console.log(`  - Membership in orgA before re-invite: ${membershipAStatusBefore}`);
+    if (membershipAStatusBefore === 'Active') {
+      try {
+        await userService.inviteUser(
+          testEmail, orgA._id.toString(), null, 'None', 'Resident', '', 'Existing Resident', 'WEB', adminB._id.toString()
+        );
+      } catch (e) {
+        // Invitation might throw for already-active member, that's acceptable
+        console.log(`  - Re-invite threw (acceptable): ${e.message}`);
+      }
+      const membershipAAfter = await orgMembershipService.getMembership(residentUser._id, orgA._id);
+      if (membershipAAfter?.status === 'Active') {
+        console.log('  ✅ PASS: Active membership preserved after re-invite');
+        secPassed++;
+      } else {
+        console.log(`  ❌ FAIL: Membership demoted from Active to ${membershipAAfter?.status}`);
+        secFailed++;
+      }
+    } else {
+      console.log(`  ⚠ SKIP: Membership was not Active before re-invite (${membershipAStatusBefore})`);
+    }
+
+    // SEC-15: Villa conflict detection - atomic assignment (P2-02)
+    console.log('[SEC-15] Villa conflict detection (P2-02)...');
+    const conflictVilla = await Villa.create({
+      orgId: orgA._id, unitNumber: `CONFLICT-${timestamp}`, blockOrBuilding: 'Tower X',
+      status: 'Occupied', type: 'Villa', primaryResidentId: adminB._id,
+      residents: [{ userId: adminB._id, residencyType: 'Resident', isPrimary: true, assignedAt: new Date() }],
+    });
+    try {
+      await villaService.assignResidentToVilla(conflictVilla._id, residentUser._id, 'Resident', null, orgA._id);
+      console.log('  ❌ FAIL: Villa conflict was not detected');
+      secFailed++;
+    } catch (err) {
+      if (err.statusCode === 409) {
+        console.log(`  ✅ PASS: Villa conflict detected with 409: "${err.message}"`);
+        secPassed++;
+      } else {
+        console.log(`  ❌ FAIL: Wrong error code ${err.statusCode}: "${err.message}"`);
+        secFailed++;
+      }
+    }
+    // Cleanup conflict villa
+    await Villa.deleteOne({ _id: conflictVilla._id }).catch(() => null);
+
+    // SEC-16: OrgMembership unique index enforcement (P2-03)
+    console.log('[SEC-16] OrgMembership unique index - duplicate prevention (P2-03)...');
+    try {
+      await OrgMembership.createIndexes();
+      // residentUser already has membership in orgA — creating a second should fail
+      await OrgMembership.create({
+        userId: residentUser._id, orgId: orgA._id, roleIds: [roleA._id], status: 'Active',
+      });
+      console.log('  ❌ FAIL: Duplicate OrgMembership was allowed');
+      secFailed++;
+    } catch (err) {
+      if (err.code === 11000 || err.name === 'MongoServerError' || err.message.includes('duplicate') || err.message.includes('E11000')) {
+        console.log('  ✅ PASS: Duplicate OrgMembership prevented by unique index');
+        secPassed++;
+      } else {
+        console.log(`  ❌ FAIL: Unexpected error: ${err.message}`);
+        secFailed++;
+      }
+    }
+
+    // Security test summary
+    const secTotal = secPassed + secFailed;
+    console.log('\n======================================================');
+    console.log(`=== SECURITY TESTS COMPLETE: ${secPassed}/${secTotal} PASSED ===`);
+    if (secFailed > 0) {
+      console.log(`⚠ ${secFailed} SECURITY TEST(S) FAILED`);
+    }
+    console.log('======================================================\n');
+
+    if (secFailed > 0) {
+      throw new Error(`${secFailed} security regression test(s) failed. See details above.`);
+    }
+
+    console.log('\n======================================================');
+    console.log('🎉 ALL MULTI-TENANT INVITATION, NOTIFICATION & SECURITY TESTS PASSED!');
     console.log('======================================================\n');
   } finally {
     // Cleanup test data

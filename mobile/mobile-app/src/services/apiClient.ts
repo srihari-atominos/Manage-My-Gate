@@ -26,33 +26,32 @@ export const getApiBaseUrl = () => {
     return url;
   }
 
-  if (!url) {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      const ip = hostUri.split(':')[0];
-      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-        url = `http://${ip}:5002/api/v1`;
-      }
-    }
-  }
-  if (!url) {
-    url = Platform.OS === 'android' ? 'http://10.0.2.2:5002/api/v1' : 'http://localhost:5002/api/v1';
-  }
-  if (Platform.OS === 'android' && url.includes('localhost')) {
-    url = url.replace('localhost', '10.0.2.2');
-  }
+  // 1. Web browser development: align with the browser's hostname (e.g. localhost:5002 or 192.168.x.x:5002)
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
     const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
     if (isLocalHostName) {
-      url = `${window.location.protocol}//${window.location.hostname}:5002/api/v1`;
-    } else {
-      const isPrivateOrLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(url);
-      if (isPrivateOrLocalUrl && window.location.hostname) {
-        url = url.replace(/^https?:\/\/[^/:]+/i, `${window.location.protocol}//${window.location.hostname}`);
-      }
+      return `${window.location.protocol}//${window.location.hostname}:5002/api/v1`;
     }
   }
-  return url;
+
+  // 2. Native mobile development (Expo Go / Dev Client): connect to developer's local machine running backend
+  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+      return `http://${ip}:5002/api/v1`;
+    }
+  }
+
+  // 3. Android Emulator fallback
+  if (Platform.OS === 'android') {
+    if (!url || url.includes('localhost') || url.includes('127.0.0.1')) {
+      return 'http://10.0.2.2:5002/api/v1';
+    }
+  }
+
+  // 4. Default fallback
+  return url || 'http://localhost:5002/api/v1';
 };
 
 export const getDefaultBaseUrl = getApiBaseUrl;
@@ -68,35 +67,32 @@ export const getSocketBaseUrl = () => {
     return socketUrl;
   }
 
-  if (!socketUrl) {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      const ip = hostUri.split(':')[0];
-      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-        socketUrl = `http://${ip}:5002`;
-      }
-    }
-  }
-  if (!socketUrl) {
-    socketUrl = process.env.EXPO_PUBLIC_API_URL
-      ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api.*$/, '')
-      : 'http://localhost:5002';
-  }
-  if (Platform.OS === 'android' && socketUrl.includes('localhost')) {
-    socketUrl = socketUrl.replace('localhost', '10.0.2.2');
-  }
+  // 1. Web browser development: align socket with browser's hostname
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
     const isLocalHostName = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)$/i.test(window.location.hostname);
     if (isLocalHostName) {
-      socketUrl = `${window.location.protocol}//${window.location.hostname}:5002`;
-    } else {
-      const isPrivateOrLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?/i.test(socketUrl);
-      if (isPrivateOrLocalUrl && window.location.hostname) {
-        socketUrl = socketUrl.replace(/^https?:\/\/[^/:]+/i, `${window.location.protocol}//${window.location.hostname}`);
-      }
+      return `${window.location.protocol}//${window.location.hostname}:5002`;
     }
   }
-  return socketUrl;
+
+  // 2. Native mobile development: connect socket to developer's local machine
+  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+      return `http://${ip}:5002`;
+    }
+  }
+
+  // 3. Android Emulator fallback
+  if (Platform.OS === 'android') {
+    if (!socketUrl || socketUrl.includes('localhost') || socketUrl.includes('127.0.0.1')) {
+      return 'http://10.0.2.2:5002';
+    }
+  }
+
+  // 4. Default fallback
+  return socketUrl || 'http://localhost:5002';
 };
 
 const apiClient = axios.create({
@@ -136,8 +132,17 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Helper to safely extract payload claims from JWT token
+// Helper to safely extract payload claims from JWT token with in-memory caching
+let cachedJwtToken: string | null = null;
+let cachedJwtPayload: any = null;
+
 const decodeJwtPayload = (token: string): any => {
+  if (!token || typeof token !== 'string') return null;
+  if (token === cachedJwtToken && cachedJwtPayload !== null) {
+    return cachedJwtPayload;
+  }
+
+  let result: any = null;
   try {
     const parts = token.split('.');
     if (parts.length < 2) return null;
@@ -150,18 +155,22 @@ const decodeJwtPayload = (token: string): any => {
           .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
           .join('')
       );
-      return JSON.parse(jsonPayload);
+      result = JSON.parse(jsonPayload);
     }
-    return null;
   } catch (e) {
     try {
       const parts = token.split('.');
       if (parts.length >= 2 && typeof atob === 'function') {
-        return JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        result = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
       }
     } catch (e2) {}
-    return null;
   }
+
+  if (result) {
+    cachedJwtToken = token;
+    cachedJwtPayload = result;
+  }
+  return result;
 };
 
 // Request Interceptor: Attach headers and correlation ID

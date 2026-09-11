@@ -324,8 +324,8 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
         backgroundColor={colorScheme === 'dark' ? '#09090b' : '#ffffff'}
       />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1 flex-col"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1"
       >
         {/* Header */}
         <AssessmentFlowHeader
@@ -463,9 +463,9 @@ export const AssessmentWizardModal: React.FC<AssessmentWizardModalProps> = ({
             isLastStep={isLastStep}
             loading={isSubmitting}
           />
-        </KeyboardAvoidingView>
-      </View>
-    );
+      </KeyboardAvoidingView>
+    </View>
+  );
 };
 
 export default AssessmentWizardModal;

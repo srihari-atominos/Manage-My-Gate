@@ -15,10 +15,12 @@ import {
   revokeInvitation,
   InvitationItem,
 } from '@/src/features/userManagement/services/userService';
+import { useTranslation } from '@/src/utils/i18n';
 
 const STATUS_FILTERS = ['ALL', 'PENDING', 'ACCEPTED', 'EXPIRED', 'REVOKED'];
 
 export default function InvitationsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   const [invitations, setInvitations] = useState<InvitationItem[]>([]);
@@ -237,7 +239,7 @@ export default function InvitationsScreen() {
         <SearchFilterBar
           searchValue={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search by name or email..."
+          searchPlaceholder={t('search_name_email', 'Search by name or email...')}
         />
 
         {/* Status Filter Chips */}

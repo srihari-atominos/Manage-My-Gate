@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Pressable, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Pressable, ScrollView, Alert, Platform } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
@@ -198,10 +198,7 @@ export const CreatePulseBottomSheet = ({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="What's happening?">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="gap-4 pb-4"
-      >
+      <View className="gap-4 pb-4">
         {postedSuccess ? (
           <View className="items-center justify-center py-8 gap-3">
             <View className="h-14 w-14 rounded-full bg-emerald-500/20 border-2 border-emerald-500 items-center justify-center shadow-xs">
@@ -449,7 +446,7 @@ export const CreatePulseBottomSheet = ({
             </Button>
           </>
         )}
-      </KeyboardAvoidingView>
+      </View>
     </BottomSheet>
   );
 };

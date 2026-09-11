@@ -230,7 +230,11 @@ export class AuthService {
     const memberships = await orgMembershipService.getUserMemberships(user._id);
 
     // Active memberships strictly (organization status is Active and membership status is Active, or missing for legacy documents)
-    const activeMemberships = memberships.filter((m) => m.orgId && m.orgId.status === 'Active' && (m.status === 'Active' || !m.status));
+    const activeMemberships = memberships.filter((m) => 
+      m.orgId && 
+      (!m.orgId.status || m.orgId.status.toLowerCase() === 'active') && 
+      (!m.status || m.status.toLowerCase() === 'active')
+    );
 
     let selectedMembership = null;
     const targetOrgIdStr = targetOrgId ? targetOrgId.toString() : null;
@@ -326,7 +330,7 @@ export class AuthService {
         orgId: m.orgId._id.toString(),
         name: m.orgId.name,
         isPlatform: m.orgId.isPlatform || false,
-        roleName: validRoles.map(r => r.name).join(', ') || null,
+        roleName: validRoles.map(r => r.name).join(', ') || m.roleName || m.role || null,
         roles: validRoles.map(r => r.name),
         villaId: primaryVillaId,
         villaNumber: primaryVillaNumber,
@@ -521,6 +525,7 @@ export class AuthService {
       roles: tokenPayload.roles,
       permissions: permissions,
       orgId: tokenPayload.orgId,
+      activeOrgId: tokenPayload.orgId,
       orgName: tokenPayload.orgName,
       organizationName: tokenPayload.organizationName,
       activeOrganizationName: tokenPayload.activeOrganizationName,
@@ -722,7 +727,7 @@ export class AuthService {
 
       // Transition invitation token to ACCEPTED only after identity verification succeeds
       if (rawToken) {
-        await tokenService.consumeInvitationToken(rawToken, session);
+        await tokenService.consumeInvitationToken(rawToken, session).catch(() => null);
       }
 
       const orgMembershipService = (await import('../orgMembership/orgMembership.services.js')).default;
@@ -830,10 +835,20 @@ export class AuthService {
           userId = tokenRes.userId;
           orgId = tokenRes.orgId;
         } catch (tokenErr) {
-          if (tokenErr.message && tokenErr.message.toLowerCase().includes('already been rejected')) {
+          const msg = tokenErr.message ? tokenErr.message.toLowerCase() : '';
+          if (msg.includes('already been rejected') || msg.includes('already been accepted')) {
             const tokenDoc = await tokenService.getInvitationToken(rawToken, 'INVITATION');
             userId = tokenDoc?.userId;
             orgId = tokenDoc?.orgId;
+            if (msg.includes('already been accepted')) {
+              await session.commitTransaction();
+              return {
+                message: 'Invitation has already been accepted',
+                userId,
+                orgId,
+                status: 'ACCEPTED',
+              };
+            }
           } else {
             throw tokenErr;
           }
@@ -915,11 +930,85 @@ export class AuthService {
   }
 
   /**
-   * Verifies Google token, finds the user, and returns conditional response.
-   * @param {string} googleToken - The Google ID token
-   * @param {string} [inviteToken=null] - Optional invitation token
+   * Exchanges a Google authorization code for an ID token using Google's OAuth2 token endpoint.
+   * Supports PKCE (code_verifier) and custom redirect URIs for mobile clients.
+   * @param {object} options
+   * @param {string} options.code - Google authorization code
+   * @param {string} [options.codeVerifier] - PKCE code verifier
+   * @param {string} [options.redirectUri] - Redirect URI matching the authorization request
+   * @param {string} [options.clientId] - Client ID used in the request
+   * @returns {Promise<string>} - The resolved Google ID token
    */
-  async loginWithGoogle(googleToken, inviteToken = null, isRegister = false) {
+  async exchangeGoogleAuthCode({ code, codeVerifier, redirectUri, clientId }) {
+    const defaultAndroidClientId = '610778456829-6g1bvqtplfrgva93sbdsvgbuqmkpr203.apps.googleusercontent.com';
+    const targetClientId =
+      clientId ||
+      config.sso?.googleAndroidClientId ||
+      process.env.GOOGLE_ANDROID_CLIENT_ID ||
+      config.sso?.googleClientId ||
+      defaultAndroidClientId;
+
+    const defaultRedirectUri = `${config.mobile?.androidPackageName || 'com.atominosconsulting.nahom'}:/oauthredirect`;
+    const targetRedirectUri = redirectUri || defaultRedirectUri;
+
+    const bodyParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: targetClientId,
+      code,
+      redirect_uri: targetRedirectUri,
+    });
+
+    if (codeVerifier) {
+      bodyParams.append('code_verifier', codeVerifier);
+    }
+
+    if (config.sso?.googleClientSecret && targetClientId === config.sso?.googleClientId) {
+      bodyParams.append('client_secret', config.sso.googleClientSecret);
+    }
+
+    logger.info(`[AuthService.exchangeGoogleAuthCode] Exchanging Google auth code for clientId=${targetClientId}, redirectUri=${targetRedirectUri}`);
+
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: bodyParams.toString(),
+    });
+
+    const tokenData = await tokenResponse.json();
+
+    if (!tokenResponse.ok || !tokenData.id_token) {
+      logger.error('[AuthService.exchangeGoogleAuthCode] Token exchange failed:', tokenData);
+      throw new HttpError(
+        401,
+        `Google code exchange failed: ${tokenData.error_description || tokenData.error || 'Unable to exchange authorization code'}`
+      );
+    }
+
+    return tokenData.id_token;
+  }
+
+  /**
+   * Verifies Google token or code, finds the user, and returns conditional response.
+   * @param {string|object} googleTokenOrPayload - The Google ID token or code payload object
+   * @param {string} [inviteToken=null] - Optional invitation token
+   * @param {boolean} [isRegister=false] - Whether this is a register flow
+   */
+  async loginWithGoogle(googleTokenOrPayload, inviteToken = null, isRegister = false) {
+    let googleToken = typeof googleTokenOrPayload === 'string' ? googleTokenOrPayload : googleTokenOrPayload?.token;
+
+    if (!googleToken && googleTokenOrPayload?.code) {
+      googleToken = await this.exchangeGoogleAuthCode({
+        code: googleTokenOrPayload.code,
+        codeVerifier: googleTokenOrPayload.codeVerifier,
+        redirectUri: googleTokenOrPayload.redirectUri,
+        clientId: googleTokenOrPayload.clientId,
+      });
+    }
+
+    if (!googleToken) {
+      throw new HttpError(400, 'Google ID token or authorization code is required.');
+    }
+
     const identityData = await userIdentityService.verifyAndNormalizeProviderToken('google', googleToken);
     if (inviteToken) {
       identityData.inviteToken = inviteToken;
@@ -1658,10 +1747,28 @@ export class AuthService {
   /**
    * Accepts a workspace invitation using SSO (Google or Microsoft).
    * @param {string} inviteToken - Decodable JWT invitation token containing user context
-   * @param {string} ssoCredential - Provider credential token (ID token)
+   * @param {string|object} ssoCredentialOrPayload - Provider credential token (ID token) or code payload
    * @param {string} provider - SSO Provider ('google' or 'microsoft')
    */
-  async acceptInvitationWithSSO(inviteToken, ssoCredential, provider) {
+  async acceptInvitationWithSSO(inviteToken, ssoCredentialOrPayload, provider) {
+    let ssoCredential =
+      typeof ssoCredentialOrPayload === 'string'
+        ? ssoCredentialOrPayload
+        : ssoCredentialOrPayload?.ssoCredential || ssoCredentialOrPayload?.token;
+
+    if (!ssoCredential && ssoCredentialOrPayload?.code && provider === 'google') {
+      ssoCredential = await this.exchangeGoogleAuthCode({
+        code: ssoCredentialOrPayload.code,
+        codeVerifier: ssoCredentialOrPayload.codeVerifier,
+        redirectUri: ssoCredentialOrPayload.redirectUri,
+        clientId: ssoCredentialOrPayload.clientId,
+      });
+    }
+
+    if (!ssoCredential) {
+      throw new HttpError(400, 'SSO credential token or authorization code is required.');
+    }
+
     // 1. Verify SSO token using provider adapters through UserIdentityService
     const identityData = await userIdentityService.verifyAndNormalizeProviderToken(provider, ssoCredential);
     const ssoEmail = identityData.providerEmail;
@@ -1747,8 +1854,8 @@ export class AuthService {
       await session.commitTransaction();
       // --- TRANSACTION BOUNDARY END ---
 
-      // Resolve scoped token and workspaces (outside transaction)
-      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(activatedUser);
+      // Resolve scoped token and workspaces (outside transaction) scoped explicitly to target invitation orgId
+      const { tokenPayload, permissions, availableWorkspaces } = await this.getScopedTokenPayload(activatedUser, orgId);
       const token = signToken(tokenPayload);
 
       // Emit events for successful login/auth write operations
@@ -1779,48 +1886,43 @@ export class AuthService {
   }
 
   async validateInvite(token, email = null) {
-    if (!token && !email) {
+    if (!token) {
       throw new HttpError(400, 'Invitation token is required.');
     }
-    let tokenDoc = null;
-    if (token) {
-      tokenDoc = await tokenService.getInvitationToken(token, 'INVITATION');
-      if (!tokenDoc) {
-        throw new HttpError(400, 'Invalid or expired invitation token.');
-      }
-      if (tokenDoc.status === 'EXPIRED' || (tokenDoc.expiresAt && new Date() > new Date(tokenDoc.expiresAt))) {
-        throw new HttpError(400, 'Invitation has expired. Please ask your administrator to resend the invitation.');
-      }
-      if (tokenDoc.status === 'REVOKED') {
-        throw new HttpError(400, 'Invitation has been revoked by the administrator.');
-      }
-      if (tokenDoc.status === 'REJECTED') {
-        throw new HttpError(400, 'Invitation has already been rejected.');
-      }
-      if (tokenDoc.status === 'ACCEPTED' || tokenDoc.used === true) {
-        throw new HttpError(400, 'Invitation has already been accepted.');
-      }
+
+    const tokenDoc = await tokenService.getInvitationToken(token, 'INVITATION');
+    if (!tokenDoc) {
+      throw new HttpError(400, 'Invalid or expired invitation token.');
+    }
+    if (tokenDoc.status === 'EXPIRED' || (tokenDoc.expiresAt && new Date() > new Date(tokenDoc.expiresAt))) {
+      throw new HttpError(400, 'Invitation has expired. Please ask your administrator to resend the invitation.');
+    }
+    if (tokenDoc.status === 'REVOKED') {
+      throw new HttpError(400, 'Invitation has been revoked by the administrator.');
+    }
+    if (tokenDoc.status === 'REJECTED') {
+      throw new HttpError(400, 'Invitation has already been rejected.');
+    }
+    if (tokenDoc.status === 'ACCEPTED' || tokenDoc.used === true) {
+      throw new HttpError(400, 'Invitation has already been accepted.');
     }
 
     let user = null;
-
-    if (tokenDoc?.userId) {
+    if (tokenDoc.userId) {
       user = await userService.getUserById(tokenDoc.userId).catch(() => null);
     }
-
-    if (!user && email) {
-      user = await userService.getUserByEmail(email.trim().toLowerCase()).catch(() => null);
+    if (!user && tokenDoc.email) {
+      user = await userService.getUserByEmail(tokenDoc.email.trim().toLowerCase()).catch(() => null);
     }
 
-    if (!user && token) {
-      const mongoose = (await import('mongoose')).default;
-      if (mongoose.Types.ObjectId.isValid(token)) {
-        user = await userService.getUserById(token).catch(() => null);
+    const expectedEmail = (tokenDoc.email || user?.email || '').trim().toLowerCase();
+
+    // Validate email mismatch if email query param is explicitly provided
+    if (email && typeof email === 'string' && email.trim().length > 0) {
+      const normalizedQueryEmail = email.trim().toLowerCase();
+      if (expectedEmail && normalizedQueryEmail !== expectedEmail) {
+        throw new HttpError(400, 'Invalid invitation credentials. Provided email does not match this invitation.');
       }
-    }
-
-    if (!user) {
-      throw new HttpError(400, 'Invalid or expired invitation token.');
     }
 
     const resolvedOrgId = tokenDoc?.orgId || user.orgId || null;
@@ -2165,7 +2267,7 @@ export class AuthService {
 
     const scheme = config.mobile?.scheme || 'managemygate';
     const universalDomain = config.mobile?.universalLinkDomain || 'app.managemygate.com';
-    const androidPackage = config.mobile?.androidPackageName || 'com.atominos.managemygate';
+    const androidPackage = config.mobile?.androidPackageName || 'com.atominosconsulting.nahom';
     const iosAppStoreId = config.mobile?.iosAppStoreId || '6470000000';
 
     return {

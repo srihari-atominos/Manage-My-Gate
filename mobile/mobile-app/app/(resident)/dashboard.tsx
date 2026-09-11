@@ -22,7 +22,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const [customiseOpen, setCustomiseOpen] = React.useState(false);
-  const { handleScroll } = useBottomNavScroll();
+  const { handleScroll, scrollHandlerProps } = useBottomNavScroll();
 
   const {
     activeQuickActions,

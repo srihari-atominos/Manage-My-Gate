@@ -66,9 +66,8 @@ export const topUpWalletDirect = createAsyncThunk(
 
 const initialState: WalletState = {
   balance: 0,
-  activePasses: [],
-  transactionHistory: [],
   transactions: [],
+  transactionHistory: [],
   isPaymentGatewayConfigured: false,
   pagination: {
     currentPage: 1,
@@ -123,6 +122,11 @@ export const walletSlice = createSlice({
             state.transactionHistory = [...(state.transactionHistory || []), ...newHistory];
           } else {
             state.transactionHistory = newHistory.length > 0 ? newHistory : history;
+          }
+          state.transactions = state.transactionHistory;
+
+          if (action.payload.isPaymentGatewayConfigured !== undefined) {
+            state.isPaymentGatewayConfigured = action.payload.isPaymentGatewayConfigured;
           }
           state.transactions = state.transactionHistory;
 

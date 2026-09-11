@@ -456,7 +456,6 @@ const amenitySlice = createSlice({
         }
         const normalizedList = list.map(normalizeAmenity);
         const targetList = page > 1 ? [...state.amenities, ...normalizedList] : normalizedList;
-
         const seenIds = new Set<string>();
         const seenNames = new Set<string>();
         const uniqueAmenities: Amenity[] = [];

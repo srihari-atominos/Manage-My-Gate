@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, Platform, Alert } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { ShieldCheck, Lock, CheckCircle2, AlertCircle, XCircle } from 'lucide-react-native';
+import { ShieldCheck, Lock, CheckCircle2, AlertCircle, XCircle, Building2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useAuth } from '../../src/features/auth/hooks/useAuth';
+import { acceptInviteThunk } from '../../src/features/auth/store/authSlice';
 import authService from '../../src/features/auth/services/authService';
 import apiClient from '../../src/services/apiClient';
 
@@ -33,7 +34,7 @@ const acceptInviteSchema = yup.object().shape({
 type AcceptInviteFormValues = yup.InferType<typeof acceptInviteSchema>;
 
 export default function AcceptInviteScreen() {
-  const { isAuthenticated, user, clearStatus } = useAuth();
+  const { isAuthenticated, user, clearStatus, acceptInvite } = useAuth();
   const searchParams = useLocalSearchParams<{ token?: string; code?: string; email?: string; action?: string }>();
   const [submitting, setSubmitting] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -139,6 +140,28 @@ export default function AcceptInviteScreen() {
     }
   }, [searchParams.email, searchParams.token, searchParams.code, inviteMeta?.email, resolvedToken, getTokenFromContext]);
 
+  const handleAcceptAuthenticatedInvite = useCallback(async () => {
+    setSubmitting(true);
+    setApiError(null);
+    try {
+      const inviteToken = (resolvedToken || getTokenFromContext() || '').trim();
+      const actionResult: any = await acceptInvite(inviteToken, undefined, user?.email);
+      if (acceptInviteThunk.fulfilled.match(actionResult)) {
+        router.replace('/(resident)/dashboard');
+        return;
+      }
+      const errMsg =
+        (actionResult?.payload as string) ||
+        actionResult?.error?.message ||
+        'Failed to accept invitation.';
+      setApiError(errMsg);
+    } catch (err: any) {
+      setApiError(err?.message || 'Failed to accept invitation.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [resolvedToken, getTokenFromContext, user?.email, acceptInvite]);
+
   // Validate the invitation link on mount / token change
   useEffect(() => {
     const tokenToValidate = (resolvedToken || getTokenFromContext() || '').trim();
@@ -192,35 +215,23 @@ export default function AcceptInviteScreen() {
             setIsAlreadyRegistered(true);
             setAlreadyRegisteredEmail(userEmail);
 
-            // Reconcile mobile notification / link navigation:
-            // If the user is already authenticated on this device with the matching email,
-            // accept the workspace invitation immediately without forcing a redundant sign-in.
-            if (isAuthenticated && user?.email && user.email.toLowerCase() === userEmail.toLowerCase()) {
-              try {
-                await authService.acceptInvite({
-                  token: tokenToValidate,
-                  email: userEmail,
-                });
-                router.replace('/(resident)/dashboard');
-                return;
-              } catch (autoAcceptErr) {
-                // If auto-accept fails, continue to standard modal
+            // For unauthenticated users, prompt them to sign in.
+            // For authenticated users, let them review community details and Accept/Reject below.
+            if (!isAuthenticated) {
+              setIsAlreadyRegisteredModalVisible(true);
+
+              if (Platform.OS !== 'web') {
+                Alert.alert(
+                  'Already Registered',
+                  'Your account is already active and your password has been set. Please sign in to access your community workspace.',
+                  [
+                    {
+                      text: 'Sign In',
+                      onPress: () => handleNavigateToLogin(userEmail),
+                    },
+                  ]
+                );
               }
-            }
-
-            setIsAlreadyRegisteredModalVisible(true);
-
-            if (Platform.OS !== 'web') {
-              Alert.alert(
-                'Already Registered',
-                'Your account is already active and your password has been set. Please sign in to access your community workspace.',
-                [
-                  {
-                    text: 'Sign In',
-                    onPress: () => handleNavigateToLogin(userEmail),
-                  },
-                ]
-              );
             }
           }
         }
@@ -272,18 +283,28 @@ export default function AcceptInviteScreen() {
     try {
       const inviteToken = (resolvedToken || getTokenFromContext() || '').trim();
 
-      const response: any = await authService.acceptInvite({
-        token: inviteToken || undefined,
-        email: targetEmail || undefined,
-        password: data.password,
-      });
+      // Dispatch acceptInviteThunk via useAuth to activate membership and persist session
+      const actionResult: any = await acceptInvite(inviteToken, data.password, targetEmail || undefined);
 
-      const body = response && response.success !== undefined ? response : response?.data;
-      const innerData = body?.data || body;
-      targetEmail = (innerData?.user?.email || innerData?.email || targetEmail).trim();
+      if (acceptInviteThunk.fulfilled.match(actionResult)) {
+        // Session successfully adopted into Redux store and async storage!
+        // Immediately navigate to resident dashboard with the accepted community workspace context
+        router.replace('/(resident)/dashboard');
+        return;
+      }
 
-      // Directly redirect to login page immediately without any modal
-      handleNavigateToLogin(targetEmail);
+      // If rejected, inspect the error message
+      const errMsg =
+        (actionResult?.payload as string) ||
+        actionResult?.error?.message ||
+        'Failed to save password.';
+
+      if (errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('active')) {
+        // User account is already active -> redirect to login page with email prefilled
+        handleNavigateToLogin(targetEmail);
+      } else {
+        setApiError(errMsg);
+      }
     } catch (err: any) {
       const errMsg = err?.response?.data?.message || err?.message || 'Failed to save password.';
       if (errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('active')) {
@@ -321,9 +342,14 @@ export default function AcceptInviteScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Accept Workspace Invitation', headerBackVisible: true }} />
-      <KeyboardAvoidingShell className="bg-background">
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 24, flexGrow: 1, justifyContent: 'center' }}>
-          <View className="gap-5 flex-1 justify-center max-w-sm sm:max-w-md mx-auto w-full py-2 sm:py-4">
+      <KeyboardAvoidingShell
+        className="bg-background"
+        scrollViewProps={{
+          contentContainerStyle: { paddingHorizontal: 16, paddingVertical: 24, flexGrow: 1, paddingBottom: 80 },
+          automaticallyAdjustKeyboardInsets: Platform.OS === 'ios',
+        }}
+      >
+        <View className="gap-5 flex-1 justify-center max-w-sm sm:max-w-md mx-auto w-full py-2 sm:py-4">
             
             {/* Header / Brand Icon */}
             <View className="items-center mb-1">
@@ -397,31 +423,82 @@ export default function AcceptInviteScreen() {
 
             {/* CASE 1: Account Already Registered / Active State */}
             {!isRejectedState && isAlreadyRegistered ? (
-              <View className="bg-card border border-border rounded-2xl p-6 gap-4 shadow-xs items-center">
-                <View className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-full items-center justify-center">
-                  <CheckCircle2 size={38} className="text-emerald-600 dark:text-emerald-400" />
+              isAuthenticated ? (
+                <View className="bg-card border border-border rounded-2xl p-6 gap-4 shadow-xs items-center">
+                  <View className="bg-primary/10 border border-primary/20 p-4 rounded-full items-center justify-center">
+                    <Building2 size={38} className="text-primary" />
+                  </View>
+                  <View className="gap-1.5 items-center">
+                    <Text className="text-xl font-extrabold text-foreground text-center">
+                      Join {inviteMeta?.orgName || 'Community Workspace'}
+                    </Text>
+                    <Text className="text-sm text-muted-foreground text-center px-2">
+                      You have been invited to join <Text className="font-bold text-foreground">{inviteMeta?.orgName || 'this community'}</Text>.
+                    </Text>
+                    {inviteMeta?.role ? (
+                      <Text className="text-xs text-muted-foreground text-center mt-1">
+                        Role: <Text className="font-semibold text-foreground">{inviteMeta.role}</Text>
+                        {inviteMeta.unit || inviteMeta.villa ? (
+                          <> • Unit: <Text className="font-semibold text-foreground">{inviteMeta.unit || inviteMeta.villa}</Text></>
+                        ) : null}
+                      </Text>
+                    ) : null}
+                    <Text className="text-xs text-muted-foreground text-center mt-1 px-2">
+                      Accepting will add this community to your available workspaces and switch your active workspace immediately.
+                    </Text>
+                  </View>
+
+                  {apiError ? <ErrorBanner message={apiError} /> : null}
+
+                  <View className="flex-col gap-2.5 w-full mt-2">
+                    <Button
+                      onPress={handleAcceptAuthenticatedInvite}
+                      loading={submitting}
+                      disabled={isRejecting}
+                      className="h-12 bg-primary rounded-xl w-full items-center justify-center"
+                      textClassName="font-bold text-base"
+                    >
+                      Accept & Switch Workspace
+                    </Button>
+                    <Button
+                      onPress={handleRejectInvitation}
+                      loading={isRejecting}
+                      disabled={submitting}
+                      variant="outline"
+                      className="h-11 border-red-500/30 rounded-xl w-full items-center justify-center"
+                      textClassName="font-semibold text-sm text-red-600"
+                    >
+                      Reject Invitation
+                    </Button>
+                  </View>
                 </View>
-                <View className="gap-1.5 items-center">
-                  <Text className="text-xl font-extrabold text-foreground text-center">
-                    Account Already Active
-                  </Text>
-                  <Text className="text-sm text-muted-foreground text-center px-2">
-                    {alreadyRegisteredEmail
-                      ? `Your account for ${alreadyRegisteredEmail} has already been registered and your password is configured.`
-                      : 'Your account has already been registered and your password is configured.'}
-                  </Text>
-                  <Text className="text-xs text-muted-foreground text-center mt-1">
-                    Please sign in with your email and password to enter your workspace.
-                  </Text>
+              ) : (
+                <View className="bg-card border border-border rounded-2xl p-6 gap-4 shadow-xs items-center">
+                  <View className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-full items-center justify-center">
+                    <CheckCircle2 size={38} className="text-emerald-600 dark:text-emerald-400" />
+                  </View>
+                  <View className="gap-1.5 items-center">
+                    <Text className="text-xl font-extrabold text-foreground text-center">
+                      Account Already Active
+                    </Text>
+                    <Text className="text-sm text-muted-foreground text-center px-2">
+                      {alreadyRegisteredEmail
+                        ? `Your account for ${alreadyRegisteredEmail} has already been registered and your password is configured.`
+                        : 'Your account has already been registered and your password is configured.'}
+                    </Text>
+                    <Text className="text-xs text-muted-foreground text-center mt-1">
+                      Please sign in with your email and password to enter your workspace.
+                    </Text>
+                  </View>
+                  <Button
+                    onPress={() => handleNavigateToLogin(alreadyRegisteredEmail)}
+                    className="mt-3 h-12 bg-primary rounded-xl w-full items-center justify-center"
+                    textClassName="font-bold text-base"
+                  >
+                    Sign In to Workspace
+                  </Button>
                 </View>
-                <Button
-                  onPress={() => handleNavigateToLogin(alreadyRegisteredEmail)}
-                  className="mt-3 h-12 bg-primary rounded-xl w-full items-center justify-center"
-                  textClassName="font-bold text-base"
-                >
-                  Sign In to Workspace
-                </Button>
-              </View>
+              )
             ) : null}
 
             {/* CASE 2: Invalid or Expired Token State */}
@@ -646,7 +723,6 @@ export default function AcceptInviteScreen() {
             ) : null}
 
           </View>
-        </ScrollView>
       </KeyboardAvoidingShell>
 
       {/* MODAL 1: Account Already Registered Notification Popup */}

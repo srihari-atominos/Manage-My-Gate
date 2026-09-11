@@ -82,4 +82,34 @@ describe('GoogleProvider SSO Verification', () => {
       }
     );
   });
+
+  it('should reject malformed Google authorization codes during exchange with 401 HttpError', async () => {
+    const authService = (await import('../src/features/auth/auth.services.js')).default;
+    await assert.rejects(
+      () => authService.exchangeGoogleAuthCode({
+        code: 'malformed_test_auth_code',
+        codeVerifier: 'test_code_verifier_1234567890',
+        redirectUri: 'com.atominosconsulting.nahom:/oauthredirect',
+      }),
+      (err) => {
+        assert(err instanceof HttpError);
+        assert.equal(err.statusCode, 401);
+        assert(err.message.includes('Google code exchange failed'));
+        return true;
+      }
+    );
+  });
+
+  it('should reject loginWithGoogle when neither token nor code is provided', async () => {
+    const authService = (await import('../src/features/auth/auth.services.js')).default;
+    await assert.rejects(
+      () => authService.loginWithGoogle({}),
+      (err) => {
+        assert(err instanceof HttpError);
+        assert.equal(err.statusCode, 400);
+        return true;
+      }
+    );
+  });
 });
+

@@ -113,7 +113,11 @@ export async function getDeferredHandoffContext(): Promise<{ type: 'handoff' | '
 
     await storage.setItem(PROCESSED_STORAGE_KEY, 'true');
 
-    const rawReferrer = await Application.getInstallReferrerAsync();
+    // Enforce 750ms safety timeout to prevent cold-launch blocking on sideloaded AAB or slow Play Store responses
+    const rawReferrer = await Promise.race([
+      Application.getInstallReferrerAsync(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 750)),
+    ]);
     if (__DEV__) {
       console.log('[DeferredDeepLink] Raw Install Referrer:', rawReferrer);
     }

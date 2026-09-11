@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   FlatList,
-  KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
 } from 'react-native';
@@ -72,11 +71,9 @@ export function DirectoryConversationScreen({ conversationId }: DirectoryConvers
       subtitle={participant?.role ? participant.role.toUpperCase() : 'Resident'}
       iconName="MessageSquare"
       showBackButton={true}
+      hideBottomNav={true}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1 bg-background"
-      >
+      <View className="flex-1 bg-background">
         {/* Messages List */}
         <FlatList
           data={messages}
@@ -137,7 +134,7 @@ export function DirectoryConversationScreen({ conversationId }: DirectoryConvers
             Send
           </Button>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </ScreenShell>
   );
 }

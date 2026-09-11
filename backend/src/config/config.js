@@ -87,7 +87,7 @@ export const config = {
   mobile: {
     scheme: process.env.MOBILE_APP_SCHEME || 'managemygate',
     universalLinkDomain: process.env.MOBILE_UNIVERSAL_LINK_DOMAIN || 'app.managemygate.com',
-    androidPackageName: process.env.MOBILE_ANDROID_PACKAGE_NAME || 'com.atominos.managemygate',
+    androidPackageName: process.env.MOBILE_ANDROID_PACKAGE_NAME || 'com.atominosconsulting.nahom',
     iosAppStoreId: process.env.MOBILE_IOS_APP_STORE_ID || '6470000000',
   },
 };

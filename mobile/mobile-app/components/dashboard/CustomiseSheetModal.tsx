@@ -71,7 +71,6 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
   }, [activeFeatureIds, defaultRoleQuickActions, user]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>(sanitizedActiveIds);
-  const prevVisibleRef = React.useRef(visible);
 
   // Drag & drop floating state
   const [draggingFeature, setDraggingFeature] = useState<AvailableFeatureCardItem | null>(null);
@@ -81,12 +80,12 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
 
   // Pull down to dismiss sheet transform
   const sheetTranslateY = useSharedValue(0);
+
   useEffect(() => {
-    if (visible && !prevVisibleRef.current) {
+    if (visible) {
       setSelectedIds(sanitizedActiveIds);
       sheetTranslateY.value = 0;
     }
-    prevVisibleRef.current = visible;
   }, [visible, sanitizedActiveIds]);
 
   const toggleSelect = (id: string) => {
@@ -94,9 +93,6 @@ export const CustomiseSheetModal: React.FC<CustomiseSheetModalProps> = ({
       setSelectedIds((prev) => prev.filter((item) => item !== id));
     } else if (selectedIds.length < 5) {
       setSelectedIds((prev) => [...prev, id]);
-    } else {
-      // If already at 5, replace the last item with the newly chosen one so customization is frictionless
-      setSelectedIds((prev) => [...prev.slice(0, 4), id]);
     }
     if (onToggleFeature) onToggleFeature(id);
   };

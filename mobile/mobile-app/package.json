@@ -10,7 +10,10 @@
     "web": "expo start -c --web",
     "clean": "rm -rf .expo node_modules",
     "test": "jest",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "postinstall": "node scripts/patch-css-interop.js",
+    "build:android": "eas build --platform android --profile production",
+    "build:android:local": "eas build --platform android --profile production --local"
   },
   "dependencies": {
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",

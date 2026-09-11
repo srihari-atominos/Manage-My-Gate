@@ -17,6 +17,7 @@ import { DropdownSelect } from '@/components/forms/DropdownSelect';
 import { Button } from '@/components/common/Button';
 import apiClient from '../../../services/apiClient';
 import { InviteUserData } from '../services/userService';
+import { useTranslation } from '@/src/utils/i18n';
 import {
   validateEmail,
   validateRequired,
@@ -35,6 +36,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
   onClose,
   onSendInvite,
 }) => {
+  const { t } = useTranslation();
   // Form values
   const [email, setEmail] = useState('');
   const [selectedRoleName, setSelectedRoleName] = useState('');
@@ -166,13 +168,19 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
         if (existingInOrg) {
           if (existingInOrg.status === 'Active') {
             setEmailStatus('invalid');
-            setEmailMessage('This email address is already registered in this community.');
+            setEmailMessage('This user is already an active member of this community.');
             setIsEmailChecking(false);
             return;
           }
           if (existingInOrg.status === 'Pending' || existingInOrg.status === 'Pending Verification') {
-            setEmailStatus('invalid');
-            setEmailMessage('This user has already been invited.');
+            setEmailStatus('valid');
+            setEmailMessage('User has a pending invite. Submitting will refresh and resend.');
+            setIsEmailChecking(false);
+            return;
+          }
+          if (existingInOrg.status === 'Rejected') {
+            setEmailStatus('valid');
+            setEmailMessage('User previously declined. Submitting will send a fresh invitation.');
             setIsEmailChecking(false);
             return;
           }
@@ -320,7 +328,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <View className="flex-1 justify-end bg-black/60">
@@ -334,10 +342,10 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                 </View>
                 <View>
                   <Text className="text-base font-bold text-foreground text-start">
-                    Invite Community User
+                    {t('invite_user', 'Invite Community User')}
                   </Text>
                   <Text className="text-[11px] text-muted-foreground text-start">
-                    Send invitation link to join community
+                    {t('send_invitation_subtitle', 'Send invitation link to join community')}
                   </Text>
                 </View>
               </View>
@@ -366,18 +374,18 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                       <CheckCircle2 size={28} className="text-emerald-600 dark:text-emerald-400" />
                     </View>
                     <Text className="text-base font-bold text-foreground text-center">
-                      Invitation Sent Successfully!
+                      {t('invitation_sent_success', 'Invitation Sent Successfully!')}
                     </Text>
                     <Text className="text-xs text-muted-foreground text-center mt-1">
-                      An invitation was dispatched to{' '}
-                      <Text className="font-semibold text-foreground">{successData.email}</Text> for
-                      the role <Text className="font-semibold text-foreground">{successData.roleName}</Text>.
+                      {t('invitation_dispatched_to', 'An invitation was dispatched to')}{' '}
+                      <Text className="font-semibold text-foreground">{successData.email}</Text> {t('for_role', 'for the role')}{' '}
+                      <Text className="font-semibold text-foreground">{successData.roleName}</Text>.
                     </Text>
 
                     {Boolean(successData.inviteLink) && (
                       <View className="w-full mt-3.5 pt-3 border-t border-emerald-500/20">
                         <Text className="text-[11px] font-bold text-muted-foreground mb-1.5 text-start">
-                          Invitation Link:
+                          {t('invitation_link', 'Invitation Link:')}
                         </Text>
                         <View className="flex-row items-center bg-background border border-border rounded-xl px-3 py-2">
                           <Text
@@ -396,12 +404,12 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                             {copiedLink ? (
                               <>
                                 <Check size={12} className="text-primary" />
-                                <Text className="text-[10px] font-bold text-primary">Copied</Text>
+                                <Text className="text-[10px] font-bold text-primary">{t('copied', 'Copied')}</Text>
                               </>
                             ) : (
                               <>
                                 <Copy size={12} className="text-primary" />
-                                <Text className="text-[10px] font-bold text-primary">Copy</Text>
+                                <Text className="text-[10px] font-bold text-primary">{t('copy_link', 'Copy')}</Text>
                               </>
                             )}
                           </TouchableOpacity>
@@ -417,14 +425,14 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                       className="flex-1"
                       onPress={resetForm}
                     >
-                      Invite Another
+                      {t('invite_another', 'Invite Another')}
                     </Button>
                     <Button
                       variant="default"
                       className="flex-1"
                       onPress={onClose}
                     >
-                      Done
+                      {t('done', 'Done')}
                     </Button>
                   </View>
                 </View>
@@ -444,7 +452,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                   {/* Email Field with Real-time & Async Validation */}
                   <View>
                     <TextInput
-                      label="Email Address"
+                      label={t('email_address', 'Email Address')}
                       required
                       placeholder="resident@community.com"
                       value={email}
@@ -475,16 +483,16 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                     {loadingRoles ? (
                       <View className="py-3 items-center justify-center">
                         <ActivityIndicator size="small" color="#FF5E00" />
-                        <Text className="text-xs text-muted-foreground mt-1">Loading roles...</Text>
+                        <Text className="text-xs text-muted-foreground mt-1">{t('loading', 'Loading roles...')}</Text>
                       </View>
                     ) : (
                       <DropdownSelect
-                        label="Select Role"
+                        label={t('select_role', 'Select Role')}
                         required
                         options={roleOptions}
                         value={selectedRoleName}
                         onValueChange={handleRoleChange}
-                        placeholder="-- Select User Role --"
+                        placeholder={t('select_user_role_placeholder', '-- Select User Role --')}
                         error={roleError}
                       />
                     )}
@@ -497,32 +505,32 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                         <View className="py-3 items-center justify-center">
                           <ActivityIndicator size="small" color="#FF5E00" />
                           <Text className="text-xs text-muted-foreground mt-1">
-                            Loading villas...
+                            {t('loading', 'Loading villas...')}
                           </Text>
                         </View>
                       ) : (
                         <DropdownSelect
-                          label="Select Villa / Unit"
+                          label={t('unit_number', 'Select Villa / Unit')}
                           required
                           options={villaOptions}
                           value={selectedVillaId}
                           onValueChange={handleVillaChange}
-                          placeholder="-- Choose Villa Unit --"
+                          placeholder={t('choose_villa_placeholder', '-- Choose Villa Unit --')}
                           error={villaError}
-                          helperText="Assign resident to their designated villa unit"
+                          helperText={t('assign_villa_help', 'Assign resident to their designated villa unit')}
                         />
                       )}
                     </View>
                   )}
 
                   <Text className="text-xs text-muted-foreground text-start mt-1">
-                    An invitation code and setup link will be generated for password setup.
+                    {t('invitation_hint', 'An invitation code and setup link will be generated for password setup.')}
                   </Text>
 
                   {/* Modal Footer */}
                   <View className="flex-row items-center justify-end gap-3 pt-3 border-t border-border mt-2">
                     <Button variant="outline" onPress={onClose} disabled={submitting}>
-                      Cancel
+                      {t('cancel', 'Cancel')}
                     </Button>
                     <Button
                       variant="default"
@@ -530,7 +538,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                       loading={submitting}
                       disabled={submitting || isEmailChecking}
                     >
-                      Send Invitation
+                      {t('send_invitation', 'Send Invitation')}
                     </Button>
                   </View>
                 </View>

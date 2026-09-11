@@ -91,8 +91,9 @@ export class AuthController {
 
   async acceptInviteWithSSO(req, res, next) {
     try {
-      const { inviteToken, ssoCredential, provider } = req.body;
-      const data = await authService.acceptInvitationWithSSO(inviteToken, ssoCredential, provider);
+      const { inviteToken, ssoCredential, code, codeVerifier, redirectUri, clientId, provider } = req.body;
+      const credentialOrOptions = ssoCredential ? ssoCredential : { code, codeVerifier, redirectUri, clientId };
+      const data = await authService.acceptInvitationWithSSO(inviteToken, credentialOrOptions, provider);
       
       if (data && data.token) {
         setAuthCookie(res, data.token);
@@ -141,8 +142,9 @@ export class AuthController {
 
   async googleLogin(req, res, next) {
     try {
-      const { token, inviteToken } = req.body;
-      const data = await authService.loginWithGoogle(token, inviteToken, true);
+      const { token, code, codeVerifier, redirectUri, clientId, inviteToken } = req.body;
+      const credentialOrPayload = token ? token : { code, codeVerifier, redirectUri, clientId };
+      const data = await authService.loginWithGoogle(credentialOrPayload, inviteToken, true);
       
       if (data.isNewUser) {
         return res.success(data, 'Google token verified. User not found.', 200);

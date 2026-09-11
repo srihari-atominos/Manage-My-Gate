@@ -16,17 +16,23 @@
       "**/*"
     ],
     "updates": {
-      "url": "https://u.expo.dev/94a573d9-5e93-4827-8fbd-605e0ef3a50a",
-      "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
+      "enabled": false
     },
-    "runtimeVersion": "1.0.0",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.atominosconsulting.nahom",
-      "buildNumber": "1.0.0",
+      "buildNumber": "10",
+      "associatedDomains": [
+        "applinks:managemygate.e3esg.com",
+        "applinks:app.managemygate.com",
+        "applinks:managemygate.com"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ],
         "NSCameraUsageDescription": "ManageMyGate requires camera access to scan visitor QR passes and capture photo attachments for maintenance complaints.",
         "NSPhotoLibraryUsageDescription": "ManageMyGate requires photo library access to upload images for amenity bookings and complaint tickets.",
         "LSApplicationQueriesSchemes": [
@@ -38,7 +44,7 @@
     "android": {
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.atominosconsulting.nahom",
-      "versionCode": 12,
+      "versionCode": 13,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -53,6 +59,16 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
+            {
+              "scheme": "https",
+              "host": "app.managemygate.com",
+              "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
+              "host": "managemygate.e3esg.com",
+              "pathPrefix": "/invite"
+            },
             {
               "scheme": "https",
               "host": "app.managemygate.com",
@@ -77,6 +93,10 @@
         {
           "action": "VIEW",
           "data": [
+            {
+              "scheme": "managemygate",
+              "host": "invite"
+            },
             {
               "scheme": "managemygate",
               "host": "invite",

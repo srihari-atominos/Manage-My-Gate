@@ -4,6 +4,25 @@ import { initReactI18next } from 'react-i18next'
 const resources = {
   en: {
     translation: {
+      common: {
+        save: 'Save',
+        cancel: 'Cancel',
+        delete: 'Delete',
+        edit: 'Edit',
+        confirm: 'Confirm',
+        close: 'Close',
+        loading: 'Loading...',
+        retry: 'Retry',
+        yes: 'Yes',
+        no: 'No',
+        search: 'Search',
+        actions: 'Actions',
+        status: 'Status',
+        filter: 'Filter',
+        all: 'All',
+        back: 'Back',
+        submit: 'Submit',
+      },
       auth: {
         invite: {
           badge: 'Workspace Invitation',
@@ -118,6 +137,9 @@ const resources = {
         bellTitle: 'View Notifications',
       },
       workspace: {
+        createNewOrg: 'Create New Organization',
+        defaultName: 'Select Workspace',
+        platformBadge: 'Platform',
         wizard: {
           title: 'Configure Workspace Features',
           subtitle:
@@ -161,6 +183,29 @@ const resources = {
           submit: 'Confirm & Initialize Workspace',
           loading: 'Initializing...',
           error: 'Failed to configure features. Please try again.',
+        },
+      },
+      userManagement: {
+        title: 'User Management',
+        subtitle: 'Manage community users, invite new members, assign roles, and configure permissions.',
+        searchPlaceholder: 'Search name, email, or role...',
+        inviteUser: 'Invite User',
+        bulkInvite: 'Bulk Invite',
+        table: {
+          user: 'User',
+          role: 'Role',
+          residency: 'Residency Type',
+          unit: 'Unit / Villa',
+          status: 'Status',
+          joinedDate: 'Joined Date',
+          actions: 'Actions',
+        },
+        empty: 'No users found',
+        actions: {
+          edit: 'Edit User',
+          delete: 'Remove User',
+          resend: 'Resend Invitation',
+          revoke: 'Revoke Invitation',
         },
       },
       superAdmin: {
@@ -487,15 +532,52 @@ const resources = {
           loading: 'Creating Organization...',
         },
       },
-      workspace: {
-        createNewOrg: 'Create New Organization',
-        defaultName: 'Select Workspace',
-        platformBadge: 'Platform',
-      },
     },
   },
   ar: {
     translation: {
+      common: {
+        save: 'حفظ',
+        cancel: 'إلغاء',
+        delete: 'حذف',
+        edit: 'تعديل',
+        confirm: 'تأكيد',
+        close: 'إغلاق',
+        loading: 'جاري التحميل...',
+        retry: 'إعادة المحاولة',
+        yes: 'نعم',
+        no: 'لا',
+        search: 'بحث',
+        actions: 'الإجراءات',
+        status: 'الحالة',
+        filter: 'تصفية',
+        all: 'الكل',
+        back: 'رجوع',
+        submit: 'إرسال',
+      },
+      userManagement: {
+        title: 'إدارة المستخدمين',
+        subtitle: 'إدارة مستخدمي المجتمع، دعوة أعضاء جدد، تعيين الأدوار وتكوين الأذونات.',
+        searchPlaceholder: 'البحث عن الاسم، البريد الإلكتروني، أو الدور...',
+        inviteUser: 'دعوة مستخدم',
+        bulkInvite: 'دعوة جماعية',
+        table: {
+          user: 'المستخدم',
+          role: 'الدور',
+          residency: 'نوع الإقامة',
+          unit: 'الوحدة / الفيلا',
+          status: 'الحالة',
+          joinedDate: 'تاريخ الانضمام',
+          actions: 'الإجراءات',
+        },
+        empty: 'لم يتم العثور على مستخدمين',
+        actions: {
+          edit: 'تعديل المستخدم',
+          delete: 'إزالة المستخدم',
+          resend: 'إعادة إرسال الدعوة',
+          revoke: 'إلغاء الدعوة',
+        },
+      },
       organization: {
         create: {
           title: 'إنشاء منظمتك',
@@ -519,6 +601,17 @@ const resources = {
         createNewOrg: 'إنشاء منظمة جديدة',
         defaultName: 'اختر مساحة العمل',
         platformBadge: 'المنصة',
+        wizard: {
+          title: 'تكوين ميزات مساحة العمل',
+          subtitle: 'حدد الميزات التي تريد تمكينها في مساحة العمل الخاصة بك.',
+          users: {
+            title: 'إدارة المستخدمين',
+            desc: 'إدارة مستخدمي مساحة العمل والأدوار والأذونات',
+          },
+          submit: 'تأكيد وتهيئ مساحة العمل',
+          loading: 'جاري التهيئة...',
+          error: 'فشل في تكوين الميزات.',
+        },
       },
       invitations: {
         pageTitle: 'إدارة الدعوات',
@@ -556,6 +649,32 @@ const resources = {
           expired: 'منتهية الصلاحية',
           revoked: 'ملغاة',
           rejected: 'مرفوضة',
+        },
+      },
+      header: {
+        dropdown: {
+          profile: 'الملف الشخصي',
+          switchRole: 'تبديل الدور',
+          switchOrg: 'تبديل المنظمة',
+          noActiveWorkspace: 'لا توجد مساحة عمل نشطة',
+          globalPlatform: 'المنصة العالمية',
+          logout: 'تسجيل الخروج',
+        },
+      },
+      dashboard: {
+        welcome: 'مرحبًا بك في {{appName}}',
+        categories: {
+          platformManagement: 'إدارة المنصة',
+          features: 'الميزات',
+        },
+        cards: {
+          userManagement: 'إدارة المستخدمين',
+          unitManagement: 'إدارة الوحدات',
+          visitorManagement: 'إدارة الزوار',
+          roleBuilder: 'منشئ الأدوار',
+          integrationHub: 'مركز التكامل',
+          organizationManager: 'مدير المنظمات',
+          auditLogs: 'سجلات المراجعة',
         },
       },
     },
