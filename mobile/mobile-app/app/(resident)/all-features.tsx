@@ -161,14 +161,6 @@ export default function AllFeaturesScreen() {
                     return false;
                   }
 
-                  // Hide resident personal passes for Admin roles
-                  if (
-                    isAdminRole &&
-                    (item.id === 'visitor_resident_passes' || item.id === 'visitor_passes')
-                  ) {
-                    return false;
-                  }
-
                   return isFeatureAllowedForUser(item, user);
                 });
 

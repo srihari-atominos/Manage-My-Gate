@@ -1,36 +1,68 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../../store/store';
-import { 
-  fetchAmenitiesThunk, 
-  createAmenityThunk, 
-  updateAmenityThunk, 
-  deleteAmenityThunk,
-  updateAmenityStatusThunk,
-  removeAmenity,
-  Amenity 
-} from '../store/amenitySlice';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '../../../store/store';
+import amenityManagementService from '../services/amenityManagementService';
+import {
+  AmenityFacility,
+  AmenityArchetype,
+} from '../types/amenityDomain.types';
+import { normalizeFacilityFromApi } from '../utils/amenityPayloadMappers';
+import { mapAmenityApiError } from '../utils/amenityErrorMapper';
+import { upsertAmenity, removeAmenity } from '../store/amenitySlice';
 
-export const useAmenityMaster = () => {
+export type ArchetypeFilterOption = 'All' | AmenityArchetype;
+
+export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All') => {
   const dispatch = useDispatch<AppDispatch>();
-  const { amenities, loading, error } = useSelector((state: RootState) => state.amenities);
 
-  const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [editingAmenity, setEditingAmenity] = useState<Amenity | null>(null);
-  
-  const [selectedAmenityDetail, setSelectedAmenityDetail] = useState<Amenity | null>(null);
-  
-  const [deleteTarget, setDeleteTarget] = useState<Amenity | null>(null);
-  const [deactivateTarget, setDeactivateTarget] = useState<Amenity | null>(null);
-  
-  const [saving, setSaving] = useState(false);
+  const [facilities, setFacilities] = useState<AmenityFacility[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(() => {
-    dispatch(fetchAmenitiesThunk({}));
+  const [search, setSearch] = useState<string>('');
+  const [selectedArchetype, setSelectedArchetype] = useState<ArchetypeFilterOption>(initialArchetype);
+
+  const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
+  const [isArchetypeSheetOpen, setIsArchetypeSheetOpen] = useState<boolean>(false);
+  const [creationArchetype, setCreationArchetype] = useState<AmenityArchetype>('SHARED_CAPACITY');
+  const [editingAmenity, setEditingAmenity] = useState<AmenityFacility | null>(null);
+
+  const [selectedAmenityDetail, setSelectedAmenityDetail] = useState<AmenityFacility | null>(null);
+
+  const [deleteTarget, setDeleteTarget] = useState<AmenityFacility | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<AmenityFacility | null>(null);
+
+  const [saving, setSaving] = useState<boolean>(false);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await amenityManagementService.getFacilities({
+        page: 1,
+        limit: 100,
+      });
+
+      const rawItems =
+        res?.data?.items ||
+        (res as any)?.items ||
+        (Array.isArray(res?.data) ? res.data : []);
+
+      const normalizedItems: AmenityFacility[] = rawItems.map(normalizeFacilityFromApi);
+      setFacilities(normalizedItems);
+
+      // Sync into Redux store for global state synchronization
+      normalizedItems.forEach((fac) => {
+        dispatch(upsertAmenity(fac));
+      });
+    } catch (err: any) {
+      console.error('Failed to load facilities', err);
+      const mapped = mapAmenityApiError(err);
+      setError(mapped.message || 'Failed to load amenities catalog');
+    } finally {
+      setLoading(false);
+    }
   }, [dispatch]);
 
   useEffect(() => {
@@ -38,20 +70,48 @@ export const useAmenityMaster = () => {
   }, [loadData]);
 
   const filteredAmenities = useMemo(() => {
-    return amenities.filter(amenity => {
-      const matchesSearch = amenity.name.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = selectedCategory === 'All' || amenity.type === selectedCategory;
-      return matchesSearch && matchesCategory;
+    return facilities.filter((facility) => {
+      const query = search.trim().toLowerCase();
+      const matchesSearch =
+        !query ||
+        facility.name.toLowerCase().includes(query) ||
+        (facility.description && facility.description.toLowerCase().includes(query)) ||
+        (facility.timezone && facility.timezone.toLowerCase().includes(query));
+
+      const matchesArchetype =
+        selectedArchetype === 'All' ||
+        facility.archetype === selectedArchetype ||
+        (facility as any).category === selectedArchetype ||
+        (facility as any).type === selectedArchetype;
+
+      return matchesSearch && matchesArchetype;
     });
-  }, [amenities, search, selectedCategory]);
+  }, [facilities, search, selectedArchetype]);
 
   const handleOpenCreateModal = () => {
+    setEditingAmenity(null);
+    if (selectedArchetype !== 'All') {
+      setCreationArchetype(selectedArchetype);
+    }
+    setIsArchetypeSheetOpen(true);
+  };
+
+  const handleSelectArchetypeForCreation = (archetype: AmenityArchetype) => {
+    setCreationArchetype(archetype);
+    setIsArchetypeSheetOpen(false);
     setEditingAmenity(null);
     setIsFormModalOpen(true);
   };
 
-  const handleOpenEditModal = (amenity: Amenity) => {
+  const handleCloseArchetypeSheet = () => {
+    setIsArchetypeSheetOpen(false);
+  };
+
+  const handleOpenEditModal = (amenity: AmenityFacility) => {
     setEditingAmenity(amenity);
+    if (amenity.archetype) {
+      setCreationArchetype(amenity.archetype);
+    }
     setIsFormModalOpen(true);
   };
 
@@ -60,56 +120,32 @@ export const useAmenityMaster = () => {
     setEditingAmenity(null);
   };
 
-  const handleFormSubmit = async (data: any) => {
+  const handleFormSubmit = async (payload: any) => {
     setSaving(true);
     try {
-      const payload = {
-        name: data.name,
-        type: data.type || data.category,
-        location: data.location,
-        description: data.description,
-        capacity: Number(data.capacity),
-        status: data.status,
-        maxBookingsPerUserPerSlot: Number(data.maxBookingsPerUserPerSlot),
-        openDays: data.openDays,
-        images: data.imageUrl ? [data.imageUrl] : [],
-        pricing: {
-          pricingType: data.pricingType,
-          baseRate: Number(data.bookingFee),
-          securityDeposit: Number(data.securityDeposit),
-          securityDepositDescription: data.securityDepositDescription,
-        },
-        bookingRules: {
-          openTime: data.openTime,
-          closeTime: data.closeTime,
-          slotDurationMinutes: Number(data.slotDurationMinutes),
-          bufferTimeMinutes: Number(data.bufferTimeMinutes),
-          advanceBookingDays: Number(data.advanceBookingDays),
-          isCancellationEnabled: data.isCancellationEnabled,
-          cancellationRefundRules: data.cancellationRefundRules?.map((rule: any) => ({
-            cancelBeforeHours: Number(rule.cancelBeforeHours),
-            refundPercentage: Number(rule.refundPercentage)
-          })) || [],
-        }
-      };
-
       if (editingAmenity) {
-        await dispatch(updateAmenityThunk({ id: editingAmenity._id, payload })).unwrap();
-        Alert.alert('Success', 'Amenity updated successfully');
+        const facilityId = editingAmenity._id || (editingAmenity as any).id;
+        await amenityManagementService.updateFacility(facilityId, payload);
+        Alert.alert('Success', 'Facility specifications updated successfully');
       } else {
-        await dispatch(createAmenityThunk(payload)).unwrap();
-        Alert.alert('Success', 'Amenity created successfully');
+        await amenityManagementService.createFacility(payload);
+        Alert.alert('Success', 'Facility created successfully in master catalog');
       }
       handleCloseFormModal();
+      await loadData();
     } catch (err: any) {
-      console.error('Failed to save amenity', err);
-      Alert.alert('Error', typeof err === 'string' ? err : err.message || 'Failed to save amenity. Please check your inputs.');
+      console.error('Failed to save amenity facility', err);
+      const mapped = mapAmenityApiError(err);
+      Alert.alert(
+        'Save Failed',
+        mapped.message || 'Failed to save amenity facility. Please verify required fields.'
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const handleToggleStatus = (amenity: Amenity) => {
+  const handleToggleStatus = (amenity: AmenityFacility) => {
     setDeactivateTarget(amenity);
   };
 
@@ -117,14 +153,22 @@ export const useAmenityMaster = () => {
     if (!deactivateTarget) return;
     setSaving(true);
     try {
-      const currentStatus = (deactivateTarget.status || '').toLowerCase();
-      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-      await dispatch(updateAmenityStatusThunk({ id: deactivateTarget._id, status: newStatus })).unwrap();
-      Alert.alert('Success', `Amenity ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
+      const facilityId = deactivateTarget._id || (deactivateTarget as any).id;
+      const currentIsActive =
+        deactivateTarget.status === 'ACTIVE' || (deactivateTarget as any).isActive === true;
+      const nextIsActive = !currentIsActive;
+
+      await amenityManagementService.updateFacilityStatus(facilityId, nextIsActive);
+      Alert.alert(
+        'Success',
+        `Facility ${nextIsActive ? 'activated' : 'deactivated'} successfully`
+      );
       setDeactivateTarget(null);
+      await loadData();
     } catch (err: any) {
       console.error('Failed to change status', err);
-      Alert.alert('Error', typeof err === 'string' ? err : err.message || 'Failed to update status');
+      const mapped = mapAmenityApiError(err);
+      Alert.alert('Status Update Error', mapped.message || 'Failed to update facility status');
     } finally {
       setSaving(false);
     }
@@ -132,39 +176,40 @@ export const useAmenityMaster = () => {
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
-    const targetId = String(deleteTarget._id || (deleteTarget as any).id || '');
+    const facilityId = String(deleteTarget._id || (deleteTarget as any).id || '');
     setSaving(true);
     try {
-      await dispatch(deleteAmenityThunk({ id: targetId, force: true })).unwrap();
-      dispatch(removeAmenity(targetId));
-      dispatch(fetchAmenitiesThunk({ page: 1, limit: 100 }));
-      Alert.alert('Success', 'Amenity deleted successfully');
+      await amenityManagementService.deleteFacility(facilityId);
+      dispatch(removeAmenity(facilityId));
+      Alert.alert('Success', 'Facility removed from master catalog');
       setDeleteTarget(null);
+      await loadData();
     } catch (err: any) {
-      const errMsg = typeof err === 'string' ? err : err?.message || '';
-      if (errMsg.toLowerCase().includes('not found') || errMsg.includes('404')) {
-        dispatch(removeAmenity(targetId));
-        Alert.alert('Success', 'Amenity removed successfully');
-        setDeleteTarget(null);
-      } else {
-        console.error('Failed to delete amenity', err);
-        Alert.alert('Error', errMsg || 'Failed to delete amenity');
-      }
+      console.error('Failed to delete amenity', err);
+      const mapped = mapAmenityApiError(err);
+      Alert.alert('Delete Error', mapped.message || 'Failed to delete facility record');
     } finally {
       setSaving(false);
     }
   };
 
   return {
-    amenities,
+    facilities,
+    amenities: facilities,
     filteredAmenities,
     search,
     setSearch,
-    selectedCategory,
-    setSelectedCategory,
+    selectedArchetype,
+    setSelectedArchetype,
+    selectedCategory: selectedArchetype,
+    setSelectedCategory: (cat: any) => setSelectedArchetype(cat),
     loading,
     error,
     isFormModalOpen,
+    isArchetypeSheetOpen,
+    setIsArchetypeSheetOpen,
+    creationArchetype,
+    setCreationArchetype,
     editingAmenity,
     selectedAmenityDetail,
     setSelectedAmenityDetail,
@@ -175,6 +220,8 @@ export const useAmenityMaster = () => {
     saving,
     loadData,
     handleOpenCreateModal,
+    handleSelectArchetypeForCreation,
+    handleCloseArchetypeSheet,
     handleOpenEditModal,
     handleCloseFormModal,
     handleFormSubmit,

@@ -60,7 +60,10 @@ export const mapAmenityApiError = (error: any): AmenityErrorDetails => {
   if (status === 403) {
     return {
       statusCode: 403,
-      message: baseMessage || 'You do not have permission to perform this action in this community.',
+      message:
+        baseMessage === 'Operation failed'
+          ? 'You do not have permission to perform this action in this community.'
+          : baseMessage,
     };
   }
 

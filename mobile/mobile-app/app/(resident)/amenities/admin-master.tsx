@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { KPIRow } from '@/components/ui/KPIRow';
@@ -7,31 +7,57 @@ import { PaginatedList } from '@/components/ui/PaginatedList';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Chip } from '@/components/common/Chip';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-
 import { FAB } from '@/components/ui/FAB';
 
 import { AmenityMasterCard } from '@/src/features/amenities/components/AmenityMasterCard';
-import { useAmenityMaster } from '@/src/features/amenities/hooks/useAmenityMaster';
-import { AmenityFormModal } from '@/src/features/amenities/components/AmenityFormModal';
+import { useAmenityMaster, ArchetypeFilterOption } from '@/src/features/amenities/hooks/useAmenityMaster';
+import {
+  AmenityCreationWizard,
+  AmenityArchetypeSheet,
+} from '@/src/features/amenities/components/creation-wizard';
 import { AmenityDetailSheet } from '@/src/features/amenities/components/AmenityDetailSheet';
-import { Amenity } from '@/src/features/amenities/store/amenitySlice';
-import { Plus } from 'lucide-react-native';
+import { AmenityFacility } from '@/src/features/amenities/types/amenityDomain.types';
+import {
+  Plus,
+  Layers,
+  Users,
+  Timer,
+  Sparkles,
+  DoorOpen,
+  Wrench,
+} from 'lucide-react-native';
 
-const CATEGORY_CHIPS = ['All', 'Sports', 'Fitness', 'Event Space', 'Clubhouse', 'Wellness', 'Workspace'];
+interface ArchetypeChipMeta {
+  label: string;
+  value: ArchetypeFilterOption;
+  icon: any;
+}
+
+const ARCHETYPE_CHIPS: ArchetypeChipMeta[] = [
+  { label: 'All', value: 'All', icon: Layers },
+  { label: 'Shared', value: 'SHARED_CAPACITY', icon: Users },
+  { label: 'Exclusive', value: 'EXCLUSIVE_HOURLY', icon: Timer },
+  { label: 'Event', value: 'EVENT_SPACE', icon: Sparkles },
+  { label: 'Room', value: 'ROOM_RESOURCE', icon: DoorOpen },
+  { label: 'Tools', value: 'INVENTORY_TOOLS', icon: Wrench },
+];
 
 export default function AdminAmenityMasterScreen() {
   const router = useRouter();
   const {
-    amenities,
+    facilities,
     filteredAmenities,
     search,
     setSearch,
-    selectedCategory,
-    setSelectedCategory,
+    selectedArchetype,
+    setSelectedArchetype,
     loading,
     error,
     isFormModalOpen,
+    isArchetypeSheetOpen,
+    creationArchetype,
     editingAmenity,
     selectedAmenityDetail,
     setSelectedAmenityDetail,
@@ -42,6 +68,8 @@ export default function AdminAmenityMasterScreen() {
     saving,
     loadData,
     handleOpenCreateModal,
+    handleSelectArchetypeForCreation,
+    handleCloseArchetypeSheet,
     handleOpenEditModal,
     handleCloseFormModal,
     handleFormSubmit,
@@ -51,14 +79,19 @@ export default function AdminAmenityMasterScreen() {
   } = useAmenityMaster();
 
   const kpis = useMemo(() => {
-    const total = amenities.length;
-    const active = amenities.filter((a) => (a.status || 'active').toLowerCase() === 'active').length;
-    const maintenance = amenities.filter((a) => (a.status || '').toLowerCase() === 'maintenance').length;
+    const total = facilities.length;
+    const active = facilities.filter(
+      (f) => f.status === 'ACTIVE' || (f as any).isActive === true
+    ).length;
+    const maintenance = facilities.filter((f) => f.status === 'MAINTENANCE').length;
     return { total, active, maintenance };
-  }, [amenities]);
+  }, [facilities]);
 
-  const categorySortOptions = useMemo(() => {
-    return CATEGORY_CHIPS.map((cat) => ({ label: cat, value: cat }));
+  const archetypeSortOptions = useMemo(() => {
+    return ARCHETYPE_CHIPS.map((chip) => ({
+      label: chip.label === 'All' ? 'All Archetypes' : `${chip.label} Capacity`,
+      value: chip.value,
+    }));
   }, []);
 
   const renderHeader = () => (
@@ -72,7 +105,7 @@ export default function AdminAmenityMasterScreen() {
             subtitle: 'Master Catalog',
             iconName: 'Building2',
             variant: 'info',
-            onPress: () => setSelectedCategory('All'),
+            onPress: () => setSelectedArchetype('All'),
           },
           {
             title: 'Active',
@@ -92,26 +125,49 @@ export default function AdminAmenityMasterScreen() {
         ]}
       />
 
-      {/* Unified Search & Category Filter Bar */}
+      {/* Search & Sort Dropdown Filter Bar */}
       <SearchFilterBar
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search facility name or location..."
-        sortOptions={categorySortOptions}
-        currentSort={selectedCategory}
-        onSortChange={setSelectedCategory}
+        searchPlaceholder="Search facility name, location or code..."
+        sortOptions={archetypeSortOptions}
+        currentSort={selectedArchetype}
+        onSortChange={(val) => setSelectedArchetype(val as ArchetypeFilterOption)}
         variant="default"
         className="px-0 py-0 border-0"
       />
+
+      {/* Multi-Chip Archetype Selector Row */}
+      <View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerClassName="flex-row items-center gap-2 py-0.5"
+        >
+          {ARCHETYPE_CHIPS.map((chip) => {
+            const isSelected = selectedArchetype === chip.value;
+            return (
+              <Chip
+                key={chip.value}
+                label={chip.label}
+                icon={chip.icon}
+                selected={isSelected}
+                onPress={() => setSelectedArchetype(chip.value)}
+                className="h-8 px-3"
+              />
+            );
+          })}
+        </ScrollView>
+      </View>
     </View>
   );
 
   return (
     <ScreenShell
       title="Amenity Master Console"
-      subtitle="Define community facilities, pricing & operating hours"
+      subtitle="Configure community facilities, canonical archetypes & pricing"
       iconName="Building2"
-      loading={loading && amenities.length === 0}
+      loading={loading && facilities.length === 0}
       error={error}
       onRetry={loadData}
       headerRight={
@@ -119,7 +175,7 @@ export default function AdminAmenityMasterScreen() {
           variant="default"
           size="sm"
           onPress={handleOpenCreateModal}
-          className="flex-row items-center gap-1 rounded-full px-2.5 h-8"
+          className="flex-row items-center gap-1 rounded-full px-3 h-8"
           accessibilityLabel="Add New Amenity Facility"
         >
           <Plus size={14} className="text-primary-foreground" />
@@ -129,26 +185,31 @@ export default function AdminAmenityMasterScreen() {
     >
       <View className="flex-1 bg-background">
         {/* Master Amenity List */}
-        <PaginatedList<Amenity>
+        <PaginatedList<AmenityFacility>
           data={filteredAmenities}
           renderItem={(item) => (
             <AmenityMasterCard
               key={item._id}
               item={item}
-              onPress={(a) => setSelectedAmenityDetail(a)}
-              onEdit={(a) => handleOpenEditModal(a)}
-              onToggleStatus={(a) => handleToggleStatus(a)}
-              onDelete={(a) => setDeleteTarget(a)}
+              onPress={(f) => setSelectedAmenityDetail(f)}
+              onEdit={(f) => handleOpenEditModal(f)}
+              onToggleStatus={(f) => handleToggleStatus(f)}
+              onDelete={(f) => setDeleteTarget(f)}
             />
           )}
-          pagination={{ currentPage: 1, totalPages: 1, totalRecords: filteredAmenities.length, limit: 50 }}
+          pagination={{
+            currentPage: 1,
+            totalPages: 1,
+            totalRecords: filteredAmenities.length,
+            limit: 50,
+          }}
           onLoadMore={() => {}}
           onRefresh={loadData}
-          loading={loading && amenities.length === 0}
+          loading={loading && facilities.length === 0}
           ListHeaderComponent={renderHeader()}
           emptyIcon="Building2"
           emptyTitle="No Amenity Records Found"
-          emptySubtitle="No facility records match your active category filter or search query."
+          emptySubtitle="No facility records match your active archetype filter or search query."
           contentContainerClassName="px-4 pt-3 pb-28"
         />
 
@@ -160,13 +221,22 @@ export default function AdminAmenityMasterScreen() {
         />
       </View>
 
-      {/* Amenity Create / Edit Form Modal */}
-      <AmenityFormModal
+      {/* 1. Initial Archetype Selection Bottom Sheet (Visitor Pattern UX) */}
+      <AmenityArchetypeSheet
+        visible={isArchetypeSheetOpen}
+        selectedArchetype={creationArchetype}
+        onClose={handleCloseArchetypeSheet}
+        onSelectArchetype={handleSelectArchetypeForCreation}
+      />
+
+      {/* 2. Amenity Create / Edit Flow Wizard */}
+      <AmenityCreationWizard
         visible={isFormModalOpen}
         onClose={handleCloseFormModal}
         onSubmit={handleFormSubmit as any}
         amenity={editingAmenity}
         loading={saving}
+        initialArchetype={creationArchetype}
       />
 
       {/* Facility Inspection Detail Sheet */}
@@ -181,14 +251,31 @@ export default function AdminAmenityMasterScreen() {
       {/* Status Toggle Confirmation Modal */}
       <ConfirmationModal
         visible={!!deactivateTarget}
-        title={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Deactivate Amenity Facility?' : 'Activate Amenity Facility?'}
-        message={deactivateTarget?.status?.toLowerCase() === 'active' 
-          ? `"${deactivateTarget?.name}" has active or upcoming resident bookings. Deactivating this facility will cancel all associated future bookings. Are you sure you want to proceed?`
-          : `Are you sure you want to activate "${deactivateTarget?.name}" and open it for resident bookings?`
+        title={
+          deactivateTarget?.status === 'ACTIVE' || (deactivateTarget as any)?.isActive === true
+            ? 'Deactivate Amenity Facility?'
+            : 'Activate Amenity Facility?'
         }
-        variant={deactivateTarget?.status?.toLowerCase() === 'active' ? 'warning' : 'info'}
-        confirmLabel={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Deactivate & Cancel Bookings' : 'Activate Facility'}
-        cancelLabel={deactivateTarget?.status?.toLowerCase() === 'active' ? 'Keep Active' : 'Keep Inactive'}
+        message={
+          deactivateTarget?.status === 'ACTIVE' || (deactivateTarget as any)?.isActive === true
+            ? `"${deactivateTarget?.name}" will be deactivated and marked unavailable for resident bookings. Are you sure you want to proceed?`
+            : `Are you sure you want to activate "${deactivateTarget?.name}" and open it for resident bookings?`
+        }
+        variant={
+          deactivateTarget?.status === 'ACTIVE' || (deactivateTarget as any)?.isActive === true
+            ? 'warning'
+            : 'info'
+        }
+        confirmLabel={
+          deactivateTarget?.status === 'ACTIVE' || (deactivateTarget as any)?.isActive === true
+            ? 'Deactivate Facility'
+            : 'Activate Facility'
+        }
+        cancelLabel={
+          deactivateTarget?.status === 'ACTIVE' || (deactivateTarget as any)?.isActive === true
+            ? 'Keep Active'
+            : 'Keep Inactive'
+        }
         onConfirm={handleConfirmDeactivate}
         onCancel={() => setDeactivateTarget(null)}
       />
@@ -197,7 +284,7 @@ export default function AdminAmenityMasterScreen() {
       <ConfirmationModal
         visible={!!deleteTarget}
         title="Delete Amenity Record?"
-        message={`Are you sure you want to permanently delete "${deleteTarget?.name}"? All future reservation slots for this facility will be removed.`}
+        message={`Are you sure you want to permanently delete "${deleteTarget?.name}"? All associated settings and schedule configurations for this facility will be removed.`}
         variant="danger"
         confirmLabel="Delete Record"
         cancelLabel="Keep Amenity"

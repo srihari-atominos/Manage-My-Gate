@@ -1,0 +1,269 @@
+import React from 'react';
+import { View, ScrollView, Image } from 'react-native';
+import { Text } from '@/components/ui/text';
+import {
+  Building2,
+  Clock,
+  Calendar,
+  CircleDollarSign,
+  ShieldCheck,
+  Tag,
+  MapPin,
+  Check,
+} from 'lucide-react-native';
+import { AmenityCreationFormState } from '../../../utils/mapAmenityCreationPayloadStrategy';
+import { ARCHETYPE_CATALOG_OPTIONS, DAYS_NAMES } from '../../../constants/amenityCatalogPresets';
+
+export interface AmenityCreationReviewStepProps {
+  form: AmenityCreationFormState;
+  isEditing?: boolean;
+}
+
+export const AmenityCreationReviewStep: React.FC<AmenityCreationReviewStepProps> = ({
+  form,
+  isEditing = false,
+}) => {
+  const archetypeMeta =
+    ARCHETYPE_CATALOG_OPTIONS.find((o) => o.archetype === form.archetype) ||
+    ARCHETYPE_CATALOG_OPTIONS[0];
+  const IconComp = archetypeMeta.icon;
+
+  const activeDayNames = form.openDays
+    .map((idx) => DAYS_NAMES[idx])
+    .join(', ');
+
+  return (
+    <ScrollView
+      className="flex-1 bg-background"
+      contentContainerClassName="p-4 gap-4 pb-8"
+      showsVerticalScrollIndicator={false}
+    >
+      <View className="gap-1">
+        <Text variant="large" className="font-bold text-foreground">
+          {isEditing ? 'Review Updated Specifications' : 'Review & Publish Facility'}
+        </Text>
+        <Text variant="muted" className="text-xs">
+          Verify all facility settings and policies before activating for residents.
+        </Text>
+      </View>
+
+      {/* Main Review Card */}
+      <View className="bg-card rounded-3xl border border-border overflow-hidden shadow-xs">
+        {/* Cover Photo / Header Banner */}
+        {form.imageUrl ? (
+          <View className="h-36 w-full relative">
+            <Image
+              source={{ uri: form.imageUrl }}
+              className="w-full h-full"
+              resizeMode="cover"
+            />
+            <View className="absolute inset-0 bg-black/40" />
+            <View className="absolute bottom-3 start-4 end-4 flex-row items-center justify-between">
+              <View className="gap-0.5">
+                <Text className="text-lg font-bold text-white shadow-xs">
+                  {form.name || 'Unnamed Facility'}
+                </Text>
+                <Text className="text-xs text-white/90">
+                  {form.code || 'NO-CODE'}
+                </Text>
+              </View>
+
+              <View className="flex-row items-center gap-1.5 px-3 py-1 rounded-full bg-primary text-primary-foreground">
+                <IconComp size={12} color="#fff" />
+                <Text className="text-xs font-bold text-white">
+                  {archetypeMeta.label}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View className="p-4 pb-2 flex-row items-start justify-between border-b border-border/60">
+            <View className="gap-1 flex-1">
+              <Text className="text-xl font-bold text-foreground">
+                {form.name || 'Unnamed Facility'}
+              </Text>
+              <View className="flex-row items-center gap-2">
+                <Text className="text-xs font-semibold text-primary">
+                  {form.code || 'NO-CODE'}
+                </Text>
+                <Text variant="muted" className="text-xs">•</Text>
+                <Text variant="muted" className="text-xs">
+                  {form.category || 'General'}
+                </Text>
+              </View>
+            </View>
+
+            <View className="flex-row items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+              <IconComp size={13} className="text-primary" />
+              <Text className="text-xs font-bold text-primary">
+                {archetypeMeta.label}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        <View className="p-4 gap-4">
+          {/* Location & Status Row */}
+          <View className="flex-row items-center justify-between py-2 border-b border-border/60">
+            <View className="flex-row items-center gap-2">
+              <MapPin size={16} className="text-muted-foreground" />
+              <Text className="text-xs text-foreground font-semibold">
+                {form.location || 'Location Not Specified'}
+              </Text>
+            </View>
+
+            <View className="px-2.5 py-0.5 rounded-full bg-muted border border-border">
+              <Text className="text-[11px] font-bold text-foreground capitalize">
+                {form.status}
+              </Text>
+            </View>
+          </View>
+
+          {/* Operating Hours */}
+          <View className="flex-row items-start gap-3">
+            <Clock size={18} className="text-primary mt-0.5 shrink-0" />
+            <View className="flex-1 gap-0.5">
+              <Text className="text-xs font-bold text-foreground">
+                Operating Schedule
+              </Text>
+              <Text className="text-xs text-muted-foreground">
+                {form.openTime || '06:00'} to {form.closeTime || '22:00'}
+              </Text>
+              <Text className="text-[11px] text-primary/80 font-medium">
+                Active on: {activeDayNames || 'All Days'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Archetype Specific Attributes */}
+          {form.archetype === 'SHARED_CAPACITY' && (
+            <View className="flex-row items-start gap-3">
+              <Building2 size={18} className="text-primary mt-0.5 shrink-0" />
+              <View className="flex-1 gap-0.5">
+                <Text className="text-xs font-bold text-foreground">
+                  Capacity & Quotas
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Max Capacity: {form.maxCapacity || 50} concurrent people
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Quota Limit: Up to {form.maxHeadcountPerReservation || 2} guests per resident booking
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {form.archetype === 'EXCLUSIVE_HOURLY' && (
+            <View className="flex-row items-start gap-3">
+              <Clock size={18} className="text-primary mt-0.5 shrink-0" />
+              <View className="flex-1 gap-0.5">
+                <Text className="text-xs font-bold text-foreground">
+                  Slots & Turnaround
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Slot Duration: {form.slotDurationMinutes || 60} Minutes
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Setup Buffer: {form.bufferTimeMinutes || 0} Minutes downtime
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Booking Horizon: Up to {form.advanceBookingDays || 7} days in advance
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {form.archetype === 'EVENT_SPACE' && (
+            <View className="flex-row items-start gap-3">
+              <ShieldCheck size={18} className="text-primary mt-0.5 shrink-0" />
+              <View className="flex-1 gap-0.5">
+                <Text className="text-xs font-bold text-foreground">
+                  Event Policies
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Hall Capacity: Up to {form.maxCapacity || 100} guests
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Admin Approval: {form.requiresApproval ? 'Mandatory Admin Review' : 'Auto-confirmed'}
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Advance Notice: {form.advanceNoticeHours || 72} Hours required
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {form.archetype === 'ROOM_RESOURCE' && (
+            <View className="flex-row items-start gap-3">
+              <Building2 size={18} className="text-primary mt-0.5 shrink-0" />
+              <View className="flex-1 gap-0.5">
+                <Text className="text-xs font-bold text-foreground">
+                  Sub-Room Resources
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Configured Units: {form.subRooms?.length || 1} independent rooms
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Amenities: {form.roomAmenities?.join(', ') || 'Standard setup'}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {form.archetype === 'INVENTORY_TOOLS' && (
+            <View className="flex-row items-start gap-3">
+              <ShieldCheck size={18} className="text-primary mt-0.5 shrink-0" />
+              <View className="flex-1 gap-0.5">
+                <Text className="text-xs font-bold text-foreground">
+                  Inventory Controls
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Physical Stock: {form.availableStock || 1} units available
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Max Loan: {form.maxLoanHours || 24} hours checkout limit
+                </Text>
+                <Text className="text-xs text-muted-foreground">
+                  Return Inspection: {form.requiresInspection ? 'Mandatory Guard Check' : 'Optional'}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Pricing & Deposit */}
+          <View className="flex-row items-start gap-3 pt-2 border-t border-border/60">
+            <CircleDollarSign size={18} className="text-primary mt-0.5 shrink-0" />
+            <View className="flex-1 gap-0.5">
+              <Text className="text-xs font-bold text-foreground">
+                Pricing & Security Deposit
+              </Text>
+              <Text className="text-xs text-muted-foreground">
+                Pricing Model: {form.pricingType}
+              </Text>
+              {form.pricingType !== 'FREE' && (
+                <Text className="text-xs text-foreground font-semibold">
+                  Rate: ₹{form.baseRate || 0}
+                </Text>
+              )}
+              {Number(form.securityDeposit) > 0 && (
+                <Text className="text-xs text-foreground font-semibold">
+                  Refundable Deposit: ₹{form.securityDeposit}
+                </Text>
+              )}
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Confirmation Readiness Note */}
+      <View className="bg-emerald-500/10 p-4 rounded-3xl border border-emerald-500/20 flex-row gap-3 items-center">
+        <Check size={20} className="text-emerald-600 shrink-0" />
+        <Text className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex-1 leading-4">
+          All specifications validated. Tap 'Publish Facility' to make this amenity live in the resident catalog.
+        </Text>
+      </View>
+    </ScrollView>
+  );
+};
+
+export default AmenityCreationReviewStep;

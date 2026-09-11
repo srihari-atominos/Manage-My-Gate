@@ -110,6 +110,19 @@ export const useQuickActions = () => {
   // then filters based on active workspace modules AND user role / permissions.
   const featureCatalog = useMemo<FeatureCategory[]>(() => {
     let baseCatalog = (rawCatalog && rawCatalog.length > 0) ? rawCatalog : BUILT_IN_FEATURE_CATALOG;
+    if (rawCatalog && rawCatalog.length > 0) {
+      baseCatalog = BUILT_IN_FEATURE_CATALOG.map((builtinCat) => {
+        const rawCat = rawCatalog.find((rc) => rc.categoryKey === builtinCat.categoryKey);
+        if (!rawCat) return builtinCat;
+        const mergedItems = [...rawCat.items];
+        builtinCat.items.forEach((bi) => {
+          if (!mergedItems.some((ri) => ri.id === bi.id)) {
+            mergedItems.push(bi);
+          }
+        });
+        return { ...rawCat, items: mergedItems };
+      });
+    }
     
     if (modules && modules.length > 0) {
       const enabledModuleKeys = modules.filter(m => m.enabled).map(m => m.moduleKey);

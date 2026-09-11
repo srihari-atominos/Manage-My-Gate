@@ -34,7 +34,11 @@ trigger: always_on
   - **Pass Cards & List Items:** Extend `<ListCard>` with `<StatusBadge>` as demonstrated in `VisitorPassCard.tsx`.
   - **Approval CTAs:** Wrap action buttons in sticky or inline action rows using `<Button>` variants as demonstrated in `WalkInApprovalCard.tsx`.
   - **Scanner & Hardware Modals:** Modal overlays wrapping hardware functionality MUST consume `<QRScannerOverlay>` or `<FlashlightToggle>` from `@/components/hardware` as demonstrated in `GuardQRScannerModal.tsx`.
-  - **Multi-Step Wizards:** Pass creation, booking, and multi-step entry workflows MUST use step indicators (`VisitorPassStepIndicator`) and standard header/footer controls (`VisitorPassFlowHeader`, `VisitorPassFlowFooter`).
+  - **Multi-Step Wizards & Type-Selection-First Pattern:** Pass creation, booking, amenity creation, and multi-step intake workflows MUST strictly use the **Type-Selection-First pattern**:
+    1. Clicking the creation trigger opens a dedicated Selection Bottom Sheet (`[Feature]TypeSheet.tsx` / `[Feature]ArchetypeSheet.tsx`) displaying rich cards with Lucide icons, titles, badges, and examples.
+    2. Selecting an option dismisses the sheet and launches the Multi-Step Wizard pre-configured for that type.
+    3. The wizard header MUST render the type as a **static, read-only status badge**. Mid-flow type switching (e.g. dropdown chevrons in the header) is strictly forbidden to prevent state corruption.
+    4. Form step layouts MUST place specifications at the top, media pickers/dropzones at the bottom, auto-generate system codes, and use multi-chip presets for durations/quotas.
 * **Barrel Export Imports:** Always import reusable components cleanly via barrel exports using `@/components` or category aliases like `@/components/ui`, `@/components/common`, `@/components/forms`, `@/components/feedback`, `@/components/navigation`, `@/components/hardware`.
 * **Forbidden Primitive Duplication:** NEVER build inline custom buttons, text inputs, status badges, modal overlays, cards, or loading skeletons using raw React Native primitives (`View`, `Text`, `TouchableOpacity`, `TextInput`, `ActivityIndicator`) when a matching catalog component exists.
 * **Screens vs. Components:** 

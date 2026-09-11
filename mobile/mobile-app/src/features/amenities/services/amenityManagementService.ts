@@ -64,6 +64,43 @@ export const getAmenityV2Url = (endpointPath: string): string => {
   return `${cleanHost}/api/v2/amenity-management${cleanPath}`;
 };
 
+/**
+ * Safely normalizes the apiClient response into a standard ApiResponse envelope ({ success, message, data }).
+ * Because apiClient's response interceptor returns response.data (the backend JSON payload),
+ * extracting .data again strips the envelope, causing callers accessing `res.data` to throw TypeErrors.
+ * This helper ensures the { success, data } envelope is preserved across all runtime environments.
+ */
+export const extractEnvelope = <T>(res: any): ApiResponse<T> => {
+  if (res && typeof res === 'object') {
+    // If it's already an ApiResponse envelope ({ success, data })
+    if ('data' in res && 'success' in res) {
+      return res as ApiResponse<T>;
+    }
+    // If it's a raw AxiosResponse ({ status, data: { success, data } })
+    if (res.data && typeof res.data === 'object' && 'success' in res.data) {
+      return res.data as ApiResponse<T>;
+    }
+  }
+  return {
+    success: true,
+    data: res as T,
+  };
+};
+
+/**
+ * Generates an uppercase alphanumeric facility code compliant with backend validation rules.
+ */
+export const generateFacilityCode = (name: string): string => {
+  const clean = (name || 'FAC')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 16)
+    .replace(/^-|-$/g, '');
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  return `${clean || 'FAC'}-${randomSuffix}`;
+};
+
 export const amenityManagementService = {
   // ==========================================
   // 1. Facilities (/facilities)
@@ -85,31 +122,41 @@ export const amenityManagementService = {
     const queryString = query.toString();
     const url = getAmenityV2Url(`/facilities${queryString ? `?${queryString}` : ''}`);
     const response = await apiClient.get<ApiResponse<ApiPaginatedResponse<ApiAmenityFacility>>>(url);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async getFacilityById(id: string): Promise<ApiResponse<ApiAmenityFacility>> {
     const url = getAmenityV2Url(`/facilities/${id}`);
     const response = await apiClient.get<ApiResponse<ApiAmenityFacility>>(url);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async createFacility(payload: Partial<ApiAmenityFacility>): Promise<ApiResponse<ApiAmenityFacility>> {
     const url = getAmenityV2Url('/facilities');
-    const response = await apiClient.post<ApiResponse<ApiAmenityFacility>>(url, payload);
-    return response.data;
+    const enrichedPayload = {
+      ...payload,
+      code: payload.code || generateFacilityCode(payload.name || 'FACILITY'),
+    };
+    const response = await apiClient.post<ApiResponse<ApiAmenityFacility>>(url, enrichedPayload);
+    return extractEnvelope(response);
   },
 
   async updateFacility(id: string, payload: Partial<ApiAmenityFacility>): Promise<ApiResponse<ApiAmenityFacility>> {
     const url = getAmenityV2Url(`/facilities/${id}`);
-    const response = await apiClient.put<ApiResponse<ApiAmenityFacility>>(url, payload);
-    return response.data;
+    const response = await apiClient.patch<ApiResponse<ApiAmenityFacility>>(url, payload);
+    return extractEnvelope(response);
   },
 
-  async updateFacilityStatus(id: string, status: string): Promise<ApiResponse<ApiAmenityFacility>> {
-    const url = getAmenityV2Url(`/facilities/${id}/status`);
-    const response = await apiClient.patch<ApiResponse<ApiAmenityFacility>>(url, { status });
-    return response.data;
+  async updateFacilityStatus(id: string, isActive: boolean): Promise<ApiResponse<ApiAmenityFacility>> {
+    const url = getAmenityV2Url(`/facilities/${id}`);
+    const response = await apiClient.patch<ApiResponse<ApiAmenityFacility>>(url, { isActive });
+    return extractEnvelope(response);
+  },
+
+  async deleteFacility(id: string): Promise<ApiResponse<ApiAmenityFacility>> {
+    const url = getAmenityV2Url(`/facilities/${id}`);
+    const response = await apiClient.delete<ApiResponse<ApiAmenityFacility>>(url);
+    return extractEnvelope(response);
   },
 
   // ==========================================
@@ -130,25 +177,25 @@ export const amenityManagementService = {
     const queryString = query.toString();
     const url = getAmenityV2Url(`/resources?${queryString}`);
     const response = await apiClient.get<ApiResponse<ApiPaginatedResponse<ApiAmenityResource>>>(url);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async getResourceById(id: string): Promise<ApiResponse<ApiAmenityResource>> {
     const url = getAmenityV2Url(`/resources/${id}`);
     const response = await apiClient.get<ApiResponse<ApiAmenityResource>>(url);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async createResource(payload: Partial<ApiAmenityResource>): Promise<ApiResponse<ApiAmenityResource>> {
     const url = getAmenityV2Url('/resources');
     const response = await apiClient.post<ApiResponse<ApiAmenityResource>>(url, payload);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async updateResourceState(id: string, assetState: string): Promise<ApiResponse<ApiAmenityResource>> {
     const url = getAmenityV2Url(`/resources/${id}/state`);
     const response = await apiClient.patch<ApiResponse<ApiAmenityResource>>(url, { assetState });
-    return response.data;
+    return extractEnvelope(response);
   },
 
   // ==========================================
@@ -170,7 +217,7 @@ export const amenityManagementService = {
 
     const url = getAmenityV2Url(`/availability?${query.toString()}`);
     const response = await apiClient.get<ApiResponse<ApiAvailabilityResponse>>(url);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   // ==========================================
@@ -179,7 +226,7 @@ export const amenityManagementService = {
   async calculatePricing(payload: CalculatePricingApiPayload): Promise<ApiResponse<ApiPricingSnapshot>> {
     const url = getAmenityV2Url('/pricing/calculate');
     const response = await apiClient.post<ApiResponse<ApiPricingSnapshot>>(url, payload);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   // ==========================================
@@ -196,19 +243,19 @@ export const amenityManagementService = {
         'x-idempotency-key': key,
       },
     });
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async getHoldById(id: string): Promise<ApiResponse<ApiAmenityHold>> {
     const url = getAmenityV2Url(`/holds/${id}`);
     const response = await apiClient.get<ApiResponse<ApiAmenityHold>>(url);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async releaseHold(id: string): Promise<ApiResponse<{ success: boolean; message: string }>> {
     const url = getAmenityV2Url(`/holds/${id}/release`);
     const response = await apiClient.post<ApiResponse<{ success: boolean; message: string }>>(url);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   // ==========================================
@@ -226,7 +273,7 @@ export const amenityManagementService = {
         'x-idempotency-key': key,
       },
     });
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async getReservations(params: {
@@ -252,13 +299,13 @@ export const amenityManagementService = {
     const queryString = query.toString();
     const url = getAmenityV2Url(`/reservations${queryString ? `?${queryString}` : ''}`);
     const response = await apiClient.get<ApiResponse<ApiPaginatedResponse<ApiAmenityReservation>>>(url);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async getReservationById(id: string): Promise<ApiResponse<ApiAmenityReservation>> {
     const url = getAmenityV2Url(`/reservations/${id}`);
     const response = await apiClient.get<ApiResponse<ApiAmenityReservation>>(url);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async cancelReservation(
@@ -267,7 +314,7 @@ export const amenityManagementService = {
   ): Promise<ApiResponse<ApiAmenityReservation>> {
     const url = getAmenityV2Url(`/reservations/${id}/cancel`);
     const response = await apiClient.post<ApiResponse<ApiAmenityReservation>>(url, payload || {});
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async reviewReservation(
@@ -276,7 +323,7 @@ export const amenityManagementService = {
   ): Promise<ApiResponse<ApiAmenityReservation>> {
     const url = getAmenityV2Url(`/reservations/${id}/review`);
     const response = await apiClient.post<ApiResponse<ApiAmenityReservation>>(url, payload);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async rescheduleReservation(
@@ -285,7 +332,7 @@ export const amenityManagementService = {
   ): Promise<ApiResponse<ApiAmenityReservation>> {
     const url = getAmenityV2Url(`/reservations/${id}/reschedule`);
     const response = await apiClient.post<ApiResponse<ApiAmenityReservation>>(url, payload);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   // ==========================================
@@ -294,25 +341,29 @@ export const amenityManagementService = {
   async getPassesByReservation(reservationId: string): Promise<ApiResponse<ApiAmenityAccessPass[]>> {
     const url = getAmenityV2Url(`/passes/reservation/${reservationId}`);
     const response = await apiClient.get<ApiResponse<ApiAmenityAccessPass[]>>(url);
-    return response.data;
+    return extractEnvelope(response);
+  },
+
+  async getPasses(reservationId: string): Promise<ApiResponse<ApiAmenityAccessPass[]>> {
+    return this.getPassesByReservation(reservationId);
   },
 
   async checkInPass(payload: CheckInPassApiPayload): Promise<ApiResponse<ApiAmenityAccessPass>> {
     const url = getAmenityV2Url('/passes/check-in');
     const response = await apiClient.post<ApiResponse<ApiAmenityAccessPass>>(url, payload);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async checkOutPass(payload: CheckOutPassApiPayload): Promise<ApiResponse<ApiAmenityAccessPass>> {
     const url = getAmenityV2Url('/passes/check-out');
     const response = await apiClient.post<ApiResponse<ApiAmenityAccessPass>>(url, payload);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async revokePass(passId: string, reason: string): Promise<ApiResponse<ApiAmenityAccessPass>> {
     const url = getAmenityV2Url(`/passes/${passId}/revoke`);
     const response = await apiClient.post<ApiResponse<ApiAmenityAccessPass>>(url, { reason });
-    return response.data;
+    return extractEnvelope(response);
   },
 
   // ==========================================
@@ -330,13 +381,13 @@ export const amenityManagementService = {
 
     const url = getAmenityV2Url(`/maintenance/overlapping?${query.toString()}`);
     const response = await apiClient.get<ApiResponse<ApiAmenityMaintenanceBlock[]>>(url);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async getMaintenanceById(blockId: string): Promise<ApiResponse<ApiAmenityMaintenanceBlock>> {
     const url = getAmenityV2Url(`/maintenance/${blockId}`);
     const response = await apiClient.get<ApiResponse<ApiAmenityMaintenanceBlock>>(url);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async scheduleMaintenance(
@@ -344,7 +395,7 @@ export const amenityManagementService = {
   ): Promise<ApiResponse<ApiAmenityMaintenanceBlock>> {
     const url = getAmenityV2Url('/maintenance');
     const response = await apiClient.post<ApiResponse<ApiAmenityMaintenanceBlock>>(url, payload);
-    return response.data;
+    return extractEnvelope(response);
   },
 
   async updateMaintenanceStatus(
@@ -353,7 +404,7 @@ export const amenityManagementService = {
   ): Promise<ApiResponse<ApiAmenityMaintenanceBlock>> {
     const url = getAmenityV2Url(`/maintenance/${blockId}/status`);
     const response = await apiClient.patch<ApiResponse<ApiAmenityMaintenanceBlock>>(url, { status });
-    return response.data;
+    return extractEnvelope(response);
   },
 };
 

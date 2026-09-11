@@ -19,6 +19,9 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Disable ETag generation to prevent 304 Not Modified empty-body responses on dynamic API endpoints
+app.set('etag', false);
+
 // Set up Correlation ID tracking and HTTP logging first
 app.use(correlationIdMiddleware);
 app.use(httpLoggerMiddleware);
@@ -108,6 +111,14 @@ app.use(responseHandler);
 // Static public folder
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Ensure dynamic API responses are not cached by intermediate proxies or browsers
+app.use(['/api', '/api/v1', '/api/v2'], (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
 
 // Mount API routes at /api and /api/v1
 app.use('/api', apiRouter);

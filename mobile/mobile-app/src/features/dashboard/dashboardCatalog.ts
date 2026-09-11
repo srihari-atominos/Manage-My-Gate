@@ -155,32 +155,48 @@ export const isFeatureAllowedForUser = (
     return true;
   }
 
-  // Amenities: Strict evaluation per Phase 2 contract (Admin must NOT receive resident or guard permissions)
-  if (feature.permission && feature.permission.startsWith('amenities:') && userPermissions.length > 0) {
-    if (userPermissions.includes(feature.permission)) return true;
-    const [domain] = feature.permission.split(':');
-    if (userPermissions.includes(`${domain}:*`)) return true;
-    return false;
-  }
-
-  if (
+  const isAdmin =
     roleName.includes('super admin') ||
     roleName.includes('superadmin') ||
     roleName === 'community admin' ||
-    roleName === 'admin'
-  ) {
+    roleName === 'admin';
+
+  const isGuard = roleName.includes('guard') || roleName.includes('security');
+
+  const RESIDENT_ONLY_FEATURE_IDS = new Set([
+    'visitor_resident_passes',
+    'visitor_passes',
+    'amenities_discover',
+    'amenities_my_booking',
+    'amenities_wallet',
+    'billing_my_dues',
+    'billing_wallet',
+  ]);
+
+  const GUARD_ONLY_FEATURE_IDS = new Set([
+    'visitor_gate_console',
+    'amenities_scanner',
+    'amenities_security_logs',
+  ]);
+
+  // Admin persona: strictly exclude resident self-service and guard hardware equipment
+  if (isAdmin) {
+    if (feature.id && RESIDENT_ONLY_FEATURE_IDS.has(feature.id)) return false;
+    if (feature.id && GUARD_ONLY_FEATURE_IDS.has(feature.id)) return false;
+
+    // Strict evaluation for Amenities: Admin must have the explicit admin amenity permission
+    if (feature.permission && feature.permission.startsWith('amenities:') && userPermissions.length > 0) {
+      if (userPermissions.includes(feature.permission)) return true;
+      const [domain] = feature.permission.split(':');
+      if (userPermissions.includes(`${domain}:*`)) return true;
+      return false;
+    }
     return true;
   }
 
-  // 2. Direct match in user permissions array
-  if (userPermissions.length > 0) {
-    if (userPermissions.includes(feature.permission)) return true;
-    const [domain] = feature.permission.split(':');
-    if (userPermissions.includes(`${domain}:*`)) return true;
-  }
-
-  // 3. Role persona fallback permissions
-  if (roleName.includes('guard') || roleName.includes('security')) {
+  // Security Guard persona: strictly exclude admin consoles and resident booking flows
+  if (isGuard) {
+    if (feature.id && RESIDENT_ONLY_FEATURE_IDS.has(feature.id)) return false;
     const guardAllowed = [
       'visitor:guard',
       'visitor:admin',
@@ -195,23 +211,41 @@ export const isFeatureAllowedForUser = (
     return guardAllowed.includes(feature.permission);
   }
 
-  if (roleName.includes('resident') || roleName.includes('owner') || roleName.includes('tenant')) {
-    const residentAllowed = [
-      'visitor:resident',
-      'amenities:discover',
-      'amenities:my_booking',
-      'amenities:wallet',
-      'complaints:raise_ticket',
-      'complaints:track_requests',
-      'complaints:view',
-      'notices:read',
-      'notices:active_board',
-      'notices:polls',
-      'billing:action_center',
-      'villas:read',
-    ];
-    return residentAllowed.includes(feature.permission);
+  // Resident persona: strictly exclude admin consoles and guard hardware
+  if (feature.id && GUARD_ONLY_FEATURE_IDS.has(feature.id)) return false;
+
+  if (feature.permission && feature.permission.startsWith('amenities:')) {
+    const isResidentAmenity = feature.id === 'amenities_discover' || feature.id === 'amenities_my_booking' || feature.id === 'amenities_wallet';
+    if (!isResidentAmenity) return false;
+    if (userPermissions.length > 0) {
+      return userPermissions.includes(feature.permission);
+    }
+    return true;
   }
+
+  // 2. Direct match in user permissions array
+  if (userPermissions.length > 0) {
+    if (userPermissions.includes(feature.permission)) return true;
+    const [domain] = feature.permission.split(':');
+    if (userPermissions.includes(`${domain}:*`)) return true;
+  }
+
+  // 3. Resident fallback permissions
+  const residentAllowed = [
+    'visitor:resident',
+    'amenities:discover',
+    'amenities:my_booking',
+    'amenities:wallet',
+    'complaints:raise_ticket',
+    'complaints:track_requests',
+    'complaints:view',
+    'notices:read',
+    'notices:active_board',
+    'notices:polls',
+    'billing:action_center',
+    'villas:read',
+  ];
+  return residentAllowed.includes(feature.permission);
 
   if (roleName.includes('facility') || roleName.includes('manager')) {
     const managerAllowed = [

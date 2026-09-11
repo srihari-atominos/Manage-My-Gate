@@ -47,7 +47,7 @@ const ROLE_PERMISSIONS = {
     'complaints:staff', 'complaints:raise_ticket', 'complaints:track_requests',
     'complaints:complaint_management', 'complaints:assignee',
     // Visitor
-    'visitor:admin', 'visitor:resident', 'visitor:guard',
+    'visitor:admin',
     // Notices
     'notices:create', 'notices:read', 'notices:update', 'notices:delete',
     // Billing

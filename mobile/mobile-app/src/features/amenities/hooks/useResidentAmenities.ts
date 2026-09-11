@@ -62,22 +62,26 @@ export function useResidentAmenities(initialArchetype?: AmenityArchetype) {
           status: 'ACTIVE',
         });
 
-        const items = res.data.items.map(normalizeFacilityFromApi);
+        const rawItems = res?.data?.items || (res as any)?.items || (Array.isArray(res?.data) ? res.data : []);
+        const items = rawItems.map(normalizeFacilityFromApi);
         if (page > 1) {
           setFacilities((prev) => [...prev, ...items]);
         } else {
           setFacilities(items);
         }
 
-        setPagination({
-          page: res.data.pagination.page,
-          limit: res.data.pagination.limit,
-          total: res.data.pagination.total,
-          pages: res.data.pagination.pages,
-          currentPage: res.data.pagination.page,
-          totalPages: res.data.pagination.pages,
-          totalRecords: res.data.pagination.total,
-        });
+        const pag = res?.data?.pagination || (res as any)?.pagination;
+        if (pag) {
+          setPagination({
+            page: pag.page || page,
+            limit: pag.limit || pagination.limit,
+            total: pag.total || items.length,
+            pages: pag.pages || 1,
+            currentPage: pag.page || page,
+            totalPages: pag.pages || 1,
+            totalRecords: pag.total || items.length,
+          });
+        }
       } catch (err) {
         setError(mapAmenityApiError(err));
       } finally {
@@ -101,7 +105,8 @@ export function useResidentAmenities(initialArchetype?: AmenityArchetype) {
         page: 1,
         limit: 50,
       });
-      const items = res.data.items.map(normalizeResourceFromApi);
+      const rawResItems = res?.data?.items || (res as any)?.items || (Array.isArray(res?.data) ? res.data : []);
+      const items = rawResItems.map(normalizeResourceFromApi);
       setResources(items);
       return items;
     } catch (err) {
@@ -120,7 +125,8 @@ export function useResidentAmenities(initialArchetype?: AmenityArchetype) {
       setError(null);
       try {
         const res = await amenityManagementService.getFacilityById(facilityId);
-        const fac = normalizeFacilityFromApi(res.data);
+        const rawFac = res?.data || res;
+        const fac = normalizeFacilityFromApi(rawFac);
         setSelectedFacility(fac);
         if (fac.archetype === 'ROOM_RESOURCE' || fac.archetype === 'INVENTORY_TOOLS') {
           await loadResources(fac._id);

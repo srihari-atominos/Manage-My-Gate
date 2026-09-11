@@ -434,6 +434,7 @@ const amenitySlice = createSlice({
       })
       .addCase(fetchAmenitiesThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        state.error = null;
         const payload = action.payload?.data || action.payload;
         let list: any[] = [];
         if (Array.isArray(payload)) {
@@ -582,6 +583,7 @@ const amenitySlice = createSlice({
       })
       .addCase(fetchMaintenanceListThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        state.error = null;
         const payload = action.payload?.data || action.payload || [];
         state.maintenanceList = Array.isArray(payload) ? payload : payload.maintenanceList || [];
       })

@@ -172,12 +172,28 @@ const matchesUserPermissions = (
   return false;
 };
 
-// Initial fallback sets (ONLY used when user.permissions is completely unpopulated/empty)
+// Features strictly reserved for resident self-service (hidden from Admin and Guard consoles)
+export const RESIDENT_ONLY_FEATURE_IDS = new Set([
+  'visitor_resident_passes',
+  'visitor_passes',
+  'amenities_discover',
+  'amenities_my_booking',
+  'amenities_wallet',
+  'billing_my_dues',
+  'billing_wallet',
+]);
+
+// Features strictly reserved for gate security hardware (hidden from Admin and Resident consoles)
+export const GUARD_ONLY_FEATURE_IDS = new Set([
+  'visitor_gate_console',
+  'amenities_scanner',
+  'amenities_security_logs',
+]);
+
+// Features allowed for Security Guard
 const FALLBACK_SECURITY_FEATURE_IDS = new Set([
   'visitor_gate_console',
   'visitor_admin_logs',
-  'visitor_community_passes',
-  'visitor_blacklist',
   'amenities_scanner',
   'amenities_security_logs',
   'notices_active_board',
@@ -210,6 +226,7 @@ const FALLBACK_RESIDENT_FEATURE_IDS = new Set([
   'complaints_track_requests',
   'notices_active_board',
   'notices_polls',
+  'admin_villas',
 ]);
 
 const FALLBACK_RESIDENT_PERMISSIONS = new Set([
@@ -227,57 +244,73 @@ const FALLBACK_RESIDENT_PERMISSIONS = new Set([
 ]);
 
 /**
- * Primary RBAC resolver: strictly respects Role Builder permissions when assigned.
- * Hardcoded temporary data is NEVER forced when explicit permissions exist for Security or any role.
+ * Primary RBAC resolver: strictly respects Role Builder permissions and persona boundaries.
  */
 export const isFeatureAllowedForUser = (
   item: { id: string; permission?: string; categoryKey?: string },
   user: UserLike | null | undefined
 ): boolean => {
-  if (!user) return false;
+  if (!user || !item) return false;
   if (item.id === 'admin_organizations' || item.id === 'admin_audit_logs') return false;
 
   const permissions = Array.isArray(user.permissions) ? user.permissions : [];
 
-  // Super Admin / Platform bypass
+  // Super Admin / Platform bypass (full system visibility)
   if (user.isPlatform === true || permissions.includes('platform:super_admin') || permissions.includes('*')) {
     return true;
   }
 
-  // Amenities: Strict evaluation per Phase 2 contract (Admin must NOT receive resident or guard permissions)
-  if (item.permission && item.permission.startsWith('amenities:') && permissions.length > 0) {
-    return matchesUserPermissions(item.permission, item.id, permissions);
-  }
+  const isAdmin = checkIsAdmin(user);
+  const isSecurity = checkIsSecurityRole(user);
 
-  // 1. Super Admins & Community Admins have full feature access
-  if (checkIsAdmin(user)) {
+  // 1. Community Admin persona: strictly exclude resident self-service and guard hardware equipment
+  if (isAdmin) {
+    if (RESIDENT_ONLY_FEATURE_IDS.has(item.id)) return false;
+    if (GUARD_ONLY_FEATURE_IDS.has(item.id)) return false;
+
+    // Strict evaluation for Amenities: Admin must have the explicit admin amenity permission
+    if (item.permission && item.permission.startsWith('amenities:') && permissions.length > 0) {
+      return matchesUserPermissions(item.permission, item.id, permissions);
+    }
     return true;
   }
 
-  // 2. Security role check - ensure security personas always get gate and scanner features
-  if (checkIsSecurityRole(user)) {
+  // 2. Security Guard persona: strictly exclude admin consoles and resident booking flows
+  if (isSecurity) {
+    if (RESIDENT_ONLY_FEATURE_IDS.has(item.id)) return false;
     if (FALLBACK_SECURITY_FEATURE_IDS.has(item.id)) return true;
-    if (item.permission && FALLBACK_SECURITY_PERMISSIONS.has(item.permission)) return true;
+    if (item.permission && FALLBACK_SECURITY_PERMISSIONS.has(item.permission)) {
+      return !item.permission.startsWith('amenities:') || item.permission === 'amenities:scanner' || item.permission === 'amenities:security_logs';
+    }
+    return false;
   }
 
-  // 3. Strict evaluation of permissions assigned in Role Builder (when permissions array is populated)
+  // 3. Resident persona: strictly exclude admin consoles and guard hardware
+  if (GUARD_ONLY_FEATURE_IDS.has(item.id)) return false;
+
+  if (item.permission && item.permission.startsWith('amenities:')) {
+    const isResidentAmenity =
+      item.permission === 'amenities:discover' ||
+      item.permission === 'amenities:my_booking' ||
+      item.permission === 'amenities:wallet' ||
+      item.id === 'amenities_discover' ||
+      item.id === 'amenities_my_booking' ||
+      item.id === 'amenities_wallet';
+    if (!isResidentAmenity) return false;
+    if (permissions.length > 0) {
+      return matchesUserPermissions(item.permission, item.id, permissions);
+    }
+    return true;
+  }
+
+  // Strict evaluation of permissions assigned in Role Builder (when permissions array is populated)
   if (permissions.length > 0) {
     return matchesUserPermissions(item.permission, item.id, permissions);
   }
 
-  const roleName = getUserRoleName(user).toLowerCase();
-  const isResidentRole =
-    !roleName ||
-    roleName.includes('resident') ||
-    roleName.includes('tenant') ||
-    roleName.includes('member') ||
-    roleName.includes('owner');
-
-  if (isResidentRole) {
-    if (FALLBACK_RESIDENT_FEATURE_IDS.has(item.id)) return true;
-    if (item.permission && FALLBACK_RESIDENT_PERMISSIONS.has(item.permission)) return true;
-    return false;
-  }
+  // Resident fallback
+  if (FALLBACK_RESIDENT_FEATURE_IDS.has(item.id)) return true;
+  if (item.permission && FALLBACK_RESIDENT_PERMISSIONS.has(item.permission)) return true;
 
   return false;
 };

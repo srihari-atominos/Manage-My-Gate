@@ -382,7 +382,7 @@ export const checkAvailabilityThunk = createAsyncThunk(
   ) => {
     try {
       const res = await amenityManagementService.checkAvailability(params);
-      return normalizeAvailabilityFromApi(res.data);
+      return normalizeAvailabilityFromApi(res?.data || res);
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));
     }
@@ -394,7 +394,7 @@ export const calculatePricingThunk = createAsyncThunk(
   async (payload: CalculatePricingApiPayload, { rejectWithValue }) => {
     try {
       const res = await amenityManagementService.calculatePricing(payload);
-      return normalizePricingSnapshot(res.data);
+      return normalizePricingSnapshot(res?.data || res);
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));
     }
@@ -409,7 +409,8 @@ export const createHoldThunk = createAsyncThunk(
   ) => {
     try {
       const res = await amenityManagementService.createHold(payload, idempotencyKey);
-      const hold = normalizeHoldFromApi(res.data.hold, res.data.pricingSnapshot);
+      const rawPayload = res?.data || res;
+      const hold = normalizeHoldFromApi(rawPayload.hold || rawPayload, rawPayload.pricingSnapshot);
       return hold;
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));
@@ -422,7 +423,8 @@ export const releaseHoldThunk = createAsyncThunk(
   async (holdId: string, { rejectWithValue }) => {
     try {
       const res = await amenityManagementService.releaseHold(holdId);
-      return { holdId, success: res.data.success };
+      const rawPayload = res?.data || res;
+      return { holdId, success: rawPayload.success ?? true };
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));
     }
@@ -437,7 +439,7 @@ export const confirmReservationThunk = createAsyncThunk(
   ) => {
     try {
       const res = await amenityManagementService.confirmReservation(payload, idempotencyKey);
-      return normalizeReservationFromApi(res.data);
+      return normalizeReservationFromApi(res?.data || res);
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));
     }
@@ -461,9 +463,12 @@ export const fetchReservationsThunk = createAsyncThunk(
   ) => {
     try {
       const res = await amenityManagementService.getReservations(params);
+      const rawPayload = res?.data || res;
+      const rawList = rawPayload?.items || (Array.isArray(rawPayload) ? rawPayload : []);
+      const pagination = rawPayload?.pagination || { page: 1, limit: 10, total: rawList.length, pages: 1 };
       return {
-        items: res.data.items.map(normalizeReservationFromApi),
-        pagination: res.data.pagination,
+        items: rawList.map(normalizeReservationFromApi),
+        pagination,
       };
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));
@@ -476,7 +481,7 @@ export const fetchReservationByIdThunk = createAsyncThunk(
   async (id: string, { rejectWithValue }) => {
     try {
       const res = await amenityManagementService.getReservationById(id);
-      return normalizeReservationFromApi(res.data);
+      return normalizeReservationFromApi(res?.data || res);
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));
     }
@@ -491,7 +496,7 @@ export const cancelReservationThunk = createAsyncThunk(
   ) => {
     try {
       const res = await amenityManagementService.cancelReservation(id, payload);
-      return normalizeReservationFromApi(res.data);
+      return normalizeReservationFromApi(res?.data || res);
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));
     }
@@ -503,7 +508,9 @@ export const fetchPassesByReservationThunk = createAsyncThunk(
   async (reservationId: string, { rejectWithValue }) => {
     try {
       const res = await amenityManagementService.getPassesByReservation(reservationId);
-      return res.data.map(normalizeAccessPassFromApi);
+      const rawPayload = res?.data || res;
+      const rawList = Array.isArray(rawPayload) ? rawPayload : rawPayload?.passes || [];
+      return rawList.map(normalizeAccessPassFromApi);
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));
     }
@@ -515,7 +522,7 @@ export const checkInPassThunk = createAsyncThunk(
   async (payload: CheckInPassApiPayload, { rejectWithValue }) => {
     try {
       const res = await amenityManagementService.checkInPass(payload);
-      return normalizeAccessPassFromApi(res.data);
+      return normalizeAccessPassFromApi(res?.data || res);
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));
     }
@@ -527,7 +534,7 @@ export const checkOutPassThunk = createAsyncThunk(
   async (payload: CheckOutPassApiPayload, { rejectWithValue }) => {
     try {
       const res = await amenityManagementService.checkOutPass(payload);
-      return normalizeAccessPassFromApi(res.data);
+      return normalizeAccessPassFromApi(res?.data || res);
     } catch (err) {
       return rejectWithValue(mapAmenityApiError(err));
     }
@@ -600,6 +607,10 @@ const amenityBookingSlice = createSlice({
     clearV2Errors: (state) => {
       state.v2Error = null;
     },
+    clearAmenityBookingErrors: (state) => {
+      state.error = null;
+      state.v2Error = null;
+    },
     resetV2BookingState: (state) => {
       state.activeHold = null;
       state.v2PricingCalculation = null;
@@ -626,6 +637,7 @@ const amenityBookingSlice = createSlice({
       })
       .addCase(fetchMyBookingsThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        state.error = null;
         const payload = action.payload?.data || action.payload;
         let list: any[] = [];
         if (Array.isArray(payload)) {
@@ -663,6 +675,7 @@ const amenityBookingSlice = createSlice({
       })
       .addCase(fetchBookingQueueThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        state.error = null;
         const payload = action.payload?.data || action.payload;
         let list: any[] = [];
         if (Array.isArray(payload)) {
@@ -750,6 +763,7 @@ const amenityBookingSlice = createSlice({
       })
       .addCase(fetchAdminCalendarThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        state.error = null;
         const payload = action.payload?.data || action.payload;
         const list = Array.isArray(payload) ? payload : payload?.bookings || payload?.docs || [];
         state.adminBookings = list.map(normalizeAmenityBooking);
@@ -760,9 +774,11 @@ const amenityBookingSlice = createSlice({
       })
       .addCase(fetchRecentScansThunk.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchRecentScansThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        state.error = null;
         const payload = action.payload?.data || action.payload;
         state.recentScans = Array.isArray(payload) ? payload : payload?.scans || payload?.docs || [];
       })
@@ -772,9 +788,11 @@ const amenityBookingSlice = createSlice({
       })
       .addCase(fetchDashboardStatsThunk.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchDashboardStatsThunk.fulfilled, (state, action: any) => {
         state.loading = false;
+        state.error = null;
         state.dashboardStats = action.payload?.data || action.payload || null;
       })
       .addCase(fetchDashboardStatsThunk.rejected, (state, action) => {
@@ -991,6 +1009,7 @@ export const {
   setActiveHold,
   clearActiveHold,
   clearV2Errors,
+  clearAmenityBookingErrors,
   resetV2BookingState,
   clearV2PassResults,
 } = amenityBookingSlice.actions;

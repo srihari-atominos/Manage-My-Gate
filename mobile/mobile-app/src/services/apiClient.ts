@@ -47,9 +47,13 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'X-Client-Type': 'APP',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
   },
   timeout: 8000,
   withCredentials: true,
+  // Treat 304 as valid to prevent unhandled cross-origin XHR network errors
+  validateStatus: (status) => (status >= 200 && status < 300) || status === 304,
 });
 
 console.log(`[ApiClient] Configured baseURL: ${apiClient.defaults.baseURL}`);
@@ -219,6 +223,9 @@ apiClient.interceptors.request.use(
       }
     }
 
+    config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    config.headers['Pragma'] = 'no-cache';
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -227,6 +234,10 @@ apiClient.interceptors.request.use(
 // Response Interceptor: Extract envelope data and handle JWT refresh
 apiClient.interceptors.response.use(
   (response) => {
+    // If 304 Not Modified without body, safely return success envelope
+    if (response.status === 304 && !response.data) {
+      return { success: true, message: 'Not Modified', data: null, notModified: true };
+    }
     // Return the backend's standard { success, message, data } envelope
     return response.data;
   },

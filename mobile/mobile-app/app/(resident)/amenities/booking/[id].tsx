@@ -39,8 +39,9 @@ export default function AmenityBookingRoute() {
       .getFacilityById(id)
       .then((response) => {
         if (!isMounted) return;
-        if (response?.data) {
-          setFacility(response.data as AmenityFacility);
+        const facilityData = (response?.data || response) as AmenityFacility;
+        if (facilityData && (facilityData._id || (facilityData as any).id)) {
+          setFacility(facilityData);
         } else {
           setError('Facility record could not be found.');
         }
