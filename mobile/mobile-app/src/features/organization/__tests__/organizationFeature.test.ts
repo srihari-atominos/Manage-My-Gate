@@ -26,8 +26,7 @@ describe('Mobile Organization Feature Test Suite', () => {
       let capturedUrl = '';
       let capturedConfig: any = null;
 
-      const originalAxiosGet = axios.get;
-      axios.get = jest.fn().mockImplementation(async (url: string, config: any) => {
+      apiClient.get = jest.fn().mockImplementation(async (url: string, config: any) => {
         capturedUrl = url;
         capturedConfig = config;
         return { data: { success: true, data: { available: true } } };
@@ -36,10 +35,8 @@ describe('Mobile Organization Feature Test Suite', () => {
       const res = await organizationApi.checkOrganizationName('Palm Meadows Community');
 
       expect(capturedUrl).toContain('/organizations/check-name');
-      expect(capturedConfig).toEqual({ params: { name: 'Palm Meadows Community' }, timeout: 8000 });
-      expect((res as any).data.available).toBe(true);
-
-      axios.get = originalAxiosGet;
+      expect(capturedConfig).toEqual({ params: { name: 'Palm Meadows Community' } });
+      expect((res as any).data.data.available).toBe(true);
     });
 
     it('routes setupWorkspace through POST /organizations/setup with workspace payload', async () => {
