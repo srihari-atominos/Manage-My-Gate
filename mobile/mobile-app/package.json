@@ -10,7 +10,8 @@
     "web": "expo start -c --web",
     "clean": "rm -rf .expo node_modules",
     "test": "jest",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "postinstall": "node scripts/patch-css-interop.js"
   },
   "dependencies": {
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",

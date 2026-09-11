@@ -15,7 +15,7 @@ export default function AuthLayout() {
         },
       }}
     >
-      <Stack.Screen name="login" options={{ title: 'Resident Login' }} />
+      <Stack.Screen name="login" options={{ title: 'Resident Login', headerShown: false }} />
       <Stack.Screen name="signup" options={{ title: 'Resident Registration' }} />
       <Stack.Screen name="register" options={{ title: 'Create Account' }} />
       <Stack.Screen name="otp" options={{ title: 'Verify Identity' }} />

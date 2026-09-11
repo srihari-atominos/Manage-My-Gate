@@ -68,42 +68,61 @@ export const OrgSwitchModal: React.FC<OrgSwitchModalProps> = ({
     return [];
   }, [reduxWorkspaces, user]);
 
-  const handleSelect = async (ws: WorkspaceItem) => {
-    // 1. Reset quick actions and update active context locally in Redux
-    dispatch(resetQuickActionsForContext());
-    const targetRole = ws.roleName ? ws.roleName.split(',')[0].trim() : undefined;
-    
-    dispatch(setActiveCommunityOrg({ orgId: ws.orgId, orgName: ws.name }));
-    if (targetRole) {
-      dispatch(setActiveRolePersona({ role: targetRole }));
+  const handleSelect = (ws: WorkspaceItem) => {
+    if (ws.orgId === activeOrgId) {
+      onClose();
+      return;
     }
-    if (ws.villaNumber) {
-      dispatch(setActiveVillaUnit({ villaNumber: ws.villaNumber, villaId: ws.villaId }));
-    }
+    setPendingOrg(ws);
+    setShowConfirmModal(true);
+  };
 
-    // 2. Notify parent callback & close modal
-    onSelectCommunity(ws.name, ws.orgId);
-    onClose();
+  const handleConfirmSwitch = async () => {
+    if (!pendingOrg) return;
+    const ws = pendingOrg;
+    setIsSwitching(true);
 
-    // 3. Dispatch backend workspace context sync in background
     try {
-      const payload: any = { targetOrgId: ws.orgId };
-      if (targetRole) payload.targetRole = targetRole;
-      if (ws.villaId && /^[0-9a-fA-F]{24}$/.test(ws.villaId)) {
-        payload.targetVillaId = ws.villaId;
+      // 1. Reset quick actions and update active context locally in Redux
+      dispatch(resetQuickActionsForContext());
+      const targetRole = ws.roleName ? ws.roleName.split(',')[0].trim() : undefined;
+      
+      dispatch(setActiveCommunityOrg({ orgId: ws.orgId, orgName: ws.name }));
+      if (targetRole) {
+        dispatch(setActiveRolePersona({ role: targetRole }));
       }
-      await dispatch(switchWorkspaceContextThunk(payload));
-    } catch (e) {
-      console.warn('Background workspace context sync error:', e);
-    }
+      if (ws.villaNumber) {
+        dispatch(setActiveVillaUnit({ villaNumber: ws.villaNumber, villaId: ws.villaId }));
+      }
 
-    dispatch(
-      fetchQuickActionsThunk({
-        orgId: ws.orgId,
-        villaId: ws.villaId,
-        villaNumber: ws.villaNumber,
-      })
-    );
+      // 2. Notify parent callback & close modal
+      onSelectCommunity(ws.name, ws.orgId);
+      setShowConfirmModal(false);
+      setPendingOrg(null);
+      onClose();
+
+      // 3. Dispatch backend workspace context sync in background
+      try {
+        const payload: any = { targetOrgId: ws.orgId };
+        if (targetRole) payload.targetRole = targetRole;
+        if (ws.villaId && /^[0-9a-fA-F]{24}$/.test(ws.villaId)) {
+          payload.targetVillaId = ws.villaId;
+        }
+        await dispatch(switchWorkspaceContextThunk(payload));
+      } catch (e) {
+        console.warn('Background workspace context sync error:', e);
+      }
+
+      dispatch(
+        fetchQuickActionsThunk({
+          orgId: ws.orgId,
+          villaId: ws.villaId,
+          villaNumber: ws.villaNumber,
+        })
+      );
+    } finally {
+      setIsSwitching(false);
+    }
   };
 
   return (

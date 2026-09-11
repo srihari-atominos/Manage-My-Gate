@@ -10,7 +10,11 @@ web-build/
 
 # Native
 android/
-ios/
+ios/Pods/
+ios/build/
+ios/DerivedData/
+ios/**/xcuserdata/
+ios/.xcode.env.local
 *.orig.*
 *.jks
 *.p8

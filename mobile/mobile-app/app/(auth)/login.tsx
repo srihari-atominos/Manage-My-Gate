@@ -370,11 +370,6 @@ export default function LoginScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
       <ImageBackground
         source={require('../../assets/images/auth-bg.jpg')}
         style={{ flex: 1 }}
