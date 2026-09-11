@@ -1,48 +1,23 @@
 import React, { useMemo } from 'react';
-import { View, ScrollView } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { KPIRow } from '@/components/ui/KPIRow';
 import { PaginatedList } from '@/components/ui/PaginatedList';
 import { SearchFilterBar } from '@/components/ui/SearchFilterBar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { Chip } from '@/components/common/Chip';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { FAB } from '@/components/ui/FAB';
 
 import { AmenityMasterCard } from '@/src/features/amenities/components/AmenityMasterCard';
-import { useAmenityMaster, ArchetypeFilterOption } from '@/src/features/amenities/hooks/useAmenityMaster';
+import { AmenityFilterDrawer } from '@/src/features/amenities/components/AmenityFilterDrawer';
+import { useAmenityMaster, ArchetypeFilterOption, AmenityStatusFilter } from '@/src/features/amenities/hooks/useAmenityMaster';
 import {
   AmenityCreationWizard,
   AmenityArchetypeSheet,
 } from '@/src/features/amenities/components/creation-wizard';
 import { AmenityDetailSheet } from '@/src/features/amenities/components/AmenityDetailSheet';
 import { AmenityFacility } from '@/src/features/amenities/types/amenityDomain.types';
-import {
-  Plus,
-  Layers,
-  Users,
-  Timer,
-  Sparkles,
-  DoorOpen,
-  Wrench,
-} from 'lucide-react-native';
-
-interface ArchetypeChipMeta {
-  label: string;
-  value: ArchetypeFilterOption;
-  icon: any;
-}
-
-const ARCHETYPE_CHIPS: ArchetypeChipMeta[] = [
-  { label: 'All', value: 'All', icon: Layers },
-  { label: 'Shared', value: 'SHARED_CAPACITY', icon: Users },
-  { label: 'Exclusive', value: 'EXCLUSIVE_HOURLY', icon: Timer },
-  { label: 'Event', value: 'EVENT_SPACE', icon: Sparkles },
-  { label: 'Room', value: 'ROOM_RESOURCE', icon: DoorOpen },
-  { label: 'Tools', value: 'INVENTORY_TOOLS', icon: Wrench },
-];
+import { Plus } from 'lucide-react-native';
 
 export default function AdminAmenityMasterScreen() {
   const router = useRouter();
@@ -51,6 +26,16 @@ export default function AdminAmenityMasterScreen() {
     filteredAmenities,
     search,
     setSearch,
+    statusFilter,
+    setStatusFilter,
+    statusCounts,
+    availableCategories,
+    activeFilters,
+    activeFilterCount,
+    isFilterDrawerOpen,
+    setIsFilterDrawerOpen,
+    handleApplyFilters,
+    handleResetFilters,
     selectedArchetype,
     setSelectedArchetype,
     loading,
@@ -78,94 +63,43 @@ export default function AdminAmenityMasterScreen() {
     handleConfirmDelete,
   } = useAmenityMaster();
 
-  const kpis = useMemo(() => {
-    const total = facilities.length;
-    const active = facilities.filter(
-      (f) => f.status === 'ACTIVE' || (f as any).isActive === true
-    ).length;
-    const maintenance = facilities.filter((f) => f.status === 'MAINTENANCE').length;
-    return { total, active, maintenance };
-  }, [facilities]);
+  // Status sort options with live counts (matching Billing Ledger pattern)
+  const statusSortOptions = useMemo(() => [
+    { label: `All (${statusCounts.total})`, value: 'ALL' },
+    { label: `Active (${statusCounts.active})`, value: 'ACTIVE' },
+    { label: `Inactive (${statusCounts.inactive})`, value: 'INACTIVE' },
+    { label: `Maintenance (${statusCounts.maintenance})`, value: 'MAINTENANCE' },
+  ], [statusCounts]);
 
-  const archetypeSortOptions = useMemo(() => {
-    return ARCHETYPE_CHIPS.map((chip) => ({
-      label: chip.label === 'All' ? 'All Archetypes' : `${chip.label} Capacity`,
-      value: chip.value,
-    }));
-  }, []);
+  const emptySubtitle = useMemo(() => {
+    if (search.trim()) return `No facilities match "${search.trim()}".`;
+    if (statusFilter !== 'ALL') return `No facilities match status filter "${statusFilter.toLowerCase()}".`;
+    if (activeFilterCount > 0) return 'No facilities match the active filter criteria.';
+    return 'No facility records found in master catalog.';
+  }, [search, statusFilter, activeFilterCount]);
 
   const renderHeader = () => (
-    <View className="mb-3 gap-3">
-      {/* Facility Summary KPI Strip */}
-      <KPIRow
-        cards={[
-          {
-            title: 'Total Amenities',
-            value: String(kpis.total),
-            subtitle: 'Master Catalog',
-            iconName: 'Building2',
-            variant: 'info',
-            onPress: () => setSelectedArchetype('All'),
-          },
-          {
-            title: 'Active',
-            value: String(kpis.active),
-            subtitle: 'Open for Booking',
-            iconName: 'CheckCircle2',
-            variant: 'success',
-          },
-          {
-            title: 'Under Maintenance',
-            value: String(kpis.maintenance),
-            subtitle: 'Temporary Closed',
-            iconName: 'Wrench',
-            variant: kpis.maintenance > 0 ? 'warning' : 'default',
-            onPress: () => router.push('/(resident)/amenities/maintenance' as any),
-          },
-        ]}
-      />
-
-      {/* Search & Sort Dropdown Filter Bar */}
+    <View className="mb-3">
+      {/* Search & Status Filter Bar with Filter Drawer Trigger */}
       <SearchFilterBar
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search facility name, location or code..."
-        sortOptions={archetypeSortOptions}
-        currentSort={selectedArchetype}
-        onSortChange={(val) => setSelectedArchetype(val as ArchetypeFilterOption)}
+        sortOptions={statusSortOptions}
+        currentSort={statusFilter}
+        onSortChange={(val) => setStatusFilter(val as AmenityStatusFilter)}
+        onFilterPress={() => setIsFilterDrawerOpen(true)}
+        activeFilterCount={activeFilterCount}
         variant="default"
         className="px-0 py-0 border-0"
       />
-
-      {/* Multi-Chip Archetype Selector Row */}
-      <View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerClassName="flex-row items-center gap-2 py-0.5"
-        >
-          {ARCHETYPE_CHIPS.map((chip) => {
-            const isSelected = selectedArchetype === chip.value;
-            return (
-              <Chip
-                key={chip.value}
-                label={chip.label}
-                icon={chip.icon}
-                selected={isSelected}
-                onPress={() => setSelectedArchetype(chip.value)}
-                className="h-8 px-3"
-              />
-            );
-          })}
-        </ScrollView>
-      </View>
     </View>
   );
 
   return (
     <ScreenShell
       title="Amenity Master Console"
-      subtitle="Configure community facilities, canonical archetypes & pricing"
+      subtitle={`Total ${facilities.length} community facilities`}
       iconName="Building2"
       loading={loading && facilities.length === 0}
       error={error}
@@ -175,11 +109,11 @@ export default function AdminAmenityMasterScreen() {
           variant="default"
           size="sm"
           onPress={handleOpenCreateModal}
-          className="flex-row items-center gap-1 rounded-full px-3 h-8"
+          className="flex-row items-center gap-1.5 rounded-full px-3.5 h-8"
           accessibilityLabel="Add New Amenity Facility"
         >
           <Plus size={14} className="text-primary-foreground" />
-          <Text className="text-primary-foreground font-bold text-xs">Add</Text>
+          <Text className="text-primary-foreground font-bold text-xs">Add Facility</Text>
         </Button>
       }
     >
@@ -209,17 +143,20 @@ export default function AdminAmenityMasterScreen() {
           ListHeaderComponent={renderHeader()}
           emptyIcon="Building2"
           emptyTitle="No Amenity Records Found"
-          emptySubtitle="No facility records match your active archetype filter or search query."
-          contentContainerClassName="px-4 pt-3 pb-28"
-        />
-
-        {/* Primary Creation Action: Add Facility FAB */}
-        <FAB
-          iconName="Plus"
-          label="Add Facility"
-          onPress={handleOpenCreateModal}
+          emptySubtitle={emptySubtitle}
+          contentContainerClassName="px-4 pt-3 pb-10"
         />
       </View>
+
+      {/* Advanced Multi-Select Filter Drawer */}
+      <AmenityFilterDrawer
+        visible={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        filters={activeFilters}
+        availableCategories={availableCategories}
+        onApply={handleApplyFilters}
+        onReset={handleResetFilters}
+      />
 
       {/* 1. Initial Archetype Selection Bottom Sheet (Visitor Pattern UX) */}
       <AmenityArchetypeSheet

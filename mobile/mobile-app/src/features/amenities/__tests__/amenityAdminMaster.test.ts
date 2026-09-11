@@ -237,4 +237,88 @@ describe('Admin Amenity Master - 5 Canonical Archetypes & Service Contracts', ()
       expect(url).toBe('http://localhost:5002/api/v2/amenity-management/facilities/fac_123');
     });
   });
+
+  describe('5. Status Counts & Multi-Select Filter Logic', () => {
+    const mockFacilities = [
+      {
+        _id: 'fac_1',
+        name: 'Olympic Swimming Pool',
+        status: 'ACTIVE',
+        isActive: true,
+        archetype: 'SHARED_CAPACITY',
+        category: 'Sports',
+        pricing: { model: 'FREE' },
+      },
+      {
+        _id: 'fac_2',
+        name: 'Tennis Court A',
+        status: 'ACTIVE',
+        isActive: true,
+        archetype: 'EXCLUSIVE_HOURLY',
+        category: 'Sports',
+        pricing: { model: 'HOURLY', ratePerHour: 20 },
+      },
+      {
+        _id: 'fac_3',
+        name: 'Badminton Court B',
+        status: 'MAINTENANCE',
+        isActive: false,
+        archetype: 'EXCLUSIVE_HOURLY',
+        category: 'Sports',
+        pricing: { model: 'HOURLY', ratePerHour: 15 },
+      },
+      {
+        _id: 'fac_4',
+        name: 'Conference Room 1',
+        status: 'INACTIVE',
+        isActive: false,
+        archetype: 'ROOM_RESOURCE',
+        category: 'Business',
+        pricing: { model: 'HOURLY', ratePerHour: 50 },
+      },
+    ];
+
+    it('correctly calculates status pill counts for All, Active, Inactive, and Maintenance', () => {
+      const total = mockFacilities.length;
+      const active = mockFacilities.filter(
+        (f) => (f.status === 'ACTIVE' || (f as any).isActive === true) && f.status !== 'MAINTENANCE'
+      ).length;
+      const inactive = mockFacilities.filter(
+        (f) => (f.status === 'INACTIVE' || (f as any).isActive === false) && f.status !== 'MAINTENANCE'
+      ).length;
+      const maintenance = mockFacilities.filter((f) => f.status === 'MAINTENANCE').length;
+
+      expect(total).toBe(4);
+      expect(active).toBe(2);
+      expect(inactive).toBe(1);
+      expect(maintenance).toBe(1);
+    });
+
+    it('supports multi-archetype selection filtering', () => {
+      const selectedArchetypes = ['SHARED_CAPACITY', 'ROOM_RESOURCE'];
+      const filtered = mockFacilities.filter((f) =>
+        selectedArchetypes.includes(f.archetype)
+      );
+
+      expect(filtered).toHaveLength(2);
+      expect(filtered.map((f) => f.name)).toEqual([
+        'Olympic Swimming Pool',
+        'Conference Room 1',
+      ]);
+    });
+
+    it('supports category and pricing filtering', () => {
+      const sportsFree = mockFacilities.filter(
+        (f) => f.category === 'Sports' && f.pricing.model === 'FREE'
+      );
+      expect(sportsFree).toHaveLength(1);
+      expect(sportsFree[0].name).toBe('Olympic Swimming Pool');
+
+      const sportsPaid = mockFacilities.filter(
+        (f) => f.category === 'Sports' && f.pricing.model !== 'FREE'
+      );
+      expect(sportsPaid).toHaveLength(2);
+    });
+  });
 });
+

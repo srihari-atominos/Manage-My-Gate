@@ -12,6 +12,13 @@ import { mapAmenityApiError } from '../utils/amenityErrorMapper';
 import { upsertAmenity, removeAmenity } from '../store/amenitySlice';
 
 export type ArchetypeFilterOption = 'All' | AmenityArchetype;
+export type AmenityStatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
+
+export interface AmenityFilterValues {
+  archetypes: AmenityArchetype[];
+  categories: string[];
+  pricingModel: 'ALL' | 'FREE' | 'PAID';
+}
 
 export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All') => {
   const dispatch = useDispatch<AppDispatch>();
@@ -21,7 +28,16 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<AmenityStatusFilter>('ALL');
   const [selectedArchetype, setSelectedArchetype] = useState<ArchetypeFilterOption>(initialArchetype);
+
+  // Advanced multi-select filter states
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState<boolean>(false);
+  const [activeFilters, setActiveFilters] = useState<AmenityFilterValues>({
+    archetypes: [],
+    categories: [],
+    pricingModel: 'ALL',
+  });
 
   const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
   const [isArchetypeSheetOpen, setIsArchetypeSheetOpen] = useState<boolean>(false);
@@ -34,6 +50,43 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
   const [deactivateTarget, setDeactivateTarget] = useState<AmenityFacility | null>(null);
 
   const [saving, setSaving] = useState<boolean>(false);
+
+  // Live status counts for filter pills (matching Billing Ledger pattern)
+  const statusCounts = useMemo(() => {
+    const total = facilities.length;
+    const active = facilities.filter(
+      (f) => (f.status === 'ACTIVE' || (f as any).isActive === true) && f.status !== 'MAINTENANCE'
+    ).length;
+    const inactive = facilities.filter(
+      (f) => (f.status === 'INACTIVE' || (f as any).isActive === false) && f.status !== 'MAINTENANCE'
+    ).length;
+    const maintenance = facilities.filter((f) => f.status === 'MAINTENANCE').length;
+    return { total, active, inactive, maintenance };
+  }, [facilities]);
+
+  // Dynamically extract distinct categories from facilities catalog
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    facilities.forEach((f) => {
+      const cat = (f as any).category || (f as any).type;
+      if (cat && typeof cat === 'string') {
+        set.add(cat);
+      }
+    });
+    if (set.size === 0) {
+      ['Sports', 'Fitness', 'Clubhouse', 'Events', 'Leisure', 'Utility'].forEach((c) => set.add(c));
+    }
+    return Array.from(set);
+  }, [facilities]);
+
+  // Active filter badge count for the filter icon in SearchFilterBar
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (activeFilters.archetypes.length > 0) count += activeFilters.archetypes.length;
+    if (activeFilters.categories.length > 0) count += activeFilters.categories.length;
+    if (activeFilters.pricingModel !== 'ALL') count++;
+    return count;
+  }, [activeFilters]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -76,17 +129,76 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
         !query ||
         facility.name.toLowerCase().includes(query) ||
         (facility.description && facility.description.toLowerCase().includes(query)) ||
+        (facility.code && facility.code.toLowerCase().includes(query)) ||
+        ((facility as any).location && (facility as any).location.toLowerCase().includes(query)) ||
         (facility.timezone && facility.timezone.toLowerCase().includes(query));
 
-      const matchesArchetype =
-        selectedArchetype === 'All' ||
-        facility.archetype === selectedArchetype ||
-        (facility as any).category === selectedArchetype ||
-        (facility as any).type === selectedArchetype;
+      // Status filter
+      let matchesStatus = true;
+      if (statusFilter === 'ACTIVE') {
+        matchesStatus =
+          (facility.status === 'ACTIVE' || (facility as any).isActive === true) &&
+          facility.status !== 'MAINTENANCE';
+      } else if (statusFilter === 'INACTIVE') {
+        matchesStatus =
+          (facility.status === 'INACTIVE' || (facility as any).isActive === false) &&
+          facility.status !== 'MAINTENANCE';
+      } else if (statusFilter === 'MAINTENANCE') {
+        matchesStatus = facility.status === 'MAINTENANCE';
+      }
 
-      return matchesSearch && matchesArchetype;
+      // Archetype filter (multi-select takes priority if selected, fallback to selectedArchetype)
+      let matchesArchetype = true;
+      if (activeFilters.archetypes.length > 0) {
+        matchesArchetype = activeFilters.archetypes.includes(facility.archetype);
+      } else if (selectedArchetype !== 'All') {
+        matchesArchetype =
+          facility.archetype === selectedArchetype ||
+          (facility as any).category === selectedArchetype ||
+          (facility as any).type === selectedArchetype;
+      }
+
+      // Category filter (multi-select)
+      let matchesCategory = true;
+      if (activeFilters.categories.length > 0) {
+        const facCat = (facility as any).category || (facility as any).type;
+        matchesCategory = activeFilters.categories.includes(facCat);
+      }
+
+      // Pricing model filter
+      let matchesPricing = true;
+      if (activeFilters.pricingModel === 'FREE') {
+        matchesPricing =
+          !facility.pricing ||
+          facility.pricing.model === 'FREE' ||
+          (facility.pricing as any).ratePerHour === 0;
+      } else if (activeFilters.pricingModel === 'PAID') {
+        matchesPricing = Boolean(
+          facility.pricing &&
+            facility.pricing.model !== 'FREE' &&
+            ((facility.pricing as any).ratePerHour > 0 ||
+              (facility.pricing as any).ratePerDay > 0 ||
+              (facility.pricing as any).ratePerSlot > 0)
+        );
+      }
+
+      return matchesSearch && matchesStatus && matchesArchetype && matchesCategory && matchesPricing;
     });
-  }, [facilities, search, selectedArchetype]);
+  }, [facilities, search, statusFilter, selectedArchetype, activeFilters]);
+
+  const handleApplyFilters = (newFilters: AmenityFilterValues) => {
+    setActiveFilters(newFilters);
+    setIsFilterDrawerOpen(false);
+  };
+
+  const handleResetFilters = () => {
+    setActiveFilters({
+      archetypes: [],
+      categories: [],
+      pricingModel: 'ALL',
+    });
+    setIsFilterDrawerOpen(false);
+  };
 
   const handleOpenCreateModal = () => {
     setEditingAmenity(null);
@@ -199,6 +311,17 @@ export const useAmenityMaster = (initialArchetype: ArchetypeFilterOption = 'All'
     filteredAmenities,
     search,
     setSearch,
+    statusFilter,
+    setStatusFilter,
+    statusCounts,
+    availableCategories,
+    activeFilters,
+    setActiveFilters,
+    activeFilterCount,
+    isFilterDrawerOpen,
+    setIsFilterDrawerOpen,
+    handleApplyFilters,
+    handleResetFilters,
     selectedArchetype,
     setSelectedArchetype,
     selectedCategory: selectedArchetype,
