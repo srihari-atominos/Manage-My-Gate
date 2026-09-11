@@ -1,5 +1,4 @@
-import apiClient, { getApiBaseUrl } from '../../../services/apiClient';
-import axios from 'axios';
+import apiClient from '../../../services/apiClient';
 
 /**
  * Mobile Organization API Service
@@ -10,16 +9,11 @@ export const organizationApi = {
   /**
    * Check organization name availability (case-insensitive)
    * GET /api/v1/organizations/check-name?name={name}
-   * NOTE: Uses a plain axios call (bypasses auth interceptor) because this is a
-   * public endpoint called during onboarding before the user has an auth token.
    */
   checkOrganizationName: async (name: string) => {
-    const baseUrl = getApiBaseUrl();
-    const response = await axios.get(`${baseUrl}/organizations/check-name`, {
+    return await apiClient.get('/organizations/check-name', {
       params: { name: name.trim() },
-      timeout: 8000,
     });
-    return response.data;
   },
 
   /**
