@@ -11,6 +11,7 @@ web-build/
 # Native
 android/
 ios/Pods/
+ios/Podfile.lock
 ios/build/
 ios/DerivedData/
 ios/**/xcuserdata/

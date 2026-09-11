@@ -6,6 +6,7 @@ web-build/
 
 # iOS build artifacts
 ios/Pods/
+ios/Podfile.lock
 ios/build/
 ios/DerivedData/
 ios/**/xcuserdata/
